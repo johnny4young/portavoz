@@ -25,7 +25,8 @@ struct DictationCapturePolicy {
 /// The relay also holds speech captured while the model loads. Its bound is
 /// queued audio time; the chunk count is only a backstop.
 enum DictationRelayPolicy {
-    static let capacity = 4_096
+    // Room for 30 s of 128-frame buffers at 48 kHz, so the time bound decides first.
+    static let capacity = 16_384
     static let backlogLimit: TimeInterval = 30
 
     static func admits(

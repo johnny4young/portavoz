@@ -17886,6 +17886,16 @@
           }
         }
       }
+    },
+    "The speech model took too long to load. Nothing was inserted. Try again in a moment.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El modelo de voz tardó demasiado en cargar. No se insertó nada. Inténtalo de nuevo en un momento."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -65,7 +65,8 @@ final class DictationColdStartTests: XCTestCase {
                 XCTAssertTrue(delivered, "\(pendingSeconds) s stays within the limit")
             } else {
                 let failed = await eventually {
-                    cold.harness.controller.phase == .failed(DictationMicrophoneReadiness.Failure.interrupted.message)
+                    cold.harness.controller.phase == .failed(L10n.text(
+                        "The speech model took too long to load. Nothing was inserted. Try again in a moment."))
                 }
                 XCTAssertTrue(failed, "\(pendingSeconds) s exceeds the limit")
                 cold.gate.release()
@@ -99,15 +100,17 @@ final class DictationColdStartTests: XCTestCase {
         XCTAssertEqual(harness.finishes, 0)
     }
 
-    func testSoundCuesMarkTheRealMicrophoneEdgesOnly() async {
+    func testStartCuePlaysBeforeTheMicrophoneAndStopAtTheRealStop() async {
         let harness = DictationControllerHarness(text: "Cues")
         var cues: [DictationSoundCue] = []
         var dependencies = harness.dependencies
         dependencies.playCue = { cues.append($0) }
         harness.controller.toggle(using: dependencies)
+        XCTAssertEqual(cues, [.start], "Start sounds on the accepted press, before the microphone opens")
+        let starts = await harness.microphone.starts
+        XCTAssertEqual(starts, 0, "The cue can never be captured")
         let listening = await eventually { harness.controller.phase == .listening }
         XCTAssertTrue(listening)
-        XCTAssertEqual(cues, [.start], "Start sounds on the first PCM, not on the key press")
         harness.now = harness.now.addingTimeInterval(1)
         harness.controller.toggle(using: dependencies)
         let delivered = await eventually { harness.insertions == ["Cues"] }
@@ -161,6 +164,12 @@ final class DictationColdStartTests: XCTestCase {
         XCTAssertFalse(DictationRelayPolicy.admits(.enqueued(remaining: capacity - Int(limit) - 1), chunk: second))
         XCTAssertFalse(DictationRelayPolicy.admits(.dropped(second), chunk: second))
         XCTAssertFalse(DictationRelayPolicy.admits(.terminated, chunk: second))
+        // Small hardware buffers reach the 30 s time bound before the chunk backstop.
+        let small = AudioChunk(channel: .microphone, samples: [Float](repeating: 0, count: 128),
+                               sampleRate: 48_000, timestamp: 0)
+        let chunksFor30Seconds = Int(limit * 48_000 / 128)
+        XCTAssertLessThanOrEqual(chunksFor30Seconds, capacity)
+        XCTAssertTrue(DictationRelayPolicy.admits(.enqueued(remaining: capacity - chunksFor30Seconds), chunk: small))
     }
 
     private func chunk(seconds: Double) -> AudioChunk {

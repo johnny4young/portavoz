@@ -256,8 +256,7 @@ D561 opens the microphone while the model loads and holds up to 30 s of queued
 audio, so a cold load no longer loses speech. Deterministic controller tests
 cover ordering, the bound, late leases and release during the load; they do
 not measure real Parakeet cold-load time after a reboot or a first download,
-the delay between release and insertion on a cold model, or whether a
-start sound picked up by the microphone ever produces recognized text. Measure
+or the delay between release and insertion on a cold model. Measure
 those on hardware before claiming a cold-start latency, and before considering
 sounds or the launch pre-warm on by default.
 

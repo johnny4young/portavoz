@@ -2854,9 +2854,11 @@ are unchanged; `microphoneReady` can now precede `runtimeReady`.
 
 Two opt-in settings ride on the same session. Start/stop sounds
 (`dictationSoundCues`, `settings-dictation-sounds`) play macOS system sounds
-through `DictationSessionDependencies.playCue`: start on the first admitted PCM,
-stop after the tail when the microphone actually closes, nothing on cancel or
-failure. Loading the model at launch (`dictationPrewarm`,
+through `DictationSessionDependencies.playCue`: start when the trigger is
+accepted, before the microphone opens (so it is never recorded), and stop after
+the tail when the microphone actually closes; cancel and failure play no stop
+sound. If the 30-second relay overflows while the model is still loading, the
+failure says the model took too long to load. Loading the model at launch (`dictationPrewarm`,
 `settings-dictation-prewarm`) runs when the hotkey registers at launch and when
 dictation or the setting is turned on. `DictationPrewarmPolicy` requires the
 Parakeet route, the Balanced profile, no memory/thermal pressure, no Low Power

@@ -21231,7 +21231,8 @@ that already carries PCM to the engine is created before the engine reads it,
 so it doubles as the pre-roll buffer; a second buffer would add a handoff race
 between the detached pump and the main actor without adding capacity. Bound it
 by queued audio time, 30 seconds, computed from the yield's remaining capacity
-and the chunk duration, with a 4,096-chunk backstop. The previous 128-chunk
+and the chunk duration, with a 16,384-chunk backstop sized so 128-frame buffers
+at 48 kHz still reach the time bound first. The previous 128-chunk
 bound meant about 11 seconds on a 48 kHz input and about 33 seconds on a 16 kHz
 headset, too short for a slow cold load on some devices and inconsistent across
 them. Overflow still revokes delivery (D547). The relay is never persisted.
@@ -21248,6 +21249,7 @@ dictation and would otherwise keep the model resident after every launch for
 people who never dictate. It runs only for the Parakeet route, the Balanced
 profile, without pressure or Low Power Mode, for an installed verified model,
 through governor admission, and it ends its lease at once so idle and pressure
-release still apply. It never pins weights. Sounds mark real microphone edges
-(first PCM, actual stop) and are silent on cancel; the start sound can reach
-the microphone, which remains field validation in GAPS.
+release still apply. It never pins weights. The start sound plays on the
+accepted trigger, before the microphone opens, so it is never captured; the stop
+sound marks the actual stop and is silent on cancel. A relay that overflows
+while the model still loads reports the slow load, not a capture interruption.

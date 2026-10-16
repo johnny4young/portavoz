@@ -254,6 +254,8 @@ final class DictationController {
         let sessionID = UUID()
         activeSessionID = sessionID
         sessionClock = dependencies.now
+        // Before the microphone opens, so the cue itself is never captured.
+        dependencies.playCue(.start)
         showPanel()
 
         let finishCapture = dependencies.beginCapture()
@@ -592,7 +594,6 @@ private extension DictationController {
         let readiness = DictationMicrophoneReadiness(now: dependencies.now, onReady: { [weak self] in
             guard let self, activeSessionID == id else { return }
             phase = .listening
-            dependencies.playCue(.start)
         }, onFailure: { [weak self] failure in
             guard let self, activeSessionID == id else { return }
             // The session task then unwinds as cancelled; keep the real outcome.
@@ -602,7 +603,11 @@ private extension DictationController {
             feed?.finish()
             let source = microphone
             Task { await source?.stop() }
-            failSession(id: id, message: failure.message, autoDismiss: false)
+            // The relay only overflows while nothing drains it: the model is still loading.
+            let message = failure == .interrupted && isLoadingModel
+                ? L10n.text("The speech model took too long to load. Nothing was inserted. Try again in a moment.")
+                : failure.message
+            failSession(id: id, message: message, autoDismiss: false)
         })
         microphoneReadiness = readiness
         return readiness
