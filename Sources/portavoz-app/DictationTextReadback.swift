@@ -1,7 +1,8 @@
 import Foundation
 
-/// Reads only the proposed insertion's span. Neither the previous selection's
-/// text nor the whole external document is needed to verify an observed edit.
+/// Verification reads only the proposed insertion's span. The other reads are
+/// at most `contextLength` units on each side of the selection, to space the
+/// insertion; none is kept. The whole external document is never needed.
 @MainActor
 struct DictationTextReadback {
     struct Position: Equatable {
@@ -19,16 +20,44 @@ struct DictationTextReadback {
     // still sent in full, but is never materialized from an external AX server.
     static let maximumUTF16Length = 16_384
     static let observationWindow: Duration = .milliseconds(750)
+    /// One character, or one surrogate pair or combining sequence.
+    static let contextLength = 2
 
     let position: () -> Position?
     let string: (NSRange) -> String?
     var now: () -> ContinuousClock.Instant = { ContinuousClock.now }
     var pause: () async throws -> Void = { try await Task.sleep(for: .milliseconds(25)) }
+    /// Nil means the editor's text around the selection is never requested.
+    var context: ((NSRange) -> String?)?
 
     func baseline(for text: String) -> Position? {
+        guard Self.admitsLength(of: text), let value = position() else { return nil }
+        return baseline(for: text, at: value)
+    }
+
+    /// The exact output for this field and its baseline. `admits` revalidates
+    /// the field (focus, secure input) immediately before any text is requested.
+    func prepare(_ text: String, admits: () -> Bool) -> (text: String, baseline: Position?) {
+        guard Self.admitsLength(of: text), let value = position(), value.isValid else { return (text, nil) }
+        guard let context, admits() else { return (text, baseline(for: text, at: value)) }
+        let start = value.selection.location
+        let end = start + value.selection.length
+        let beforeLength = min(Self.contextLength, start)
+        let afterLength = min(Self.contextLength, value.characterCount - end)
+        let before = beforeLength == 0 ? "" : context(NSRange(location: start - beforeLength, length: beforeLength))
+        let after = afterLength == 0 ? "" : context(NSRange(location: end, length: afterLength))
+        let output = DictationCaretJoin.join(text, after: before, before: after)
+        return (output, baseline(for: output, at: value))
+    }
+
+    private static func admitsLength(of text: String) -> Bool {
         let length = text.utf16.count
-        guard length > 0, length <= Self.maximumUTF16Length,
-              let value = position(), value.isValid,
+        return length > 0 && length <= maximumUTF16Length
+    }
+
+    private func baseline(for text: String, at value: Position) -> Position? {
+        let length = text.utf16.count
+        guard Self.admitsLength(of: text), value.isValid,
               length <= Int.max - (value.characterCount - value.selection.length),
               length <= Int.max - value.selection.location else { return nil }
         return value

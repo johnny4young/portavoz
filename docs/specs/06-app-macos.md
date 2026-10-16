@@ -2907,7 +2907,9 @@ well as individual deltas: an old stream ending normally cannot restore discarde
 text or write into a restarted session. Cancel synchronously clears both text
 projections before awaiting microphone teardown. This does not add ASR rescoring, change
 decoder windows, resolve timestamp/replay quality gaps or bound total transcript
-storage. SwiftUI still renders the existing two-line panel.
+storage. The two-line strip shows the newest words: `DictationPanelTranscript`
+elides earlier words from the front at a word boundary (about 120 characters)
+and keeps the confirmed/volatile styling.
 
 **Capture failure authority (D547).** Dictation keeps its bounded 128-buffer relay, but
 an overflow is a failed capture, not permission to deliver the surviving suffix.
@@ -2983,6 +2985,20 @@ permission. There is no automatic retry loop. Ordinary temporary-store launches
 register neither Carbon hotkeys nor the mouse event tap; the explicit shortcut
 fixture exercises failed registration and recovery with an inert registrar.
 
+**In-flight delivery and Escape (Oct 2026).** `Phase.delivering` covers the
+awaited paste, from prepared text to its outcome. It counts as active capture,
+so a hotkey tap, a late key-up or a mouse press neither cancels the paste nor
+starts a session over it. The strip reads Inserting… and disables its cancel
+control, because a posted paste cannot be recalled. While a session prepares or
+listens, `DictationSessionDependencies.registerCancelKey` claims Escape
+system-wide through a second `GlobalHotkey`. Escape cancels only that session
+and is released before the paste and on every terminal path, so the destination
+gets it back. If Carbon refuses the key, the panel's cancel control remains.
+Each `GlobalHotkey` carries a unique `EventHotKeyID` and returns
+`eventNotHandledErr` for events it does not own, so registrations sharing the
+application target cannot fire each other's callbacks. Disposable composition
+registers no Escape key.
+
 Surface validated by MacParakeet: global hotkey → speak → hotkey again → text written where cursor is. `GlobalHotkey` uses Carbon `RegisterEventHotKey` — the only API consuming the keystroke without Accessibility permission — and is registered from app initialization so it survives without a window. `DictationController` owns one process-scoped, UUID-fenced session: mic → the selected live engine (Parakeet by default) → the shared `CaptionCoalescer`; no meeting, database row, or audio file is created. The non-activating `DictationPanel` shows live text and offers explicit cancellation.
 
 **Captured destination and explicit recovery (D544).** Before presenting the
@@ -3007,7 +3023,9 @@ inspectable and not secure at delivery, and the shortcut uses the session event
 stream. Because clicking Reinsert keys the non-activating panel without
 activating Portavoz, that route also refuses (`.focusUnavailable`, text kept)
 while an inactive Portavoz holds a key window: the session stream would paste
-into the panel and report a dispatch that never reached the destination. A fixture that names its receiver still waits for a pinnable field. If final inspection serviced a new clipboard owner,
+into the panel and report a dispatch that never reached the destination.
+Because that click is the only way to Reinsert, the route disables Reinsert
+(`canRetry: false`) and its recovery copy points to Copy. A fixture that names its receiver still waits for a pinnable field. If final inspection serviced a new clipboard owner,
 no event is posted and that owner's content is not restored over.
 
 The existing layout-aware shortcut and captured rich clipboard representations
@@ -3056,6 +3074,18 @@ is checked again after the final metadata read, which can itself service a
 focus change. It never reads the old selection, full field value, title, URL or
 screen. Comparing code units does
 not silently accept smart quotes, canonical normalization or other changes.
+
+**Spacing at the caret (D560).** Before the baseline, a readback that offers the
+`context` reader revalidates the field and requests at most two UTF-16 units
+before the selection start and two after its end; a field edge requests nothing
+on that side. `DictationCaretJoin` adds one trailing space when a letter or digit
+follows, and one leading space when the preceding text ends in a non-separator
+and the output does not start with whitespace or closing punctuation; openers such as `(`, `¿`
+and `“`, or a straight quote preceded by whitespace, take none. The strip's
+accessibility label keeps the whole dictation even when the visible text is elided. Words, capitalization and Literal/Clean output never change.
+The joined output is what is borrowed, posted and read back. The context is not
+retained, logged or stored. The session route has no readback and keeps the
+unjoined output.
 
 The requested span is limited to 16,384 UTF-16 units; longer output is still sent
 in full but not read back. The observer uses a 750 ms window, at most 30 polls

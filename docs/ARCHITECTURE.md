@@ -1281,7 +1281,8 @@ the board. A clipboard owner change during final inspection prevents dispatch.
 `DictationDeliveryOutcome` in Core separates verified observation, unverified
 dispatch and typed refusal without importing platform types. The app's narrow
 readback adapter observes only the expected inserted span and selection/count
-metadata, with per-object AX timeouts and a bounded polling window. Neither a
+metadata, plus at most two units on each side of the selection to space the insertion,
+with per-object AX timeouts and a bounded polling window. Neither a
 whole external document nor an old selection enters the domain or storage.
 Unsupported or ambiguous readback remains dispatched and cannot authorize a
 retry. The controller expires only verified feedback through a separately owned

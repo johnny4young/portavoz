@@ -53,6 +53,7 @@ struct DictationRecoveryView: View {
     }
 
     private var message: String {
+        if !controller.canRetryDelivery, let copyOnlyMessage { return copyOnlyMessage }
         switch failure {
         case .targetChanged:
             if let name = controller.targetApp {
@@ -67,6 +68,18 @@ struct DictationRecoveryView: View {
             return L10n.text("The original field can't be verified. Your text is still available to copy.")
         case .clipboardUnavailable, .eventUnavailable, .cancelled, .emptyText:
             return L10n.text("Delivery didn't complete. Reinsert into the original field, or copy your text.")
+        }
+    }
+
+    /// Without Reinsert, the messages that would ask the user to retry point to Copy instead.
+    private var copyOnlyMessage: String? {
+        switch failure {
+        case .targetChanged:
+            L10n.text("The destination changed. Copy your text to keep it.")
+        case .modifiersStillPressed, .clipboardUnavailable, .eventUnavailable, .cancelled, .emptyText:
+            L10n.text("Delivery didn't complete. Copy your text to keep it.")
+        case .secureField, .focusUnavailable:
+            nil
         }
     }
 }

@@ -168,12 +168,14 @@ Electron, Java and remote-desktop clients), delivery uses the session keyboard
 stream. Clicking Reinsert makes the non-activating recovery panel key while
 Portavoz stays inactive, so that stream would reach the panel instead of the
 destination. Delivery therefore refuses with `focusUnavailable` and the text
-stays in recovery: Copy works and nothing is lost, but Reinsert cannot succeed
-on this route. Choosing Literal or Clean in the panel during a session
+stays in recovery: Copy works and nothing is lost. Reinsert is disabled on
+this route because its own click guarantees the refusal. Choosing Literal or Clean in the panel during a session
 keys the panel the same way, so that session's delivery on this route is refused
-into recovery too. The likely fix is a panel that does not become key for a button
-click (for example `becomesKeyOnlyIfNeeded`), which needs native verification
-in Slack, VS Code, a Java editor and a remote-desktop client before it ships.
+into recovery too. A panel that cannot become key is not the fix: borderless
+panels then drop their buttons' clicks (the recording HUD relies on key status
+for the same reason). A candidate is `becomesKeyOnlyIfNeeded`, which needs
+native verification in Slack, VS Code, a Java editor and a remote-desktop
+client before it ships.
 
 ### Cancel during unverified-delivery readback
 

@@ -17,6 +17,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 15, 2026
 
+- **✨ Smoother dictation** — dictated words join your text with the right spacing, Esc cancels while you speak, the strip keeps your newest words in view, and a quick second press can no longer interrupt an insertion.
+
 - **⚡ Lighter chapter preparation** — reuses corrected rows instead of rebuilding the transcript for each review update.
 
 - **⚡ Smoother meeting review** — keeps transcript corrections ready while summaries, notes and playback update.
