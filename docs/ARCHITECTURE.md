@@ -3202,6 +3202,24 @@ accepted/composed snapshot pair, so row rendering performs constant-time
 context lookups instead of repeatedly scanning transcript and correction
 history while the user scrolls.
 
+The route model owns that immutable transcript presentation together with its
+current composed reading. Every authoritative core delivery rebuilds the pair,
+even when revision identifiers match; changed chapter titles rebuild it too.
+Summary, privacy, notes, playback, and other optional updates reuse the pair.
+A missing core clears it, while a failed core read retains the last healthy
+pair. The read model and derived pair publish together without suspension.
+SwiftUI rendering and evidence/playback navigation consume that same reading
+instead of recomposing it. The existing composer, accepted fallback, distinct
+lineages, and source maps are unchanged; there is no global or persisted cache.
+Metadata eligibility also consumes this already composed current reading.
+Only an actual eligibility check maps canonical rows through ApplicationKit's
+shared generation-segment mapping and extracts untitled chapter starts; a core
+or chapter-title rebuild adds no eager generation work. Displayed chapter
+markers are not substituted: accepted fallback and overlapping structural rows
+can have different pre-canonical extraction order. Suggestion requests still
+carry the current review and retain their original freshness, one-shot and
+cancellation fences.
+
 StorageKit keeps correction append, tombstone, validation, and canonicalization
 on the write side while a separate read owner fetches child rows, decodes typed
 payloads, validates contiguous ordinals and portable events, and reconstructs

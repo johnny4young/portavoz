@@ -43,6 +43,14 @@ public extension MeetingReviewReadModel {
     func transcriptContent(
         chapterTitles: [TimeInterval: String] = [:]
     ) -> MeetingTranscriptContent {
+        transcriptReadings(chapterTitles: chapterTitles).current
+    }
+
+    /// The adopted reading and the accepted reading it falls back to, sharing
+    /// one accepted composition for callers that need both.
+    func transcriptReadings(
+        chapterTitles: [TimeInterval: String] = [:]
+    ) -> (current: MeetingTranscriptContent, accepted: MeetingTranscriptContent) {
         let material: MeetingTranscriptBaseMaterial = core.isRefinedTranscript
             ? .refined
             : .raw
@@ -56,8 +64,8 @@ public extension MeetingReviewReadModel {
             segments: segments,
             chapterTitles: chapterTitles,
             corrections: currentCorrections)
-        else { return accepted }
-        return composition.composed
+        else { return (accepted, accepted) }
+        return (composition.composed, accepted)
     }
 
     func transcriptCorrectionEditorContext(
