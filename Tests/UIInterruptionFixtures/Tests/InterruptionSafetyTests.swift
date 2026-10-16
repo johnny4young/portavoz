@@ -307,6 +307,10 @@ final class InterruptionSafetyTests: PortavozUITestCase {
         let arm = app.buttons["proof-arm"]
         XCTAssertTrue(arm.waitForExistence(timeout: 5))
         app.activate()
+        _ = try XCTUnwrap(waitForUITestCondition(timeout: readinessTimeout) {
+            app.hasObservedNativeReceiver(bundleIdentifier: keyboardReceiverBundleIdentifier)
+                && arm.isHittable
+        } ? arm : nil, "the owned fixture receiver must acknowledge activation before arming")
         return app
     }
 
@@ -342,8 +346,15 @@ final class InterruptionSafetyTests: PortavozUITestCase {
             FileManager.default.fileExists(atPath: effects + "/overlay-ready")
         }) else { throw NSError(domain: "FIXTURE_NOT_READY", code: 1) }
         let overlay = XCUIApplication(bundleIdentifier: "app.portavoz.testing.interruption-overlay")
-        guard overlay.windows["Synthetic interruption owner"]
-            .waitForExistence(timeout: readinessTimeout) else {
+        let deadline = Date().addingTimeInterval(readinessTimeout)
+        // The marker proves construction, not that Launch Services/AppKit and
+        // XCTest agree on the second receiver yet. Activate only our synthetic
+        // owner and require both native identity and the original window.
+        overlay.activate()
+        guard waitForUITestCondition(timeout: max(0, deadline.timeIntervalSinceNow), {
+            overlay.hasObservedNativeReceiver(bundleIdentifier: "app.portavoz.testing.interruption-overlay")
+                && overlay.windows["Synthetic interruption owner"].exists
+        }) else {
             throw NSError(domain: "FIXTURE_NOT_READY", code: 1)
         }
         return overlay

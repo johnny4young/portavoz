@@ -11,7 +11,7 @@ final class SettingsUITests: PortavozUITestCase {
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
             #"{"globalDictationEnabled":true,"dictationLanguage":"en","dictationLiveSpeechEngine":"appleSpeech"}"#
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
         openCategory("settings-category-audio",
                      revealing: "settings-dictation-live-engine", in: app)
         let retry = app.buttons["settings-dictation-live-apple-retry"]
@@ -31,7 +31,7 @@ final class SettingsUITests: PortavozUITestCase {
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
             #"{"globalDictationEnabled":true,"dictationLanguage":"en","dictationLiveSpeechEngine":"appleSpeech","transcriptionLanguage":"es","meetingLiveSpeechEngine":"appleSpeech"}"#
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         openCategory("settings-category-audio",
                      revealing: "settings-dictation-live-engine", in: app)
@@ -63,7 +63,7 @@ final class SettingsUITests: PortavozUITestCase {
             simulateSemanticAssetsMissing: true,
             openSettings: true)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         openCategory(
             "settings-category-intelligence",
@@ -101,7 +101,7 @@ final class SettingsUITests: PortavozUITestCase {
     func testLocalDataLedgerShowsExactCountsAndHonestNetworkPolicy() throws {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         XCTAssertTrue(
@@ -116,14 +116,13 @@ final class SettingsUITests: PortavozUITestCase {
         let meetings = app.control(withIdentifier: "settings-ledger-meetings")
         XCTAssertTrue(meetings.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(meetings.waitForValue("1", timeout: 10))
-        let audio = app.control(withIdentifier: "settings-ledger-audio")
-        XCTAssertTrue(audio.exists)
+        let ledger = try app.snapshot()
+        let audio = try uiSnapshotElement("settings-ledger-audio", in: ledger)
         XCTAssertFalse((audio.value as? String)?.isEmpty ?? true)
         XCTAssertNotEqual(audio.value as? String, "…")
-        let voices = app.control(withIdentifier: "settings-ledger-voices")
+        let voices = try uiSnapshotElement("settings-ledger-voices", in: ledger)
         XCTAssertEqual(voices.value as? String, "0")
-        let network = app.control(withIdentifier: "settings-ledger-network-policy")
-        XCTAssertTrue(network.exists)
+        let network = try uiSnapshotElement("settings-ledger-network-policy", in: ledger)
         let expectedPolicy = UITestLocale.environmentLocale == "es"
             ? "Con activación"
             : "Opt-in"
@@ -135,7 +134,7 @@ final class SettingsUITests: PortavozUITestCase {
     func testCategoryNavigationRevealsEachPane() throws {
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         // The nav renders every category…
         openCategory(
@@ -153,12 +152,13 @@ final class SettingsUITests: PortavozUITestCase {
         let wasLightweight = Self.isOn(lightweight)
         lightweight.click()
         XCTAssertEqual(Self.isOn(lightweight), !wasLightweight)
-        let memoryHelp = app.staticTexts["settings-model-memory-help"]
-        XCTAssertTrue(memoryHelp.exists)
-        let memoryCopy = (memoryHelp.value as? String) ?? memoryHelp.label
+        let memoryState = try app.snapshot()
+        let memoryHelpText = try uiSnapshotElement("settings-model-memory-help", type: .staticText, in: memoryState)
+        let memoryCopy = (memoryHelpText.value as? String) ?? memoryHelpText.label
         XCTAssertTrue(memoryCopy.contains(UITestLocale.environmentLocale == "es"
             ? "Los modelos en uso" : "Models in use"))
-        XCTAssertTrue(app.staticTexts["settings-model-memory-recommendation"].exists)
+        _ = try uiSnapshotElement("settings-model-memory-recommendation", type: .staticText, in: memoryState)
+        let memoryHelp = app.staticTexts["settings-model-memory-help"]
         lightweight.click()
         XCTAssertEqual(Self.isOn(lightweight), wasLightweight)
         guard memoryHelp.revealVertically(in: memoryForm, maximumStep: 240) else {
@@ -166,29 +166,22 @@ final class SettingsUITests: PortavozUITestCase {
             return
         }
         attachScreenshot(of: app, named: "model-memory-profile")
-        XCTAssertTrue(app.textFields["settings-search-field"].exists)
-        XCTAssertTrue(app.buttons["settings-category-intelligence"].isSelected)
-        XCTAssertFalse(app.buttons["settings-category-general"].isSelected)
-        let providerHelp = app.staticTexts["settings-summary-provider-help"]
-        XCTAssertTrue(providerHelp.exists)
+        let intelligence = try app.snapshot()
+        _ = try uiSnapshotElement("settings-search-field", type: .textField, in: intelligence)
+        XCTAssertTrue(try uiSnapshotElement("settings-category-intelligence", type: .button, in: intelligence).isSelected)
+        XCTAssertFalse(try uiSnapshotElement("settings-category-general", type: .button, in: intelligence).isSelected)
+        let providerHelp = try uiSnapshotElement("settings-summary-provider-help", type: .staticText, in: intelligence)
         let providerCopy = (providerHelp.value as? String) ?? providerHelp.label
         let spanish = UITestLocale.environmentLocale == "es"
         XCTAssertTrue(providerCopy.contains(spanish ? "Sequoia y Tahoe" : "Sequoia and Tahoe"))
         XCTAssertTrue(providerCopy.contains(spanish ? "motor local seleccionado" : "selected local engine"))
-        XCTAssertTrue(app.control(withIdentifier: "settings-category-data").exists)
-        XCTAssertTrue(app.control(withIdentifier: "settings-category-integrations").exists)
-
-        // …and picking Intelligence reveals the summary-engine picker, which
-        // now lives in that pane rather than one long scroll (M12).
-        XCTAssertTrue(
-            app.control(withIdentifier: "settings-summary-engine-picker").waitForExistenceFast(timeout: 5),
-            "the Intelligence pane must show the summary-engine picker")
-        XCTAssertTrue(
-            app.control(withIdentifier: "settings-summary-language").waitForExistenceFast(timeout: 5),
-            "the Intelligence pane must separate summary output from spoken language")
-        XCTAssertTrue(
-            app.control(withIdentifier: "settings-whisper-turbo").waitForExistenceFast(timeout: 5),
-            "the Intelligence pane must expose the Turbo Whisper variant")
+        _ = try uiSnapshotElement("settings-category-data", in: intelligence)
+        _ = try uiSnapshotElement("settings-category-integrations", in: intelligence)
+        _ = try uiObservation(
+            of: app,
+            requiring: ["settings-summary-engine-picker", "settings-summary-language", "settings-whisper-turbo"],
+            timeout: 5,
+            message: "Intelligence must expose summary engine/output language and proactive Whisper preparation")
         let whisperDownload = app.control(withIdentifier: "settings-whisper-download-turbo")
         XCTAssertTrue(
             whisperDownload.exists,
@@ -254,7 +247,7 @@ final class SettingsUITests: PortavozUITestCase {
     func testSyncPaneKeepsOptInAndExistingLibrarySeparate() throws {
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         openCategory(
             "settings-category-data",
@@ -278,8 +271,9 @@ final class SettingsUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.buttons["settings-sync-seed"].waitForExistenceFast(timeout: 5),
             "existing meetings must remain a separate explicit action")
-        XCTAssertTrue(app.buttons["settings-sync-pause"].exists)
-        XCTAssertTrue(app.buttons["settings-sync-remove"].exists)
+        let enabledSync = try app.snapshot()
+        _ = try uiSnapshotElement("settings-sync-pause", type: .button, in: enabledSync)
+        _ = try uiSnapshotElement("settings-sync-remove", type: .button, in: enabledSync)
         attachScreenshot(of: app, named: "band-6c-cloud-sync")
     }
 
@@ -289,7 +283,7 @@ final class SettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(seedDemo: true, openSettings: true)
         app.launchEnvironment["PORTAVOZ_UI_TEST_DIAGNOSTICS_PATH"] = destination.path
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         openCategory(
             "settings-category-data",
@@ -330,7 +324,7 @@ final class SettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(seedDemo: true, openSettings: true)
         app.launchEnvironment["PORTAVOZ_UI_TEST_BACKUP_FOLDER"] = directory.path
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         openCategory(
             "settings-category-data",
@@ -370,7 +364,7 @@ final class SettingsUITests: PortavozUITestCase {
         // "Add structure" opens the editor sheet with a name field.
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         openCategory(
             "settings-category-intelligence",
@@ -395,7 +389,7 @@ final class SettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":false}"#
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         openCategory(
             "settings-category-audio",
@@ -443,7 +437,7 @@ final class SettingsUITests: PortavozUITestCase {
             + #"\"replacement\":\"Codex Fixture\"}]"}"#
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = dictationDefaults
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         openCategory(
             "settings-category-audio",
@@ -456,48 +450,38 @@ final class SettingsUITests: PortavozUITestCase {
             "the Audio pane must offer the dictation enable toggle")
         XCTAssertTrue(Self.isOn(toggle), "the isolated launch must enable dictation")
 
-        XCTAssertTrue(
-            app.control(withIdentifier: "settings-dictation-hotkey-recorder")
-                .waitForExistenceFast(timeout: 5),
-            "enabling dictation must reveal the hotkey recorder")
-        XCTAssertTrue(
-            app.control(withIdentifier: "settings-dictation-mouse-recorder")
-                .waitForExistenceFast(timeout: 5),
-            "enabling dictation must reveal the push-to-talk mouse-button recorder")
-        let sounds = app.control(withIdentifier: "settings-dictation-sounds")
-        XCTAssertTrue(sounds.waitForExistenceFast(timeout: 5), "enabling dictation must reveal the sound-cue toggle")
-        XCTAssertFalse(Self.isOn(sounds), "start and stop sounds are opt-in")
-        let prewarm = app.control(withIdentifier: "settings-dictation-prewarm")
-        XCTAssertTrue(prewarm.waitForExistenceFast(timeout: 5), "enabling dictation must reveal the pre-warm toggle")
-        XCTAssertFalse(Self.isOn(prewarm), "loading the model at launch is opt-in")
-        let prewarmNote = app.staticTexts["settings-dictation-prewarm-note"]
-        XCTAssertTrue(prewarmNote.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(renderedText(of: prewarmNote).contains(UITestLocale.environmentLocale == "es"
-            ? "El primer dictado" : "The first dictation"))
-        XCTAssertTrue(
-            app.control(withIdentifier: "settings-dictation-language")
-                .waitForExistenceFast(timeout: 5),
-            "enabling dictation must reveal the language preference picker")
-        let languageSupport = app.staticTexts["settings-dictation-language-support"]
-        XCTAssertTrue(languageSupport.waitForExistenceFast(timeout: 5))
         let expectedSupport = UITestLocale.environmentLocale == "es"
             ? "El español y el inglés pueden seguir mezclándose. Este ajuste sobre todo evita otros sistemas de escritura."
             : "Spanish and English can still mix. This setting mainly keeps out other writing systems."
-        XCTAssertTrue(
-            app.staticTexts[expectedSupport].waitForExistenceFast(timeout: 5),
-            "the actual Audio pane must render the localized capability boundary")
-        XCTAssertTrue(
-            app.control(withIdentifier: "settings-dictation-filler")
-                .waitForExistenceFast(timeout: 5),
-            "enabling dictation must reveal the filler-word filter toggle")
-        XCTAssertTrue(
-            app.control(withIdentifier: "settings-dictation-dict-add")
-                .waitForExistenceFast(timeout: 5),
-            "enabling dictation must reveal the dictionary quick-add")
-        XCTAssertTrue(
-            app.control(withIdentifier: "settings-dictation-dict-remove")
-                .waitForExistenceFast(timeout: 5),
-            "a seeded replacement must expose its removal control")
+        let controls = try uiObservation(
+            of: app,
+            requiring: [
+                "settings-dictation-hotkey-recorder",
+                "settings-dictation-mouse-recorder",
+                "settings-dictation-sounds",
+                "settings-dictation-prewarm",
+                "settings-dictation-language",
+                "settings-dictation-filler",
+                "settings-dictation-dict-add",
+                "settings-dictation-dict-remove"
+            ],
+            types: [
+                "settings-dictation-language-support": .staticText,
+                "settings-dictation-prewarm-note": .staticText
+            ],
+            expectedText: ["settings-dictation-language-support": expectedSupport],
+            timeout: 5,
+            message: "Enabled dictation must expose both triggers, sounds, pre-warm, language support, filler filter and dictionary add/remove")
+        let support = try uiSnapshotElement("settings-dictation-language-support", type: .staticText, in: controls)
+        XCTAssertTrue(support.label == expectedSupport || support.value as? String == expectedSupport,
+                      "the actual Audio pane must render the exact localized capability boundary")
+        let prewarmNote = try uiSnapshotElement("settings-dictation-prewarm-note", type: .staticText, in: controls)
+        XCTAssertTrue(renderedText(of: prewarmNote).contains(UITestLocale.environmentLocale == "es"
+            ? "El primer dictado" : "The first dictation"))
+        XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-sounds")),
+                       "start and stop sounds are opt-in")
+        XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-prewarm")),
+                       "loading the model at launch is opt-in")
         attachScreenshot(of: app, named: "dictation-triggers-language-dictionary")
     }
 
@@ -509,7 +493,7 @@ final class SettingsUITests: PortavozUITestCase {
             #"{"globalDictationEnabled":true,"dictationMouseButton":0,"dictationHotkeyKeyCode":46,"#
             + #""dictationHotkeyModifiers":2304,"dictationHotkeyLabel":"⌥⌘M"}"#
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
         openCategory("settings-category-audio", revealing: "settings-dictation-shortcut-retry", in: app)
 
         let unavailable = app.control(withIdentifier: "settings-dictation-shortcut-unavailable")
@@ -547,7 +531,7 @@ final class SettingsUITests: PortavozUITestCase {
             #"{"globalDictationEnabled":true,"dictationMouseButton":0,"dictationHotkeyKeyCode":-1,"#
             + #""dictationHotkeyModifiers":-1,"dictationHotkeyLabel":"invalid"}"#
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
         openCategory("settings-category-audio", revealing: "settings-dictation-shortcut-default", in: app)
 
         let recovered = app.staticTexts["settings-dictation-shortcut-recovered"]
@@ -574,7 +558,7 @@ final class SettingsUITests: PortavozUITestCase {
         // switch lives in the "My voice & Apuntador" pane.
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         openCategory(
             "settings-category-intelligence",
@@ -596,7 +580,7 @@ final class SettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-voice-storage-unavailable")
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         openCategory(
             "settings-category-intelligence",
@@ -636,7 +620,7 @@ final class SettingsUITests: PortavozUITestCase {
             openSettings: true,
             launchLocale: "en")
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         let systemToggle = app.control(withIdentifier: "settings-language-system-toggle")
         XCTAssertTrue(systemToggle.waitForExistenceFast(timeout: 10))

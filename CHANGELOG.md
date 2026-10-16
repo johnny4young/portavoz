@@ -23,6 +23,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 - **⚡ Dictation ready at launch** — optionally load the dictation model when Portavoz opens so the first dictation starts faster; it still unloads when idle.
 
+- **📂 Quicker audio import** — opens the native file chooser without holding up the menu, and lets you cancel and try again safely.
+
 ## October 14, 2026
 
 - **🗣️ Steadier live text** — keeps opening words and deliberate repetitions while replacing unfinished words cleanly in dictation and meeting captions.
