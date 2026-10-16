@@ -12,11 +12,9 @@ final class MeetingDetailTranscriptPresentation: Sendable {
     init(detail: MeetingReviewReadModel, chapterTitles: [TimeInterval: String]) {
         // Keep the application's full composer, including its accepted fallback
         // and distinct accepted/composed lineage even with no active edits.
-        let current = detail.transcriptContent(chapterTitles: chapterTitles)
-        self.current = current
-        structure = detail.transcriptStructureProjection(
-            current: current,
-            accepted: detail.acceptedTranscriptContent(chapterTitles: chapterTitles))
+        let readings = detail.transcriptReadings(chapterTitles: chapterTitles)
+        current = readings.current
+        structure = detail.transcriptStructureProjection(current: readings.current, accepted: readings.accepted)
     }
 }
 

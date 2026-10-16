@@ -23,10 +23,16 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(view.contains("transcriptPresentation.current"))
         XCTAssertTrue(view.contains("transcriptPresentation.structure"))
         XCTAssertEqual(view.components(separatedBy: "model.state.transcriptPresentation?.current").count - 1, 3)
-        for repeatedDerivation in [".transcriptContent(", ".acceptedTranscriptContent(", ".transcriptStructureProjection("] {
+        for repeatedDerivation in [
+            ".transcriptContent(", ".acceptedTranscriptContent(", ".transcriptReadings(", ".transcriptStructureProjection("
+        ] {
             XCTAssertFalse(view.contains(repeatedDerivation), repeatedDerivation)
-            XCTAssertTrue(projection.contains(repeatedDerivation), repeatedDerivation)
         }
+        // One composition supplies both readings; the projection never re-derives accepted content.
+        for derivation in [".transcriptReadings(", ".transcriptStructureProjection("] {
+            XCTAssertTrue(projection.contains(derivation), derivation)
+        }
+        XCTAssertFalse(projection.contains(".acceptedTranscriptContent("))
         for forbidden in ["import SwiftUI", "@Observable", "static var", "Task", "UserDefaults", "corrections.isEmpty"] {
             XCTAssertFalse(projection.contains(forbidden), forbidden)
         }

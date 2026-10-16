@@ -600,7 +600,8 @@ publish together on the main actor without suspension. Rendering, citation
 focus, and playback seeks reuse the same current reading. Same-revision row or
 refinement changes still rebuild; revision identifiers are not cache keys.
 Original composition failure falls back to accepted evidence, and an unedited
-composed reading still has distinct lineage. No persistent or process-global
+composed reading still has distinct lineage. `transcriptReadings` composes that
+accepted reading once for both the fallback and the structural projection. No persistent or process-global
 cache is introduced.
 
 Metadata eligibility consumes this same current reading rather than rebuilding
