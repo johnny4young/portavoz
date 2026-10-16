@@ -3554,7 +3554,20 @@ document that observes user-initiated live-scroll events only for its enclosing
 `NSScrollView`, including legacy mouse wheels without a start/end pair.
 Programmatic recentering does not claim reader intent. Audio
 import remains the `ApplicationKit.ImportMeeting` path and preserves automatic
-mixed-language recognition. `make test-ui` covers the player, highlight,
+mixed-language recognition. The Library menu defers its existing application-modal
+`NSOpenPanel.runModal()` to the next main-queue turn so menu tracking can return
+before presentation. A view-owned pending flag prevents overlapping requests and
+is released for every native response; only `.OK` submits selected URLs through
+the unchanged import boundary. The real picker journey cancels and reopens the
+chooser before importing a bundle, preserving original bytes and queue absence
+on cancellation. Native selection, modal keyboard admission, and all original
+import assertions remain in place. The UI runner declares each owned case as
+user-requested process work while still allowing idle system sleep, and releases
+that activity after all cleanup through a function-wide defer. It grants no native
+input authority and changes no acceptance floor or runtime ceiling. Known action
+buttons and scale transcript titles use their concrete accessibility roles with
+framework identifier matching; generic field aliases and absence proofs remain
+unchanged. `make test-ui` covers the player, highlight,
 compression action, and clip-export button; preflight closes stale app
 instances before XCUITest.
 
@@ -3765,6 +3778,68 @@ preview → confirm → clipboard artifact → receipt → offer retirement →
 durable dismissal. D321 adds a second bilingual journey that refuses the first
 pasteboard handoff, retries the unchanged preview, and requires the successful
 receipt plus byte-for-byte clipboard artifact.
+The two real-app recap clipboard journeys use an independently allocated
+UUID-named native pasteboard instead of the user's shared general board. The
+composition accepts this destination only for a temporary store, the explicit
+`-uitest-recap-pasteboard` flag, and a validated `app.portavoz.recap-test.<UUID>`
+name. Production keeps the general board. The fail-once adapter and successful
+retry share the same native writer; the app exits before the test releases its
+board. This preserves the exact approved artifact and receipt assertions while
+removing shared-host clipboard coupling; it does not claim general-board privacy
+permission or delivery into an external application's editor.
+
+The disposable Debug UI host also supports an explicitly requested, per-launch
+owned exit for healthy final test disposal. The production and ordinary Debug
+bundle identifiers reject it. The app watches its owner-private temporary
+directory and accepts only a private regular request containing its exact launch
+UUID and PID, then calls `NSApp.terminate(nil)`. An attached sheet or app-modal
+window instead publishes refusal without choosing or dismissing anything. The
+runner revalidates the captured native launch before official fallback and
+retains process-exit and scratch-identity fences. Failed tests, interruption
+cleanup and intentional abrupt-recovery steps retain official XCTest termination.
+The runner's official/owned diagnostic modes reuse the same built products and
+journeys; the storage proof checks actual exit outcomes and per-launch nonces.
+No cleanup work is excluded from runtime measurement.
+Healthy final cleanup uses bounded direct polling of the same public XCTest
+`notRunning` predicate only when its captured native launch has already ended.
+The original ten-second absolute deadline and bundle-wide native exit fence
+must both pass before scratch removal; every other path retains the original
+SDK wait. Actual live and ended launches characterize the public state getter,
+while the original explicit SDK-state waits, nonce and recovery assertions stay
+in place. This is deadline hardening, not a claim of aggregate runtime savings.
+
+Recording UI fixtures preserve the requested target-stability duration and all
+input guards while polling fresh geometry more frequently to account for native
+attribute-read latency. Assist-tab selection is read from a fresh resolved
+target snapshot; an unresolved target throws before later field input. The
+negative selection proof performs no input. Text label/value alternatives come from
+one fresh fallible target snapshot after the existing asynchronous presence check.
+Missing targets remain false; resolution errors propagate, and already-present
+localized labels or empty field values do not acquire a polling floor. Related read-only recording
+assertions can share one coherent app observation, charging that read to the
+original first deadline and retaining exact live fallbacks. A record action's
+presence and actual localized label likewise share one target observation within
+its original readiness deadline. More-popover readiness is proved by the actual
+requested item's hittability, not an additional ignored container wait; the same
+immediate proof can assert availability without another round trip. These test
+observations never replace live target resolution for a click or keyboard input.
+
+The Background Work indicator's direct Settings route also requires the exact
+destination, native receiver and canonical search-editor handoff before outside
+scrolling. Its route observations and handoff share the original ten-second
+entry deadline, and failed or late readiness throws before the wheel helper.
+The existing helper traverses only a known active editor and verifies its exact
+value; an already inactive editor receives no key. This guards observed editor
+state, not an unclassified interruption's identity or a general popover.
+The recording/deferred-work journey similarly reasserts the native receiver,
+proves the actual record target stably hittable, and rechecks native ownership
+within its original fifteen-second entry deadline before clicking. It does not
+claim to atomically exclude a later foreground change; the existing interruption
+guard remains authoritative and does not dismiss another application's window.
+Closing Settings in that journey targets its unique native close button, not an
+application-wide shortcut whose key window may be the recording. Native admission,
+target stability and the return to recording share the original ten-second
+preparation deadline. A missing outage Stop throws before clicking.
 
 ## Review-first email recap handoff (D327, Aug 2026)
 

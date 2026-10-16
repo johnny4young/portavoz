@@ -592,16 +592,40 @@ not changed. Public-API admission remains a point-in-time observation: a window
 change after observation cannot be claimed atomically excluded. Full bilingual
 and exact-head hosted qualification remain distinct from native controls.
 
+An independent complete English catalogue passed every functional assertion but
+still exceeded the unchanged runtime budget. Its capture-recovery journey spent
+thirty seconds in final SDK `notRunning` observation after the body completed,
+despite requesting ten seconds. The exact native state before that old delay was
+not logged. Healthy final cleanup now polls the same public state predicate under
+an absolute ten-second deadline after its captured native launch is known ended,
+retaining the independent native inventory and scratch fences. A matched bilingual
+comparison did not reproduce the rare delay or measure material aggregate savings;
+it cannot qualify the earlier failed receipt or close the full-catalog budget.
+
+A separate Background Work recording journey read both expected Settings statuses,
+then an application-wide close shortcut closed the recording instead of Settings.
+Its native video shows Settings behind the recording before the shortcut and still
+open afterward; it does not identify what reordered the windows. The journey now
+targets the unique Settings window's standard close button under native ownership
+and stability checks. This does not qualify the earlier failed invocation or claim
+that foreground changes are atomically excluded.
+
 A later Spanish Background Work journey stopped during its first Settings-form
 scroll after the indicator had opened Your data and the exact owner counts were
 verified. XCTest reported an interrupting `Other` owned by the disposable app;
-the guard completed cleanup before dispatch. The interrupted recording did not
+the guard completed cleanup before dispatch. The interrupted test did not
 finish, so neither the element's frame nor the remaining passing tests identifies
-the surface or qualifies the invocation. This deep link does not use the ordinary
-Settings search-editor handoff, but that omission alone does not establish the
-interruption's cause. Preserve the failed evidence and reproduce the actual
-entry boundary before applying a handoff or changing scroll admission. Do not
-attribute the interruption to another application or dismiss an unknown surface.
+the surface or qualifies the invocation. The same boundary can recur in an
+English first-case invocation; predecessor activity and locale therefore do not
+identify its cause. That route bypassed the ordinary Settings editor handoff,
+but the omission and surface geometry alone do not attribute the interruption.
+Subsequent read-only bilingual observations found the native search editor still
+active before the wheel. The journey now guards that known editor state through
+the existing value-preserving handoff within its original entry deadline; native
+characterization observed successful handoff and released focus in both locales.
+The original `Other` remains unidentified, and scoped success does not qualify
+an interrupted catalog or prove that surface's cause is repaired. Preserve the
+failed evidence; do not blame another application or dismiss an unknown surface.
 
 A required native-controls invocation also stopped before its synchronous
 foreign-overlay counterexample was armed: the arm click was dispatched, but

@@ -253,7 +253,9 @@ extension XCUIApplication {
     func requireDisposableMainWindowOnZeroScreen() throws {
         let window = windows["main-AppWindow-1"]
         let contained = waitForUITestCondition(timeout: 5) {
-            window.exists && window.frame.minX >= 0 && window.frame.minY >= 0
+            guard window.exists else { return false }
+            let frame = window.frame
+            return frame.minX >= 0 && frame.minY >= 0
         }
         _ = try XCTUnwrap(contained ? window : nil,
                           "Restored disposable windows must stay on the zero screen before screenshots")
@@ -276,6 +278,7 @@ extension XCUIApplication {
         XCTAssertTrue(
             waitForPortavozProcessExit(),
             "the preceding Portavoz process must leave the running-app inventory")
+        UITestStorage.prepareLaunch(self)
         launch()
         // Request our own activation before observing foreground readiness.
         // Another app may legitimately have raised its window during launch.
@@ -287,21 +290,21 @@ extension XCUIApplication {
         XCTAssertTrue(
             mainWindow.waitForHittable(timeout: 15),
             "the disposable main window must be actionable before UI assertions")
+        UITestStorage.recordLaunch(self)
         if shouldOpenSettings {
-            XCTAssertTrue(
-                buttons["library-new-recording-button"]
-                    .waitForStableFrame(timeout: 20),
-                "the library must finish its cold-start layout before opening Settings")
+            // Command-comma targets the owned application, not the record
+            // button. Prove the real Settings destination in openSettingsWindow.
             XCTAssertTrue(
                 openSettingsWindow(),
                 "the Settings command must open the settings window")
-            let general = control(withIdentifier: "settings-category-general")
+            let general = buttons["settings-category-general"]
+            let generalFrame = general.frame
             XCTAssertGreaterThanOrEqual(
-                general.frame.minX,
+                generalFrame.minX,
                 0,
                 "temporary Settings must stay on AppKit's zero screen")
             XCTAssertGreaterThanOrEqual(
-                general.frame.minY,
+                generalFrame.minY,
                 0,
                 "temporary Settings must stay inside the zero screen's visible frame")
         }
@@ -355,21 +358,33 @@ extension XCUIApplication {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
+        recordingMoreItemReadiness(identifier, timeout: timeout, file: file, line: line).element
+    }
+
+    /// The immediately observed target proof can also serve a read-only
+    /// assertion. Input still resolves the live element through XCTest.
+    @MainActor
+    func recordingMoreItemReadiness(
+        _ identifier: String,
+        timeout: TimeInterval = 8,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> (element: XCUIElement, isHittable: Bool) {
         let panel = control(withIdentifier: "recording-more-panel")
         if !panel.exists {
             let more = control(withIdentifier: "recording-more")
             guard more.waitForHittable(timeout: timeout) else {
                 XCTFail("the recording bar never offered its More panel", file: file, line: line)
-                return panel
+                return (panel, false)
             }
             more.click()
-            _ = panel.waitForExistenceFast(timeout: timeout)
         }
         let item = panel.descendants(matching: .any)[identifier]
-        if !item.waitForHittable(timeout: timeout) {
+        let isHittable = item.waitForHittable(timeout: timeout)
+        if !isHittable {
             XCTFail("the More panel never offered \(identifier)", file: file, line: line)
         }
-        return item
+        return (item, isHittable)
     }
 
     /// Closes the More panel when it is open. Escape goes through the owned
@@ -398,13 +413,15 @@ extension XCUIApplication {
         timeout: TimeInterval = 8,
         file: StaticString = #filePath,
         line: UInt = #line
-    ) -> XCUIElement {
-        let button = control(withIdentifier: "recording-assist-tab-\(tab)")
-        guard button.waitForExistenceFast(timeout: timeout) else {
-            XCTFail("the \(tab) assist tab never appeared", file: file, line: line)
-            return button
-        }
+    ) throws -> XCUIElement {
+        let button = buttons["recording-assist-tab-\(tab)"]
+        _ = try XCTUnwrap(prepareForInteraction(timeout: timeout) ? self : nil,
+                          "Portavoz must own the native receiver before assist-tab input", file: file, line: line)
+        _ = try XCTUnwrap(button.waitForStableFrame(timeout: timeout) ? button : nil,
+                          "the \(tab) assist tab must be hittable and settled", file: file, line: line)
         button.click()
+        _ = try XCTUnwrap(try button.waitForResolvedSelection(timeout: timeout) ? button : nil,
+                          "the \(tab) assist tab must acknowledge selection before field input", file: file, line: line)
         return button
     }
 
@@ -417,8 +434,14 @@ extension XCUIApplication {
     /// arbitrary third-party windows.
     @MainActor
     func prepareForInteraction(timeout: TimeInterval = 10) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
         activate()
-        return wait(for: .runningForeground, timeout: timeout)
+        guard wait(for: .runningForeground, timeout: timeout) else { return false }
+        // Share the original deadline; a cached XCTest foreground state alone
+        // must not authorize a click before the native receiver acknowledges it.
+        return waitForUITestCondition(timeout: max(0, deadline.timeIntervalSinceNow)) {
+            hasObservedNativeReceiver(bundleIdentifier: Self.portavozUITestHostBundleIdentifier)
+        }
     }
 
     /// Ensures the production Settings window is open without dismissing or
@@ -426,7 +449,7 @@ extension XCUIApplication {
     /// the case where macOS consumes Command-comma only to reactivate Portavoz.
     @MainActor
     func openSettingsWindow(timeout: TimeInterval = 10) -> Bool {
-        let general = control(withIdentifier: "settings-category-general")
+        let general = buttons["settings-category-general"]
         if general.exists {
             guard prepareForInteraction(timeout: timeout) else { return false }
             return general.waitForStableFrame(
@@ -483,11 +506,12 @@ extension XCUIApplication {
         modalAnchor: String? = nil
     ) -> UITestTextFieldEditingHandoff {
         let field = textFields[identifier]
-        guard field.waitForExistenceFast(timeout: timeout),
-              let originalValue = field.value as? String
-        else { return .fieldUnavailable }
+        guard field.waitForExistenceFast(timeout: timeout) else { return .fieldUnavailable }
         guard let editing = field.observedKeyboardFocus else { return .focusUnobservable }
         guard editing else { return .notEditing }
+        guard let originalValue = field.value as? String else { return .fieldUnavailable }
+        guard let stillEditing = field.observedKeyboardFocus else { return .focusUnobservable }
+        guard stillEditing else { return .notEditing }
         let admission = typeKeyIfOwned(
             .tab, modifierFlags: [], bundleIdentifier: Self.portavozUITestHostBundleIdentifier,
             modalAnchor: modalAnchor)
@@ -507,14 +531,14 @@ extension XCUIApplication {
         revealing expectedControlIdentifier: String,
         timeout: TimeInterval = 10
     ) -> Bool {
-        let category = control(withIdentifier: identifier)
+        let category = buttons[identifier]
         let categoryList = control(withIdentifier: "settings-category-list")
         let expectedControl = control(withIdentifier: expectedControlIdentifier)
         for attempt in 0..<2 {
             guard prepareForInteraction(timeout: timeout),
                   finishSettingsSearchEditing(timeout: timeout)
             else { continue }
-            bringSettingsCategoryIntoView(category, inside: categoryList)
+            bringSettingsCategoryIntoView(identifier: identifier, inside: categoryList)
             guard category.waitForHittable(timeout: timeout) else { continue }
             category.click()
             if expectedControl.waitForExistenceFast(timeout: attempt == 0 ? 2 : 5) {
@@ -530,14 +554,32 @@ extension XCUIApplication {
     /// localized two-line labels make the category list taller than the window.
     @MainActor
     private func bringSettingsCategoryIntoView(
-        _ category: XCUIElement,
+        identifier: String,
         inside categoryList: XCUIElement
     ) {
-        guard categoryList.exists, category.exists else { return }
-
+        let category = buttons[identifier]
         for _ in 0..<3 {
-            let viewport = categoryList.frame
-            let row = category.frame
+            // Co-observe the common exact-ID geometry. If SwiftUI exposes only
+            // a propagated query alias, retain the original live geometry path
+            // rather than silently skipping its containment check.
+            var observed: (viewport: CGRect, row: CGRect)?
+            if let observation = try? snapshot() {
+                let lists = uiSnapshotMatches({
+                    $0.identifier == "settings-category-list" && $0.elementType == .scrollView
+                }, in: observation)
+                let categories = uiSnapshotMatches({
+                    $0.identifier == identifier && $0.elementType == .button
+                }, in: observation)
+                if lists.count == 1, categories.count == 1 {
+                    observed = (lists[0].frame, categories[0].frame)
+                }
+            }
+            if observed == nil {
+                guard categoryList.exists, category.exists else { return }
+                observed = (categoryList.frame, category.frame)
+            }
+            guard let observed else { return }
+            let (viewport, row) = observed
             guard !viewport.isEmpty, !row.isEmpty else { return }
             if row.minY >= viewport.minY && row.maxY <= viewport.maxY {
                 return
@@ -763,6 +805,14 @@ extension XCUIElement {
         return waitForUITestCondition(timeout: timeout, changed)
     }
 
+    /// A successful fresh target snapshot proves both resolution/presence and
+    /// the selected trait atomically. An indeterminate target throws before
+    /// any following field action instead of using stale input geometry.
+    @MainActor
+    func waitForResolvedSelection(timeout: TimeInterval) throws -> Bool {
+        try waitForUITestCondition(timeout: timeout) { try self.snapshot().isSelected }
+    }
+
     @MainActor
     func waitForSelection(timeout: TimeInterval) -> Bool {
         waitForUITestCondition(timeout: timeout) {
@@ -829,10 +879,15 @@ extension XCUIElement {
         }
     }
 
+    /// Observe the two alternative text attributes together. Absence remains
+    /// an asynchronous false state, while a failed native resolution throws
+    /// instead of authorizing a later input from an indeterminate observation.
     @MainActor
-    func waitForLabelOrValue(_ text: String, timeout: TimeInterval) -> Bool {
-        waitForUITestCondition(timeout: timeout) {
-            self.exists && (self.label == text || self.value as? String == text)
+    func waitForLabelOrValue(_ text: String, timeout: TimeInterval) throws -> Bool {
+        try waitForUITestCondition(timeout: timeout) {
+            guard self.exists else { return false }
+            let observation = try self.snapshot()
+            return observation.label == text || observation.value as? String == text
         }
     }
 
@@ -847,7 +902,10 @@ extension XCUIElement {
     ) -> Bool {
         var candidateFrame: CGRect?
         var stableSince: Date?
-        let stableProbeInterval = stableInterval > 0 ? stableInterval : 0.05
+        let originalProbeInterval = stableInterval > 0 ? stableInterval : 0.05
+        // Native attribute reads also spend stability time. Observe sooner,
+        // but keep the original elapsed-duration acceptance floor below.
+        let stableProbeInterval = min(originalProbeInterval, max(0.05, stableInterval / 2))
         return waitForUITestCondition(
             timeout: timeout,
             pollInterval: stableProbeInterval

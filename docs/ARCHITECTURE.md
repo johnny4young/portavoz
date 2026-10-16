@@ -181,7 +181,12 @@ through the same channel contract. Partial staging names remain invisible,
 and attachment metadata still rejects unsupported extensions and path shapes.
 ApplicationKit's `AudioImportFormats` exposes the same catalog to Library
 selection and drop, and StorageKit import admission rejects any other
-extension, so every admitted import remains resolvable. Compression accepts
+extension, so every admitted import remains resolvable. Library reserves one
+native chooser before dispatching its application-modal presentation to the next
+main-queue turn, outside menu tracking. Only an accepted response admits selected
+URLs; cancellation and aborted presentation release the reservation without an
+import. The panel remains app-modal rather than becoming a modeless window.
+Compression accepts
 only lossless channels (caf, wav, aiff, aif); imported mp3, aac and m4b are
 never re-encoded.
 
@@ -5724,7 +5729,27 @@ The UI bundle uses one main-actor, run-loop-driven bounded predicate helper for
 accessibility state instead of XCTest's one-second first-poll floor or fixed
 sleeps. Negative and inequality waits require element existence so absence
 cannot become a false pass. Localized moving controls stabilize their hit frame
-before activation. The stability interval begins with the first valid,
+before activation. A virtualized history row first proves presence before a
+hit-point query, avoiding XCTest's internal missing-element resolution retries;
+its bounded scroll count, direction and final live hittability proof are unchanged.
+Settings startup uses the owned production command and its stable General
+anchor rather than checking the geometry of an unrelated record button.
+Inactive search editors receive no event or value read; active editors retain
+an exact-value readback and recheck focus immediately before guarded Tab.
+Known Settings-category and recording-assist actions use their declared Button
+role with framework identifier matching; generic field and absence queries retain
+their original alias behavior. Read-only General position checks share one fresh
+frame, never reused for input. Scale-fixture transcript-title probes use the
+Text node's declared StaticText role. Static assertion groups may co-observe one
+immutable hierarchy, discarded before any input; unavailable or aliased category
+geometry uses the live framework-identifier lookup.
+The runner classifies each owned journey as user-initiated work, allowing idle
+system sleep, from scratch admission through cleanup and tear-down. A function-wide
+defer releases its process activity even when cleanup throws. This classification
+never establishes native receiver ownership, authorizes input, disables display or
+system sleep, or changes a runtime ceiling. OS preferences may override it; it is
+not evidence that energy management caused any measured slowdown.
+The stability interval begins with the first valid,
 nonempty hittable frame and resets on every movement or loss of hittability;
 it does not require an extra identical sample before starting the unchanged
 interval. The contained-frame path uses that same declared interval as its
@@ -6036,6 +6061,83 @@ cannot tear down the active owner. The runner alone declares read/write access
 to this dedicated fixture base while retaining its sandbox. Neither production
 entitlements nor system privacy grants change. The same test-only allocator
 source is compiled into package tests and XCUITest, not a product target.
+
+Healthy final disposal can ask the captured disposable Debug UI host to end
+itself through AppKit. This seam requires the exact UI-host bundle identifier,
+temporary-store mode, an explicit launch argument and a fresh launch UUID. A
+mode-0700 owner directory carries a mode-0600, non-symlink, single-link request
+whose exact payload includes that UUID and the process ID. A modal refusal is
+acknowledged without dismissing it. The runner retains the native launch object,
+revalidates its identity before official fallback, and waits for process exit
+before deleting scratch. Failed/interrupted journeys and deliberate recovery
+termination retain the official XCTest API; release and ordinary Debug apps
+cannot enable the seam. A runner-only diagnostic mode selects official disposal
+for same-built-product comparisons; unknown modes fail closed to that path.
+The storage journey asserts the actual selected outcome and fresh launch identity
+on relaunch. Cleanup remains part of the measured test duration.
+
+The recap Skill's two real-app clipboard journeys allocate independent UUID-named
+native pasteboards, then terminate the app before releasing their board. Only
+temporary-store composition with an explicit fixture flag and validated
+`app.portavoz.recap-test.<UUID>` name can select that destination. Normal
+composition retains the general pasteboard. The first-failure adapter and its
+retry share the same real writer; exact approved text, original proposal,
+receipt and offer assertions remain unchanged. This isolates the user's shared
+clipboard from test effects and external writers without substituting a mock.
+Healthy final cleanup may poll the same public XCTest `notRunning` state under
+its original ten-second absolute deadline only after the exact captured native
+launch is terminated. Late state observations refuse scratch removal; the
+bundle-wide native exit fence remains mandatory. Failed, unrecorded and still-
+live captured launches retain the original SDK wait and official termination.
+This changes neither intentional abrupt recovery nor explicit native-state
+assertions in the storage journey.
+Recording-entry journeys prove the actual record button's hittability and
+stable frame before clicking. The deferred-work journey also reasserts the native
+receiver and rechecks it after target stability within its original fifteen-second
+admission deadline. These are point-in-time observations; the interruption guard
+still refuses a receiver change after admission. The recording-input fixture
+requires its original live frontier before attempting text input; a failed start
+cannot cascade into unrelated field actions.
+The deferred-work journey closes the unique Settings window containing the
+expected data category through its standard native close button. Readable status
+rows do not prove that Settings is the key window, so an application-wide close
+shortcut cannot supply that intent. Native ownership, target stability and the
+return to recording share the original ten-second preparation deadline; a missing
+Stop target throws before further input.
+Foreground preparation observes both XCTest's state and the declared native
+receiver within its original deadline, rather than treating an activation
+request alone as acknowledgement. The synthetic interruption fixture also
+requires that acknowledgement and a hittable arm control before creating its
+owned overlay. The second synthetic receiver must also acknowledge activation
+and expose its original window within the existing readiness deadline; a ready
+file alone is not proof of native foreground ownership. Preparation failure
+remains an unqualified control, not an
+expected negative outcome. Keyboard dispatch retains its separate modal guard.
+The Background Work Settings deep-link journey additionally proves its exact
+route, native receiver and canonical search-editor handoff before outside
+scrolling. These observations share the original ten-second entry deadline;
+late or unavailable readiness throws before the wheel helper. Only the known
+editor receives guarded traversal, with its exact value preserved; an unknown
+interruption is never dismissed or identified from geometry.
+Assist-tab traversal similarly requires a stable native target and acknowledged
+selection before callers may address its fields; failures throw instead of
+continuing into a missing control. A fresh target snapshot proves resolution
+and selection in one observation; the missing-target error path is exercised
+without input. Text readiness preserves the asynchronous absence check, then
+reads label and value from one fresh fallible target snapshot; resolution errors
+propagate. Native tests cover absent targets, localized labels and empty values
+without introducing a polling delay for already-present state. Stability sampling accounts for native attribute round trips
+without changing the requested elapsed-duration floor, hittability checks or
+frame-identity resets. Consecutive read-only recording assertions may share a
+fresh app observation, with their original live fallbacks and first deadlines;
+no observation supplies geometry or authority for a later action. The More
+popover waits for the actual requested target's hittability, which already
+proves container presence, rather than spending a second ignored readiness
+wait on its parent. An immediately consumed target-readiness proof can also
+serve a read-only availability assertion, while clicks still resolve the live
+element. Dynamic Skill-menu journeys explicitly close
+only an observed owned menu before reopening it after a dismissal, retaining
+all exact remaining-offer and final-retirement assertions.
 
 Visual-only screenshot
 assertions use visible-frame intersection rather than conflating visibility
