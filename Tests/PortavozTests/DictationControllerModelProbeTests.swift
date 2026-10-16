@@ -53,12 +53,15 @@ final class DictationControllerModelProbeTests: XCTestCase {
         XCTAssertFalse(result.measurement.verifiedDeliveryMeasured)
     }
 
-    func testPreparationFailureDoesNotWaitForAMicrophoneThatNeverStarted() async throws {
+    func testPreparationFailureEndsTheParallelCaptureWithoutDelivery() async throws {
+        // Audio-first: the microphone may admit its frame before or after the load fails.
         let result = try await DictationControllerModelProbe.run(
             samples: [0], acquireRuntime: { throw Failure.synthetic }, usage: Self.usage)
-        XCTAssertFalse(result.inputCompleted)
-        XCTAssertEqual(result.frames, 0)
+        XCTAssertLessThanOrEqual(result.frames, 1)
         XCTAssertEqual(result.measurement.outcome, .pipelineFailed)
+        XCTAssertTrue(result.proposedText.isEmpty)
+        XCTAssertNil(result.measurement.elapsedSeconds["runtimeReady"])
+        XCTAssertNil(result.measurement.elapsedSeconds["deliveryStarted"])
     }
 
     func testInvalidPCMDoesNotLoadAnyRuntimeOrSampleTheHost() async {

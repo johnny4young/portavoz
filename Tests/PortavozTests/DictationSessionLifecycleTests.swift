@@ -161,7 +161,7 @@ extension DictationControllerTests {
         }
     }
 
-    func testCancelledStreamCompletionCannotWriteIntoANewPreparingSession() async {
+    func testCancelledStreamCompletionCannotWriteIntoANewColdSession() async {
         for text in ["No borres estas notas.", "Don’t delete these notes."] {
             let controller = DictationController(presentsPanel: false)
             let old = DictationControllerHarness(text: text, controller: controller)
@@ -178,7 +178,9 @@ extension DictationControllerTests {
             controller.toggle(using: dependencies)
             let drained = await awaitEventually { gate.started && old.finishes == 1 }
             XCTAssertTrue(drained)
-            XCTAssertEqual(controller.phase, .preparing)
+            // Audio-first: the new session listens while its model is still cold.
+            XCTAssertEqual(controller.phase, .listening)
+            XCTAssertTrue(controller.isLoadingModel)
             XCTAssertEqual(controller.confirmedText, "")
             XCTAssertEqual(controller.partialText, "")
             XCTAssertTrue(old.insertions.isEmpty)
@@ -211,8 +213,8 @@ extension DictationControllerTests {
                 return false
             }
             XCTAssertTrue(failed, "A dependency abort must not leave an uncancelled owner listening forever")
-            let starts = await harness.microphone.starts
-            XCTAssertEqual(starts, 0)
+            let stops = await harness.microphone.stops
+            XCTAssertGreaterThan(stops, 0, "An aborted load closes the microphone it opened in parallel")
             XCTAssertTrue(harness.insertions.isEmpty)
             // The menu must start a new attempt from failure without first
             // interpreting its action as Stop for the already-ended session.

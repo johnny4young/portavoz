@@ -252,6 +252,16 @@ long single-process endurance or explain a backend stall. Complete matrix
 observation, quality acceptance, leak evidence and native delivery remain
 distinct requirements.
 
+### Dictation cold start needs field timing
+
+D561 opens the microphone while the model loads and holds up to 30 s of queued
+audio, so a cold load no longer loses speech. Deterministic controller tests
+cover ordering, the bound, late leases and release during the load; they do
+not measure real Parakeet cold-load time after a reboot or a first download,
+or the delay between release and insertion on a cold model. Measure
+those on hardware before claiming a cold-start latency, and before considering
+sounds or the launch pre-warm on by default.
+
 ### Dictation still needs a complete, phase-separated qualification
 
 The public corpus now specifies 480 variants over 60 text families, with exact

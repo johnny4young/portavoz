@@ -21239,3 +21239,37 @@ applies to Literal and Clean alike because it changes no dictated word. The
 joined output is borrowed, posted and verified as one exact string, so readback
 still compares code units. Applications without a pinnable field have no
 readback and keep the previous unjoined output rather than guessing.
+
+## D561 — Capture dictation audio while its model loads
+
+Dictation awaited runtime acquisition before opening the microphone. Speech
+said while the panel read Preparing was lost, and a push-to-talk release during
+a cold load cancelled the session because no first frame existed yet.
+
+Open the microphone in parallel with acquisition, after permission. The relay
+that already carries PCM to the engine is created before the engine reads it,
+so it doubles as the pre-roll buffer; a second buffer would add a handoff race
+between the detached pump and the main actor without adding capacity. Bound it
+by queued audio time, 30 seconds, computed from the yield's remaining capacity
+and the chunk duration, with a 16,384-chunk backstop sized so 128-frame buffers
+at 48 kHz still reach the time bound first. The previous 128-chunk
+bound meant about 11 seconds on a 48 kHz input and about 33 seconds on a 16 kHz
+headset, too short for a slow cold load on some devices and inconsistent across
+them. Overflow still revokes delivery (D547). The relay is never persisted.
+
+The first admitted PCM now means Listening, replacing D543's rule that a cold
+model is Preparing; the panel says the model is still loading. The minimum
+capture and stop tail keep their first-frame clocks. A session-owned acquisition
+either adopts or finishes its lease on every path, including a lease resolved
+after cancellation, and capture admission stays held until the load returns.
+
+Start/stop sounds and loading the model at launch are opt-in. Audio-first
+capture already prevents loss, so a launch pre-warm only shortens the first
+dictation and would otherwise keep the model resident after every launch for
+people who never dictate. It runs only for the Parakeet route, the Balanced
+profile, without pressure or Low Power Mode, for an installed verified model,
+through governor admission, and it ends its lease at once so idle and pressure
+release still apply. It never pins weights. The start sound plays on the
+accepted trigger, before the microphone opens, so it is never captured; the stop
+sound marks the actual stop and is silent on cancel. A relay that overflows
+while the model still loads reports the slow load, not a capture interruption.

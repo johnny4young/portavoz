@@ -458,18 +458,30 @@ final class SettingsUITests: PortavozUITestCase {
             requiring: [
                 "settings-dictation-hotkey-recorder",
                 "settings-dictation-mouse-recorder",
+                "settings-dictation-sounds",
+                "settings-dictation-prewarm",
                 "settings-dictation-language",
                 "settings-dictation-filler",
                 "settings-dictation-dict-add",
                 "settings-dictation-dict-remove"
             ],
-            types: ["settings-dictation-language-support": .staticText],
+            types: [
+                "settings-dictation-language-support": .staticText,
+                "settings-dictation-prewarm-note": .staticText
+            ],
             expectedText: ["settings-dictation-language-support": expectedSupport],
             timeout: 5,
-            message: "Enabled dictation must expose both triggers, language support, filler filter and dictionary add/remove")
+            message: "Enabled dictation must expose both triggers, sounds, pre-warm, language support, filler filter and dictionary add/remove")
         let support = try uiSnapshotElement("settings-dictation-language-support", type: .staticText, in: controls)
         XCTAssertTrue(support.label == expectedSupport || support.value as? String == expectedSupport,
                       "the actual Audio pane must render the exact localized capability boundary")
+        let prewarmNote = try uiSnapshotElement("settings-dictation-prewarm-note", type: .staticText, in: controls)
+        XCTAssertTrue(renderedText(of: prewarmNote).contains(UITestLocale.environmentLocale == "es"
+            ? "El primer dictado" : "The first dictation"))
+        XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-sounds")),
+                       "start and stop sounds are opt-in")
+        XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-prewarm")),
+                       "loading the model at launch is opt-in")
         attachScreenshot(of: app, named: "dictation-triggers-language-dictionary")
     }
 

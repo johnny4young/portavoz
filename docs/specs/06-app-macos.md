@@ -886,7 +886,8 @@ explicit meeting and dictation preferences may instead choose Apple Speech on
 macOS 26 with a fixed en/es language and an installed equivalent OS asset.
 The Apple route is asynchronous and therefore never claims a resident handle
 before meeting capture; it hot-attaches and leaves earlier audio for durable
-Parakeet recovery. Dictation resolves the engine before opening the microphone.
+Parakeet recovery. Dictation requests the engine as it opens the microphone and
+holds earlier PCM in its bounded relay (D561).
 Post-capture and batch callers keep the concrete Parakeet lease. Type erasure
 does not move Apple platform types into ApplicationKit or Core.
 An already-cancelled borrower is rejected before the shared model-load task or
@@ -2807,15 +2808,16 @@ unchanged; these new choices are not implicitly exported or imported.
 
 **Microphone preparation (D543).** Dictation resolves microphone permission
 through the existing PlatformKit client before constructing a capture source or
-loading a model. A pending permission or cold model is **Preparing**, never
-**Listening**. Cancellation fences a late permission result. The shared
+loading a model. A pending permission or an unopened microphone is
+**Preparing**; a cold model is not (D561). Cancellation fences a late permission result. The shared
 `MicrophoneInputSelection` reads the existing Audio preference for both meeting
 and dictation composition; an unavailable preferred UID falls back for that
 capture only, with a visible dictation notice, and does not rewrite the saved
 preference. Raw capture and the platform deployment floor are unchanged.
 
-After runtime acquisition, a session-owned five-second first-buffer deadline
-starts before microphone warm-up and stream opening. `DictationMicrophoneReadiness`
+Once permission is granted, runtime acquisition starts and a session-owned
+five-second first-buffer deadline starts before microphone warm-up and stream
+opening. `DictationMicrophoneReadiness`
 validates and meters PCM outside the render callback. Empty buffers neither
 start the capture clock nor cancel the deadline; finite nonempty microphone PCM,
 including silence, does both. Invalid samples, channel or sample rate revoke
@@ -2833,6 +2835,37 @@ during either state. Native operations are not forcibly interrupted: cancellatio
 requests source Stop and fences future effects, while the model lease remains
 owned until the actual native cleanup returns. The first-buffer deadline does
 not claim to time out model loading or certify device hot-plug behavior.
+
+**Audio-first cold start (D561).** After permission, the controller starts
+runtime acquisition and opens the microphone in parallel. The relay is created
+before the engine reads it, so speech captured during a cold load queues there
+and nothing else buffers it. `DictationRelayPolicy` bounds queued audio time at
+30 seconds (queued chunks × chunk duration from the yield's remaining
+capacity), with a 4,096-chunk backstop; either bound revokes delivery through
+the D547 interrupted path. The first admitted PCM makes the phase
+**Listening** while `isLoadingModel` adds a "speech model is still loading"
+hint. Stop, hold-release and the 0.75-second minimum keep their first-frame
+clocks, so a release during the load stops after the tail and the buffered audio
+is transcribed once the runtime arrives. Cancel discards the relay.
+`DictationRuntimeAcquisition` owns the load: the session adopts its lease or
+finishes it, including one that resolves after cancellation, and capture
+admission stays held until any in-flight load returns. Measurement point names
+are unchanged; `microphoneReady` can now precede `runtimeReady`.
+
+Two opt-in settings ride on the same session. Start/stop sounds
+(`dictationSoundCues`, `settings-dictation-sounds`) play macOS system sounds
+through `DictationSessionDependencies.playCue`: start when the trigger is
+accepted, before the microphone opens (so it is never recorded), and stop after
+the tail when the microphone actually closes; cancel and failure play no stop
+sound. If the 30-second relay overflows while the model is still loading, the
+failure says the model took too long to load. Loading the model at launch (`dictationPrewarm`,
+`settings-dictation-prewarm`) runs when the hotkey registers at launch and when
+dictation or the setting is turned on. `DictationPrewarmPolicy` requires the
+Parakeet route, the Balanced profile, no memory/thermal pressure, no Low Power
+Mode and the normal composition; the toggle is disabled in Lightweight. It warms
+only a verified installed model (never downloads), passes
+`admitModelRuntimeLoad(.liveSpeech)`, then ends its lease at once, so the
+600-second idle release and pressure release still apply.
 
 **Opt-in controller phase measurements.** A session dependency may supply a
 content-free measurement sink and monotonic clock. Ordinary composition supplies
@@ -2911,7 +2944,7 @@ storage. The two-line strip shows the newest words: `DictationPanelTranscript`
 elides earlier words from the front at a word boundary (about 120 characters)
 and keeps the confirmed/volatile styling.
 
-**Capture failure authority (D547).** Dictation keeps its bounded 128-buffer relay, but
+**Capture failure authority (D547).** Dictation keeps its bounded relay (D561), but
 an overflow is a failed capture, not permission to deliver the surviving suffix.
 Source iteration errors, including an upstream `CancellationError` when the
 owning task was not cancelled, use the same session-fenced failure path. Native
@@ -3172,8 +3205,8 @@ other route shows progress instead of offering a button whose action would be
 ignored. A temporary-store-only client supplies deterministic EN/ES preparation
 receipts for XCUITest; it does not serve the actual recognizer. Live acquisition
 re-checks readiness, so a missing or removed asset is never silently treated
-as a working session. Dictation fails before opening the microphone with an
-actionable Settings message. Meeting capture remains audio-first and starts a
+as a working session. Dictation reports a missing asset with an actionable
+Settings message and closes the microphone it opened in parallel (D561). Meeting capture remains audio-first and starts a
 bounded hot attachment; early or failed live coverage forces durable recovery.
 Neither route changes batch transcription, Sequoia behavior, or the default
 multilingual path.

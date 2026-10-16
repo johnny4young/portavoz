@@ -112,7 +112,7 @@ final class DictationMicrophoneReadiness {
                         peak = max(peak, abs(sample))
                     }
                     guard await accept(), !Task.isCancelled else { break }
-                    guard case .enqueued = feed.yield(chunk) else {
+                    guard DictationRelayPolicy.admits(feed.yield(chunk), chunk: chunk) else {
                         if !Task.isCancelled { await failCapture() }
                         feed.finish()
                         return
