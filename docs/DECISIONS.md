@@ -21181,6 +21181,45 @@ floor field limits. No aggregate WER improvement certifies replay-free delivery,
 no preview timestamp certifies insertion latency, and no local gate certifies a
 merge/release. Gap T35 owns temporary-fork maintenance and later upstream review.
 
+## Separate UI readiness sampling cadence from acceptance duration
+
+**Context.** Native accessibility attribute reads consume elapsed time as well as
+transport work. Waiting the full requested stability duration between successive
+samples can overshoot that duration even when both frames already match. A source
+ratchet tied the probe cadence to one implementation rather than the acceptance
+proof. That cadence was an optimization, not authority to shorten the requested
+stable interval or ignore a risk owner.
+
+**Decision.** The general stable-frame helper samples at
+`min(originalProbeInterval, max(0.05, stableInterval / 2))`. Its default requested
+stability duration remains 0.25 seconds. The same live hittability guard runs
+before every frame read; absence, occlusion, empty geometry and a changed frame
+reset the candidate as before. Acceptance still compares elapsed duration with
+`stableInterval`, never with the shorter probe interval. The run loop services
+sources until each actual probe boundary, and the original timeout remains in
+force. Source contracts preserve those independent invariants, positive bounded
+cadence, the default duration and the absence of experimental mode overrides.
+
+Related read-only assertions may share one fresh observation and keep their exact
+content and presence/absence oracles. A not-ready observation uses the original
+live fallbacks, with the initial read charged against the original first deadline.
+No observation is reused across an input action or supplies its geometry or
+authority. A resolved target snapshot proves presence and selection atomically;
+an indeterminate target throws before following field input, and the actual
+missing-target path is exercised without dispatching input. More-popover readiness
+belongs to the requested live item's hittability, which already proves its parent
+exists; an ignored parent wait is not a separate risk owner. The immediately
+observed stronger readiness proof may also serve a read-only availability check.
+
+**Consequences.** Some latency boundaries can still require another fresh sample;
+query count alone is not a performance claim. Changed readiness code requires
+fresh strict validation, native safety evidence and complete bilingual runtime
+evidence under the unchanged case catalogue and total, percentile and individual
+limits. Historical receipts and rejected experiments remain historical, and no
+focused gain substitutes for the complete local gate. Production input policy,
+model behavior, privacy grants, cleanup accounting and release authority do not
+change.
+
 ## D560 — Read one character before the caret to space dictated text
 
 Dictated output is trimmed, so text dictated after "Hola." landed as "Hola.Mundo".
