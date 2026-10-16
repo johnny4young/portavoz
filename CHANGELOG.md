@@ -23,6 +23,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 - **⚡ Dictation ready at launch** — optionally load the dictation model when Portavoz opens so the first dictation starts faster; it still unloads when idle.
 
+- **⚡ Lighter chapter preparation** — reuses corrected rows instead of rebuilding the transcript for each review update.
+
+- **⚡ Smoother meeting review** — keeps transcript corrections ready while summaries, notes and playback update.
+
 - **📂 Quicker audio import** — opens the native file chooser without holding up the menu, and lets you cancel and try again safely.
 
 ## October 14, 2026
