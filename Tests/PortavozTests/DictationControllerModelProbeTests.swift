@@ -43,7 +43,7 @@ final class DictationControllerModelProbeTests: XCTestCase {
             },
             pace: { deadline in
                 // The main actor is already blocked when the first buffer arrives.
-                if !stalled.withLock({ defer { $0 = true }; return $0 }) {
+                if stalled.withLock({ fired in let first = !fired; fired = true; return first }) {
                     let blocking = OSAllocatedUnfairLock(initialState: false)
                     Task { @MainActor in blocking.withLock { $0 = true }; usleep(400_000) }
                     while !blocking.withLock({ $0 }) { try await Task.sleep(for: .milliseconds(1)) }
