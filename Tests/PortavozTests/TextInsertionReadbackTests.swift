@@ -245,8 +245,8 @@ final class TextReadbackHarness {
     var positionOverride: (() -> DictationTextReadback.Position?)?
     var readOverride: ((NSRange) -> String?)?
     /// Off by default so verification tests see only the inserted span.
-    var providesPreceding = false
-    var precedingSpans: [NSRange] = []
+    var providesContext = false
+    var contextSpans: [NSRange] = []
     var clock = ContinuousClock.now
 
     init() { board.setString("Original clipboard", forType: .string) }
@@ -260,9 +260,9 @@ final class TextReadbackHarness {
             if let readOverride { return readOverride(span) }
             return (document as NSString).substring(with: span)
         }, now: { [self] in clock }, pause: { [self] in clock = clock.advanced(by: .milliseconds(25)) })
-        if providesPreceding {
-            readback.preceding = { [self] span in
-                precedingSpans.append(span)
+        if providesContext {
+            readback.context = { [self] span in
+                contextSpans.append(span)
                 return (document as NSString).substring(with: span)
             }
         }

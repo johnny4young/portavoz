@@ -50,10 +50,10 @@ final class GlobalHotkey: GlobalHotkeyRegistration {
                     nil, MemoryLayout<EventHotKeyID>.size, nil, &pressed)
                 // Carbon dispatches on the main thread.
                 return MainActor.assumeIsolated {
-                    // Every registration listens on the application target:
-                    // pass another registration's key along the handler chain.
-                    guard status == noErr, pressed.signature == hotkey.hotKeyID.signature,
-                          pressed.id == hotkey.hotKeyID.id else { return OSStatus(eventNotHandledErr) }
+                    // Another registration's key continues along the handler chain.
+                    guard status == noErr, GlobalHotkey.routes(pressed, to: hotkey.hotKeyID) else {
+                        return OSStatus(eventNotHandledErr)
+                    }
                     if kind == UInt32(kEventHotKeyReleased) {
                         hotkey.onRelease()
                     } else {
@@ -73,6 +73,11 @@ final class GlobalHotkey: GlobalHotkeyRegistration {
             handlerRef = nil
             return nil
         }
+    }
+
+    /// Every registration listens on the application target; only the owner handles its key.
+    nonisolated static func routes(_ pressed: EventHotKeyID, to owner: EventHotKeyID) -> Bool {
+        pressed.signature == owner.signature && pressed.id == owner.id
     }
 
     func unregister() {

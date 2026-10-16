@@ -80,6 +80,42 @@ extension DictationControllerTests {
 }
 
 @MainActor
+extension DictationControllerTests {
+    func testEscapeQueuedDuringAnInFlightPasteCannotCancelIt() async {
+        for text in ["No borres estas notas.", "Don’t delete these notes."] {
+            let harness = DictationControllerHarness(text: text)
+            let keys = CancelKeyRecorder()
+            let paste = PreparationGate()
+            defer { harness.controller.cancel(); paste.release() }
+            var dependencies = harness.dependencies
+            dependencies.registerCancelKey = keys.register
+            dependencies.captureDestination = { [weak harness] in
+                CapturedDictationDestination(name: "Slow receiver", canRetry: true) { value in
+                    await paste.wait()
+                    harness?.insertions.append(value)
+                    return .dispatched
+                }
+            }
+            harness.controller.toggle(using: dependencies)
+            let ready = await awaitEventually { harness.controller.partialText == text }
+            XCTAssertTrue(ready)
+            harness.now = harness.now.addingTimeInterval(1)
+            harness.controller.toggle(using: dependencies)
+            let delivering = await awaitEventually { paste.started }
+            XCTAssertTrue(delivering)
+            XCTAssertEqual(keys.active, 0, "Escape returns to the destination before the paste")
+
+            keys.press()
+            for _ in 0..<5 { await Task.yield() }
+            XCTAssertEqual(harness.controller.phase, .delivering)
+            paste.release()
+            let presented = await awaitEventually { harness.insertions == [text] }
+            XCTAssertTrue(presented)
+        }
+    }
+}
+
+@MainActor
 private final class CancelKeyRecorder {
     private final class Registration: GlobalHotkeyRegistration {
         let onPress: () -> Void

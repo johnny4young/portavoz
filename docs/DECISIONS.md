@@ -21220,15 +21220,17 @@ focused gain substitutes for the complete local gate. Production input policy,
 model behavior, privacy grants, cleanup accounting and release authority do not
 change.
 
-## D560 — Read one character before the caret to space dictated text
+## D560 — Read one character on each side of the caret to space dictated text
 
-Dictated output is trimmed, so text dictated after "Hola." landed as "Hola.Mundo".
-Spacing it correctly needs to know what precedes the caret, which widens the
-readback contract from "only the inserted span". The widening is kept minimal:
-at most two UTF-16 units (one character, surrogate pair or combining sequence)
-immediately before the selection start, requested only after the field is
-revalidated as the captured, non-secure target, and never retained, logged or
-stored. Offset zero requests nothing.
+Dictated output is trimmed, so text dictated after "Hola." landed as "Hola.Mundo",
+and text dictated in front of a word glued to it ("bigworld"). Spacing it
+correctly needs the characters around the selection, which widens the readback
+contract from "only the inserted span". The widening is kept minimal: at most
+two UTF-16 units (one character, surrogate pair or combining sequence)
+immediately before the selection start and two immediately after its end,
+requested only after the field is revalidated as the captured, non-secure
+target, and never retained, logged or stored. A field edge requests nothing on
+that side. A trailing space is added only when a letter or digit follows.
 
 Only a separator is added. Capitalization is deliberately unchanged: lowering
 an initial capital mid-sentence would corrupt proper nouns ("Juan", "Bogotá")

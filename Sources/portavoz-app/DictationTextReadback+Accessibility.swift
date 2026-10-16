@@ -26,7 +26,7 @@ extension DictationTextReadback {
             return Position(selection: NSRange(location: selection.location, length: selection.length),
                             characterCount: count)
         }, string: read)
-        readback.preceding = read
+        readback.context = read
         return readback
     }
 

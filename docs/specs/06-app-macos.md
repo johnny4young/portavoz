@@ -3052,11 +3052,13 @@ screen. Comparing code units does
 not silently accept smart quotes, canonical normalization or other changes.
 
 **Spacing at the caret (D560).** Before the baseline, a readback that offers the
-`preceding` reader revalidates the field and requests at most two UTF-16 units
-before the selection start; nothing is requested at offset zero. `DictationCaretJoin`
-then adds one leading space when that text ends in a non-separator and the output
-does not start with whitespace or closing punctuation; openers such as `(`, `¿`
-and `“` take none. Words, capitalization and Literal/Clean output never change.
+`context` reader revalidates the field and requests at most two UTF-16 units
+before the selection start and two after its end; a field edge requests nothing
+on that side. `DictationCaretJoin` adds one trailing space when a letter or digit
+follows, and one leading space when the preceding text ends in a non-separator
+and the output does not start with whitespace or closing punctuation; openers such as `(`, `¿`
+and `“`, or a straight quote preceded by whitespace, take none. The strip's
+accessibility label keeps the whole dictation even when the visible text is elided. Words, capitalization and Literal/Clean output never change.
 The joined output is what is borrowed, posted and read back. The context is not
 retained, logged or stored. The session route has no readback and keeps the
 unjoined output.

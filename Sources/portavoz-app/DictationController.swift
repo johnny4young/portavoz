@@ -388,7 +388,7 @@ final class DictationController {
 
     /// Second hotkey press: stop the mic; the drained stream delivers.
     private func finishAndInsert() {
-        guard isActive, phase != .delivering else { return }
+        guard phase == .preparing || phase == .listening else { return }
         guard stopTask == nil else { return }
         measurement?.record(.stopRequested)
         guard DictationCapturePolicy.finishDecision(

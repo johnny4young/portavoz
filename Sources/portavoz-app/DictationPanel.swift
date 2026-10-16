@@ -150,6 +150,9 @@ private struct DictationStripView: View {
                     + Text(visible.partial)
                     .foregroundStyle(.tertiary))
                     .accessibilityIdentifier("dictation-panel-transcript")
+                    // The strip elides earlier words visually; VoiceOver keeps the whole dictation.
+                    .accessibilityLabel(DictationAssembler.text(
+                        confirmed: controller.confirmedText, partial: controller.partialText))
                     .font(.body)
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
