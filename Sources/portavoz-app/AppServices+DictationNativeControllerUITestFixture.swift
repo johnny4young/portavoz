@@ -50,6 +50,7 @@ enum DictationNativeControllerUITestFixture {
         case .recovery(let refusal): String(describing: refusal)
         case .failed: "controller-failed"
         case .idle: "controller-cancelled"
+        case .noSpeech: "no-speech"
         case .preparing, .listening, .delivering: nil
         }
     }

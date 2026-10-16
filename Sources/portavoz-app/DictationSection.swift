@@ -14,6 +14,7 @@ struct DictationSection: View {
     @AppStorage(DictationController.fillerFilterKey) private var filterFillers = true
     @AppStorage(DictationSoundCue.defaultsKey) private var playsSounds = false
     @AppStorage(DictationPrewarmPolicy.defaultsKey) private var prewarms = false
+    @AppStorage(DictationSpeechGate.defaultsKey) private var skipsSilence = false
     @AppStorage(AppModelMemoryPreferences.key) private var memoryProfile =
         AppModelMemoryPreferences.Profile.balanced.rawValue
 
@@ -38,6 +39,7 @@ struct DictationSection: View {
                 Toggle("Play start and stop sounds", isOn: $playsSounds)
                     .accessibilityIdentifier("settings-dictation-sounds")
                 prewarmControls
+                speechGateControls
                 Picker("Dictation language", selection: $language) {
                     Text("Automatic").tag("auto")
                     Text("Spanish").tag("es")
@@ -76,6 +78,42 @@ struct DictationSection: View {
             )
             .font(.caption)
             .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder private var speechGateControls: some View {
+        Toggle("Skip dictations without speech", isOn: $skipsSilence)
+            .accessibilityIdentifier("settings-dictation-speech-gate")
+            .onChange(of: skipsSilence) {
+                if skipsSilence { Task { await services.installSpeechGateModel() } }
+            }
+        HStack(alignment: .firstTextBaseline) {
+            Text(speechGateNote)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("settings-dictation-speech-gate-status")
+            if skipsSilence, [.failed, .missing].contains(services.speechGateModel) {
+                Button("Retry") { Task { await services.installSpeechGateModel() } }
+                    .controlSize(.small)
+                    .accessibilityIdentifier("settings-dictation-speech-gate-retry")
+            }
+        }
+        .task { await services.refreshSpeechGateModel() }
+    }
+
+    private var speechGateNote: String {
+        switch services.speechGateModel {
+        case .downloading(let percent):
+            L10n.format("Downloading the voice detector (1 MB)… %d%%", percent)
+        case .failed where skipsSilence:
+            L10n.text("The voice detector couldn't be downloaded. Until it is, dictations are pasted as before.")
+        case .missing where skipsSilence:
+            L10n.text("The voice detector isn't installed yet. Until it is, dictations are pasted as before.")
+        default:
+            // One-line UI copy.
+            // swiftlint:disable:next line_length
+            L10n.text("Silence and background noise are offered to copy instead of being pasted. Uses a 1 MB voice detector on this Mac.")
         }
     }
 

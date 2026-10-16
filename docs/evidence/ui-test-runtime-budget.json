@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 141
+    "expectedCaseCount": 142
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -164,6 +164,7 @@
     "DictationUITests/testUndeliveredTextCanBeCopiedAndExplicitlyRetried()": 20.0,
     "DictationUITests/testUndeliveredTextSurvivesAnotherTriggerUntilDiscarded()": 20.0,
     "DictationUITests/testDeliveredDictationDistinguishesDispatchFromVerification()": 25.0,
+    "DictationUITests/testSilentDictationIsOfferedToCopyInsteadOfPasted()": 20.0,
     "OnboardingUITests/testModelFailureCanContinueBackAndRetryWithoutDownloading()": 35.0
   }
 }

@@ -61,6 +61,8 @@ struct DictationSessionDependencies {
     var measurementSink: DictationSessionMeasurementRecorder.Sink?
     var measurementClock: DictationSessionMeasurementRecorder.Clock = { .now }
     var playCue: (DictationSoundCue) -> Void = { _ in }
+    /// Nil leaves delivery to the lexical check alone (the gate is opt-in).
+    var makeSpeechGate: () -> DictationSpeechGate? = { nil }
 
     func transcriptionHints() -> TranscriptionHints {
         let language = defaults.string(forKey: DictationController.languageKey)
@@ -90,6 +92,9 @@ struct DictationSessionDependencies {
             defaults: services.defaults,
             beginCapture: beginCapture,
             registerCancelKey: { GlobalHotkey(keyCode: UInt32(kVK_Escape), modifiers: 0, onPress: $0) },
-            playCue: DictationSoundCue.player(defaults: services.defaults))
+            playCue: DictationSoundCue.player(defaults: services.defaults),
+            makeSpeechGate: { [defaults = services.defaults, store = services.modelStore] in
+                defaults.bool(forKey: DictationSpeechGate.defaultsKey) ? .silero(store: store) : nil
+            })
     }
 }

@@ -90,6 +90,7 @@ final class DictationMicrophoneReadiness {
     func pump(
         stream: AsyncThrowingStream<AudioChunk, Error>,
         feed: AsyncStream<AudioChunk>.Continuation,
+        mirror: @escaping @Sendable (AudioChunk) -> Void = { _ in },
         onInputEnded: @escaping @Sendable () async -> Void = {},
         updateMeter: @escaping @MainActor @Sendable (Float) -> Void
     ) -> Task<Void, Never> {
@@ -117,6 +118,7 @@ final class DictationMicrophoneReadiness {
                         feed.finish()
                         return
                     }
+                    mirror(chunk)
                     await updateMeter(peak)
                 }
             } catch {

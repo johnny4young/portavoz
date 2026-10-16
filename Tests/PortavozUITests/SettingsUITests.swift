@@ -460,6 +460,7 @@ final class SettingsUITests: PortavozUITestCase {
                 "settings-dictation-mouse-recorder",
                 "settings-dictation-sounds",
                 "settings-dictation-prewarm",
+                "settings-dictation-speech-gate",
                 "settings-dictation-language",
                 "settings-dictation-filler",
                 "settings-dictation-dict-add",
@@ -467,7 +468,8 @@ final class SettingsUITests: PortavozUITestCase {
             ],
             types: [
                 "settings-dictation-language-support": .staticText,
-                "settings-dictation-prewarm-note": .staticText
+                "settings-dictation-prewarm-note": .staticText,
+                "settings-dictation-speech-gate-status": .staticText
             ],
             expectedText: ["settings-dictation-language-support": expectedSupport],
             timeout: 5,
@@ -482,6 +484,11 @@ final class SettingsUITests: PortavozUITestCase {
                        "start and stop sounds are opt-in")
         XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-prewarm")),
                        "loading the model at launch is opt-in")
+        XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-speech-gate")),
+                       "skipping dictations without speech is opt-in")
+        let gateNote = try uiSnapshotElement("settings-dictation-speech-gate-status", type: .staticText, in: controls)
+        XCTAssertTrue(renderedText(of: gateNote).contains(UITestLocale.environmentLocale == "es"
+            ? "detector de voz de 1 MB" : "1 MB voice detector"))
         attachScreenshot(of: app, named: "dictation-triggers-language-dictionary")
     }
 
