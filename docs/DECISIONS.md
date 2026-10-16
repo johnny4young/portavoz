@@ -21280,8 +21280,9 @@ The live engine can propose text for silence and tones (16 of 64 non-speech
 corpus attempts), and the lexical check before paste cannot tell them apart from
 speech. Run the verified Silero adapter as an opt-in speech gate over a copy of
 the PCM the dictation relay admitted, on CPU and off the capture callback, with
-a bounded queue the pump never waits on. The first triggered frame decides that
-the session had speech and stops the analysis.
+a bounded queue the pump never waits on. The first frame at Silero's reference
+probability of 0.5, or one already triggered, decides that the session had
+speech and stops the analysis.
 
 Withhold the paste only when the pass is complete and error-free and never saw
 speech. Every other state is undetermined and keeps the original delivery: the
@@ -21292,7 +21293,10 @@ panel offers its text for Copy, because a false negative on quiet speech would
 otherwise be unrecoverable. It is never pasted later.
 
 The gate is off by default. Enabling it is the consent to download the pinned
-~1 MB bundle; nothing else downloads or loads it. Thresholds are Silero's own
-triggered state, not an added RMS rule. Meetings, autofinish on silence and the
+~1 MB bundle; nothing else downloads or loads it, and the disposable test
+composition never downloads it. The 0.5 threshold is deliberately below
+FluidAudio's 0.85 segmentation default, because withholding quiet real speech
+costs more than letting noise through; it is a model probability, not an added
+RMS rule. Meetings, autofinish on silence and the
 default stay unchanged until the corpus and field evidence say otherwise.
 

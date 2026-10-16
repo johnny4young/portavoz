@@ -2875,7 +2875,9 @@ Turning it on installs the pinned ~1 MB Silero bundle through
 otherwise. When on, each session's `DictationSpeechGate` receives a copy of
 every PCM chunk the relay admitted, through a bounded queue the capture pump
 never waits on, and runs `SileroVoiceActivityDetector` on CPU off the callback.
-The first triggered frame decides `speech` and stops the analysis. Delivery
+The first frame with speech probability ≥ 0.5 (Silero's reference, below
+FluidAudio's 0.85 segmentation default) or a triggered state decides `speech`
+and stops the analysis. Delivery
 enters `.delivering`, then asks for the verdict for at most 300 ms. Only a
 complete, error-free pass without speech withholds the paste: the panel shows
 "No speech detected — nothing was inserted" with the text, Copy and Discard

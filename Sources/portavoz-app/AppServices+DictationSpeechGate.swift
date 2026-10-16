@@ -13,15 +13,20 @@ enum DictationSpeechGateModelState: Equatable {
 extension DictationSpeechGate {
     /// Opt-in: off until the user enables it in Settings.
     static let defaultsKey = "dictationSpeechGate"
+    /// Silero's reference threshold, below FluidAudio's 0.85 segmentation default:
+    /// withholding quiet real speech costs more than letting noise through.
+    static let speechProbabilityThreshold: Float = 0.5
+
+    static func heardSpeech(_ batch: VoiceActivityBatch) -> Bool {
+        batch.observations.contains { $0.isSpeechActive || $0.speechProbability >= speechProbabilityThreshold }
+    }
 
     /// Silero over the verified installation only; a missing model makes the
     /// verdict undetermined (paste as before), never a download.
     static func silero(store: ModelStore) -> DictationSpeechGate {
         DictationSpeechGate {
             let detector = try await SileroVoiceActivityDetector.load(from: store, channel: .microphone)
-            return { chunk in
-                try await detector.process(chunk).observations.contains(where: \.isSpeechActive)
-            }
+            return { chunk in heardSpeech(try await detector.process(chunk)) }
         }
     }
 }
@@ -38,6 +43,11 @@ extension AppServices {
 
     /// Explicit consent from the Settings toggle or Retry; a pinned ~1 MB download.
     func installSpeechGateModel() async {
+        // The disposable composition never reaches the network.
+        guard !usesTemporaryMeetingStore else {
+            speechGateModel = .missing
+            return
+        }
         if case .downloading = speechGateModel { return }
         if case .ready = speechGateModel { return }
         speechGateModel = .downloading(0)

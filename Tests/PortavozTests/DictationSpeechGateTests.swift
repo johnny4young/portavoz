@@ -4,6 +4,7 @@ import PortavozCore
 import XCTest
 
 @testable import portavoz_app
+@testable import TranscriptionKit
 
 final class DictationSpeechGateTests: XCTestCase {
     private func chunk(_ index: Int = 0) -> AudioChunk {
@@ -83,5 +84,29 @@ final class DictationSpeechGateTests: XCTestCase {
             try? await Task.sleep(for: .milliseconds(5))
         }
         return condition()
+    }
+}
+
+@MainActor
+final class DictationSpeechGateSileroTests: XCTestCase {
+    private func batch(_ probability: Float, triggered: Bool = false) -> VoiceActivityBatch {
+        VoiceActivityBatch(didResetForDiscontinuity: false, observations: [
+            VoiceActivityObservation(frameStart: 0, frameEnd: 0.256, speechProbability: probability,
+                                     isSpeechActive: triggered, event: nil)
+        ])
+    }
+
+    func testQuietSpeechCountsFromSileroReferenceThreshold() async {
+        XCTAssertTrue(DictationSpeechGate.heardSpeech(batch(0.6)), "Below FluidAudio's 0.85 is still speech")
+        XCTAssertTrue(DictationSpeechGate.heardSpeech(batch(0.5)))
+        XCTAssertTrue(DictationSpeechGate.heardSpeech(batch(0.2, triggered: true)), "A triggered frame is speech")
+        XCTAssertFalse(DictationSpeechGate.heardSpeech(batch(0.49)))
+        XCTAssertFalse(DictationSpeechGate.heardSpeech(VoiceActivityBatch(didResetForDiscontinuity: true, observations: [])))
+    }
+
+    func testDisposableCompositionNeverDownloadsTheDetector() async throws {
+        let services = try AppServices(arguments: ["-use-temp-store"], environment: [:])
+        await services.installSpeechGateModel()
+        XCTAssertEqual(services.speechGateModel, .missing)
     }
 }

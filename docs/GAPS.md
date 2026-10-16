@@ -242,7 +242,10 @@ The opt-in dictation speech gate (D562) now withholds the paste when Silero
 saw no speech in a complete pass, and offers the text for Copy instead. It is
 off by default and fails open, so it does not yet close this gap: rerun the
 non-speech corpus with the gate on and record the remaining counterexamples
-before considering it on by default.
+before considering it on by default. The detector analyzes only complete
+256 ms frames, so speech confined to the final partial frame of a session is
+not seen; the 250 ms stop tail makes that rare, and closing it needs a flush in
+the Silero adapter.
 
 The live lane still has no serving pre-transcription VAD gate. The distinct
 token-boundary defect and rejected passthrough repair are recorded below under
