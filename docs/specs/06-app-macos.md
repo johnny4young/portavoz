@@ -591,6 +591,30 @@ One immutable structural projection precomputes row contexts and hidden evidence
 for each observed detail snapshot, avoiding transcript-wide work per rendered
 row.
 
+`MeetingDetailModel` derives an immutable `MeetingDetailTranscriptPresentation`
+on every core delivery and whenever its chapter-title set changes. It retains
+the exact existing composed reading and accepted structural projection across
+unrelated summary, privacy, notes, and playback updates. A failed core read
+keeps the healthy pair; a missing core clears it. Matching core and presentation
+publish together on the main actor without suspension. Rendering, citation
+focus, and playback seeks reuse the same current reading. Same-revision row or
+refinement changes still rebuild; revision identifiers are not cache keys.
+Original composition failure falls back to accepted evidence, and an unedited
+composed reading still has distinct lineage. `transcriptReadings` composes that
+accepted reading once for both the fallback and the structural projection. No persistent or process-global
+cache is introduced.
+
+Metadata eligibility consumes this same current reading rather than rebuilding
+it. Only an actual eligibility check maps canonical current rows through the
+shared ApplicationKit generation-segment mapping and extracts chapter starts;
+core and chapter-title deliveries add no eager generation work. Displayed
+chapter markers are not a substitute: accepted fallback or overlapping split
+rows can have a different extraction order before the reading sorts its rows.
+Raw/refined material, correction fallback and generation ordering remain exact;
+title-only changes do not alter eligibility. Requests still use the current
+review and the existing one-shot, freshness, cancellation and request-identity
+rules.
+
 D407 makes correction presentation a scene-flow invariant rather than a
 transcript-viewport side effect. Activating a visible correction accessory
 captures its text context, structural context, exact accepted reading, and base
