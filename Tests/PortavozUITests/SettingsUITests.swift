@@ -464,6 +464,16 @@ final class SettingsUITests: PortavozUITestCase {
             app.control(withIdentifier: "settings-dictation-mouse-recorder")
                 .waitForExistenceFast(timeout: 5),
             "enabling dictation must reveal the push-to-talk mouse-button recorder")
+        let sounds = app.control(withIdentifier: "settings-dictation-sounds")
+        XCTAssertTrue(sounds.waitForExistenceFast(timeout: 5), "enabling dictation must reveal the sound-cue toggle")
+        XCTAssertFalse(Self.isOn(sounds), "start and stop sounds are opt-in")
+        let prewarm = app.control(withIdentifier: "settings-dictation-prewarm")
+        XCTAssertTrue(prewarm.waitForExistenceFast(timeout: 5), "enabling dictation must reveal the pre-warm toggle")
+        XCTAssertFalse(Self.isOn(prewarm), "loading the model at launch is opt-in")
+        let prewarmNote = app.staticTexts["settings-dictation-prewarm-note"]
+        XCTAssertTrue(prewarmNote.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(renderedText(of: prewarmNote).contains(UITestLocale.environmentLocale == "es"
+            ? "El primer dictado" : "The first dictation"))
         XCTAssertTrue(
             app.control(withIdentifier: "settings-dictation-language")
                 .waitForExistenceFast(timeout: 5),

@@ -221,7 +221,9 @@ private struct DictationStripView: View {
     }
 
     private var emptyCaptionHint: String {
-        controller.phase == .preparing ? L10n.text("Preparing microphone…") : L10n.text("Listening…")
+        if controller.phase == .preparing { return L10n.text("Preparing microphone…") }
+        return controller.isLoadingModel
+            ? L10n.text("Listening… the speech model is still loading.") : L10n.text("Listening…")
     }
 
     private var title: String {

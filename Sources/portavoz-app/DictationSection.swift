@@ -12,6 +12,10 @@ struct DictationSection: View {
     @AppStorage(LiveSpeechSelection.dictationKey) private var liveEngine =
         LiveSpeechSelection.parakeet.rawValue
     @AppStorage(DictationController.fillerFilterKey) private var filterFillers = true
+    @AppStorage(DictationSoundCue.defaultsKey) private var playsSounds = false
+    @AppStorage(DictationPrewarmPolicy.defaultsKey) private var prewarms = false
+    @AppStorage(AppModelMemoryPreferences.key) private var memoryProfile =
+        AppModelMemoryPreferences.Profile.balanced.rawValue
 
     var body: some View {
         Section("Dictation") {
@@ -21,6 +25,7 @@ struct DictationSection: View {
                     services.dictation.syncHotkey(services: services)
                     services.dictation.syncMousePTT(
                         services: services, promptIfNeeded: enabled)
+                    services.prewarmDictationIfConfigured()
                 }
             if enabled {
                 DictationShortcutSettings(shortcut: services.dictation.shortcut) {
@@ -30,6 +35,9 @@ struct DictationSection: View {
                     services.dictation.syncMousePTT(
                         services: services, promptIfNeeded: true)
                 }
+                Toggle("Play start and stop sounds", isOn: $playsSounds)
+                    .accessibilityIdentifier("settings-dictation-sounds")
+                prewarmControls
                 Picker("Dictation language", selection: $language) {
                     Text("Automatic").tag("auto")
                     Text("Spanish").tag("es")
@@ -69,5 +77,24 @@ struct DictationSection: View {
             .font(.caption)
             .foregroundStyle(.secondary)
         }
+    }
+
+    @ViewBuilder private var prewarmControls: some View {
+        let lightweight = memoryProfile == AppModelMemoryPreferences.Profile.lightweight.rawValue
+        Toggle("Load the dictation model at launch", isOn: $prewarms)
+            .accessibilityIdentifier("settings-dictation-prewarm")
+            .disabled(lightweight)
+            .onChange(of: prewarms) { services.prewarmDictationIfConfigured() }
+        Group {
+            if lightweight {
+                Text("Not available with Lightweight model memory.")
+            } else {
+                Text("The first dictation starts faster. The model still unloads after a few idle minutes.")
+            }
+        }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("settings-dictation-prewarm-note")
     }
 }

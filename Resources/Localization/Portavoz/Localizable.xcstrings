@@ -17836,6 +17836,56 @@
           }
         }
       }
+    },
+    "Listening… the speech model is still loading.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escuchando… el modelo de voz aún se está cargando."
+          }
+        }
+      }
+    },
+    "Play start and stop sounds": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducir un sonido al empezar y al terminar"
+          }
+        }
+      }
+    },
+    "Load the dictation model at launch": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargar el modelo de dictado al abrir la app"
+          }
+        }
+      }
+    },
+    "Not available with Lightweight model memory.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No disponible con la memoria ligera para modelos."
+          }
+        }
+      }
+    },
+    "The first dictation starts faster. The model still unloads after a few idle minutes.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El primer dictado arranca más rápido. El modelo igual se libera de la memoria tras unos minutos sin uso."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

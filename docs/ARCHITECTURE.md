@@ -134,7 +134,10 @@ self-contained over system frameworks and carries no module dependency.
 The app composition shares microphone permission and preferred-input selection
 between meeting capture and global dictation. Dictation's session-scoped
 `DictationMicrophoneReadiness` owns first-frame admission and the bounded input
-startup wait, not model residency or native teardown. The controller retains
+startup wait, not model residency or native teardown. A session-owned
+`DictationRuntimeAcquisition` loads the model while the microphone is already
+open; the relay holds earlier speech, bounded by `DictationRelayPolicy`.
+The controller retains
 the runtime lease through cleanup and fences late callbacks by session identity;
 SwiftUI only renders preparation, fallback and failure states. Composition
 accepts the process-scoped controller as an initializer dependency so tests can

@@ -15,6 +15,14 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## October 15, 2026
+
+- **🎙️ Dictation hears your first word** — the microphone starts the moment you press the shortcut, even while the speech model is still loading, so nothing you say is lost and letting go of push-to-talk early no longer cancels.
+
+- **🔔 Optional dictation sounds** — turn on a short sound when the microphone opens and another when it closes.
+
+- **⚡ Dictation ready at launch** — optionally load the dictation model when Portavoz opens so the first dictation starts faster; it still unloads when idle.
+
 ## October 13, 2026
 
 - **🎯 Ready-to-play citations** — jump to a cited moment as soon as its audio is ready while optional compression checks finish.

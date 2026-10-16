@@ -57,6 +57,7 @@ struct DictationSessionDependencies {
     /// Nil in ordinary composition: no observation, file, timer or telemetry.
     var measurementSink: DictationSessionMeasurementRecorder.Sink?
     var measurementClock: DictationSessionMeasurementRecorder.Clock = { .now }
+    var playCue: (DictationSoundCue) -> Void = { _ in }
 
     func transcriptionHints() -> TranscriptionHints {
         let language = defaults.string(forKey: DictationController.languageKey)
@@ -84,6 +85,7 @@ struct DictationSessionDependencies {
             captureDestination: { TextInserter.captureDestination() },
             copyText: { TextInserter.copy($0) },
             defaults: services.defaults,
-            beginCapture: beginCapture)
+            beginCapture: beginCapture,
+            playCue: DictationSoundCue.player(defaults: services.defaults))
     }
 }
