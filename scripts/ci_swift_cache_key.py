@@ -21,6 +21,7 @@ INPUTS = (
     ".github/workflows/ci.yml",
     "scripts/run-swift-tests.sh",
     "scripts/verify-ci-toolchain.sh",
+    "scripts/install-ci-swift-toolchain.sh",
     "scripts/ci_swift_cache_key.py",
     "scripts/ci_swift_source_stamps.py",
 )

@@ -1,4 +1,4 @@
-// swift-tools-version:6.0
+// swift-tools-version:6.2
 import PackageDescription
 
 let package = Package(
@@ -29,11 +29,12 @@ let package = Package(
         // caption behavior, so an upgrade needs matched ASR, diarization and
         // resource evidence. A minor bump is categorically riskier still —
         // FluidAudio renames public types across minors (0.12 → 0.15 did).
-        // 0.15.8 is the reviewed D539 upgrade: matched product-path ASR improved
-        // while 0.16.1 remains inadmissible because its binary target is malformed.
+        // Latest upstream plus an explicit raw-token revision contract.
+        // Evaluation candidate: no new models, unused TTS/NeMo are not linked.
         .package(
-            url: "https://github.com/FluidInference/FluidAudio.git",
-            exact: "0.15.8"),
+            url: "https://github.com/johnny4young/FluidAudio.git",
+            revision: "24922d65f33ca70fdc041e36598df7ef51786274",
+            traits: ["Diarizer"]),
         // SQLite toolkit (MIT) — D4: GRDB + FTS5, never SwiftData.
         .package(url: "https://github.com/groue/GRDB.swift.git", .upToNextMajor(from: "7.11.1")),
         // Whisper on CoreML (MIT) for the quality re-pass (D7). Pinned

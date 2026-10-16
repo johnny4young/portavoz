@@ -391,6 +391,26 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testOwnedTokenPreviewRetiresWithoutEnteringCanonicalCaption() throws {
+        let app = try XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
+        app.launchArguments.append("-simulate-owned-token-preview")
+        app.launchPortavoz()
+        defer { app.terminate() }
+        let record = app.buttons["library-new-recording-button"]
+        XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
+        record.click()
+        XCTAssertTrue(app.waitForLiveTranscriptFrontier())
+        let preview = app.control(withIdentifier: "recording-live-preview-microphone")
+        XCTAssertTrue(preview.waitForExistenceFast(timeout: 8))
+        XCTAssertEqual(renderedText(of: preview).trimmingCharacters(in: .whitespacesAndNewlines), "anal")
+        XCTAssertTrue(app.staticTexts["Estamos"].exists)
+        XCTAssertTrue(app.resumeLiveTranscriptFixture())
+        XCTAssertTrue(app.waitForLiveTranscriptFixtureToFinish())
+        XCTAssertTrue(app.staticTexts["Estamos analizando ahora."].waitForExistenceFast(timeout: 8))
+        XCTAssertFalse(preview.exists)
+    }
+
+    @MainActor
     func testLiveTranscriptYieldsFollowWhileReadingHistory() throws {
         let app = try XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
         app.launchPortavoz()

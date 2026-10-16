@@ -17,53 +17,74 @@ enum ParakeetSegmentMapper {
     /// a multi-sentence segment usually spans several diarization turns.
     static let sentenceTerminators: Set<Character> = [".", "?", "!", "…"]
 
-    // Stable internal signature: every parameter is a distinct update datum.
-    /// One live sliding-window update → one segment holding only the *new*
-    /// audio's tokens. Once the window slides, FluidAudio re-decodes the
-    /// whole left context per update and its token dedup misses most of it
-    /// (verified 2026-07-06 with 1.2 s chunks: every confirmed update
-    /// repeated ~11 s of text) — so we cut the overlap ourselves using the
-    /// stream-absolute token timings: keep tokens starting strictly after
-    /// the last emitted edge, rebuild the text from what's left. Returns
-    /// nil for silence windows and pure re-decodes.
-    static func segment( // swiftlint:disable:this function_parameter_count
-        text: String,
-        isConfirmed: Bool,
-        confidence: Float,
-        tokenTimings: [TokenTiming],
-        meetingID: MeetingID,
-        channel: AudioChannel,
-        language: String?,
-        fallbackTime: TimeInterval
-    ) -> TranscriptSegment? {
-        let start: TimeInterval
-        let end: TimeInterval
-        let body: String
+    enum RevisionFailure: Error { case mismatchedJobOrChannel }
 
-        if tokenTimings.isEmpty {
-            // Rare timing-less update: trust the text, anchor to the edge.
-            body = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            start = fallbackTime
-            end = fallbackTime
-        } else {
-            let fresh = tokenTimings.filter { $0.startTime > fallbackTime }
-            guard !fresh.isEmpty else { return nil }
-            body = joinedText(of: fresh)
-            start = fresh.map(\.startTime).min() ?? fallbackTime
-            end = fresh.map(\.endTime).max() ?? fallbackTime
+    /// Serving path: only producer positions decide ownership. The older
+    /// LiveStream remains a characterization of the rejected timestamp adapter.
+    struct RevisionStream: Sendable {
+        private var reducer = ParakeetTokenRevisionReducer()
+        private let previewID = UUID()
+        private var jobID: UUID?
+        private var binding: (MeetingID, AudioChannel)?
+
+        func finish() throws { try reducer.finish() }
+
+        mutating func segments(
+            from update: SlidingWindowTokenUpdate, meetingID: MeetingID,
+            channel: AudioChannel, language: String?
+        ) throws -> [TranscriptSegment] {
+            let revision = update.revision
+            guard jobID == nil || jobID == revision.jobID,
+                  binding == nil || (binding?.0 == meetingID && binding?.1 == channel) else {
+                throw RevisionFailure.mismatchedJobOrChannel
+            }
+            let tokens = update.tokens.map {
+                ParakeetTokenRevisionReducer.Token(
+                    id: $0.tokenId, piece: $0.token, start: $0.startTime,
+                    end: $0.endTime, confidence: $0.confidence)
+            }
+            let projection = try reducer.apply(tokens, revision: .init(
+                ordinal: revision.ordinal, previousTokenCount: revision.previousTokenCount,
+                retainedTokenCount: revision.retainedTokenCount,
+                stableTokenCount: revision.stableTokenCount,
+                window: revision.window, center: revision.center, isTerminal: revision.isTerminal))
+            jobID = revision.jobID
+            binding = (meetingID, channel)
+            var segments: [TranscriptSegment] = []
+            if let first = projection.committed.first {
+                segments.append(segment(
+                    projection.committed, first: first, meetingID: meetingID,
+                    channel: channel, language: language, preview: false))
+            }
+            // Empty preview is an explicit clear, even when no tokens commit.
+            let empty = ParakeetTokenRevisionReducer.Token(
+                id: 0, piece: "", start: Double(revision.center.upperBound) / Double(ASRConstants.sampleRate),
+                end: Double(revision.center.upperBound) / Double(ASRConstants.sampleRate), confidence: 0)
+            segments.append(segment(
+                projection.provisional, first: projection.provisional.first ?? empty,
+                meetingID: meetingID, channel: channel, language: language, preview: true))
+            return segments
         }
-        guard !body.isEmpty else { return nil }
 
-        return TranscriptSegment(
-            meetingID: meetingID,
-            channel: channel,
-            text: body,
-            language: language,
-            startTime: start,
-            endTime: max(start, end),
-            confidence: Double(confidence),
-            isFinal: isConfirmed
-        )
+        private func segment(
+            _ tokens: [ParakeetTokenRevisionReducer.Token],
+            first: ParakeetTokenRevisionReducer.Token, meetingID: MeetingID,
+            channel: AudioChannel, language: String?, preview: Bool
+        ) -> TranscriptSegment {
+            let startsWord = first.piece.hasPrefix("▁") || first.piece.first?.isWhitespace == true
+            let body = tokens.map(\.piece).joined().replacingOccurrences(of: "▁", with: " ")
+                .split(separator: " ").joined(separator: " ")
+            let confidence: Double? = tokens.isEmpty ? nil
+                : Double(tokens.reduce(Float(0)) { $0 + $1.confidence }) / Double(tokens.count)
+            return TranscriptSegment(
+                id: preview ? previewID : UUID(), meetingID: meetingID, channel: channel,
+                text: preview && startsWord && !body.isEmpty ? " " + body : body,
+                language: language, startTime: first.start,
+                endTime: tokens.reduce(first.end) { max($0, $1.end) },
+                confidence: confidence,
+                isFinal: !preview,
+                liveUpdateMode: preview ? .tokenPreview : (startsWord ? .tokenDelta : .tokenContinuation))
+        }
     }
 
     // Stable internal signature: every parameter is a distinct batch datum.
