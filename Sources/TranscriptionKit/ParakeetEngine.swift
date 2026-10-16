@@ -364,17 +364,17 @@ extension AudioChunk {
     func pcmBuffer() -> AVAudioPCMBuffer? {
         guard
             !samples.isEmpty, samples.count <= Int(AVAudioFrameCount.max),
-            sampleRate.isFinite, sampleRate > 0, samples.allSatisfy(\.isFinite),
+            sampleRate.isFinite, sampleRate > 0,
             let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1),
             let buffer = AVAudioPCMBuffer(
                 pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count))
         else { return nil }
         buffer.frameLength = AVAudioFrameCount(samples.count)
         guard let destination = buffer.floatChannelData?[0] else { return nil }
-        samples.withUnsafeBufferPointer { source in
-            if let baseAddress = source.baseAddress {
-                destination.update(from: baseAddress, count: samples.count)
-            }
+        // A device glitch becomes brief silence; keeping the sample count keeps
+        // producer positions aligned instead of ending the live session.
+        for (index, sample) in samples.enumerated() {
+            destination[index] = sample.isFinite ? sample : 0
         }
         return buffer
     }

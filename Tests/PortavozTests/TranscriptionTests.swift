@@ -680,8 +680,8 @@ final class ParakeetSegmentMapperTests: XCTestCase {
     }
 
     @MainActor
-    func testMalformedPCMThrowsInsteadOfBecomingSuccessfulSilence() async throws {
-        for (samples, rate) in [([Float.nan], 16_000.0), ([Float.infinity], 16_000), ([0], Double.nan), ([0], 0), ([0], -1)] {
+    func testInvalidSampleRateThrowsInsteadOfBecomingSuccessfulSilence() async throws {
+        for (samples, rate) in [([Float(0)], Double.nan), ([0], 0), ([0], -1)] {
             let manager = SlidingWindowAsrManager()
             let channel = ParakeetStreamChannel()
             let audio = AsyncStream<AudioChunk> { input in
@@ -694,6 +694,21 @@ final class ParakeetSegmentMapperTests: XCTestCase {
             } catch ParakeetStreamChannel.Failure.invalidAudioChunk { }
             let bound = await channel.current
             XCTAssertNil(bound, "rejected PCM cannot acquire a capture channel")
+            await manager.cancel()
+        }
+    }
+
+    func testNonFiniteSamplesFeedAsSilenceAndBindTheChannel() async throws {
+        for samples in [[Float.nan], [Float.infinity, 0.2]] {
+            let manager = SlidingWindowAsrManager()
+            let channel = ParakeetStreamChannel()
+            let audio = AsyncStream<AudioChunk> { input in
+                input.yield(AudioChunk(channel: .microphone, samples: samples, sampleRate: 16_000, timestamp: 0))
+                input.finish()
+            }
+            try await ParakeetEngine.feed(audio, manager: manager, channelHolder: channel, probe: nil)
+            let bound = await channel.current
+            XCTAssertEqual(bound, .microphone, "A device glitch must not end the live session")
             await manager.cancel()
         }
     }

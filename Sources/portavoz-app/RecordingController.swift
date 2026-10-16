@@ -563,7 +563,10 @@ extension RecordingController {
             speechVolatileByChannel.removeValue(forKey: segment.channel)
         }
         // Barely used/far-field mic channels produce stray low-confidence text.
-        if segment.channel == .microphone,
+        // Committed tokens that continue an open row are speech, not isolated junk.
+        let continuesRow = segment.liveUpdateMode == .tokenContinuation
+            || (segment.liveUpdateMode == .tokenDelta && coalescer.extendsOpenRow(segment, in: captions))
+        if segment.channel == .microphone, !continuesRow,
             TranscriptNoiseFilter.isLikelyNoise(
                 text: segment.text,
                 confidence: segment.confidence,

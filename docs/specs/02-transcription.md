@@ -224,7 +224,10 @@ concurrency without treating that one fixture as universal accuracy evidence.
   Missing terminal, invalid lineage or a producer failure cannot finalize the
   pending tail. The old frontier reducer is characterization-only, not serving.
 - Stable deltas carry ephemeral word-boundary/continuation markers;
-  `CaptionCoalescer` bypasses textual overlap trimming for those deltas.
+  `CaptionCoalescer` bypasses textual overlap trimming for those deltas. A
+  continuation always extends its channel's open row (neither the 280-character
+  cap nor a pause splits a word), the paragraph projector never splits one, and
+  committed punctuation runs are kept regardless of length.
   `tokenPreview` replaces the mutable suffix in both consumers and is excluded
   from canonical captions/storage. Empty preview clears are meaningful, preview
   identity stays stable within a job, and the leading joining boundary is kept
@@ -240,11 +243,16 @@ concurrency without treating that one fixture as universal accuracy evidence.
   another backend inference. This is not a waiver of Release-only model gates.
 - Meeting microphone admission accepts high-confidence owned token fragments
   (single letters, numbers, punctuation) instead of applying whole-word shape
-  rejection to each subword. The existing confidence floor and the coalescer's
-  empty/character-noise/punctuation-row checks remain. Unmarked phrase results
-  retain the existing noise policy; token ownership is not proof of speech.
+  rejection to each subword. The noise filter applies only to a committed delta
+  that would open a new row: a delta extending the open row, or any
+  continuation, is part of admitted speech and is never discarded by confidence.
+  The coalescer's empty/character-noise/punctuation-row checks remain. Unmarked
+  phrase results retain the existing noise policy; token ownership is not proof
+  of speech.
 - A native live job binds its first audio channel and rejects a later channel
-  change before feeding that PCM. Each invocation has fresh decoder/reducer
+  change before feeding that PCM. Non-finite samples become silence with the
+  sample count preserved, so a device glitch neither ends the session nor shifts
+  producer positions; an invalid sample rate still fails the job. Each invocation has fresh decoder/reducer
   state. Completion drains buffered updates; failed/cancelled jobs cancel and
   join their consumer before native cleanup. Output termination remains an
   asynchronous cancellation request, not an awaitable quiescence contract.

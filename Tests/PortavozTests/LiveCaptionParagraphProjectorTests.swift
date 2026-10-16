@@ -22,6 +22,18 @@ final class LiveCaptionParagraphProjectorTests: XCTestCase {
             isFinal: true)
     }
 
+    func testParagraphCapNeverSplitsASubwordContinuation() {
+        let long = row(String(repeating: "palabra ", count: 52) + "anal", channel: .microphone, start: 0, end: 30)
+        var continuation = row("izando", channel: .microphone, start: 30.1, end: 30.4)
+        continuation.liveUpdateMode = .tokenContinuation
+
+        let result = LiveCaptionParagraphProjector.project(
+            captions: [long, continuation], liveSpeakerLabels: [:], translations: [:])
+
+        XCTAssertEqual(result.segments.count, 1)
+        XCTAssertTrue(result.segments[0].text.hasSuffix("analizando"))
+    }
+
     func testConsecutiveMicrophoneRowsBecomeOneDisplayParagraph() {
         let first = row("I reviewed the plan.", channel: .microphone, start: 0, end: 1)
         let second = row("The release is tomorrow.", channel: .microphone, start: 1.3, end: 2)
