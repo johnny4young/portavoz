@@ -41,6 +41,8 @@ final class DictationController {
         case delivering
         case verified(Int)
         case dispatched(Int)
+        /// The voice detector heard no speech; the text is offered, never pasted.
+        case noSpeech
         case failed(String)
         case recovery(DictationDeliveryOutcome.Refusal)
     }
@@ -96,6 +98,7 @@ final class DictationController {
     private let presentsPanel: Bool
     private var sessionClock: (() -> Date)?
     @ObservationIgnored private var cancelKey: (any GlobalHotkeyRegistration)?
+    @ObservationIgnored private var speechGate: DictationSpeechGate?
 
     init(presentsPanel: Bool = true) {
         self.presentsPanel = presentsPanel
@@ -191,7 +194,7 @@ final class DictationController {
 
     func toggle(using dependencies: DictationSessionDependencies) {
         switch phase {
-        case .idle, .failed, .verified, .dispatched:
+        case .idle, .failed, .verified, .dispatched, .noSpeech:
             start(using: dependencies)
         case .preparing:
             cancel()
@@ -327,8 +330,11 @@ final class DictationController {
                 bufferingPolicy: .bufferingNewest(DictationRelayPolicy.capacity))
             localFeed = feed
             self.feed = feed
+            let gate = dependencies.makeSpeechGate()
+            speechGate = gate
             pump = startPump(
-                readiness: readiness, stream: micStream, feed: feed, sessionID: id, measurement: measurement)
+                readiness: readiness, stream: micStream, feed: feed, sessionID: id, measurement: measurement,
+                mirror: { gate?.offer($0) })
 
             let runtime = try await awaitRuntime(acquisition, id: id, measurement: measurement)
             try await consumeCaptions(
@@ -391,6 +397,7 @@ final class DictationController {
     /// Esc or the panel's cancel control: throw everything away.
     func cancel() {
         releaseCancelKey()
+        releaseSpeechGate()
         retryDeliveryTask?.cancel()
         retryDeliveryTask = nil
         deliveryID = nil
@@ -452,10 +459,16 @@ final class DictationController {
             panel.close()
             return
         }
-        measurement?.record(.deliveryStarted)
         releaseCancelKey()
         phase = .delivering
         showPanel()
+        if let gate = speechGate, await gate.verdict() == .noSpeech {
+            guard activeSessionID == sessionID else { return }
+            presentNoSpeech(text, id: sessionID)
+            return
+        }
+        guard activeSessionID == sessionID else { return }
+        measurement?.record(.deliveryStarted)
         let result = await destination.insert(text)
         measurement?.finishDelivery(result)
         guard activeSessionID == sessionID else { return }
@@ -467,6 +480,7 @@ final class DictationController {
     private func completeSession(id: UUID) {
         guard activeSessionID == id else { return }
         releaseCancelKey()
+        releaseSpeechGate()
         activeSessionID = nil
         textPolicy = .inert
         sessionClock = nil
@@ -616,10 +630,11 @@ private extension DictationController {
     func startPump(
         readiness: DictationMicrophoneReadiness, stream: AsyncThrowingStream<AudioChunk, Error>,
         feed: AsyncStream<AudioChunk>.Continuation, sessionID: UUID,
-        measurement: DictationSessionMeasurementRecorder?
+        measurement: DictationSessionMeasurementRecorder?,
+        mirror: @escaping @Sendable (AudioChunk) -> Void
     ) -> Task<Void, Never> {
         readiness.pump(
-            stream: stream, feed: feed,
+            stream: stream, feed: feed, mirror: mirror,
             onInputEnded: { [weak self] in
                 if let measurement { await measurement.record(.inputEnded) }
                 await self?.markRelayEnded(sessionID)
@@ -691,7 +706,7 @@ private extension DictationController {
 extension DictationController {
     private var hasPendingOutput: Bool {
         switch phase {
-        case .recovery, .dispatched: true
+        case .recovery, .dispatched, .noSpeech: true
         default: false
         }
     }
@@ -769,6 +784,24 @@ private extension DictationController {
     func releaseCancelKey() {
         cancelKey?.unregister()
         cancelKey = nil
+    }
+
+    func releaseSpeechGate() {
+        speechGate?.cancel()
+        speechGate = nil
+    }
+
+    /// No paste: the text stays reachable for Copy in case speech was missed.
+    func presentNoSpeech(_ text: String, id: UUID) {
+        measurement?.finish(.noSpeech)
+        completeSession(id: id)
+        deliveryID = id
+        destination = nil
+        cancelFeedbackDismissal()
+        copyStatus = .idle
+        recoveryText = text
+        phase = .noSpeech
+        showPanel()
     }
 
     func cancelFeedbackDismissal() {

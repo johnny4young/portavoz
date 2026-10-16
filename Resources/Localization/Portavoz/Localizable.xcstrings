@@ -17916,6 +17916,76 @@
           }
         }
       }
+    },
+    "No speech detected — nothing was inserted": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se detectó voz: no se insertó nada"
+          }
+        }
+      }
+    },
+    "If you did speak, copy the text below. Nothing was saved in Portavoz.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si sí hablaste, copia el texto de abajo. No se guardó nada en Portavoz."
+          }
+        }
+      }
+    },
+    "Skip dictations without speech": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Omitir dictados sin voz"
+          }
+        }
+      }
+    },
+    "Downloading the voice detector (1 MB)… %d%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargando el detector de voz (1 MB)… %d%%"
+          }
+        }
+      }
+    },
+    "The voice detector couldn't be downloaded. Until it is, dictations are pasted as before.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo descargar el detector de voz. Mientras tanto, los dictados se pegan como antes."
+          }
+        }
+      }
+    },
+    "The voice detector isn't installed yet. Until it is, dictations are pasted as before.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El detector de voz todavía no está instalado. Mientras tanto, los dictados se pegan como antes."
+          }
+        }
+      }
+    },
+    "Silence and background noise are offered to copy instead of being pasted. Uses a 1 MB voice detector on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El silencio y el ruido de fondo se ofrecen para copiar en vez de pegarse. Usa un detector de voz de 1 MB en esta Mac."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

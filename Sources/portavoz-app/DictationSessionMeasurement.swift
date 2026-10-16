@@ -22,6 +22,7 @@ struct DictationSessionMeasurement: Codable, Equatable, Sendable {
         case cancelled
         case pipelineFailed
         case empty
+        case noSpeech
         // This observer records the controller port, not native verification evidence.
         case dispatchReported
         case deliveryRejected

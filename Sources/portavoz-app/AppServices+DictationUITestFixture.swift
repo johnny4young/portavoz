@@ -31,6 +31,8 @@ final class DictationUITestFixture {
     let missesAudioOnce: Bool
     let holdsPermission: Bool
     let captureFailure: Bool
+    /// A deterministic voice detector that never hears speech; no model is loaded.
+    let simulatesNoSpeech: Bool
     private var finishesNextCapture: Bool
     private var permissionRequests = 0
     private var sourceCreations = 0
@@ -48,6 +50,7 @@ final class DictationUITestFixture {
         holdsPermission = arguments.contains("-seed-dictation-preparation-held")
         captureFailure = arguments.contains("-seed-dictation-capture-failure")
         exerciseClipboard = arguments.contains("-seed-dictation-clipboard")
+        simulatesNoSpeech = arguments.contains("-seed-dictation-no-speech")
         text = arguments.contains("-seed-dictation-english")
             ? "Don't delete these notes."
             : "No borres estas notas."
@@ -119,7 +122,11 @@ final class DictationUITestFixture {
             },
             defaults: .standard,
             now: fixtureClock(fixture),
-            beginCapture: beginCapture)
+            beginCapture: beginCapture, makeSpeechGate: { noSpeechGate(fixture) })
+    }
+
+    private static func noSpeechGate(_ fixture: DictationUITestFixture?) -> DictationSpeechGate? {
+        fixture?.simulatesNoSpeech == true ? DictationSpeechGate { { _ in false } } : nil
     }
 
     /// Recovery and delivery journeys use a deterministic clock; others use real time.

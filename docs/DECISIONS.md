@@ -21273,3 +21273,30 @@ release still apply. It never pins weights. The start sound plays on the
 accepted trigger, before the microphone opens, so it is never captured; the stop
 sound marks the actual stop and is silent on cancel. A relay that overflows
 while the model still loads reports the slow load, not a capture interruption.
+
+## D562 — Withhold silent dictations only on a complete voice-activity pass
+
+The live engine can propose text for silence and tones (16 of 64 non-speech
+corpus attempts), and the lexical check before paste cannot tell them apart from
+speech. Run the verified Silero adapter as an opt-in speech gate over a copy of
+the PCM the dictation relay admitted, on CPU and off the capture callback, with
+a bounded queue the pump never waits on. The first frame at Silero's reference
+probability of 0.5, or one already triggered, decides that the session had
+speech and stops the analysis.
+
+Withhold the paste only when the pass is complete and error-free and never saw
+speech. Every other state is undetermined and keeps the original delivery: the
+model is missing or failed, a chunk was dropped, the session was cancelled, or
+the verdict did not arrive within 300 ms of entering delivery. A doubtful gate
+must never lose a real dictation. A withheld dictation is not discarded: the
+panel offers its text for Copy, because a false negative on quiet speech would
+otherwise be unrecoverable. It is never pasted later.
+
+The gate is off by default. Enabling it is the consent to download the pinned
+~1 MB bundle; nothing else downloads or loads it, and the disposable test
+composition never downloads it. The 0.5 threshold is deliberately below
+FluidAudio's 0.85 segmentation default, because withholding quiet real speech
+costs more than letting noise through; it is a model probability, not an added
+RMS rule. Meetings, autofinish on silence and the
+default stay unchanged until the corpus and field evidence say otherwise.
+

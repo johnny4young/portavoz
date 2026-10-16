@@ -2867,6 +2867,25 @@ only a verified installed model (never downloads), passes
 `admitModelRuntimeLoad(.liveSpeech)`, then ends its lease at once, so the
 600-second idle release and pressure release still apply.
 
+**Speech gate (D562).** "Skip dictations without speech"
+(`dictationSpeechGate`, `settings-dictation-speech-gate`) is off by default.
+Turning it on installs the pinned ~1 MB Silero bundle through
+`modelLifecycle.install` with progress, failure and Retry
+(`settings-dictation-speech-gate-status`, `-retry`); nothing downloads
+otherwise. When on, each session's `DictationSpeechGate` receives a copy of
+every PCM chunk the relay admitted, through a bounded queue the capture pump
+never waits on, and runs `SileroVoiceActivityDetector` on CPU off the callback.
+The first frame with speech probability ≥ 0.5 (Silero's reference, below
+FluidAudio's 0.85 segmentation default) or a triggered state decides `speech`
+and stops the analysis. Delivery
+enters `.delivering`, then asks for the verdict for at most 300 ms. Only a
+complete, error-free pass without speech withholds the paste: the panel shows
+"No speech detected — nothing was inserted" with the text, Copy and Discard
+(`dictation-no-speech-*`), and measurement records `noSpeech`. A missing or
+failing model, a dropped chunk, cancellation or a late verdict is
+`undetermined` and pastes exactly as before. The notice is non-modal; the next
+trigger starts a new dictation.
+
 **Opt-in controller phase measurements.** A session dependency may supply a
 content-free measurement sink and monotonic clock. Ordinary composition supplies
 neither an observer nor a writer; it creates no recorder and never reads the

@@ -333,6 +333,37 @@ final class DictationUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testSilentDictationIsOfferedToCopyInsteadOfPasted() throws {
+        let name = "app.portavoz.dictation-test." + UUID().uuidString
+        let board = NSPasteboard(name: .init(name))
+        defer { board.releaseGlobally() }
+        board.setString("Original delivery clipboard", forType: .string)
+        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-delivery", "-seed-dictation-no-speech"]
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DICTATION_PASTEBOARD"] = name
+        if UITestLocale.environmentLocale == "en" { app.launchArguments.append("-seed-dictation-english") }
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+        enterDestinationDelivery(app)
+        let status = app.staticTexts["dictation-panel-delivery-status"]
+        XCTAssertTrue(["No speech detected — nothing was inserted", "No se detectó voz: no se insertó nada"]
+            .contains(renderedText(of: status)), renderedText(of: status))
+        XCTAssertEqual(renderedText(of: app.staticTexts["dictation-no-speech-text"]), recoveryFixtureText)
+        XCTAssertFalse(app.buttons["dictation-recovery-reinsert"].exists, "Silence is offered, never re-sent")
+        let copy = app.buttons["dictation-no-speech-copy"]
+        XCTAssertTrue(copy.waitForStableFrame(timeout: 5))
+        copy.click()
+        XCTAssertEqual(board.string(forType: .string), "Original delivery clipboard", "The fixture's first Copy fails")
+        copy.click()
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { board.string(forType: .string) == recoveryFixtureText })
+        let discard = app.buttons["dictation-no-speech-discard"]
+        XCTAssertTrue(discard.waitForStableFrame(timeout: 5))
+        discard.click()
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { !app.dialogs["dictation-panel"].exists })
+    }
+
+    @MainActor
     func testDictationSourceEOFBeforeStopIsVisibleAndCanRestart() throws {
         let english = UITestLocale.environmentLocale == "en"
         let app = try XCUIApplication.portavoz(showMenuBarContent: true)

@@ -5,7 +5,7 @@ extension ModelCatalog {
     /// and every pinned artifact path share it.
     public static let sileroVADBundleDirectory = "silero-vad-unified-256ms-v6.2.1.mlmodelc"
 
-    /// Only the unified 256 ms Silero CoreML bundle used by FluidAudio 0.15.8.
+    /// Only the unified 256 ms Silero CoreML bundle used by the pinned FluidAudio.
     /// Callers load it from a verified ModelStore installation, never through
     /// FluidAudio's downloading ModelHub initializer.
     public static let sileroVAD = ModelDescriptor(

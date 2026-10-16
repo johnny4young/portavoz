@@ -56,7 +56,7 @@ final class DictationPanelController {
 private enum DictationPanelLayout {
     static func height(for phase: DictationController.Phase) -> CGFloat {
         switch phase {
-        case .recovery, .dispatched: 288
+        case .recovery, .dispatched, .noSpeech: 288
         default: 96
         }
     }
@@ -75,6 +75,8 @@ private struct DictationStripView: View {
                 DictationRecoveryView(controller: controller, failure: failure)
             } else if case .verified(let words) = controller.phase {
                 verifiedDeliveryView(words)
+            } else if controller.phase == .noSpeech {
+                DictationNoSpeechView(controller: controller)
             } else if case .dispatched = controller.phase {
                 DictationUnverifiedDeliveryView(controller: controller)
             } else {
@@ -242,7 +244,7 @@ private struct DictationStripView: View {
             return L10n.text("Inserting…")
         case .failed(let message):
             return message
-        case .idle, .verified, .dispatched, .recovery:
+        case .idle, .verified, .dispatched, .noSpeech, .recovery:
             return ""
         }
     }

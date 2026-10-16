@@ -164,7 +164,7 @@ remote replacement cannot silently undo a dismissal or deferral.
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access, microphone authorization, and regular persistent file bookmarks while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
 | `AudioCaptureKit` | Call-safe raw microphone capture, explicit nondefault voice processing for bounded nonmeeting tools, macOS process taps, checked PCM geometry and native buffer views, single-owner failed-source retirement, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
-| `TranscriptionKit` | Live Parakeet, quality Whisper, and an optional macOS 26 SpeechAnalyzer live adapter for fixed installed locales; a CLI-only non-serving Nemotron challenger; a verified non-serving Silero voice-activity adapter; transcript scheduling; language-aware operation fingerprints; model preparation tokens; segment mapping; structured SpeechAnalyzer input ownership; and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
+| `TranscriptionKit` | Live Parakeet, quality Whisper, and an optional macOS 26 SpeechAnalyzer live adapter for fixed installed locales; a CLI-only non-serving Nemotron challenger; a verified Silero voice-activity adapter serving only the opt-in dictation speech gate; transcript scheduling; language-aware operation fingerprints; model preparation tokens; segment mapping; structured SpeechAnalyzer input ownership; and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, session-clock-anchored live windowing, and encrypted local voice-gallery support. |
 | `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Apuntador plus pure bounded proactive meeting-assist admission; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
 | `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, immutable transcript-correction history with atomic multi-lane appends and sparse correction-search lineage, explicit topic and decision continuity with immutable evidence and append-only relationship history, explicitly confirmed decision-topic authority, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and correction-fenced Spotlight projections. |
@@ -6353,8 +6353,8 @@ branch or unrelated package refresh can admit another SDK. Vendor types enter
 production only through the reviewed transcription and diarization adapters:
 `ParakeetEngine`, `ParakeetSegmentMapper`,
 `NemotronLatin1120Engine`, `SileroVoiceActivityDetector`, `PyannoteDiarizer`
-and `DiarizationEvaluation`. The Silero adapter is implemented but has no app
-capture consumer yet. Core,
+and `DiarizationEvaluation`. The Silero adapter serves only the opt-in
+dictation speech gate, over a copy of admitted PCM; meetings do not use it. Core,
 ApplicationKit and executable presentation consume Portavoz contracts instead. In
 the test tree the vendor import is confined to engine-specific suites
 `TranscriptionTests`, `ParakeetLanguageConfigurationTests`,
