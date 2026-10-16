@@ -38,17 +38,18 @@ enum LiveCaptionParagraphProjector {
             if let index = projected.indices.last,
                 let voiceKey,
                 voiceKeys[index] == voiceKey,
-                caption.liveUpdateMode == nil,
-                projected[index].liveUpdateMode == nil,
+                canGroup(caption.liveUpdateMode),
+                canGroup(projected[index].liveUpdateMode),
                 caption.startTime - projected[index].endTime <= maxGapSeconds,
-                projected[index].text.count + caption.text.count + 1 <= maxCharacters {
+                caption.liveUpdateMode == .tokenContinuation
+                    || projected[index].text.count + caption.text.count + 1 <= maxCharacters {
                 let previous = projected[index]
                 projected[index] = TranscriptSegment(
                     id: previous.id,
                     meetingID: previous.meetingID,
                     speakerID: previous.speakerID ?? caption.speakerID,
                     channel: previous.channel,
-                    text: join(previous.text, caption.text),
+                    text: join(previous.text, caption.text, mode: caption.liveUpdateMode),
                     language: previous.language == caption.language
                         ? previous.language : nil,
                     startTime: previous.startTime,
@@ -81,7 +82,17 @@ enum LiveCaptionParagraphProjector {
         return labels[segment.id]
     }
 
-    private static func join(_ head: String, _ tail: String) -> String {
+    private static func canGroup(_ mode: LiveTranscriptUpdateMode?) -> Bool {
+        switch mode {
+        case nil, .tokenDelta, .tokenContinuation: true
+        case .rangeRevision, .tokenPreview: false
+        }
+    }
+
+    private static func join(
+        _ head: String, _ tail: String, mode: LiveTranscriptUpdateMode?
+    ) -> String {
+        if mode == .tokenContinuation { return head + tail }
         guard let first = tail.first else { return head }
         if ".,;:!?…)".contains(first) { return head + tail }
         return head + " " + tail

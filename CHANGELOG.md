@@ -19,6 +19,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 - **✨ Smoother dictation** — dictated words join your text with the right spacing, Esc cancels while you speak, the strip keeps your newest words in view, and a quick second press can no longer interrupt an insertion.
 
+## October 14, 2026
+
+- **🗣️ Steadier live text** — keeps opening words and deliberate repetitions while replacing unfinished words cleanly in dictation and meeting captions.
+
 ## October 13, 2026
 
 - **🎯 Ready-to-play citations** — jump to a cited moment as soon as its audio is ready while optional compression checks finish.

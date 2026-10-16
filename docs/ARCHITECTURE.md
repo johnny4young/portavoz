@@ -229,6 +229,38 @@ boundary. Tests can enter the real engine methods without loading model assets
 and observe configuration requests and preparation failures. That evidence does
 not replace real-model quality, latency, or cancellation measurements.
 
+### Live token ownership
+
+Each Parakeet job owns one native manager and one `RevisionStream`, bound to its
+meeting and audio channel. The producer exposes raw token edits with a job ID,
+contiguous ordinal, previous/retained/stable prefix counts and absolute 16 kHz
+window/center sample bounds. Only the producer's stable prefix is irrevocable;
+confidence confirmation and synthesized token ends do not establish ownership.
+`ParakeetTokenRevisionReducer` validates lineage before mutation, commits each
+newly stable token once and retains the replaceable suffix. Timestamp/text
+similarity, epsilon windows and occurrence guessing do not decide ownership.
+The previous start-frontier mapper remains only a rejected-path characterization.
+
+Stable deltas carry transient word-boundary/continuation semantics through the
+shared caption coalescer. Literal repetition and equal-time subwords survive.
+`tokenPreview` snapshots are excluded from canonical captions and portable
+coding; both consumers replace or explicitly clear them, including empty
+retirement. Preview joining preserves the producer's leading boundary rather
+than trimming textual overlap. Apple range previews and unmarked engines retain
+their independent contracts. Recording microphone noise/admission policy stays
+in place; token authority is not proof of speech.
+
+An empty job validates terminal lineage without publishing a channel-scoped
+clear; no admitted PCM means no capture-channel authority.
+Successful drain requires an explicit terminal revision and commits the remaining
+suffix once. EOF without terminal, invalid lineage and producer failure cannot
+promote pending text. Non-cancel failure clears the preview and surfaces while
+capture is still feeding. Cancellation publishes no buffered text, cancels and
+joins the consumer before native cleanup. Strict native subscriptions are
+single-use; reset, late subscription or an already closed job cannot reopen
+lineage across suspended inference. Output termination still requests asynchronous
+job cancellation, not awaitable backend/accelerator-memory quiescence.
+
 ### First-listen speech lifetime
 
 The onboarding First Listen resolves the optional macOS 26 SpeechAnalyzer asset
@@ -281,8 +313,9 @@ composition extension. Production composition acquires the shared live-speech
 token through a type-erased live-engine handle that ends it on completion.
 Recording and dictation share that boundary; batch callers retain the concrete
 Parakeet lease. App composition selects Parakeet by default or an explicitly
-chosen, installed Apple Speech locale on macOS 26. Core contains only the
-transient range-revision marker, not AppKit or Apple Speech types.
+chosen, installed Apple Speech locale on macOS 26. Core carries only transient
+live-update semantics (range revision, token preview, owned delta or word
+continuation), not AppKit or speech-provider types.
 
 Temporary meeting-store composition never registers Carbon hotkeys or mouse
 event taps. The explicit dictation fixture supplies synthetic PCM and a bounded
@@ -5533,7 +5566,7 @@ thermal or battery behavior, physical devices, or two-device convergence.
 - Compiler-dense deterministic collections, including operation fingerprints
   and high-cardinality characterization fixtures, are assembled in explicitly
   typed steps. This preserves order and coverage while keeping the supported
-  Sequoia Swift 6.2 compiler path bounded.
+  Sequoia compiler path bounded.
 - Cancellation is explicit and cannot convert partial success into false
   completion.
 - StorageKit adapts GRDB observations as pull-through structured streams. The
@@ -5575,8 +5608,18 @@ the main actor capture `self` weakly at their outermost boundary. Hosted
 CI uses the
 explicit macos-26/Xcode 26.6 pair for that lane and macos-15/Xcode 26.3 for the
 oldest supported runtime lane; `DEVELOPER_DIR` is verified instead of selecting
-the newest installed Xcode. Each lane owns one complete test invocation so its
-compiler flags cannot trigger a second differently configured package build.
+the newest installed Xcode. The Sequoia lane retains Xcode 26.3 for its SDK,
+XCTest and Metal tools, and selects the official standalone Swift 6.3.3 compiler
+required by MLX. Its installer is fixed by SHA-256 and the Swift Open Source
+Developer ID signature, installs only in the disposable runner's home, and
+exports one exact toolchain identifier and executable path. Verification rejects
+mismatches between the selector, bundle identity, shell compiler and `xcrun`.
+The standalone compiler explicitly enables SDK cross-import overlays, matching
+the Apple compiler default and retaining Translation's public SwiftUI modifier.
+This does not install a compiler on developer Macs, change app deployment targets,
+or substitute a compile-only check for the complete suite on Sequoia. Each lane
+owns one complete test invocation so its compiler flags cannot trigger a second
+differently configured package build.
 SwiftLint 0.65.0 and XcodeGen 2.46.0 come from official release archives with
 fixed SHA-256 digests instead of floating Homebrew state.
 Third-party GitHub Actions are pinned to immutable full commit SHAs with their
@@ -6171,11 +6214,19 @@ or rewrite the host's persistent Apuntador opt-in.
 
 ## Reviewed speech-engine dependency
 
-The Swift package requires one exact, reviewed FluidAudio release at a pinned
-revision. The decision ledger owns the version, the review policy and each
-admitted upgrade;
-`docs/GAPS.md` tracks rejected or future upstream releases rather than silently
-widening the requirement. Vendor types enter
+Parakeet loads the exact ModelStore-verified directory through `AsrModels.loadLocal`,
+not the vendor download-capable loader. Missing artifacts fail locally; an optional
+CTC head outside the curated graph is rejected before loading. Synchronous CoreML
+loading explicitly runs off the caller's actor. Models and compute units are unchanged.
+
+The Swift package requires the reviewed FluidAudio fork revision
+`24922d65f33ca70fdc041e36598df7ef51786274`, based on upstream
+`224de0fb3c304b41bbae24e85e1801900865ff3e`. Swift 6.2 dependency traits
+retain ASR/VAD and Diarizer while excluding unused TTS resources and NeMo linkage;
+the macOS 14.4/iOS 17 deployment floors and curated model artifacts are unchanged.
+The decision ledger owns every immutable dependency admission; `docs/GAPS.md`
+tracks temporary-fork maintenance and unqualified upstream behavior. No floating
+branch or unrelated package refresh can admit another SDK. Vendor types enter
 production only through the reviewed transcription and diarization adapters:
 `ParakeetEngine`, `ParakeetSegmentMapper`,
 `NemotronLatin1120Engine`, `SileroVoiceActivityDetector`, `PyannoteDiarizer`

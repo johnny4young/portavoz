@@ -21133,6 +21133,54 @@ from the requesting Settings window, preserving explicit modal input ownership
 without a blocking nested event loop or weakening the keyboard guard. Missing
 window admission reports a distinct actionable error and retires chooser state.
 
+## D559 — Keep latest speech SDK changes behind explicit token authority
+
+**Date:** 2026-10-14
+
+**Context.** The native sliding-window decoder can retire the previous window's
+last word, but its legacy public deltas omit that retirement. End-time filters,
+unfiltered passthrough and start-frontier occurrence ownership each failed a
+different declared shape. Stock latest SDK changes alone preserved the repeated
+public-cell scores and the adapter's extra words. Confidence confirmation cannot
+establish an immutable prefix.
+
+**Decision.** Keep the current curated models, engine defaults, live window and
+serial batch policy. Require the immutable FluidAudio fork revision
+`24922d65f33ca70fdc041e36598df7ef51786274`, based on upstream
+`224de0fb3c304b41bbae24e85e1801900865ff3e`. This explicit exception to D516's
+release-only admission retains its review discipline: no floating branch, range
+or unrelated package resolution can move the speech engine. Swift 6.2 dependency
+traits retain Diarizer plus ASR/VAD and exclude unused TTS resources and NeMo
+linkage; they do not raise the macOS 14.4/iOS 17 deployment floors. The newer
+batch seam timing and relevant SDK fixes remain available without selecting any
+new model or changing decoder decisions.
+
+Parakeet loads the exact ModelStore-verified directory through `AsrModels.loadLocal`,
+not the vendor download-capable loader. Missing artifacts fail locally; an optional
+CTC head outside the curated graph is rejected before loading. Synchronous CoreML
+loading explicitly runs off the caller's actor. Models and compute units are unchanged.
+
+
+Use an opt-in throwing raw-token stream with job identity, contiguous ordinal,
+previous/retained/stable counts, sample regions and explicit terminal/failure
+semantics. The producer uses the existing decoder's retirement boundary. Strict
+subscriptions are single-use and cannot reopen through legacy reset or attach
+after audio was accepted. Legacy display text/vocabulary behavior stays separate.
+The consumer validates lineage before mutation, emits each stable token once and
+replaces or clears a transient preview in both dictation and meetings. Invalid
+lineage, producer failure or EOF without terminal cannot promote pending text;
+cancellation cannot publish buffered work. Preserve native confidence diagnostics
+separately and do not count terminal control metadata as another inference.
+
+**Validation boundary.** Producer and real-consumer characterization tests are
+necessary, not model qualification. Require matched public-audio/native-final
+parity, live/batch diarization, latency and process-memory evidence, final strict
+Swift/lint/hygiene, selected native UI and exact-head hosted checks before claiming
+delivery. Retain native ES/mixed errors, silence hallucinations and deployment-
+floor field limits. No aggregate WER improvement certifies replay-free delivery,
+no preview timestamp certifies insertion latency, and no local gate certifies a
+merge/release. Gap T35 owns temporary-fork maintenance and later upstream review.
+
 ## D560 — Read one character before the caret to space dictated text
 
 Dictated output is trimmed, so text dictated after "Hola." landed as "Hola.Mundo".
