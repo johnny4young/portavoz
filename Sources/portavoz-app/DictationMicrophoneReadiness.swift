@@ -61,10 +61,12 @@ final class DictationMicrophoneReadiness {
         deadlineTask = nil
     }
 
-    private func accept() -> Bool {
+    private func accept(arrivedAt: ContinuousClock.Instant) -> Bool {
         guard accepting else { return false }
         if firstFrameAt == nil {
-            firstFrameAt = now()
+            // A main-actor stall before admission must not shorten the minimum capture.
+            let lag = arrivedAt.duration(to: .now).components
+            firstFrameAt = now().addingTimeInterval(-(Double(lag.seconds) + Double(lag.attoseconds) * 1e-18))
             deadlineTask?.cancel()
             deadlineTask = nil
             onReady()
@@ -99,6 +101,7 @@ final class DictationMicrophoneReadiness {
                 for try await chunk in stream {
                     try Task.checkCancellation()
                     guard !chunk.samples.isEmpty else { continue }
+                    let arrivedAt = ContinuousClock.now
                     guard chunk.channel == .microphone, chunk.sampleRate.isFinite, chunk.sampleRate > 0 else {
                         await reject(.invalidAudio)
                         break
@@ -112,7 +115,7 @@ final class DictationMicrophoneReadiness {
                         }
                         peak = max(peak, abs(sample))
                     }
-                    guard await accept(), !Task.isCancelled else { break }
+                    guard await accept(arrivedAt: arrivedAt), !Task.isCancelled else { break }
                     guard DictationRelayPolicy.admits(feed.yield(chunk), chunk: chunk) else {
                         if !Task.isCancelled { await failCapture() }
                         feed.finish()

@@ -33,6 +33,29 @@ final class DictationControllerModelProbeTests: XCTestCase {
         }
     }
 
+    func testMainActorStallAfterTheFirstBufferDoesNotShortenTheCapture() async throws {
+        let received = OSAllocatedUnfairLock(initialState: 0)
+        let stalled = OSAllocatedUnfairLock(initialState: false)
+        let result = try await DictationControllerModelProbe.run(
+            samples: Array(repeating: 0.1, count: 16_001),
+            acquireRuntime: {
+                LiveTranscriptionRuntime(engine: Engine(text: "Hello", received: received), completion: {})
+            },
+            pace: { deadline in
+                // The main actor is already blocked when the first buffer arrives.
+                if !stalled.withLock({ defer { $0 = true }; return $0 }) {
+                    let blocking = OSAllocatedUnfairLock(initialState: false)
+                    Task { @MainActor in blocking.withLock { $0 = true }; usleep(400_000) }
+                    while !blocking.withLock({ $0 }) { try await Task.sleep(for: .milliseconds(1)) }
+                }
+                try await ContinuousClock().sleep(until: deadline)
+            }, usage: Self.usage)
+        XCTAssertTrue(result.inputCompleted)
+        XCTAssertEqual(received.withLock { $0 }, 16_001)
+        XCTAssertEqual(result.measurement.outcome, .deliveryRejected)
+        XCTAssertEqual(result.proposedText, "Hello")
+    }
+
     func testShortAudioKeepsRealMinimumCapturePolicyInsteadOfForgingTime() async throws {
         let result = try await DictationControllerModelProbe.run(
             samples: [0], acquireRuntime: { LiveTranscriptionRuntime(engine: Engine(text: "Yes"), completion: {}) },
