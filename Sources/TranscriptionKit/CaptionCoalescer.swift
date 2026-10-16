@@ -51,6 +51,7 @@ public struct CaptionCoalescer: Sendable {
     /// the count and reopen a preceding row, so count growth is not invalidation.
     @discardableResult
     public func apply(_ segment: TranscriptSegment, to captions: inout [TranscriptSegment]) -> Int? {
+        guard segment.liveUpdateMode != .tokenPreview else { return nil }
         let text = segment.text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return nil }
         let hasLexicalContent = TranscriptionTextFilter.hasLexicalContent(text)
@@ -75,7 +76,7 @@ public struct CaptionCoalescer: Sendable {
             meetingID: last.meetingID,
             speakerID: last.speakerID,
             channel: last.channel,
-            text: Self.join(last.text, text),
+            text: Self.join(last.text, text, mode: segment.liveUpdateMode),
             language: last.language ?? segment.language,
             startTime: last.startTime,
             endTime: max(last.endTime, segment.endTime),
@@ -121,6 +122,12 @@ public struct CaptionCoalescer: Sendable {
         return false
     }
 
+    /// Whether `segment` would extend the open row instead of starting one.
+    public func extendsOpenRow(_ segment: TranscriptSegment, in captions: [TranscriptSegment]) -> Bool {
+        guard let last = captions.last, last.channel == segment.channel else { return false }
+        return shouldExtend(last, with: segment)
+    }
+
     private static func isRemoteChannel(_ segment: TranscriptSegment) -> Bool {
         segment.channel == .system || segment.channel == .room
     }
@@ -132,6 +139,8 @@ public struct CaptionCoalescer: Sendable {
         // overlap remains mergeable because its start is still at or after
         // the row's original start.
         guard segment.startTime >= last.startTime else { return false }
+        // A subword continues the row's last word; caps and pauses cannot split it.
+        if segment.liveUpdateMode == .tokenContinuation { return true }
         let gap = segment.startTime - last.endTime
         guard gap < maxGapSeconds else { return false }
         guard last.text.count < maxRowCharacters else { return false }
@@ -159,10 +168,12 @@ public struct CaptionCoalescer: Sendable {
             let last = captions.last,
             last.channel == segment.channel,
             shouldExtend(last, with: segment),
-            text.contains(where: { ".!?…".contains($0) }),
+            segment.liveUpdateMode == .tokenDelta || segment.liveUpdateMode == .tokenContinuation
+                || text.contains(where: { ".!?…".contains($0) }),
             // A real sentence closer is 1-3 characters ("." / "?!" / "…");
-            // longer runs ("....") are low-signal noise, not punctuation.
-            text.count <= 3
+            // longer runs ("....") are low-signal noise, unless the producer committed them.
+            text.count <= 3 || segment.liveUpdateMode == .tokenDelta
+                || segment.liveUpdateMode == .tokenContinuation
         else { return nil }
 
         captions[captions.count - 1] = TranscriptSegment(
@@ -170,7 +181,7 @@ public struct CaptionCoalescer: Sendable {
             meetingID: last.meetingID,
             speakerID: last.speakerID,
             channel: last.channel,
-            text: Self.join(last.text, text),
+            text: Self.join(last.text, text, mode: segment.liveUpdateMode),
             language: last.language ?? segment.language,
             startTime: last.startTime,
             endTime: max(last.endTime, segment.endTime),
@@ -185,6 +196,14 @@ public struct CaptionCoalescer: Sendable {
             return false
         }
         return ".!?…".contains(final)
+    }
+
+    /// Producer-owned tokens preserve repetitions and subword boundaries.
+    private static func join(_ head: String, _ tail: String, mode: LiveTranscriptUpdateMode?) -> String {
+        guard mode == .tokenDelta || mode == .tokenContinuation else { return join(head, tail) }
+        guard let first = tail.first else { return head }
+        if mode == .tokenContinuation || ".,;:!?…)".contains(first) { return head + tail }
+        return head + " " + tail
     }
 
     /// Deltas that open with punctuation glue onto the row; words get a space.

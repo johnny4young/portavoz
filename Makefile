@@ -56,8 +56,8 @@ test:
 ## Q4/T7 compensating gate: hosted CI cannot provide Apple Intelligence, the
 ## sha256-pinned speech models, or real enrollment audio, so model-dependent
 ## behavior is verified on the release Mac instead (docs/RELEASING.md). Run
-## the canonical lane in Release: FluidAudio mirrors transcript-bearing DEBUG
-## diagnostics to stderr and exposes no public log-level control. A class that
+## the canonical lane in Release: unconfigured vendor DEBUG diagnostics can
+## contain transcripts. Parakeet's quiet logging profile does not waive this gate. A class that
 ## skips ENTIRELY means the capability under test is absent — models not
 ## installed, Apple Intelligence off — and that fails the gate. Individually
 ## skipped env-fixture tests are printed for owner review. Raw failure logs are

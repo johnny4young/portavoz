@@ -1,13 +1,19 @@
 # Spec 03 — Diarization and identity (DiarizationKit + naming)
 
-Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance), D86 (explicit canonical people), D103 (terminal diarization and local-voice workflows), D104 (application-owned durable attribution policy), D105 (application-owned participant voice memory), D106 (application-owned app enrollment), D107 (application-owned verified name suggestions), D133 (stable split lineage), D148 (content-free resource measurement), D164 (process-owned model residency with fresh sessions), D303 (session-clock-anchored live windows), D357 (fail-closed encrypted identity recovery), D516 (reviewed exact speech-engine pin), D539 (evidence-backed FluidAudio 0.15.8 upgrade).
+Status: implemented; current reviewed fork retains the public AMI calibration; real-meeting field limits remain explicit. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance), D86 (explicit canonical people), D103 (terminal diarization and local-voice workflows), D104 (application-owned durable attribution policy), D105 (application-owned participant voice memory), D106 (application-owned app enrollment), D107 (application-owned verified name suggestions), D133 (stable split lineage), D148 (content-free resource measurement), D164 (process-owned model residency with fresh sessions), D303 (session-clock-anchored live windows), D357 (fail-closed encrypted identity recovery), D516 (reviewed exact speech-engine pin), D539 (evidence-backed FluidAudio 0.15.8 upgrade), D559 (latest reviewed speech-engine fork).
 
-The shared FluidAudio dependency is pinned to exact 0.15.8 (D516/D539), which
-freezes its diarization implementation too — not just the ASR adapter. Model hashes,
-clustering thresholds and per-operation speaker/session ownership remain unchanged.
-The D539 comparison preserved the 7.6% AMI DER at the 0.25-second collar and passed
-both batch and live two-speaker model paths. Dictation-only averages still cannot
-establish parity, and a future engine upgrade must repeat this evidence.
+The shared FluidAudio dependency is fixed to the reviewed fork
+`24922d65f33ca70fdc041e36598df7ef51786274` on upstream
+`224de0fb3c304b41bbae24e85e1801900865ff3e` (D559). This selects newer diarization
+implementation as well as ASR; curated model hashes, the 0.45 clustering threshold
+and per-operation speaker/session ownership are unchanged. D539's 7.6% public AMI
+DER at the 0.25-second collar and batch/live two-speaker checks are historical
+0.15.8 evidence, not transferable qualification. The reviewed stock/fork comparison
+also retains 7.6% on that same public fixture and collar (miss 3.7%, false alarm
+1.3%, confusion 2.6%; two reference and hypothesis speakers). Both current live
+and batch two-speaker model paths pass without changing calibration. These local
+checks do not establish general field quality, process-resource parity or hosted
+qualification; dictation-only averages cannot establish diarization parity.
 
 External-audio import acquires the optional diarizer once after required
 transcription (D532). Preparation or inference failure produces honest
