@@ -28,9 +28,22 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
 
     /// Loads the engine from a directory the `ModelStore` has verified.
     /// Never point this at an unverified download — model files are code.
+    @concurrent
     public static func load(fromVerifiedDirectory directory: URL) async throws -> ParakeetEngine {
-        let models = try await AsrModels.load(from: directory, version: .v3, encoderPrecision: .int8)
+        try Task.checkCancellation()
+        // The curated v3 graph has no optional CTC head. Do not let vendor
+        // discovery expand the verified artifact set or trigger ModelHub.
+        let optionalHead = directory.appendingPathComponent(ModelNames.ASR.ctcHeadFile)
+        guard !FileManager.default.fileExists(atPath: optionalHead.path) else {
+            throw VerifiedLoadFailure.unexpectedOptionalModel
+        }
+        let models = try AsrModels.loadLocal(from: directory, version: .v3, encoderPrecision: .int8)
+        try Task.checkCancellation()
         return ParakeetEngine(models: models)
+    }
+
+    enum VerifiedLoadFailure: Error {
+        case unexpectedOptionalModel
     }
 
     /// Ensures the catalog model is downloaded + verified, then loads it.
@@ -92,6 +105,10 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
         prepareBatchManager: @escaping BatchManagerPreparation,
         liveWorkObserver: (@Sendable (ParakeetLiveWorkSample) -> Void)? = nil
     ) {
+        // Vendor debug messages contain hypotheses. Keep them out of stderr;
+        // warnings/errors remain in the system log with default private text.
+        AppLogger.mirrorsToConsole = false
+        AppLogger.minimumLevel = .warning
         self.prepareLiveManager = prepareLiveManager
         self.prepareBatchManager = prepareBatchManager
         self.liveWorkObserver = liveWorkObserver
@@ -133,6 +150,8 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
             let job = Task {
                 let probe = observer.map { _ in ParakeetLiveWorkProbe() }
                 var preparedManager: SlidingWindowAsrManager?
+                var consumer: Task<Void, Error>?
+                let channelHolder = ParakeetStreamChannel()
                 do {
                     // Parakeet's hint filters writing systems, not languages
                     // sharing an alphabet: Spanish and English remain multilingual.
@@ -143,15 +162,26 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
                     try await manager.startStreaming(source: .microphone)
                     probe?.begin(.feed)
 
-                    let channelHolder = ChannelHolder()
-                    let updates = await manager.transcriptionUpdates
-                    let consumer = Task {
-                        await Self.consume(
-                            updates, hints: hints, channelHolder: channelHolder,
-                            continuation: continuation, probe: probe)
+                    let updates = await manager.tokenUpdates
+                    consumer = Task {
+                        do {
+                            try await Self.consume(
+                                updates, hints: hints, channelHolder: channelHolder,
+                                continuation: continuation, probe: probe)
+                        } catch {
+                            // Surface producer failure while capture is still feeding;
+                            // output termination cancels this job and joins cleanup.
+                            if !(error is CancellationError), !Task.isCancelled {
+                                await channelHolder.markProducerFailure()
+                            }
+                            continuation.finish(throwing: error)
+                            throw error
+                        }
                     }
 
                     try await Self.feed(audio, manager: manager, channelHolder: channelHolder, probe: probe)
+
+                    try Task.checkCancellation()
 
                     // Drain: finish() processes the remaining audio (yielding
                     // its updates), cancel() closes the update stream so the
@@ -160,7 +190,8 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
                     _ = try await manager.finish()
                     probe?.begin(.updateDrain)
                     await manager.cancel()
-                    await consumer.value
+                    try await consumer?.value
+                    try Task.checkCancellation()
                     probe?.begin(.cleanup)
                     await manager.cleanup()
                     if let sample = probe?.finish(outcome: Task.isCancelled ? .cancelled : .completed) {
@@ -169,9 +200,11 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
                     continuation.finish()
                 } catch {
                     probe?.begin(.cleanup)
+                    await preparedManager?.cancel()
+                    consumer?.cancel()
+                    _ = try? await consumer?.value
                     await preparedManager?.cleanup()
-                    let outcome: ParakeetLiveWorkSample.Outcome =
-                        error is CancellationError || Task.isCancelled ? .cancelled : .failed
+                    let outcome = await channelHolder.outcome(for: error, cancelled: Task.isCancelled)
                     if let sample = probe?.finish(outcome: outcome) { observer?(sample) }
                     continuation.finish(throwing: error)
                 }
@@ -184,51 +217,68 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
         hints.language.flatMap { Language(rawValue: $0) }
     }
 
-    private static func consume(
-        _ updates: AsyncStream<SlidingWindowTranscriptionUpdate>,
+    static func consume(
+        _ updates: AsyncThrowingStream<SlidingWindowTokenUpdate, Error>,
         hints: TranscriptionHints,
-        channelHolder: ChannelHolder,
+        channelHolder: ParakeetStreamChannel,
         continuation: AsyncThrowingStream<TranscriptSegment, Error>.Continuation,
         probe: ParakeetLiveWorkProbe?
-    ) async {
+    ) async throws {
         let meetingID = hints.meetingID ?? MeetingID()
-        var lastEndTime: TimeInterval = 0
-        for await update in updates {
-            probe?.update(tokens: update.tokenIds.count,
-                          timings: update.tokenTimings.count,
-                          confirmed: update.isConfirmed)
-            let segment = ParakeetSegmentMapper.segment(
-                text: update.text,
-                isConfirmed: update.isConfirmed,
-                confidence: update.confidence,
-                tokenTimings: update.tokenTimings,
-                meetingID: meetingID,
-                channel: await channelHolder.current,
-                language: hints.language,
-                fallbackTime: lastEndTime)
-            if let segment {
-                lastEndTime = segment.endTime
-                continuation.yield(segment)
+        var stream = ParakeetSegmentMapper.RevisionStream()
+        do {
+            for try await update in updates {
+                try Task.checkCancellation()
+                // Terminal is control metadata, not another native inference.
+                if !update.revision.isTerminal {
+                    probe?.update(tokens: update.tokens.count,
+                                  timings: update.tokens.count, confirmed: update.isConfirmed)
+                }
+                let channel = await channelHolder.current
+                guard channel != nil || (update.revision.isTerminal && update.tokens.isEmpty
+                    && update.revision.previousTokenCount == 0) else {
+                    throw ParakeetStreamChannel.Failure.unboundChannel
+                }
+                // An empty job still validates terminal lineage, but owns no
+                // capture channel and cannot publish a cross-job preview clear.
+                let segments = try stream.segments(
+                    from: update, meetingID: meetingID,
+                    channel: channel ?? .microphone, language: hints.language)
+                if channel != nil {
+                    for segment in segments { continuation.yield(segment) }
+                }
             }
+            try stream.finish()
+        } catch {
+            if !Task.isCancelled, let channel = await channelHolder.current {
+                continuation.yield(TranscriptSegment(
+                    meetingID: meetingID, channel: channel,
+                    text: "", language: hints.language, startTime: 0, endTime: 0,
+                    isFinal: false, liveUpdateMode: .tokenPreview))
+            }
+            throw error
         }
     }
 
-    private static func feed(
+    static func feed(
         _ audio: AsyncStream<AudioChunk>,
         manager: SlidingWindowAsrManager,
-        channelHolder: ChannelHolder,
+        channelHolder: ParakeetStreamChannel,
         probe: ParakeetLiveWorkProbe?
     ) async throws {
         for await chunk in audio {
             try Task.checkCancellation()
-            await channelHolder.set(chunk.channel)
+            // Empty callbacks carry no PCM and cannot bind a capture channel.
+            guard !chunk.samples.isEmpty else { continue }
             if let buffer = chunk.pcmBuffer() {
+                try await channelHolder.set(chunk.channel)
                 probe?.input(frames: chunk.samples.count, sampleRate: chunk.sampleRate,
                              channel: chunk.channel, accepted: true)
                 await manager.streamAudio(buffer)
             } else {
                 probe?.input(frames: chunk.samples.count, sampleRate: chunk.sampleRate,
                              channel: chunk.channel, accepted: false)
+                throw ParakeetStreamChannel.Failure.invalidAudioChunk
             }
         }
     }
@@ -285,12 +335,27 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
     }
 }
 
-/// Last-seen capture channel of a live job, shared between the feeding loop
-/// and the update consumer. Chunks are fed before any update can exist, so
-/// the consumer always observes a real value.
-private actor ChannelHolder {
-    private(set) var current: AudioChannel = .microphone
-    func set(_ channel: AudioChannel) { current = channel }
+/// Single capture channel of a live job, shared between the feeding loop
+/// and the update consumer. Inference follows admitted PCM; terminal/error
+/// metadata may exist without PCM and has no capture-channel authority.
+actor ParakeetStreamChannel {
+    enum Failure: Error { case mixedChannels, invalidAudioChunk, unboundChannel }
+    private var bound: AudioChannel?
+    private var producerFailed = false
+
+    func markProducerFailure() { producerFailed = true }
+
+    func outcome(for error: Error, cancelled: Bool) -> ParakeetLiveWorkSample.Outcome {
+        if producerFailed { return .failed }
+        return error is CancellationError || cancelled ? .cancelled : .failed
+    }
+
+    var current: AudioChannel? { bound }
+
+    func set(_ channel: AudioChannel) throws {
+        guard bound == nil || bound == channel else { throw Failure.mixedChannels }
+        bound = channel
+    }
 }
 
 extension AudioChunk {
@@ -298,18 +363,18 @@ extension AudioChunk {
     /// resamples to 16 kHz internally.
     func pcmBuffer() -> AVAudioPCMBuffer? {
         guard
-            !samples.isEmpty,
+            !samples.isEmpty, samples.count <= Int(AVAudioFrameCount.max),
+            sampleRate.isFinite, sampleRate > 0,
             let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1),
             let buffer = AVAudioPCMBuffer(
                 pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count))
         else { return nil }
         buffer.frameLength = AVAudioFrameCount(samples.count)
-        if let destination = buffer.floatChannelData?[0] {
-            samples.withUnsafeBufferPointer { source in
-                if let baseAddress = source.baseAddress {
-                    destination.update(from: baseAddress, count: samples.count)
-                }
-            }
+        guard let destination = buffer.floatChannelData?[0] else { return nil }
+        // A device glitch becomes brief silence; keeping the sample count keeps
+        // producer positions aligned instead of ending the live session.
+        for (index, sample) in samples.enumerated() {
+            destination[index] = sample.isFinite ? sample : 0
         }
         return buffer
     }

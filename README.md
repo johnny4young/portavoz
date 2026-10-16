@@ -288,7 +288,7 @@ no cloud service or transcript translation is involved.
 
 ## Build from source
 
-Requires **Xcode 16+ / Swift 6 on macOS 14.4+**.
+Requires **Xcode 26+ / Swift 6.2 on macOS 14.4+**.
 
 ```sh
 swift build

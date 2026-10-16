@@ -220,6 +220,10 @@ private struct UITestLiveTranscriptBrowsingRuntime: StartRecordingRuntime {
         Task {
             do {
                 try await Task.sleep(for: .milliseconds(400))
+                if ProcessInfo.processInfo.arguments.contains("-simulate-owned-token-preview") {
+                    try await emitOwnedTokenPreview(request: request)
+                    return
+                }
                 for index in 1...18 {
                     try await emit(index, request: request)
                 }
@@ -243,6 +247,29 @@ private struct UITestLiveTranscriptBrowsingRuntime: StartRecordingRuntime {
 
     func cancelPreparation() async {}
     func scheduleIdleRelease() async {}
+
+    private func emitOwnedTokenPreview(request: StartRecordingCaptureRequest) async throws {
+        func segment(
+            _ text: String, mode: LiveTranscriptUpdateMode, start: TimeInterval,
+            end: TimeInterval, final: Bool
+        ) -> TranscriptSegment {
+            TranscriptSegment(
+                meetingID: request.meetingID, channel: .microphone, text: text,
+                language: "es", startTime: start, endTime: end,
+                confidence: 1, isFinal: final, liveUpdateMode: mode)
+        }
+        await request.callbacks.caption(segment(
+            "Estamos", mode: .tokenDelta, start: 0, end: 0.2, final: true))
+        await request.callbacks.caption(segment(
+            " anal", mode: .tokenPreview, start: 0.2, end: 0.4, final: false))
+        UITestRuntimeSignal.mark(environmentKey: "PORTAVOZ_UI_TEST_LIVE_FRONTIER_PATH")
+        try await UITestRuntimeSignal.wait(forEnvironmentKey: "PORTAVOZ_UI_TEST_LIVE_RESUME_PATH")
+        await request.callbacks.caption(segment(
+            "analizando ahora.", mode: .tokenDelta, start: 0.2, end: 0.8, final: true))
+        await request.callbacks.caption(segment(
+            "", mode: .tokenPreview, start: 0.8, end: 0.8, final: false))
+        UITestRuntimeSignal.mark(environmentKey: "PORTAVOZ_UI_TEST_LIVE_COMPLETE_PATH")
+    }
 
     private func emit(
         _ index: Int,

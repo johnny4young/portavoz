@@ -12,6 +12,8 @@ final class UITestStorageUITests: PortavozUITestCase {
 
     @MainActor
     func testSharedScratchProtectsOwnershipAndRoundTripsAppFixtures() throws {
+        XCTAssertTrue(hasActiveUITestRunnerActivity,
+                      "the runner must classify its owned journey without granting native input authority")
         let otherOwner = UUID()
         XCTAssertThrowsError(try UITestStorage.begin(ownerID: otherOwner))
         try UITestStorage.end(ownerID: otherOwner)
@@ -35,6 +37,25 @@ final class UITestStorageUITests: PortavozUITestCase {
         }
         app.launchPortavoz()
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        XCTAssertNotEqual(app.state, .notRunning,
+                          "a live disposable launch must not authorize stopped-state cleanup")
+        XCTAssertThrowsError(try app.buttons["portavoz-missing-selection-proof"]
+            .waitForResolvedSelection(timeout: 1),
+            "An unresolved selection target must throw, never authorize subsequent input")
+        XCTAssertFalse(try app.textFields["portavoz-missing-text-proof"]
+            .waitForLabelOrValue("", timeout: 0),
+            "an absent text target must remain false, even for an empty expected value")
+        let recordLabel = UITestLocale.environmentLocale == "es" ? "Nueva grabación" : "New recording"
+        XCTAssertTrue(try app.buttons["library-new-recording-button"]
+            .waitForLabelOrValue(recordLabel, timeout: 0),
+            "an already-present localized label must not need a polling delay")
+        let search = app.textFields["library-search-field"]
+        // SwiftUI may publish an empty label as well as an empty field value.
+        // Verify the value explicitly without inventing a placeholder label.
+        XCTAssertEqual(try search.snapshot().value as? String, "",
+                       "the settled native search field must publish its empty value")
+        XCTAssertTrue(try search.waitForLabelOrValue("", timeout: 0),
+                      "an already-present empty field value must remain observable")
         // Library readiness already consumes the app-written one-shot marker.
         let readyPath = try XCTUnwrap(app.launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"])
         XCTAssertFalse(FileManager.default.fileExists(atPath: readyPath))
@@ -47,5 +68,26 @@ final class UITestStorageUITests: PortavozUITestCase {
             let bytes = try Data(contentsOf: recording.appendingPathComponent("\(channel).wav"))
             XCTAssertGreaterThan(bytes.count, 44, "the app must produce readable synthetic audio, not just a marker")
         }
+        let firstNonce = app.launchEnvironment["PORTAVOZ_UI_TEST_EXIT_NONCE"]
+        XCTAssertEqual(firstNonce != nil, UITestStorage.usesOwnedExit)
+        let expectedExit: UITestStorage.FinishOutcome = UITestStorage.usesOwnedExit
+            ? .appKitExit : .officialTermination
+        XCTAssertEqual(finishUITestApplication(app), expectedExit)
+        XCTAssertTrue(app.wait(for: .notRunning, timeout: 10))
+        XCTAssertEqual(app.state, .notRunning,
+                       "the public state predicate must acknowledge the ended launch")
+        XCTAssertTrue(app.waitForPortavozProcessExit())
+        app.launchPortavoz()
+        if UITestStorage.usesOwnedExit {
+            XCTAssertNotEqual(app.launchEnvironment["PORTAVOZ_UI_TEST_EXIT_NONCE"], firstNonce)
+        } else {
+            XCTAssertNil(app.launchEnvironment["PORTAVOZ_UI_TEST_EXIT_NONCE"])
+        }
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        XCTAssertEqual(finishUITestApplication(app), expectedExit)
+        XCTAssertTrue(app.wait(for: .notRunning, timeout: 10))
+        XCTAssertEqual(app.state, .notRunning,
+                       "the public state predicate must acknowledge the ended launch")
+        XCTAssertTrue(app.waitForPortavozProcessExit())
     }
 }

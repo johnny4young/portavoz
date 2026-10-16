@@ -181,7 +181,12 @@ through the same channel contract. Partial staging names remain invisible,
 and attachment metadata still rejects unsupported extensions and path shapes.
 ApplicationKit's `AudioImportFormats` exposes the same catalog to Library
 selection and drop, and StorageKit import admission rejects any other
-extension, so every admitted import remains resolvable. Compression accepts
+extension, so every admitted import remains resolvable. Library reserves one
+native chooser before dispatching its application-modal presentation to the next
+main-queue turn, outside menu tracking. Only an accepted response admits selected
+URLs; cancellation and aborted presentation release the reservation without an
+import. The panel remains app-modal rather than becoming a modeless window.
+Compression accepts
 only lossless channels (caf, wav, aiff, aif); imported mp3, aac and m4b are
 never re-encoded.
 
@@ -228,6 +233,38 @@ and cleanup. No vendor type or preparation hook crosses the module's public
 boundary. Tests can enter the real engine methods without loading model assets
 and observe configuration requests and preparation failures. That evidence does
 not replace real-model quality, latency, or cancellation measurements.
+
+### Live token ownership
+
+Each Parakeet job owns one native manager and one `RevisionStream`, bound to its
+meeting and audio channel. The producer exposes raw token edits with a job ID,
+contiguous ordinal, previous/retained/stable prefix counts and absolute 16 kHz
+window/center sample bounds. Only the producer's stable prefix is irrevocable;
+confidence confirmation and synthesized token ends do not establish ownership.
+`ParakeetTokenRevisionReducer` validates lineage before mutation, commits each
+newly stable token once and retains the replaceable suffix. Timestamp/text
+similarity, epsilon windows and occurrence guessing do not decide ownership.
+The previous start-frontier mapper remains only a rejected-path characterization.
+
+Stable deltas carry transient word-boundary/continuation semantics through the
+shared caption coalescer. Literal repetition and equal-time subwords survive.
+`tokenPreview` snapshots are excluded from canonical captions and portable
+coding; both consumers replace or explicitly clear them, including empty
+retirement. Preview joining preserves the producer's leading boundary rather
+than trimming textual overlap. Apple range previews and unmarked engines retain
+their independent contracts. Recording microphone noise/admission policy stays
+in place; token authority is not proof of speech.
+
+An empty job validates terminal lineage without publishing a channel-scoped
+clear; no admitted PCM means no capture-channel authority.
+Successful drain requires an explicit terminal revision and commits the remaining
+suffix once. EOF without terminal, invalid lineage and producer failure cannot
+promote pending text. Non-cancel failure clears the preview and surfaces while
+capture is still feeding. Cancellation publishes no buffered text, cancels and
+joins the consumer before native cleanup. Strict native subscriptions are
+single-use; reset, late subscription or an already closed job cannot reopen
+lineage across suspended inference. Output termination still requests asynchronous
+job cancellation, not awaitable backend/accelerator-memory quiescence.
 
 ### First-listen speech lifetime
 
@@ -281,8 +318,9 @@ composition extension. Production composition acquires the shared live-speech
 token through a type-erased live-engine handle that ends it on completion.
 Recording and dictation share that boundary; batch callers retain the concrete
 Parakeet lease. App composition selects Parakeet by default or an explicitly
-chosen, installed Apple Speech locale on macOS 26. Core contains only the
-transient range-revision marker, not AppKit or Apple Speech types.
+chosen, installed Apple Speech locale on macOS 26. Core carries only transient
+live-update semantics (range revision, token preview, owned delta or word
+continuation), not AppKit or speech-provider types.
 
 Temporary meeting-store composition never registers Carbon hotkeys or mouse
 event taps. The explicit dictation fixture supplies synthetic PCM and a bounded
@@ -5550,7 +5588,7 @@ thermal or battery behavior, physical devices, or two-device convergence.
 - Compiler-dense deterministic collections, including operation fingerprints
   and high-cardinality characterization fixtures, are assembled in explicitly
   typed steps. This preserves order and coverage while keeping the supported
-  Sequoia Swift 6.2 compiler path bounded.
+  Sequoia compiler path bounded.
 - Cancellation is explicit and cannot convert partial success into false
   completion.
 - StorageKit adapts GRDB observations as pull-through structured streams. The
@@ -5592,8 +5630,18 @@ the main actor capture `self` weakly at their outermost boundary. Hosted
 CI uses the
 explicit macos-26/Xcode 26.6 pair for that lane and macos-15/Xcode 26.3 for the
 oldest supported runtime lane; `DEVELOPER_DIR` is verified instead of selecting
-the newest installed Xcode. Each lane owns one complete test invocation so its
-compiler flags cannot trigger a second differently configured package build.
+the newest installed Xcode. The Sequoia lane retains Xcode 26.3 for its SDK,
+XCTest and Metal tools, and selects the official standalone Swift 6.3.3 compiler
+required by MLX. Its installer is fixed by SHA-256 and the Swift Open Source
+Developer ID signature, installs only in the disposable runner's home, and
+exports one exact toolchain identifier and executable path. Verification rejects
+mismatches between the selector, bundle identity, shell compiler and `xcrun`.
+The standalone compiler explicitly enables SDK cross-import overlays, matching
+the Apple compiler default and retaining Translation's public SwiftUI modifier.
+This does not install a compiler on developer Macs, change app deployment targets,
+or substitute a compile-only check for the complete suite on Sequoia. Each lane
+owns one complete test invocation so its compiler flags cannot trigger a second
+differently configured package build.
 SwiftLint 0.65.0 and XcodeGen 2.46.0 come from official release archives with
 fixed SHA-256 digests instead of floating Homebrew state.
 Third-party GitHub Actions are pinned to immutable full commit SHAs with their
@@ -5699,7 +5747,27 @@ The UI bundle uses one main-actor, run-loop-driven bounded predicate helper for
 accessibility state instead of XCTest's one-second first-poll floor or fixed
 sleeps. Negative and inequality waits require element existence so absence
 cannot become a false pass. Localized moving controls stabilize their hit frame
-before activation. The stability interval begins with the first valid,
+before activation. A virtualized history row first proves presence before a
+hit-point query, avoiding XCTest's internal missing-element resolution retries;
+its bounded scroll count, direction and final live hittability proof are unchanged.
+Settings startup uses the owned production command and its stable General
+anchor rather than checking the geometry of an unrelated record button.
+Inactive search editors receive no event or value read; active editors retain
+an exact-value readback and recheck focus immediately before guarded Tab.
+Known Settings-category and recording-assist actions use their declared Button
+role with framework identifier matching; generic field and absence queries retain
+their original alias behavior. Read-only General position checks share one fresh
+frame, never reused for input. Scale-fixture transcript-title probes use the
+Text node's declared StaticText role. Static assertion groups may co-observe one
+immutable hierarchy, discarded before any input; unavailable or aliased category
+geometry uses the live framework-identifier lookup.
+The runner classifies each owned journey as user-initiated work, allowing idle
+system sleep, from scratch admission through cleanup and tear-down. A function-wide
+defer releases its process activity even when cleanup throws. This classification
+never establishes native receiver ownership, authorizes input, disables display or
+system sleep, or changes a runtime ceiling. OS preferences may override it; it is
+not evidence that energy management caused any measured slowdown.
+The stability interval begins with the first valid,
 nonempty hittable frame and resets on every movement or loss of hittability;
 it does not require an extra identical sample before starting the unchanged
 interval. The contained-frame path uses that same declared interval as its
@@ -6012,6 +6080,83 @@ to this dedicated fixture base while retaining its sandbox. Neither production
 entitlements nor system privacy grants change. The same test-only allocator
 source is compiled into package tests and XCUITest, not a product target.
 
+Healthy final disposal can ask the captured disposable Debug UI host to end
+itself through AppKit. This seam requires the exact UI-host bundle identifier,
+temporary-store mode, an explicit launch argument and a fresh launch UUID. A
+mode-0700 owner directory carries a mode-0600, non-symlink, single-link request
+whose exact payload includes that UUID and the process ID. A modal refusal is
+acknowledged without dismissing it. The runner retains the native launch object,
+revalidates its identity before official fallback, and waits for process exit
+before deleting scratch. Failed/interrupted journeys and deliberate recovery
+termination retain the official XCTest API; release and ordinary Debug apps
+cannot enable the seam. A runner-only diagnostic mode selects official disposal
+for same-built-product comparisons; unknown modes fail closed to that path.
+The storage journey asserts the actual selected outcome and fresh launch identity
+on relaunch. Cleanup remains part of the measured test duration.
+
+The recap Skill's two real-app clipboard journeys allocate independent UUID-named
+native pasteboards, then terminate the app before releasing their board. Only
+temporary-store composition with an explicit fixture flag and validated
+`app.portavoz.recap-test.<UUID>` name can select that destination. Normal
+composition retains the general pasteboard. The first-failure adapter and its
+retry share the same real writer; exact approved text, original proposal,
+receipt and offer assertions remain unchanged. This isolates the user's shared
+clipboard from test effects and external writers without substituting a mock.
+Healthy final cleanup may poll the same public XCTest `notRunning` state under
+its original ten-second absolute deadline only after the exact captured native
+launch is terminated. Late state observations refuse scratch removal; the
+bundle-wide native exit fence remains mandatory. Failed, unrecorded and still-
+live captured launches retain the original SDK wait and official termination.
+This changes neither intentional abrupt recovery nor explicit native-state
+assertions in the storage journey.
+Recording-entry journeys prove the actual record button's hittability and
+stable frame before clicking. The deferred-work journey also reasserts the native
+receiver and rechecks it after target stability within its original fifteen-second
+admission deadline. These are point-in-time observations; the interruption guard
+still refuses a receiver change after admission. The recording-input fixture
+requires its original live frontier before attempting text input; a failed start
+cannot cascade into unrelated field actions.
+The deferred-work journey closes the unique Settings window containing the
+expected data category through its standard native close button. Readable status
+rows do not prove that Settings is the key window, so an application-wide close
+shortcut cannot supply that intent. Native ownership, target stability and the
+return to recording share the original ten-second preparation deadline; a missing
+Stop target throws before further input.
+Foreground preparation observes both XCTest's state and the declared native
+receiver within its original deadline, rather than treating an activation
+request alone as acknowledgement. The synthetic interruption fixture also
+requires that acknowledgement and a hittable arm control before creating its
+owned overlay. The second synthetic receiver must also acknowledge activation
+and expose its original window within the existing readiness deadline; a ready
+file alone is not proof of native foreground ownership. Preparation failure
+remains an unqualified control, not an
+expected negative outcome. Keyboard dispatch retains its separate modal guard.
+The Background Work Settings deep-link journey additionally proves its exact
+route, native receiver and canonical search-editor handoff before outside
+scrolling. These observations share the original ten-second entry deadline;
+late or unavailable readiness throws before the wheel helper. Only the known
+editor receives guarded traversal, with its exact value preserved; an unknown
+interruption is never dismissed or identified from geometry.
+Assist-tab traversal similarly requires a stable native target and acknowledged
+selection before callers may address its fields; failures throw instead of
+continuing into a missing control. A fresh target snapshot proves resolution
+and selection in one observation; the missing-target error path is exercised
+without input. Text readiness preserves the asynchronous absence check, then
+reads label and value from one fresh fallible target snapshot; resolution errors
+propagate. Native tests cover absent targets, localized labels and empty values
+without introducing a polling delay for already-present state. Stability sampling accounts for native attribute round trips
+without changing the requested elapsed-duration floor, hittability checks or
+frame-identity resets. Consecutive read-only recording assertions may share a
+fresh app observation, with their original live fallbacks and first deadlines;
+no observation supplies geometry or authority for a later action. The More
+popover waits for the actual requested target's hittability, which already
+proves container presence, rather than spending a second ignored readiness
+wait on its parent. An immediately consumed target-readiness proof can also
+serve a read-only availability assertion, while clicks still resolve the live
+element. Dynamic Skill-menu journeys explicitly close
+only an observed owned menu before reopening it after a dismissal, retaining
+all exact remaining-offer and final-retirement assertions.
+
 Visual-only screenshot
 assertions use visible-frame intersection rather than conflating visibility
 with a control's temporary enabled or hittable state, and their bounded scroll
@@ -6188,11 +6333,19 @@ or rewrite the host's persistent Apuntador opt-in.
 
 ## Reviewed speech-engine dependency
 
-The Swift package requires one exact, reviewed FluidAudio release at a pinned
-revision. The decision ledger owns the version, the review policy and each
-admitted upgrade;
-`docs/GAPS.md` tracks rejected or future upstream releases rather than silently
-widening the requirement. Vendor types enter
+Parakeet loads the exact ModelStore-verified directory through `AsrModels.loadLocal`,
+not the vendor download-capable loader. Missing artifacts fail locally; an optional
+CTC head outside the curated graph is rejected before loading. Synchronous CoreML
+loading explicitly runs off the caller's actor. Models and compute units are unchanged.
+
+The Swift package requires the reviewed FluidAudio fork revision
+`24922d65f33ca70fdc041e36598df7ef51786274`, based on upstream
+`224de0fb3c304b41bbae24e85e1801900865ff3e`. Swift 6.2 dependency traits
+retain ASR/VAD and Diarizer while excluding unused TTS resources and NeMo linkage;
+the macOS 14.4/iOS 17 deployment floors and curated model artifacts are unchanged.
+The decision ledger owns every immutable dependency admission; `docs/GAPS.md`
+tracks temporary-fork maintenance and unqualified upstream behavior. No floating
+branch or unrelated package refresh can admit another SDK. Vendor types enter
 production only through the reviewed transcription and diarization adapters:
 `ParakeetEngine`, `ParakeetSegmentMapper`,
 `NemotronLatin1120Engine`, `SileroVoiceActivityDetector`, `PyannoteDiarizer`

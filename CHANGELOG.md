@@ -21,6 +21,12 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 - **⚡ Smoother meeting review** — keeps transcript corrections ready while summaries, notes and playback update.
 
+- **📂 Quicker audio import** — opens the native file chooser without holding up the menu, and lets you cancel and try again safely.
+
+## October 14, 2026
+
+- **🗣️ Steadier live text** — keeps opening words and deliberate repetitions while replacing unfinished words cleanly in dictation and meeting captions.
+
 ## October 13, 2026
 
 - **🎯 Ready-to-play citations** — jump to a cited moment as soon as its audio is ready while optional compression checks finish.

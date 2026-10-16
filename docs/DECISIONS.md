@@ -21132,3 +21132,91 @@ contract identified that mismatch. Present a window-modal sheet asynchronously
 from the requesting Settings window, preserving explicit modal input ownership
 without a blocking nested event loop or weakening the keyboard guard. Missing
 window admission reports a distinct actionable error and retires chooser state.
+
+
+## D559 — Keep latest speech SDK changes behind explicit token authority
+
+**Date:** 2026-10-14
+
+**Context.** The native sliding-window decoder can retire the previous window's
+last word, but its legacy public deltas omit that retirement. End-time filters,
+unfiltered passthrough and start-frontier occurrence ownership each failed a
+different declared shape. Stock latest SDK changes alone preserved the repeated
+public-cell scores and the adapter's extra words. Confidence confirmation cannot
+establish an immutable prefix.
+
+**Decision.** Keep the current curated models, engine defaults, live window and
+serial batch policy. Require the immutable FluidAudio fork revision
+`24922d65f33ca70fdc041e36598df7ef51786274`, based on upstream
+`224de0fb3c304b41bbae24e85e1801900865ff3e`. This explicit exception to D516's
+release-only admission retains its review discipline: no floating branch, range
+or unrelated package resolution can move the speech engine. Swift 6.2 dependency
+traits retain Diarizer plus ASR/VAD and exclude unused TTS resources and NeMo
+linkage; they do not raise the macOS 14.4/iOS 17 deployment floors. The newer
+batch seam timing and relevant SDK fixes remain available without selecting any
+new model or changing decoder decisions.
+
+Parakeet loads the exact ModelStore-verified directory through `AsrModels.loadLocal`,
+not the vendor download-capable loader. Missing artifacts fail locally; an optional
+CTC head outside the curated graph is rejected before loading. Synchronous CoreML
+loading explicitly runs off the caller's actor. Models and compute units are unchanged.
+
+
+Use an opt-in throwing raw-token stream with job identity, contiguous ordinal,
+previous/retained/stable counts, sample regions and explicit terminal/failure
+semantics. The producer uses the existing decoder's retirement boundary. Strict
+subscriptions are single-use and cannot reopen through legacy reset or attach
+after audio was accepted. Legacy display text/vocabulary behavior stays separate.
+The consumer validates lineage before mutation, emits each stable token once and
+replaces or clears a transient preview in both dictation and meetings. Invalid
+lineage, producer failure or EOF without terminal cannot promote pending text;
+cancellation cannot publish buffered work. Preserve native confidence diagnostics
+separately and do not count terminal control metadata as another inference.
+
+**Validation boundary.** Producer and real-consumer characterization tests are
+necessary, not model qualification. Require matched public-audio/native-final
+parity, live/batch diarization, latency and process-memory evidence, final strict
+Swift/lint/hygiene, selected native UI and exact-head hosted checks before claiming
+delivery. Retain native ES/mixed errors, silence hallucinations and deployment-
+floor field limits. No aggregate WER improvement certifies replay-free delivery,
+no preview timestamp certifies insertion latency, and no local gate certifies a
+merge/release. Gap T35 owns temporary-fork maintenance and later upstream review.
+
+## Separate UI readiness sampling cadence from acceptance duration
+
+**Context.** Native accessibility attribute reads consume elapsed time as well as
+transport work. Waiting the full requested stability duration between successive
+samples can overshoot that duration even when both frames already match. A source
+ratchet tied the probe cadence to one implementation rather than the acceptance
+proof. That cadence was an optimization, not authority to shorten the requested
+stable interval or ignore a risk owner.
+
+**Decision.** The general stable-frame helper samples at
+`min(originalProbeInterval, max(0.05, stableInterval / 2))`. Its default requested
+stability duration remains 0.25 seconds. The same live hittability guard runs
+before every frame read; absence, occlusion, empty geometry and a changed frame
+reset the candidate as before. Acceptance still compares elapsed duration with
+`stableInterval`, never with the shorter probe interval. The run loop services
+sources until each actual probe boundary, and the original timeout remains in
+force. Source contracts preserve those independent invariants, positive bounded
+cadence, the default duration and the absence of experimental mode overrides.
+
+Related read-only assertions may share one fresh observation and keep their exact
+content and presence/absence oracles. A not-ready observation uses the original
+live fallbacks, with the initial read charged against the original first deadline.
+No observation is reused across an input action or supplies its geometry or
+authority. A resolved target snapshot proves presence and selection atomically;
+an indeterminate target throws before following field input, and the actual
+missing-target path is exercised without dispatching input. More-popover readiness
+belongs to the requested live item's hittability, which already proves its parent
+exists; an ignored parent wait is not a separate risk owner. The immediately
+observed stronger readiness proof may also serve a read-only availability check.
+
+**Consequences.** Some latency boundaries can still require another fresh sample;
+query count alone is not a performance claim. Changed readiness code requires
+fresh strict validation, native safety evidence and complete bilingual runtime
+evidence under the unchanged case catalogue and total, percentile and individual
+limits. Historical receipts and rejected experiments remain historical, and no
+focused gain substitutes for the complete local gate. Production input policy,
+model behavior, privacy grants, cleanup accounting and release authority do not
+change.

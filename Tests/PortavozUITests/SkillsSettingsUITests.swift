@@ -16,7 +16,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     func testSuggestedActionsExplainReviewFirstSafety() throws {
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(
             app.openSettingsCategory(
@@ -31,7 +31,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-skill-control-unavailable")
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(
             app.openSettingsCategory(
@@ -56,7 +56,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         app.launchArguments.append(
             "-simulate-skill-control-mutation-unavailable")
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(
             app.openSettingsCategory(
@@ -98,7 +98,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-skill-receipt-scope-unavailable")
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(
             app.openSettingsCategory(
@@ -140,7 +140,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         configureSkillReceiptRefreshHandshake(on: app)
         configureSkillProposalRefreshHandshake(on: app)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSeededMeeting(in: app)
@@ -246,7 +246,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append("-seed-duplicate-skill-proposals")
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSeededMeeting(in: app)
@@ -263,7 +263,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append("-seed-skill-exact-page-history")
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
@@ -292,7 +292,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         ])
         configureSkillReceiptRefreshHandshake(on: app)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
@@ -513,7 +513,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-skill-proposal-unavailable")
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(
             app.openSettingsCategory(
@@ -544,7 +544,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     func testProposedSkillReviewReturnsToItsMeetingWithoutRunning() throws {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSeededMeeting(in: app)
@@ -596,7 +596,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         app.launchArguments.append(
             "-simulate-skill-proposal-review-unavailable")
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSeededMeeting(in: app)
@@ -648,7 +648,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     func testProposedSkillDismissalRetiresTheDurableOfferEverywhere() throws {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSeededMeeting(in: app)
@@ -689,7 +689,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         app.launchArguments.append(
             "-simulate-skill-proposal-dismiss-unavailable")
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSeededMeeting(in: app)
@@ -739,7 +739,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append("-seed-skill-waiting")
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
@@ -775,7 +775,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             "-simulate-skill-receipt-revoke-unavailable"
         ])
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
@@ -805,7 +805,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append("-seed-skill-failed-recoverable")
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
@@ -852,7 +852,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             "-simulate-skill-receipt-recovery-unavailable"
         ])
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
@@ -888,7 +888,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             "-simulate-skill-receipt-policy-unavailable"
         ])
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
@@ -926,7 +926,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             "-simulate-skill-receipt-context-unavailable"
         ])
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
@@ -960,7 +960,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append("-seed-skill-waiting")
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
@@ -990,7 +990,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     func testSkillsPaneControlsOffersAndShowsTheConfirmedReceipt() throws {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
@@ -1023,7 +1023,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         app.launchArguments.append(
             "-simulate-standing-reconciliation-cancellation-once")
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
@@ -1067,7 +1067,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             seedBrief: true)
         app.launchArguments.append("-simulate-standing-brief-failure-once")
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)

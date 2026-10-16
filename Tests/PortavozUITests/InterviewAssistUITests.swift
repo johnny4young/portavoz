@@ -9,7 +9,7 @@ final class InterviewAssistUITests: PortavozUITestCase {
     func testInterviewAssistGroundsTheCurrentQuestionInExactEvidence() throws {
         let app = try XCUIApplication.portavoz(simulateInterviewAssist: true)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
 
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
@@ -25,7 +25,7 @@ final class InterviewAssistUITests: PortavozUITestCase {
             app.dismissRecordingMorePanel(bundleIdentifier: keyboardReceiverBundleIdentifier), .admitted)
 
         // Interview becomes a tab once the recording opts in (D504).
-        app.openAssistTab("interview")
+        try app.openAssistTab("interview")
         let panel = app.control(withIdentifier: "recording-interview-panel")
         XCTAssertTrue(panel.waitForExistenceFast(timeout: 10))
         let question = app.control(
@@ -33,11 +33,11 @@ final class InterviewAssistUITests: PortavozUITestCase {
         let expectedQuestion = isSpanish
             ? "¿Qué haría Camila primero durante el incidente?"
             : "What would Jordan do first during the database incident?"
-        XCTAssertTrue(question.waitForLabelOrValue(expectedQuestion, timeout: 10))
+        XCTAssertTrue(try question.waitForLabelOrValue(expectedQuestion, timeout: 10))
 
         let assist = app.control(withIdentifier: "recording-assist-panel")
         XCTAssertTrue(assist.waitForExistenceFast(timeout: 5))
-        app.openAssistTab("objectives")
+        try app.openAssistTab("objectives")
         let objective = app.control(withIdentifier: "recording-objective-field")
         XCTAssertTrue(objective.waitForHittable(timeout: 5))
         objective.click()
@@ -55,7 +55,7 @@ final class InterviewAssistUITests: PortavozUITestCase {
             ? "1 de 8 objetivos de entrevista"
             : "1 of 8 interview objectives"
         XCTAssertTrue(
-            objectiveCount.waitForLabelOrValue(expectedObjectiveCount, timeout: 5),
+            try objectiveCount.waitForLabelOrValue(expectedObjectiveCount, timeout: 5),
             "objective admission must publish before proving its saved row")
 
         let savedObjective = app.descendants(matching: .any)
@@ -74,7 +74,7 @@ final class InterviewAssistUITests: PortavozUITestCase {
             "the product must keep the admitted objective fully visible "
                 + "without a test-owned wheel gesture")
 
-        app.openAssistTab("interview")
+        try app.openAssistTab("interview")
         let answerAction = app.control(withIdentifier: "recording-interview-answer")
         XCTAssertTrue(
             answerAction.revealVertically(in: assist),
