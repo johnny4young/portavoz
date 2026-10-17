@@ -217,7 +217,8 @@ public actor ModelStore {
         }
     }
 
-    private static func isOutOfSpace(_ error: NSError) -> Bool {
+    /// Whether a disk-full or quota cause appears anywhere in the error's cause chain.
+    public static func isOutOfSpace(_ error: NSError) -> Bool {
         if error.domain == NSCocoaErrorDomain, error.code == NSFileWriteOutOfSpaceError {
             return true
         }
@@ -225,8 +226,9 @@ public actor ModelStore {
            error.code == Int(ENOSPC) || error.code == Int(EDQUOT) {
             return true
         }
-        guard let underlying = error.userInfo[NSUnderlyingErrorKey] as? NSError else { return false }
-        return isOutOfSpace(underlying)
+        var causes = (error.userInfo[NSMultipleUnderlyingErrorsKey] as? [NSError]) ?? []
+        if let underlying = error.userInfo[NSUnderlyingErrorKey] as? NSError { causes.append(underlying) }
+        return causes.contains { isOutOfSpace($0) }
     }
 
     /// Streaming SHA-256 (1 MiB reads) so a 445 MB weight file never has to

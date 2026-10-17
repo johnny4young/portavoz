@@ -57,6 +57,12 @@ final class OnboardingModelPreparationTests: XCTestCase {
             (NSError(domain: NSURLErrorDomain, code: URLError.cannotWriteToFile.rawValue, userInfo: [
                 NSUnderlyingErrorKey: NSError(domain: NSCocoaErrorDomain, code: NSFileWriteOutOfSpaceError)
             ]), .storage),
+            (NSError(domain: NSURLErrorDomain, code: URLError.cannotWriteToFile.rawValue, userInfo: [
+                NSMultipleUnderlyingErrorsKey: [
+                    NSError(domain: NSURLErrorDomain, code: URLError.unknown.rawValue),
+                    NSError(domain: NSPOSIXErrorDomain, code: Int(ENOSPC))
+                ]
+            ]), .storage),
             (NSError(domain: "private.invalid", code: 7, userInfo: [
                 NSLocalizedDescriptionKey: "secret-token /private/model/path https://private.invalid"
             ]), .unavailable)
