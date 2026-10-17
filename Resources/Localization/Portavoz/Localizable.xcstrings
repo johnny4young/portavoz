@@ -18036,6 +18036,16 @@
           }
         }
       }
+    },
+    "Checking Parakeet Ultra…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando Parakeet Ultra…"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

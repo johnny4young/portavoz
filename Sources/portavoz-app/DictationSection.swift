@@ -119,7 +119,9 @@ struct DictationSection: View {
             L10n.text("Ultra is ready for dictation. Meetings, and dictation during a recording, use Parakeet.")
         case .failed:
             L10n.text("Parakeet Ultra couldn't be downloaded. Until it is, dictation uses Parakeet.")
-        case .missing, .unknown:
+        case .unknown:
+            L10n.text("Checking Parakeet Ultra…")
+        case .missing:
             L10n.text("Parakeet Ultra isn't downloaded yet. Until it is, dictation uses Parakeet.")
         }
     }
