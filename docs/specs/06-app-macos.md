@@ -2779,7 +2779,14 @@ legacy-aware policy without erasing the stored choices or enabling dictation.
 Literal keeps the admitted recognized words without optional filler filtering or
 replacements; it is not a promise of acoustic verbatim recognition and retains
 existing caption hygiene/assembly. Clean applies the existing TranscriptionKit
-filler setting and one non-cascading replacement pass. Neither requires a
+filler setting, spoken layout commands and one non-cascading replacement pass.
+Commands run on the final text only: "new line"/"nueva línea" becomes a line
+break and "new paragraph"/"nuevo párrafo"/"punto y aparte" a blank line. The
+commas and closing punctuation the recognizer puts around a command are
+dropped, sentence punctuation before it stays, and a command phrase that contains a
+user replacement trigger stays literal. A dictation that is only a command inserts nothing, and the
+panel preview still shows the spoken words. Settings names the commands under
+`settings-dictation-spoken-commands`. Neither mode requires a
 translation/provider/model beyond recognition. Rules and filler choices remain
 configured while Literal is selected. Settings keeps those controls visible but
 disables them, with a "Clean mode only" note, unless the default or at least one
@@ -3225,6 +3232,15 @@ still mix; the setting mainly keeps out other writing systems) through
 `settings-dictation-language-support`, with an EN/ES XCUITest assertion.
 `TranscriptSegment.language` remains the requested hint, not a measured language
 classification. The language default stays automatic, and this dictation-language setting does not change the meeting-language preference.
+
+**Parakeet Ultra for dictation (D565):** the dictation picker also offers
+"Parakeet Ultra (more accurate, 613 MB)" (`parakeetUltra`); the meeting picker
+does not, and a stored meeting value resolves to Parakeet. Choosing it is the
+consent for the pinned download through `modelLifecycle.install`, with progress,
+Download (`settings-dictation-live-ultra-install`), Retry (`-ultra-retry`) and
+status (`settings-dictation-live-ultra-status`). Until it is verified,
+`dictationCheckpoint()` returns v3, so dictation keeps working and never
+downloads it at session start. Pre-warm loads the selected checkpoint.
 
 **Optional Apple live speech (D554):** `meetingLiveSpeechEngine` and
 `dictationLiveSpeechEngine` are independent app preferences and both default

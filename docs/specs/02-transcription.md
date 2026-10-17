@@ -149,7 +149,7 @@ this composer and corrected text remains intentionally unmaterialized.
 ## Engine dependency boundary
 
 FluidAudio is fixed to the reviewed fork at
-`24922d65f33ca70fdc041e36598df7ef51786274`, based on upstream
+`16ff239818ddb6787629dab38ae43e8bdd0e7546`, based on upstream
 `224de0fb3c304b41bbae24e85e1801900865ff3e` (D559). The Swift 6.2 manifest enables
 only Diarizer; ASR/VAD remain available, while unused TTS resources and NeMo
 linkage are excluded. D516's explicit-review policy remains; D539 records the
@@ -164,6 +164,11 @@ not microphone evidence.
 Preview cadence, first stable commit and completion are distinct measurements.
 Historical preview/confirmation latency is not an insertion-latency guarantee
 for the new irrevocable-prefix contract.
+The published stable count never shrinks within a job (D569). A re-decoded
+continuation piece, such as an apostrophe suffix, can re-attach the last word to
+a stable one. When it does, the manager keeps the earlier stable count and the
+next re-decode retires only tokens past that prefix. Jobs without a token
+subscriber keep the upstream behavior.
 
 ## Model registry — ModelStoreKit
 
@@ -281,7 +286,8 @@ concurrency without treating that one fixture as universal accuracy evidence.
   and FIFO behavior are unchanged.
 - `TdtDecoderState()` is `throws` and is passed `inout` (local variable). `ASRResult.duration` = 0 on the disk-backed path → read actual duration with AVAudioFile.
 - First load compiles for ANE (~14 s for the encoder on M4 Max); CoreML caches it afterward (~1 s).
-- Licenses: Parakeet v3 model CC-BY-4.0, FluidAudio Apache-2.0, WhisperKit MIT — all MIT-compatible with attribution.
+- Licenses: Parakeet v3 and Parakeet Ultra models CC-BY-4.0, FluidAudio Apache-2.0, WhisperKit MIT — all MIT-compatible with attribution.
+- `ParakeetEngine.load(fromVerifiedDirectory:checkpoint:)` loads v3 or the opt-in Ultra checkpoint (`ModelCatalog.parakeetUltra`, FluidInference/parakeet-ultra-coreml at a pinned revision, ~613 MB). Ultra is a post-training of v3 with the same component contract: its int8 encoder, decoder and joint differ, and its preprocessor and vocabulary are the v3 ones. The engine descriptor names the checkpoint it loaded. Ultra is never `recommended(for:)`, so nothing downloads it implicitly.
 
 ### Opt-in public live-work observations (D484)
 

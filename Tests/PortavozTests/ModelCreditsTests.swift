@@ -5,7 +5,7 @@ final class ModelCreditsTests: XCTestCase {
     func testEveryDownloadableModelIsCreditedFromItsPinnedSource() async {
         let credits = ModelCatalog.credits
         XCTAssertEqual(Set(credits.map(\.id)).count, credits.count)
-        for descriptor in [ModelCatalog.parakeetTdtV3, ModelCatalog.speakerDiarization] {
+        for descriptor in [ModelCatalog.parakeetTdtV3, ModelCatalog.parakeetUltra, ModelCatalog.speakerDiarization] {
             XCTAssertEqual(descriptor.license, "CC-BY-4.0")
             XCTAssertTrue(credits.contains { $0.id == descriptor.id }, "CC-BY requires attribution: \(descriptor.id)")
         }

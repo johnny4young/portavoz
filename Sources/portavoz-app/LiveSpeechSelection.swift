@@ -6,13 +6,16 @@ import TranscriptionKit
 /// select Apple's fixed-locale engine for one workflow.
 enum LiveSpeechSelection: String, CaseIterable {
     case parakeet
+    /// Dictation only; meetings keep v3.
+    case parakeetUltra
     case appleSpeech
 
     static let meetingKey = "meetingLiveSpeechEngine"
     static let dictationKey = "dictationLiveSpeechEngine"
 
     static func meeting(defaults: UserDefaults = .standard) -> Self {
-        Self(rawValue: defaults.string(forKey: meetingKey) ?? "") ?? .parakeet
+        let selection = Self(rawValue: defaults.string(forKey: meetingKey) ?? "") ?? .parakeet
+        return selection == .parakeetUltra ? .parakeet : selection
     }
 
     static func dictation(defaults: UserDefaults = .standard) -> Self {

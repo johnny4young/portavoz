@@ -2,14 +2,6 @@ import Foundation
 import ModelStoreKit
 import TranscriptionKit
 
-enum DictationSpeechGateModelState: Equatable {
-    case unknown
-    case missing
-    case downloading(Int)
-    case ready
-    case failed
-}
-
 extension DictationSpeechGate {
     static let defaultsKey = "dictationSpeechGate"
     static let enabledByDefault = true

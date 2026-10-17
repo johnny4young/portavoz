@@ -6399,6 +6399,16 @@
         }
       }
     },
+    "In Clean mode, say “new line” or “new paragraph” to start one.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En modo Limpio, di «nueva línea» o «nuevo párrafo» para empezar una."
+          }
+        }
+      }
+    },
     "Include edit history": {
       "localizations": {
         "es": {
@@ -18003,6 +18013,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "Estos modelos se ejecutan en esta Mac. Cada uno conserva su propia licencia."
+          }
+        }
+      }
+    },
+    "Parakeet Ultra (more accurate, 613 MB)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parakeet Ultra (más preciso, 613 MB)"
+          }
+        }
+      }
+    },
+    "Downloading Parakeet Ultra (613 MB)… %d%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargando Parakeet Ultra (613 MB)… %d%%"
+          }
+        }
+      }
+    },
+    "Ultra is ready for dictation. Meetings, and dictation during a recording, use Parakeet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ultra está listo para dictar. Las reuniones, y los dictados durante una grabación, usan Parakeet."
+          }
+        }
+      }
+    },
+    "Parakeet Ultra couldn't be downloaded. Until it is, dictation uses Parakeet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo descargar Parakeet Ultra. Mientras tanto, el dictado usa Parakeet."
+          }
+        }
+      }
+    },
+    "Parakeet Ultra isn't downloaded yet. Until it is, dictation uses Parakeet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parakeet Ultra todavía no está descargado. Mientras tanto, el dictado usa Parakeet."
+          }
+        }
+      }
+    },
+    "Checking Parakeet Ultra…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando Parakeet Ultra…"
           }
         }
       }

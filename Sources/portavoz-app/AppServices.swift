@@ -180,7 +180,8 @@ final class AppServices {
     @ObservationIgnored var whisperBackgroundPreparation: Task<Void, Never>?
     @ObservationIgnored var whisperProgressObservers: [UUID: WhisperPreparationObserver] = [:]
     private(set) var mlxDownloaded = false
-    var speechGateModel = DictationSpeechGateModelState.unknown
+    var speechGateModel = ConsentedModelState.unknown
+    var parakeetUltraModel = ConsentedModelState.unknown
     /// IntelligenceKit owns container mechanics; composition owns the one
     /// process runtime and every residency transition around it.
     @ObservationIgnored let mlxSummaryRuntime = MLXSummaryRuntime()

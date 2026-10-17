@@ -28,6 +28,8 @@ extension ModelCatalog {
     public static var credits: [ModelCredit] {
         [
             parakeetTdtV3.credit("Parakeet TDT 0.6B v3", by: "NVIDIA"),
+            parakeetUltra.credit(
+                "Parakeet Ultra, a post-training of Parakeet TDT 0.6B v3", by: "moondream, from NVIDIA"),
             whisperLargeV3Turbo.credit("Whisper large-v3-turbo", by: "OpenAI"),
             whisperLargeV3_626MB.credit("Whisper large-v3", by: "OpenAI"),
             whisperTokenizer.credit("Whisper large-v3 tokenizer", by: "OpenAI"),
