@@ -58,6 +58,28 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testParakeetUltraIsAnExplicitDictationOnlyDownload() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
+            #"{"globalDictationEnabled":true,"dictationLiveSpeechEngine":"parakeetUltra"}"#
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        openCategory("settings-category-audio", revealing: "settings-dictation-live-ultra-status", in: app)
+        // The disposable model store never downloads, so Ultra stays missing.
+        let status = app.staticTexts["settings-dictation-live-ultra-status"]
+        let missing = UITestLocale.environmentLocale == "es"
+            ? "todavía no está descargado" : "isn't downloaded yet"
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: status).contains(missing) },
+                      "a selected but missing Ultra must say dictation keeps using Parakeet")
+        XCTAssertTrue(app.buttons["settings-dictation-live-ultra-install"].waitForExistenceFast(timeout: 5))
+
+        openCategory("settings-category-intelligence", revealing: "settings-meeting-live-engine", in: app)
+        XCTAssertFalse(app.staticTexts["settings-meeting-live-ultra-status"].exists,
+                       "meetings never offer the dictation-only checkpoint")
+    }
+
+    @MainActor
     func testIntelligencePaneExplicitlyPreparesSemanticSearch() throws {
         let app = try XCUIApplication.portavoz(
             simulateSemanticAssetsMissing: true,

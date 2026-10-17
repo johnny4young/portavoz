@@ -321,7 +321,13 @@ composition extension. Production composition acquires the shared live-speech
 token through a type-erased live-engine handle that ends it on completion.
 Recording and dictation share that boundary; batch callers retain the concrete
 Parakeet lease. App composition selects Parakeet by default or an explicitly
-chosen, installed Apple Speech locale on macOS 26. Core carries only transient
+chosen, installed Apple Speech locale on macOS 26. Dictation may also select
+the verified Parakeet Ultra checkpoint (`ParakeetCheckpoint.ultra`). One
+live-speech runtime stays resident and its checkpoint is part of its identity:
+`LiveSpeechCheckpointPlan` lets dictation borrow a v3 runtime a meeting is
+using, swaps an idle runtime, and makes every v3 caller wait for an Ultra
+dictation to finish. Meetings, batch passes and the synchronous recording
+attach never run Ultra. Core carries only transient
 live-update semantics (range revision, token preview, owned delta or word
 continuation), not AppKit or speech-provider types.
 

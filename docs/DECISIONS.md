@@ -21317,3 +21317,23 @@ detector is missing the gate stays undetermined and pastes as before. The
 corpus is synthetic speech, so a real-microphone false-negative rate is still
 unmeasured.
 
+## D565 — Offer Parakeet Ultra for dictation only, with one resident live model
+
+Over the 480-cell public corpus, fed in real time through the same pipeline,
+Ultra cut speech WER from 15.3% to 10.3%. Exact matches rose from 61 to 105 of
+448 cells, and non-speech cells with invented words fell from 8 to 2 of 32.
+Finalization latency matched v3. The gains were largest in mixed English and
+Spanish. It was worse on 35 cells and better on 118. The regressions cluster in
+Spanish Swift identifiers, English literal-cancel phrases, apostrophes and
+Spanish date corrections. Because some families regress, Ultra is an opt-in
+dictation choice and v3 stays the default and the only meeting model.
+
+Only one live-speech runtime is resident, so a dictation never adds a second
+600 MB model. The checkpoint is part of that runtime's identity. Dictation
+borrows a v3 runtime that a meeting is using, and swaps an idle one. A meeting,
+batch pass or recording attach waits for an Ultra dictation to finish, then
+swaps back; recording is audio-first, so the wait loses no audio. Selecting
+Ultra is the consent for its pinned ~613 MB download. Until it is installed,
+dictation uses v3. The corpus is synthetic speech and Ultra's resident memory
+is unmeasured; both need field evidence before Ultra could become a default.
+

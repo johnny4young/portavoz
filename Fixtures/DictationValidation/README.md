@@ -401,3 +401,20 @@ PORTAVOZ_SPEECH_GATE_OUTPUT=/absolute/scratch/speech-gate.json \
 Each cell records whether the gate heard speech, the first speech frame, the peak
 probability, process CPU time and the slowest chunk. Chunks are fed unpaced, so
 the receipt measures the decision and its cost, not live timing.
+
+## Compare Parakeet v3 and Ultra on the same cells
+
+`DictationModelComparisonTests` runs v3 and the opt-in Ultra checkpoint over the
+same admitted cells, with the same real-time 100 ms feed and scoring as the
+installed-model lane. Both models come from one explicit scratch store that already
+holds verified copies; the lane never downloads. Release only:
+
+```sh
+PORTAVOZ_ASR_COMPARE_AUDIO=/absolute/scratch/new-dictation-audio \
+PORTAVOZ_ASR_COMPARE_MODELS=/absolute/scratch/models \
+PORTAVOZ_ASR_COMPARE_OUTPUT=/absolute/scratch/compare.json \
+"$(xcrun --find xctest)" -XCTest PortavozTests.DictationModelComparisonTests "$RELEASE_TEST_BUNDLE"
+```
+
+`PORTAVOZ_ASR_COMPARE_CASES` limits the run to a comma-separated list of cells.
+A cell that fails records only the error type, never provider text.

@@ -140,6 +140,9 @@ final class DictationColdStartTests: XCTestCase {
             dictationEnabled: true, prewarmEnabled: true, profile: .balanced, engine: .parakeet,
             underPressure: false, lowPowerMode: false, temporaryStore: false)
         XCTAssertTrue(DictationPrewarmPolicy.shouldWarm(allowed))
+        var ultra = allowed
+        ultra.engine = .parakeetUltra
+        XCTAssertTrue(DictationPrewarmPolicy.shouldWarm(ultra), "the selected Ultra checkpoint warms too")
         let blocked: [(String, (inout DictationPrewarmPolicy.Conditions) -> Void)] = [
             ("dictation off", { $0.dictationEnabled = false }),
             ("setting off", { $0.prewarmEnabled = false }),
