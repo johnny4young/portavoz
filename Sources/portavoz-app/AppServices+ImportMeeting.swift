@@ -18,15 +18,18 @@ extension AppServices: AudioImportQueueClient {
         var inputs: [AudioImportRequest] = []
         for url in urls {
             try Task.checkCancellation()
+            let input: AudioImportRequest
             do {
-                inputs.append(try await files.prepareSelection(
+                input = try await files.prepareSelection(
                     // Released library contract: imported meetings stay recognizable by title.
                     url, meetingID: MeetingID(), title: "Imported · " + url.deletingPathExtension().lastPathComponent,
-                    preferences: preferences))
+                    preferences: preferences)
             } catch is AudioImportFileError {
                 // The adapter enum has no user copy; nothing was admitted or changed.
                 throw AudioImportQueueError.storage
             }
+            guard AudioImportFormats.admits(input.fileExtension) else { throw AudioImportQueueError.unsupportedFormat }
+            inputs.append(input)
         }
         _ = try await store.enqueueAudioImports(inputs)
     }

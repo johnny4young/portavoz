@@ -47,6 +47,9 @@ final class PortavozAppDelegate:
             name: PortavozAppIntentBridge.navigationRequested,
             object: nil)
         MainActor.assumeIsolated {
+            #if DEBUG
+            UITestOwnedExit.installIfRequested()
+            #endif
             routePendingStartRecordingIntent()
             routePendingStopRecordingIntent()
             routePendingNavigationIntent()

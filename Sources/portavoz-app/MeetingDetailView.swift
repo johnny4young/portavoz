@@ -38,8 +38,8 @@ struct MeetingDetailView: View {
     }
     var body: some View {
         Group {
-            if let detail {
-                loaded(detail)
+            if let detail, let transcriptPresentation = model.state.transcriptPresentation {
+                loaded(detail, transcriptPresentation: transcriptPresentation)
             } else {
                 ProgressView()
             }
@@ -55,26 +55,28 @@ struct MeetingDetailView: View {
 }
 
 private extension MeetingDetailView {
-    private func loaded(_ detail: MeetingReviewReadModel) -> some View {
+    private func loaded(
+        _ detail: MeetingReviewReadModel,
+        transcriptPresentation: MeetingDetailTranscriptPresentation
+    ) -> some View {
         MeetingDetailFlowHost(
             flow: flow,
             values: flowValues(detail),
             actions: flowActions(detail)
         ) {
-            loadedBody(detail)
+            loadedBody(detail, transcriptPresentation: transcriptPresentation)
         }
         .onAppear { model.firstContentDidAppear() }
         .navigationTitle("Portavoz")
         .task(id: mirrorTaskID) { await loadMirrorAverageIfNeeded() }
     }
 
-    private func loadedBody(_ detail: MeetingReviewReadModel) -> some View {
-        let transcript = transcriptContent(detail)
-        let accepted = detail.acceptedTranscriptContent(
-            chapterTitles: model.state.chapterTitles)
-        let structureProjection = detail.transcriptStructureProjection(
-            current: transcript,
-            accepted: accepted)
+    private func loadedBody(
+        _ detail: MeetingReviewReadModel,
+        transcriptPresentation: MeetingDetailTranscriptPresentation
+    ) -> some View {
+        let transcript = transcriptPresentation.current
+        let structureProjection = transcriptPresentation.structure
         return VStack(alignment: .leading, spacing: 12) {
             headerSection(detail)
             MeetingDetailActivityLine(values: MeetingDetailActivityValues(
@@ -112,10 +114,6 @@ private extension MeetingDetailView {
         }
         .padding(16)
         .frame(maxWidth: 1060, maxHeight: .infinity, alignment: .topLeading)
-    }
-
-    private func transcriptContent(_ detail: MeetingReviewReadModel) -> MeetingTranscriptContent {
-        detail.transcriptContent(chapterTitles: model.state.chapterTitles)
     }
 
     private func transcriptSection(
@@ -418,11 +416,11 @@ private extension MeetingDetailView {
     }
 
     private func focusEvidence(_ segment: TranscriptSegment) {
-        guard let detail else { return }
+        guard let transcript = model.state.transcriptPresentation?.current else { return }
         readingPane = .transcript
         playbackNavigation.focusEvidence(
             segment,
-            content: transcriptContent(detail),
+            content: transcript,
             player: player)
     }
 
@@ -433,13 +431,13 @@ private extension MeetingDetailView {
     }
 
     private func deliverPendingMeetingSeekIfPossible() {
-        guard let detail,
+        guard let transcript = model.state.transcriptPresentation?.current,
               let request = sceneValues.pendingSeek,
               request.meetingID == meetingID
         else { return }
         let didApply = playbackNavigation.requestSeek(
             to: request.timestamp,
-            content: transcriptContent(detail),
+            content: transcript,
             player: player)
         if didApply {
             readingPane = .transcript
@@ -456,14 +454,16 @@ private extension MeetingDetailView {
         playbackNavigation.runPerformanceSeekIfRequested(
             profile: sceneValues.performanceProfile,
             player: player)
+        guard !Task.isCancelled else { return }
+        await coordinator.refreshAudioCompressionPermission()
     }
 
     private func seekAndPlay(_ seconds: TimeInterval) {
-        guard let detail else { return }
+        guard let transcript = model.state.transcriptPresentation?.current else { return }
         readingPane = .transcript
         playbackNavigation.seekAndPlay(
             seconds,
-            content: transcriptContent(detail),
+            content: transcript,
             player: player)
     }
 

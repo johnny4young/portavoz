@@ -14,7 +14,9 @@ final class DictationSessionMeasurementTests: XCTestCase {
             var dependencies = harness.dependencies
             dependencies.measurementClock = { clock.value }
             let load = dependencies.acquireRuntime
+            let coldModel = Gate()
             dependencies.acquireRuntime = {
+                await coldModel.wait()
                 clock.advance(4)
                 return try await load()
             }
@@ -24,6 +26,9 @@ final class DictationSessionMeasurementTests: XCTestCase {
                 return .init(source: microphone.source, warmUp: { await clock.advance(2) })
             }
             harness.controller.toggle(using: dependencies)
+            // Audio-first: the microphone is live before the cold model is ready.
+            await eventually { coldModel.started && harness.controller.micLevel > 0 }
+            coldModel.release()
             await eventually { !harness.controller.partialText.isEmpty }
             XCTAssertTrue(harness.measurements.isEmpty)
             clock.advance(3)
@@ -33,9 +38,9 @@ final class DictationSessionMeasurementTests: XCTestCase {
             let receipt = try XCTUnwrap(harness.measurements.first)
             XCTAssertEqual(receipt.outcome, .dispatchReported)
             XCTAssertFalse(receipt.verifiedDeliveryMeasured)
-            XCTAssertEqual(receipt.elapsedSeconds["runtimeReady"], 4)
-            XCTAssertEqual(receipt.elapsedSeconds["microphoneReady"], 6)
-            XCTAssertEqual(receipt.elapsedSeconds["firstBufferHandled"], 6)
+            XCTAssertEqual(receipt.elapsedSeconds["microphoneReady"], 2)
+            XCTAssertEqual(receipt.elapsedSeconds["firstBufferHandled"], 2)
+            XCTAssertEqual(receipt.elapsedSeconds["runtimeReady"], 6)
             XCTAssertEqual(receipt.elapsedSeconds["firstCaptionHandled"], 6)
             XCTAssertEqual(receipt.elapsedSeconds["stopRequested"], 9)
             XCTAssertEqual(receipt.terminalSeconds, 9)
@@ -105,11 +110,12 @@ final class DictationSessionMeasurementTests: XCTestCase {
             return try await load()
         }
         harness.controller.toggle(using: slow)
-        await eventually { gate.started }
+        await eventually { gate.started && harness.controller.phase == .listening }
         harness.controller.cancel()
         let first = try XCTUnwrap(harness.measurements.first)
         XCTAssertEqual(first.outcome, .cancelled)
-        XCTAssertTrue(first.elapsedSeconds.isEmpty)
+        XCTAssertNil(first.elapsedSeconds["runtimeReady"])
+        XCTAssertNil(first.elapsedSeconds["firstCaptionHandled"])
         harness.controller.toggle(using: harness.dependencies)
         await eventually { !harness.controller.partialText.isEmpty }
         gate.release()
@@ -212,7 +218,8 @@ final class DictationSessionMeasurementTests: XCTestCase {
         failed.controller.toggle(using: failing)
         await eventually { failed.measurements.count == 1 }
         XCTAssertEqual(failed.measurements.first?.outcome, .pipelineFailed)
-        XCTAssertEqual(failed.measurements.first?.elapsedSeconds, [:])
+        XCTAssertNil(failed.measurements.first?.elapsedSeconds["runtimeReady"])
+        XCTAssertNil(failed.measurements.first?.elapsedSeconds["firstCaptionHandled"])
         failed.controller.cancel()
 
         let unobserved = DictationControllerHarness(text: "Normal session")

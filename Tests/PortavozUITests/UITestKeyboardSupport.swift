@@ -102,6 +102,13 @@ extension XCUIApplication {
         return admission
     }
 
+    /// Read-only receiver acknowledgement for fixture preparation. This does
+    /// not authorize keyboard dispatch: that still requires modal admission.
+    @MainActor
+    func hasObservedNativeReceiver(bundleIdentifier: String) -> Bool {
+        keyboardOwnershipFailure(bundleIdentifier: bundleIdentifier) == nil
+    }
+
     /// Observes ownership for at most one bounded interval. The run loop keeps
     /// servicing workspace notifications between probes, so a cached frontmost
     /// value or a sheet that is still closing can converge. Nothing is activated,

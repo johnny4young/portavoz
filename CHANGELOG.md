@@ -15,9 +15,41 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## October 16, 2026
+
+- **🤫 Silence no longer gets pasted** — dictations with no speech are now held back by default and offered to copy, with a tiny 1 MB voice detector that downloads when you turn on dictation (already dictating? tap Download in Settings → Audio).
+- **⏱️ Quick phrases aren't mistaken for taps** — a brief hiccup while the microphone opens no longer makes a short dictation look like an accidental key press and throw it away.
+- **🤫 Silence stays out of your text** — turn on "Skip dictations without speech" and a tiny on-device voice detector keeps silence and background noise from being pasted; the text is still there to copy if it got it wrong.
+
+## October 15, 2026
+
+- **🎙️ Dictation hears your first word** — the microphone starts the moment you press the shortcut, even while the speech model is still loading, so nothing you say is lost and letting go of push-to-talk early no longer cancels.
+
+- **🔔 Optional dictation sounds** — turn on a short sound when you start dictating and another when the microphone closes.
+
+- **⚡ Dictation ready at launch** — optionally load the dictation model when Portavoz opens so the first dictation starts faster; it still unloads when idle.
+
+- **✨ Smoother dictation** — dictated words join your text with the right spacing, Esc cancels while you speak, the strip keeps your newest words in view, and a quick second press can no longer interrupt an insertion.
+
+- **⚡ Lighter chapter preparation** — reuses corrected rows instead of rebuilding the transcript for each review update.
+
+- **⚡ Smoother meeting review** — keeps transcript corrections ready while summaries, notes and playback update.
+
+- **📂 Quicker audio import** — opens the native file chooser without holding up the menu, and lets you cancel and try again safely.
+
+## October 14, 2026
+
+- **🗣️ Steadier live text** — keeps opening words and deliberate repetitions while replacing unfinished words cleanly in dictation and meeting captions.
+
 ## October 13, 2026
 
 - **💾 Clear disk-space recovery** — model setup now tells you when a download needs more disk space.
+
+- **🎯 Ready-to-play citations** — jump to a cited moment as soon as its audio is ready while optional compression checks finish.
+
+- **🎧 Keep imported audio within reach** — replay, refine and share imported MP3, AAC, AIFF and M4B recordings; retry copies stay protected until importing finishes, already-compressed audio is never re-encoded, and import only offers formats Portavoz can play.
+
+- **🔄 Processing recovery** — meetings no longer stay stuck when a retry becomes ready or an interrupted worker's wait ends.
 
 ## October 9, 2026
 

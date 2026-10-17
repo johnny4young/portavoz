@@ -1,5 +1,20 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
+`ProcessingJobSchedulingTests` exercises real in-memory StorageKit scheduling
+with explicit timestamps, without sleeping or using models. It covers retry
+and lease deadlines equal to or earlier than the scheduling read, deadlines
+that cross after an empty claim, final-attempt exhaustion, heartbeat renewal,
+stale-owner rejection, and capability/tombstone filtering. Intentional
+suspension clears the lease, refunds the attempt, and yields no immediate wake.
+The existing persistence suite also admits an already-due retry in its
+capability-filtered scheduling test. These regressions establish storage
+behavior, not application-timer, process-kill or hardware performance evidence.
+
+`ProcessingWakeScheduleTests` checks the shared drain-failure backoff against
+explicit timestamps. Healthy deadlines retain their identity; an overdue or
+near-future deadline after a failed drain waits at least five seconds, a later
+future deadline is preserved, and a missing deadline never creates a timer.
+
 `test_site_interactions` executes the shipped website inline JavaScript with
 Node.js built-ins and explicit DOM, storage, clipboard and timer doubles. It
 checks a throwing `localStorage` accessor, denied storage reads/writes,
@@ -929,7 +944,8 @@ word loss and replay protection as a joint unresolved contract (D518).
 | MeetingHealthTests / LiveTalkTimePolicyTests | meeting talk-time/share, ES/EN questions, thresholded interruptions, older-long-overlap conservation behind an ended neighbor, 200 dense timelines matched to the exhaustive reference, chained monologues, unattributed exclusion, closed-row-only live balance, five-minute filtering, evidence thresholds, and the 1,024-candidate presentation bound |
 | VocabularyMinerTests | 6 cases: domain forms, recurrence threshold, existing-vocabulary/stoplist exclusion, form heuristics |
 | MeetingTypeDetectorTests | Recipes catalog + capped excerpt; gated: classifies standup/planning/interview and leaves general alone (M13b criterion) |
-| StorageTests / StorageSchemaV6Tests / RecordingPersistenceTests / ProcessingJobPersistenceTests / VoiceMixTests | Complete D4/D36–D43/D63–D66/D70/D75 contract: strict persistence, tombstones, hostile FTS, hidden-rank/BM25 top-k equivalence, complete-text plus highlighted-snippet search hits, retention, paths, migration, lifecycle/idempotency constraints, atomic recording/artifact handoffs, owner-leased durable work, provenance linkage, revision fences, and injected rollback |
+| StorageTests / StorageSchemaV6Tests / RecordingPersistenceTests / ProcessingJobPersistenceTests / ProcessingJobSchedulingTests / VoiceMixTests | Complete D4/D36–D43/D63–D66/D70/D75 contract: strict persistence, tombstones, hostile FTS, hidden-rank/BM25 top-k equivalence, complete-text plus highlighted-snippet search hits, retention, paths, migration, lifecycle/idempotency constraints, atomic recording/artifact handoffs, owner-leased durable work, deadline recovery, provenance linkage, revision fences, and injected rollback |
+| ProcessingWakeScheduleTests | Shared application policy for failed-drain backoff with a durable deadline, preserving healthy/later wakes and creating no timer without a deadline |
 | PostCaptureSummaryGenerationAttemptTests | Content-free durable provider/model/job/revision/config metadata, aggregate-only success metrics, and distinct failed/cancelled terminal attempts without invented output metrics |
 | ProcessPostCaptureJobsUseCaseTests | Mixed-language first-pass cleanup/attribution and follow-up admission; real-Store diarization-to-summary publication; provider retry; optional-summary exhaustion; supersession; lease loss; typed diagnostics; and injected-clock no-poll scheduling |
 | RecordingAssistLayoutTests / CompanionCardWindowTests | The live assist area's pure policy (D504): the split grows both zones with the window and honors both floors, a too-short window shrinks both zones together rather than starving one, the divider drag clamps at its bounds, optional tabs appear only once they can show something and a vanished tab's selection falls back, the focus slot ranks catch-up and the suggested question, which have no other home, over a directed card, which is also reachable in the Companion tab, the recency window keeps the newest three open and folds the rest without dropping any, a hand-opened card folds the oldest recency-open one, only an answer too long to clamp offers to open fully, and the tab badge never goes negative when cards are dismissed |
@@ -7651,6 +7667,17 @@ every functional case passed. The same unchanged budget file remains enforced
 by default for local/stable-Mac integration and release runs; only the hosted
 workflow opts out of hard wall-clock enforcement.
 
+The runtime budget now inventories 140 exact journey identifiers and 140
+individual ceilings. Its retained historical 109-case and qualified-candidate
+105-case aggregates describe the D382 calibration above; they are not a
+contemporary complete-main baseline for 140 cases. All reachable budget changes
+retain the 1,300-second and 30-second ceilings. The parser has no hardware or
+Xcode normalization and does not automatically reclassify a local run as hosted
+advisory. A source-qualified full hosted receipt can establish prior hosted
+wall-clock drift, while a local product-regression claim needs matched complete
+main/candidate receipts on the same isolated host and toolchain. Incomplete or
+interrupted controls and passing focused subsets cannot supply that comparison.
+
 An execution receipt marked `evidence-failure` is well-formed refusal evidence,
 not an assertion that output files are absent. A stopped XCTest worker can
 leave a result bundle and runtime receipt, then restart with exit zero; a
@@ -9182,6 +9209,41 @@ implications of a port result. This prepared receiver does not qualify slow,
 unsupported or arbitrary third-party AX servers.
 
 ### Audio export bridge characterization
+
+`ImportedAudioReuseTests` checks both canonical channels across the eight
+explicit Library import extensions, bundle attachment admission, preserved
+m4a/caf/wav preference order, and invisible partial/unsupported filenames.
+A native synthetic AIFF passes durable selection/copy/publication with a
+scripted processor, then the actual bundle codec and fresh-identity remapping;
+the exported/reimported bytes match the unchanged original and AVAudioFile
+can read both owned copies. This proves format reuse and codec conservation,
+not model quality, native-panel interaction or every host decoder format.
+`AudioImportAdmissionTests` rejects a batch containing a format playback cannot
+locate without creating any meeting. `MeetingAudioWorkflowTests` pins that only
+lossless channels are compressible and that a mixed MP3/WAV meeting keeps the
+MP3 bytes while counting it on both sides of the savings.
+
+`AudioImportCompressionAdmissionTests` enters real Store/native-copy/workflow
+boundaries for failed WAV/AIFF refusal, digest-preserved explicit Retry and
+success-only compression. State, trash/restore, missing/corrupt authority,
+canonical-path aliases and ordinary recordings have independent controls.
+The codec double uses the existing native publication/verification/deletion
+seam, not a claim of host AAC availability. `MeetingDetailCompressionPermissionTests`
+holds the same player/waveform across pending-to-success permission refresh and
+read failure, without a timing sleep or navigation restart.
+An event-ordered characterization installs a controlled admission provider and
+requires playback preparation to return before it is consulted, preserving session, waveform and
+seek behavior. Independent cancellation and invalidation controls release a
+non-cooperative late permit and require it to remain unpublished. These model
+checks establish ordering and stale-result fencing, not a SwiftUI layout cause
+or native UI-latency qualification.
+
+`AudioCompressionDirectoryIndexTests` upgrades a v52 database that already has
+two owners of the same audio directory. The nonunique v53 index preserves those
+rows, and `EXPLAIN QUERY PLAN` over the production admission request changes
+from a table scan to indexed search. Existing duplicate-owner refusal controls
+remain separate. These checks do not measure native UI duration or qualify
+permission-refresh behavior under a sustained observation burst.
 
 `AudioExportSessionTests` drives the real internal callback bridge with immediate
 and held fake completions, including caller cancellation before/after start. It

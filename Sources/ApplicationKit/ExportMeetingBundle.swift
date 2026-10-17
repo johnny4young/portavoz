@@ -55,7 +55,7 @@ public struct ExportMeetingBundleAttachment: Equatable, Sendable {
     ) {
         guard channel == .system || channel == .microphone else { return nil }
         let normalizedExtension = fileExtension.lowercased()
-        guard ["m4a", "caf", "wav"].contains(normalizedExtension) else {
+        guard MeetingAudioLayout.channelExtensions.contains(normalizedExtension) else {
             return nil
         }
         self.channel = channel

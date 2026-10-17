@@ -257,6 +257,10 @@ final class CorrectMeetingTranscriptTests: XCTestCase {
             privacyReceipt: nil,
             processingJobs: [])
 
+        let readings = detail.transcriptReadings()
+        XCTAssertEqual(readings.current, detail.transcriptContent())
+        XCTAssertEqual(readings.accepted, detail.acceptedTranscriptContent())
+        XCTAssertNotEqual(readings.current, readings.accepted, "The pair keeps corrections out of the accepted reading")
         let row = try XCTUnwrap(detail.transcriptContent().rows.first)
         let context = try XCTUnwrap(detail.transcriptCorrectionEditorContext(for: row))
 

@@ -90,6 +90,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("LibraryUITests", "testRecordingWarnsWhenIncomingAudioClips"),
         test_id("LibraryUITests", "testColdRecordingStartsLiveCaptionsWhenModelBecomesReady"),
         test_id("LibraryUITests", "testLiveTranscriptYieldsFollowWhileReadingHistory"),
+        test_id("LibraryUITests", "testOwnedTokenPreviewRetiresWithoutEnteringCanonicalCaption"),
         test_id("LibraryUITests", "testLiveTranslationUsesADistinctLabeledRail"),
         test_id("LibraryUITests", "testRecordingOffersObjectivesNextQuestionAndTalkBalance"),
         test_id("LibraryUITests", "testLaunchRecoversInterruptedStagingAudio"),
@@ -429,6 +430,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("DictationTextModeUITests", "testCorruptProfilesShowAnExplicitResetWithoutChangingTheDefault"),
         test_id("DictationTextModeUITests", "testSessionModeOverrideCancelsAndRestartsWithoutChangingDefaults"),
         test_id("DictationUITests", "testDeliveredDictationDistinguishesDispatchFromVerification"),
+        test_id("DictationUITests", "testSilentDictationIsOfferedToCopyInsteadOfPasted"),
         test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),
         test_id("SettingsUITests", "testAppleSpeechInspectionFailureOffersExplicitRetry"),
         test_id("DictationUITests", "testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart"),
@@ -957,6 +959,7 @@ def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
     if lowered in {
         "sources/applicationkit/processaudioimports+ownedadapters.swift",
+        "sources/applicationkit/audioimportformats.swift",
         "sources/applicationkit/processaudioimports.swift",
         "sources/platformkit/audioimportfiletransfer.swift",
         "sources/platformkit/localaudioimportfiles+acquisition.swift",

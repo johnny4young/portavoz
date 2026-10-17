@@ -776,7 +776,7 @@ extension ArchitectureDependencyTests {
 
         for wakePolicy in [
             "public func nextScheduledProcessingDate",
-            "SELECT MIN(wakeAt)",
+            "SELECT MAX(MIN(wakeAt), ?)",
             "SELECT notBefore AS wakeAt",
             "SELECT leaseExpiresAt AS wakeAt"
         ] {
@@ -934,7 +934,14 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(model.contains("didCompleteTitleSuggestion"))
         XCTAssertTrue(model.contains("didCompleteRecipeSuggestion"))
         XCTAssertTrue(coordinator.contains("model.send(.loadMetadataSuggestions)"))
-        XCTAssertTrue(view.contains("model.state.chapterTitles"))
+        let transcriptPresentation = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailTranscriptPresentation.swift")
+        XCTAssertTrue(model.contains("next.transcriptPresentationState.mergeChapterTitles("))
+        XCTAssertTrue(model.contains("suggestions.chapterTitles, detail: state.readModel"))
+        XCTAssertTrue(transcriptPresentation.contains("chapterTitles = merged"))
+        XCTAssertTrue(transcriptPresentation.contains(
+            "MeetingDetailTranscriptPresentation(detail: $0, chapterTitles: merged)"))
+        XCTAssertTrue(view.contains("model.state.transcriptPresentation"))
         XCTAssertTrue(view.contains("model.state.suggestedTitle"))
         XCTAssertTrue(view.contains("model.state.suggestedRecipe"))
         XCTAssertFalse(view.contains("ProcessInfo.processInfo"))

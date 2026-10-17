@@ -49,6 +49,22 @@ final class DictationModelBaselineTests: XCTestCase {
         let cells: [CellReceipt]
     }
 
+    private struct TokenContractCell: Encodable {
+        let caseID: String
+        let pass: Int
+        let parity: DictationVendorProbe.ConsumerParity
+    }
+
+    private struct TokenContractObservation: Encodable {
+        let kind = "parakeet-token-contract-observation"
+        let schemaVersion = 1
+        let manifestSHA256: String
+        let modelRevision: String
+        let sourceCommitQualified = false
+        let verifiedDeliveryMeasured = false
+        let cells: [TokenContractCell]
+    }
+
     func testInstalledParakeetOnExplicitPublicCells() async throws {
         let environment = ProcessInfo.processInfo.environment
         guard let audio = environment["PORTAVOZ_DICTATION_BASELINE_AUDIO"] else {
@@ -85,7 +101,7 @@ final class DictationModelBaselineTests: XCTestCase {
             let loaded = ContinuousClock.now
             let attributionModels: AsrModels?
             if environment["PORTAVOZ_DICTATION_ATTRIBUTE_LIVE"] == "1" {
-                attributionModels = try await AsrModels.load(
+                attributionModels = try AsrModels.loadLocal(
                     from: installation.directory, version: .v3, encoderPrecision: .int8)
             } else {
                 attributionModels = nil
@@ -97,12 +113,27 @@ final class DictationModelBaselineTests: XCTestCase {
                     results.append(try await observe(id: id, pass: pass, fixture: fixture, repetitions: repetitions, engine: engine, attributionModels: attributionModels))
                 }
             }
+            guard await store.verify(descriptor).isComplete else {
+                XCTFail("curated model artifacts changed during observation")
+                return
+            }
             let receipt = Receipt(
                 manifestSHA256: fixture.manifestDigest, modelID: installation.descriptorID,
                 modelRevision: installation.descriptorRevision,
                 modelVerificationSeconds: DictationModelProbe.seconds(verificationStarted.duration(to: verified)),
                 modelLoadSeconds: DictationModelProbe.seconds(verified.duration(to: loaded)), repetitions: repetitions, cells: results)
             try CLIPrivateJSONWriter.write(receipt, to: URL(fileURLWithPath: output))
+            if environment["PORTAVOZ_DICTATION_ATTRIBUTE_LIVE"] == "1" {
+                let cells = try results.map { result in
+                    TokenContractCell(caseID: result.caseID, pass: result.pass,
+                                      parity: try XCTUnwrap(result.stageAttribution?.consumerParity))
+                }
+                let contract = TokenContractObservation(
+                    manifestSHA256: fixture.manifestDigest, modelRevision: installation.descriptorRevision, cells: cells)
+                try CLIPrivateJSONWriter.write(
+                    contract, to: URL(fileURLWithPath: output).deletingLastPathComponent()
+                        .appendingPathComponent("token-contract.json"))
+            }
         } catch {
             // Never ask XCTest to interpolate provider errors or hypothesis text.
             XCTFail("dictation model observation failed; no successful baseline receipt")

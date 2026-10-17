@@ -7,35 +7,6 @@ import PortavozCore
 import SwiftUI
 import TranscriptionKit
 
-/// Pure capture-edge policy. The minimum is measured from the moment the
-/// first nonempty microphone buffer arrives, never from model preparation or panel
-/// presentation, so a slow cold start cannot turn a tap into a valid capture.
-struct DictationCapturePolicy {
-    static let minimumCapture: TimeInterval = 0.75
-
-    enum FinishDecision: Equatable {
-        case cancel
-        case stopAfterTail
-    }
-
-    static func finishDecision(
-        captureStartedAt: Date?, now: Date
-    ) -> FinishDecision {
-        guard let captureStartedAt,
-            now.timeIntervalSince(captureStartedAt) >= minimumCapture
-        else { return .cancel }
-        return .stopAfterTail
-    }
-}
-
-enum DictationSessionError: LocalizedError {
-    case unexpectedCompletion
-
-    var errorDescription: String? {
-        L10n.text("The dictation session ended unexpectedly. Nothing was typed.")
-    }
-}
-
 /// System-wide dictation (the MacParakeet-validated surface): press the
 /// global hotkey anywhere, speak, press it again — the transcript lands in
 /// the captured original field, or stays available for explicit recovery.
@@ -66,8 +37,12 @@ final class DictationController {
         case idle
         case preparing
         case listening
+        /// The paste is in flight: a second trigger can neither cancel nor restart it.
+        case delivering
         case verified(Int)
         case dispatched(Int)
+        /// The voice detector heard no speech; the text is offered, never pasted.
+        case noSpeech
         case failed(String)
         case recovery(DictationDeliveryOutcome.Refusal)
     }
@@ -80,8 +55,9 @@ final class DictationController {
     /// Mic peak with fast attack / slow decay (same VU feel as the HUD).
     private(set) var micLevel: Float = 0
     private(set) var microphoneNotice: String?
+    private var loadingModelSessionID: UUID?
 
-    var isActive: Bool { phase == .preparing || phase == .listening }
+    var isActive: Bool { phase == .preparing || phase == .listening || phase == .delivering }
     /// The app that was frontmost when dictation started — where the text
     /// will land. The strip shows it so you never dictate "blind" (4b).
     private(set) var targetApp: String?
@@ -121,6 +97,8 @@ final class DictationController {
     private let panel = DictationPanelController()
     private let presentsPanel: Bool
     private var sessionClock: (() -> Date)?
+    @ObservationIgnored private var cancelKey: (any GlobalHotkeyRegistration)?
+    @ObservationIgnored private var speechGate: DictationSpeechGate?
 
     init(presentsPanel: Bool = true) {
         self.presentsPanel = presentsPanel
@@ -216,12 +194,14 @@ final class DictationController {
 
     func toggle(using dependencies: DictationSessionDependencies) {
         switch phase {
-        case .idle, .failed, .verified, .dispatched:
+        case .idle, .failed, .verified, .dispatched, .noSpeech:
             start(using: dependencies)
         case .preparing:
             cancel()
         case .listening:
             finishAndInsert()
+        case .delivering:
+            break
         case .recovery:
             showPanel()
         }
@@ -236,6 +216,7 @@ final class DictationController {
         // An unverified dispatch was already sent: its notice is non-modal and
         // a new dictation replaces it (never re-sending the old output).
         if case .recovery = phase { showPanel(); return }
+        guard phase != .delivering else { return }
         retryDeliveryTask?.cancel()
         retryDeliveryTask = nil
         deliveryID = nil
@@ -282,6 +263,9 @@ final class DictationController {
         let sessionID = UUID()
         activeSessionID = sessionID
         sessionClock = dependencies.now
+        armCancelKey(dependencies, sessionID: sessionID)
+        // Before the microphone opens, so the cue itself is never captured.
+        dependencies.playCue(.start)
         showPanel()
 
         let finishCapture = dependencies.beginCapture()
@@ -297,7 +281,12 @@ final class DictationController {
         measurement: DictationSessionMeasurementRecorder?
     ) async {
         var microphone: (any AudioCaptureSource)?
-        await runCapture(id: id, dependencies: dependencies, measurement: measurement, microphone: &microphone)
+        let acquisition = DictationRuntimeAcquisition(acquire: dependencies.acquireRuntime)
+        await runCapture(
+            id: id, dependencies: dependencies, measurement: measurement,
+            acquisition: acquisition, microphone: &microphone)
+        // The lease outlives catch-path native cleanup, never the session.
+        await acquisition.settle()
         // EOF can precede native teardown, and a cancelled session can overlap
         // its replacement. Retire only this source before releasing its owner.
         await microphone?.stop()
@@ -306,26 +295,20 @@ final class DictationController {
     private func runCapture(
         id: UUID, dependencies: DictationSessionDependencies,
         measurement: DictationSessionMeasurementRecorder?,
+        acquisition: DictationRuntimeAcquisition,
         microphone: inout (any AudioCaptureSource)?
     ) async {
         var localFeed: AsyncStream<AudioChunk>.Continuation?
         var pump: Task<Void, Never>?
-        var ownedRuntime: LiveTranscriptionRuntime?
-        // Keep the lease through catch-path native cleanup too. A defer inside
-        // do runs before catch, while microphone.stop() may still be pending.
-        defer { ownedRuntime?.finish() }
         do {
             let input = try await dependencies.authorizedMicrophone()
             guard activeSessionID == id else { return }
             microphone = input.source
+            self.microphone = input.source
             microphoneNotice = input.usesSystemFallback ? L10n.text(
                 "Your preferred microphone is unavailable. Using the system default for this dictation.") : nil
-            let runtime = try await dependencies.acquireRuntime()
-            measurement?.record(.runtimeReady)
-            ownedRuntime = runtime
-            try Task.checkCancellation()
-            guard activeSessionID == id else { return }
-            self.microphone = input.source
+            // Audio-first: speech during a cold load waits in the bounded relay.
+            acquisition.start()
             let readiness = makeMicrophoneReadiness(
                 id: id, dependencies: dependencies, measurement: measurement)
             defer { readiness.finish() }
@@ -335,10 +318,7 @@ final class DictationController {
             try Task.checkCancellation()
             let micStream = try await input.source.start()
             try Task.checkCancellation()
-            guard activeSessionID == id else {
-                await microphone?.stop()
-                return
-            }
+            guard activeSessionID == id else { throw CancellationError() }
             // Stream construction can precede its first hardware callback.
             // Only an admitted nonempty buffer starts the capture clock.
             measurement?.record(.microphoneReady)
@@ -347,12 +327,16 @@ final class DictationController {
             // remains safe only when every dropped chunk revokes delivery.
             let (audio, feed) = AsyncStream.makeStream(
                 of: AudioChunk.self,
-                bufferingPolicy: .bufferingNewest(128))
+                bufferingPolicy: .bufferingNewest(DictationRelayPolicy.capacity))
             localFeed = feed
             self.feed = feed
+            let gate = dependencies.makeSpeechGate()
+            speechGate = gate
             pump = startPump(
-                readiness: readiness, stream: micStream, feed: feed, sessionID: id, measurement: measurement)
+                readiness: readiness, stream: micStream, feed: feed, sessionID: id, measurement: measurement,
+                mirror: { gate?.offer($0) })
 
+            let runtime = try await awaitRuntime(acquisition, id: id, measurement: measurement)
             try await consumeCaptions(
                 from: runtime.engine.transcribe(audio, hints: dependencies.transcriptionHints()),
                 sessionID: id, measurement: measurement)
@@ -381,7 +365,7 @@ final class DictationController {
 
     /// Second hotkey press: stop the mic; the drained stream delivers.
     private func finishAndInsert() {
-        guard isActive else { return }
+        guard phase == .preparing || phase == .listening else { return }
         guard stopTask == nil else { return }
         measurement?.record(.stopRequested)
         guard DictationCapturePolicy.finishDecision(
@@ -396,6 +380,7 @@ final class DictationController {
             return
         }
         let microphone = self.microphone
+        let playCue = dependencies?.playCue
         stopTask = Task { [weak self] in
             do {
                 try await Task.sleep(for: Self.stopTail)
@@ -405,11 +390,14 @@ final class DictationController {
             guard let self, self.activeSessionID == sessionID else { return }
             self.stopIssuedSessionID = sessionID
             await microphone?.stop()
+            playCue?(.stop)
         }
     }
 
-    /// Esc in the panel: throw everything away.
+    /// Esc or the panel's cancel control: throw everything away.
     func cancel() {
+        releaseCancelKey()
+        releaseSpeechGate()
         retryDeliveryTask?.cancel()
         retryDeliveryTask = nil
         deliveryID = nil
@@ -471,6 +459,15 @@ final class DictationController {
             panel.close()
             return
         }
+        releaseCancelKey()
+        phase = .delivering
+        showPanel()
+        if let gate = speechGate, await gate.verdict() == .noSpeech {
+            guard activeSessionID == sessionID else { return }
+            presentNoSpeech(text, id: sessionID)
+            return
+        }
+        guard activeSessionID == sessionID else { return }
         measurement?.record(.deliveryStarted)
         let result = await destination.insert(text)
         measurement?.finishDelivery(result)
@@ -482,6 +479,8 @@ final class DictationController {
 
     private func completeSession(id: UUID) {
         guard activeSessionID == id else { return }
+        releaseCancelKey()
+        releaseSpeechGate()
         activeSessionID = nil
         textPolicy = .inert
         sessionClock = nil
@@ -507,42 +506,12 @@ final class DictationController {
         if autoDismiss { scheduleFeedbackDismiss(after: .seconds(6), wait: wait) }
     }
 
-    private func cancelFeedbackDismissal() {
-        feedbackID = nil
-        feedbackDismissTask?.cancel()
-        feedbackDismissTask = nil
-    }
-
-    private func scheduleFeedbackDismiss(
-        after delay: Duration,
-        wait: @escaping @MainActor (Duration) async throws -> Void
-    ) {
-        cancelFeedbackDismissal()
-        let id = UUID()
-        feedbackID = id
-        feedbackDismissTask = Task { [weak self] in
-            do {
-                try await wait(delay)
-            } catch {
-                return
-            }
-            guard let self, self.feedbackID == id, !Task.isCancelled else { return }
-            self.feedbackID = nil
-            self.feedbackDismissTask = nil
-            self.deliveryID = nil
-            self.destination = nil
-            self.dependencies = nil
-            self.phase = .idle
-            self.panel.close()
-        }
-    }
-
 }
 
 extension DictationController {
     /// Re-register the configured hotkey after either Settings value changes.
     func syncHotkey(services: AppServices) {
-        if !UserDefaults.standard.bool(forKey: Self.defaultsKey), isActive {
+        if !UserDefaults.standard.bool(forKey: Self.defaultsKey), isActive, phase != .delivering {
             cancel()
         }
         shortcut.sync(
@@ -582,6 +551,19 @@ extension DictationController {
 }
 
 private extension DictationController {
+    func awaitRuntime(
+        _ acquisition: DictationRuntimeAcquisition, id: UUID,
+        measurement: DictationSessionMeasurementRecorder?
+    ) async throws -> LiveTranscriptionRuntime {
+        loadingModelSessionID = id
+        defer { if loadingModelSessionID == id { loadingModelSessionID = nil } }
+        let runtime = try await acquisition.runtime()
+        measurement?.record(.runtimeReady)
+        try Task.checkCancellation()
+        guard activeSessionID == id else { throw CancellationError() }
+        return runtime
+    }
+
     func awaitCaptureCompletion(
         id: UUID, pump: Task<Void, Never>?, source: any AudioCaptureSource
     ) async throws {
@@ -617,7 +599,11 @@ private extension DictationController {
             feed?.finish()
             let source = microphone
             Task { await source?.stop() }
-            failSession(id: id, message: failure.message, autoDismiss: false)
+            // The relay only overflows while nothing drains it: the model is still loading.
+            let message = failure == .interrupted && isLoadingModel
+                ? L10n.text("The speech model took too long to load. Nothing was inserted. Try again in a moment.")
+                : failure.message
+            failSession(id: id, message: message, autoDismiss: false)
         })
         microphoneReadiness = readiness
         return readiness
@@ -644,10 +630,11 @@ private extension DictationController {
     func startPump(
         readiness: DictationMicrophoneReadiness, stream: AsyncThrowingStream<AudioChunk, Error>,
         feed: AsyncStream<AudioChunk>.Continuation, sessionID: UUID,
-        measurement: DictationSessionMeasurementRecorder?
+        measurement: DictationSessionMeasurementRecorder?,
+        mirror: @escaping @Sendable (AudioChunk) -> Void
     ) -> Task<Void, Never> {
         readiness.pump(
-            stream: stream, feed: feed,
+            stream: stream, feed: feed, mirror: mirror,
             onInputEnded: { [weak self] in
                 if let measurement { await measurement.record(.inputEnded) }
                 await self?.markRelayEnded(sessionID)
@@ -719,7 +706,7 @@ private extension DictationController {
 extension DictationController {
     private var hasPendingOutput: Bool {
         switch phase {
-        case .recovery, .dispatched: true
+        case .recovery, .dispatched, .noSpeech: true
         default: false
         }
     }
@@ -766,6 +753,8 @@ extension DictationController {
 
 // A session override changes text policy, never preferences or destination authority.
 extension DictationController {
+    /// Listening while the model still loads; the relay holds the speech.
+    var isLoadingModel: Bool { loadingModelSessionID != nil && loadingModelSessionID == activeSessionID }
     var textMode: DictationTextMode { textPolicy.mode }
     var canChangeTextMode: Bool {
         isActive && activeSessionID != nil && !textPolicySealed && stopTask == nil
@@ -776,4 +765,73 @@ extension DictationController {
         guard canChangeTextMode else { return }
         textPolicy.mode = mode
     }
+}
+
+// Session-owned auxiliaries: the Escape claim and feedback dismissal.
+private extension DictationController {
+    func armCancelKey(_ dependencies: DictationSessionDependencies, sessionID: UUID) {
+        releaseCancelKey()
+        cancelKey = dependencies.registerCancelKey { [weak self] in
+            // Leave the Carbon callback before its own registration is removed.
+            Task { @MainActor [weak self] in
+                guard let self, self.activeSessionID == sessionID,
+                      self.phase == .preparing || self.phase == .listening else { return }
+                self.cancel()
+            }
+        }
+    }
+
+    func releaseCancelKey() {
+        cancelKey?.unregister()
+        cancelKey = nil
+    }
+
+    func releaseSpeechGate() {
+        speechGate?.cancel()
+        speechGate = nil
+    }
+
+    /// No paste: the text stays reachable for Copy in case speech was missed.
+    func presentNoSpeech(_ text: String, id: UUID) {
+        measurement?.finish(.noSpeech)
+        completeSession(id: id)
+        deliveryID = id
+        destination = nil
+        cancelFeedbackDismissal()
+        copyStatus = .idle
+        recoveryText = text
+        phase = .noSpeech
+        showPanel()
+    }
+
+    func cancelFeedbackDismissal() {
+        feedbackID = nil
+        feedbackDismissTask?.cancel()
+        feedbackDismissTask = nil
+    }
+
+    func scheduleFeedbackDismiss(
+        after delay: Duration,
+        wait: @escaping @MainActor (Duration) async throws -> Void
+    ) {
+        cancelFeedbackDismissal()
+        let id = UUID()
+        feedbackID = id
+        feedbackDismissTask = Task { [weak self] in
+            do {
+                try await wait(delay)
+            } catch {
+                return
+            }
+            guard let self, self.feedbackID == id, !Task.isCancelled else { return }
+            self.feedbackID = nil
+            self.feedbackDismissTask = nil
+            self.deliveryID = nil
+            self.destination = nil
+            self.dependencies = nil
+            self.phase = .idle
+            self.panel.close()
+        }
+    }
+
 }

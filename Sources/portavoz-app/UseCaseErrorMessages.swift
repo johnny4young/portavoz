@@ -8,6 +8,18 @@ import Foundation
 /// and falls back to `localizedDescription` for everything unmapped.
 enum UseCaseErrorMessages {
     static func describe(_ error: any Error) -> String {
+        audioCompressionMessage(error) ?? describeOtherUseCase(error)
+    }
+
+    private static func audioCompressionMessage(_ error: any Error) -> String? {
+        switch error {
+        case MeetingAudioCompressionError.unavailable:
+            L10n.text("Complete the audio import before compressing it.")
+        default: nil
+        }
+    }
+
+    private static func describeOtherUseCase(_ error: any Error) -> String {
         switch error {
         case ManageLocalVoiceIdentityError.unsupportedEnrollmentSource:
             L10n.text("This voice enrollment source is unavailable.")

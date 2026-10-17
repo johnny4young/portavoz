@@ -928,7 +928,10 @@ already identity-remapped document from a private IntegrationsKit app adapter.
 That adapter reads, decodes, and remaps on a utility task; ApplicationKit does
 not add an IntegrationsKit dependency. The boundary clears every incoming
 machine-local audio path and accepts only one canonical `system` and/or
-`microphone` attachment with a normalized `m4a`, `caf`, or `wav` extension.
+`microphone` attachment with a normalized extension in the shared closed
+`MeetingAudioLayout.channelExtensions` catalog. It includes the original
+m4a/caf/wav formats and selected external mp3/aac/aiff/aif/m4b audio so a bundle
+can preserve the same bytes playback and Refine resolve.
 An app filesystem adapter stages those attachments only as
 `Audio/<fresh-meeting-id>/<channel>.<extension>` and removes a partial
 directory if writing fails.
@@ -966,10 +969,10 @@ aggregate through an `ExportMeetingBundleStore` port. `MeetingStore` implements
 that port with one GRDB read of the live meeting, cast, ordered transcript,
 newest immutable summary across recipes, notes, and Companion cards. The use
 case captures the relative audio directory, clears it before document
-assembly, optionally requests only unique validated system/microphone m4a/caf/wav
-attachments, and sends the result to an external-document port. It does not
-import IntegrationsKit or receive SwiftUI, AppKit, absolute paths, or localized
-copy.
+assembly, optionally requests only unique validated system/microphone attachments
+from that shared channel-extension catalog, and sends the result to an external-document
+port. It does not import IntegrationsKit or receive SwiftUI, AppKit, absolute paths,
+or localized copy.
 
 Private app adapters retain `RecordingsLocation` fallback resolution,
 `MeetingAudioLayout` preference order, best-effort omission of missing or
@@ -10410,6 +10413,22 @@ reclaiming remains impossible before expiry, and a reclaim is a new attempt
 against the same bounded retry budget. A tombstoned meeting's lease wakes
 nobody. Two deterministic tests fail against the previous implementation and
 pass against this one.
+
+**October 13, 2026 clarification:** a retry or lease deadline that crosses
+between the final empty claim and scheduling read must remain discoverable.
+Scheduling now takes the earliest non-null deadline and clamps it to the read
+timestamp. Unscheduled pending work, including intentional suspension, stays
+signal-driven; an exhausted pending attempt is excluded, while the final
+running lease still wakes to publish exhaustion.
+
+An unavailable SQLite writer can make a claim fail without changing that
+deadline. ApplicationKit therefore owns one pure failed-drain wake policy:
+preserve a healthy deadline, but after a failed claim/drain use the later of
+the persisted date and five seconds from the scheduling decision. Both the
+post-capture and audio-import owners apply it. No persisted date creates no
+timer, so this does not add idle polling, change owner/revision fences, or
+reinterpret cancellation. Explicit-timestamp regressions and real temporary
+SQLite contention cover recovery, backoff and successful claim after release.
 
 ## D297 — Never migrate the recordings root over a live capture (Aug 2026)
 
@@ -19866,6 +19885,15 @@ D540 narrows the unattended selector claim: this permission-owned native case
 remains an explicit failing gate, not a hosted-catalog success.
 
 
+**October 13, 2026 clarification:** import admission and the channel-lookup
+catalog are one contract. Library selection and drop offer only
+`MeetingAudioLayout.channelExtensions` through ApplicationKit's
+`AudioImportFormats`, and StorageKit admission rejects any other extension,
+so an import that transcribes is always reachable by playback, Refine and
+export. Compression accepts only lossless channels (CAF, WAV, AIFF, AIF):
+re-encoding imported MP3, AAC or M4B would lose quality, delete the original
+and free little space.
+
 ## D523 — UI fixtures own explicit cross-process scratch, not runner containers
 
 A real seeded launch blocked its main thread while creating synthetic audio.
@@ -21104,3 +21132,188 @@ contract identified that mismatch. Present a window-modal sheet asynchronously
 from the requesting Settings window, preserving explicit modal input ownership
 without a blocking nested event loop or weakening the keyboard guard. Missing
 window admission reports a distinct actionable error and retires chooser state.
+
+## D559 — Keep latest speech SDK changes behind explicit token authority
+
+**Date:** 2026-10-14
+
+**Context.** The native sliding-window decoder can retire the previous window's
+last word, but its legacy public deltas omit that retirement. End-time filters,
+unfiltered passthrough and start-frontier occurrence ownership each failed a
+different declared shape. Stock latest SDK changes alone preserved the repeated
+public-cell scores and the adapter's extra words. Confidence confirmation cannot
+establish an immutable prefix.
+
+**Decision.** Keep the current curated models, engine defaults, live window and
+serial batch policy. Require the immutable FluidAudio fork revision
+`24922d65f33ca70fdc041e36598df7ef51786274`, based on upstream
+`224de0fb3c304b41bbae24e85e1801900865ff3e`. This explicit exception to D516's
+release-only admission retains its review discipline: no floating branch, range
+or unrelated package resolution can move the speech engine. Swift 6.2 dependency
+traits retain Diarizer plus ASR/VAD and exclude unused TTS resources and NeMo
+linkage; they do not raise the macOS 14.4/iOS 17 deployment floors. The newer
+batch seam timing and relevant SDK fixes remain available without selecting any
+new model or changing decoder decisions.
+
+Parakeet loads the exact ModelStore-verified directory through `AsrModels.loadLocal`,
+not the vendor download-capable loader. Missing artifacts fail locally; an optional
+CTC head outside the curated graph is rejected before loading. Synchronous CoreML
+loading explicitly runs off the caller's actor. Models and compute units are unchanged.
+
+
+Use an opt-in throwing raw-token stream with job identity, contiguous ordinal,
+previous/retained/stable counts, sample regions and explicit terminal/failure
+semantics. The producer uses the existing decoder's retirement boundary. Strict
+subscriptions are single-use and cannot reopen through legacy reset or attach
+after audio was accepted. Legacy display text/vocabulary behavior stays separate.
+The consumer validates lineage before mutation, emits each stable token once and
+replaces or clears a transient preview in both dictation and meetings. Invalid
+lineage, producer failure or EOF without terminal cannot promote pending text;
+cancellation cannot publish buffered work. Preserve native confidence diagnostics
+separately and do not count terminal control metadata as another inference.
+
+**Validation boundary.** Producer and real-consumer characterization tests are
+necessary, not model qualification. Require matched public-audio/native-final
+parity, live/batch diarization, latency and process-memory evidence, final strict
+Swift/lint/hygiene, selected native UI and exact-head hosted checks before claiming
+delivery. Retain native ES/mixed errors, silence hallucinations and deployment-
+floor field limits. No aggregate WER improvement certifies replay-free delivery,
+no preview timestamp certifies insertion latency, and no local gate certifies a
+merge/release. Gap T35 owns temporary-fork maintenance and later upstream review.
+
+## Separate UI readiness sampling cadence from acceptance duration
+
+**Context.** Native accessibility attribute reads consume elapsed time as well as
+transport work. Waiting the full requested stability duration between successive
+samples can overshoot that duration even when both frames already match. A source
+ratchet tied the probe cadence to one implementation rather than the acceptance
+proof. That cadence was an optimization, not authority to shorten the requested
+stable interval or ignore a risk owner.
+
+**Decision.** The general stable-frame helper samples at
+`min(originalProbeInterval, max(0.05, stableInterval / 2))`. Its default requested
+stability duration remains 0.25 seconds. The same live hittability guard runs
+before every frame read; absence, occlusion, empty geometry and a changed frame
+reset the candidate as before. Acceptance still compares elapsed duration with
+`stableInterval`, never with the shorter probe interval. The run loop services
+sources until each actual probe boundary, and the original timeout remains in
+force. Source contracts preserve those independent invariants, positive bounded
+cadence, the default duration and the absence of experimental mode overrides.
+
+Related read-only assertions may share one fresh observation and keep their exact
+content and presence/absence oracles. A not-ready observation uses the original
+live fallbacks, with the initial read charged against the original first deadline.
+No observation is reused across an input action or supplies its geometry or
+authority. A resolved target snapshot proves presence and selection atomically;
+an indeterminate target throws before following field input, and the actual
+missing-target path is exercised without dispatching input. More-popover readiness
+belongs to the requested live item's hittability, which already proves its parent
+exists; an ignored parent wait is not a separate risk owner. The immediately
+observed stronger readiness proof may also serve a read-only availability check.
+
+**Consequences.** Some latency boundaries can still require another fresh sample;
+query count alone is not a performance claim. Changed readiness code requires
+fresh strict validation, native safety evidence and complete bilingual runtime
+evidence under the unchanged case catalogue and total, percentile and individual
+limits. Historical receipts and rejected experiments remain historical, and no
+focused gain substitutes for the complete local gate. Production input policy,
+model behavior, privacy grants, cleanup accounting and release authority do not
+change.
+
+## D560 — Read one character on each side of the caret to space dictated text
+
+Dictated output is trimmed, so text dictated after "Hola." landed as "Hola.Mundo",
+and text dictated in front of a word glued to it ("bigworld"). Spacing it
+correctly needs the characters around the selection, which widens the readback
+contract from "only the inserted span". The widening is kept minimal: at most
+two UTF-16 units (one character, surrogate pair or combining sequence)
+immediately before the selection start and two immediately after its end,
+requested only after the field is revalidated as the captured, non-secure
+target, and never retained, logged or stored. A field edge requests nothing on
+that side. A trailing space is added only when a letter or digit follows.
+
+Only a separator is added. Capitalization is deliberately unchanged: lowering
+an initial capital mid-sentence would corrupt proper nouns ("Juan", "Bogotá")
+without a model of names, so it needs its own decision and evidence. Spacing
+applies to Literal and Clean alike because it changes no dictated word. The
+joined output is borrowed, posted and verified as one exact string, so readback
+still compares code units. Applications without a pinnable field have no
+readback and keep the previous unjoined output rather than guessing.
+
+## D561 — Capture dictation audio while its model loads
+
+Dictation awaited runtime acquisition before opening the microphone. Speech
+said while the panel read Preparing was lost, and a push-to-talk release during
+a cold load cancelled the session because no first frame existed yet.
+
+Open the microphone in parallel with acquisition, after permission. The relay
+that already carries PCM to the engine is created before the engine reads it,
+so it doubles as the pre-roll buffer; a second buffer would add a handoff race
+between the detached pump and the main actor without adding capacity. Bound it
+by queued audio time, 30 seconds, computed from the yield's remaining capacity
+and the chunk duration, with a 16,384-chunk backstop sized so 128-frame buffers
+at 48 kHz still reach the time bound first. The previous 128-chunk
+bound meant about 11 seconds on a 48 kHz input and about 33 seconds on a 16 kHz
+headset, too short for a slow cold load on some devices and inconsistent across
+them. Overflow still revokes delivery (D547). The relay is never persisted.
+
+The first admitted PCM now means Listening, replacing D543's rule that a cold
+model is Preparing; the panel says the model is still loading. The minimum
+capture and stop tail keep their first-frame clocks. A session-owned acquisition
+either adopts or finishes its lease on every path, including a lease resolved
+after cancellation, and capture admission stays held until the load returns.
+
+Start/stop sounds and loading the model at launch are opt-in. Audio-first
+capture already prevents loss, so a launch pre-warm only shortens the first
+dictation and would otherwise keep the model resident after every launch for
+people who never dictate. It runs only for the Parakeet route, the Balanced
+profile, without pressure or Low Power Mode, for an installed verified model,
+through governor admission, and it ends its lease at once so idle and pressure
+release still apply. It never pins weights. The start sound plays on the
+accepted trigger, before the microphone opens, so it is never captured; the stop
+sound marks the actual stop and is silent on cancel. A relay that overflows
+while the model still loads reports the slow load, not a capture interruption.
+
+## D562 — Withhold silent dictations only on a complete voice-activity pass
+
+The live engine can propose text for silence and tones (16 of 64 non-speech
+corpus attempts), and the lexical check before paste cannot tell them apart from
+speech. Run the verified Silero adapter as an opt-in speech gate over a copy of
+the PCM the dictation relay admitted, on CPU and off the capture callback, with
+a bounded queue the pump never waits on. The first frame at Silero's reference
+probability of 0.5, or one already triggered, decides that the session had
+speech and stops the analysis.
+
+Withhold the paste only when the pass is complete and error-free and never saw
+speech. Every other state is undetermined and keeps the original delivery: the
+model is missing or failed, a chunk was dropped, the session was cancelled, or
+the verdict did not arrive within 300 ms of entering delivery. A doubtful gate
+must never lose a real dictation. A withheld dictation is not discarded: the
+panel offers its text for Copy, because a false negative on quiet speech would
+otherwise be unrecoverable. It is never pasted later.
+
+The gate is off by default. Enabling it is the consent to download the pinned
+~1 MB bundle; nothing else downloads or loads it, and the disposable test
+composition never downloads it. The 0.5 threshold is deliberately below
+FluidAudio's 0.85 segmentation default, because withholding quiet real speech
+costs more than letting noise through; it is a model probability, not an added
+RMS rule. Meetings, autofinish on silence and the
+default stay unchanged until the corpus and field evidence say otherwise.
+
+## D563 — Turn the dictation speech gate on, downloading it with dictation
+
+The D562 gate ran over all 480 public synthetic cells (Release, threshold 0.5):
+it withheld 31 of 32 non-speech cells, missed none of the 448 speech cells (the
+quietest profile still peaked at 0.93), and cost about 0.8 ms of CPU per second
+of audio. The one non-speech cell it let through, a soft 440 Hz tone, fails
+toward pasting as before. A wrong withhold loses nothing, because the text
+stays offered for Copy.
+
+The gate is now on unless the user turned it off. Its pinned ~1 MB bundle still
+downloads only with consent: turning on "Dictate anywhere" installs it, and a
+user who already had dictation on sees "not installed yet" with a one-click
+Download in Settings. Nothing downloads in the background, and while the
+detector is missing the gate stays undetermined and pastes as before. The
+corpus is synthetic speech, so a real-microphone false-negative rate is still
+unmeasured.
+

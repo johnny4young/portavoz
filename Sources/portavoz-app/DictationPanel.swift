@@ -56,7 +56,7 @@ final class DictationPanelController {
 private enum DictationPanelLayout {
     static func height(for phase: DictationController.Phase) -> CGFloat {
         switch phase {
-        case .recovery, .dispatched: 288
+        case .recovery, .dispatched, .noSpeech: 288
         default: 96
         }
     }
@@ -75,6 +75,8 @@ private struct DictationStripView: View {
                 DictationRecoveryView(controller: controller, failure: failure)
             } else if case .verified(let words) = controller.phase {
                 verifiedDeliveryView(words)
+            } else if controller.phase == .noSpeech {
+                DictationNoSpeechView(controller: controller)
             } else if case .dispatched = controller.phase {
                 DictationUnverifiedDeliveryView(controller: controller)
             } else {
@@ -101,7 +103,7 @@ private struct DictationStripView: View {
                 if let target = controller.targetApp, controller.isActive {
                     targetChip(target)
                 }
-                if controller.isActive {
+                if controller.isActive, controller.phase != .delivering {
                     DictationTextModePicker(
                         identifier: "dictation-panel-text-mode", label: Text("Text mode"), selection: Binding(
                         get: { controller.textMode }, set: { controller.selectTextMode($0) }))
@@ -122,6 +124,8 @@ private struct DictationStripView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                // A posted paste cannot be recalled; cancelling would only hide its outcome.
+                .disabled(controller.phase == .delivering)
                 .accessibilityLabel(L10n.text("Cancel dictation"))
                 .accessibilityIdentifier("dictation-panel-cancel")
             }
@@ -141,12 +145,16 @@ private struct DictationStripView: View {
             } else {
                 // Confirmed words are settled; the tail is still volatile, so
                 // it reads gray — it firms up as the engine commits it.
-                (Text(controller.confirmedText)
+                let visible = DictationPanelTranscript.visible(
+                    confirmed: controller.confirmedText, partial: controller.partialText)
+                (Text(visible.confirmed)
                     .foregroundStyle(.primary)
-                    + Text(controller.partialText.isEmpty ? "" : " ")
-                    + Text(controller.partialText)
+                    + Text(visible.partial)
                     .foregroundStyle(.tertiary))
                     .accessibilityIdentifier("dictation-panel-transcript")
+                    // The strip elides earlier words visually; VoiceOver keeps the whole dictation.
+                    .accessibilityLabel(DictationAssembler.text(
+                        confirmed: controller.confirmedText, partial: controller.partialText))
                     .font(.body)
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -221,7 +229,9 @@ private struct DictationStripView: View {
     }
 
     private var emptyCaptionHint: String {
-        controller.phase == .preparing ? L10n.text("Preparing microphone…") : L10n.text("Listening…")
+        if controller.phase == .preparing { return L10n.text("Preparing microphone…") }
+        return controller.isLoadingModel
+            ? L10n.text("Listening… the speech model is still loading.") : L10n.text("Listening…")
     }
 
     private var title: String {
@@ -230,9 +240,11 @@ private struct DictationStripView: View {
             return L10n.text("Preparing dictation…")
         case .listening:
             return L10n.text("Dictating")
+        case .delivering:
+            return L10n.text("Inserting…")
         case .failed(let message):
             return message
-        case .idle, .verified, .dispatched, .recovery:
+        case .idle, .verified, .dispatched, .noSpeech, .recovery:
             return ""
         }
     }

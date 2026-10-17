@@ -6,24 +6,53 @@ import XCTest
 @MainActor
 class PortavozUITestCase: XCTestCase {
     private let storageOwnerID = UUID()
+    private var runnerActivity: (any NSObjectProtocol)?
+
+    var hasActiveUITestRunnerActivity: Bool { runnerActivity != nil }
 
     override func setUp() async throws {
         try await super.setUp()
         try UITestStorage.begin(ownerID: storageOwnerID)
+        // Classify only this runner's owned work; this neither grants input
+        // authority nor prevents the user's Mac from sleeping on idle.
+        runnerActivity = ProcessInfo.processInfo.beginActivity(
+            options: .userInitiatedAllowingIdleSystemSleep,
+            reason: "Running an owned Portavoz UI journey")
         addUIInterruptionMonitor(withDescription: "Stop without answering an unexpected interruption") { _ in
             self.stopForUnexpectedInterruption(reason: "interruption")
         }
     }
 
     override func tearDown() async throws {
+        defer {
+            if let runnerActivity {
+                ProcessInfo.processInfo.endActivity(runnerActivity)
+                self.runnerActivity = nil
+            }
+        }
         // A named child activity makes owned app exit and scratch removal
         // visible inside Tear Down. Runtime attribution then retains that work
         // instead of treating an apparently empty teardown as harness noise.
         let cleanup = XCTContext.runActivity(named: "Finish owned UI test cleanup") { _ in
-            Result { try UITestStorage.end(ownerID: storageOwnerID) }
+            Result { try UITestStorage.end(ownerID: storageOwnerID, allowOwnedExit: hasHealthyTestRun) }
         }
         try await super.tearDown()
         _ = try cleanup.get()
+    }
+
+    private var hasHealthyTestRun: Bool {
+        testRun.map { run in
+            run.failureCount == 0 && run.unexpectedExceptionCount == 0
+        } == true
+    }
+
+    /// Final disposal only. Recovery/crash exercises continue to call the
+    /// official XCTest termination API at their original journey boundary.
+    @discardableResult
+    func finishUITestApplication(_ application: XCUIApplication) -> UITestStorage.FinishOutcome {
+        let outcome = UITestStorage.finish(application, allowOwnedExit: hasHealthyTestRun)
+        XCTAssertNotEqual(outcome, .identityLost, "Final cleanup lost its captured launch identity")
+        return outcome
     }
 
     var keyboardReceiverBundleIdentifier: String { XCUIApplication.portavozUITestHostBundleIdentifier }

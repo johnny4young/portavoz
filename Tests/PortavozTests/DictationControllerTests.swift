@@ -255,7 +255,8 @@ final class DictationControllerTests: XCTestCase {
 
     func testRelayCapacityBoundaryNeverDeliversAfterDiscardingAudio() async {
         for text in ["No pagues 0,5 todavía", "Don’t pay 0.5 yet"] {
-            for pendingChunks in [127, 128, 129] {
+            let capacity = DictationRelayPolicy.capacity
+            for pendingChunks in [capacity - 1, capacity, capacity + 1] {
                 let consumer = PreparationGate()
                 let harness = DictationControllerHarness(text: text, consumerGate: consumer)
                 defer {
@@ -285,10 +286,10 @@ final class DictationControllerTests: XCTestCase {
                 consumer.release()
                 let finished = await awaitEventually { harness.finishes == 1 }
                 XCTAssertTrue(finished)
-                if pendingChunks <= 128 {
+                if pendingChunks <= capacity {
                     XCTAssertEqual(harness.insertions, [text], "The exact capacity remains usable")
                 } else {
-                    XCTAssertTrue(harness.insertions.isEmpty, "Chunk 129 must not silently evict prior audio")
+                    XCTAssertTrue(harness.insertions.isEmpty, "An evicting chunk must not silently drop prior audio")
                     assertInterrupted(harness)
                     guard case .failed = harness.controller.phase else {
                         XCTFail("Overflow needs visible failure, not a successfully pasted suffix")
@@ -398,7 +399,7 @@ final class DictationControllerTests: XCTestCase {
         XCTAssertTrue(harness.insertions.isEmpty)
     }
 
-    func testCancelDuringModelPreparationCannotStartMicrophoneLater() async {
+    func testCancelDuringModelPreparationStopsMicrophoneAndDiscardsAudio() async {
         let harness = DictationControllerHarness(text: "Late text must not appear")
         let gate = PreparationGate()
         var dependencies = harness.dependencies
@@ -408,14 +409,14 @@ final class DictationControllerTests: XCTestCase {
             return try await load()
         }
         harness.controller.toggle(using: dependencies)
-        let reached8 = await awaitEventually { gate.started }
-        XCTAssertTrue(reached8)
+        let listening = await awaitEventually { gate.started && harness.controller.phase == .listening }
+        XCTAssertTrue(listening, "Capture starts while the model is still loading")
         harness.controller.cancel()
         gate.release()
-        let reached9 = await awaitEventually { harness.finishes == 1 }
-        XCTAssertTrue(reached9)
-        let starts = await harness.microphone.starts
-        XCTAssertEqual(starts, 0)
+        let finished = await awaitEventually { harness.finishes == 1 }
+        XCTAssertTrue(finished, "A lease that resolves after cancel is still finished")
+        let stops = await harness.microphone.stops
+        XCTAssertGreaterThan(stops, 0)
         XCTAssertTrue(harness.insertions.isEmpty)
         XCTAssertEqual(harness.controller.phase, .idle)
     }
@@ -573,6 +574,7 @@ actor ControlledDictationMicrophone: CaptureReportingSource {
     nonisolated let channel = AudioChannel.microphone
     private nonisolated let health = OSAllocatedUnfairLock(initialState: Health())
     private(set) var starts = 0
+    private(set) var stops = 0
     private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?
     private var failOnStop = false
     private var stopDrain: (@Sendable () async -> Void)?
@@ -601,6 +603,7 @@ actor ControlledDictationMicrophone: CaptureReportingSource {
     }
 
     func stop() async {
+        stops += 1
         if failOnStop {
             health.withLock { $0.failure = .sourceFailed }
             failOnStop = false

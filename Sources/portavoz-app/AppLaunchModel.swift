@@ -200,6 +200,7 @@ final class AppLaunchModel {
         }
         services.dictation.syncHotkey(services: services)
         services.dictation.syncMousePTT(services: services)
+        services.prewarmDictationIfConfigured()
 
         // The AppKit delegate may already have observed application launch
         // while the database was unavailable. Re-publish, without consuming,

@@ -591,6 +591,30 @@ One immutable structural projection precomputes row contexts and hidden evidence
 for each observed detail snapshot, avoiding transcript-wide work per rendered
 row.
 
+`MeetingDetailModel` derives an immutable `MeetingDetailTranscriptPresentation`
+on every core delivery and whenever its chapter-title set changes. It retains
+the exact existing composed reading and accepted structural projection across
+unrelated summary, privacy, notes, and playback updates. A failed core read
+keeps the healthy pair; a missing core clears it. Matching core and presentation
+publish together on the main actor without suspension. Rendering, citation
+focus, and playback seeks reuse the same current reading. Same-revision row or
+refinement changes still rebuild; revision identifiers are not cache keys.
+Original composition failure falls back to accepted evidence, and an unedited
+composed reading still has distinct lineage. `transcriptReadings` composes that
+accepted reading once for both the fallback and the structural projection. No persistent or process-global
+cache is introduced.
+
+Metadata eligibility consumes this same current reading rather than rebuilding
+it. Only an actual eligibility check maps canonical current rows through the
+shared ApplicationKit generation-segment mapping and extracts chapter starts;
+core and chapter-title deliveries add no eager generation work. Displayed
+chapter markers are not a substitute: accepted fallback or overlapping split
+rows can have a different extraction order before the reading sorts its rows.
+Raw/refined material, correction fallback and generation ordering remain exact;
+title-only changes do not alter eligibility. Requests still use the current
+review and the existing one-shot, freshness, cancellation and request-identity
+rules.
+
 D407 makes correction presentation a scene-flow invariant rather than a
 transcript-viewport side effect. Activating a visible correction accessory
 captures its text context, structural context, exact accepted reading, and base
@@ -862,7 +886,8 @@ explicit meeting and dictation preferences may instead choose Apple Speech on
 macOS 26 with a fixed en/es language and an installed equivalent OS asset.
 The Apple route is asynchronous and therefore never claims a resident handle
 before meeting capture; it hot-attaches and leaves earlier audio for durable
-Parakeet recovery. Dictation resolves the engine before opening the microphone.
+Parakeet recovery. Dictation requests the engine as it opens the microphone and
+holds earlier PCM in its bounded relay (D561).
 Post-capture and batch callers keep the concrete Parakeet lease. Type erasure
 does not move Apple platform types into ApplicationKit or Core.
 An already-cancelled borrower is rejected before the shared model-load task or
@@ -2053,7 +2078,7 @@ the microphone only around merged transcript-confirmed local turns. The toggle
 restores the original mix without rewriting audio; mic-only recordings never
 receive channel attenuation, and clip export follows the selected mix.
 Compression uses an injected codec
-port and treats every raw channel as one failure-safe batch: an existing AAC
+port and treats every lossless (CAF/WAV/AIFF/AIF) channel as one failure-safe batch: an existing AAC
 output fails closed, all generated files must verify before any original is
 removed, and failures or cancellation remove only generated work. Clip export
 re-resolves current files after compression. The private app adapter retains
@@ -2063,6 +2088,12 @@ state, player reconstruction, and typed export effects. Its playback task is
 keyed to the audio directory rather than review revisions, so cancellation by
 independent initial section updates cannot consume the only attempt. SwiftUI
 retains only transport controls, drawing, and the native save panel.
+After preparation publishes the player and waveform, that same view-owned task
+delivers pending seeks before awaiting the coordinator's explicit optional
+compression-permission refresh. Cancellation or invalidation prevents a late
+refresh from enabling compression or resurrecting an invalidated session.
+The model's read-only skill-preview request lives in a focused extension and
+uses the existing explicit action-error mutation on failure.
 
 Both `AudioClipExporter` overloads and `AudioTranscoder` use one internal
 `AudioExportSession` compatibility bridge. The native async path propagates its
@@ -2135,7 +2166,9 @@ best-effort policy. Library mutation errors render outside the selectable List a
 dismissed or another mutation starts.
 
 The picker admits multiple audio files; drop admits every matching audio URL,
-not only the first. Mixed/multiple meeting bundles reject without partial
+not only the first. Both offer only the `AudioImportFormats` catalog that
+playback resolves, and admission rejects any other format with a localized
+message before anything is queued. Mixed/multiple meeting bundles reject without partial
 admission. Audio selection opens the import queue rather than waiting for ASR
 or stealing navigation on completion. The queue projects twenty rows at a time,
 puts unfinished work first, excludes trash, uses stable meeting identifiers,
@@ -2339,9 +2372,9 @@ requests Spotlight reconciliation only after success, and returns the fresh ID;
 Library and app-delegate callers preserve their existing navigation order.
 The private document adapter reads, decodes, and remaps through IntegrationsKit
 on a detached utility task. Before files are created, ApplicationKit accepts
-only unique canonical system/microphone attachments and m4a/caf/wav
-extensions, clears any incoming machine-local directory, and coordinates a
-staged audio directory with one full Store commit. The private file adapter
+only unique canonical system/microphone attachments and the closed extensions
+in `MeetingAudioLayout.channelExtensions`, clears any incoming machine-local
+directory, and coordinates a staged audio directory with one full Store commit. The private file adapter
 constructs only `Audio/<fresh-id>/<channel>.<extension>`, cleans partial writes,
 and compensates a persistence failure without masking it. No interactive UI
 control or localized copy changed (D51).
@@ -2352,7 +2385,7 @@ meeting ID and audio opt-in, then maps returned bytes to its existing
 `ExportDocument`. The use case owns a read-consistent aggregate, clears the
 machine-local path, and assembles a format-neutral document. Private app
 adapters resolve the configured/fallback recordings root, load only available
-system/microphone m4a/caf/wav channels, and map to IntegrationsKit format v1.
+system/microphone channels in that same extension catalog, and map to IntegrationsKit format v1.
 Complete audio reads and JSON/base64 encoding run in detached utility tasks.
 The native file exporter, title-based filename, UTI, dismissal state, and
 localized failure alert are unchanged (D52).
@@ -2776,21 +2809,25 @@ unchanged; these new choices are not implicitly exported or imported.
 
 **Microphone preparation (D543).** Dictation resolves microphone permission
 through the existing PlatformKit client before constructing a capture source or
-loading a model. A pending permission or cold model is **Preparing**, never
-**Listening**. Cancellation fences a late permission result. The shared
+loading a model. A pending permission or an unopened microphone is
+**Preparing**; a cold model is not (D561). Cancellation fences a late permission result. The shared
 `MicrophoneInputSelection` reads the existing Audio preference for both meeting
 and dictation composition; an unavailable preferred UID falls back for that
 capture only, with a visible dictation notice, and does not rewrite the saved
 preference. Raw capture and the platform deployment floor are unchanged.
 
-After runtime acquisition, a session-owned five-second first-buffer deadline
-starts before microphone warm-up and stream opening. `DictationMicrophoneReadiness`
+Once permission is granted, runtime acquisition starts and a session-owned
+five-second first-buffer deadline starts before microphone warm-up and stream
+opening. `DictationMicrophoneReadiness`
 validates and meters PCM outside the render callback. Empty buffers neither
 start the capture clock nor cancel the deadline; finite nonempty microphone PCM,
 including silence, does both. Invalid samples, channel or sample rate revoke
 this session before the engine receives the invalid chunk. The tap/hold gesture
 clock remains independent; the 0.75-second minimum begins at the first admitted
 buffer, not source construction, permission, model loading or stream opening.
+The pump stamps that buffer's arrival before its main-actor hop and admission is
+back-dated by the hop delay, so a main-actor stall cannot shorten the capture
+into a tap; a process-wide pause that also delays the pump is not corrected.
 An input stream that ends or throws before its first valid PCM is also a
 recoverable no-audio failure immediately, rather than an apparently successful
 empty dictation while the startup deadline is still pending.
@@ -2802,6 +2839,58 @@ during either state. Native operations are not forcibly interrupted: cancellatio
 requests source Stop and fences future effects, while the model lease remains
 owned until the actual native cleanup returns. The first-buffer deadline does
 not claim to time out model loading or certify device hot-plug behavior.
+
+**Audio-first cold start (D561).** After permission, the controller starts
+runtime acquisition and opens the microphone in parallel. The relay is created
+before the engine reads it, so speech captured during a cold load queues there
+and nothing else buffers it. `DictationRelayPolicy` bounds queued audio time at
+30 seconds (queued chunks × chunk duration from the yield's remaining
+capacity), with a 4,096-chunk backstop; either bound revokes delivery through
+the D547 interrupted path. The first admitted PCM makes the phase
+**Listening** while `isLoadingModel` adds a "speech model is still loading"
+hint. Stop, hold-release and the 0.75-second minimum keep their first-frame
+clocks, so a release during the load stops after the tail and the buffered audio
+is transcribed once the runtime arrives. Cancel discards the relay.
+`DictationRuntimeAcquisition` owns the load: the session adopts its lease or
+finishes it, including one that resolves after cancellation, and capture
+admission stays held until any in-flight load returns. Measurement point names
+are unchanged; `microphoneReady` can now precede `runtimeReady`.
+
+Two opt-in settings ride on the same session. Start/stop sounds
+(`dictationSoundCues`, `settings-dictation-sounds`) play macOS system sounds
+through `DictationSessionDependencies.playCue`: start when the trigger is
+accepted, before the microphone opens (so it is never recorded), and stop after
+the tail when the microphone actually closes; cancel and failure play no stop
+sound. If the 30-second relay overflows while the model is still loading, the
+failure says the model took too long to load. Loading the model at launch (`dictationPrewarm`,
+`settings-dictation-prewarm`) runs when the hotkey registers at launch and when
+dictation or the setting is turned on. `DictationPrewarmPolicy` requires the
+Parakeet route, the Balanced profile, no memory/thermal pressure, no Low Power
+Mode and the normal composition; the toggle is disabled in Lightweight. It warms
+only a verified installed model (never downloads), passes
+`admitModelRuntimeLoad(.liveSpeech)`, then ends its lease at once, so the
+600-second idle release and pressure release still apply.
+
+**Speech gate (D562, D563).** "Skip dictations without speech"
+(`dictationSpeechGate`, `settings-dictation-speech-gate`) is on unless the user
+turned it off (`DictationSpeechGate.isEnabled(in:)`). Turning on "Dictate
+anywhere" or the gate installs the pinned ~1 MB Silero bundle through
+`modelLifecycle.install` with progress; a missing detector shows Download
+(`-install`) and a failed one Retry (`settings-dictation-speech-gate-status`,
+`-retry`). Nothing downloads otherwise, and a missing detector pastes as
+before. When on, each session's `DictationSpeechGate` receives a copy of
+every PCM chunk the relay admitted, through a bounded queue the capture pump
+never waits on, and runs `SileroVoiceActivityDetector` on CPU off the callback.
+The first frame with speech probability ≥ 0.5 (Silero's reference, below
+FluidAudio's 0.85 segmentation default) or a triggered state decides `speech`
+and stops the analysis. Delivery
+enters `.delivering`, then asks for the verdict for at most 300 ms. Only a
+complete, error-free pass without speech withholds the paste: the panel shows
+"No speech detected — nothing was inserted" with the text, Copy and Discard
+(`dictation-no-speech-*`), and measurement records `noSpeech`. A missing or
+failing model, a dropped chunk, cancellation or a late verdict is
+`undetermined` and pastes exactly as before. The notice is non-modal; the next
+trigger starts a new dictation.
 
 **Opt-in controller phase measurements.** A session dependency may supply a
 content-free measurement sink and monotonic clock. Ordinary composition supplies
@@ -2876,9 +2965,11 @@ well as individual deltas: an old stream ending normally cannot restore discarde
 text or write into a restarted session. Cancel synchronously clears both text
 projections before awaiting microphone teardown. This does not add ASR rescoring, change
 decoder windows, resolve timestamp/replay quality gaps or bound total transcript
-storage. SwiftUI still renders the existing two-line panel.
+storage. The two-line strip shows the newest words: `DictationPanelTranscript`
+elides earlier words from the front at a word boundary (about 120 characters)
+and keeps the confirmed/volatile styling.
 
-**Capture failure authority (D547).** Dictation keeps its bounded 128-buffer relay, but
+**Capture failure authority (D547).** Dictation keeps its bounded relay (D561), but
 an overflow is a failed capture, not permission to deliver the surviving suffix.
 Source iteration errors, including an upstream `CancellationError` when the
 owning task was not cancelled, use the same session-fenced failure path. Native
@@ -2952,6 +3043,20 @@ permission. There is no automatic retry loop. Ordinary temporary-store launches
 register neither Carbon hotkeys nor the mouse event tap; the explicit shortcut
 fixture exercises failed registration and recovery with an inert registrar.
 
+**In-flight delivery and Escape (Oct 2026).** `Phase.delivering` covers the
+awaited paste, from prepared text to its outcome. It counts as active capture,
+so a hotkey tap, a late key-up or a mouse press neither cancels the paste nor
+starts a session over it. The strip reads Inserting… and disables its cancel
+control, because a posted paste cannot be recalled. While a session prepares or
+listens, `DictationSessionDependencies.registerCancelKey` claims Escape
+system-wide through a second `GlobalHotkey`. Escape cancels only that session
+and is released before the paste and on every terminal path, so the destination
+gets it back. If Carbon refuses the key, the panel's cancel control remains.
+Each `GlobalHotkey` carries a unique `EventHotKeyID` and returns
+`eventNotHandledErr` for events it does not own, so registrations sharing the
+application target cannot fire each other's callbacks. Disposable composition
+registers no Escape key.
+
 Surface validated by MacParakeet: global hotkey → speak → hotkey again → text written where cursor is. `GlobalHotkey` uses Carbon `RegisterEventHotKey` — the only API consuming the keystroke without Accessibility permission — and is registered from app initialization so it survives without a window. `DictationController` owns one process-scoped, UUID-fenced session: mic → the selected live engine (Parakeet by default) → the shared `CaptionCoalescer`; no meeting, database row, or audio file is created. The non-activating `DictationPanel` shows live text and offers explicit cancellation.
 
 **Captured destination and explicit recovery (D544).** Before presenting the
@@ -2976,7 +3081,9 @@ inspectable and not secure at delivery, and the shortcut uses the session event
 stream. Because clicking Reinsert keys the non-activating panel without
 activating Portavoz, that route also refuses (`.focusUnavailable`, text kept)
 while an inactive Portavoz holds a key window: the session stream would paste
-into the panel and report a dispatch that never reached the destination. A fixture that names its receiver still waits for a pinnable field. If final inspection serviced a new clipboard owner,
+into the panel and report a dispatch that never reached the destination.
+Because that click is the only way to Reinsert, the route disables Reinsert
+(`canRetry: false`) and its recovery copy points to Copy. A fixture that names its receiver still waits for a pinnable field. If final inspection serviced a new clipboard owner,
 no event is posted and that owner's content is not restored over.
 
 The existing layout-aware shortcut and captured rich clipboard representations
@@ -3026,6 +3133,18 @@ focus change. It never reads the old selection, full field value, title, URL or
 screen. Comparing code units does
 not silently accept smart quotes, canonical normalization or other changes.
 
+**Spacing at the caret (D560).** Before the baseline, a readback that offers the
+`context` reader revalidates the field and requests at most two UTF-16 units
+before the selection start and two after its end; a field edge requests nothing
+on that side. `DictationCaretJoin` adds one trailing space when a letter or digit
+follows, and one leading space when the preceding text ends in a non-separator
+and the output does not start with whitespace or closing punctuation; openers such as `(`, `¿`
+and `“`, or a straight quote preceded by whitespace, take none. The strip's
+accessibility label keeps the whole dictation even when the visible text is elided. Words, capitalization and Literal/Clean output never change.
+The joined output is what is borrowed, posted and read back. The context is not
+retained, logged or stored. The session route has no readback and keeps the
+unjoined output.
+
 The requested span is limited to 16,384 UTF-16 units; longer output is still sent
 in full but not read back. The observer uses a 750 ms window, at most 30 polls
 and a 25 ms asynchronous pause only while the field remains unchanged. Specific
@@ -3073,7 +3192,14 @@ repeated reveals from moving a self-sizing panel. Discard is a native cancel
 operation, consistent with discarding an unapplied Refine draft; it requires
 one explicit click and does not delete a saved library item.
 
-Capture timing starts at the first admitted nonempty microphone buffer, not when the stream opens, model preparation or the panel starts. A finish before readiness or before 0.75 seconds have elapsed after first PCM admission cancels silently; one owned 250 ms tail task preserves the last phoneme and suppresses duplicate finish gestures. Session cancellation closes the transcription feed immediately, stops local resources, fences stale state, and prevents later insertion. Audio feeding and peak calculation run off the main actor; only the meter mutation crosses back. A single cancellable failure-dismiss task prevents an older error from closing a restarted session. `DictationAssembler` joins confirmed plus partial text and requires lexical content, so punctuation-only noise never pastes. There is no pre-transcription speech-admission gate in live dictation. Public/synthetic controller observations have produced lexical proposals from silence and tones; this remains an explicit GAPS limitation, not proof of speech. The Settings toggle remains off by default. Native cross-process paste and exact-span readback remain separate permission-dependent qualification; deterministic controller coverage does not certify them.
+Capture timing starts at the first admitted nonempty microphone buffer, not when the stream opens, model preparation or the panel starts. A finish before readiness or before 0.75 seconds have elapsed since the first admitted PCM arrived at the pump cancels silently; one owned 250 ms tail task preserves the last phoneme and suppresses duplicate finish gestures. Session cancellation closes the transcription feed immediately, stops local resources, fences stale state, and prevents later insertion. Audio feeding and peak calculation run off the main actor; only the meter mutation crosses back. A single cancellable failure-dismiss task prevents an older error from closing a restarted session. Parakeet producer revisions explicitly retire a mutable suffix and commit only an irrevocable prefix; both consumers share the job/channel-bound reducer. Zero-origin words, equal-time subwords and legitimate repetitions survive without timestamp or text-overlap deduplication. Stable deltas use word-continuation markers; replaceable `tokenPreview` snapshots preserve their joining boundary but never enter canonical captions or final dictation text. Empty retirement and non-cancel failure clear the preview; EOF without terminal cannot commit it. Meeting capture uses the same contract, while Apple range previews keep their separate admission. `DictationAssembler` joins confirmed plus partial text and requires lexical content, so punctuation-only noise never pastes. There is no pre-transcription speech-admission gate in live dictation. Public/synthetic controller observations have produced lexical proposals from silence and tones; this remains an explicit GAPS limitation, not proof of speech. The Settings toggle remains off by default. Native cross-process paste and exact-span readback remain separate permission-dependent qualification; deterministic controller coverage does not certify them.
+
+Stable token delta/continuation rows remain eligible for live paragraph grouping;
+explicit continuations retain their producer-owned joining boundary. Replaceable
+token previews stay separate and use the same channel-scoped preview accessibility
+identifier as range revisions. The temp-store-only live fixture exercises provisional
+appearance, replacement and removal without native capture or model loading.
+
 
 **Mouse-button push-to-talk (Jul 2026)**: `MouseButtonPTT` owns one session `CGEventTap` over `otherMouseDown`/`otherMouseUp` that CONSUMES the configured button (the app under the cursor never sees the click) and passes every other button through; a tap disabled by timeout is always re-armed. CGEvent index 2+ is eligible — vendor-facing Button 3+ means middle click or an additional button — while indices 0/1 (left/right) can never become a trigger. Invalid persisted values normalize to Off. The tap needs the same Accessibility trust as the paste path: choosing a button prompts once, a denied/pending prompt leaves the keyboard trigger working, and returning from System Settings retries registration. Rebinding first cancels any mouse-owned capture so its consumed release cannot strand the session. `MousePTTGesture` (app input boundary, pure, 3 tests) is the decision table: press starts when idle and finishes a listening session whoever started it; release delivers only when the button itself started the session, so a stray release can never double-finish a hotkey session. There is no tap-vs-hold discriminator on the mouse — the capture minimum already cancels an accidental click. `MouseButtonRecorder` in Settings captures the next middle/additional-button click (`settings-dictation-mouse-recorder`; Esc cancels) with an explicit clear control; both mouse and keyboard recorders remove their local monitors when their Settings row disappears.
 
@@ -3104,8 +3230,8 @@ other route shows progress instead of offering a button whose action would be
 ignored. A temporary-store-only client supplies deterministic EN/ES preparation
 receipts for XCUITest; it does not serve the actual recognizer. Live acquisition
 re-checks readiness, so a missing or removed asset is never silently treated
-as a working session. Dictation fails before opening the microphone with an
-actionable Settings message. Meeting capture remains audio-first and starts a
+as a working session. Dictation reports a missing asset with an actionable
+Settings message and closes the microphone it opened in parallel (D561). Meeting capture remains audio-first and starts a
 bounded hot attachment; early or failed live coverage forces durable recovery.
 Neither route changes batch transcription, Sequoia behavior, or the default
 multilingual path.
@@ -3238,8 +3364,14 @@ without adding a poll. `AppPostCaptureProcessingCapabilities` retains
 recording-path resolution, filesystem checks, concrete Parakeet/pyannote and
 summary-provider construction, language/vocabulary preferences, Shortcut
 invocation, and idle engine release. The supervisor only coalesces kicks,
-schedules the returned wake without polling, and maps content-free events to
-telemetry. Optional initial summary-provider discovery runs only after recovery
+maps content-free events to telemetry, and schedules the ApplicationKit wake
+policy's date. Healthy overdue deadlines request immediate recovery. After a
+claim failure, an existing deadline waits at least five seconds; a later date
+is preserved and no deadline still means no timer. The audio-import queue uses
+the same policy after a non-cancellation drain failure. Both owners keep their
+existing generation fences, wake cancellation and coalescing, without idle
+polling or changing intentional suspension. Optional initial summary-provider
+discovery runs only after recovery
 and durable workflow resume, so a local Ollama probe cannot delay finalized
 audio or transcript recovery. The user's post-meeting Shortcut runs after terminal
 derived work, including
@@ -3506,10 +3638,23 @@ The app adapter owns the configured recording root and canonical channel-file
 lookup. `AudioPlaybackKit` retains AVFoundation playback, Accelerate waveform
 analysis, AAC encoding, and mixed-range export. SwiftUI owns the transport
 controls, waveform drawing, and native save panel only. Compression operates
-on every raw channel as one failure-safe batch: existing canonical outputs are
+on every lossless channel as one failure-safe batch: existing canonical outputs are
 never replaced, generated outputs are removed on failure or cancellation, and
-no original is removed until all outputs verify. A successful conversion
-invalidates and rebuilds the session from current files. Without readable
+no original is removed until all outputs verify. Already-compressed imports
+stay byte-identical and are not offered compression. The shared compression-admission
+port keeps durable import copies protected until successful import completion,
+including failed/cancelled Retry sources and trash/restore. Its Store read fails
+closed for missing, inconsistent or aliased authority. Playback stays available
+while compression is hidden; core/job updates refresh permission without
+replacing the session or waveform, and the backend rechecks before codec work.
+Playback preparation itself does not await the optional post-publication
+refresh. The existing directory-keyed view task first delivers incoming citation
+and transcript seeks, then awaits the explicit refresh with the same model
+cancellation, generation, directory and session fences. No new task is retained.
+The directory-owner query is indexed. The observation consumer still awaits
+each permission refresh inline, so a slow read can delay later review sections;
+generation fencing discards stale results without coalescing queued updates.
+A successful conversion invalidates and rebuilds the session from current files. Without readable
 audio, the healthy transcript remains a normal text-only list. The same
 carousel also runs during live recording, but D129 gives it a separate visual
 policy and reader-owned follow state: direct user scroll disables automatic
@@ -3521,7 +3666,20 @@ document that observes user-initiated live-scroll events only for its enclosing
 `NSScrollView`, including legacy mouse wheels without a start/end pair.
 Programmatic recentering does not claim reader intent. Audio
 import remains the `ApplicationKit.ImportMeeting` path and preserves automatic
-mixed-language recognition. `make test-ui` covers the player, highlight,
+mixed-language recognition. The Library menu defers its existing application-modal
+`NSOpenPanel.runModal()` to the next main-queue turn so menu tracking can return
+before presentation. A view-owned pending flag prevents overlapping requests and
+is released for every native response; only `.OK` submits selected URLs through
+the unchanged import boundary. The real picker journey cancels and reopens the
+chooser before importing a bundle, preserving original bytes and queue absence
+on cancellation. Native selection, modal keyboard admission, and all original
+import assertions remain in place. The UI runner declares each owned case as
+user-requested process work while still allowing idle system sleep, and releases
+that activity after all cleanup through a function-wide defer. It grants no native
+input authority and changes no acceptance floor or runtime ceiling. Known action
+buttons and scale transcript titles use their concrete accessibility roles with
+framework identifier matching; generic field aliases and absence proofs remain
+unchanged. `make test-ui` covers the player, highlight,
 compression action, and clip-export button; preflight closes stale app
 instances before XCUITest.
 
@@ -3732,6 +3890,68 @@ preview → confirm → clipboard artifact → receipt → offer retirement →
 durable dismissal. D321 adds a second bilingual journey that refuses the first
 pasteboard handoff, retries the unchanged preview, and requires the successful
 receipt plus byte-for-byte clipboard artifact.
+The two real-app recap clipboard journeys use an independently allocated
+UUID-named native pasteboard instead of the user's shared general board. The
+composition accepts this destination only for a temporary store, the explicit
+`-uitest-recap-pasteboard` flag, and a validated `app.portavoz.recap-test.<UUID>`
+name. Production keeps the general board. The fail-once adapter and successful
+retry share the same native writer; the app exits before the test releases its
+board. This preserves the exact approved artifact and receipt assertions while
+removing shared-host clipboard coupling; it does not claim general-board privacy
+permission or delivery into an external application's editor.
+
+The disposable Debug UI host also supports an explicitly requested, per-launch
+owned exit for healthy final test disposal. The production and ordinary Debug
+bundle identifiers reject it. The app watches its owner-private temporary
+directory and accepts only a private regular request containing its exact launch
+UUID and PID, then calls `NSApp.terminate(nil)`. An attached sheet or app-modal
+window instead publishes refusal without choosing or dismissing anything. The
+runner revalidates the captured native launch before official fallback and
+retains process-exit and scratch-identity fences. Failed tests, interruption
+cleanup and intentional abrupt-recovery steps retain official XCTest termination.
+The runner's official/owned diagnostic modes reuse the same built products and
+journeys; the storage proof checks actual exit outcomes and per-launch nonces.
+No cleanup work is excluded from runtime measurement.
+Healthy final cleanup uses bounded direct polling of the same public XCTest
+`notRunning` predicate only when its captured native launch has already ended.
+The original ten-second absolute deadline and bundle-wide native exit fence
+must both pass before scratch removal; every other path retains the original
+SDK wait. Actual live and ended launches characterize the public state getter,
+while the original explicit SDK-state waits, nonce and recovery assertions stay
+in place. This is deadline hardening, not a claim of aggregate runtime savings.
+
+Recording UI fixtures preserve the requested target-stability duration and all
+input guards while polling fresh geometry more frequently to account for native
+attribute-read latency. Assist-tab selection is read from a fresh resolved
+target snapshot; an unresolved target throws before later field input. The
+negative selection proof performs no input. Text label/value alternatives come from
+one fresh fallible target snapshot after the existing asynchronous presence check.
+Missing targets remain false; resolution errors propagate, and already-present
+localized labels or empty field values do not acquire a polling floor. Related read-only recording
+assertions can share one coherent app observation, charging that read to the
+original first deadline and retaining exact live fallbacks. A record action's
+presence and actual localized label likewise share one target observation within
+its original readiness deadline. More-popover readiness is proved by the actual
+requested item's hittability, not an additional ignored container wait; the same
+immediate proof can assert availability without another round trip. These test
+observations never replace live target resolution for a click or keyboard input.
+
+The Background Work indicator's direct Settings route also requires the exact
+destination, native receiver and canonical search-editor handoff before outside
+scrolling. Its route observations and handoff share the original ten-second
+entry deadline, and failed or late readiness throws before the wheel helper.
+The existing helper traverses only a known active editor and verifies its exact
+value; an already inactive editor receives no key. This guards observed editor
+state, not an unclassified interruption's identity or a general popover.
+The recording/deferred-work journey similarly reasserts the native receiver,
+proves the actual record target stably hittable, and rechecks native ownership
+within its original fifteen-second entry deadline before clicking. It does not
+claim to atomically exclude a later foreground change; the existing interruption
+guard remains authoritative and does not dismiss another application's window.
+Closing Settings in that journey targets its unique native close button, not an
+application-wide shortcut whose key window may be the recording. Native admission,
+target stability and the return to recording share the original ten-second
+preparation deadline. A missing outage Stop throws before clicking.
 
 ## Review-first email recap handoff (D327, Aug 2026)
 

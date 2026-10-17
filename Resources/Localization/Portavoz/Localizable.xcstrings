@@ -1731,6 +1731,16 @@
         }
       }
     },
+    "Complete the audio import before compressing it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Completa la importación de audio antes de comprimirlo."
+          }
+        }
+      }
+    },
     "Filler filtering and replacements apply only in Clean mode.": {
       "localizations": {
         "es": {
@@ -17617,6 +17627,16 @@
         }
       }
     },
+    "Choose M4A, CAF, WAV, MP3, AAC, AIFF or M4B audio files to import.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige archivos de audio M4A, CAF, WAV, MP3, AAC, AIFF o M4B para importar."
+          }
+        }
+      }
+    },
     "Downloading Whisper %@… %lld%%": {
       "localizations": {
         "es": {
@@ -17813,6 +17833,156 @@
           "stringUnit": {
             "state": "translated",
             "value": "Puedes seguir grabando audio. La transcripción estará disponible cuando los modelos estén listos."
+          }
+        }
+      }
+    },
+    "Inserting…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Insertando…"
+          }
+        }
+      }
+    },
+    "Delivery didn't complete. Copy your text to keep it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La entrega no se completó. Copia el texto para conservarlo."
+          }
+        }
+      }
+    },
+    "Listening… the speech model is still loading.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escuchando… el modelo de voz aún se está cargando."
+          }
+        }
+      }
+    },
+    "Play start and stop sounds": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducir un sonido al empezar y al terminar"
+          }
+        }
+      }
+    },
+    "Load the dictation model at launch": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargar el modelo de dictado al abrir la app"
+          }
+        }
+      }
+    },
+    "Not available with Lightweight model memory.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No disponible con la memoria ligera para modelos."
+          }
+        }
+      }
+    },
+    "The first dictation starts faster. The model still unloads after a few idle minutes.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El primer dictado arranca más rápido. El modelo igual se libera de la memoria tras unos minutos sin uso."
+          }
+        }
+      }
+    },
+    "The speech model took too long to load. Nothing was inserted. Try again in a moment.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El modelo de voz tardó demasiado en cargar. No se insertó nada. Inténtalo de nuevo en un momento."
+          }
+        }
+      }
+    },
+    "No speech detected — nothing was inserted": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se detectó voz: no se insertó nada"
+          }
+        }
+      }
+    },
+    "If you did speak, copy the text below. Nothing was saved in Portavoz.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si sí hablaste, copia el texto de abajo. No se guardó nada en Portavoz."
+          }
+        }
+      }
+    },
+    "Skip dictations without speech": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Omitir dictados sin voz"
+          }
+        }
+      }
+    },
+    "Downloading the voice detector (1 MB)… %d%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargando el detector de voz (1 MB)… %d%%"
+          }
+        }
+      }
+    },
+    "The voice detector couldn't be downloaded. Until it is, dictations are pasted as before.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo descargar el detector de voz. Mientras tanto, los dictados se pegan como antes."
+          }
+        }
+      }
+    },
+    "The voice detector isn't installed yet. Until it is, dictations are pasted as before.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El detector de voz todavía no está instalado. Mientras tanto, los dictados se pegan como antes."
+          }
+        }
+      }
+    },
+    "Silence and background noise are offered to copy instead of being pasted. Uses a 1 MB voice detector on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El silencio y el ruido de fondo se ofrecen para copiar en vez de pegarse. Usa un detector de voz de 1 MB en esta Mac."
           }
         }
       }

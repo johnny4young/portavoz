@@ -1,5 +1,6 @@
 import AppKit
 import AudioCaptureKit
+import Carbon.HIToolbox
 import Foundation
 import PlatformKit
 import PortavozCore
@@ -32,6 +33,8 @@ struct DictationSessionDependencies {
     var waitForFirstBufferDeadline: @Sendable () async throws -> Void = {
         try await Task.sleep(for: .seconds(5))
     }
+    /// Claims Escape system-wide while capture runs; nil leaves cancel to the panel.
+    var registerCancelKey: (@escaping () -> Void) -> (any GlobalHotkeyRegistration)? = { _ in nil }
 
     func authorizedMicrophone() async throws -> Microphone {
         guard await authorizeMicrophone() else { throw DictationMicrophoneReadiness.Failure.permissionRequired }
@@ -57,6 +60,9 @@ struct DictationSessionDependencies {
     /// Nil in ordinary composition: no observation, file, timer or telemetry.
     var measurementSink: DictationSessionMeasurementRecorder.Sink?
     var measurementClock: DictationSessionMeasurementRecorder.Clock = { .now }
+    var playCue: (DictationSoundCue) -> Void = { _ in }
+    /// Nil leaves delivery to the lexical check alone (the gate is opt-in).
+    var makeSpeechGate: () -> DictationSpeechGate? = { nil }
 
     func transcriptionHints() -> TranscriptionHints {
         let language = defaults.string(forKey: DictationController.languageKey)
@@ -84,6 +90,11 @@ struct DictationSessionDependencies {
             captureDestination: { TextInserter.captureDestination() },
             copyText: { TextInserter.copy($0) },
             defaults: services.defaults,
-            beginCapture: beginCapture)
+            beginCapture: beginCapture,
+            registerCancelKey: { GlobalHotkey(keyCode: UInt32(kVK_Escape), modifiers: 0, onPress: $0) },
+            playCue: DictationSoundCue.player(defaults: services.defaults),
+            makeSpeechGate: { [defaults = services.defaults, store = services.modelStore] in
+                DictationSpeechGate.isEnabled(in: defaults) ? .silero(store: store) : nil
+            })
     }
 }
