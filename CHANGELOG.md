@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 ## October 17, 2026
 
 - **↩️ Say "new line" to break lines** — in Clean mode, "new line" / "nueva línea" starts a new line and "new paragraph" / "nuevo párrafo" a new paragraph, without stray commas.
+- **🩹 Soft contractions no longer stop dictation** — a quietly spoken word like "it's" can no longer end a dictation with an error halfway through.
 
 ## October 16, 2026
 
@@ -46,6 +47,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **🗣️ Steadier live text** — keeps opening words and deliberate repetitions while replacing unfinished words cleanly in dictation and meeting captions.
 
 ## October 13, 2026
+
+- **💾 Clear disk-space recovery** — model setup now tells you when a download needs more disk space.
 
 - **🎯 Ready-to-play citations** — jump to a cited moment as soon as its audio is ready while optional compression checks finish.
 
