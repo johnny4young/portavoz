@@ -491,7 +491,8 @@ final class SettingsUITests: PortavozUITestCase {
             types: [
                 "settings-dictation-language-support": .staticText,
                 "settings-dictation-prewarm-note": .staticText,
-                "settings-dictation-speech-gate-status": .staticText
+                "settings-dictation-speech-gate-status": .staticText,
+                "settings-dictation-spoken-commands": .staticText
             ],
             expectedText: ["settings-dictation-language-support": expectedSupport],
             timeout: 5,
@@ -514,6 +515,9 @@ final class SettingsUITests: PortavozUITestCase {
             ? "todavía no está instalado" : "isn't installed yet"))
         XCTAssertTrue(app.buttons["settings-dictation-speech-gate-install"].waitForExistenceFast(timeout: 5),
                       "a missing detector is offered as a one-click download")
+        let commands = try uiSnapshotElement("settings-dictation-spoken-commands", type: .staticText, in: controls)
+        XCTAssertTrue(renderedText(of: commands).contains(UITestLocale.environmentLocale == "es"
+            ? "«nueva línea»" : "“new line”"))
         attachScreenshot(of: app, named: "dictation-triggers-language-dictionary")
     }
 

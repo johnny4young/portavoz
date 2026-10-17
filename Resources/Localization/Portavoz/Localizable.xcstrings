@@ -6399,6 +6399,16 @@
         }
       }
     },
+    "In Clean mode, say “new line” or “new paragraph” to start one.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En modo Limpio, di «nueva línea» o «nuevo párrafo» para empezar una."
+          }
+        }
+      }
+    },
     "Include edit history": {
       "localizations": {
         "es": {
