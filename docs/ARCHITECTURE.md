@@ -323,7 +323,7 @@ Recording and dictation share that boundary; batch callers retain the concrete
 Parakeet lease. App composition selects Parakeet by default or an explicitly
 chosen, installed Apple Speech locale on macOS 26. Core carries only transient
 live-update semantics (range revision, token preview, owned delta or word
-continuation), not AppKit or speech-provider types.
+continuation), not AppKit or speech-provider types. It also keeps the last dictated text in memory only (`DictationLastText`, 15 minutes, cleared on sleep or lock) for an explicit paste-again action.
 
 Temporary meeting-store composition never registers Carbon hotkeys or mouse
 event taps. The explicit dictation fixture supplies synthetic PCM and a bounded

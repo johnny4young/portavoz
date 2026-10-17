@@ -14,6 +14,7 @@ struct DictationSection: View {
     @AppStorage(DictationController.fillerFilterKey) private var filterFillers = true
     @AppStorage(DictationSoundCue.defaultsKey) private var playsSounds = false
     @AppStorage(DictationPrewarmPolicy.defaultsKey) private var prewarms = false
+    @AppStorage(PasteLastShortcut.defaultsKey) private var pasteLastShortcut = false
     @AppStorage(DictationSpeechGate.defaultsKey) private var skipsSilence = DictationSpeechGate.enabledByDefault
     @AppStorage(AppModelMemoryPreferences.key) private var memoryProfile =
         AppModelMemoryPreferences.Profile.balanced.rawValue
@@ -24,6 +25,7 @@ struct DictationSection: View {
                 .accessibilityIdentifier("settings-dictation-toggle")
                 .onChange(of: enabled) {
                     services.dictation.syncHotkey(services: services)
+                    services.syncPasteLastShortcut()
                     services.dictation.syncMousePTT(
                         services: services, promptIfNeeded: enabled)
                     services.prewarmDictationIfConfigured()
@@ -37,6 +39,7 @@ struct DictationSection: View {
                     services.dictation.syncMousePTT(
                         services: services, promptIfNeeded: true)
                 }
+                pasteLastControls
                 Toggle("Play start and stop sounds", isOn: $playsSounds)
                     .accessibilityIdentifier("settings-dictation-sounds")
                 prewarmControls
@@ -80,6 +83,19 @@ struct DictationSection: View {
             .font(.caption)
             .foregroundStyle(.secondary)
         }
+    }
+
+    @ViewBuilder private var pasteLastControls: some View {
+        Toggle("Paste the last dictation with ⌃⌥⌘V", isOn: $pasteLastShortcut)
+            .accessibilityIdentifier("settings-dictation-paste-last-hotkey")
+            .onChange(of: pasteLastShortcut) { services.syncPasteLastShortcut() }
+        let taken = services.pasteLastShortcutUnavailable && pasteLastShortcut
+        // swiftlint:disable:next line_length
+        Text(taken ? L10n.text("Another app already uses ⌃⌥⌘V. Paste the last dictation from the menu bar instead.") : L10n.text("The last dictation stays in memory for 15 minutes and is never saved. It is also in the menu bar."))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("settings-dictation-paste-last-note")
     }
 
     @ViewBuilder private var speechGateControls: some View {

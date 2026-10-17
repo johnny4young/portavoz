@@ -21317,3 +21317,16 @@ detector is missing the gate stays undetermined and pastes as before. The
 corpus is synthetic speech, so a real-microphone false-negative rate is still
 unmeasured.
 
+## D567 — Paste the last dictation again from memory only
+
+People often dictate into the wrong field or need the same words twice. The
+last dictated text, whether delivered, withheld or in recovery, is kept in
+memory for 15 minutes so it can be pasted again from the menu bar or an optional
+shortcut. It is cleared when the Mac sleeps or locks and never reaches disk,
+preferences or the clipboard. Dictation still stores no history. The replay
+uses the existing destination capture and recovery path, so it adds no new
+insertion mechanism. The shortcut is a fixed ⌃⌥⌘V, off by default, because ⌥⌘V
+and ⇧⌥⌘V already mean "move" and "paste and match style" in many apps. A
+recorder for a custom shortcut and a persistent, consented history remain
+separate work.
+
