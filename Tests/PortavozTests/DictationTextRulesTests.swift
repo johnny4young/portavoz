@@ -146,4 +146,18 @@ final class DictationTextRulesTests: XCTestCase {
                                                 removeFillers: false, spokenCommands: true),
                        "Vuelo con Nueva Línea Aérea hoy")
     }
+
+    func testSpokenCommandsKeepEarlierTrimmingAndWholeWordUserAuthority() {
+        let signature = [DictationReplacement(trigger: "sig", replacement: "Best,\nJohn\n")]
+        XCTAssertEqual(DictationTextRules.apply("sig", replacements: signature, removeFillers: false,
+                                                spokenCommands: true),
+                       "Best,\nJohn", "a newline no command produced is trimmed as before")
+        XCTAssertEqual(DictationTextRules.apply("Hola nueva li\u{301}nea mundo", replacements: [],
+                                                removeFillers: false, spokenCommands: true),
+                       "Hola\nmundo", "a decomposed accent still reads as the command")
+        let rule = [DictationReplacement(trigger: "aparte", replacement: "Aparte")]
+        XCTAssertEqual(DictationTextRules.apply("Punto y aparte", replacements: rule, removeFillers: false,
+                                                spokenCommands: true),
+                       "Punto y Aparte", "a user trigger inside a phrase keeps it literal")
+    }
 }
