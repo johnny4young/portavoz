@@ -21300,3 +21300,20 @@ costs more than letting noise through; it is a model probability, not an added
 RMS rule. Meetings, autofinish on silence and the
 default stay unchanged until the corpus and field evidence say otherwise.
 
+## D563 — Turn the dictation speech gate on, downloading it with dictation
+
+The D562 gate ran over all 480 public synthetic cells (Release, threshold 0.5):
+it withheld 31 of 32 non-speech cells, missed none of the 448 speech cells (the
+quietest profile still peaked at 0.93), and cost about 0.8 ms of CPU per second
+of audio. The one non-speech cell it let through, a soft 440 Hz tone, fails
+toward pasting as before. A wrong withhold loses nothing, because the text
+stays offered for Copy.
+
+The gate is now on unless the user turned it off. Its pinned ~1 MB bundle still
+downloads only with consent: turning on "Dictate anywhere" installs it, and a
+user who already had dictation on sees "not installed yet" with a one-click
+Download in Settings. Nothing downloads in the background, and while the
+detector is missing the gate stays undetermined and pastes as before. The
+corpus is synthetic speech, so a real-microphone false-negative rate is still
+unmeasured.
+
