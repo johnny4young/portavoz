@@ -278,6 +278,21 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testDataPaneCreditsTheOnDeviceModels() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        openCategory("settings-category-data", revealing: "settings-model-credit-parakeet-tdt-0.6b-v3-coreml", in: app)
+        let parakeet = app.control(withIdentifier: "settings-model-credit-parakeet-tdt-0.6b-v3-coreml")
+        XCTAssertTrue(parakeet.waitForExistenceFast(timeout: 5))
+        let credit = renderedText(of: parakeet)
+        XCTAssertTrue(credit.contains("NVIDIA") && credit.contains("CC-BY-4.0"),
+                      "a CC-BY model names its creator and license")
+        XCTAssertTrue(app.control(withIdentifier: "settings-model-credit-speaker-diarization-coreml").exists)
+    }
+
+    @MainActor
     func testDataPaneExportsARedactedLocalSupportFile() throws {
         let destination = try UITestStorage.makeDirectory().appendingPathComponent("support.json")
         let app = try XCUIApplication.portavoz(seedDemo: true, openSettings: true)

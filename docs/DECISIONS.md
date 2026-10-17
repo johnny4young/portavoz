@@ -21317,3 +21317,15 @@ detector is missing the gate stays undetermined and pastes as before. The
 corpus is synthetic speech, so a real-microphone false-negative rate is still
 unmeasured.
 
+## D570 — Credit every downloadable model inside the app
+
+Parakeet and the pyannote/WeSpeaker diarization models are CC-BY-4.0, which
+requires attribution where they are used. Until now the licenses lived only in
+descriptors and specs. Settings → Your data now lists each model the app can
+download: the original work, its creator, its license, and the pinned repository
+Portavoz downloads it from. The link is derived from the descriptor's
+`resolveBase`, so it cannot drift from the pinned revision. CLI-only research
+models are not listed, because the app never downloads them. A new
+downloadable model needs a credit in the same change; a unit test enforces this
+for the CC-BY models.
+

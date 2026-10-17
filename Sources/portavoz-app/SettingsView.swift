@@ -143,6 +143,7 @@ struct SettingsView: View {
                     SupportDiagnosticsSection()
                     BackupSection()
                     recordingsSection
+                    ModelCreditsSection()
                 }
             }
             .formStyle(.grouped)
