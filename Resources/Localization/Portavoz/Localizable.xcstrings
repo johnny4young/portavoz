@@ -17986,6 +17986,66 @@
           }
         }
       }
+    },
+    "Hold a key to dictate": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantener una tecla para dictar"
+          }
+        }
+      }
+    },
+    "Fn (🌐)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fn (🌐)"
+          }
+        }
+      }
+    },
+    "Right Option": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opción derecha"
+          }
+        }
+      }
+    },
+    "Right Command": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comando derecho"
+          }
+        }
+      }
+    },
+    "Hold the key while you speak and release it to paste. Shortcuts that use the key keep working.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén la tecla mientras hablas y suéltala para pegar. Los atajos que usan esa tecla siguen funcionando."
+          }
+        }
+      }
+    },
+    "So macOS doesn't also react, set “Press 🌐 key to” to “Do Nothing” in System Settings › Keyboard.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para que macOS no reaccione también, en Ajustes del Sistema › Teclado pon «Pulsar la tecla 🌐 para» en «No hacer nada»."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -325,8 +325,8 @@ chosen, installed Apple Speech locale on macOS 26. Core carries only transient
 live-update semantics (range revision, token preview, owned delta or word
 continuation), not AppKit or speech-provider types.
 
-Temporary meeting-store composition never registers Carbon hotkeys or mouse
-event taps. The explicit dictation fixture supplies synthetic PCM and a bounded
+Temporary meeting-store composition never registers Carbon hotkeys, mouse
+or held-modifier event taps. The explicit dictation fixture supplies synthetic PCM and a bounded
 caption producer; without that fixture it refuses dictation without requesting
 permissions, downloading models or opening a microphone. Fixture selection lives
 in `AppServices+DictationUITestFixture.swift`, not in the controller's pipeline.

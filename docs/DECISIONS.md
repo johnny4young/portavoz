@@ -21317,3 +21317,19 @@ detector is missing the gate stays undetermined and pastes as before. The
 corpus is synthetic speech, so a real-microphone false-negative rate is still
 unmeasured.
 
+## D566 — Hold Fn or one right-hand modifier to dictate, without owning the key
+
+A held modifier is the fastest push-to-talk on a laptop, but those keys already
+carry shortcuts: Fn with the arrows, and Option with letters for special
+characters. The trigger is opt-in and listens through a pass-through session
+event tap with the Accessibility trust that pasting already needs. It never
+consumes an event, so every shortcut keeps working. It starts only after the
+key has been held alone for 200 ms. Another key or modifier, before then or
+during the hold, means a shortcut: nothing opens, or the session is discarded.
+Release delivers through the mouse trigger's ownership table.
+
+macOS can also act on the Globe key. Portavoz never changes system settings, so
+choosing Fn shows guidance to set "Press 🌐 key to" to "Do Nothing" instead.
+Left-hand modifiers, Control and Caps Lock are not offered because they are too
+busy in everyday typing.
+

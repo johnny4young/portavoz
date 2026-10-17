@@ -14,6 +14,7 @@ struct DictationSection: View {
     @AppStorage(DictationController.fillerFilterKey) private var filterFillers = true
     @AppStorage(DictationSoundCue.defaultsKey) private var playsSounds = false
     @AppStorage(DictationPrewarmPolicy.defaultsKey) private var prewarms = false
+    @AppStorage(ModifierKeySetting.defaultsKey) private var modifierKey = ModifierKeySetting.off.rawValue
     @AppStorage(DictationSpeechGate.defaultsKey) private var skipsSilence = DictationSpeechGate.enabledByDefault
     @AppStorage(AppModelMemoryPreferences.key) private var memoryProfile =
         AppModelMemoryPreferences.Profile.balanced.rawValue
@@ -26,6 +27,7 @@ struct DictationSection: View {
                     services.dictation.syncHotkey(services: services)
                     services.dictation.syncMousePTT(
                         services: services, promptIfNeeded: enabled)
+                    services.dictation.syncModifierPTT(services: services, promptIfNeeded: enabled)
                     services.prewarmDictationIfConfigured()
                     if enabled { Task { await services.prepareSpeechGateIfEnabled() } }
                 }
@@ -37,6 +39,7 @@ struct DictationSection: View {
                     services.dictation.syncMousePTT(
                         services: services, promptIfNeeded: true)
                 }
+                modifierKeyControls
                 Toggle("Play start and stop sounds", isOn: $playsSounds)
                     .accessibilityIdentifier("settings-dictation-sounds")
                 prewarmControls
@@ -79,6 +82,33 @@ struct DictationSection: View {
             )
             .font(.caption)
             .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder private var modifierKeyControls: some View {
+        Picker("Hold a key to dictate", selection: $modifierKey) {
+            Text("Off").tag(ModifierKeySetting.off.rawValue)
+            Text("Fn (🌐)").tag(ModifierKeySetting.function.rawValue)
+            Text("Right Option").tag(ModifierKeySetting.rightOption.rawValue)
+            Text("Right Command").tag(ModifierKeySetting.rightCommand.rawValue)
+        }
+        .accessibilityIdentifier("settings-dictation-modifier-key")
+        .onChange(of: modifierKey) {
+            services.dictation.syncModifierPTT(services: services, promptIfNeeded: true)
+        }
+        if modifierKey != ModifierKeySetting.off.rawValue {
+            Text("Hold the key while you speak and release it to paste. Shortcuts that use the key keep working.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("settings-dictation-modifier-note")
+        }
+        if modifierKey == ModifierKeySetting.function.rawValue {
+            Text("So macOS doesn't also react, set “Press 🌐 key to” to “Do Nothing” in System Settings › Keyboard.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("settings-dictation-modifier-fn-note")
         }
     }
 
