@@ -28,8 +28,11 @@ final class OnboardingModelPreparation {
 
         static func classify(_ error: any Error) -> Self {
             if error is CancellationError { return .cancelled }
-            // ModelStore wraps every transfer failure with a stringified
-            // cause, so the URLError never reaches this classifier in production.
+            // Download writes can arrive as URLError with a typed disk-space
+            // cause. Check it before the URL error's fallback classification.
+            if ModelStore.isOutOfSpace(error as NSError) { return .storage }
+            // ModelStore retains disk-space causes and wraps other transfer
+            // failures with a stringified cause.
             if let storeError = error as? ModelStore.ModelStoreError,
                case .downloadFailed = storeError {
                 return .network
@@ -46,21 +49,8 @@ final class OnboardingModelPreparation {
                     return .unavailable
                 }
             }
-            if isOutOfSpace(error as NSError) { return .storage }
             // Never render arbitrary error descriptions, model paths or URLs.
             return .unavailable
-        }
-
-        private static func isOutOfSpace(_ error: NSError) -> Bool {
-            if error.domain == NSCocoaErrorDomain, error.code == NSFileWriteOutOfSpaceError {
-                return true
-            }
-            if error.domain == NSPOSIXErrorDomain,
-               error.code == Int(ENOSPC) || error.code == Int(EDQUOT) {
-                return true
-            }
-            guard let underlying = error.userInfo[NSUnderlyingErrorKey] as? NSError else { return false }
-            return isOutOfSpace(underlying)
         }
     }
 

@@ -200,6 +200,7 @@ final class AppLaunchModel {
         }
         services.dictation.syncHotkey(services: services)
         services.dictation.syncMousePTT(services: services)
+        services.dictation.syncModifierPTT(services: services)
         services.prewarmDictationIfConfigured()
 
         // The AppKit delegate may already have observed application launch

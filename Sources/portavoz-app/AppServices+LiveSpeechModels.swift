@@ -1,4 +1,5 @@
 import Foundation
+import ModelStoreKit
 import PortavozCore
 import TranscriptionKit
 
@@ -27,35 +28,72 @@ extension AppServices {
 
     /// Borrows the process-wide first-pass speech runtime. Callers retain the
     /// returned lease for their complete live or batch operation and finish it
-    /// on every outcome.
+    /// on every outcome. One checkpoint is resident at a time: a caller that
+    /// `acceptsResident` (dictation) borrows the other one while it is in use,
+    /// and every other caller waits for it to go idle, then swaps.
     func acquireLiveSpeechRuntime(
-        workloadClass: ResourceWorkloadClass = .liveInteractive
+        workloadClass: ResourceWorkloadClass = .liveInteractive,
+        checkpoint: ParakeetCheckpoint = .v3,
+        acceptsResident: Bool = false
     ) async throws -> LiveSpeechRuntimeLease {
         // A caller cancelled before admission must not begin a process-owned
         // model load that can continue downloading after the session is gone.
         try Task.checkCancellation()
         modelIdleReleaseScheduler.cancel(.recording)
-        if let runtime = try residentLiveSpeechRuntime() {
-            return try checkedLiveSpeechRuntime(runtime)
+        while true {
+            let plan = LiveSpeechCheckpointPlan(
+                requested: checkpoint, resident: transcriber?.checkpoint,
+                residentInUse: modelResidencyLedger.record(for: .liveSpeech).activeUseCount > 0,
+                loading: liveSpeechRuntimeLoad != nil, acceptsResident: acceptsResident)
+            switch plan {
+            case .useResident:
+                if let runtime = try residentLiveSpeechRuntime() {
+                    return try checkedLiveSpeechRuntime(runtime)
+                }
+            case .awaitLoad:
+                guard let active = liveSpeechRuntimeLoad else { continue }
+                let runtime = try await finishLiveSpeechRuntimeLoad(active)
+                if acceptsResident || runtime.engine.checkpoint == checkpoint {
+                    return try checkedLiveSpeechRuntime(runtime)
+                }
+                _ = finishLiveSpeechRuntime(runtime)
+            case .swap:
+                if !releaseLiveSpeechRuntime() { try await Task.sleep(for: .milliseconds(100)) }
+            case .waitForIdle:
+                try await Task.sleep(for: .milliseconds(100))
+            case .load:
+                let runtime = try await finishLiveSpeechRuntimeLoad(
+                    beginLiveSpeechRuntimeLoad(checkpoint, workloadClass: workloadClass))
+                return try checkedLiveSpeechRuntime(runtime)
+            }
         }
-        if let active = liveSpeechRuntimeLoad {
-            let runtime = try await finishLiveSpeechRuntimeLoad(active)
-            return try checkedLiveSpeechRuntime(runtime)
-        }
+    }
 
+    private func beginLiveSpeechRuntimeLoad(
+        _ checkpoint: ParakeetCheckpoint, workloadClass: ResourceWorkloadClass
+    ) throws -> LiveSpeechRuntimeLoad {
         modelsState = .downloading(L10n.text("Preparing models…"))
         guard let ticket = modelResidencyLedger.beginLoad(.liveSpeech) else {
             throw LiveSpeechRuntimeError.inconsistentResidency
         }
         let telemetry = workloadTelemetry
         let store = modelStore
+        let lifecycle = modelLifecycle
         let task = Task { @MainActor [weak self] in
             try await telemetry.measure(ResourceWorkloadDescriptor(
                 workloadClass: workloadClass,
                 kind: .liveTranscription,
                 operation: .load)
             ) {
-                try await ParakeetEngine.loadRecommended(store: store) { progress in
+                if checkpoint == .ultra {
+                    // Only an explicit Settings choice installs Ultra; never download it here.
+                    guard let installed = await lifecycle.installation(for: ModelCatalog.parakeetUltra) else {
+                        throw LiveSpeechRuntimeError.checkpointNotInstalled
+                    }
+                    return try await ParakeetEngine.load(
+                        fromVerifiedDirectory: installed.directory, checkpoint: .ultra)
+                }
+                return try await ParakeetEngine.loadRecommended(store: store) { progress in
                     let percent = Int(progress.fraction * 100)
                     Task { @MainActor in
                         self?.modelsState = .downloading(
@@ -71,15 +109,15 @@ extension AppServices {
             ticket: ticket,
             task: task)
         liveSpeechRuntimeLoad = load
-        let runtime = try await finishLiveSpeechRuntimeLoad(load)
-        return try checkedLiveSpeechRuntime(runtime)
+        return load
     }
 
     /// Claims a hot runtime without starting model preparation. Recording
     /// preparation uses this synchronous path so capture can remain audio-first.
     func acquireResidentLiveSpeechRuntime() throws -> LiveSpeechRuntimeLease? {
         modelIdleReleaseScheduler.cancel(.recording)
-        guard let runtime = try residentLiveSpeechRuntime() else { return nil }
+        // Recording never borrows the dictation-only checkpoint.
+        guard transcriber?.checkpoint == .v3, let runtime = try residentLiveSpeechRuntime() else { return nil }
         return try checkedLiveSpeechRuntime(runtime)
     }
 
@@ -114,7 +152,11 @@ extension AppServices {
                 language: purpose.language(in: defaults))
             return LiveTranscriptionRuntime(engine: engine) {}
         }
-        return liveTranscriptionRuntime(try await acquireLiveSpeechRuntime())
+        guard purpose == .dictation else {
+            return liveTranscriptionRuntime(try await acquireLiveSpeechRuntime())
+        }
+        return liveTranscriptionRuntime(try await acquireLiveSpeechRuntime(
+            checkpoint: await dictationCheckpoint(), acceptsResident: true))
     }
 
     /// Capture must not await a model load before writing audio. A missing hot
@@ -213,6 +255,33 @@ extension AppServices {
     }
 }
 
+/// What one caller does with the single resident live-speech runtime.
+enum LiveSpeechCheckpointPlan: Equatable {
+    case useResident
+    case awaitLoad
+    case swap
+    case waitForIdle
+    case load
+
+    init(
+        requested: ParakeetCheckpoint, resident: ParakeetCheckpoint?, residentInUse: Bool,
+        loading: Bool, acceptsResident: Bool
+    ) {
+        if loading {
+            self = .awaitLoad
+        } else if let resident {
+            if resident == requested || (acceptsResident && residentInUse) {
+                self = .useResident
+            } else {
+                self = residentInUse ? .waitForIdle : .swap
+            }
+        } else {
+            self = .load
+        }
+    }
+}
+
 private enum LiveSpeechRuntimeError: Error {
     case inconsistentResidency
+    case checkpointNotInstalled
 }

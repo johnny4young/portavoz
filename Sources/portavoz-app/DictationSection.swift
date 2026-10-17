@@ -14,6 +14,7 @@ struct DictationSection: View {
     @AppStorage(DictationController.fillerFilterKey) private var filterFillers = true
     @AppStorage(DictationSoundCue.defaultsKey) private var playsSounds = false
     @AppStorage(DictationPrewarmPolicy.defaultsKey) private var prewarms = false
+    @AppStorage(ModifierKeySetting.defaultsKey) private var modifierKey = ModifierKeySetting.off.rawValue
     @AppStorage(DictationAutoStop.defaultsKey) private var autoStops = false
     @AppStorage(DictationAutoStop.pauseKey) private var autoStopPause = DictationAutoStop.defaultPause
     @AppStorage(DictationSpeechGate.defaultsKey) private var skipsSilence = DictationSpeechGate.enabledByDefault
@@ -28,6 +29,7 @@ struct DictationSection: View {
                     services.dictation.syncHotkey(services: services)
                     services.dictation.syncMousePTT(
                         services: services, promptIfNeeded: enabled)
+                    services.dictation.syncModifierPTT(services: services, promptIfNeeded: enabled)
                     services.prewarmDictationIfConfigured()
                     if enabled { Task { await services.prepareSpeechGateIfEnabled() } }
                 }
@@ -39,6 +41,7 @@ struct DictationSection: View {
                     services.dictation.syncMousePTT(
                         services: services, promptIfNeeded: true)
                 }
+                modifierKeyControls
                 Toggle("Play start and stop sounds", isOn: $playsSounds)
                     .accessibilityIdentifier("settings-dictation-sounds")
                 prewarmControls
@@ -52,7 +55,16 @@ struct DictationSection: View {
                 .accessibilityIdentifier("settings-dictation-language")
                 AppleSpeechChoiceControls(
                     selection: $liveEngine, language: language,
-                    identifierPrefix: "settings-dictation-live")
+                    identifierPrefix: "settings-dictation-live", offersUltra: true)
+                .onChange(of: liveEngine) {
+                    if liveEngine == LiveSpeechSelection.parakeetUltra.rawValue {
+                        Task { await services.installParakeetUltraModel() }
+                    }
+                    services.prewarmDictationIfConfigured()
+                }
+                if liveEngine == LiveSpeechSelection.parakeetUltra.rawValue {
+                    ultraControls
+                }
                 Text("Spanish and English can still mix. This setting mainly keeps out other writing systems.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -69,6 +81,11 @@ struct DictationSection: View {
                     .disabled(!cleanInUse)
                 DictationDictionaryEditor()
                     .disabled(!cleanInUse)
+                Text("In Clean mode, say “new line” or “new paragraph” to start one.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("settings-dictation-spoken-commands")
                 if !cleanInUse {
                     Text("Filler filtering and replacements apply only in Clean mode.")
                         .font(.caption)
@@ -107,6 +124,74 @@ struct DictationSection: View {
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("settings-dictation-auto-stop-note")
+    }
+
+    @ViewBuilder private var modifierKeyControls: some View {
+        Picker("Hold a key to dictate", selection: $modifierKey) {
+            Text("Off").tag(ModifierKeySetting.off.rawValue)
+            Text("Fn (🌐)").tag(ModifierKeySetting.function.rawValue)
+            Text("Right Option").tag(ModifierKeySetting.rightOption.rawValue)
+            Text("Right Command").tag(ModifierKeySetting.rightCommand.rawValue)
+        }
+        .accessibilityIdentifier("settings-dictation-modifier-key")
+        .onChange(of: modifierKey) {
+            services.dictation.syncModifierPTT(services: services, promptIfNeeded: true)
+        }
+        if modifierKey != ModifierKeySetting.off.rawValue, services.dictation.modifierTrigger.unavailable {
+            Text("Holding a key needs Accessibility permission for Portavoz in System Settings › Privacy & Security.")
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("settings-dictation-modifier-unavailable")
+        } else if modifierKey != ModifierKeySetting.off.rawValue {
+            Text("Hold the key while you speak and release it to paste. Shortcuts that use the key keep working.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("settings-dictation-modifier-note")
+        }
+        if modifierKey == ModifierKeySetting.function.rawValue {
+            Text("So macOS doesn't also react, set “Press 🌐 key to” to “Do Nothing” in System Settings › Keyboard.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("settings-dictation-modifier-fn-note")
+        }
+    }
+
+    @ViewBuilder private var ultraControls: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(ultraNote)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("settings-dictation-live-ultra-status")
+            if services.parakeetUltraModel == .missing {
+                Button("Download") { Task { await services.installParakeetUltraModel() } }
+                    .controlSize(.small)
+                    .accessibilityIdentifier("settings-dictation-live-ultra-install")
+            } else if services.parakeetUltraModel == .failed {
+                Button("Retry") { Task { await services.installParakeetUltraModel() } }
+                    .controlSize(.small)
+                    .accessibilityIdentifier("settings-dictation-live-ultra-retry")
+            }
+        }
+        .task { await services.refreshParakeetUltraModel() }
+    }
+
+    private var ultraNote: String {
+        switch services.parakeetUltraModel {
+        case .downloading(let percent):
+            L10n.format("Downloading Parakeet Ultra (613 MB)… %d%%", percent)
+        case .ready:
+            L10n.text("Ultra is ready for dictation. Meetings, and dictation during a recording, use Parakeet.")
+        case .failed:
+            L10n.text("Parakeet Ultra couldn't be downloaded. Until it is, dictation uses Parakeet.")
+        case .unknown:
+            L10n.text("Checking Parakeet Ultra…")
+        case .missing:
+            L10n.text("Parakeet Ultra isn't downloaded yet. Until it is, dictation uses Parakeet.")
+        }
     }
 
     @ViewBuilder private var speechGateControls: some View {

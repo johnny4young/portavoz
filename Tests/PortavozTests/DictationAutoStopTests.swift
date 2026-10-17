@@ -37,4 +37,25 @@ extension DictationControllerTests {
             XCTAssertTrue(stopped, "a tap-started dictation stops itself after the pause")
         }
     }
+
+    func testAPauseNeverEndsADictationAHeldModifierOwns() async {
+        let text = "Send the report."
+        let harness = DictationControllerHarness(text: text)
+        defer { harness.controller.cancel() }
+        var reportPause: (@Sendable () -> Void)?
+        var dependencies = harness.dependencies
+        dependencies.makePauseDetector = { onPause in
+            reportPause = onPause
+            return nil
+        }
+        harness.controller.toggle(using: dependencies)
+        let listening = await awaitEventually { harness.controller.partialText == text }
+        XCTAssertTrue(listening)
+        harness.controller.modifierTrigger.ownsSession = true
+        harness.now = harness.now.addingTimeInterval(3)
+        reportPause?()
+        // Longer than the stop tail a wrongful finish would take to deliver.
+        try? await Task.sleep(for: .milliseconds(600))
+        XCTAssertTrue(harness.insertions.isEmpty, "the held key owns the stop")
+    }
 }

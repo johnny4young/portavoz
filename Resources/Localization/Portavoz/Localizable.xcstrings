@@ -6399,6 +6399,16 @@
         }
       }
     },
+    "In Clean mode, say “new line” or “new paragraph” to start one.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En modo Limpio, di «nueva línea» o «nuevo párrafo» para empezar una."
+          }
+        }
+      }
+    },
     "Include edit history": {
       "localizations": {
         "es": {
@@ -18033,6 +18043,136 @@
           "stringUnit": {
             "state": "translated",
             "value": "Solo cuando empiezas con un toque. Si mantienes una tecla o un botón, se detiene al soltarlo."
+          }
+        }
+      }
+    },
+    "Hold a key to dictate": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantener una tecla para dictar"
+          }
+        }
+      }
+    },
+    "Fn (🌐)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fn (🌐)"
+          }
+        }
+      }
+    },
+    "Right Option": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opción derecha"
+          }
+        }
+      }
+    },
+    "Right Command": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comando derecho"
+          }
+        }
+      }
+    },
+    "Hold the key while you speak and release it to paste. Shortcuts that use the key keep working.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén la tecla mientras hablas y suéltala para pegar. Los atajos que usan esa tecla siguen funcionando."
+          }
+        }
+      }
+    },
+    "So macOS doesn't also react, set “Press 🌐 key to” to “Do Nothing” in System Settings › Keyboard.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para que macOS no reaccione también, en Ajustes del Sistema › Teclado pon «Pulsar la tecla 🌐 para» en «No hacer nada»."
+          }
+        }
+      }
+    },
+    "Holding a key needs Accessibility permission for Portavoz in System Settings › Privacy & Security.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantener una tecla necesita el permiso de Accesibilidad para Portavoz en Ajustes del Sistema › Privacidad y seguridad."
+          }
+        }
+      }
+    },
+    "Parakeet Ultra (more accurate, 613 MB)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parakeet Ultra (más preciso, 613 MB)"
+          }
+        }
+      }
+    },
+    "Downloading Parakeet Ultra (613 MB)… %d%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargando Parakeet Ultra (613 MB)… %d%%"
+          }
+        }
+      }
+    },
+    "Ultra is ready for dictation. Meetings, and dictation during a recording, use Parakeet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ultra está listo para dictar. Las reuniones, y los dictados durante una grabación, usan Parakeet."
+          }
+        }
+      }
+    },
+    "Parakeet Ultra couldn't be downloaded. Until it is, dictation uses Parakeet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo descargar Parakeet Ultra. Mientras tanto, el dictado usa Parakeet."
+          }
+        }
+      }
+    },
+    "Parakeet Ultra isn't downloaded yet. Until it is, dictation uses Parakeet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parakeet Ultra todavía no está descargado. Mientras tanto, el dictado usa Parakeet."
+          }
+        }
+      }
+    },
+    "Checking Parakeet Ultra…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando Parakeet Ultra…"
           }
         }
       }

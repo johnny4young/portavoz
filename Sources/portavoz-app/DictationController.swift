@@ -78,6 +78,7 @@ final class DictationController {
     /// True while the active session was started by the mouse button, so
     /// only that button's release may deliver (`MousePTTGesture`).
     private var mouseOwnsSession = false
+    var modifierTrigger = ModifierTriggerState()
     private var microphone: (any AudioCaptureSource)?
     private var feed: AsyncStream<AudioChunk>.Continuation?
     private var session: Task<Void, Never>?
@@ -207,7 +208,7 @@ final class DictationController {
         }
     }
 
-    private func start(services: AppServices) {
+    func start(services: AppServices) {
         start(using: services.makeDictationSessionDependencies())
     }
 
@@ -365,7 +366,7 @@ final class DictationController {
     }
 
     /// Second hotkey press: stop the mic; the drained stream delivers.
-    private func finishAndInsert() {
+    func finishAndInsert() {
         guard phase == .preparing || phase == .listening else { return }
         guard stopTask == nil else { return }
         measurement?.record(.stopRequested)
@@ -419,6 +420,7 @@ final class DictationController {
         micLevel = 0
         retireMicrophoneReadiness()
         mouseOwnsSession = false
+        modifierTrigger.ownsSession = false
         stopTask?.cancel()
         stopTask = nil
         pressedAt = nil
@@ -494,6 +496,7 @@ final class DictationController {
         stopTask = nil
         retireMicrophoneReadiness()
         mouseOwnsSession = false
+        modifierTrigger.ownsSession = false
     }
 
     private func failSession(id: UUID, message: String, autoDismiss: Bool = true) {
@@ -795,7 +798,7 @@ private extension DictationController {
     /// A tap-started dictation ends itself after a pause; a held trigger never does.
     func stopAfterPause(sessionID: UUID) {
         guard activeSessionID == sessionID, phase == .listening, stopTask == nil, !mouseOwnsSession,
-              pressedSessionID != sessionID else { return }
+              !modifierTrigger.ownsSession, pressedSessionID != sessionID else { return }
         finishAndInsert()
     }
 
