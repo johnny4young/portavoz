@@ -78,6 +78,7 @@ final class DictationController {
     /// True while the active session was started by the mouse button, so
     /// only that button's release may deliver (`MousePTTGesture`).
     private var mouseOwnsSession = false
+    var modifierTrigger = ModifierTriggerState()
     private var microphone: (any AudioCaptureSource)?
     private var feed: AsyncStream<AudioChunk>.Continuation?
     private var session: Task<Void, Never>?
@@ -159,27 +160,6 @@ final class DictationController {
         mousePTTButton = desiredButton
     }
 
-    private func handleMouse(
-        _ event: MousePTTGesture.Event, services: AppServices
-    ) {
-        switch MousePTTGesture.action(
-            for: event,
-            isListening: isActive,
-            mouseOwnsSession: mouseOwnsSession) {
-        case .start:
-            mouseOwnsSession = true
-            start(services: services)
-            // A refused start (missing Accessibility trust) must not leave
-            // the button claiming a session that never began.
-            if !isActive { mouseOwnsSession = false }
-        case .finish:
-            mouseOwnsSession = false
-            finishAndInsert()
-        case .ignore:
-            break
-        }
-    }
-
     /// Press-to-release lapse that separates a toggle TAP from a
     /// hold-to-talk gesture.
     static let holdThreshold: TimeInterval = 0.5
@@ -211,7 +191,7 @@ final class DictationController {
         }
     }
 
-    private func start(services: AppServices) {
+    func start(services: AppServices) {
         start(using: services.makeDictationSessionDependencies())
     }
 
@@ -423,6 +403,7 @@ final class DictationController {
         micLevel = 0
         retireMicrophoneReadiness()
         mouseOwnsSession = false
+        modifierTrigger.ownsSession = false
         stopTask?.cancel()
         stopTask = nil
         pressedAt = nil
@@ -498,6 +479,7 @@ final class DictationController {
         stopTask = nil
         retireMicrophoneReadiness()
         mouseOwnsSession = false
+        modifierTrigger.ownsSession = false
     }
 
     private func failSession(id: UUID, message: String, autoDismiss: Bool = true) {
@@ -817,4 +799,28 @@ private extension DictationController {
         }
     }
 
+}
+
+// The mouse trigger reads private session state, so it stays in this file.
+extension DictationController {
+    fileprivate func handleMouse(
+        _ event: MousePTTGesture.Event, services: AppServices
+    ) {
+        switch MousePTTGesture.action(
+            for: event,
+            isListening: isActive,
+            mouseOwnsSession: mouseOwnsSession) {
+        case .start:
+            mouseOwnsSession = true
+            start(services: services)
+            // A refused start (missing Accessibility trust) must not leave
+            // the button claiming a session that never began.
+            if !isActive { mouseOwnsSession = false }
+        case .finish:
+            mouseOwnsSession = false
+            finishAndInsert()
+        case .ignore:
+            break
+        }
+    }
 }

@@ -180,7 +180,8 @@ final class AppServices {
     @ObservationIgnored var whisperBackgroundPreparation: Task<Void, Never>?
     @ObservationIgnored var whisperProgressObservers: [UUID: WhisperPreparationObserver] = [:]
     private(set) var mlxDownloaded = false
-    var speechGateModel = DictationSpeechGateModelState.unknown
+    var speechGateModel = ConsentedModelState.unknown
+    var parakeetUltraModel = ConsentedModelState.unknown
     @ObservationIgnored var pasteLastHotkey: GlobalHotkey?
     var pasteLastShortcutUnavailable = false
     /// IntelligenceKit owns container mechanics; composition owns the one

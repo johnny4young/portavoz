@@ -37,6 +37,10 @@ The onboarding view uses a bounded observable preparation state with closed,
 localized failure categories and explicit retry/continue actions. The view
 never owns model leases or cancels process-shared loads; existing AppServices
 readiness and audio-first capture remain the authority.
+Model-download disk-space failures retain their typed underlying cause through
+`ModelStore`, so onboarding offers storage recovery even when URLSession could
+not write its temporary download. Other transfer failures keep their existing
+download-error contract.
 
 Feature parity is a permanent constraint: audio and user-owned data remain
 discoverable when transcription, diarization, generation, indexing, sync, or an
@@ -321,12 +325,18 @@ composition extension. Production composition acquires the shared live-speech
 token through a type-erased live-engine handle that ends it on completion.
 Recording and dictation share that boundary; batch callers retain the concrete
 Parakeet lease. App composition selects Parakeet by default or an explicitly
-chosen, installed Apple Speech locale on macOS 26. Core carries only transient
+chosen, installed Apple Speech locale on macOS 26. Dictation may also select
+the verified Parakeet Ultra checkpoint (`ParakeetCheckpoint.ultra`). One
+live-speech runtime stays resident and its checkpoint is part of its identity:
+`LiveSpeechCheckpointPlan` lets dictation borrow a v3 runtime a meeting is
+using, swaps an idle runtime, and makes every v3 caller wait for an Ultra
+dictation to finish. Meetings, batch passes and the synchronous recording
+attach never run Ultra. Core carries only transient
 live-update semantics (range revision, token preview, owned delta or word
 continuation), not AppKit or speech-provider types. It also keeps the last dictated text in memory only (`DictationLastText`, 15 minutes, cleared on sleep or lock) for an explicit paste-again action.
 
-Temporary meeting-store composition never registers Carbon hotkeys or mouse
-event taps. The explicit dictation fixture supplies synthetic PCM and a bounded
+Temporary meeting-store composition never registers Carbon hotkeys, mouse
+or held-modifier event taps. The explicit dictation fixture supplies synthetic PCM and a bounded
 caption producer; without that fixture it refuses dictation without requesting
 permissions, downloading models or opening a microphone. Fixture selection lives
 in `AppServices+DictationUITestFixture.swift`, not in the controller's pipeline.
@@ -6343,7 +6353,7 @@ CTC head outside the curated graph is rejected before loading. Synchronous CoreM
 loading explicitly runs off the caller's actor. Models and compute units are unchanged.
 
 The Swift package requires the reviewed FluidAudio fork revision
-`24922d65f33ca70fdc041e36598df7ef51786274`, based on upstream
+`16ff239818ddb6787629dab38ae43e8bdd0e7546`, based on upstream
 `224de0fb3c304b41bbae24e85e1801900865ff3e`. Swift 6.2 dependency traits
 retain ASR/VAD and Diarizer while excluding unused TTS resources and NeMo linkage;
 the macOS 14.4/iOS 17 deployment floors and curated model artifacts are unchanged.

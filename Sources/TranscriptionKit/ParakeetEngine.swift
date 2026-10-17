@@ -4,6 +4,12 @@ import Foundation
 import ModelStoreKit
 import PortavozCore
 
+/// Verified Parakeet weights that share the v3 component contract.
+public enum ParakeetCheckpoint: String, Sendable {
+    case v3
+    case ultra
+}
+
 /// Parakeet TDT 0.6B v3 (FluidAudio, CoreML/ANE): the default engine for
 /// both live and final transcription in M2.
 ///
@@ -19,6 +25,7 @@ import PortavozCore
 /// thread-safe).
 public final class ParakeetEngine: TranscriptionEngine, Sendable {
     public let descriptor: EngineDescriptor
+    public let checkpoint: ParakeetCheckpoint
     typealias LiveManagerPreparation = @Sendable (SlidingWindowAsrConfig) async throws -> SlidingWindowAsrManager
     typealias BatchManagerPreparation = @Sendable (ASRConfig) async throws -> AsrManager
 
@@ -29,7 +36,9 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
     /// Loads the engine from a directory the `ModelStore` has verified.
     /// Never point this at an unverified download — model files are code.
     @concurrent
-    public static func load(fromVerifiedDirectory directory: URL) async throws -> ParakeetEngine {
+    public static func load(
+        fromVerifiedDirectory directory: URL, checkpoint: ParakeetCheckpoint = .v3
+    ) async throws -> ParakeetEngine {
         try Task.checkCancellation()
         // The curated v3 graph has no optional CTC head. Do not let vendor
         // discovery expand the verified artifact set or trigger ModelHub.
@@ -37,9 +46,10 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
         guard !FileManager.default.fileExists(atPath: optionalHead.path) else {
             throw VerifiedLoadFailure.unexpectedOptionalModel
         }
-        let models = try AsrModels.loadLocal(from: directory, version: .v3, encoderPrecision: .int8)
+        let models = try AsrModels.loadLocal(
+            from: directory, version: checkpoint == .ultra ? .ultra : .v3, encoderPrecision: .int8)
         try Task.checkCancellation()
-        return ParakeetEngine(models: models)
+        return ParakeetEngine(models: models, checkpoint: checkpoint)
     }
 
     enum VerifiedLoadFailure: Error {
@@ -66,12 +76,14 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
         ParakeetEngine(
             prepareLiveManager: prepareLiveManager,
             prepareBatchManager: prepareBatchManager,
-            liveWorkObserver: observer)
+            liveWorkObserver: observer,
+            checkpoint: checkpoint)
     }
 
     convenience init(
         models: AsrModels,
-        liveWorkObserver: (@Sendable (ParakeetLiveWorkSample) -> Void)? = nil
+        liveWorkObserver: (@Sendable (ParakeetLiveWorkSample) -> Void)? = nil,
+        checkpoint: ParakeetCheckpoint = .v3
     ) {
         self.init(
             prepareLiveManager: { config in
@@ -94,7 +106,8 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
                     throw error
                 }
             },
-            liveWorkObserver: liveWorkObserver)
+            liveWorkObserver: liveWorkObserver,
+            checkpoint: checkpoint)
     }
 
     /// Each preparation owns a fresh manager until its verified models are
@@ -103,7 +116,8 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
     init(
         prepareLiveManager: @escaping LiveManagerPreparation,
         prepareBatchManager: @escaping BatchManagerPreparation,
-        liveWorkObserver: (@Sendable (ParakeetLiveWorkSample) -> Void)? = nil
+        liveWorkObserver: (@Sendable (ParakeetLiveWorkSample) -> Void)? = nil,
+        checkpoint: ParakeetCheckpoint = .v3
     ) {
         // Vendor debug messages contain hypotheses. Keep them out of stderr;
         // warnings/errors remain in the system log with default private text.
@@ -112,9 +126,10 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
         self.prepareLiveManager = prepareLiveManager
         self.prepareBatchManager = prepareBatchManager
         self.liveWorkObserver = liveWorkObserver
+        self.checkpoint = checkpoint
         self.descriptor = EngineDescriptor(
-            id: "parakeet-tdt-0.6b-v3",
-            displayName: "Parakeet TDT 0.6B v3",
+            id: checkpoint == .ultra ? "parakeet-ultra" : "parakeet-tdt-0.6b-v3",
+            displayName: checkpoint == .ultra ? "Parakeet Ultra" : "Parakeet TDT 0.6B v3",
             languages: [],  // multilingual (25 European languages incl. es/en)
             realTimeFactor: 0.01,
             runsOnDevice: true,

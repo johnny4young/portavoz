@@ -1982,9 +1982,10 @@ unmeasured byte count.
 Onboarding's explicit model preparation has one presentation state: idle,
 preparing, ready, or a closed failure category. Network, disk-space and
 interruption failures offer a localized recovery message; a `ModelStore`
-transfer failure is network even though the store stringifies its cause, and
-disk-space detection follows POSIX `ENOSPC`/`EDQUOT` through underlying errors;
-unknown failures
+transfer failure retains its disk-space cause when URLSession cannot write its
+temporary download; other wrapped transfer failures are network. Disk-space
+detection follows Cocoa out-of-space and POSIX `ENOSPC`/`EDQUOT` through
+underlying errors before classifying a `URLError`; unknown failures
 never display raw paths, URLs or error descriptions. Retry admits one load at a
 time. Continue without models and Skip remain available, and Back retains the
 observed result for this presentation. Dismissing or moving between steps does
@@ -2770,7 +2771,14 @@ legacy-aware policy without erasing the stored choices or enabling dictation.
 Literal keeps the admitted recognized words without optional filler filtering or
 replacements; it is not a promise of acoustic verbatim recognition and retains
 existing caption hygiene/assembly. Clean applies the existing TranscriptionKit
-filler setting and one non-cascading replacement pass. Neither requires a
+filler setting, spoken layout commands and one non-cascading replacement pass.
+Commands run on the final text only: "new line"/"nueva línea" becomes a line
+break and "new paragraph"/"nuevo párrafo"/"punto y aparte" a blank line. The
+commas and closing punctuation the recognizer puts around a command are
+dropped, sentence punctuation before it stays, and a command phrase that contains a
+user replacement trigger stays literal. A dictation that is only a command inserts nothing, and the
+panel preview still shows the spoken words. Settings names the commands under
+`settings-dictation-spoken-commands`. Neither mode requires a
 translation/provider/model beyond recognition. Rules and filler choices remain
 configured while Literal is selected. Settings keeps those controls visible but
 disables them, with a "Clean mode only" note, unless the default or at least one
@@ -3039,7 +3047,7 @@ shown as unavailable, not asserted to be a particular OS conflict. Settings
 provides Retry and the recorder, and help always follows the selected binding.
 Neither recovery action begins capture or requests microphone/Accessibility
 permission. There is no automatic retry loop. Ordinary temporary-store launches
-register neither Carbon hotkeys nor the mouse event tap; the explicit shortcut
+register neither Carbon hotkeys nor the mouse or modifier event taps; the explicit shortcut
 fixture exercises failed registration and recovery with an inert registrar.
 
 **In-flight delivery and Escape (Oct 2026).** `Phase.delivering` covers the
@@ -3202,6 +3210,23 @@ appearance, replacement and removal without native capture or model loading.
 
 **Mouse-button push-to-talk (Jul 2026)**: `MouseButtonPTT` owns one session `CGEventTap` over `otherMouseDown`/`otherMouseUp` that CONSUMES the configured button (the app under the cursor never sees the click) and passes every other button through; a tap disabled by timeout is always re-armed. CGEvent index 2+ is eligible — vendor-facing Button 3+ means middle click or an additional button — while indices 0/1 (left/right) can never become a trigger. Invalid persisted values normalize to Off. The tap needs the same Accessibility trust as the paste path: choosing a button prompts once, a denied/pending prompt leaves the keyboard trigger working, and returning from System Settings retries registration. Rebinding first cancels any mouse-owned capture so its consumed release cannot strand the session. `MousePTTGesture` (app input boundary, pure, 3 tests) is the decision table: press starts when idle and finishes a listening session whoever started it; release delivers only when the button itself started the session, so a stray release can never double-finish a hotkey session. There is no tap-vs-hold discriminator on the mouse — the capture minimum already cancels an accidental click. `MouseButtonRecorder` in Settings captures the next middle/additional-button click (`settings-dictation-mouse-recorder`; Esc cancels) with an explicit clear control; both mouse and keyboard recorders remove their local monitors when their Settings row disappears.
 
+**Held-modifier push-to-talk (D566):** "Hold a key to dictate"
+(`dictationModifierKey`, `settings-dictation-modifier-key`) is Off by default and
+offers Fn (🌐), Right Option or Right Command. `ModifierKeyPTT` owns one session
+`CGEventTap` over `flagsChanged` and `keyDown` that passes every event through; it
+needs the same Accessibility trust as the mouse trigger and retries with it when
+the app reactivates. Right-hand keys are told apart by their device-dependent
+flag bits. `ModifierKeyGesture` starts only after the key has been held alone for
+200 ms: another key or modifier before then, or a release, opens nothing, so
+Fn+arrow and ⌥+letter shortcuts keep working. A key typed after dictation began
+discards that session. Release delivers through the same `MousePTTGesture`
+ownership table as the mouse button, and the capture minimum still cancels a
+too-short hold. Choosing Fn shows guidance to set "Press 🌐 key to" to "Do Nothing"
+(`settings-dictation-modifier-fn-note`); Portavoz never changes that setting.
+When the tap cannot be created, usually because Accessibility is missing,
+Settings says so (`settings-dictation-modifier-unavailable`). If macOS disables
+the tap, the gesture ends any hold as a release, so a lost key-up never leaves
+dictation listening.
 **Paste the last dictation (D567):** `DictationLastText` keeps only the most
 recent dictated text in memory: delivered, withheld for no speech, or left in
 recovery. It expires after 15 minutes, is cleared when the Mac sleeps, its
@@ -3232,6 +3257,15 @@ still mix; the setting mainly keeps out other writing systems) through
 `settings-dictation-language-support`, with an EN/ES XCUITest assertion.
 `TranscriptSegment.language` remains the requested hint, not a measured language
 classification. The language default stays automatic, and this dictation-language setting does not change the meeting-language preference.
+
+**Parakeet Ultra for dictation (D565):** the dictation picker also offers
+"Parakeet Ultra (more accurate, 613 MB)" (`parakeetUltra`); the meeting picker
+does not, and a stored meeting value resolves to Parakeet. Choosing it is the
+consent for the pinned download through `modelLifecycle.install`, with progress,
+Download (`settings-dictation-live-ultra-install`), Retry (`-ultra-retry`) and
+status (`settings-dictation-live-ultra-status`). Until it is verified,
+`dictationCheckpoint()` returns v3, so dictation keeps working and never
+downloads it at session start. Pre-warm loads the selected checkpoint.
 
 **Optional Apple live speech (D554):** `meetingLiveSpeechEngine` and
 `dictationLiveSpeechEngine` are independent app preferences and both default

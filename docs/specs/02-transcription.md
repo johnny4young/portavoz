@@ -149,7 +149,7 @@ this composer and corrected text remains intentionally unmaterialized.
 ## Engine dependency boundary
 
 FluidAudio is fixed to the reviewed fork at
-`24922d65f33ca70fdc041e36598df7ef51786274`, based on upstream
+`16ff239818ddb6787629dab38ae43e8bdd0e7546`, based on upstream
 `224de0fb3c304b41bbae24e85e1801900865ff3e` (D559). The Swift 6.2 manifest enables
 only Diarizer; ASR/VAD remain available, while unused TTS resources and NeMo
 linkage are excluded. D516's explicit-review policy remains; D539 records the
@@ -164,11 +164,17 @@ not microphone evidence.
 Preview cadence, first stable commit and completion are distinct measurements.
 Historical preview/confirmation latency is not an insertion-latency guarantee
 for the new irrevocable-prefix contract.
+The published stable count never shrinks within a job (D569). A re-decoded
+continuation piece, such as an apostrophe suffix, can re-attach the last word to
+a stable one. When it does, the manager keeps the earlier stable count and the
+next re-decode retires only tokens past that prefix. Jobs without a token
+subscriber keep the upstream behavior.
 
 ## Model registry — ModelStoreKit
 
 - `ModelCatalog` with 11 pinned descriptors: `parakeetTdtV3` (21 artifacts, 483 MB, int8 subset), research-only `nemotronLatin1120` (10 artifacts, ~588 MB, lean fused-decoder subset), `speakerDiarization` (10 artifacts, ~14 MB), `sileroVAD` (five artifacts, ~1 MB, MIT, non-serving; `recommended(for: .voiceActivity)` returns nil so it is only loaded explicitly), `whisperLargeV3Turbo` (24 artifacts, ~1.6 GB), `whisperLargeV3_626MB`, `whisperTokenizer` (3 files), the default `mlxQwen35`, the retained `mlxQwen3` A/B alternative, and evaluation-only Qwen3.5 0.8B/2B MLX challengers. Each `ModelArtifact` = relative path + sha256 + size; `resolveBase` is pinned to an exact Hugging Face commit. The compact challengers are reachable only through exact `--mlx-smoke qwen35-0.8b` or `qwen35-2b` tokens and never through Settings, product routing, or `recommended(for:)`; promotion requires Portavoz quality/resource evidence rather than upstream claims (D433).
 - `ModelStore` (actor): download each artifact into a sibling on the destination volume → verify size + sha256 (CryptoKit streaming 1 MiB) → atomically rename or replace. `verify()` re-hashes; `ensureAvailable()` heals missing/corrupt artifacts without first deleting the old destination. The default is `Portavoz/Models/` inside the platform Application Support container (`~/Library/Application Support` on macOS; the app container on iOS), with a `--models-dir` override.
+- A URLSession temporary-download failure caused by Cocoa out-of-space or POSIX `ENOSPC`/`EDQUOT`, including nested underlying errors, propagates as its original typed error so presentation can offer disk-space recovery. Other transfer failures retain `ModelStoreError.downloadFailed(path:underlying:)`; a failed transfer leaves any previous destination artifact intact.
 - `VerifiedModelLifecycle` (actor): coalesces complete descriptor checks, returns an opaque `VerifiedInstallation` only after every pinned digest passes, and caches only successful evidence by descriptor ID + revision. Missing/corrupt results are never cached. Same-descriptor install/remove operations execute in invocation order; invalidation and forced verification supersede stale checks, and waiting callers retry current evidence rather than returning an obsolete result. Cancellation is honored before publication but not reported as false failure after a verified install commits. No app readiness path infers installation from one filename or aggregate size.
 - **Exact local loading**: preserve Parakeet's installed `parakeet-tdt-0.6b-v3` folder. `ParakeetEngine` uses `AsrModels.loadLocal` on that verified directory, never the vendor download-capable loader. Missing files fail locally; an unexpected optional `CtcHead.mlmodelc` is rejected before compilation because it is outside the curated graph. `@concurrent` keeps synchronous CoreML loading off the caller's actor. ModelStore remains the only download authority.
 - The sha256 values come from the HF tree API (`/api/models/<repo>/tree/<rev>?recursive=true`): LFS provides `lfs.oid`; small files are hashed manually. Procedure in the doc comment for `ModelCatalog.parakeetTdtV3`.
@@ -280,7 +286,8 @@ concurrency without treating that one fixture as universal accuracy evidence.
   and FIFO behavior are unchanged.
 - `TdtDecoderState()` is `throws` and is passed `inout` (local variable). `ASRResult.duration` = 0 on the disk-backed path → read actual duration with AVAudioFile.
 - First load compiles for ANE (~14 s for the encoder on M4 Max); CoreML caches it afterward (~1 s).
-- Licenses: Parakeet v3 model CC-BY-4.0, FluidAudio Apache-2.0, WhisperKit MIT — all MIT-compatible with attribution.
+- Licenses: Parakeet v3 and Parakeet Ultra models CC-BY-4.0, FluidAudio Apache-2.0, WhisperKit MIT — all MIT-compatible with attribution.
+- `ParakeetEngine.load(fromVerifiedDirectory:checkpoint:)` loads v3 or the opt-in Ultra checkpoint (`ModelCatalog.parakeetUltra`, FluidInference/parakeet-ultra-coreml at a pinned revision, ~613 MB). Ultra is a post-training of v3 with the same component contract: its int8 encoder, decoder and joint differ, and its preprocessor and vocabulary are the v3 ones. The engine descriptor names the checkpoint it loaded. Ultra is never `recommended(for:)`, so nothing downloads it implicitly.
 
 ### Opt-in public live-work observations (D484)
 
