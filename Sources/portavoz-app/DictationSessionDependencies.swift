@@ -94,7 +94,7 @@ struct DictationSessionDependencies {
             registerCancelKey: { GlobalHotkey(keyCode: UInt32(kVK_Escape), modifiers: 0, onPress: $0) },
             playCue: DictationSoundCue.player(defaults: services.defaults),
             makeSpeechGate: { [defaults = services.defaults, store = services.modelStore] in
-                defaults.bool(forKey: DictationSpeechGate.defaultsKey) ? .silero(store: store) : nil
+                DictationSpeechGate.isEnabled(in: defaults) ? .silero(store: store) : nil
             })
     }
 }

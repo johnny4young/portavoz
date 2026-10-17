@@ -104,6 +104,15 @@ final class DictationSpeechGateSileroTests: XCTestCase {
         XCTAssertFalse(DictationSpeechGate.heardSpeech(VoiceActivityBatch(didResetForDiscontinuity: true, observations: [])))
     }
 
+    func testGateIsOnUnlessTheUserTurnedItOff() async throws {
+        let suite = "speech-gate-default-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        XCTAssertTrue(DictationSpeechGate.isEnabled(in: defaults))
+        defaults.set(false, forKey: DictationSpeechGate.defaultsKey)
+        XCTAssertFalse(DictationSpeechGate.isEnabled(in: defaults))
+    }
+
     func testDisposableCompositionNeverDownloadsTheDetector() async throws {
         let services = try AppServices(arguments: ["-use-temp-store"], environment: [:])
         await services.installSpeechGateModel()

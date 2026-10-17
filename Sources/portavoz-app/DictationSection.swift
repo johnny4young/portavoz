@@ -14,7 +14,7 @@ struct DictationSection: View {
     @AppStorage(DictationController.fillerFilterKey) private var filterFillers = true
     @AppStorage(DictationSoundCue.defaultsKey) private var playsSounds = false
     @AppStorage(DictationPrewarmPolicy.defaultsKey) private var prewarms = false
-    @AppStorage(DictationSpeechGate.defaultsKey) private var skipsSilence = false
+    @AppStorage(DictationSpeechGate.defaultsKey) private var skipsSilence = true
     @AppStorage(AppModelMemoryPreferences.key) private var memoryProfile =
         AppModelMemoryPreferences.Profile.balanced.rawValue
 
@@ -27,6 +27,7 @@ struct DictationSection: View {
                     services.dictation.syncMousePTT(
                         services: services, promptIfNeeded: enabled)
                     services.prewarmDictationIfConfigured()
+                    if enabled, skipsSilence { Task { await services.installSpeechGateModel() } }
                 }
             if enabled {
                 DictationShortcutSettings(shortcut: services.dictation.shortcut) {
@@ -93,7 +94,11 @@ struct DictationSection: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("settings-dictation-speech-gate-status")
-            if skipsSilence, [.failed, .missing].contains(services.speechGateModel) {
+            if skipsSilence, services.speechGateModel == .missing {
+                Button("Download") { Task { await services.installSpeechGateModel() } }
+                    .controlSize(.small)
+                    .accessibilityIdentifier("settings-dictation-speech-gate-install")
+            } else if skipsSilence, services.speechGateModel == .failed {
                 Button("Retry") { Task { await services.installSpeechGateModel() } }
                     .controlSize(.small)
                     .accessibilityIdentifier("settings-dictation-speech-gate-retry")

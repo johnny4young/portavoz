@@ -2870,12 +2870,14 @@ only a verified installed model (never downloads), passes
 `admitModelRuntimeLoad(.liveSpeech)`, then ends its lease at once, so the
 600-second idle release and pressure release still apply.
 
-**Speech gate (D562).** "Skip dictations without speech"
-(`dictationSpeechGate`, `settings-dictation-speech-gate`) is off by default.
-Turning it on installs the pinned ~1 MB Silero bundle through
-`modelLifecycle.install` with progress, failure and Retry
-(`settings-dictation-speech-gate-status`, `-retry`); nothing downloads
-otherwise. When on, each session's `DictationSpeechGate` receives a copy of
+**Speech gate (D562, D563).** "Skip dictations without speech"
+(`dictationSpeechGate`, `settings-dictation-speech-gate`) is on unless the user
+turned it off (`DictationSpeechGate.isEnabled(in:)`). Turning on "Dictate
+anywhere" or the gate installs the pinned ~1 MB Silero bundle through
+`modelLifecycle.install` with progress; a missing detector shows Download
+(`-install`) and a failed one Retry (`settings-dictation-speech-gate-status`,
+`-retry`). Nothing downloads otherwise, and a missing detector pastes as
+before. When on, each session's `DictationSpeechGate` receives a copy of
 every PCM chunk the relay admitted, through a bounded queue the capture pump
 never waits on, and runs `SileroVoiceActivityDetector` on CPU off the callback.
 The first frame with speech probability ≥ 0.5 (Silero's reference, below

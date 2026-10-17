@@ -484,11 +484,14 @@ final class SettingsUITests: PortavozUITestCase {
                        "start and stop sounds are opt-in")
         XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-prewarm")),
                        "loading the model at launch is opt-in")
-        XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-speech-gate")),
-                       "skipping dictations without speech is opt-in")
+        XCTAssertTrue(Self.isOn(app.control(withIdentifier: "settings-dictation-speech-gate")),
+                      "skipping dictations without speech is on by default")
+        // The disposable model store never downloads, so the detector stays missing.
         let gateNote = try uiSnapshotElement("settings-dictation-speech-gate-status", type: .staticText, in: controls)
         XCTAssertTrue(renderedText(of: gateNote).contains(UITestLocale.environmentLocale == "es"
-            ? "detector de voz de 1 MB" : "1 MB voice detector"))
+            ? "todavía no está instalado" : "isn't installed yet"))
+        XCTAssertTrue(app.buttons["settings-dictation-speech-gate-install"].waitForExistenceFast(timeout: 5),
+                      "a missing detector is offered as a one-click download")
         attachScreenshot(of: app, named: "dictation-triggers-language-dictionary")
     }
 

@@ -11,11 +11,16 @@ enum DictationSpeechGateModelState: Equatable {
 }
 
 extension DictationSpeechGate {
-    /// Opt-in: off until the user enables it in Settings.
     static let defaultsKey = "dictationSpeechGate"
     /// Silero's reference threshold, below FluidAudio's 0.85 segmentation default:
     /// withholding quiet real speech costs more than letting noise through.
     static let speechProbabilityThreshold: Float = 0.5
+
+    /// On unless the user turned it off; the detector itself downloads only
+    /// when dictation is turned on or from Settings.
+    static func isEnabled(in defaults: UserDefaults) -> Bool {
+        defaults.object(forKey: defaultsKey) as? Bool ?? true
+    }
 
     static func heardSpeech(_ batch: VoiceActivityBatch) -> Bool {
         batch.observations.contains { $0.isSpeechActive || $0.speechProbability >= speechProbabilityThreshold }
