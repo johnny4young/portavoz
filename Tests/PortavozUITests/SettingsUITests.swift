@@ -480,6 +480,7 @@ final class SettingsUITests: PortavozUITestCase {
             requiring: [
                 "settings-dictation-hotkey-recorder",
                 "settings-dictation-mouse-recorder",
+                "settings-dictation-modifier-key",
                 "settings-dictation-sounds",
                 "settings-dictation-prewarm",
                 "settings-dictation-speech-gate",
@@ -519,6 +520,22 @@ final class SettingsUITests: PortavozUITestCase {
         XCTAssertTrue(renderedText(of: commands).contains(UITestLocale.environmentLocale == "es"
             ? "«nueva línea»" : "“new line”"))
         attachScreenshot(of: app, named: "dictation-triggers-language-dictionary")
+    }
+
+    @MainActor
+    func testHeldFnTriggerExplainsTheGlobeKeySetting() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
+            #"{"globalDictationEnabled":true,"dictationModifierKey":"function"}"#
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        openCategory("settings-category-audio", revealing: "settings-dictation-modifier-key", in: app)
+        XCTAssertTrue(app.staticTexts["settings-dictation-modifier-note"].waitForExistenceFast(timeout: 5))
+        let globe = app.staticTexts["settings-dictation-modifier-fn-note"]
+        XCTAssertTrue(globe.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(renderedText(of: globe).contains(UITestLocale.environmentLocale == "es"
+            ? "«No hacer nada»" : "“Do Nothing”"), "the Globe-key guidance names the System Settings choice")
     }
 
     @MainActor

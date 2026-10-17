@@ -21349,6 +21349,22 @@ Ultra is the consent for its pinned ~613 MB download. Until it is installed,
 dictation uses v3. The corpus is synthetic speech and Ultra's resident memory
 is unmeasured; both need field evidence before Ultra could become a default.
 
+## D566 — Hold Fn or one right-hand modifier to dictate, without owning the key
+
+A held modifier is the fastest push-to-talk on a laptop, but those keys already
+carry shortcuts: Fn with the arrows, and Option with letters for special
+characters. The trigger is opt-in and listens through a pass-through session
+event tap with the Accessibility trust that pasting already needs. It never
+consumes an event, so every shortcut keeps working. It starts only after the
+key has been held alone for 200 ms. Another key or modifier, before then or
+during the hold, means a shortcut: nothing opens, or the session is discarded.
+Release delivers through the mouse trigger's ownership table.
+
+macOS can also act on the Globe key. Portavoz never changes system settings, so
+choosing Fn shows guidance to set "Press 🌐 key to" to "Do Nothing" instead.
+Left-hand modifiers, Control and Caps Lock are not offered because they are too
+busy in everyday typing.
+
 ## D569 — Never shrink the published stable token prefix
 
 Live Parakeet v3 ended a whole dictation with an invalid-lineage error on a quiet
@@ -21364,4 +21380,3 @@ Each re-decode retires only tokens past that prefix, so tokens published as
 irrevocable are never revised, and the continuation still joins its word.
 Jobs without a token subscriber pass a floor of 0 and behave as before. The pin
 moves only with that reviewed commit; D559's other terms are unchanged.
-
