@@ -21317,3 +21317,15 @@ detector is missing the gate stays undetermined and pastes as before. The
 corpus is synthetic speech, so a real-microphone false-negative rate is still
 unmeasured.
 
+## D564 — Spoken line and paragraph commands belong to Clean mode only
+
+Clean mode turns "new line" or "nueva línea" into a line break, and
+"new paragraph", "nuevo párrafo" or "punto y aparte" into a blank line. This
+runs on the final text after the filler filter and before replacements. Literal stays the escape for
+dictating those words as text, so the commands need no separate toggle. Only
+whole phrases count: the single word "newline" is a real term in technical
+prose and is left alone. A user replacement whose trigger is a command phrase
+keeps its meaning. Commands do not change the live preview, and a dictation that
+is only a command is empty and inserts nothing. Spoken punctuation is out of
+scope because the recognizer already punctuates.
+

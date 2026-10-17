@@ -118,4 +118,32 @@ final class DictationTextRulesTests: XCTestCase {
                 "um hello world uh", replacements: rules, removeFillers: true),
             "Hi world")
     }
+
+    func testSpokenCommandsBreakLinesAndAbsorbRecognizerPunctuation() {
+        let cases = [
+            ("Hola. Nueva línea. Mundo.", "Hola.\nMundo."),
+            ("Hola, nueva línea, mundo", "Hola\nmundo"),
+            ("Dear team, new paragraph, thanks for waiting.", "Dear team\n\nthanks for waiting."),
+            ("Primero punto y aparte segundo", "Primero\n\nsegundo"),
+            ("Nuevo párrafo. Listo", "\n\nListo"),
+            ("Ship it new line", "Ship it\n")
+        ]
+        for (heard, typed) in cases {
+            XCTAssertEqual(DictationTextRules.apply(heard, replacements: [], removeFillers: false,
+                                                    spokenCommands: true), typed, heard)
+        }
+    }
+
+    func testSpokenCommandsNeedWholePhrasesAndYieldToUserTriggers() {
+        XCTAssertEqual(DictationTextRules.apply("the newline character", replacements: [],
+                                                removeFillers: false, spokenCommands: true),
+                       "the newline character")
+        XCTAssertEqual(DictationTextRules.apply("Hola, nueva línea, mundo", replacements: [],
+                                                removeFillers: false, spokenCommands: false),
+                       "Hola, nueva línea, mundo")
+        let rules = [DictationReplacement(trigger: "Nueva línea", replacement: "Nueva Línea Aérea")]
+        XCTAssertEqual(DictationTextRules.apply("Vuelo con nueva línea hoy", replacements: rules,
+                                                removeFillers: false, spokenCommands: true),
+                       "Vuelo con Nueva Línea Aérea hoy")
+    }
 }
