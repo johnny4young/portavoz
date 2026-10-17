@@ -25,19 +25,17 @@ extension ModelDescriptor {
 
 extension ModelCatalog {
     /// Every model the app can download, credited to the original authors.
-    public static var credits: [ModelCredit] {
-        [
-            parakeetTdtV3.credit("Parakeet TDT 0.6B v3", by: "NVIDIA"),
-            parakeetUltra.credit(
-                "Parakeet Ultra, a post-training of Parakeet TDT 0.6B v3", by: "moondream, from NVIDIA"),
-            whisperLargeV3Turbo.credit("Whisper large-v3-turbo", by: "OpenAI"),
-            whisperLargeV3_626MB.credit("Whisper large-v3", by: "OpenAI"),
-            whisperTokenizer.credit("Whisper large-v3 tokenizer", by: "OpenAI"),
-            speakerDiarization.credit(
-                "pyannote speaker-diarization-community-1 and WeSpeaker", by: "pyannote.audio and WeSpeaker"),
-            sileroVAD.credit("Silero VAD v6.2.1", by: "Silero team"),
-            mlxQwen3.credit("Qwen3 4B Instruct 2507", by: "Qwen team, Alibaba Cloud"),
-            mlxQwen35.credit("Qwen3.5 4B", by: "Qwen team, Alibaba Cloud")
-        ]
-    }
+    public static let credits: [ModelCredit] = [
+        parakeetTdtV3.credit("Parakeet TDT 0.6B v3", by: "NVIDIA"),
+        parakeetUltra.credit(
+            "Parakeet Ultra, a post-training of Parakeet TDT 0.6B v3", by: "moondream, from NVIDIA"),
+        whisperLargeV3Turbo.credit("Whisper large-v3-turbo", by: "OpenAI"),
+        whisperLargeV3_626MB.credit("Whisper large-v3", by: "OpenAI"),
+        whisperTokenizer.credit("Whisper large-v3 tokenizer", by: "OpenAI"),
+        speakerDiarization.credit(
+            "pyannote speaker-diarization-community-1 and WeSpeaker", by: "pyannote.audio and WeSpeaker"),
+        sileroVAD.credit("Silero VAD v6.2.1", by: "Silero team"),
+        mlxQwen3.credit("Qwen3 4B Instruct 2507", by: "Qwen team, Alibaba Cloud"),
+        mlxQwen35.credit("Qwen3.5 4B", by: "Qwen team, Alibaba Cloud")
+    ]
 }
