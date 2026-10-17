@@ -481,6 +481,7 @@ final class SettingsUITests: PortavozUITestCase {
                 "settings-dictation-hotkey-recorder",
                 "settings-dictation-mouse-recorder",
                 "settings-dictation-modifier-key",
+                "settings-dictation-paste-last-hotkey",
                 "settings-dictation-sounds",
                 "settings-dictation-prewarm",
                 "settings-dictation-speech-gate",
@@ -493,7 +494,8 @@ final class SettingsUITests: PortavozUITestCase {
                 "settings-dictation-language-support": .staticText,
                 "settings-dictation-prewarm-note": .staticText,
                 "settings-dictation-speech-gate-status": .staticText,
-                "settings-dictation-spoken-commands": .staticText
+                "settings-dictation-spoken-commands": .staticText,
+                "settings-dictation-paste-last-note": .staticText
             ],
             expectedText: ["settings-dictation-language-support": expectedSupport],
             timeout: 5,
@@ -504,6 +506,11 @@ final class SettingsUITests: PortavozUITestCase {
         let prewarmNote = try uiSnapshotElement("settings-dictation-prewarm-note", type: .staticText, in: controls)
         XCTAssertTrue(renderedText(of: prewarmNote).contains(UITestLocale.environmentLocale == "es"
             ? "El primer dictado" : "The first dictation"))
+        XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-paste-last-hotkey")),
+                       "the paste-last shortcut is opt-in")
+        let pasteLast = try uiSnapshotElement("settings-dictation-paste-last-note", type: .staticText, in: controls)
+        XCTAssertTrue(renderedText(of: pasteLast).contains(UITestLocale.environmentLocale == "es"
+            ? "15 minutos" : "15 minutes"))
         XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-sounds")),
                        "start and stop sounds are opt-in")
         XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-prewarm")),

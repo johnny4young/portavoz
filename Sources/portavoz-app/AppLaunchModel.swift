@@ -199,6 +199,7 @@ final class AppLaunchModel {
             await services.configureInitialSummaryProviderIfNeeded()
         }
         services.dictation.syncHotkey(services: services)
+        services.syncPasteLastShortcut()
         services.dictation.syncMousePTT(services: services)
         services.dictation.syncModifierPTT(services: services)
         services.prewarmDictationIfConfigured()

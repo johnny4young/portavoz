@@ -21365,6 +21365,19 @@ choosing Fn shows guidance to set "Press 🌐 key to" to "Do Nothing" instead.
 Left-hand modifiers, Control and Caps Lock are not offered because they are too
 busy in everyday typing.
 
+## D567 — Paste the last dictation again from memory only
+
+People often dictate into the wrong field or need the same words twice. The
+last dictated text, whether delivered, withheld or in recovery, is kept in
+memory for 15 minutes so it can be pasted again from the menu bar or an optional
+shortcut. It is cleared when the Mac sleeps or locks and never reaches disk,
+preferences or the clipboard. Dictation still stores no history. The replay
+uses the existing destination capture and recovery path, so it adds no new
+insertion mechanism. The shortcut is a fixed ⌃⌥⌘V, off by default, because ⌥⌘V
+and ⇧⌥⌘V already mean "move" and "paste and match style" in many apps. A
+recorder for a custom shortcut and a persistent, consented history remain
+separate work.
+
 ## D569 — Never shrink the published stable token prefix
 
 Live Parakeet v3 ended a whole dictation with an invalid-lineage error on a quiet

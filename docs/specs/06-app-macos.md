@@ -3227,6 +3227,21 @@ When the tap cannot be created, usually because Accessibility is missing,
 Settings says so (`settings-dictation-modifier-unavailable`). If macOS disables
 the tap, the gesture ends any hold as a release, so a lost key-up never leaves
 dictation listening.
+**Paste the last dictation (D567):** `DictationLastText` keeps only the most
+recent dictated text in memory: delivered, withheld for no speech, or left in
+recovery. It expires after 15 minutes, is cleared when the Mac sleeps, its
+screens sleep, the session resigns or the screen locks, and is never written to
+disk, preferences or the clipboard. `pasteLastDictation(using:)` runs only
+while no session captures and nothing waits in recovery, which keeps its own
+Retry. An expired text is dropped on that attempt, so the menu action disappears. It captures the destination focused at that moment
+and replays the text through the same `replay` → `presentDelivery` path as
+Retry, so a refused paste lands in recovery with Copy. The menu bar shows
+"Paste last" (`menu-bar-paste-last`) while text is remembered. An optional
+fixed ⌃⌥⌘V shortcut (`dictationPasteLastHotkey`,
+`settings-dictation-paste-last-hotkey`) is off by default and reports when
+another app holds it (`settings-dictation-paste-last-note`). Disposable
+launches never register it. Hotkey trigger handling lives in
+`DictationController+Hotkey.swift`.
 
 **Two-tier dictionary and filler filter (Jul 2026)**: `DictationTextRules` (TranscriptionKit, pure, 10 tests) is the deterministic tier — one non-cascading pass of user-defined whole-word, case-insensitive replacements applied longest-trigger-first with punctuation-aware lookaround boundaries (regex-metacharacter triggers like "c++" match literally; replacement strings including `$` and `\` stay literal). Matching is computed against the original text, so a preferred spelling can never become input to a later rule. The codec trims triggers, drops empty rules, and keeps the newest case-insensitive duplicate before the Settings list or matcher consumes it. A conservative bilingual hesitation-filler pass (only tokens meaningless in BOTH languages: um/uh/er/hmm/eh/ehm…, on by default via `dictationFillerFilter`) runs first and repairs seams (collapsed spaces, no space stranded before closing punctuation). The other tier is the existing vocabulary prompt (`customVocabulary`), which the dictation controller forwards as `hints.vocabulary`: WhisperEngine turns it into `promptTokens` and the optional live Apple Speech engine into `contextualStrings`; default live Parakeet still does not read it (FluidAudio 0.15.8 offers `configureVocabularyBoosting` only with the extra `parakeet-ctc-110m` model, which is not in the pinned model catalog). Deterministic replacement remains the only dictionary tier that changes default Parakeet dictation; no unmeasured quality claim is made for the optional Apple route. Rules persist as one JSON string (`dictationReplacements`, codec in the same type) edited by `DictationDictionaryEditor` in Settings (quick-add row `settings-dictation-dict-add`; re-adding a trigger updates it instead of stacking an unreachable duplicate). The admitted session snapshot applies both passes in `deliver` on the final dictation text only — meeting transcripts stay verbatim records.
 

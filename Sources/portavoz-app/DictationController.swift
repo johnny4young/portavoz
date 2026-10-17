@@ -87,9 +87,9 @@ final class DictationController {
     private var relayEndedSessionID: UUID?
     private var feedbackDismissTask: Task<Void, Never>?
     private var feedbackID: UUID?
-    private var pressedSessionID: UUID?
+    var pressedSessionID: UUID?
     private var sessionFeedbackWait: (@MainActor (Duration) async throws -> Void)?
-    private var activeSessionID: UUID?
+    private(set) var activeSessionID: UUID?
     private var measurement: DictationSessionMeasurementRecorder?
     private var textPolicy = DictationTextPreferenceSnapshot.inert
     /// Set once delivery has prepared its text; a later panel choice could not apply.
@@ -101,8 +101,12 @@ final class DictationController {
     @ObservationIgnored private var cancelKey: (any GlobalHotkeyRegistration)?
     @ObservationIgnored private var speechGate: DictationSpeechGate?
 
-    init(presentsPanel: Bool = true) {
+    let lastText: DictationLastText
+
+    init(presentsPanel: Bool = true, lastText: DictationLastText? = nil) {
         self.presentsPanel = presentsPanel
+        // A headless controller never watches system sleep or lock.
+        self.lastText = lastText ?? DictationLastText(observesSystem: presentsPanel)
     }
 
     private func showPanel() {
@@ -156,31 +160,10 @@ final class DictationController {
         mousePTTButton = desiredButton
     }
 
-    private func handleMouse(
-        _ event: MousePTTGesture.Event, services: AppServices
-    ) {
-        switch MousePTTGesture.action(
-            for: event,
-            isListening: isActive,
-            mouseOwnsSession: mouseOwnsSession) {
-        case .start:
-            mouseOwnsSession = true
-            start(services: services)
-            // A refused start (missing Accessibility trust) must not leave
-            // the button claiming a session that never began.
-            if !isActive { mouseOwnsSession = false }
-        case .finish:
-            mouseOwnsSession = false
-            finishAndInsert()
-        case .ignore:
-            break
-        }
-    }
-
     /// Press-to-release lapse that separates a toggle TAP from a
     /// hold-to-talk gesture.
-    private static let holdThreshold: TimeInterval = 0.5
-    private var pressedAt: Date?
+    static let holdThreshold: TimeInterval = 0.5
+    var pressedAt: Date?
 
     /// The mic keeps capturing this long after the finish gesture so the
     /// tail of the last word survives — stopping on the release clips it
@@ -220,6 +203,7 @@ final class DictationController {
         guard phase != .delivering else { return }
         retryDeliveryTask?.cancel()
         retryDeliveryTask = nil
+        isRetryingDelivery = false
         deliveryID = nil
         destination = nil
         recoveryText = ""
@@ -511,48 +495,6 @@ final class DictationController {
 
 }
 
-extension DictationController {
-    /// Re-register the configured hotkey after either Settings value changes.
-    func syncHotkey(services: AppServices) {
-        if !UserDefaults.standard.bool(forKey: Self.defaultsKey), isActive, phase != .delivering {
-            cancel()
-        }
-        shortcut.sync(
-            registrar: services.dictationShortcutRegistrar,
-            onPress: { [weak self, weak services] in
-                guard let self, let services else { return }
-                self.handleHotkeyPress(using: services.makeDictationSessionDependencies(), at: Date())
-            },
-            onRelease: { [weak self] in
-                guard let self else { return }
-                self.handleHotkeyRelease(at: Date())
-            })
-    }
-
-    func handleHotkeyPress(using dependencies: DictationSessionDependencies, at now: Date) {
-        let wasActive = isActive
-        toggle(using: dependencies)
-        // Only a press that actually began this session can later finish it
-        // on release. A second press remains the recovery for a lost key-up.
-        if !wasActive, isActive {
-            pressedAt = now
-            pressedSessionID = activeSessionID
-        } else {
-            pressedAt = nil
-            pressedSessionID = nil
-        }
-    }
-
-    func handleHotkeyRelease(at now: Date) {
-        let ownsSession = activeSessionID != nil && pressedSessionID == activeSessionID
-        let heldLongEnough = pressedAt.map { now.timeIntervalSince($0) > Self.holdThreshold } ?? false
-        pressedAt = nil
-        pressedSessionID = nil
-        guard ownsSession, isActive, heldLongEnough else { return }
-        finishAndInsert()
-    }
-}
-
 private extension DictationController {
     func awaitRuntime(
         _ acquisition: DictationRuntimeAcquisition, id: UUID,
@@ -722,7 +664,25 @@ extension DictationController {
     func retryUndeliveredText() {
         guard case .recovery = phase, !isRetryingDelivery,
               let id = deliveryID, let destination, destination.canRetry else { return }
-        let text = recoveryText
+        replay(recoveryText, into: destination, id: id)
+    }
+
+    /// Pastes the remembered text into whatever is focused now, through the
+    /// same delivery and recovery path as a fresh dictation.
+    func pasteLastDictation(using dependencies: DictationSessionDependencies) {
+        // Undelivered words keep their own Retry; nothing replaces them silently.
+        if case .recovery = phase { return }
+        guard !isActive, retryDeliveryTask == nil, let text = lastText.takeCurrent(), dependencies.canInsert()
+        else { return }
+        cancelFeedbackDismissal()
+        self.dependencies = dependencies
+        let id = UUID()
+        deliveryID = id
+        replay(text, into: dependencies.captureDestination(), id: id)
+    }
+
+    private func replay(_ text: String, into destination: CapturedDictationDestination, id: UUID) {
+        self.destination = destination
         isRetryingDelivery = true
         retryDeliveryTask = Task { [weak self] in
             let result = await destination.insert(text)
@@ -737,6 +697,7 @@ extension DictationController {
         guard deliveryID == id, let dependencies else { return }
         cancelFeedbackDismissal()
         copyStatus = .idle
+        lastText.remember(text)
         if case .refused(let failure) = result {
             recoveryText = text
             phase = .recovery(failure)
@@ -803,6 +764,7 @@ private extension DictationController {
         cancelFeedbackDismissal()
         copyStatus = .idle
         recoveryText = text
+        lastText.remember(text)
         phase = .noSpeech
         showPanel()
     }
@@ -837,4 +799,28 @@ private extension DictationController {
         }
     }
 
+}
+
+// The mouse trigger reads private session state, so it stays in this file.
+extension DictationController {
+    fileprivate func handleMouse(
+        _ event: MousePTTGesture.Event, services: AppServices
+    ) {
+        switch MousePTTGesture.action(
+            for: event,
+            isListening: isActive,
+            mouseOwnsSession: mouseOwnsSession) {
+        case .start:
+            mouseOwnsSession = true
+            start(services: services)
+            // A refused start (missing Accessibility trust) must not leave
+            // the button claiming a session that never began.
+            if !isActive { mouseOwnsSession = false }
+        case .finish:
+            mouseOwnsSession = false
+            finishAndInsert()
+        case .ignore:
+            break
+        }
+    }
 }
