@@ -5,6 +5,8 @@ struct ModifierTriggerState {
     var ptt: ModifierKeyPTT?
     var setting = ModifierKeySetting.off
     var ownsSession = false
+    /// Selected but the event tap could not be created, usually missing Accessibility.
+    var unavailable = false
 }
 
 extension DictationController {
@@ -19,6 +21,7 @@ extension DictationController {
         modifierTrigger.ptt?.invalidate()
         modifierTrigger.ptt = nil
         modifierTrigger.setting = .off
+        modifierTrigger.unavailable = false
         guard !services.usesTemporaryMeetingStore, desired != .off else { return }
         if promptIfNeeded { _ = TextInserter.canInsert(promptIfNeeded: true) }
         guard let ptt = ModifierKeyPTT(
@@ -36,7 +39,10 @@ extension DictationController {
                 guard let self, modifierTrigger.ownsSession, isActive else { return }
                 cancel()
             })
-        else { return }
+        else {
+            modifierTrigger.unavailable = true
+            return
+        }
         modifierTrigger.ptt = ptt
         modifierTrigger.setting = desired
     }

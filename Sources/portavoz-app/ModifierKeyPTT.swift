@@ -66,6 +66,15 @@ struct ModifierKeyGesture {
 
     static let startDelay: Duration = .milliseconds(200)
 
+    /// Maps one tapped keyboard event to a gesture input.
+    static func input(
+        for type: CGEventType, keyCode: Int64, flags: UInt64, setting: ModifierKeySetting
+    ) -> Input {
+        guard type == .flagsChanged, keyCode == setting.keyCode else { return .otherKey }
+        guard flags & setting.flag != 0 else { return .up }
+        return setting.holdsOtherModifier(flags) ? .otherKey : .down
+    }
+
     private enum State { case idle, pending, held, ignoredUntilUp }
     private var state = State.idle
 
@@ -102,7 +111,6 @@ final class ModifierKeyPTT {
     private var tap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private let setting: ModifierKeySetting
-    private let keyCode: Int64
     private var gesture = ModifierKeyGesture()
     private var pendingStart: Task<Void, Never>?
     private let onPress: () -> Void
@@ -115,9 +123,8 @@ final class ModifierKeyPTT {
         onRelease: @escaping () -> Void,
         onChord: @escaping () -> Void
     ) {
-        guard let keyCode = setting.keyCode else { return nil }
+        guard setting.keyCode != nil else { return nil }
         self.setting = setting
-        self.keyCode = keyCode
         self.onPress = onPress
         self.onRelease = onRelease
         self.onChord = onChord
@@ -151,16 +158,12 @@ final class ModifierKeyPTT {
     private func handle(type: CGEventType, keyCode: Int64, flags: UInt64) {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
+            // Events may have been lost while disabled: end any hold rather than
+            // let a pending start or a missed release keep dictation listening.
+            apply(.up)
             return
         }
-        let input: ModifierKeyGesture.Input
-        if type == .flagsChanged, keyCode == self.keyCode {
-            let down = flags & setting.flag != 0
-            input = down && setting.holdsOtherModifier(flags) ? .otherKey : down ? .down : .up
-        } else {
-            input = .otherKey
-        }
-        apply(input)
+        apply(ModifierKeyGesture.input(for: type, keyCode: keyCode, flags: flags, setting: setting))
     }
 
     private func apply(_ input: ModifierKeyGesture.Input) {

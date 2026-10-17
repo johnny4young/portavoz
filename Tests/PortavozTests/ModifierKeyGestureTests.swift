@@ -1,3 +1,4 @@
+import Carbon.HIToolbox
 import CoreGraphics
 import Foundation
 import XCTest
@@ -49,5 +50,24 @@ final class ModifierKeyGestureTests: XCTestCase {
         XCTAssertEqual(ModifierKeySetting.load(from: defaults), .off)
         defaults.set("function", forKey: ModifierKeySetting.defaultsKey)
         XCTAssertEqual(ModifierKeySetting.load(from: defaults), .function)
+    }
+
+    func testTappedEventsMapToTheGestureForOnlyTheChosenKey() async {
+        func input(_ type: CGEventType, _ keyCode: Int, _ flags: CGEventFlags, _ setting: ModifierKeySetting = .function)
+            -> ModifierKeyGesture.Input {
+            ModifierKeyGesture.input(for: type, keyCode: Int64(keyCode), flags: flags.rawValue, setting: setting)
+        }
+        XCTAssertEqual(input(.flagsChanged, kVK_Function, .maskSecondaryFn), .down)
+        XCTAssertEqual(input(.flagsChanged, kVK_Function, []), .up)
+        XCTAssertEqual(input(.flagsChanged, kVK_Function, [.maskSecondaryFn, .maskShift]), .otherKey,
+                       "Fn pressed while Shift is held is a shortcut")
+        XCTAssertEqual(input(.keyDown, kVK_RightArrow, .maskSecondaryFn), .otherKey)
+        XCTAssertEqual(input(.flagsChanged, kVK_Shift, .maskShift), .otherKey)
+        let rightOption = CGEventFlags(rawValue: CGEventFlags.maskAlternate.rawValue | ModifierKeySetting.rightOption.flag)
+        XCTAssertEqual(input(.flagsChanged, kVK_RightOption, rightOption, .rightOption), .down)
+        XCTAssertEqual(input(.flagsChanged, kVK_Option, .maskAlternate, .rightOption), .otherKey,
+                       "the left Option key is not the trigger")
+        XCTAssertEqual(input(.flagsChanged, kVK_RightOption, .maskAlternate, .rightOption), .up,
+                       "left Option still held while the right one is released ends the hold")
     }
 }

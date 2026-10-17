@@ -96,7 +96,13 @@ struct DictationSection: View {
         .onChange(of: modifierKey) {
             services.dictation.syncModifierPTT(services: services, promptIfNeeded: true)
         }
-        if modifierKey != ModifierKeySetting.off.rawValue {
+        if modifierKey != ModifierKeySetting.off.rawValue, services.dictation.modifierTrigger.unavailable {
+            Text("Holding a key needs Accessibility permission for Portavoz in System Settings › Privacy & Security.")
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("settings-dictation-modifier-unavailable")
+        } else if modifierKey != ModifierKeySetting.off.rawValue {
             Text("Hold the key while you speak and release it to paste. Shortcuts that use the key keep working.")
                 .font(.caption)
                 .foregroundStyle(.secondary)

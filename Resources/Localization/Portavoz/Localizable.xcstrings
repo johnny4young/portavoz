@@ -18046,6 +18046,16 @@
           }
         }
       }
+    },
+    "Holding a key needs Accessibility permission for Portavoz in System Settings › Privacy & Security.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantener una tecla necesita el permiso de Accesibilidad para Portavoz en Ajustes del Sistema › Privacidad y seguridad."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
