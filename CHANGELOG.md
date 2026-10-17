@@ -17,6 +17,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 17, 2026
 
+- **↩️ Say "new line" to break lines** — in Clean mode, "new line" / "nueva línea" starts a new line and "new paragraph" / "nuevo párrafo" a new paragraph, without stray commas.
 - **🩹 Soft contractions no longer stop dictation** — a quietly spoken word like "it's" can no longer end a dictation with an error halfway through.
 
 ## October 16, 2026

@@ -2771,7 +2771,14 @@ legacy-aware policy without erasing the stored choices or enabling dictation.
 Literal keeps the admitted recognized words without optional filler filtering or
 replacements; it is not a promise of acoustic verbatim recognition and retains
 existing caption hygiene/assembly. Clean applies the existing TranscriptionKit
-filler setting and one non-cascading replacement pass. Neither requires a
+filler setting, spoken layout commands and one non-cascading replacement pass.
+Commands run on the final text only: "new line"/"nueva línea" becomes a line
+break and "new paragraph"/"nuevo párrafo"/"punto y aparte" a blank line. The
+commas and closing punctuation the recognizer puts around a command are
+dropped, sentence punctuation before it stays, and a command phrase that contains a
+user replacement trigger stays literal. A dictation that is only a command inserts nothing, and the
+panel preview still shows the spoken words. Settings names the commands under
+`settings-dictation-spoken-commands`. Neither mode requires a
 translation/provider/model beyond recognition. Rules and filler choices remain
 configured while Literal is selected. Settings keeps those controls visible but
 disables them, with a "Clean mode only" note, unless the default or at least one

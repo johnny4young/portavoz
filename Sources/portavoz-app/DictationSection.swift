@@ -66,6 +66,11 @@ struct DictationSection: View {
                     .disabled(!cleanInUse)
                 DictationDictionaryEditor()
                     .disabled(!cleanInUse)
+                Text("In Clean mode, say “new line” or “new paragraph” to start one.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("settings-dictation-spoken-commands")
                 if !cleanInUse {
                     Text("Filler filtering and replacements apply only in Clean mode.")
                         .font(.caption)
