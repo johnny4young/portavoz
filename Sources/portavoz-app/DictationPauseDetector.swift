@@ -6,7 +6,8 @@ import PortavozCore
 /// capture callback. It reports at most once and never early: a dropped chunk
 /// or a detector failure turns it off for the session.
 final class DictationPauseDetector: Sendable {
-    typealias Detector = DictationSpeechGate.Detector
+    /// Nil when the chunk completed no detector frame, so it is not evidence of silence.
+    typealias Detector = @Sendable (AudioChunk) async throws -> Bool?
 
     static let capacity = DictationSpeechGate.capacity
 
@@ -31,7 +32,8 @@ final class DictationPauseDetector: Sendable {
                     try Task.checkCancellation()
                     guard !dropped.withLock({ $0 }), chunk.sampleRate > 0 else { return }
                     let end = chunk.timestamp + Double(chunk.samples.count) / chunk.sampleRate
-                    if try await detect(chunk) {
+                    guard let heard = try await detect(chunk) else { continue }
+                    if heard {
                         lastSpeechEnd = end
                     } else if let lastSpeechEnd, end - lastSpeechEnd >= pause {
                         onPause()

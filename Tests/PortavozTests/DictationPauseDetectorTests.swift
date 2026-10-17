@@ -43,6 +43,27 @@ final class DictationPauseDetectorTests: XCTestCase {
         XCTAssertEqual(failing, 0, "a detector failure turns auto-stop off, never cuts early")
     }
 
+    func testUnevaluatedAudioAndOverflowNeverStopEarly() async {
+        let pauses = OSAllocatedUnfairLock(initialState: 0)
+        let unevaluated = DictationPauseDetector(pause: 1.5, load: {
+            { chunk in chunk.timestamp < 0.5 ? true : nil }
+        }, onPause: { pauses.withLock { $0 += 1 } })
+        for index in 0..<40 { unevaluated.offer(chunk(index)) }
+        try? await Task.sleep(for: .milliseconds(200))
+        unevaluated.cancel()
+        XCTAssertEqual(pauses.withLock { $0 }, 0, "chunks with no detector frame are not silence")
+
+        let overflowing = DictationPauseDetector(pause: 1.5, load: {
+            try await Task.sleep(for: .milliseconds(100))
+            // Speech sits among the newest chunks the bounded queue keeps.
+            return { chunk in (25.6..<26.4).contains(chunk.timestamp) }
+        }, onPause: { pauses.withLock { $0 += 1 } })
+        for index in 0..<(DictationPauseDetector.capacity + 40) { overflowing.offer(chunk(index)) }
+        try? await Task.sleep(for: .milliseconds(400))
+        overflowing.cancel()
+        XCTAssertEqual(pauses.withLock { $0 }, 0, "a dropped chunk turns auto-stop off for the session")
+    }
+
     func testPauseSettingFallsBackToTheDefaultAndStaysOptIn() async throws {
         let suite = "auto-stop-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))

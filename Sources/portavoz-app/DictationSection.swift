@@ -100,7 +100,7 @@ struct DictationSection: View {
             }
             .accessibilityIdentifier("settings-dictation-auto-stop-pause")
         }
-        Text(autoStops && services.speechGateModel != .ready
+        Text(autoStops && [.missing, .failed].contains(services.speechGateModel)
             ? L10n.text("Needs the voice detector above. Until it is installed, dictation stops only when you do.")
             : L10n.text("Only when you tap to start. Holding a key or button still stops when you let go."))
             .font(.caption)

@@ -25,7 +25,10 @@ enum DictationAutoStop {
     ) -> DictationPauseDetector {
         DictationPauseDetector(pause: pause, load: {
             let detector = try await SileroVoiceActivityDetector.load(from: store, channel: .microphone)
-            return { chunk in DictationSpeechGate.heardSpeech(try await detector.process(chunk)) }
+            return { chunk in
+                let batch = try await detector.process(chunk)
+                return batch.observations.isEmpty ? nil : DictationSpeechGate.heardSpeech(batch)
+            }
         }, onPause: onPause)
     }
 }

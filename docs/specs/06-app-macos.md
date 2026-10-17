@@ -2898,7 +2898,8 @@ for the same pinned Silero detector. The pause length is 1.5, 2 or 3 seconds
 Each session builds a `DictationSessionAnalysis`: the pump mirrors admitted PCM
 to the speech gate and, when enabled, to a `DictationPauseDetector`, which runs
 Silero continuously off the callback. After speech, once that much audio time
-passes with no speech, it reports once, and `stopAfterPause(sessionID:)`
+passes with no speech, it reports once (a chunk that completes no detector frame
+is not counted as silence), and `stopAfterPause(sessionID:)`
 finishes through the normal stop tail and delivery. It acts only while the
 session is listening and was started with a tap: a held hotkey, mouse button
 or held modifier keeps owning the stop. Silence before any speech never stops.
