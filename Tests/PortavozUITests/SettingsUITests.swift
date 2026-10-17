@@ -58,6 +58,28 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testParakeetUltraIsAnExplicitDictationOnlyDownload() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
+            #"{"globalDictationEnabled":true,"dictationLiveSpeechEngine":"parakeetUltra"}"#
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        openCategory("settings-category-audio", revealing: "settings-dictation-live-ultra-status", in: app)
+        // The disposable model store never downloads, so Ultra stays missing.
+        let status = app.staticTexts["settings-dictation-live-ultra-status"]
+        let missing = UITestLocale.environmentLocale == "es"
+            ? "todavía no está descargado" : "isn't downloaded yet"
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: status).contains(missing) },
+                      "a selected but missing Ultra must say dictation keeps using Parakeet")
+        XCTAssertTrue(app.buttons["settings-dictation-live-ultra-install"].waitForExistenceFast(timeout: 5))
+
+        openCategory("settings-category-intelligence", revealing: "settings-meeting-live-engine", in: app)
+        XCTAssertFalse(app.staticTexts["settings-meeting-live-ultra-status"].exists,
+                       "meetings never offer the dictation-only checkpoint")
+    }
+
+    @MainActor
     func testIntelligencePaneExplicitlyPreparesSemanticSearch() throws {
         let app = try XCUIApplication.portavoz(
             simulateSemanticAssetsMissing: true,
@@ -470,7 +492,8 @@ final class SettingsUITests: PortavozUITestCase {
             types: [
                 "settings-dictation-language-support": .staticText,
                 "settings-dictation-prewarm-note": .staticText,
-                "settings-dictation-speech-gate-status": .staticText
+                "settings-dictation-speech-gate-status": .staticText,
+                "settings-dictation-spoken-commands": .staticText
             ],
             expectedText: ["settings-dictation-language-support": expectedSupport],
             timeout: 5,
@@ -493,6 +516,9 @@ final class SettingsUITests: PortavozUITestCase {
             ? "todavía no está instalado" : "isn't installed yet"))
         XCTAssertTrue(app.buttons["settings-dictation-speech-gate-install"].waitForExistenceFast(timeout: 5),
                       "a missing detector is offered as a one-click download")
+        let commands = try uiSnapshotElement("settings-dictation-spoken-commands", type: .staticText, in: controls)
+        XCTAssertTrue(renderedText(of: commands).contains(UITestLocale.environmentLocale == "es"
+            ? "«nueva línea»" : "“new line”"))
         attachScreenshot(of: app, named: "dictation-triggers-language-dictionary")
     }
 

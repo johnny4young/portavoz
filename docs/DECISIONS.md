@@ -21317,6 +21317,38 @@ detector is missing the gate stays undetermined and pastes as before. The
 corpus is synthetic speech, so a real-microphone false-negative rate is still
 unmeasured.
 
+## D564 — Spoken line and paragraph commands belong to Clean mode only
+
+Clean mode turns "new line" or "nueva línea" into a line break, and
+"new paragraph", "nuevo párrafo" or "punto y aparte" into a blank line. This
+runs on the final text after the filler filter and before replacements. Literal stays the escape for
+dictating those words as text, so the commands need no separate toggle. Only
+whole phrases count: the single word "newline" is a real term in technical
+prose and is left alone. A command phrase that contains a user replacement trigger,
+as whole words, stays literal. Commands do not change the live preview, and a dictation that
+is only a command is empty and inserts nothing. Spoken punctuation is out of
+scope because the recognizer already punctuates.
+
+## D565 — Offer Parakeet Ultra for dictation only, with one resident live model
+
+Over the 480-cell public corpus, fed in real time through the same pipeline,
+Ultra cut speech WER from 15.3% to 10.3%. Exact matches rose from 61 to 105 of
+448 cells, and non-speech cells with invented words fell from 8 to 2 of 32.
+Finalization latency matched v3. The gains were largest in mixed English and
+Spanish. It was worse on 35 cells and better on 118. The regressions cluster in
+Spanish Swift identifiers, English literal-cancel phrases, apostrophes and
+Spanish date corrections. Because some families regress, Ultra is an opt-in
+dictation choice and v3 stays the default and the only meeting model.
+
+Only one live-speech runtime is resident, so a dictation never adds a second
+600 MB model. The checkpoint is part of that runtime's identity. Dictation
+borrows a v3 runtime that a meeting is using, and swaps an idle one. A meeting,
+batch pass or recording attach waits for an Ultra dictation to finish, then
+swaps back; recording is audio-first, so the wait loses no audio. Selecting
+Ultra is the consent for its pinned ~613 MB download. Until it is installed,
+dictation uses v3. The corpus is synthetic speech and Ultra's resident memory
+is unmeasured; both need field evidence before Ultra could become a default.
+
 ## D566 — Hold Fn or one right-hand modifier to dictate, without owning the key
 
 A held modifier is the fastest push-to-talk on a laptop, but those keys already
@@ -21333,3 +21365,18 @@ choosing Fn shows guidance to set "Press 🌐 key to" to "Do Nothing" instead.
 Left-hand modifiers, Control and Caps Lock are not offered because they are too
 busy in everyday typing.
 
+## D569 — Never shrink the published stable token prefix
+
+Live Parakeet v3 ended a whole dictation with an invalid-lineage error on a quiet
+English contraction. Its re-decode retired the previous window's last word and
+emitted a continuation piece, an apostrophe suffix. That piece re-attached the
+trailing word to a token already published as stable, so the stable count moved
+from 12 to 11. Raising only the count would have moved the failure to the next
+window, whose re-decode would cut inside the stable prefix.
+
+The fork, at `16ff239818ddb6787629dab38ae43e8bdd0e7546` on top of D559's
+revision, now keeps the published stable count monotonic for token-stream jobs.
+Each re-decode retires only tokens past that prefix, so tokens published as
+irrevocable are never revised, and the continuation still joins its word.
+Jobs without a token subscriber pass a floor of 0 and behave as before. The pin
+moves only with that reviewed commit; D559's other terms are unchanged.
