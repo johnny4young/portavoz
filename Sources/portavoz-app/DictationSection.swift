@@ -14,7 +14,7 @@ struct DictationSection: View {
     @AppStorage(DictationController.fillerFilterKey) private var filterFillers = true
     @AppStorage(DictationSoundCue.defaultsKey) private var playsSounds = false
     @AppStorage(DictationPrewarmPolicy.defaultsKey) private var prewarms = false
-    @AppStorage(DictationSpeechGate.defaultsKey) private var skipsSilence = true
+    @AppStorage(DictationSpeechGate.defaultsKey) private var skipsSilence = DictationSpeechGate.enabledByDefault
     @AppStorage(AppModelMemoryPreferences.key) private var memoryProfile =
         AppModelMemoryPreferences.Profile.balanced.rawValue
 
@@ -27,7 +27,7 @@ struct DictationSection: View {
                     services.dictation.syncMousePTT(
                         services: services, promptIfNeeded: enabled)
                     services.prewarmDictationIfConfigured()
-                    if enabled, skipsSilence { Task { await services.installSpeechGateModel() } }
+                    if enabled { Task { await services.prepareSpeechGateIfEnabled() } }
                 }
             if enabled {
                 DictationShortcutSettings(shortcut: services.dictation.shortcut) {

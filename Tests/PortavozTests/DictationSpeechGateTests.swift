@@ -113,6 +113,20 @@ final class DictationSpeechGateSileroTests: XCTestCase {
         XCTAssertFalse(DictationSpeechGate.isEnabled(in: defaults))
     }
 
+    func testTurningOnDictationPreparesTheDetectorOnlyWhenTheGateIsOn() async throws {
+        let suite = "speech-gate-prepare-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(false, forKey: DictationSpeechGate.defaultsKey)
+        let services = try AppServices(arguments: ["-use-temp-store"], environment: [:], defaults: defaults)
+        await services.prepareSpeechGateIfEnabled()
+        XCTAssertEqual(services.speechGateModel, .unknown, "A gate turned off never reaches the installer")
+        defaults.removeObject(forKey: DictationSpeechGate.defaultsKey)
+        await services.prepareSpeechGateIfEnabled()
+        // The disposable composition reports missing instead of downloading.
+        XCTAssertEqual(services.speechGateModel, .missing)
+    }
+
     func testDisposableCompositionNeverDownloadsTheDetector() async throws {
         let services = try AppServices(arguments: ["-use-temp-store"], environment: [:])
         await services.installSpeechGateModel()

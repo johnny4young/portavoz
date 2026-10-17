@@ -17,7 +17,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 16, 2026
 
-- **🤫 Silence no longer gets pasted** — dictations with no speech are now held back by default and offered to copy, with a tiny 1 MB voice detector that downloads when you turn on dictation.
+- **🤫 Silence no longer gets pasted** — dictations with no speech are now held back by default and offered to copy, with a tiny 1 MB voice detector that downloads when you turn on dictation (already dictating? tap Download in Settings → Audio).
 - **⏱️ Quick phrases aren't mistaken for taps** — a brief hiccup while the microphone opens no longer makes a short dictation look like an accidental key press and throw it away.
 - **🤫 Silence stays out of your text** — turn on "Skip dictations without speech" and a tiny on-device voice detector keeps silence and background noise from being pasted; the text is still there to copy if it got it wrong.
 
