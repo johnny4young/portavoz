@@ -47,6 +47,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 13, 2026
 
+- **💾 Clear disk-space recovery** — model setup now tells you when a download needs more disk space.
+
 - **🎯 Ready-to-play citations** — jump to a cited moment as soon as its audio is ready while optional compression checks finish.
 
 - **🎧 Keep imported audio within reach** — replay, refine and share imported MP3, AAC, AIFF and M4B recordings; retry copies stay protected until importing finishes, already-compressed audio is never re-encoded, and import only offers formats Portavoz can play.
