@@ -49,7 +49,16 @@ struct DictationSection: View {
                 .accessibilityIdentifier("settings-dictation-language")
                 AppleSpeechChoiceControls(
                     selection: $liveEngine, language: language,
-                    identifierPrefix: "settings-dictation-live")
+                    identifierPrefix: "settings-dictation-live", offersUltra: true)
+                .onChange(of: liveEngine) {
+                    if liveEngine == LiveSpeechSelection.parakeetUltra.rawValue {
+                        Task { await services.installParakeetUltraModel() }
+                    }
+                    services.prewarmDictationIfConfigured()
+                }
+                if liveEngine == LiveSpeechSelection.parakeetUltra.rawValue {
+                    ultraControls
+                }
                 Text("Spanish and English can still mix. This setting mainly keeps out other writing systems.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -84,6 +93,41 @@ struct DictationSection: View {
             )
             .font(.caption)
             .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder private var ultraControls: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(ultraNote)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("settings-dictation-live-ultra-status")
+            if services.parakeetUltraModel == .missing {
+                Button("Download") { Task { await services.installParakeetUltraModel() } }
+                    .controlSize(.small)
+                    .accessibilityIdentifier("settings-dictation-live-ultra-install")
+            } else if services.parakeetUltraModel == .failed {
+                Button("Retry") { Task { await services.installParakeetUltraModel() } }
+                    .controlSize(.small)
+                    .accessibilityIdentifier("settings-dictation-live-ultra-retry")
+            }
+        }
+        .task { await services.refreshParakeetUltraModel() }
+    }
+
+    private var ultraNote: String {
+        switch services.parakeetUltraModel {
+        case .downloading(let percent):
+            L10n.format("Downloading Parakeet Ultra (613 MB)… %d%%", percent)
+        case .ready:
+            L10n.text("Ultra is ready for dictation. Meetings, and dictation during a recording, use Parakeet.")
+        case .failed:
+            L10n.text("Parakeet Ultra couldn't be downloaded. Until it is, dictation uses Parakeet.")
+        case .unknown:
+            L10n.text("Checking Parakeet Ultra…")
+        case .missing:
+            L10n.text("Parakeet Ultra isn't downloaded yet. Until it is, dictation uses Parakeet.")
         }
     }
 

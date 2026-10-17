@@ -3225,6 +3225,15 @@ still mix; the setting mainly keeps out other writing systems) through
 `TranscriptSegment.language` remains the requested hint, not a measured language
 classification. The language default stays automatic, and this dictation-language setting does not change the meeting-language preference.
 
+**Parakeet Ultra for dictation (D565):** the dictation picker also offers
+"Parakeet Ultra (more accurate, 613 MB)" (`parakeetUltra`); the meeting picker
+does not, and a stored meeting value resolves to Parakeet. Choosing it is the
+consent for the pinned download through `modelLifecycle.install`, with progress,
+Download (`settings-dictation-live-ultra-install`), Retry (`-ultra-retry`) and
+status (`settings-dictation-live-ultra-status`). Until it is verified,
+`dictationCheckpoint()` returns v3, so dictation keeps working and never
+downloads it at session start. Pre-warm loads the selected checkpoint.
+
 **Optional Apple live speech (D554):** `meetingLiveSpeechEngine` and
 `dictationLiveSpeechEngine` are independent app preferences and both default
 to Parakeet; unknown stored values also resolve to Parakeet. The Settings

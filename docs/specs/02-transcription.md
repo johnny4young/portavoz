@@ -286,7 +286,8 @@ concurrency without treating that one fixture as universal accuracy evidence.
   and FIFO behavior are unchanged.
 - `TdtDecoderState()` is `throws` and is passed `inout` (local variable). `ASRResult.duration` = 0 on the disk-backed path → read actual duration with AVAudioFile.
 - First load compiles for ANE (~14 s for the encoder on M4 Max); CoreML caches it afterward (~1 s).
-- Licenses: Parakeet v3 model CC-BY-4.0, FluidAudio Apache-2.0, WhisperKit MIT — all MIT-compatible with attribution.
+- Licenses: Parakeet v3 and Parakeet Ultra models CC-BY-4.0, FluidAudio Apache-2.0, WhisperKit MIT — all MIT-compatible with attribution.
+- `ParakeetEngine.load(fromVerifiedDirectory:checkpoint:)` loads v3 or the opt-in Ultra checkpoint (`ModelCatalog.parakeetUltra`, FluidInference/parakeet-ultra-coreml at a pinned revision, ~613 MB). Ultra is a post-training of v3 with the same component contract: its int8 encoder, decoder and joint differ, and its preprocessor and vocabulary are the v3 ones. The engine descriptor names the checkpoint it loaded. Ultra is never `recommended(for:)`, so nothing downloads it implicitly.
 
 ### Opt-in public live-work observations (D484)
 

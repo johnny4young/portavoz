@@ -19,7 +19,7 @@ enum DictationPrewarmPolicy {
 
     static func shouldWarm(_ conditions: Conditions) -> Bool {
         conditions.dictationEnabled && conditions.prewarmEnabled
-            && conditions.profile == .balanced && conditions.engine == .parakeet
+            && conditions.profile == .balanced && [.parakeet, .parakeetUltra].contains(conditions.engine)
             && !conditions.underPressure && !conditions.lowPowerMode
             && !conditions.temporaryStore
     }
@@ -40,11 +40,12 @@ extension AppServices {
     /// Loads only an installed, verified model; a pre-warm never downloads.
     func prewarmDictationIfConfigured() {
         guard DictationPrewarmPolicy.shouldWarm(dictationPrewarmConditions),
-              let descriptor = ModelCatalog.recommended(for: .liveTranscription)
+              let recommended = ModelCatalog.recommended(for: .liveTranscription)
         else { return }
         Task { @MainActor [weak self] in
-            guard let self,
-                  await modelLifecycle.installation(for: descriptor) != nil,
+            guard let self else { return }
+            let descriptor = await dictationCheckpoint() == .ultra ? ModelCatalog.parakeetUltra : recommended
+            guard await modelLifecycle.installation(for: descriptor) != nil,
                   DictationPrewarmPolicy.shouldWarm(dictationPrewarmConditions)
             else { return }
             do {
