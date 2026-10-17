@@ -18047,6 +18047,46 @@
         }
       }
     },
+    "Paste last": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegar el último"
+          }
+        }
+      }
+    },
+    "Paste the last dictation with ⌃⌥⌘V": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegar el último dictado con ⌃⌥⌘V"
+          }
+        }
+      }
+    },
+    "Another app already uses ⌃⌥⌘V. Paste the last dictation from the menu bar instead.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otra app ya usa ⌃⌥⌘V. Pega el último dictado desde la barra de menús."
+          }
+        }
+      }
+    },
+    "The last dictation stays in memory for 15 minutes and is never saved. It is also in the menu bar.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El último dictado se guarda en memoria durante 15 minutos y nunca en disco. También está en la barra de menús."
+          }
+        }
+      }
+    },
     "Hold a key to dictate": {
       "localizations": {
         "es": {

@@ -113,6 +113,12 @@ struct MenuBarContent: View {
                     services.dictation.toggle(services: services)
                 }
                 .accessibilityIdentifier("menu-bar-dictate")
+                if services.dictation.lastText.current != nil {
+                    quickAction("Paste last", "arrow.uturn.down.square", tint: PVDesign.accent) {
+                        services.pasteLastDictation()
+                    }
+                    .accessibilityIdentifier("menu-bar-paste-last")
+                }
             }
             quickAction("Ask", "bubble.left.and.text.bubble.right", tint: .secondary) {
                 openMainWindow()
