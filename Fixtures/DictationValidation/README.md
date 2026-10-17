@@ -382,3 +382,22 @@ the full public corpus was selected, never accepted quality or verified
 insertion. Files are create-only and owner-only; a new attempt needs a new
 output directory. Keep failed attempts instead of replacing them with a later
 green result. Neither raw child output nor transcript text is exported.
+
+## Observe the speech gate over every cell
+
+`DictationSpeechGateCorpusTests` runs the production speech-gate rule
+(`DictationSpeechGate.heardSpeech`, Silero on CPU) over all 480 admitted cells.
+The model comes only from an explicit scratch store; `PORTAVOZ_SPEECH_GATE_INSTALL=1`
+lets it download the pinned bundle there, never into the app's store:
+
+```sh
+PORTAVOZ_SPEECH_GATE_AUDIO=/absolute/scratch/new-dictation-audio \
+PORTAVOZ_SPEECH_GATE_MODELS=/absolute/scratch/models \
+PORTAVOZ_SPEECH_GATE_INSTALL=1 \
+PORTAVOZ_SPEECH_GATE_OUTPUT=/absolute/scratch/speech-gate.json \
+"$(xcrun --find xctest)" -XCTest PortavozTests.DictationSpeechGateCorpusTests "$RELEASE_TEST_BUNDLE"
+```
+
+Each cell records whether the gate heard speech, the first speech frame, the peak
+probability, process CPU time and the slowest chunk. Chunks are fed unpaced, so
+the receipt measures the decision and its cost, not live timing.
