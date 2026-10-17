@@ -149,7 +149,7 @@ this composer and corrected text remains intentionally unmaterialized.
 ## Engine dependency boundary
 
 FluidAudio is fixed to the reviewed fork at
-`24922d65f33ca70fdc041e36598df7ef51786274`, based on upstream
+`33a7dd38337450ba7db2a71fb413aedd9cafcfd1`, based on upstream
 `224de0fb3c304b41bbae24e85e1801900865ff3e` (D559). The Swift 6.2 manifest enables
 only Diarizer; ASR/VAD remain available, while unused TTS resources and NeMo
 linkage are excluded. D516's explicit-review policy remains; D539 records the
@@ -164,6 +164,11 @@ not microphone evidence.
 Preview cadence, first stable commit and completion are distinct measurements.
 Historical preview/confirmation latency is not an insertion-latency guarantee
 for the new irrevocable-prefix contract.
+The published stable count never shrinks within a job (D569). A re-decoded
+continuation piece, such as an apostrophe suffix, can re-attach the last word to
+a stable one. When it does, the manager keeps the earlier stable count and the
+next re-decode retires only tokens past that prefix. Jobs without a token
+subscriber keep the upstream behavior.
 
 ## Model registry — ModelStoreKit
 

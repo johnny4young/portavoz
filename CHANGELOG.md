@@ -15,6 +15,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## October 17, 2026
+
+- **🩹 Soft contractions no longer stop dictation** — a quietly spoken word like "it's" can no longer end a dictation with an error halfway through.
+
 ## October 16, 2026
 
 - **🤫 Silence no longer gets pasted** — dictations with no speech are now held back by default and offered to copy, with a tiny 1 MB voice detector that downloads when you turn on dictation (already dictating? tap Download in Settings → Audio).
