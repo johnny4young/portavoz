@@ -63,6 +63,7 @@ struct DictationSessionDependencies {
     var playCue: (DictationSoundCue) -> Void = { _ in }
     /// Nil leaves delivery to the lexical check alone (the gate is opt-in).
     var makeSpeechGate: () -> DictationSpeechGate? = { nil }
+    var makePauseDetector: (@escaping @Sendable () -> Void) -> DictationPauseDetector? = { _ in nil }
 
     func transcriptionHints() -> TranscriptionHints {
         let language = defaults.string(forKey: DictationController.languageKey)
@@ -95,6 +96,11 @@ struct DictationSessionDependencies {
             playCue: DictationSoundCue.player(defaults: services.defaults),
             makeSpeechGate: { [defaults = services.defaults, store = services.modelStore] in
                 DictationSpeechGate.isEnabled(in: defaults) ? .silero(store: store) : nil
+            },
+            makePauseDetector: { [defaults = services.defaults, store = services.modelStore] onPause in
+                guard DictationAutoStop.isEnabled(in: defaults) else { return nil }
+                let pause = DictationAutoStop.pause(in: defaults)
+                return DictationAutoStop.silero(store: store, pause: pause, onPause: onPause)
             })
     }
 }

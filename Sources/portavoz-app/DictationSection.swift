@@ -14,6 +14,8 @@ struct DictationSection: View {
     @AppStorage(DictationController.fillerFilterKey) private var filterFillers = true
     @AppStorage(DictationSoundCue.defaultsKey) private var playsSounds = false
     @AppStorage(DictationPrewarmPolicy.defaultsKey) private var prewarms = false
+    @AppStorage(DictationAutoStop.defaultsKey) private var autoStops = false
+    @AppStorage(DictationAutoStop.pauseKey) private var autoStopPause = DictationAutoStop.defaultPause
     @AppStorage(DictationSpeechGate.defaultsKey) private var skipsSilence = DictationSpeechGate.enabledByDefault
     @AppStorage(AppModelMemoryPreferences.key) private var memoryProfile =
         AppModelMemoryPreferences.Profile.balanced.rawValue
@@ -41,6 +43,7 @@ struct DictationSection: View {
                     .accessibilityIdentifier("settings-dictation-sounds")
                 prewarmControls
                 speechGateControls
+                autoStopControls
                 Picker("Dictation language", selection: $language) {
                     Text("Automatic").tag("auto")
                     Text("Spanish").tag("es")
@@ -80,6 +83,30 @@ struct DictationSection: View {
             .font(.caption)
             .foregroundStyle(.secondary)
         }
+    }
+
+    @ViewBuilder private var autoStopControls: some View {
+        Toggle("Stop after a pause", isOn: $autoStops)
+            .accessibilityIdentifier("settings-dictation-auto-stop")
+            .onChange(of: autoStops) {
+                // Turning it on is the consent for the same 1 MB voice detector.
+                if autoStops { Task { await services.installSpeechGateModel() } }
+            }
+        if autoStops {
+            Picker("Pause length", selection: $autoStopPause) {
+                ForEach(DictationAutoStop.pauses, id: \.self) { seconds in
+                    Text(L10n.format("%.1f seconds", seconds)).tag(seconds)
+                }
+            }
+            .accessibilityIdentifier("settings-dictation-auto-stop-pause")
+        }
+        Text(autoStops && services.speechGateModel != .ready
+            ? L10n.text("Needs the voice detector above. Until it is installed, dictation stops only when you do.")
+            : L10n.text("Only when you tap to start. Holding a key or button still stops when you let go."))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("settings-dictation-auto-stop-note")
     }
 
     @ViewBuilder private var speechGateControls: some View {

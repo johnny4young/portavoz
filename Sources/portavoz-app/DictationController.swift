@@ -98,7 +98,7 @@ final class DictationController {
     private let presentsPanel: Bool
     private var sessionClock: (() -> Date)?
     @ObservationIgnored private var cancelKey: (any GlobalHotkeyRegistration)?
-    @ObservationIgnored private var speechGate: DictationSpeechGate?
+    @ObservationIgnored private var analysis = DictationSessionAnalysis()
 
     init(presentsPanel: Bool = true) {
         self.presentsPanel = presentsPanel
@@ -330,11 +330,12 @@ final class DictationController {
                 bufferingPolicy: .bufferingNewest(DictationRelayPolicy.capacity))
             localFeed = feed
             self.feed = feed
-            let gate = dependencies.makeSpeechGate()
-            speechGate = gate
+            let analysis = DictationSessionAnalysis(gate: dependencies.makeSpeechGate(), pause: dependencies
+                .makePauseDetector { [weak self] in Task { @MainActor in self?.stopAfterPause(sessionID: id) } })
+            self.analysis = analysis
             pump = startPump(
                 readiness: readiness, stream: micStream, feed: feed, sessionID: id, measurement: measurement,
-                mirror: { gate?.offer($0) })
+                mirror: analysis.offer)
 
             let runtime = try await awaitRuntime(acquisition, id: id, measurement: measurement)
             try await consumeCaptions(
@@ -462,7 +463,7 @@ final class DictationController {
         releaseCancelKey()
         phase = .delivering
         showPanel()
-        if let gate = speechGate, await gate.verdict() == .noSpeech {
+        if let gate = analysis.gate, await gate.verdict() == .noSpeech {
             guard activeSessionID == sessionID else { return }
             presentNoSpeech(text, id: sessionID)
             return
@@ -787,8 +788,15 @@ private extension DictationController {
     }
 
     func releaseSpeechGate() {
-        speechGate?.cancel()
-        speechGate = nil
+        analysis.cancel()
+        analysis = DictationSessionAnalysis()
+    }
+
+    /// A tap-started dictation ends itself after a pause; a held trigger never does.
+    func stopAfterPause(sessionID: UUID) {
+        guard activeSessionID == sessionID, phase == .listening, stopTask == nil, !mouseOwnsSession,
+              pressedSessionID != sessionID else { return }
+        finishAndInsert()
     }
 
     /// No paste: the text stays reachable for Copy in case speech was missed.
