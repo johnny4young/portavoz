@@ -149,7 +149,7 @@ this composer and corrected text remains intentionally unmaterialized.
 ## Engine dependency boundary
 
 FluidAudio is fixed to the reviewed fork at
-`33a7dd38337450ba7db2a71fb413aedd9cafcfd1`, based on upstream
+`16ff239818ddb6787629dab38ae43e8bdd0e7546`, based on upstream
 `224de0fb3c304b41bbae24e85e1801900865ff3e` (D559). The Swift 6.2 manifest enables
 only Diarizer; ASR/VAD remain available, while unused TTS resources and NeMo
 linkage are excluded. D516's explicit-review policy remains; D539 records the

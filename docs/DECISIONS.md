@@ -21326,7 +21326,7 @@ trailing word to a token already published as stable, so the stable count moved
 from 12 to 11. Raising only the count would have moved the failure to the next
 window, whose re-decode would cut inside the stable prefix.
 
-The fork, at `33a7dd38337450ba7db2a71fb413aedd9cafcfd1` on top of D559's
+The fork, at `16ff239818ddb6787629dab38ae43e8bdd0e7546` on top of D559's
 revision, now keeps the published stable count monotonic for token-stream jobs.
 Each re-decode retires only tokens past that prefix, so tokens published as
 irrevocable are never revised, and the continuation still joins its word.

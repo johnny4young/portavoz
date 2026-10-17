@@ -20,7 +20,7 @@ extension ArchitectureDependencyTests {
 
     func testFluidAudioRequirementAndResolutionStayAtReviewedVersion() throws {
         let requiredRevision = try Self.requiredFluidAudioRevision()
-        XCTAssertEqual(requiredRevision, "33a7dd38337450ba7db2a71fb413aedd9cafcfd1",
+        XCTAssertEqual(requiredRevision, "16ff239818ddb6787629dab38ae43e8bdd0e7546",
             "A new speech SDK source requires explicit review rather than only changing the manifest")
         let resolved = try Self.jsonObject(at: "Package.resolved")
         let pins = try XCTUnwrap(resolved["pins"] as? [[String: Any]])
