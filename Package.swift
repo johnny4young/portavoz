@@ -33,7 +33,7 @@ let package = Package(
         // Evaluation candidate: no new models, unused TTS/NeMo are not linked.
         .package(
             url: "https://github.com/johnny4young/FluidAudio.git",
-            revision: "24922d65f33ca70fdc041e36598df7ef51786274",
+            revision: "16ff239818ddb6787629dab38ae43e8bdd0e7546",
             traits: ["Diarizer"]),
         // SQLite toolkit (MIT) — D4: GRDB + FTS5, never SwiftData.
         .package(url: "https://github.com/groue/GRDB.swift.git", .upToNextMajor(from: "7.11.1")),

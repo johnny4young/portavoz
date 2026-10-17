@@ -21337,3 +21337,19 @@ Ultra is the consent for its pinned ~613 MB download. Until it is installed,
 dictation uses v3. The corpus is synthetic speech and Ultra's resident memory
 is unmeasured; both need field evidence before Ultra could become a default.
 
+## D569 — Never shrink the published stable token prefix
+
+Live Parakeet v3 ended a whole dictation with an invalid-lineage error on a quiet
+English contraction. Its re-decode retired the previous window's last word and
+emitted a continuation piece, an apostrophe suffix. That piece re-attached the
+trailing word to a token already published as stable, so the stable count moved
+from 12 to 11. Raising only the count would have moved the failure to the next
+window, whose re-decode would cut inside the stable prefix.
+
+The fork, at `16ff239818ddb6787629dab38ae43e8bdd0e7546` on top of D559's
+revision, now keeps the published stable count monotonic for token-stream jobs.
+Each re-decode retires only tokens past that prefix, so tokens published as
+irrevocable are never revised, and the continuation still joins its word.
+Jobs without a token subscriber pass a floor of 0 and behave as before. The pin
+moves only with that reviewed commit; D559's other terms are unchanged.
+
