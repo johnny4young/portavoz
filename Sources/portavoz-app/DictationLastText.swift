@@ -38,6 +38,12 @@ final class DictationLastText {
         return text
     }
 
+    /// The current text, dropping an expired one so its menu action disappears.
+    func takeCurrent() -> String? {
+        if current == nil, text != nil { clear() }
+        return current
+    }
+
     func remember(_ value: String) {
         text = value
         storedAt = now()

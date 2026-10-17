@@ -104,7 +104,8 @@ final class DictationController {
 
     init(presentsPanel: Bool = true, lastText: DictationLastText? = nil) {
         self.presentsPanel = presentsPanel
-        self.lastText = lastText ?? DictationLastText()
+        // A headless controller never watches system sleep or lock.
+        self.lastText = lastText ?? DictationLastText(observesSystem: presentsPanel)
     }
 
     private func showPanel() {
@@ -687,7 +688,10 @@ extension DictationController {
     /// Pastes the remembered text into whatever is focused now, through the
     /// same delivery and recovery path as a fresh dictation.
     func pasteLastDictation(using dependencies: DictationSessionDependencies) {
-        guard !isActive, retryDeliveryTask == nil, let text = lastText.current, dependencies.canInsert() else { return }
+        // Undelivered words keep their own Retry; nothing replaces them silently.
+        if case .recovery = phase { return }
+        guard !isActive, retryDeliveryTask == nil, let text = lastText.takeCurrent(), dependencies.canInsert()
+        else { return }
         cancelFeedbackDismissal()
         self.dependencies = dependencies
         let id = UUID()

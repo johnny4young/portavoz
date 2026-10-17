@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import XCTest
 
@@ -48,5 +49,33 @@ extension DictationControllerTests {
             for _ in 0..<5 { await Task.yield() }
             XCTAssertEqual(harness.insertions, [text, text], "an expired dictation is never replayed")
         }
+    }
+
+    func testSleepOrLockForgetsTheTextAndRecoveryKeepsItsOwnRetry() async {
+        let last = DictationLastText()
+        last.remember("Envía el informe.")
+        NSWorkspace.shared.notificationCenter.post(name: NSWorkspace.willSleepNotification, object: nil)
+        XCTAssertNil(last.current, "sleep drops the remembered text")
+
+        let text = "Send the report."
+        let harness = DictationControllerHarness(text: text)
+        defer { harness.controller.cancel() }
+        var refusing = harness.dependencies
+        refusing.captureDestination = {
+            CapturedDictationDestination(name: "Refusing receiver", canRetry: true) { _ in .refused(.cancelled) }
+        }
+        harness.controller.toggle(using: refusing)
+        let ready = await awaitEventually { harness.controller.partialText == text }
+        XCTAssertTrue(ready)
+        harness.now = harness.now.addingTimeInterval(1)
+        harness.controller.toggle(using: refusing)
+        let refused = await awaitEventually {
+            if case .recovery = harness.controller.phase { return true }
+            return false
+        }
+        XCTAssertTrue(refused)
+        harness.controller.pasteLastDictation(using: harness.dependencies)
+        for _ in 0..<5 { await Task.yield() }
+        XCTAssertTrue(harness.insertions.isEmpty, "paste-last never replaces undelivered words")
     }
 }
