@@ -485,6 +485,7 @@ final class SettingsUITests: PortavozUITestCase {
                 "settings-dictation-sounds",
                 "settings-dictation-prewarm",
                 "settings-dictation-speech-gate",
+                "settings-dictation-auto-stop",
                 "settings-dictation-language",
                 "settings-dictation-filler",
                 "settings-dictation-dict-add",
@@ -506,6 +507,8 @@ final class SettingsUITests: PortavozUITestCase {
         let prewarmNote = try uiSnapshotElement("settings-dictation-prewarm-note", type: .staticText, in: controls)
         XCTAssertTrue(renderedText(of: prewarmNote).contains(UITestLocale.environmentLocale == "es"
             ? "El primer dictado" : "The first dictation"))
+        XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-auto-stop")),
+                       "stopping after a pause is opt-in")
         XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-paste-last-hotkey")),
                        "the paste-last shortcut is opt-in")
         let pasteLast = try uiSnapshotElement("settings-dictation-paste-last-note", type: .staticText, in: controls)

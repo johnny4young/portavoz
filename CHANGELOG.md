@@ -17,6 +17,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 17, 2026
 
+- **⏸️ Dictation that stops when you do** — turn on "Stop after a pause" and a tap-started dictation pastes on its own after 1.5–3 seconds of quiet.
 - **↩️ Paste your last dictation again** — dictated into the wrong field? Pick "Paste last" in the menu bar (or turn on ⌃⌥⌘V) within 15 minutes; it lives only in memory and is gone when your Mac sleeps.
 - **🌐 Hold Fn to dictate** — hold Fn, Right Option or Right Command while you speak and let go to paste; shortcuts with those keys keep working.
 - **🎯 Parakeet Ultra for dictation** — pick a more accurate dictation model in Settings (a 613 MB download), with a third fewer word errors and much better mixed English and Spanish; meetings keep using Parakeet.

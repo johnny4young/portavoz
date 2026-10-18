@@ -21378,6 +21378,20 @@ and ⇧⌥⌘V already mean "move" and "paste and match style" in many apps. A
 recorder for a custom shortcut and a persistent, consented history remain
 separate work.
 
+## D568 — Let a tap-started dictation stop itself after a pause
+
+Hands-free dictation should end without a second tap. When the user turns it on
+(it is off by default), Silero watches a copy of the admitted PCM continuously.
+After speech, 1.5, 2 or 3 seconds of audio with no speech finish the session
+through the normal stop tail and delivery. It never acts before any speech has
+been heard. It never acts on a session that a held hotkey, mouse button or
+modifier owns, because releasing that trigger already ends it. A dropped chunk,
+a detector failure or a missing model turns it off for that session rather than
+risk cutting the speaker off. Meetings keep the earlier decision not to stop on
+silence. The detector is the speech gate's pinned 1 MB bundle, so turning this
+on is the same consent; the gate's per-session analysis stays separate,
+because the gate stops at the first speech.
+
 ## D569 — Never shrink the published stable token prefix
 
 Live Parakeet v3 ended a whole dictation with an invalid-lineage error on a quiet

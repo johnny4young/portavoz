@@ -17997,6 +17997,56 @@
         }
       }
     },
+    "Stop after a pause": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detener tras una pausa"
+          }
+        }
+      }
+    },
+    "Pause length": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duración de la pausa"
+          }
+        }
+      }
+    },
+    "%.1f seconds": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%.1f segundos"
+          }
+        }
+      }
+    },
+    "Needs the voice detector above. Until it is installed, dictation stops only when you do.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Necesita el detector de voz de arriba. Hasta que esté instalado, el dictado solo se detiene cuando tú lo detienes."
+          }
+        }
+      }
+    },
+    "Only when you tap to start. Holding a key or button still stops when you let go.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo cuando empiezas con un toque. Si mantienes una tecla o un botón, se detiene al soltarlo."
+          }
+        }
+      }
+    },
     "Paste last": {
       "localizations": {
         "es": {

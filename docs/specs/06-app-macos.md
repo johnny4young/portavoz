@@ -2899,6 +2899,23 @@ failing model, a dropped chunk, cancellation or a late verdict is
 `undetermined` and pastes exactly as before. The notice is non-modal; the next
 trigger starts a new dictation.
 
+**Stop after a pause (D568).** "Stop after a pause" (`dictationAutoStop`,
+`settings-dictation-auto-stop`) is off by default. Turning it on is the consent
+for the same pinned Silero detector. The pause length is 1.5, 2 or 3 seconds
+(`dictationAutoStopPause`, default 2, `settings-dictation-auto-stop-pause`).
+Each session builds a `DictationSessionAnalysis`: the pump mirrors admitted PCM
+to the speech gate and, when enabled, to a `DictationPauseDetector`, which runs
+Silero continuously off the callback. After speech, once that much audio time
+passes with no speech, it reports once (a chunk that completes no detector frame
+is not counted as silence), and `stopAfterPause(sessionID:)`
+finishes through the normal stop tail and delivery. It acts only while the
+session is listening and was started with a tap: a held hotkey, mouse button
+or held modifier keeps owning the stop. Silence before any speech never stops.
+A dropped chunk, a detector failure or a missing model turns auto-stop off for
+that session, and the note explains that dictation then stops only when the
+user does (`settings-dictation-auto-stop-note`). Meetings never stop on
+silence.
+
 **Opt-in controller phase measurements.** A session dependency may supply a
 content-free measurement sink and monotonic clock. Ordinary composition supplies
 neither an observer nor a writer; it creates no recorder and never reads the
