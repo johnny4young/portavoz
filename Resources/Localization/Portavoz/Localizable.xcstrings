@@ -17007,12 +17007,12 @@
         }
       }
     },
-    "export markdown backup folder recordings trash privacy local": {
+    "export markdown backup folder recordings trash privacy local model credits licenses attribution": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "exportar markdown backup carpeta grabaciones papelera privacidad local"
+            "value": "exportar markdown backup carpeta grabaciones papelera privacidad local créditos de modelos licencias atribución"
           }
         }
       }
@@ -17993,6 +17993,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "El silencio y el ruido de fondo se ofrecen para copiar en vez de pegarse. Usa un detector de voz de 1 MB en esta Mac."
+          }
+        }
+      }
+    },
+    "Model credits": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Créditos de modelos"
+          }
+        }
+      }
+    },
+    "These models run on this Mac. Each keeps its own license.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estos modelos se ejecutan en esta Mac. Cada uno conserva su propia licencia."
           }
         }
       }
