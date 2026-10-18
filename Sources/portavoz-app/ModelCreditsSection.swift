@@ -23,6 +23,5 @@ struct ModelCreditsSection: View {
         } footer: {
             Text("These models run on this Mac. Each keeps its own license.")
         }
-        .accessibilityIdentifier("settings-model-credits")
     }
 }
