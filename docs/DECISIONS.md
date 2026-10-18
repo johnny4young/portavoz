@@ -21349,6 +21349,49 @@ Ultra is the consent for its pinned ~613 MB download. Until it is installed,
 dictation uses v3. The corpus is synthetic speech and Ultra's resident memory
 is unmeasured; both need field evidence before Ultra could become a default.
 
+## D566 — Hold Fn or one right-hand modifier to dictate, without owning the key
+
+A held modifier is the fastest push-to-talk on a laptop, but those keys already
+carry shortcuts: Fn with the arrows, and Option with letters for special
+characters. The trigger is opt-in and listens through a pass-through session
+event tap with the Accessibility trust that pasting already needs. It never
+consumes an event, so every shortcut keeps working. It starts only after the
+key has been held alone for 200 ms. Another key or modifier, before then or
+during the hold, means a shortcut: nothing opens, or the session is discarded.
+Release delivers through the mouse trigger's ownership table.
+
+macOS can also act on the Globe key. Portavoz never changes system settings, so
+choosing Fn shows guidance to set "Press 🌐 key to" to "Do Nothing" instead.
+Left-hand modifiers, Control and Caps Lock are not offered because they are too
+busy in everyday typing.
+
+## D567 — Paste the last dictation again from memory only
+
+People often dictate into the wrong field or need the same words twice. The
+last dictated text, whether delivered, withheld or in recovery, is kept in
+memory for 15 minutes so it can be pasted again from the menu bar or an optional
+shortcut. It is cleared when the Mac sleeps or locks and never reaches disk,
+preferences or the clipboard. Dictation still stores no history. The replay
+uses the existing destination capture and recovery path, so it adds no new
+insertion mechanism. The shortcut is a fixed ⌃⌥⌘V, off by default, because ⌥⌘V
+and ⇧⌥⌘V already mean "move" and "paste and match style" in many apps. A
+recorder for a custom shortcut and a persistent, consented history remain
+separate work.
+
+## D568 — Let a tap-started dictation stop itself after a pause
+
+Hands-free dictation should end without a second tap. When the user turns it on
+(it is off by default), Silero watches a copy of the admitted PCM continuously.
+After speech, 1.5, 2 or 3 seconds of audio with no speech finish the session
+through the normal stop tail and delivery. It never acts before any speech has
+been heard. It never acts on a session that a held hotkey, mouse button or
+modifier owns, because releasing that trigger already ends it. A dropped chunk,
+a detector failure or a missing model turns it off for that session rather than
+risk cutting the speaker off. Meetings keep the earlier decision not to stop on
+silence. The detector is the speech gate's pinned 1 MB bundle, so turning this
+on is the same consent; the gate's per-session analysis stays separate,
+because the gate stops at the first speech.
+
 ## D569 — Never shrink the published stable token prefix
 
 Live Parakeet v3 ended a whole dictation with an invalid-lineage error on a quiet
@@ -21376,4 +21419,3 @@ Portavoz downloads it from. The link is derived from the descriptor's
 models are not listed, because the app never downloads them. A new
 downloadable model needs a credit in the same change; a unit test enforces this
 for the CC-BY models.
-

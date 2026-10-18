@@ -14,6 +14,10 @@ struct DictationSection: View {
     @AppStorage(DictationController.fillerFilterKey) private var filterFillers = true
     @AppStorage(DictationSoundCue.defaultsKey) private var playsSounds = false
     @AppStorage(DictationPrewarmPolicy.defaultsKey) private var prewarms = false
+    @AppStorage(ModifierKeySetting.defaultsKey) private var modifierKey = ModifierKeySetting.off.rawValue
+    @AppStorage(DictationAutoStop.defaultsKey) private var autoStops = false
+    @AppStorage(DictationAutoStop.pauseKey) private var autoStopPause = DictationAutoStop.defaultPause
+    @AppStorage(PasteLastShortcut.defaultsKey) private var pasteLastShortcut = false
     @AppStorage(DictationSpeechGate.defaultsKey) private var skipsSilence = DictationSpeechGate.enabledByDefault
     @AppStorage(AppModelMemoryPreferences.key) private var memoryProfile =
         AppModelMemoryPreferences.Profile.balanced.rawValue
@@ -24,8 +28,10 @@ struct DictationSection: View {
                 .accessibilityIdentifier("settings-dictation-toggle")
                 .onChange(of: enabled) {
                     services.dictation.syncHotkey(services: services)
+                    services.syncPasteLastShortcut()
                     services.dictation.syncMousePTT(
                         services: services, promptIfNeeded: enabled)
+                    services.dictation.syncModifierPTT(services: services, promptIfNeeded: enabled)
                     services.prewarmDictationIfConfigured()
                     if enabled { Task { await services.prepareSpeechGateIfEnabled() } }
                 }
@@ -37,10 +43,13 @@ struct DictationSection: View {
                     services.dictation.syncMousePTT(
                         services: services, promptIfNeeded: true)
                 }
+                modifierKeyControls
+                pasteLastControls
                 Toggle("Play start and stop sounds", isOn: $playsSounds)
                     .accessibilityIdentifier("settings-dictation-sounds")
                 prewarmControls
                 speechGateControls
+                autoStopControls
                 Picker("Dictation language", selection: $language) {
                     Text("Automatic").tag("auto")
                     Text("Spanish").tag("es")
@@ -93,6 +102,76 @@ struct DictationSection: View {
             )
             .font(.caption)
             .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder private var autoStopControls: some View {
+        Toggle("Stop after a pause", isOn: $autoStops)
+            .accessibilityIdentifier("settings-dictation-auto-stop")
+            .onChange(of: autoStops) {
+                // Turning it on is the consent for the same 1 MB voice detector.
+                if autoStops { Task { await services.installSpeechGateModel() } }
+            }
+        if autoStops {
+            Picker("Pause length", selection: $autoStopPause) {
+                ForEach(DictationAutoStop.pauses, id: \.self) { seconds in
+                    Text(L10n.format("%.1f seconds", seconds)).tag(seconds)
+                }
+            }
+            .accessibilityIdentifier("settings-dictation-auto-stop-pause")
+        }
+        Text(autoStops && [.missing, .failed].contains(services.speechGateModel)
+            ? L10n.text("Needs the voice detector above. Until it is installed, dictation stops only when you do.")
+            : L10n.text("Only when you tap to start. Holding a key or button still stops when you let go."))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("settings-dictation-auto-stop-note")
+    }
+
+    @ViewBuilder private var pasteLastControls: some View {
+        Toggle("Paste the last dictation with ⌃⌥⌘V", isOn: $pasteLastShortcut)
+            .accessibilityIdentifier("settings-dictation-paste-last-hotkey")
+            .onChange(of: pasteLastShortcut) { services.syncPasteLastShortcut() }
+        let taken = services.pasteLastShortcutUnavailable && pasteLastShortcut
+        // swiftlint:disable:next line_length
+        Text(taken ? L10n.text("Another app already uses ⌃⌥⌘V. Paste the last dictation from the menu bar instead.") : L10n.text("The last dictation stays in memory for 15 minutes and is never saved. It is also in the menu bar."))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("settings-dictation-paste-last-note")
+    }
+
+    @ViewBuilder private var modifierKeyControls: some View {
+        Picker("Hold a key to dictate", selection: $modifierKey) {
+            Text("Off").tag(ModifierKeySetting.off.rawValue)
+            Text("Fn (🌐)").tag(ModifierKeySetting.function.rawValue)
+            Text("Right Option").tag(ModifierKeySetting.rightOption.rawValue)
+            Text("Right Command").tag(ModifierKeySetting.rightCommand.rawValue)
+        }
+        .accessibilityIdentifier("settings-dictation-modifier-key")
+        .onChange(of: modifierKey) {
+            services.dictation.syncModifierPTT(services: services, promptIfNeeded: true)
+        }
+        if modifierKey != ModifierKeySetting.off.rawValue, services.dictation.modifierTrigger.unavailable {
+            Text("Holding a key needs Accessibility permission for Portavoz in System Settings › Privacy & Security.")
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("settings-dictation-modifier-unavailable")
+        } else if modifierKey != ModifierKeySetting.off.rawValue {
+            Text("Hold the key while you speak and release it to paste. Shortcuts that use the key keep working.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("settings-dictation-modifier-note")
+        }
+        if modifierKey == ModifierKeySetting.function.rawValue {
+            Text("So macOS doesn't also react, set “Press 🌐 key to” to “Do Nothing” in System Settings › Keyboard.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("settings-dictation-modifier-fn-note")
         }
     }
 

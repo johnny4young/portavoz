@@ -182,6 +182,8 @@ final class AppServices {
     private(set) var mlxDownloaded = false
     var speechGateModel = ConsentedModelState.unknown
     var parakeetUltraModel = ConsentedModelState.unknown
+    @ObservationIgnored var pasteLastHotkey: GlobalHotkey?
+    var pasteLastShortcutUnavailable = false
     /// IntelligenceKit owns container mechanics; composition owns the one
     /// process runtime and every residency transition around it.
     @ObservationIgnored let mlxSummaryRuntime = MLXSummaryRuntime()

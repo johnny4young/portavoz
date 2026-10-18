@@ -69,6 +69,7 @@ final class PortavozAppDelegate:
         MainActor.assumeIsolated {
             guard let services = Self.services else { return }
             services.dictation.syncMousePTT(services: services)
+            services.dictation.syncModifierPTT(services: services)
         }
     }
 

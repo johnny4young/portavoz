@@ -18017,6 +18017,166 @@
         }
       }
     },
+    "Stop after a pause": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detener tras una pausa"
+          }
+        }
+      }
+    },
+    "Pause length": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duración de la pausa"
+          }
+        }
+      }
+    },
+    "%.1f seconds": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%.1f segundos"
+          }
+        }
+      }
+    },
+    "Needs the voice detector above. Until it is installed, dictation stops only when you do.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Necesita el detector de voz de arriba. Hasta que esté instalado, el dictado solo se detiene cuando tú lo detienes."
+          }
+        }
+      }
+    },
+    "Only when you tap to start. Holding a key or button still stops when you let go.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo cuando empiezas con un toque. Si mantienes una tecla o un botón, se detiene al soltarlo."
+          }
+        }
+      }
+    },
+    "Paste last": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegar el último"
+          }
+        }
+      }
+    },
+    "Paste the last dictation with ⌃⌥⌘V": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegar el último dictado con ⌃⌥⌘V"
+          }
+        }
+      }
+    },
+    "Another app already uses ⌃⌥⌘V. Paste the last dictation from the menu bar instead.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otra app ya usa ⌃⌥⌘V. Pega el último dictado desde la barra de menús."
+          }
+        }
+      }
+    },
+    "The last dictation stays in memory for 15 minutes and is never saved. It is also in the menu bar.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El último dictado se guarda en memoria durante 15 minutos y nunca en disco. También está en la barra de menús."
+          }
+        }
+      }
+    },
+    "Hold a key to dictate": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantener una tecla para dictar"
+          }
+        }
+      }
+    },
+    "Fn (🌐)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fn (🌐)"
+          }
+        }
+      }
+    },
+    "Right Option": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opción derecha"
+          }
+        }
+      }
+    },
+    "Right Command": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comando derecho"
+          }
+        }
+      }
+    },
+    "Hold the key while you speak and release it to paste. Shortcuts that use the key keep working.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén la tecla mientras hablas y suéltala para pegar. Los atajos que usan esa tecla siguen funcionando."
+          }
+        }
+      }
+    },
+    "So macOS doesn't also react, set “Press 🌐 key to” to “Do Nothing” in System Settings › Keyboard.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para que macOS no reaccione también, en Ajustes del Sistema › Teclado pon «Pulsar la tecla 🌐 para» en «No hacer nada»."
+          }
+        }
+      }
+    },
+    "Holding a key needs Accessibility permission for Portavoz in System Settings › Privacy & Security.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantener una tecla necesita el permiso de Accesibilidad para Portavoz en Ajustes del Sistema › Privacidad y seguridad."
+          }
+        }
+      }
+    },
     "Parakeet Ultra (more accurate, 613 MB)": {
       "localizations": {
         "es": {

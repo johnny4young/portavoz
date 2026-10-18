@@ -2907,6 +2907,23 @@ failing model, a dropped chunk, cancellation or a late verdict is
 `undetermined` and pastes exactly as before. The notice is non-modal; the next
 trigger starts a new dictation.
 
+**Stop after a pause (D568).** "Stop after a pause" (`dictationAutoStop`,
+`settings-dictation-auto-stop`) is off by default. Turning it on is the consent
+for the same pinned Silero detector. The pause length is 1.5, 2 or 3 seconds
+(`dictationAutoStopPause`, default 2, `settings-dictation-auto-stop-pause`).
+Each session builds a `DictationSessionAnalysis`: the pump mirrors admitted PCM
+to the speech gate and, when enabled, to a `DictationPauseDetector`, which runs
+Silero continuously off the callback. After speech, once that much audio time
+passes with no speech, it reports once (a chunk that completes no detector frame
+is not counted as silence), and `stopAfterPause(sessionID:)`
+finishes through the normal stop tail and delivery. It acts only while the
+session is listening and was started with a tap: a held hotkey, mouse button
+or held modifier keeps owning the stop. Silence before any speech never stops.
+A dropped chunk, a detector failure or a missing model turns auto-stop off for
+that session, and the note explains that dictation then stops only when the
+user does (`settings-dictation-auto-stop-note`). Meetings never stop on
+silence.
+
 **Opt-in controller phase measurements.** A session dependency may supply a
 content-free measurement sink and monotonic clock. Ordinary composition supplies
 neither an observer nor a writer; it creates no recorder and never reads the
@@ -3055,7 +3072,7 @@ shown as unavailable, not asserted to be a particular OS conflict. Settings
 provides Retry and the recorder, and help always follows the selected binding.
 Neither recovery action begins capture or requests microphone/Accessibility
 permission. There is no automatic retry loop. Ordinary temporary-store launches
-register neither Carbon hotkeys nor the mouse event tap; the explicit shortcut
+register neither Carbon hotkeys nor the mouse or modifier event taps; the explicit shortcut
 fixture exercises failed registration and recovery with an inert registrar.
 
 **In-flight delivery and Escape (Oct 2026).** `Phase.delivering` covers the
@@ -3217,6 +3234,39 @@ appearance, replacement and removal without native capture or model loading.
 
 
 **Mouse-button push-to-talk (Jul 2026)**: `MouseButtonPTT` owns one session `CGEventTap` over `otherMouseDown`/`otherMouseUp` that CONSUMES the configured button (the app under the cursor never sees the click) and passes every other button through; a tap disabled by timeout is always re-armed. CGEvent index 2+ is eligible — vendor-facing Button 3+ means middle click or an additional button — while indices 0/1 (left/right) can never become a trigger. Invalid persisted values normalize to Off. The tap needs the same Accessibility trust as the paste path: choosing a button prompts once, a denied/pending prompt leaves the keyboard trigger working, and returning from System Settings retries registration. Rebinding first cancels any mouse-owned capture so its consumed release cannot strand the session. `MousePTTGesture` (app input boundary, pure, 3 tests) is the decision table: press starts when idle and finishes a listening session whoever started it; release delivers only when the button itself started the session, so a stray release can never double-finish a hotkey session. There is no tap-vs-hold discriminator on the mouse — the capture minimum already cancels an accidental click. `MouseButtonRecorder` in Settings captures the next middle/additional-button click (`settings-dictation-mouse-recorder`; Esc cancels) with an explicit clear control; both mouse and keyboard recorders remove their local monitors when their Settings row disappears.
+
+**Held-modifier push-to-talk (D566):** "Hold a key to dictate"
+(`dictationModifierKey`, `settings-dictation-modifier-key`) is Off by default and
+offers Fn (🌐), Right Option or Right Command. `ModifierKeyPTT` owns one session
+`CGEventTap` over `flagsChanged` and `keyDown` that passes every event through; it
+needs the same Accessibility trust as the mouse trigger and retries with it when
+the app reactivates. Right-hand keys are told apart by their device-dependent
+flag bits. `ModifierKeyGesture` starts only after the key has been held alone for
+200 ms: another key or modifier before then, or a release, opens nothing, so
+Fn+arrow and ⌥+letter shortcuts keep working. A key typed after dictation began
+discards that session. Release delivers through the same `MousePTTGesture`
+ownership table as the mouse button, and the capture minimum still cancels a
+too-short hold. Choosing Fn shows guidance to set "Press 🌐 key to" to "Do Nothing"
+(`settings-dictation-modifier-fn-note`); Portavoz never changes that setting.
+When the tap cannot be created, usually because Accessibility is missing,
+Settings says so (`settings-dictation-modifier-unavailable`). If macOS disables
+the tap, the gesture ends any hold as a release, so a lost key-up never leaves
+dictation listening.
+**Paste the last dictation (D567):** `DictationLastText` keeps only the most
+recent dictated text in memory: delivered, withheld for no speech, or left in
+recovery. It expires after 15 minutes, is cleared when the Mac sleeps, its
+screens sleep, the session resigns or the screen locks, and is never written to
+disk, preferences or the clipboard. `pasteLastDictation(using:)` runs only
+while no session captures and nothing waits in recovery, which keeps its own
+Retry. An expired text is dropped on that attempt, so the menu action disappears. It captures the destination focused at that moment
+and replays the text through the same `replay` → `presentDelivery` path as
+Retry, so a refused paste lands in recovery with Copy. The menu bar shows
+"Paste last" (`menu-bar-paste-last`) while text is remembered. An optional
+fixed ⌃⌥⌘V shortcut (`dictationPasteLastHotkey`,
+`settings-dictation-paste-last-hotkey`) is off by default and reports when
+another app holds it (`settings-dictation-paste-last-note`). Disposable
+launches never register it. Hotkey trigger handling lives in
+`DictationController+Hotkey.swift`.
 
 **Two-tier dictionary and filler filter (Jul 2026)**: `DictationTextRules` (TranscriptionKit, pure, 10 tests) is the deterministic tier — one non-cascading pass of user-defined whole-word, case-insensitive replacements applied longest-trigger-first with punctuation-aware lookaround boundaries (regex-metacharacter triggers like "c++" match literally; replacement strings including `$` and `\` stay literal). Matching is computed against the original text, so a preferred spelling can never become input to a later rule. The codec trims triggers, drops empty rules, and keeps the newest case-insensitive duplicate before the Settings list or matcher consumes it. A conservative bilingual hesitation-filler pass (only tokens meaningless in BOTH languages: um/uh/er/hmm/eh/ehm…, on by default via `dictationFillerFilter`) runs first and repairs seams (collapsed spaces, no space stranded before closing punctuation). The other tier is the existing vocabulary prompt (`customVocabulary`), which the dictation controller forwards as `hints.vocabulary`: WhisperEngine turns it into `promptTokens` and the optional live Apple Speech engine into `contextualStrings`; default live Parakeet still does not read it (FluidAudio 0.15.8 offers `configureVocabularyBoosting` only with the extra `parakeet-ctc-110m` model, which is not in the pinned model catalog). Deterministic replacement remains the only dictionary tier that changes default Parakeet dictation; no unmeasured quality claim is made for the optional Apple route. Rules persist as one JSON string (`dictationReplacements`, codec in the same type) edited by `DictationDictionaryEditor` in Settings (quick-add row `settings-dictation-dict-add`; re-adding a trigger updates it instead of stacking an unreachable duplicate). The admitted session snapshot applies both passes in `deliver` on the final dictation text only — meeting transcripts stay verbatim records.
 

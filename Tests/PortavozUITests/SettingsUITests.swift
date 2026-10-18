@@ -495,9 +495,12 @@ final class SettingsUITests: PortavozUITestCase {
             requiring: [
                 "settings-dictation-hotkey-recorder",
                 "settings-dictation-mouse-recorder",
+                "settings-dictation-modifier-key",
+                "settings-dictation-paste-last-hotkey",
                 "settings-dictation-sounds",
                 "settings-dictation-prewarm",
                 "settings-dictation-speech-gate",
+                "settings-dictation-auto-stop",
                 "settings-dictation-language",
                 "settings-dictation-filler",
                 "settings-dictation-dict-add",
@@ -507,7 +510,8 @@ final class SettingsUITests: PortavozUITestCase {
                 "settings-dictation-language-support": .staticText,
                 "settings-dictation-prewarm-note": .staticText,
                 "settings-dictation-speech-gate-status": .staticText,
-                "settings-dictation-spoken-commands": .staticText
+                "settings-dictation-spoken-commands": .staticText,
+                "settings-dictation-paste-last-note": .staticText
             ],
             expectedText: ["settings-dictation-language-support": expectedSupport],
             timeout: 5,
@@ -518,6 +522,13 @@ final class SettingsUITests: PortavozUITestCase {
         let prewarmNote = try uiSnapshotElement("settings-dictation-prewarm-note", type: .staticText, in: controls)
         XCTAssertTrue(renderedText(of: prewarmNote).contains(UITestLocale.environmentLocale == "es"
             ? "El primer dictado" : "The first dictation"))
+        XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-auto-stop")),
+                       "stopping after a pause is opt-in")
+        XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-paste-last-hotkey")),
+                       "the paste-last shortcut is opt-in")
+        let pasteLast = try uiSnapshotElement("settings-dictation-paste-last-note", type: .staticText, in: controls)
+        XCTAssertTrue(renderedText(of: pasteLast).contains(UITestLocale.environmentLocale == "es"
+            ? "15 minutos" : "15 minutes"))
         XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-sounds")),
                        "start and stop sounds are opt-in")
         XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-prewarm")),
@@ -534,6 +545,22 @@ final class SettingsUITests: PortavozUITestCase {
         XCTAssertTrue(renderedText(of: commands).contains(UITestLocale.environmentLocale == "es"
             ? "«nueva línea»" : "“new line”"))
         attachScreenshot(of: app, named: "dictation-triggers-language-dictionary")
+    }
+
+    @MainActor
+    func testHeldFnTriggerExplainsTheGlobeKeySetting() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
+            #"{"globalDictationEnabled":true,"dictationModifierKey":"function"}"#
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        openCategory("settings-category-audio", revealing: "settings-dictation-modifier-key", in: app)
+        XCTAssertTrue(app.staticTexts["settings-dictation-modifier-note"].waitForExistenceFast(timeout: 5))
+        let globe = app.staticTexts["settings-dictation-modifier-fn-note"]
+        XCTAssertTrue(globe.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(renderedText(of: globe).contains(UITestLocale.environmentLocale == "es"
+            ? "«No hacer nada»" : "“Do Nothing”"), "the Globe-key guidance names the System Settings choice")
     }
 
     @MainActor
