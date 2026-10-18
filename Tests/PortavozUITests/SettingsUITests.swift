@@ -305,8 +305,14 @@ final class SettingsUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { finishUITestApplication(app) }
 
-        openCategory("settings-category-data", revealing: "settings-model-credit-parakeet-tdt-0.6b-v3-coreml", in: app)
+        openCategory("settings-category-data", revealing: "settings-export-diagnostics", in: app)
+        // The credits close the pane; SwiftUI materializes those rows only once scrolled near.
+        let window = app.windows.containing(.any, identifier: "settings-search-field").firstMatch
+        let form = window.scrollViews.element(boundBy: 1)
         let parakeet = app.control(withIdentifier: "settings-model-credit-parakeet-tdt-0.6b-v3-coreml")
+        for _ in 0..<12 where !parakeet.exists {
+            form.scroll(byDeltaX: 0, deltaY: -400)
+        }
         XCTAssertTrue(parakeet.waitForExistenceFast(timeout: 5))
         let credit = renderedText(of: parakeet)
         XCTAssertTrue(credit.contains("NVIDIA") && credit.contains("CC-BY-4.0"),
