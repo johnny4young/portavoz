@@ -1983,10 +1983,9 @@ Onboarding's explicit model preparation has one presentation state: idle,
 preparing, ready, or a closed failure category. Network, disk-space and
 interruption failures offer a localized recovery message; a `ModelStore`
 `outOfSpace` failure is storage, and other wrapped transfer failures are
-network. Disk-space
-detection follows Cocoa out-of-space and POSIX `ENOSPC`/`EDQUOT` through
-underlying errors before classifying a `URLError`; unknown failures
-never display raw paths, URLs or error descriptions. Retry admits one load at a
+network. Disk-space detection follows Cocoa out-of-space and POSIX
+`ENOSPC`/`EDQUOT` through underlying errors before classifying a `URLError`;
+unknown failures never display raw paths, URLs or error descriptions. Retry admits one load at a
 time. Continue without models and Skip remain available, and Back retains the
 observed result for this presentation. Dismissing or moving between steps does
 not cancel the AppServices-owned shared model task or change its lease/release

@@ -235,6 +235,7 @@ public actor ModelStore {
 
     /// Whether a disk-full or quota cause appears anywhere in the error's cause chain.
     public static func isOutOfSpace(_ error: NSError) -> Bool {
+        if case .outOfSpace = error as? ModelStoreError { return true }
         if error.domain == NSCocoaErrorDomain, error.code == NSFileWriteOutOfSpaceError {
             return true
         }

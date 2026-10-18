@@ -59,12 +59,20 @@ struct ModelStoreDownloadFailureTests {
     }
 
     @Test func localWritesReportAFullDiskAndPassOtherErrorsThrough() throws {
-        #expect(throws: ModelStore.ModelStoreError.self) {
+        do {
             try ModelStore.storing("Encoder.mlmodelc/weights/weight.bin") {
                 throw NSError(domain: NSCocoaErrorDomain, code: NSFileWriteUnknownError, userInfo: [
                     NSUnderlyingErrorKey: NSError(domain: NSPOSIXErrorDomain, code: Int(ENOSPC))
                 ])
             }
+            Issue.record("A full disk must be thrown")
+        } catch let error as ModelStore.ModelStoreError {
+            guard case .outOfSpace(let path) = error else {
+                Issue.record("A full disk must be reported as out of space, not \(error)")
+                return
+            }
+            #expect(path == "Encoder.mlmodelc/weights/weight.bin")
+            #expect(ModelStore.isOutOfSpace(error as NSError), "the typed case still reads as out of space")
         }
         do {
             try ModelStore.storing("vocab.json") { throw NSError(domain: NSPOSIXErrorDomain, code: Int(EACCES)) }
