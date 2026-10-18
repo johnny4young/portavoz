@@ -1982,8 +1982,8 @@ unmeasured byte count.
 Onboarding's explicit model preparation has one presentation state: idle,
 preparing, ready, or a closed failure category. Network, disk-space and
 interruption failures offer a localized recovery message; a `ModelStore`
-transfer failure retains its disk-space cause when URLSession cannot write its
-temporary download; other wrapped transfer failures are network. Disk-space
+`outOfSpace` failure is storage, and other wrapped transfer failures are
+network. Disk-space
 detection follows Cocoa out-of-space and POSIX `ENOSPC`/`EDQUOT` through
 underlying errors before classifying a `URLError`; unknown failures
 never display raw paths, URLs or error descriptions. Retry admits one load at a

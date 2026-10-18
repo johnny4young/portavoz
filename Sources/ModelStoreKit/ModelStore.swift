@@ -9,6 +9,8 @@ public actor ModelStore {
         case checksumMismatch(path: String, expected: String, actual: String)
         case sizeMismatch(path: String, expected: Int, actual: Int)
         case downloadFailed(path: String, underlying: String)
+        /// The disk or quota was full while downloading, staging or publishing.
+        case outOfSpace(path: String)
         case notInstalled(missing: [String], corrupted: [String])
 
         public var errorDescription: String? {
@@ -19,6 +21,8 @@ public actor ModelStore {
                 return "size mismatch for \(path): expected \(expected) bytes, got \(actual)"
             case .downloadFailed(let path, let underlying):
                 return "download failed for \(path): \(underlying)"
+            case .outOfSpace(let path):
+                return "not enough disk space to save \(path)"
             case .notInstalled(let missing, let corrupted):
                 return "model not installed (missing: \(missing.count), corrupted: \(corrupted.count))"
             }
@@ -170,9 +174,8 @@ public actor ModelStore {
         do {
             (temporary, _) = try await session.download(from: source)
         } catch {
-            // URLSession also writes its temporary download to disk. Retain
-            // an out-of-space cause so callers can offer storage recovery.
-            if Self.isOutOfSpace(error as NSError) { throw error }
+            // URLSession also writes its temporary download to disk.
+            if Self.isOutOfSpace(error as NSError) { throw ModelStoreError.outOfSpace(path: artifact.path) }
             throw ModelStoreError.downloadFailed(
                 path: artifact.path, underlying: String(describing: error))
         }
@@ -180,17 +183,17 @@ public actor ModelStore {
 
         try Task.checkCancellation()
         let parent = destination.deletingLastPathComponent()
-        try FileManager.default.createDirectory(
-            at: parent,
-            withIntermediateDirectories: true)
         let staged = parent.appendingPathComponent(
             ".\(destination.lastPathComponent).download-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: staged) }
-        do {
-            try FileManager.default.moveItem(at: temporary, to: staged)
-        } catch {
-            try? FileManager.default.removeItem(at: staged)
-            try FileManager.default.copyItem(at: temporary, to: staged)
+        try Self.storing(artifact.path) {
+            try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
+            do {
+                try FileManager.default.moveItem(at: temporary, to: staged)
+            } catch {
+                try? FileManager.default.removeItem(at: staged)
+                try FileManager.default.copyItem(at: temporary, to: staged)
+            }
         }
 
         let size = (try? FileManager.default.attributesOfItem(atPath: staged.path)[.size] as? Int) ?? -1
@@ -208,12 +211,25 @@ public actor ModelStore {
         // The verified sibling is on the destination volume, so publication is
         // one atomic rename/replace and a failed repair preserves the old file.
         try Task.checkCancellation()
+        try Self.storing(artifact.path) { try Self.publish(staged, at: destination) }
+    }
+
+    private static func publish(_ staged: URL, at destination: URL) throws {
         if FileManager.default.fileExists(atPath: destination.path) {
             _ = try FileManager.default.replaceItemAt(
                 destination,
                 withItemAt: staged)
         } else {
             try FileManager.default.moveItem(at: staged, to: destination)
+        }
+    }
+
+    /// Local writes report a full disk as `outOfSpace`; every other error passes through.
+    static func storing(_ path: String, _ write: () throws -> Void) throws {
+        do {
+            try write()
+        } catch where isOutOfSpace(error as NSError) {
+            throw ModelStoreError.outOfSpace(path: path)
         }
     }
 

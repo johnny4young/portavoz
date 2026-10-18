@@ -1,5 +1,5 @@
 import Foundation
-import ModelStoreKit
+@testable import ModelStoreKit
 import Testing
 
 @testable import portavoz_app
@@ -12,11 +12,14 @@ struct ModelStoreDownloadFailureTests {
         do {
             try await fixture.store.ensureAvailable(fixture.descriptor)
             Issue.record("The synthetic download must fail")
+        } catch let error as ModelStore.ModelStoreError {
+            guard case .outOfSpace(let path) = error else {
+                Issue.record("A full disk must be reported as out of space, not \(error)")
+                return
+            }
+            #expect(path == filename)
         } catch {
-            let native = error as NSError
-            #expect(native.domain == NSURLErrorDomain)
-            #expect(native.code == URLError.cannotWriteToFile.rawValue)
-            #expect(native.userInfo[NSUnderlyingErrorKey] is NSError)
+            Issue.record("Unexpected transfer error: \(type(of: error))")
         }
         #expect(try Data(contentsOf: fixture.artifact) == fixture.previousBytes)
         let contents = try FileManager.default.contentsOfDirectory(
@@ -53,6 +56,22 @@ struct ModelStoreDownloadFailureTests {
             Issue.record("Unexpected transfer error: \(type(of: error))")
         }
         #expect(try Data(contentsOf: fixture.artifact) == fixture.previousBytes)
+    }
+
+    @Test func localWritesReportAFullDiskAndPassOtherErrorsThrough() throws {
+        #expect(throws: ModelStore.ModelStoreError.self) {
+            try ModelStore.storing("Encoder.mlmodelc/weights/weight.bin") {
+                throw NSError(domain: NSCocoaErrorDomain, code: NSFileWriteUnknownError, userInfo: [
+                    NSUnderlyingErrorKey: NSError(domain: NSPOSIXErrorDomain, code: Int(ENOSPC))
+                ])
+            }
+        }
+        do {
+            try ModelStore.storing("vocab.json") { throw NSError(domain: NSPOSIXErrorDomain, code: Int(EACCES)) }
+            Issue.record("A permission error must be thrown")
+        } catch let error as NSError {
+            #expect(error.domain == NSPOSIXErrorDomain && error.code == Int(EACCES), "only a full disk is rewrapped")
+        }
     }
 
     private struct Fixture {
