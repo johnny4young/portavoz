@@ -3279,8 +3279,12 @@ classification. The language default stays automatic, and this dictation-languag
 "Parakeet Ultra (more accurate, 613 MB)" (`parakeetUltra`); the meeting picker
 does not, and a stored meeting value resolves to Parakeet. Choosing it is the
 consent for the pinned download through `modelLifecycle.install`, with progress,
-Download (`settings-dictation-live-ultra-install`), Retry (`-ultra-retry`) and
-status (`settings-dictation-live-ultra-status`). Until it is verified,
+Download (`settings-dictation-live-ultra-install`), Retry (`-ultra-retry`),
+Cancel while it downloads (`-ultra-cancel`) and status
+(`settings-dictation-live-ultra-status`). Cancelling, or choosing another engine,
+stops the transfer and offers Download again; verified files already on disk
+stay. A disposable launch with `-seed-parakeet-ultra-downloading` holds a fake
+download for XCUITest. Until it is verified,
 `dictationCheckpoint()` returns v3, so dictation keeps working and never
 downloads it at session start. Pre-warm loads the selected checkpoint.
 

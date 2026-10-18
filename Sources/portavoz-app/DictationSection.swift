@@ -61,7 +61,9 @@ struct DictationSection: View {
                     identifierPrefix: "settings-dictation-live", offersUltra: true)
                 .onChange(of: liveEngine) {
                     if liveEngine == LiveSpeechSelection.parakeetUltra.rawValue {
-                        Task { await services.installParakeetUltraModel() }
+                        services.startParakeetUltraDownload()
+                    } else {
+                        services.cancelParakeetUltraDownload()
                     }
                     services.prewarmDictationIfConfigured()
                 }
@@ -182,14 +184,21 @@ struct DictationSection: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("settings-dictation-live-ultra-status")
-            if services.parakeetUltraModel == .missing {
-                Button("Download") { Task { await services.installParakeetUltraModel() } }
+            switch services.parakeetUltraModel {
+            case .missing:
+                Button("Download") { services.startParakeetUltraDownload() }
                     .controlSize(.small)
                     .accessibilityIdentifier("settings-dictation-live-ultra-install")
-            } else if services.parakeetUltraModel == .failed {
-                Button("Retry") { Task { await services.installParakeetUltraModel() } }
+            case .failed:
+                Button("Retry") { services.startParakeetUltraDownload() }
                     .controlSize(.small)
                     .accessibilityIdentifier("settings-dictation-live-ultra-retry")
+            case .downloading:
+                Button("Cancel") { services.cancelParakeetUltraDownload() }
+                    .controlSize(.small)
+                    .accessibilityIdentifier("settings-dictation-live-ultra-cancel")
+            case .unknown, .ready:
+                EmptyView()
             }
         }
         .task { await services.refreshParakeetUltraModel() }
