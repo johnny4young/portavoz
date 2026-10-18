@@ -14,7 +14,8 @@ extension AppServices {
     func refreshParakeetUltraModel() async {
         if case .downloading = parakeetUltraModel { return }
         // Disposable UI tests can hold a download in flight without any network.
-        if usesTemporaryMeetingStore, ProcessInfo.processInfo.arguments.contains("-seed-parakeet-ultra-downloading") {
+        if usesTemporaryMeetingStore, parakeetUltraModel == .unknown,
+           ProcessInfo.processInfo.arguments.contains("-seed-parakeet-ultra-downloading") {
             parakeetUltraModel = .downloading(42)
             parakeetUltraDownload = Task { try? await Task.sleep(for: .seconds(3_600)) }
             return
@@ -30,6 +31,8 @@ extension AppServices {
         guard parakeetUltraDownload == nil else { return }
         parakeetUltraDownload = Task { [weak self] in
             await self?.installParakeetUltraModel()
+            // A cancelled download no longer owns the handle; a newer one may.
+            guard !Task.isCancelled else { return }
             self?.parakeetUltraDownload = nil
         }
     }
@@ -53,16 +56,18 @@ extension AppServices {
         parakeetUltraModel = .downloading(0)
         do {
             _ = try await modelLifecycle.install(ModelCatalog.parakeetUltra) { [weak self] update in
-                guard update.totalBytes > 0 else { return }
+                guard update.totalBytes > 0, !Task.isCancelled else { return }
                 let percent = Int(update.fraction * 100)
                 Task { @MainActor [weak self] in
                     guard let self, case .downloading = parakeetUltraModel else { return }
                     parakeetUltraModel = .downloading(percent)
                 }
             }
-            parakeetUltraModel = Task.isCancelled ? .missing : .ready
+            // Past the commit point the files are verified even if cancelled.
+            if !Task.isCancelled || parakeetUltraDownload == nil { parakeetUltraModel = .ready }
         } catch {
-            parakeetUltraModel = Task.isCancelled || error is CancellationError ? .missing : .failed
+            guard !Task.isCancelled else { return }
+            parakeetUltraModel = error is CancellationError ? .missing : .failed
         }
     }
 }
