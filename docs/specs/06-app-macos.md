@@ -3243,7 +3243,10 @@ too-short hold. Choosing Fn shows guidance to set "Press 🌐 key to" to "Do Not
 When the tap cannot be created, usually because Accessibility is missing,
 Settings says so (`settings-dictation-modifier-unavailable`). If macOS disables
 the tap, the gesture ends any hold as a release, so a lost key-up never leaves
-dictation listening.
+dictation listening. The key controls only a dictation it started (D571): during
+a tap-, hotkey- or menu-started dictation, pressing and releasing it does
+nothing, so Fn shortcuts typed then never end that dictation.
+
 **Paste the last dictation (D567):** `DictationLastText` keeps only the most
 recent dictated text in memory: delivered, withheld for no speech, or left in
 recovery. It expires after 15 minutes, is cleared when the Mac sleeps, its

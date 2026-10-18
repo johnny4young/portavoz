@@ -21407,3 +21407,14 @@ Each re-decode retires only tokens past that prefix, so tokens published as
 irrevocable are never revised, and the continuation still joins its word.
 Jobs without a token subscriber pass a floor of 0 and behave as before. The pin
 moves only with that reviewed commit; D559's other terms are unchanged.
+
+## D571 — A held key controls only the dictation it started
+
+Under D566 a held modifier finished whatever dictation was listening, the way the
+mouse button does. Fn, though, is pressed for everyday shortcuts: holding it for
+more than 200 ms during a tap-started dictation, for Fn+arrow, finished that
+dictation early. The held-modifier trigger now acts only on a dictation it
+started. During a tap-, hotkey- or menu-started session, pressing or releasing it
+does nothing, and the session keeps its own stop. The mouse button keeps D566's
+behavior, because it carries no shortcuts.
+
