@@ -18007,12 +18007,12 @@
         }
       }
     },
-    "These models run on this Mac. Each keeps its own license.": {
+    "Portavoz downloads these models only when a feature needs them, and they run on this Mac. Each keeps its own license.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Estos modelos se ejecutan en esta Mac. Cada uno conserva su propia licencia."
+            "value": "Portavoz descarga estos modelos solo cuando una función los necesita, y se ejecutan en esta Mac. Cada uno conserva su propia licencia."
           }
         }
       }

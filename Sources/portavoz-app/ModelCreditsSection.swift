@@ -21,7 +21,8 @@ struct ModelCreditsSection: View {
         } header: {
             Text("Model credits")
         } footer: {
-            Text("These models run on this Mac. Each keeps its own license.")
+            // swiftlint:disable:next line_length
+            Text("Portavoz downloads these models only when a feature needs them, and they run on this Mac. Each keeps its own license.")
         }
     }
 }

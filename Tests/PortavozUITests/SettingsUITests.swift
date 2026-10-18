@@ -309,16 +309,20 @@ final class SettingsUITests: PortavozUITestCase {
         // The credits close the pane; SwiftUI materializes those rows only once scrolled near.
         let window = app.windows.containing(.any, identifier: "settings-search-field").firstMatch
         let form = window.scrollViews.element(boundBy: 1)
-        let parakeet = app.control(withIdentifier: "settings-model-credit-parakeet-tdt-0.6b-v3-coreml")
-        for _ in 0..<12 where !parakeet.exists {
-            form.scroll(byDeltaX: 0, deltaY: -400)
+        func scrolledTo(_ identifier: String) -> XCUIElement {
+            let row = app.control(withIdentifier: identifier)
+            for _ in 0..<12 where !row.exists {
+                form.scroll(byDeltaX: 0, deltaY: -400)
+            }
+            return row
         }
+        let parakeet = scrolledTo("settings-model-credit-parakeet-tdt-0.6b-v3-coreml")
         XCTAssertTrue(parakeet.waitForExistenceFast(timeout: 5))
         let license = app.control(withIdentifier: "settings-model-credit-parakeet-tdt-0.6b-v3-coreml-license")
         let credit = renderedText(of: license)
         XCTAssertTrue(credit.contains("NVIDIA") && credit.contains("CC-BY-4.0"),
                       "a CC-BY model names its creator and license")
-        XCTAssertTrue(app.control(withIdentifier: "settings-model-credit-speaker-diarization-coreml").exists)
+        XCTAssertTrue(scrolledTo("settings-model-credit-speaker-diarization-coreml").waitForExistenceFast(timeout: 5))
     }
 
     @MainActor
