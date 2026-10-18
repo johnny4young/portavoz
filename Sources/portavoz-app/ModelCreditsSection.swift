@@ -8,15 +8,15 @@ struct ModelCreditsSection: View {
             ForEach(ModelCatalog.credits) { credit in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(credit.name)
+                        .accessibilityIdentifier("settings-model-credit-\(credit.id)")
                     Text(verbatim: "\(credit.creator) · \(credit.license)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("settings-model-credit-\(credit.id)-license")
                     Link(credit.source.host().map { $0 + credit.source.path() } ?? credit.source.absoluteString,
                          destination: credit.source)
                         .font(.caption)
                 }
-                .accessibilityElement(children: .combine)
-                .accessibilityIdentifier("settings-model-credit-\(credit.id)")
             }
         } header: {
             Text("Model credits")

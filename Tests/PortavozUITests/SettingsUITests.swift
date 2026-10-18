@@ -314,7 +314,8 @@ final class SettingsUITests: PortavozUITestCase {
             form.scroll(byDeltaX: 0, deltaY: -400)
         }
         XCTAssertTrue(parakeet.waitForExistenceFast(timeout: 5))
-        let credit = renderedText(of: parakeet)
+        let license = app.control(withIdentifier: "settings-model-credit-parakeet-tdt-0.6b-v3-coreml-license")
+        let credit = renderedText(of: license)
         XCTAssertTrue(credit.contains("NVIDIA") && credit.contains("CC-BY-4.0"),
                       "a CC-BY model names its creator and license")
         XCTAssertTrue(app.control(withIdentifier: "settings-model-credit-speaker-diarization-coreml").exists)

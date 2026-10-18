@@ -2264,7 +2264,7 @@ so assistive technology receives the same evidence as the visual card.
 creator, its license and a link to the pinned repository Portavoz downloads it
 from, derived from the descriptor (`ModelDescriptor.sourcePage`), so the link
 cannot drift from the pin (`settings-model-credits`,
-`settings-model-credit-<descriptor id>`). Names and licenses are data and are
+`settings-model-credit-<descriptor id>` and its `-license` line). Names and licenses are data and are
 not translated.
 
 D76/D123 compose one `ExportSupportDiagnostics` use case above StorageKit's atomic
