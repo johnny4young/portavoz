@@ -2258,6 +2258,13 @@ the same evidence meaning. The sync element exposes its localized status as
 the accessibility label and the complete encryption disclosure as its value,
 so assistive technology receives the same evidence as the visual card.
 
+**Model credits (D570).** The last section of Your data lists
+`ModelCatalog.credits`: each model the app can download, with its original
+creator, its license and a link to the pinned repository Portavoz downloads it
+from, derived from the descriptor (`ModelDescriptor.sourcePage`), so the link
+cannot drift from the pin (`settings-model-credit-<descriptor id>` and its `-license` line). Names and licenses are data and are
+not translated.
+
 D76/D123 compose one `ExportSupportDiagnostics` use case above StorageKit's atomic
 support projection. `AppServices` contributes app/build/OS identity and
 readiness for Parakeet, pyannote, Whisper, Foundation Models, MLX, and Ollama;

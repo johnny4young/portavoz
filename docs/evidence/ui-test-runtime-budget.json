@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 144
+    "expectedCaseCount": 145
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -126,6 +126,7 @@
     "SettingsUITests/testCategoryNavigationRevealsEachPane()": 24.352,
     "SettingsUITests/testDataPaneExportsAReadableWholeLibraryMarkdownBackup()": 20.0,
     "SettingsUITests/testDataPaneExportsARedactedLocalSupportFile()": 20.0,
+    "SettingsUITests/testDataPaneCreditsTheOnDeviceModels()": 20.0,
     "SettingsUITests/testDictationOffersTriggersLanguageAndDictionary()": 20.0,
     "SettingsUITests/testDictationRecoversShortcutConflictAndRefreshesHelp()": 25.0,
     "SettingsUITests/testHeldFnTriggerExplainsTheGlobeKeySetting()": 25.0,
