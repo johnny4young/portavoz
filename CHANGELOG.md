@@ -17,7 +17,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 19, 2026
 
-- **🫥 "Not verified" notices step aside** — after pasting into apps like Zed, the notice closes by itself after a few seconds or with its ×; Paste last still has your words.
+- **🫥 "Not verified" notices step aside** — after pasting into apps like Zed, the notice closes by itself after a few seconds, or right away with its × or Escape; Paste last still has your words.
 - **🤏 A tiny dictation indicator** — turn on "Show only a small indicator" to see just a floating sound wave and the time while you dictate, without the live text.
 - **🌊 A sound wave that follows your voice** — the dictation strip now shows moving sine waves instead of a level bar.
 - **⌛ See when the speech model is still loading** — the dictation strip shows an hourglass and "Loading speech model…" until words can appear, so you know to keep talking.

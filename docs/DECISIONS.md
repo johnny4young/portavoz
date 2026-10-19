@@ -21438,6 +21438,8 @@ every dictation unverified, so the panel covered the screen after each one. The
 notice now closes after 4 seconds and has a × to close it sooner. Nothing is
 lost: Paste last keeps the words in memory for 15 minutes. Using Copy cancels
 the expiry, so a panel someone is working with stays until they close it.
-Escape stays with the destination after delivery, as D555's tests require, so
-it does not close the notice. Verification itself, Reinsert's absence and the
+Escape also closes it, but only during that countdown: the notice claims Escape
+from the destination for at most 4 seconds, an accepted cost for editors that
+use Escape themselves. Copy hands Escape back at once, and a press queued after
+that cannot close the panel. Verification itself, Reinsert's absence and the
 no-history rule are unchanged.

@@ -85,8 +85,7 @@ final class DictationController {
     private var stopTask: Task<Void, Never>?
     private var stopIssuedSessionID: UUID?
     private var relayEndedSessionID: UUID?
-    private var feedbackDismissTask: Task<Void, Never>?
-    private var feedbackID: UUID?
+    @ObservationIgnored private let feedback = DictationFeedbackTimer()
     var pressedSessionID: UUID?
     private var sessionFeedbackWait: (@MainActor (Duration) async throws -> Void)?
     private(set) var activeSessionID: UUID?
@@ -660,8 +659,11 @@ extension DictationController {
     func copyPendingText() {
         guard hasPendingOutput, !isRetryingDelivery, let dependencies else { return }
         copyStatus = dependencies.copyText(recoveryText) ? .copied : .failed
-        // Someone using the panel decides when it closes.
-        if case .dispatched = phase { cancelFeedbackDismissal() }
+        // Someone using the panel decides when it closes; Escape returns to the destination.
+        if case .dispatched = phase {
+            cancelFeedbackDismissal()
+            releaseCancelKey()
+        }
     }
 
     /// Closes a delivery notice now, keeping the text for Paste last.
@@ -725,6 +727,7 @@ extension DictationController {
         scheduleFeedbackDismiss(
             after: result == .verified ? .milliseconds(1600) : Self.unverifiedFeedbackDuration,
             wait: dependencies.waitForFeedbackDismissal)
+        if result == .dispatched { armFeedbackDismissKey(dependencies) }
     }
 }
 
@@ -793,33 +796,31 @@ private extension DictationController {
     }
 
     func cancelFeedbackDismissal() {
-        feedbackID = nil
-        feedbackDismissTask?.cancel()
-        feedbackDismissTask = nil
+        feedback.cancel()
     }
 
     func scheduleFeedbackDismiss(
         after delay: Duration,
         wait: @escaping @MainActor (Duration) async throws -> Void
     ) {
-        cancelFeedbackDismissal()
-        let id = UUID()
-        feedbackID = id
-        feedbackDismissTask = Task { [weak self] in
-            do {
-                try await wait(delay)
-            } catch {
-                return
+        feedback.schedule(after: delay, wait: wait) { [weak self] in self?.closeFeedback() }
+    }
+
+    /// Escape closes the unverified notice only while it counts down.
+    func armFeedbackDismissKey(_ dependencies: DictationSessionDependencies) {
+        releaseCancelKey()
+        cancelKey = dependencies.registerCancelKey { [weak self] in
+            Task { @MainActor [weak self] in
+                // A queued press after Copy or a newer session must not close anything.
+                guard let self, case .dispatched = self.phase, self.feedback.isCounting else { return }
+                self.dismissFeedback()
             }
-            guard let self, self.feedbackID == id, !Task.isCancelled else { return }
-            self.closeFeedback()
         }
     }
 
     func closeFeedback() {
+        releaseCancelKey()
         cancelFeedbackDismissal()
-        feedbackID = nil
-        feedbackDismissTask = nil
         deliveryID = nil
         destination = nil
         dependencies = nil
