@@ -129,6 +129,29 @@ final class DictationDeliveryOutcomeTests: XCTestCase {
         }
     }
 
+    func testANewDictationOutlivesTheUnverifiedCountdown() async {
+        let text = "Send the report."
+        let harness = DictationControllerHarness(text: text)
+        let feedback = DeliveryFeedbackGate()
+        defer { harness.controller.cancel(); feedback.release() }
+        var dependencies = harness.dependencies
+        dependencies.waitForFeedbackDismissal = { _ in await feedback.wait() }
+        harness.controller.toggle(using: dependencies)
+        let recognized = await eventually { harness.controller.partialText == text }
+        XCTAssertTrue(recognized)
+        harness.now = harness.now.addingTimeInterval(1)
+        harness.controller.toggle(using: dependencies)
+        let counting = await eventually { feedback.started }
+        XCTAssertTrue(counting)
+
+        harness.controller.toggle(using: dependencies)
+        let restarted = await eventually { harness.loads == 2 }
+        XCTAssertTrue(restarted)
+        feedback.release()
+        for _ in 0..<5 { await Task.yield() }
+        XCTAssertTrue(harness.controller.isActive, "the expired countdown never closes the new capture")
+    }
+
     func testRestartRetiresVerifiedFeedbackWithoutClosingTheNewCapture() async {
         let harness = DictationControllerHarness(text: "Do not remove the notes")
         let receiver = TextReadbackHarness()
