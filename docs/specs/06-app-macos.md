@@ -2909,13 +2909,20 @@ failing model, a dropped chunk, cancellation or a late verdict is
 `undetermined` and pastes exactly as before. The notice is non-modal; the next
 trigger starts a new dictation.
 
+**Audio waveform.** Both strips draw `DictationWaveform`: three overlapping
+sine waves whose height follows the microphone level (the recording HUD's
+−60…0 dB mapping, with a floor so silence stays a flat line). Their ends meet
+the center line. It animates through a 30 fps `TimelineView` only while
+listening, and is gray while the model loads.
+
 **Compact indicator.** "Show only a small indicator"
 (`dictationCompactIndicator`, `settings-dictation-compact`, note
 `settings-dictation-compact-note`) is off by default. When on,
-`DictationCompactIndicator.applies(to:)` shrinks the panel to a 176×32 capsule
-(`dictation-panel-compact`) while preparing, listening, delivering and after a
+`DictationCompactIndicator.applies(to:)` shrinks the panel to a 176×32 strip
+with no backdrop (`dictation-panel-compact`; a soft shadow keeps the glyphs
+legible) while preparing, listening, delivering and after a
 verified paste: an icon (orange hourglass while the model loads), the shared
-`DictationLevelMeter` and the elapsed time from the first audio
+`DictationWaveform` and the elapsed time from the first audio
 (`dictation-panel-elapsed`). It shows no live text, title or buttons; Escape
 still cancels. Recovery, no-speech, unverified delivery and failures open the
 full panel, because they need its actions, and so does a microphone notice.

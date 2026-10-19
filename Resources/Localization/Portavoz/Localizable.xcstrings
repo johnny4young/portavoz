@@ -18276,6 +18276,16 @@
           }
         }
       }
+    },
+    "Audio level": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nivel de audio"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

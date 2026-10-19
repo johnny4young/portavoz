@@ -157,7 +157,8 @@ private struct DictationStripView: View {
                 }
                 Spacer()
                 if controller.phase == .listening {
-                    DictationLevelMeter(level: controller.micLevel, width: 70, dimmed: showsModelLoading)
+                    DictationWaveform(level: controller.micLevel, isActive: true, dimmed: showsModelLoading)
+                        .frame(width: 70, height: 18)
                         .accessibilityIdentifier("dictation-panel-meter")
                 }
                 Button {

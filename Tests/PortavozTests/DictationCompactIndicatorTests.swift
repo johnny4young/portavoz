@@ -28,3 +28,28 @@ final class DictationCompactIndicatorTests: XCTestCase {
         XCTAssertEqual(DictationCompactIndicator.elapsed(since: start, now: start.addingTimeInterval(-3)), "0:00")
     }
 }
+
+final class DictationWaveformTests: XCTestCase {
+    func testSilenceStaysAFlatLineAndLoudSpeechFillsTheHeight() {
+        XCTAssertEqual(DictationWaveform.amplitude(for: 0), 0.04, "silence keeps a visible line")
+        XCTAssertEqual(DictationWaveform.amplitude(for: 0.000_5), 0.04, accuracy: 0.000_1)
+        XCTAssertEqual(DictationWaveform.amplitude(for: 0.031_6), 0.5, accuracy: 0.01, "−30 dB is half height")
+        XCTAssertEqual(DictationWaveform.amplitude(for: 2), 1, "clipped input never overflows")
+    }
+
+    func testEveryWaveMeetsTheCenterAtBothEndsAndStaysInBounds() {
+        for wave in DictationWaveform.waves {
+            XCTAssertEqual(DictationWaveform.offset(at: 0, time: 3.7, wave: wave, amplitude: 1), 0, accuracy: 1e-9)
+            XCTAssertEqual(DictationWaveform.offset(at: 1, time: 3.7, wave: wave, amplitude: 1), 0, accuracy: 1e-9)
+            for step in 0...20 {
+                let y = DictationWaveform.offset(at: Double(step) / 20, time: 1.3, wave: wave, amplitude: 1)
+                XCTAssertLessThanOrEqual(abs(y), 1)
+            }
+        }
+        let moving = DictationWaveform.waves[0]
+        XCTAssertNotEqual(
+            DictationWaveform.offset(at: 0.4, time: 0, wave: moving, amplitude: 1),
+            DictationWaveform.offset(at: 0.4, time: 0.2, wave: moving, amplitude: 1),
+            "the waves move over time")
+    }
+}

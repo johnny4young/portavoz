@@ -27,31 +27,6 @@ enum DictationCompactIndicator {
     }
 }
 
-/// Same dB mapping as the recording HUD's meter: −60 dB → 0, 0 dB → 1.
-struct DictationLevelMeter: View {
-    let level: Float
-    let width: CGFloat
-    var dimmed = false
-
-    var body: some View {
-        ZStack(alignment: .leading) {
-            Capsule().fill(.quaternary)
-            GeometryReader { geometry in
-                Capsule()
-                    .fill(dimmed ? Color.secondary : PVDesign.accent)
-                    .frame(width: geometry.size.width * fraction)
-            }
-        }
-        .frame(width: width, height: 4)
-    }
-
-    private var fraction: CGFloat {
-        guard level > 0.0001 else { return 0 }
-        let decibels = 20 * log10(level)
-        return CGFloat(max(0, min(1, (Double(decibels) + 60) / 60)))
-    }
-}
-
 struct DictationCompactStripView: View {
     let controller: DictationController
 
@@ -67,7 +42,9 @@ struct DictationCompactStripView: View {
             } else {
                 icon
                     .accessibilityIdentifier("dictation-panel-compact")
-                DictationLevelMeter(level: controller.micLevel, width: 48, dimmed: isLoadingModel)
+                DictationWaveform(
+                    level: controller.micLevel, isActive: controller.phase == .listening, dimmed: isLoadingModel)
+                    .frame(width: 64, height: 22)
                     .accessibilityIdentifier("dictation-panel-meter")
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     Text(DictationCompactIndicator.elapsed(since: controller.captureStartedAt, now: context.date))
@@ -77,9 +54,11 @@ struct DictationCompactStripView: View {
                 }
             }
         }
+        // No backdrop: the glyphs float, and a soft shadow keeps them legible on any wallpaper.
+        .shadow(color: .black.opacity(0.35), radius: 2, y: 1)
         .padding(.horizontal, 12)
         .frame(width: DictationCompactIndicator.size.width, height: DictationCompactIndicator.size.height)
-        .background(.regularMaterial, in: Capsule())
+        .contentShape(Rectangle())
     }
 
     @ViewBuilder private var icon: some View {
