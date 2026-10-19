@@ -37,10 +37,10 @@ The onboarding view uses a bounded observable preparation state with closed,
 localized failure categories and explicit retry/continue actions. The view
 never owns model leases or cancels process-shared loads; existing AppServices
 readiness and audio-first capture remain the authority.
-Model-download disk-space failures retain their typed underlying cause through
-`ModelStore`, so onboarding offers storage recovery even when URLSession could
-not write its temporary download. Other transfer failures keep their existing
-download-error contract.
+`ModelStore` reports a full disk or quota as `ModelStoreError.outOfSpace(path:)`,
+whether URLSession could not write its temporary download or a local stage or
+publish write failed, so onboarding offers storage recovery. Other transfer
+failures keep their existing download-error contract.
 
 Feature parity is a permanent constraint: audio and user-owned data remain
 discoverable when transcription, diarization, generation, indexing, sync, or an

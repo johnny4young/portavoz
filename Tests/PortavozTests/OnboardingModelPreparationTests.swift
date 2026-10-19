@@ -43,6 +43,7 @@ final class OnboardingModelPreparationTests: XCTestCase {
                 underlying: String(describing: URLError(.notConnectedToInternet))), .network),
             (ModelStore.ModelStoreError.checksumMismatch(
                 path: "private/model.bin", expected: "a", actual: "b"), .unavailable),
+            (ModelStore.ModelStoreError.outOfSpace(path: "Encoder.mlmodelc/weights/weight.bin"), .storage),
             (NSError(domain: NSCocoaErrorDomain, code: NSFileWriteOutOfSpaceError), .storage),
             (NSError(domain: NSPOSIXErrorDomain, code: Int(ENOSPC)), .storage),
             (NSError(domain: NSCocoaErrorDomain, code: NSFileWriteUnknownError, userInfo: [
