@@ -2917,7 +2917,10 @@ is not counted as silence), and `stopAfterPause(sessionID:)`
 finishes through the normal stop tail and delivery. It acts only while the
 session is listening and was started with a tap: a held hotkey, mouse button
 or held modifier keeps owning the stop. Silence before any speech never stops.
-A dropped chunk, a detector failure or a missing model turns auto-stop off for
+The pause clock starts only when the speech model is ready: the session calls
+`arm()` after the runtime arrives, so silence while the model loads (D561)
+never counts, and `stopAfterPause` also ignores a report while
+`isLoadingModel`. A dropped chunk, a detector failure or a missing model turns auto-stop off for
 that session, and the note explains that dictation then stops only when the
 user does (`settings-dictation-auto-stop-note`). Meetings never stop on
 silence.
