@@ -412,6 +412,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("SettingsUITests", "testSyncPaneKeepsOptInAndExistingLibrarySeparate"),
         test_id("SettingsUITests", "testDataPaneExportsARedactedLocalSupportFile"),
         test_id("SettingsUITests", "testDataPaneExportsAReadableWholeLibraryMarkdownBackup"),
+        test_id("SettingsUITests", "testDataPaneCreditsTheOnDeviceModels"),
     ),
     "production-sync": (
         test_id("SettingsUITests", "testSyncPaneKeepsOptInAndExistingLibrarySeparate"),
