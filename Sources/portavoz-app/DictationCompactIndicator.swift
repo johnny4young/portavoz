@@ -7,6 +7,12 @@ enum DictationCompactIndicator {
     static let defaultsKey = "dictationCompactIndicator"
     static let size = NSSize(width: 176, height: 32)
 
+    /// A microphone notice needs the full strip's words.
+    @MainActor
+    static func applies(to controller: DictationController) -> Bool {
+        controller.microphoneNotice == nil && applies(to: controller.phase)
+    }
+
     static func applies(to phase: DictationController.Phase, defaults: UserDefaults = .standard) -> Bool {
         guard defaults.bool(forKey: defaultsKey) else { return false }
         switch phase {
@@ -77,12 +83,15 @@ struct DictationCompactStripView: View {
     }
 
     @ViewBuilder private var icon: some View {
-        if isLoadingModel || controller.phase == .delivering {
+        if isLoadingModel {
+            Image(systemName: "hourglass")
+                .foregroundStyle(.orange)
+                .symbolEffect(.pulse)
+                .accessibilityLabel(L10n.text("Loading the speech model"))
+        } else if controller.phase == .delivering {
             ProgressView()
                 .controlSize(.mini)
-                .tint(isLoadingModel ? .orange : .secondary)
-                .accessibilityLabel(isLoadingModel
-                    ? L10n.text("Loading the speech model") : L10n.text("Inserting…"))
+                .accessibilityLabel(L10n.text("Inserting…"))
         } else {
             Image(systemName: "waveform.badge.mic")
                 .foregroundStyle(controller.phase == .listening ? PVDesign.accent : Color.secondary)

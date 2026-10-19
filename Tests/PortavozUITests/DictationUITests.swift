@@ -262,6 +262,23 @@ final class DictationUITests: PortavozUITestCase {
         XCTAssertTrue(app.descendants(matching: .any)["dictation-panel-meter"].exists)
         XCTAssertFalse(app.buttons["dictation-panel-cancel"].exists, "no buttons in the compact indicator")
         XCTAssertFalse(app.staticTexts["dictation-panel-state"].exists, "no live text or title")
+        XCTAssertLessThan(app.dialogs["dictation-panel"].frame.width, 200)
+    }
+
+    @MainActor
+    func testCompactIndicatorOpensTheFullPanelForAFailure() throws {
+        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-capture-failure"]
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
+            #"{"globalDictationEnabled":true,"dictationCompactIndicator":true}"#
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+        let dictate = app.buttons["menu-bar-dictate"]
+        XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+        dictate.click()
+        let cancel = app.buttons["dictation-panel-cancel"]
+        XCTAssertTrue(cancel.waitForStableFrame(timeout: 5), "a failure shows the full panel and its controls")
+        XCTAssertGreaterThan(app.dialogs["dictation-panel"].frame.width, 500, "the panel grows to fit the message")
     }
 
     @MainActor

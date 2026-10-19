@@ -10,17 +10,9 @@ final class DictationPanelController {
     private var panel: NSPanel?
 
     func show(controller: DictationController) {
-        let size = DictationPanelLayout.size(for: controller.phase)
+        let size = DictationPanelLayout.size(for: controller)
         if let panel {
-            let origin = panel.frame.origin
-            // Keep the horizontal center when the compact indicator grows into the full panel.
-            let midX = panel.frame.midX
-            panel.setContentSize(size)
-            if let visible = panel.screen?.visibleFrame {
-                panel.setFrameOrigin(NSPoint(
-                    x: midX - panel.frame.width / 2,
-                    y: max(visible.minY, min(origin.y, visible.maxY - panel.frame.height))))
-            }
+            resize(panel, to: size)
             panel.orderFrontRegardless()
             return
         }
@@ -37,7 +29,9 @@ final class DictationPanelController {
         panel.isOpaque = false
         panel.hasShadow = true
         panel.contentView = NSHostingView(
-            rootView: DictationStripView(controller: controller).portavozLocalized())
+            rootView: DictationStripView(controller: controller) { [weak self] in
+                self?.relayout(for: controller)
+            }.portavozLocalized())
         // Bottom-center of the main screen, above the Dock — near where
         // the eye already is while typing.
         if let screen = NSScreen.main {
@@ -52,14 +46,33 @@ final class DictationPanelController {
         panel?.orderOut(nil)
         panel = nil
     }
+
+    /// Follows a layout change without ever reopening a closed panel.
+    private func relayout(for controller: DictationController) {
+        guard let panel else { return }
+        resize(panel, to: DictationPanelLayout.size(for: controller))
+    }
+
+    private func resize(_ panel: NSPanel, to size: NSSize) {
+        guard panel.contentRect(forFrameRect: panel.frame).size != size else { return }
+        let origin = panel.frame.origin
+        // Keep the horizontal center when the compact indicator grows into the full panel.
+        let midX = panel.frame.midX
+        panel.setContentSize(size)
+        guard let visible = panel.screen?.visibleFrame else { return }
+        panel.setFrameOrigin(NSPoint(
+            x: midX - panel.frame.width / 2,
+            y: max(visible.minY, min(origin.y, visible.maxY - panel.frame.height))))
+    }
 }
 
 /// One height authority for AppKit and SwiftUI: a conflicting intrinsic size
 /// otherwise moves the panel again after every explicit re-show.
 private enum DictationPanelLayout {
-    static func size(for phase: DictationController.Phase) -> NSSize {
-        DictationCompactIndicator.applies(to: phase)
-            ? DictationCompactIndicator.size : NSSize(width: 520, height: height(for: phase))
+    @MainActor
+    static func size(for controller: DictationController) -> NSSize {
+        DictationCompactIndicator.applies(to: controller)
+            ? DictationCompactIndicator.size : NSSize(width: 520, height: height(for: controller.phase))
     }
 
     static func height(for phase: DictationController.Phase) -> CGFloat {
@@ -76,13 +89,18 @@ private final class DictationPanelWindow: NSPanel {
 
 private struct DictationStripView: View {
     let controller: DictationController
+    /// Lets the panel follow phases that change without an explicit re-show, such as a failure.
+    let relayout: () -> Void
 
     var body: some View {
-        if DictationCompactIndicator.applies(to: controller.phase) {
-            DictationCompactStripView(controller: controller)
-        } else {
-            fullStrip
+        Group {
+            if DictationCompactIndicator.applies(to: controller) {
+                DictationCompactStripView(controller: controller)
+            } else {
+                fullStrip
+            }
         }
+        .onChange(of: DictationPanelLayout.size(for: controller)) { relayout() }
     }
 
     private var fullStrip: some View {

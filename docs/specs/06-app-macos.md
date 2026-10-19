@@ -2914,12 +2914,15 @@ trigger starts a new dictation.
 `settings-dictation-compact-note`) is off by default. When on,
 `DictationCompactIndicator.applies(to:)` shrinks the panel to a 176×32 capsule
 (`dictation-panel-compact`) while preparing, listening, delivering and after a
-verified paste: an icon (orange spinner while the model loads), the shared
+verified paste: an icon (orange hourglass while the model loads), the shared
 `DictationLevelMeter` and the elapsed time from the first audio
 (`dictation-panel-elapsed`). It shows no live text, title or buttons; Escape
 still cancels. Recovery, no-speech, unverified delivery and failures open the
-full panel, because they need its actions. Resizing keeps the panel's
-horizontal center.
+full panel, because they need its actions, and so does a microphone notice.
+The strip view reports layout changes to `DictationPanelController.relayout`,
+so the window follows every phase change (including failures that arrive
+without an explicit re-show) and keeps its horizontal center; a closed panel is
+never reopened.
 
 **Stop after a pause (D568).** "Stop after a pause" (`dictationAutoStop`,
 `settings-dictation-auto-stop`) is off by default. Turning it on is the consent
