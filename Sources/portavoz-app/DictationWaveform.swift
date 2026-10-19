@@ -7,6 +7,31 @@ struct DictationWaveform: View {
     let isActive: Bool
     var dimmed = false
 
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: !isActive)) { context in
+            Canvas { canvas, size in
+                let time = context.date.timeIntervalSinceReferenceDate
+                let amplitude = DictationWaveformShape.amplitude(for: level)
+                let color = dimmed ? Color.secondary : PVDesign.accent
+                for wave in DictationWaveformShape.waves {
+                    var path = Path()
+                    for step in 0...Int(size.width) {
+                        let x = Double(step) / max(1, Double(size.width))
+                        let y = DictationWaveformShape.offset(at: x, time: time, wave: wave, amplitude: amplitude)
+                        let point = CGPoint(x: CGFloat(step), y: size.height / 2 * CGFloat(1 - y))
+                        if step == 0 { path.move(to: point) } else { path.addLine(to: point) }
+                    }
+                    canvas.stroke(path, with: .color(color.opacity(wave.opacity)), lineWidth: wave.lineWidth)
+                }
+            }
+        }
+        .accessibilityElement()
+        .accessibilityLabel(L10n.text("Audio level"))
+    }
+}
+
+/// The waveform's pure geometry, kept off the main actor so it is testable anywhere.
+enum DictationWaveformShape {
     struct Wave {
         let cycles: Double
         let speed: Double
@@ -20,28 +45,6 @@ struct DictationWaveform: View {
         Wave(cycles: 2.2, speed: -3.6, scale: 0.7, opacity: 0.55, lineWidth: 1.2),
         Wave(cycles: 3.1, speed: 7.2, scale: 0.45, opacity: 0.35, lineWidth: 1.0)
     ]
-
-    var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: !isActive)) { context in
-            Canvas { canvas, size in
-                let time = context.date.timeIntervalSinceReferenceDate
-                let amplitude = Self.amplitude(for: level)
-                let color = dimmed ? Color.secondary : PVDesign.accent
-                for wave in Self.waves {
-                    var path = Path()
-                    for step in 0...Int(size.width) {
-                        let x = Double(step) / max(1, Double(size.width))
-                        let y = Self.offset(at: x, time: time, wave: wave, amplitude: amplitude)
-                        let point = CGPoint(x: CGFloat(step), y: size.height / 2 * CGFloat(1 - y))
-                        if step == 0 { path.move(to: point) } else { path.addLine(to: point) }
-                    }
-                    canvas.stroke(path, with: .color(color.opacity(wave.opacity)), lineWidth: wave.lineWidth)
-                }
-            }
-        }
-        .accessibilityElement()
-        .accessibilityLabel(L10n.text("Audio level"))
-    }
 
     /// The recording HUD's dB mapping (−60 dB → 0, 0 dB → 1), with a floor so silence still reads as a line.
     static func amplitude(for level: Float) -> Double {
