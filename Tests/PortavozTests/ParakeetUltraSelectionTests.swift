@@ -42,4 +42,43 @@ final class ParakeetUltraSelectionTests: XCTestCase {
         XCTAssertNotEqual(ModelCatalog.recommended(for: .liveTranscription)?.id, ModelCatalog.parakeetUltra.id,
                           "Ultra is never the recommended live model")
     }
+
+    func testCancellingAnUltraDownloadStopsItAndOffersItAgain() async throws {
+        let suite = "parakeet-ultra-cancel-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let services = try AppServices(arguments: ["-use-temp-store"], environment: [:], defaults: defaults)
+        let download = Task<Void, Never> { try? await Task.sleep(for: .seconds(60)) }
+        services.parakeetUltraDownload = download
+        services.parakeetUltraModel = .downloading(42)
+        services.cancelParakeetUltraDownload()
+        XCTAssertTrue(download.isCancelled, "the in-flight download is cancelled")
+        XCTAssertNil(services.parakeetUltraDownload)
+        XCTAssertEqual(services.parakeetUltraModel, .missing, "Download is offered again")
+        services.startParakeetUltraDownload()
+        let settled = await awaitCondition { services.parakeetUltraDownload == nil }
+        XCTAssertTrue(settled)
+        XCTAssertEqual(services.parakeetUltraModel, .missing, "the disposable composition never downloads")
+    }
+
+    func testACancelledDownloadLeavesANewerDownloadInCharge() async throws {
+        let suite = "parakeet-ultra-restart-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let services = try AppServices(arguments: ["-use-temp-store"], environment: [:], defaults: defaults)
+        services.startParakeetUltraDownload()
+        let cancelled = try XCTUnwrap(services.parakeetUltraDownload)
+        services.cancelParakeetUltraDownload()
+        let newer = Task<Void, Never> { try? await Task.sleep(for: .seconds(60)) }
+        defer { newer.cancel() }
+        services.parakeetUltraDownload = newer
+        await cancelled.value
+        XCTAssertEqual(services.parakeetUltraDownload, newer, "the cancelled task must not clear the newer handle")
+    }
+
+    private func awaitCondition(_ condition: @MainActor () -> Bool) async -> Bool {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
+        while !condition(), ContinuousClock.now < deadline { try? await Task.sleep(for: .milliseconds(10)) }
+        return condition()
+    }
 }

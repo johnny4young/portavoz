@@ -80,6 +80,21 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testAnUltraDownloadInFlightCanBeCancelled() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
+        app.launchArguments.append("-seed-parakeet-ultra-downloading")
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
+            #"{"globalDictationEnabled":true,"dictationLiveSpeechEngine":"parakeetUltra"}"#
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        openCategory("settings-category-audio", revealing: "settings-dictation-live-ultra-cancel", in: app)
+        app.buttons["settings-dictation-live-ultra-cancel"].click()
+        XCTAssertTrue(app.buttons["settings-dictation-live-ultra-install"].waitForExistenceFast(timeout: 5),
+                      "a cancelled download offers Download again")
+    }
+
+    @MainActor
     func testIntelligencePaneExplicitlyPreparesSemanticSearch() throws {
         let app = try XCUIApplication.portavoz(
             simulateSemanticAssetsMissing: true,

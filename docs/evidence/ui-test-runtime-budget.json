@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 145
+    "expectedCaseCount": 146
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -131,6 +131,7 @@
     "SettingsUITests/testDictationRecoversShortcutConflictAndRefreshesHelp()": 25.0,
     "SettingsUITests/testHeldFnTriggerExplainsTheGlobeKeySetting()": 25.0,
     "SettingsUITests/testParakeetUltraIsAnExplicitDictationOnlyDownload()": 25.0,
+    "SettingsUITests/testAnUltraDownloadInFlightCanBeCancelled()": 25.0,
     "SettingsUITests/testDictationRepairsCorruptShortcutWithoutLeavingSettings()": 25.0,
     "SettingsUITests/testIntelligencePaneCreatesACustomStructure()": 20.0,
     "SettingsUITests/testIntelligencePaneExplicitlyPreparesSemanticSearch()": 20.0,
