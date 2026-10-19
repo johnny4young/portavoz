@@ -3224,14 +3224,16 @@ follow Cocoa UTF-16 conventions cannot be qualified by this observer. This is a 
 not proof against a later user edit or an atomic editor transaction.
 
 The delivery banner has its own cancelled-on-restart, identity-fenced dismissal
-task; waiting for presentation never holds the capture runtime lease. The brief
+task (`DictationFeedbackTimer`); waiting for presentation never holds the capture runtime lease. The brief
 banner is green only for verified insertion (1.6 seconds). Dispatch without
 verification shows an amber send status with the complete final output for
 `unverifiedFeedbackDuration` (4 seconds, D572), then closes; the words stay in
-RAM for Paste last. A × (`dictation-unverified-close`) closes it at once, and
-Discard still discards. Copy is available with visible failure/success
-feedback; it does not post another Paste, and using it cancels the expiry so the
-panel stays until closed. The compact indicator shows this outcome as an orange
+RAM for Paste last. A × (`dictation-unverified-close`) or Escape closes it at
+once, and Discard still discards. Escape is claimed only during the countdown
+(`armFeedbackDismissKey`), released on close, and a queued press after Copy is
+ignored. Copy is available with visible failure/success feedback; it does not
+post another Paste, and using it cancels the expiry and hands Escape back, so
+the panel stays until closed. The compact indicator shows this outcome as an orange
 dot with "Sent, not verified". Disposable UI launches hold the unverified notice
 open (`waitHoldingUnverifiedNotices`) so journeys can inspect it; unit tests own
 the expiry.
