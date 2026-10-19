@@ -449,6 +449,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("SettingsUITests", "testDictationRepairsCorruptShortcutWithoutLeavingSettings"),
         test_id("SettingsUITests", "testHeldFnTriggerExplainsTheGlobeKeySetting"),
         test_id("SettingsUITests", "testParakeetUltraIsAnExplicitDictationOnlyDownload"),
+        test_id("SettingsUITests", "testAnUltraDownloadInFlightCanBeCancelled"),
     ),
     "settings-audio": (
         test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),
@@ -459,6 +460,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("SettingsUITests", "testDictationRepairsCorruptShortcutWithoutLeavingSettings"),
         test_id("SettingsUITests", "testHeldFnTriggerExplainsTheGlobeKeySetting"),
         test_id("SettingsUITests", "testParakeetUltraIsAnExplicitDictationOnlyDownload"),
+        test_id("SettingsUITests", "testAnUltraDownloadInFlightCanBeCancelled"),
     ),
     "settings-voice": (
         test_id(
