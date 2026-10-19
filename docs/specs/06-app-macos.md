@@ -2921,10 +2921,10 @@ listening, and is gray while the model loads.
 `DictationCompactIndicator.applies(to:)` shrinks the panel to a 176×32 strip
 with no backdrop (`dictation-panel-compact`; a soft shadow keeps the glyphs
 legible) while preparing, listening, delivering and after a
-verified paste: an icon (orange hourglass while the model loads), the shared
+verified or unverified paste: an icon (orange hourglass while the model loads), the shared
 `DictationWaveform` and the elapsed time from the first audio
 (`dictation-panel-elapsed`). It shows no live text, title or buttons; Escape
-still cancels. Recovery, no-speech, unverified delivery and failures open the
+still cancels. Recovery, no-speech and failures open the
 full panel, because they need its actions, and so does a microphone notice.
 The strip view reports layout changes to `DictationPanelController.relayout`,
 so the window follows every phase change (including failures that arrive
@@ -3214,9 +3214,15 @@ not proof against a later user edit or an atomic editor transaction.
 The delivery banner has its own cancelled-on-restart, identity-fenced dismissal
 task; waiting for presentation never holds the capture runtime lease. The brief
 banner is green only for verified insertion (1.6 seconds). Dispatch without
-verification keeps an amber send status and the complete final output in RAM
-until explicit Discard or the next dictation. Copy is available with visible
-failure/success feedback; it does not post another Paste or close the result.
+verification shows an amber send status with the complete final output for
+`unverifiedFeedbackDuration` (4 seconds, D572), then closes; the words stay in
+RAM for Paste last. A × (`dictation-unverified-close`) closes it at once, and
+Discard still discards. Copy is available with visible failure/success
+feedback; it does not post another Paste, and using it cancels the expiry so the
+panel stays until closed. The compact indicator shows this outcome as an orange
+dot with "Sent, not verified". Disposable UI launches hold the unverified notice
+open (`waitHoldingUnverifiedNotices`) so journeys can inspect it; unit tests own
+the expiry.
 The notice is non-modal: the text was already sent, so another global trigger
 starts a new dictation and replaces only this notice, never re-sending the old
 output. Reinsert is absent because

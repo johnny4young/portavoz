@@ -11,10 +11,11 @@ extension AppServices {
         }
         // Temporary composition must never open real audio or prompt for
         // Accessibility just because a test clicked the production menu item.
-        return usesTemporaryMeetingStore
-            ? DictationUITestFixture.dependencies(
-                fixture: dictationUITestFixture, beginCapture: beginCapture)
-            : .live(services: self, beginCapture: beginCapture)
+        guard usesTemporaryMeetingStore else { return .live(services: self, beginCapture: beginCapture) }
+        var dependencies = DictationUITestFixture.dependencies(
+            fixture: dictationUITestFixture, beginCapture: beginCapture)
+        dependencies.waitForFeedbackDismissal = DictationUITestFixture.waitHoldingUnverifiedNotices
+        return dependencies
     }
 }
 
@@ -57,6 +58,11 @@ final class DictationUITestFixture {
         text = arguments.contains("-seed-dictation-english")
             ? "Don't delete these notes."
             : "No borres estas notas."
+    }
+
+    /// UI journeys inspect unverified notices; unit tests own their expiry.
+    static func waitHoldingUnverifiedNotices(_ delay: Duration) async throws {
+        try await Task.sleep(for: delay == DictationController.unverifiedFeedbackDuration ? .seconds(3_600) : delay)
     }
 
     /// False once a held load is cancelled.

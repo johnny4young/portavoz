@@ -660,6 +660,16 @@ extension DictationController {
     func copyPendingText() {
         guard hasPendingOutput, !isRetryingDelivery, let dependencies else { return }
         copyStatus = dependencies.copyText(recoveryText) ? .copied : .failed
+        // Someone using the panel decides when it closes.
+        if case .dispatched = phase { cancelFeedbackDismissal() }
+    }
+
+    /// Closes a delivery notice now, keeping the text for Paste last.
+    func dismissFeedback() {
+        switch phase {
+        case .verified, .dispatched: closeFeedback()
+        default: return
+        }
     }
 
     func retryUndeliveredText() {
@@ -711,8 +721,10 @@ extension DictationController {
         // A posted event may arrive late; retained output never authorizes replay.
         recoveryText = result == .dispatched ? text : ""
         showPanel()
-        guard result == .verified else { return }
-        scheduleFeedbackDismiss(after: .milliseconds(1600), wait: dependencies.waitForFeedbackDismissal)
+        // Unverified output closes too; Paste last still holds it for 15 minutes.
+        scheduleFeedbackDismiss(
+            after: result == .verified ? .milliseconds(1600) : Self.unverifiedFeedbackDuration,
+            wait: dependencies.waitForFeedbackDismissal)
     }
 }
 
@@ -720,6 +732,7 @@ extension DictationController {
 extension DictationController {
     /// When the first audio arrived, for the compact indicator's elapsed time.
     var captureStartedAt: Date? { microphoneReadiness?.firstFrameAt }
+    static let unverifiedFeedbackDuration: Duration = .seconds(4)
     /// Listening while the model still loads; the relay holds the speech.
     var isLoadingModel: Bool { loadingModelSessionID != nil && loadingModelSessionID == activeSessionID }
     var textMode: DictationTextMode { textPolicy.mode }
@@ -799,14 +812,21 @@ private extension DictationController {
                 return
             }
             guard let self, self.feedbackID == id, !Task.isCancelled else { return }
-            self.feedbackID = nil
-            self.feedbackDismissTask = nil
-            self.deliveryID = nil
-            self.destination = nil
-            self.dependencies = nil
-            self.phase = .idle
-            self.panel.close()
+            self.closeFeedback()
         }
+    }
+
+    func closeFeedback() {
+        cancelFeedbackDismissal()
+        feedbackID = nil
+        feedbackDismissTask = nil
+        deliveryID = nil
+        destination = nil
+        dependencies = nil
+        recoveryText = ""
+        copyStatus = .idle
+        phase = .idle
+        panel.close()
     }
 
 }

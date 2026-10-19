@@ -11,10 +11,10 @@ final class DictationCompactIndicatorTests: XCTestCase {
         XCTAssertFalse(DictationCompactIndicator.applies(to: .listening, defaults: defaults), "off by default")
 
         defaults.set(true, forKey: DictationCompactIndicator.defaultsKey)
-        for phase: DictationController.Phase in [.preparing, .listening, .delivering, .verified(3)] {
+        for phase: DictationController.Phase in [.preparing, .listening, .delivering, .verified(3), .dispatched(3)] {
             XCTAssertTrue(DictationCompactIndicator.applies(to: phase, defaults: defaults), "\(phase)")
         }
-        for phase: DictationController.Phase in [.idle, .noSpeech, .dispatched(3), .failed("x"), .recovery(.cancelled)] {
+        for phase: DictationController.Phase in [.idle, .noSpeech, .failed("x"), .recovery(.cancelled)] {
             XCTAssertFalse(DictationCompactIndicator.applies(to: phase, defaults: defaults),
                            "\(phase) needs the full panel's actions")
         }

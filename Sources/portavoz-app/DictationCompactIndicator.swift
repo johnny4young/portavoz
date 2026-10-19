@@ -16,7 +16,7 @@ enum DictationCompactIndicator {
     static func applies(to phase: DictationController.Phase, defaults: UserDefaults = .standard) -> Bool {
         guard defaults.bool(forKey: defaultsKey) else { return false }
         switch phase {
-        case .preparing, .listening, .delivering, .verified: return true
+        case .preparing, .listening, .delivering, .verified, .dispatched: return true
         default: return false
         }
     }
@@ -32,7 +32,15 @@ struct DictationCompactStripView: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            if case .verified(let words) = controller.phase {
+            if case .dispatched = controller.phase {
+                Circle()
+                    .fill(.orange)
+                    .frame(width: 8, height: 8)
+                    .accessibilityIdentifier("dictation-panel-compact")
+                Text("Sent, not verified")
+                    .font(.caption)
+                    .accessibilityIdentifier("dictation-panel-delivery-status")
+            } else if case .verified(let words) = controller.phase {
                 Image(systemName: PVSymbol.success)
                     .foregroundStyle(.green)
                     .accessibilityIdentifier("dictation-panel-compact")

@@ -53,7 +53,12 @@ final class DictationDeliveryOutcomeTests: XCTestCase {
             }
             dependencies.copyText = { text in copies.append(text); return copies.count > 1 }
             var feedbackRequests = 0
-            dependencies.waitForFeedbackDismissal = { _ in feedbackRequests += 1 }
+            let feedback = DeliveryFeedbackGate()
+            defer { feedback.release() }
+            dependencies.waitForFeedbackDismissal = { _ in
+                feedbackRequests += 1
+                await feedback.wait()
+            }
             harness.controller.toggle(using: dependencies)
             let recognized = await eventually { harness.controller.partialText == text }
             XCTAssertTrue(recognized)
@@ -62,8 +67,8 @@ final class DictationDeliveryOutcomeTests: XCTestCase {
             let dispatched = await eventually { if case .dispatched = harness.controller.phase { true } else { false } }
             XCTAssertTrue(dispatched)
             XCTAssertEqual(harness.controller.recoveryText, text, "Posted does not mean received")
-            await Task.yield()
-            XCTAssertEqual(feedbackRequests, 0, "Unacknowledged output must not schedule an expiry")
+            let scheduled = await eventually { feedbackRequests == 1 }
+            XCTAssertTrue(scheduled, "Unverified output closes itself after a short notice")
             XCTAssertEqual(harness.controller.recoveryText, text)
             harness.controller.copyPendingText()
             XCTAssertEqual(harness.controller.copyStatus, .failed)
@@ -71,6 +76,9 @@ final class DictationDeliveryOutcomeTests: XCTestCase {
             harness.controller.copyPendingText()
             XCTAssertEqual(harness.controller.copyStatus, .copied)
             XCTAssertEqual(copies, [text, text], "Copy uses complete output, not the visible excerpt")
+            feedback.release()
+            for _ in 0..<5 { await Task.yield() }
+            XCTAssertNotEqual(harness.controller.phase, .idle, "Using Copy keeps the panel until it is closed")
             harness.controller.retryUndeliveredText()
             XCTAssertEqual(receiver.posts, 1, "Dispatched output is never re-sent")
             // The unverified notice is non-modal: the next trigger starts a fresh
@@ -84,6 +92,40 @@ final class DictationDeliveryOutcomeTests: XCTestCase {
             harness.controller.cancel()
             XCTAssertTrue(harness.controller.recoveryText.isEmpty)
             XCTAssertEqual(harness.controller.phase, .idle)
+        }
+    }
+
+    func testUnverifiedOutputClosesItselfOrOnRequestAndStaysPastable() async {
+        for closesByItself in [true, false] {
+            let text = "Send the report."
+            let harness = DictationControllerHarness(text: text)
+            let feedback = DeliveryFeedbackGate()
+            defer { harness.controller.cancel(); feedback.release() }
+            var requested: Duration?
+            var dependencies = harness.dependencies
+            dependencies.waitForFeedbackDismissal = { delay in
+                requested = delay
+                await feedback.wait()
+            }
+            dependencies.captureDestination = {
+                CapturedDictationDestination(name: "Unverifiable editor", canRetry: true) { _ in .dispatched }
+            }
+            harness.controller.toggle(using: dependencies)
+            let recognized = await eventually { harness.controller.partialText == text }
+            XCTAssertTrue(recognized)
+            harness.now = harness.now.addingTimeInterval(1)
+            harness.controller.toggle(using: dependencies)
+            let shown = await eventually { if case .dispatched = harness.controller.phase { true } else { false } }
+            XCTAssertTrue(shown)
+            let waiting = await eventually { requested != nil }
+            XCTAssertTrue(waiting)
+            XCTAssertEqual(requested, DictationController.unverifiedFeedbackDuration)
+
+            if closesByItself { feedback.release() } else { harness.controller.dismissFeedback() }
+            let closed = await eventually { harness.controller.phase == .idle }
+            XCTAssertTrue(closed, closesByItself ? "the notice expires" : "× closes it at once")
+            XCTAssertTrue(harness.controller.recoveryText.isEmpty)
+            XCTAssertEqual(harness.controller.lastText.current, text, "Paste last still holds the words")
         }
     }
 
