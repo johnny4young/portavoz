@@ -17867,16 +17867,6 @@
         }
       }
     },
-    "Listening… the speech model is still loading.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Escuchando… el modelo de voz aún se está cargando."
-          }
-        }
-      }
-    },
     "Play start and stop sounds": {
       "localizations": {
         "es": {
@@ -18233,6 +18223,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Comprobando Parakeet Ultra…"
+          }
+        }
+      }
+    },
+    "Loading the speech model": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando el modelo de voz"
+          }
+        }
+      }
+    },
+    "Loading speech model…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando el modelo de voz…"
+          }
+        }
+      }
+    },
+    "Your voice is being saved. The text appears once the model is ready.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu voz se está guardando. El texto aparece cuando el modelo esté listo."
           }
         }
       }

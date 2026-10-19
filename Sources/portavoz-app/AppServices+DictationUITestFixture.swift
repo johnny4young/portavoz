@@ -30,6 +30,8 @@ final class DictationUITestFixture {
     let deniesMicrophoneOnce: Bool
     let missesAudioOnce: Bool
     let holdsPermission: Bool
+    /// Listening starts but the model never arrives, so the strip stays in its loading state.
+    let holdsModel: Bool
     let captureFailure: Bool
     /// A deterministic voice detector that never hears speech; no model is loaded.
     let simulatesNoSpeech: Bool
@@ -48,12 +50,20 @@ final class DictationUITestFixture {
         deniesMicrophoneOnce = arguments.contains("-seed-dictation-microphone-denied")
         missesAudioOnce = arguments.contains("-seed-dictation-microphone-no-audio")
         holdsPermission = arguments.contains("-seed-dictation-preparation-held")
+        holdsModel = arguments.contains("-seed-dictation-model-loading")
         captureFailure = arguments.contains("-seed-dictation-capture-failure")
         exerciseClipboard = arguments.contains("-seed-dictation-clipboard")
         simulatesNoSpeech = arguments.contains("-seed-dictation-no-speech")
         text = arguments.contains("-seed-dictation-english")
             ? "Don't delete these notes."
             : "No borres estas notas."
+    }
+
+    /// False once a held load is cancelled.
+    func modelArrives() async -> Bool {
+        guard holdsModel else { return true }
+        do { try await Task.sleep(for: .seconds(3_600)) } catch { return false }
+        return true
     }
 
     @MainActor
@@ -88,7 +98,7 @@ final class DictationUITestFixture {
                     usesSystemFallback: fixture?.missesAudioOnce == true)
             },
             acquireRuntime: {
-                guard let fixture else { throw CancellationError() }
+                guard let fixture, await fixture.modelArrives() else { throw CancellationError() }
                 return LiveTranscriptionRuntime(
                     engine: DictationFixtureEngine(
                         text: fixture.text,
