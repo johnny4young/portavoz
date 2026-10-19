@@ -17,6 +17,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 19, 2026
 
+- **📋 Paste last rescues text that wasn't sent** — if a dictation couldn't land because you switched apps, click into the new field and choose Paste last (or ⌃⌥⌘V) to drop it there.
 - **⏳ Pauses count only once the model is ready** — "Stop after a pause" no longer ends a dictation while the speech model is still loading.
 
 ## October 18, 2026
