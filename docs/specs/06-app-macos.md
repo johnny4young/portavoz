@@ -2934,7 +2934,8 @@ mouse pointer. A new panel opens 8 pt below that anchor, above it when there is
 no room, always inside the anchor screen's visible frame. The panel stays
 movable by its background, including the backdrop-free compact indicator (a
 1% fill keeps its pixels hit-testable), and the next dictation returns to the
-caret. Disposable launches supply no anchor and keep the bottom-center
+caret. Growing into the full panel keeps it on screen horizontally too.
+Disposable launches supply no anchor and keep the bottom-center
 placement that UI journeys rely on.
 
 The strip view reports layout changes to `DictationPanelController.relayout`,

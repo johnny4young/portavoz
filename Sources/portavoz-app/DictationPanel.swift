@@ -63,7 +63,7 @@ final class DictationPanelController {
         panel.setContentSize(size)
         guard let visible = panel.screen?.visibleFrame else { return }
         panel.setFrameOrigin(NSPoint(
-            x: midX - panel.frame.width / 2,
+            x: max(visible.minX, min(midX - panel.frame.width / 2, visible.maxX - panel.frame.width)),
             y: max(visible.minY, min(origin.y, visible.maxY - panel.frame.height))))
     }
 }
