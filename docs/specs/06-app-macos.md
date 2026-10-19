@@ -2861,9 +2861,10 @@ and nothing else buffers it. `DictationRelayPolicy` bounds queued audio time at
 capacity), with a 4,096-chunk backstop; either bound revokes delivery through
 the D547 interrupted path. The first admitted PCM makes the phase
 **Listening**. While `isLoadingModel`, the strip shows its own state: an orange
-spinner (`dictation-panel-loading`) replaces the pulsing microphone, the title
+hourglass (`dictation-panel-loading`) replaces the pulsing microphone, the title
 reads "Loading speech model…", the meter stays visible but gray because audio is
-still kept, and the hint says the voice is being saved until the model is ready.
+still held in memory, and the hint (`dictation-panel-hint`) asks the user to keep
+talking until the model is ready.
 Stop, hold-release and the 0.75-second minimum keep their first-frame
 clocks, so a release during the load stops after the tail and the buffered audio
 is transcribed once the runtime arrives. Cancel discards the relay.

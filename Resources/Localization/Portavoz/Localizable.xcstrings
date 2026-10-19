@@ -18247,12 +18247,12 @@
         }
       }
     },
-    "Your voice is being saved. The text appears once the model is ready.": {
+    "Keep talking. Your words appear once the model is ready.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu voz se está guardando. El texto aparece cuando el modelo esté listo."
+            "value": "Sigue hablando. Tus palabras aparecen cuando el modelo esté listo."
           }
         }
       }

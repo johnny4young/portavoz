@@ -17,7 +17,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 19, 2026
 
-- **⌛ See when the speech model is still loading** — the dictation strip shows a spinner and "Loading speech model…" until words can appear; your voice is saved meanwhile.
+- **⌛ See when the speech model is still loading** — the dictation strip shows an hourglass and "Loading speech model…" until words can appear, so you know to keep talking.
 
 ## October 18, 2026
 
