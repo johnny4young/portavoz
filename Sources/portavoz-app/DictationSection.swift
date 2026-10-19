@@ -13,6 +13,7 @@ struct DictationSection: View {
         LiveSpeechSelection.parakeet.rawValue
     @AppStorage(DictationController.fillerFilterKey) private var filterFillers = true
     @AppStorage(DictationSoundCue.defaultsKey) private var playsSounds = false
+    @AppStorage(DictationCompactIndicator.defaultsKey) private var compactIndicator = false
     @AppStorage(DictationPrewarmPolicy.defaultsKey) private var prewarms = false
     @AppStorage(ModifierKeySetting.defaultsKey) private var modifierKey = ModifierKeySetting.off.rawValue
     @AppStorage(DictationAutoStop.defaultsKey) private var autoStops = false
@@ -47,6 +48,13 @@ struct DictationSection: View {
                 pasteLastControls
                 Toggle("Play start and stop sounds", isOn: $playsSounds)
                     .accessibilityIdentifier("settings-dictation-sounds")
+                Toggle("Show only a small indicator", isOn: $compactIndicator)
+                    .accessibilityIdentifier("settings-dictation-compact")
+                Text("While you dictate, see just the audio level and the time, without the live text or buttons.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("settings-dictation-compact-note")
                 prewarmControls
                 speechGateControls
                 autoStopControls

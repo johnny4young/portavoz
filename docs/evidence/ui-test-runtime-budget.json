@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 147
+    "expectedCaseCount": 148
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -44,6 +44,7 @@
     "DictationUITests/testDictationCaptureFailureIsVisibleAndCanBeDismissed()": 20.0,
     "DictationUITests/testDictationPanelCancelsAndRestartsWithoutGlobalInput()": 20.0,
     "DictationUITests/testDictationSourceEOFBeforeStopIsVisibleAndCanRestart()": 20.0,
+    "DictationUITests/testCompactIndicatorShowsOnlyTheLevelAndTime()": 15.0,
     "DictationUITests/testLoadingModelLooksDifferentFromDictating()": 15.0,
     "DictationUITests/testMicrophoneDenialRemainsRecoverableWithoutOpeningAudio()": 20.0,
     "DictationUITests/testMissingMicrophoneAudioShowsFallbackAndAllowsRestart()": 25.0,

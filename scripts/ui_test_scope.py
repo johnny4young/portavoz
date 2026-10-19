@@ -443,6 +443,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("DictationUITests", "testMissingMicrophoneAudioShowsFallbackAndAllowsRestart"),
         test_id("DictationUITests", "testPreparingDictationCanCancelWithoutAListeningClaim"),
         test_id("DictationUITests", "testLoadingModelLooksDifferentFromDictating"),
+        test_id("DictationUITests", "testCompactIndicatorShowsOnlyTheLevelAndTime"),
         test_id("DictationUITests", "testUndeliveredTextCanBeCopiedAndExplicitlyRetried"),
         test_id("DictationUITests", "testUndeliveredTextSurvivesAnotherTriggerUntilDiscarded"),
         test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),

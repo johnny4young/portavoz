@@ -2909,6 +2909,18 @@ failing model, a dropped chunk, cancellation or a late verdict is
 `undetermined` and pastes exactly as before. The notice is non-modal; the next
 trigger starts a new dictation.
 
+**Compact indicator.** "Show only a small indicator"
+(`dictationCompactIndicator`, `settings-dictation-compact`, note
+`settings-dictation-compact-note`) is off by default. When on,
+`DictationCompactIndicator.applies(to:)` shrinks the panel to a 176×32 capsule
+(`dictation-panel-compact`) while preparing, listening, delivering and after a
+verified paste: an icon (orange spinner while the model loads), the shared
+`DictationLevelMeter` and the elapsed time from the first audio
+(`dictation-panel-elapsed`). It shows no live text, title or buttons; Escape
+still cancels. Recovery, no-speech, unverified delivery and failures open the
+full panel, because they need its actions. Resizing keeps the panel's
+horizontal center.
+
 **Stop after a pause (D568).** "Stop after a pause" (`dictationAutoStop`,
 `settings-dictation-auto-stop`) is off by default. Turning it on is the consent
 for the same pinned Silero detector. The pause length is 1.5, 2 or 3 seconds

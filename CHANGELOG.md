@@ -17,6 +17,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 19, 2026
 
+- **🤏 A tiny dictation indicator** — turn on "Show only a small indicator" to see just the audio level and the time while you dictate, without the live text.
 - **⌛ See when the speech model is still loading** — the dictation strip shows an hourglass and "Loading speech model…" until words can appear, so you know to keep talking.
 
 ## October 18, 2026

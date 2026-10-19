@@ -718,6 +718,8 @@ extension DictationController {
 
 // A session override changes text policy, never preferences or destination authority.
 extension DictationController {
+    /// When the first audio arrived, for the compact indicator's elapsed time.
+    var captureStartedAt: Date? { microphoneReadiness?.firstFrameAt }
     /// Listening while the model still loads; the relay holds the speech.
     var isLoadingModel: Bool { loadingModelSessionID != nil && loadingModelSessionID == activeSessionID }
     var textMode: DictationTextMode { textPolicy.mode }

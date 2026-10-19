@@ -18256,6 +18256,26 @@
           }
         }
       }
+    },
+    "Show only a small indicator": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar solo un indicador pequeño"
+          }
+        }
+      }
+    },
+    "While you dictate, see just the audio level and the time, without the live text or buttons.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mientras dictas, ve solo el nivel de audio y el tiempo, sin el texto en vivo ni botones."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -246,6 +246,25 @@ final class DictationUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testCompactIndicatorShowsOnlyTheLevelAndTime() throws {
+        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-model-loading"]
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
+            #"{"globalDictationEnabled":true,"dictationCompactIndicator":true}"#
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+        let dictate = app.buttons["menu-bar-dictate"]
+        XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+        dictate.click()
+        let compact = app.descendants(matching: .any)["dictation-panel-compact"]
+        XCTAssertTrue(compact.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["dictation-panel-elapsed"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["dictation-panel-meter"].exists)
+        XCTAssertFalse(app.buttons["dictation-panel-cancel"].exists, "no buttons in the compact indicator")
+        XCTAssertFalse(app.staticTexts["dictation-panel-state"].exists, "no live text or title")
+    }
+
+    @MainActor
     func testUndeliveredTextCanBeCopiedAndExplicitlyRetried() throws {
         let name = "app.portavoz.dictation-test." + UUID().uuidString
         let board = NSPasteboard(name: .init(name))
