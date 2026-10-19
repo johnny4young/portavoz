@@ -32,9 +32,11 @@ final class DictationPanelController {
             rootView: DictationStripView(controller: controller) { [weak self] in
                 self?.relayout(for: controller)
             }.portavozLocalized())
-        // Bottom-center of the main screen, above the Dock — near where
-        // the eye already is while typing.
-        if let screen = NSScreen.main {
+        // Beside the caret (or pointer) when known; otherwise bottom-center above the Dock.
+        if let anchor = controller.panelAnchor,
+           let screen = NSScreen.screens.first(where: { $0.frame.contains(anchor.point) }) ?? NSScreen.main {
+            panel.setFrameOrigin(DictationPanelAnchor.origin(for: size, near: anchor, in: screen.visibleFrame))
+        } else if let screen = NSScreen.main {
             let frame = screen.visibleFrame
             panel.setFrameOrigin(NSPoint(x: frame.midX - size.width / 2, y: frame.minY + 48))
         }

@@ -2926,6 +2926,17 @@ verified or unverified paste: an icon (orange hourglass while the model loads), 
 (`dictation-panel-elapsed`). It shows no live text, title or buttons; Escape
 still cancels. Recovery, no-speech and failures open the
 full panel, because they need its actions, and so does a microphone notice.
+**Strip placement (D573).** `start()` reads `DictationPanelAnchor` together
+with the destination, before the non-activating panel appears: the text caret's
+bounds through `kAXBoundsForRangeParameterizedAttribute` on the focused field's
+selection (geometry only, 100 ms AX timeouts, never a secure field), else the
+mouse pointer. A new panel opens 8 pt below that anchor, above it when there is
+no room, always inside the anchor screen's visible frame. The panel stays
+movable by its background, including the backdrop-free compact indicator (a
+1% fill keeps its pixels hit-testable), and the next dictation returns to the
+caret. Disposable launches supply no anchor and keep the bottom-center
+placement that UI journeys rely on.
+
 The strip view reports layout changes to `DictationPanelController.relayout`,
 so the window follows every phase change (including failures that arrive
 without an explicit re-show) and keeps its horizontal center; a closed panel is

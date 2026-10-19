@@ -66,7 +66,8 @@ struct DictationCompactStripView: View {
         .shadow(color: .black.opacity(0.35), radius: 2, y: 1)
         .padding(.horizontal, 12)
         .frame(width: DictationCompactIndicator.size.width, height: DictationCompactIndicator.size.height)
-        .contentShape(Rectangle())
+        // Fully clear pixels let clicks through the window; a barely-there fill keeps it draggable.
+        .background(Color.black.opacity(0.01), in: Capsule())
     }
 
     @ViewBuilder private var icon: some View {

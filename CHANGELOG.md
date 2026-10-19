@@ -17,6 +17,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 19, 2026
 
+- **📍 Dictation opens where you type** — the strip appears right under your text cursor (or beside the pointer when an app hides it), and you can drag it away while you speak.
 - **🫥 "Not verified" notices step aside** — after pasting into apps like Zed, the notice closes by itself after a few seconds or with its ×; Paste last still has your words.
 - **🤏 A tiny dictation indicator** — turn on "Show only a small indicator" to see just a floating sound wave and the time while you dictate, without the live text.
 - **🌊 A sound wave that follows your voice** — the dictation strip now shows moving sine waves instead of a level bar.
