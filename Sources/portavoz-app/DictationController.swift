@@ -323,6 +323,7 @@ final class DictationController {
                 mirror: analysis.offer)
 
             let runtime = try await awaitRuntime(acquisition, id: id, measurement: measurement)
+            analysis.pause?.arm()
             try await consumeCaptions(
                 from: runtime.engine.transcribe(audio, hints: dependencies.transcriptionHints()),
                 sessionID: id, measurement: measurement)
@@ -758,7 +759,7 @@ private extension DictationController {
 
     /// A tap-started dictation ends itself after a pause; a held trigger never does.
     func stopAfterPause(sessionID: UUID) {
-        guard activeSessionID == sessionID, phase == .listening, stopTask == nil, !mouseOwnsSession,
+        guard activeSessionID == sessionID, phase == .listening, !isLoadingModel, stopTask == nil, !mouseOwnsSession,
               !modifierTrigger.ownsSession, pressedSessionID != sessionID else { return }
         finishAndInsert()
     }

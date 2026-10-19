@@ -22,6 +22,7 @@ final class DictationPauseDetectorTests: XCTestCase {
                 return speech.contains(index)
             }
         }, onPause: { pauses.withLock { $0 += 1 } })
+        detector.arm()
         for index in 0..<chunks { detector.offer(chunk(index)) }
         let deadline = ContinuousClock.now.advanced(by: .seconds(2))
         while calls.withLock({ $0 }) < chunks, pauses.withLock({ $0 }) == 0, ContinuousClock.now < deadline {
@@ -48,6 +49,7 @@ final class DictationPauseDetectorTests: XCTestCase {
         let unevaluated = DictationPauseDetector(pause: 1.5, load: {
             { chunk in chunk.timestamp < 0.5 ? true : nil }
         }, onPause: { pauses.withLock { $0 += 1 } })
+        unevaluated.arm()
         for index in 0..<40 { unevaluated.offer(chunk(index)) }
         try? await Task.sleep(for: .milliseconds(200))
         unevaluated.cancel()
@@ -58,10 +60,34 @@ final class DictationPauseDetectorTests: XCTestCase {
             // Speech sits among the newest chunks the bounded queue keeps.
             return { chunk in (25.6..<26.4).contains(chunk.timestamp) }
         }, onPause: { pauses.withLock { $0 += 1 } })
+        overflowing.arm()
         for index in 0..<(DictationPauseDetector.capacity + 40) { overflowing.offer(chunk(index)) }
         try? await Task.sleep(for: .milliseconds(400))
         overflowing.cancel()
         XCTAssertEqual(pauses.withLock { $0 }, 0, "a dropped chunk turns auto-stop off for the session")
+    }
+
+    func testSilenceCountsOnlyFromTheMomentTheModelIsReady() async {
+        let pauses = OSAllocatedUnfairLock(initialState: 0)
+        // Speech for the first second, then silence: 1.5 s past 1 s would end it at 2.5 s.
+        let detector = DictationPauseDetector(pause: 1.5, load: {
+            { chunk in chunk.timestamp < 1 }
+        }, onPause: { pauses.withLock { $0 += 1 } })
+        for index in 0..<16 { detector.offer(chunk(index)) }
+        try? await Task.sleep(for: .milliseconds(150))
+        XCTAssertEqual(pauses.withLock { $0 }, 0, "silence while the model loads never ends a dictation")
+
+        detector.arm()
+        for index in 16..<20 { detector.offer(chunk(index)) }
+        try? await Task.sleep(for: .milliseconds(150))
+        XCTAssertEqual(pauses.withLock { $0 }, 0, "the pause starts at readiness, not at the last word")
+        for index in 20..<24 { detector.offer(chunk(index)) }
+        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
+        while pauses.withLock({ $0 }) == 0, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        detector.cancel()
+        XCTAssertEqual(pauses.withLock { $0 }, 1, "a full pause after readiness ends it once")
     }
 
     func testPauseSettingFallsBackToTheDefaultAndStaysOptIn() async throws {
