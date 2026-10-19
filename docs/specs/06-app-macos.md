@@ -2930,7 +2930,8 @@ full panel, because they need its actions, and so does a microphone notice.
 with the destination, before the non-activating panel appears: the text caret's
 bounds through `kAXBoundsForRangeParameterizedAttribute` on the focused field's
 selection (geometry only, 100 ms AX timeouts, never a secure field), else the
-mouse pointer. A new panel opens 8 pt below that anchor, above it when there is
+mouse pointer. A new dictation opens 8 pt below that anchor (also when it
+reuses a notice's panel), above it when there is
 no room, always inside the anchor screen's visible frame. The panel stays
 movable by its background, including the backdrop-free compact indicator (a
 1% fill keeps its pixels hit-testable), and the next dictation returns to the

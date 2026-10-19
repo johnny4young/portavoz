@@ -13,6 +13,8 @@ final class DictationPanelController {
         let size = DictationPanelLayout.size(for: controller)
         if let panel {
             resize(panel, to: size)
+            // A new dictation reuses a notice's panel; it still opens at its own caret.
+            if controller.phase == .preparing { place(panel, size: size, near: controller.panelAnchor) }
             panel.orderFrontRegardless()
             return
         }
@@ -32,14 +34,7 @@ final class DictationPanelController {
             rootView: DictationStripView(controller: controller) { [weak self] in
                 self?.relayout(for: controller)
             }.portavozLocalized())
-        // Beside the caret (or pointer) when known; otherwise bottom-center above the Dock.
-        if let anchor = controller.panelAnchor,
-           let screen = NSScreen.screens.first(where: { $0.frame.contains(anchor.point) }) ?? NSScreen.main {
-            panel.setFrameOrigin(DictationPanelAnchor.origin(for: size, near: anchor, in: screen.visibleFrame))
-        } else if let screen = NSScreen.main {
-            let frame = screen.visibleFrame
-            panel.setFrameOrigin(NSPoint(x: frame.midX - size.width / 2, y: frame.minY + 48))
-        }
+        place(panel, size: size, near: controller.panelAnchor)
         panel.orderFrontRegardless()
         self.panel = panel
     }
@@ -47,6 +42,17 @@ final class DictationPanelController {
     func close() {
         panel?.orderOut(nil)
         panel = nil
+    }
+
+    /// Beside the caret (or pointer) when known; otherwise bottom-center above the Dock.
+    private func place(_ panel: NSPanel, size: NSSize, near anchor: DictationPanelAnchor?) {
+        if let anchor,
+           let screen = NSScreen.screens.first(where: { $0.frame.contains(anchor.point) }) ?? NSScreen.main {
+            panel.setFrameOrigin(DictationPanelAnchor.origin(for: size, near: anchor, in: screen.visibleFrame))
+        } else if let screen = NSScreen.main {
+            let frame = screen.visibleFrame
+            panel.setFrameOrigin(NSPoint(x: frame.midX - size.width / 2, y: frame.minY + 48))
+        }
     }
 
     /// Follows a layout change without ever reopening a closed panel.
