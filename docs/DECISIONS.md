@@ -21419,3 +21419,13 @@ Portavoz downloads it from. The link is derived from the descriptor's
 models are not listed, because the app never downloads them. A new
 downloadable model needs a credit in the same change; a unit test enforces this
 for the CC-BY models.
+
+## D571 — A held key controls only the dictation it started
+
+Under D566 a held modifier finished whatever dictation was listening, the way the
+mouse button does. Fn, though, is pressed for everyday shortcuts: holding it for
+more than 200 ms during a tap-started dictation, for Fn+arrow, finished that
+dictation early. The held-modifier trigger now acts only on a dictation it
+started. During a tap-, hotkey- or menu-started session, pressing or releasing it
+does nothing, and the session keeps its own stop. The mouse button keeps D566's
+behavior, because it carries no shortcuts.

@@ -28,11 +28,11 @@ extension DictationController {
             setting: desired,
             onPress: { [weak self, weak services] in
                 guard let self, let services else { return }
-                handleModifier(.press, services: services)
+                handleModifier(.press) { self.start(services: services) }
             },
             onRelease: { [weak self, weak services] in
                 guard let self, let services else { return }
-                handleModifier(.release, services: services)
+                handleModifier(.release) { self.start(services: services) }
             },
             onChord: { [weak self] in
                 // A shortcut typed while holding the key was never dictation.
@@ -47,12 +47,15 @@ extension DictationController {
         modifierTrigger.setting = desired
     }
 
-    private func handleModifier(_ event: MousePTTGesture.Event, services: AppServices) {
+    func handleModifier(_ event: MousePTTGesture.Event, start beginSession: () -> Void) {
         let owns = modifierTrigger.ownsSession
+        // A held key controls only the dictation it started; Fn shortcuts typed
+        // during a tap- or hotkey-started session must not end it.
+        if isActive, !owns { return }
         switch MousePTTGesture.action(for: event, isListening: isActive, mouseOwnsSession: owns) {
         case .start:
             modifierTrigger.ownsSession = true
-            start(services: services)
+            beginSession()
             if !isActive { modifierTrigger.ownsSession = false }
         case .finish:
             modifierTrigger.ownsSession = false

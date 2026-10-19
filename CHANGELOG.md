@@ -17,6 +17,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 18, 2026
 
+- **🌐 Fn shortcuts never end your dictation** — holding Fn for a shortcut while you dictate no longer stops a dictation you started with a tap or the hotkey.
 - **⏹️ Cancel the Parakeet Ultra download** — changed your mind about the 613 MB download? Cancel it from Settings, or switch back to Parakeet.
 
 ## October 17, 2026
