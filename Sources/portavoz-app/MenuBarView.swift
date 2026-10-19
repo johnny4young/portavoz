@@ -113,7 +113,7 @@ struct MenuBarContent: View {
                     services.dictation.toggle(services: services)
                 }
                 .accessibilityIdentifier("menu-bar-dictate")
-                if services.dictation.lastText.current != nil {
+                if services.dictation.hasPastableText {
                     quickAction("Paste last", "arrow.uturn.down.square", tint: PVDesign.accent) {
                         services.pasteLastDictation()
                     }
