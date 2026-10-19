@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import os
 import XCTest
 
 @testable import portavoz_app
@@ -51,18 +52,27 @@ extension DictationControllerTests {
         }
     }
 
-    func testSleepOrLockForgetsTheTextAndRecoveryPastesWhereTheUserIsNow() async {
+    func testSleepOrLockForgetsTheText() {
         let last = DictationLastText()
         last.remember("Envía el informe.")
         NSWorkspace.shared.notificationCenter.post(name: NSWorkspace.willSleepNotification, object: nil)
         XCTAssertNil(last.current, "sleep drops the remembered text")
+    }
 
+    func testRecoveryPastesWhereTheUserIsNowAndKeepsTheWordsIfRefusedAgain() async {
         let text = "Send the report."
-        let harness = DictationControllerHarness(text: text)
+        var now = Date(timeIntervalSince1970: 1_000)
+        let last = DictationLastText(now: { now }, observesSystem: false)
+        let harness = DictationControllerHarness(
+            text: text, controller: DictationController(presentsPanel: false, lastText: last))
         defer { harness.controller.cancel() }
+        let attempts = OSAllocatedUnfairLock(initialState: 0)
         var refusing = harness.dependencies
         refusing.captureDestination = {
-            CapturedDictationDestination(name: "Refusing receiver", canRetry: true) { _ in .refused(.cancelled) }
+            CapturedDictationDestination(name: "Refusing receiver", canRetry: true) { _ in
+                attempts.withLock { $0 += 1 }
+                return .refused(.cancelled)
+            }
         }
         harness.controller.toggle(using: refusing)
         let ready = await awaitEventually { harness.controller.partialText == text }
@@ -74,6 +84,18 @@ extension DictationControllerTests {
             return false
         }
         XCTAssertTrue(refused)
+        now += DictationLastText.lifetime + 1
+        XCTAssertNil(last.current)
+        XCTAssertTrue(harness.controller.hasPastableText, "the menu offers Paste last for the waiting words")
+        harness.controller.pasteLastDictation(using: refusing)
+        let stillWaiting = await awaitEventually {
+            guard attempts.withLock({ $0 }) == 2, !harness.controller.isRetryingDelivery else { return false }
+            if case .recovery = harness.controller.phase { return true }
+            return false
+        }
+        XCTAssertTrue(stillWaiting, "a second refusal keeps the panel")
+        XCTAssertEqual(harness.controller.recoveryText, text, "the words are never lost")
+
         harness.controller.pasteLastDictation(using: harness.dependencies)
         let pasted = await awaitEventually { harness.insertions == [text] }
         XCTAssertTrue(pasted, "the undelivered words paste into the field focused now")
