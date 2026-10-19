@@ -257,7 +257,7 @@ final class DictationUITests: PortavozUITestCase {
         XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
         dictate.click()
         let compact = app.descendants(matching: .any)["dictation-panel-compact"]
-        XCTAssertTrue(compact.waitForExistence(timeout: 5))
+        XCTAssertTrue(compact.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(app.descendants(matching: .any)["dictation-panel-elapsed"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["dictation-panel-meter"].exists)
         XCTAssertFalse(app.buttons["dictation-panel-cancel"].exists, "no buttons in the compact indicator")
