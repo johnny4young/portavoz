@@ -51,7 +51,7 @@ extension DictationControllerTests {
         }
     }
 
-    func testSleepOrLockForgetsTheTextAndRecoveryKeepsItsOwnRetry() async {
+    func testSleepOrLockForgetsTheTextAndRecoveryPastesWhereTheUserIsNow() async {
         let last = DictationLastText()
         last.remember("Envía el informe.")
         NSWorkspace.shared.notificationCenter.post(name: NSWorkspace.willSleepNotification, object: nil)
@@ -75,7 +75,12 @@ extension DictationControllerTests {
         }
         XCTAssertTrue(refused)
         harness.controller.pasteLastDictation(using: harness.dependencies)
-        for _ in 0..<5 { await Task.yield() }
-        XCTAssertTrue(harness.insertions.isEmpty, "paste-last never replaces undelivered words")
+        let pasted = await awaitEventually { harness.insertions == [text] }
+        XCTAssertTrue(pasted, "the undelivered words paste into the field focused now")
+        let closed = await awaitEventually {
+            if case .recovery = harness.controller.phase { return false }
+            return true
+        }
+        XCTAssertTrue(closed, "a successful paste closes the recovery panel")
     }
 }
