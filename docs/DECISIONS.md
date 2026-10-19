@@ -21408,6 +21408,18 @@ irrevocable are never revised, and the continuation still joins its word.
 Jobs without a token subscriber pass a floor of 0 and behave as before. The pin
 moves only with that reviewed commit; D559's other terms are unchanged.
 
+## D570 — Credit every downloadable model inside the app
+
+Parakeet v3, Parakeet Ultra and the pyannote/WeSpeaker diarization models are CC-BY-4.0, which
+requires attribution where they are used. Until now the licenses lived only in
+descriptors and specs. Settings → Your data now lists each model the app can
+download: the original work, its creator, its license, and the pinned repository
+Portavoz downloads it from. The link is derived from the descriptor's
+`resolveBase`, so it cannot drift from the pinned revision. CLI-only research
+models are not listed, because the app never downloads them. A new
+downloadable model needs a credit in the same change; a unit test enforces this
+for the CC-BY models.
+
 ## D571 — A held key controls only the dictation it started
 
 Under D566 a held modifier finished whatever dictation was listening, the way the
@@ -21417,4 +21429,3 @@ dictation early. The held-modifier trigger now acts only on a dictation it
 started. During a tap-, hotkey- or menu-started session, pressing or releasing it
 does nothing, and the session keeps its own stop. The mouse button keeps D566's
 behavior, because it carries no shortcuts.
-
