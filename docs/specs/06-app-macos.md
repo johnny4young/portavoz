@@ -3258,11 +3258,16 @@ recent dictated text in memory: delivered, withheld for no speech, or left in
 recovery. It expires after 15 minutes, is cleared when the Mac sleeps, its
 screens sleep, the session resigns or the screen locks, and is never written to
 disk, preferences or the clipboard. `pasteLastDictation(using:)` runs only
-while no session captures and nothing waits in recovery, which keeps its own
-Retry. An expired text is dropped on that attempt, so the menu action disappears. It captures the destination focused at that moment
+while no session captures. In recovery it pastes the undelivered words, which
+are that same text, so moving to another field and choosing Paste last delivers
+them there and closes the panel. If that paste is refused too, the panel stays
+with the field from that attempt as Retry's target. The menu shows "Paste last"
+while recovery holds words, even past the 15-minute lifetime. An
+expired text is dropped on that attempt, so the menu action disappears. It
+captures the destination focused at that moment
 and replays the text through the same `replay` → `presentDelivery` path as
 Retry, so a refused paste lands in recovery with Copy. The menu bar shows
-"Paste last" (`menu-bar-paste-last`) while text is remembered. An optional
+"Paste last" (`menu-bar-paste-last`) while `hasPastableText`. An optional
 fixed ⌃⌥⌘V shortcut (`dictationPasteLastHotkey`,
 `settings-dictation-paste-last-hotkey`) is off by default and reports when
 another app holds it (`settings-dictation-paste-last-note`). Disposable
