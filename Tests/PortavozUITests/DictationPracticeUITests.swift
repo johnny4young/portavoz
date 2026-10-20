@@ -102,6 +102,8 @@ final class DictationPracticeUITests: PortavozUITestCase {
         let field = app.control(withIdentifier: "\(prefix)-practice-field")
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: field) == expected })
         XCTAssertEqual(NSPasteboard.general.changeCount, clipboard, "Practice never borrows the clipboard")
+        // The verified notice closes itself; nothing else is clicked while it is up.
+        XCTAssertTrue(app.dialogs["dictation-panel"].waitForDisappearance(timeout: 5))
         app.buttons["\(prefix)-practice-clear"].click()
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: field) != expected })
         XCTAssertFalse(app.buttons["\(prefix)-practice-clear"].exists)

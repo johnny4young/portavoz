@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 import Observation
 import PortavozCore
 
@@ -44,6 +44,8 @@ final class DictationPracticeField {
         guard isArmed, appIsActive else { return dependencies }
         var routed = dependencies
         routed.canInsert = { true }
+        // The field has no caret, so the strip opens by the pointer that started it.
+        routed.locatePanelAnchor = { .pointer(NSEvent.mouseLocation) }
         routed.captureDestination = { [weak self] in
             CapturedDictationDestination(name: L10n.text("the practice field"), canRetry: false) { text in
                 self?.receive(text) ?? .refused(.targetChanged)

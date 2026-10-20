@@ -21,6 +21,7 @@ final class DictationPracticeFieldTests: XCTestCase {
         practice.show(holder, isKey: true)
         let routed = practice.route(base, appIsActive: true)
         XCTAssertTrue(routed.canInsert(), "Practice needs no Accessibility")
+        guard case .pointer = routed.locatePanelAnchor() else { return XCTFail("Practice opens by the pointer") }
         let destination = routed.captureDestination()
         XCTAssertFalse(destination.canRetry)
         let outcome = await destination.insert("Hola")
