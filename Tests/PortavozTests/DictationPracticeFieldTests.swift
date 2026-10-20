@@ -21,7 +21,7 @@ final class DictationPracticeFieldTests: XCTestCase {
         practice.show(holder, isKey: true)
         let routed = practice.route(base, appIsActive: true)
         XCTAssertTrue(routed.canInsert(), "Practice needs no Accessibility")
-        guard case .pointer = routed.locatePanelAnchor() else { return XCTFail("Practice opens by the pointer") }
+        XCTAssertEqual(routed.locatePanelAnchor(), DictationPracticeField.panelAnchor(around: NSEvent.mouseLocation))
         let destination = routed.captureDestination()
         XCTAssertFalse(destination.canRetry)
         let outcome = await destination.insert("Hola")
@@ -73,6 +73,17 @@ final class DictationPracticeFieldTests: XCTestCase {
         XCTAssertEqual(controller.targetApp, L10n.text("the practice field"))
         XCTAssertEqual(NSPasteboard.general.changeCount, clipboard)
         controller.cancel()
+    }
+
+    func testStripNeverCoversTheButtonUnderThePointer() async {
+        let visible = NSRect(x: 0, y: 0, width: 1_000, height: 700)
+        let size = NSSize(width: 520, height: 96)
+        for pointer in [NSPoint(x: 400, y: 600), NSPoint(x: 400, y: 120)] {
+            let button = NSRect(x: pointer.x - 60, y: pointer.y - 14, width: 120, height: 28)
+            let origin = DictationPanelAnchor.origin(
+                for: size, near: DictationPracticeField.panelAnchor(around: pointer), in: visible)
+            XCTAssertFalse(NSRect(origin: origin, size: size).intersects(button), "pointer \(pointer)")
+        }
     }
 
     private func baseDependencies() throws -> DictationSessionDependencies {

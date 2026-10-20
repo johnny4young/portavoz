@@ -44,13 +44,18 @@ final class DictationPracticeField {
         guard isArmed, appIsActive else { return dependencies }
         var routed = dependencies
         routed.canInsert = { true }
-        // The field has no caret, so the strip opens by the pointer that started it.
-        routed.locatePanelAnchor = { .pointer(NSEvent.mouseLocation) }
+        routed.locatePanelAnchor = { Self.panelAnchor(around: NSEvent.mouseLocation) }
         routed.captureDestination = { [weak self] in
             CapturedDictationDestination(name: L10n.text("the practice field"), canRetry: false) { text in
                 self?.receive(text) ?? .refused(.targetChanged)
             }
         }
         return routed
+    }
+
+    /// The field has no caret, so the strip opens by the pointer that started the
+    /// session, above or below, without covering the button under it.
+    static func panelAnchor(around point: NSPoint) -> DictationPanelAnchor {
+        .caret(NSRect(x: point.x, y: point.y - 24, width: 0, height: 48))
     }
 }

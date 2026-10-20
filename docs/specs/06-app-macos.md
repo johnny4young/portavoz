@@ -2959,8 +2959,9 @@ under the shortcut in Settings › Audio & dictation (`settings-dictation-`). Ea
 visible field reports whether its window is key (`controlActiveState`) to
 `AppServices.dictationPractice`. While one is key and Portavoz is active,
 `makeDictationSessionDependencies` replaces only `canInsert`,
-`captureDestination` and the strip anchor (the pointer, since the field has no
-caret, also in disposable launches): the session is otherwise a real one (microphone, model,
+`captureDestination` and the strip anchor (a band of 24 pt around the pointer,
+since the field has no caret, also in disposable launches, so the strip never
+covers the button that started the session): the session is otherwise a real one (microphone, model,
 strip, Escape, text mode, Paste last), but delivery appends to the field and
 reports `verified`, with no clipboard loan, synthetic paste or Accessibility.
 The destination is fixed at start like any other. The field forgets its text
