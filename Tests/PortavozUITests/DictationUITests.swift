@@ -220,6 +220,34 @@ final class DictationUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testLoadingModelLooksDifferentFromDictating() throws {
+        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-model-loading"]
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+        let dictate = app.buttons["menu-bar-dictate"]
+        XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+        dictate.click()
+        let state = app.staticTexts["dictation-panel-state"]
+        let title = UITestLocale.environmentLocale == "es" ? "Cargando el modelo de voz…" : "Loading speech model…"
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: state) == title })
+        XCTAssertTrue(app.descendants(matching: .any)["dictation-panel-loading"].exists)
+        let hint = UITestLocale.environmentLocale == "es"
+            ? "Sigue hablando. Tus palabras aparecen cuando el modelo esté listo."
+            : "Keep talking. Your words appear once the model is ready."
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            renderedText(of: app.staticTexts["dictation-panel-hint"]) == hint
+        })
+        XCTAssertFalse(app.staticTexts["dictation-panel-transcript"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["dictation-panel-meter"].exists, "audio is still captured")
+        let cancel = app.buttons["dictation-panel-cancel"]
+        XCTAssertTrue(cancel.waitForStableFrame(timeout: 5))
+        cancel.click()
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { !cancel.exists })
+    }
+
+    @MainActor
     func testUndeliveredTextCanBeCopiedAndExplicitlyRetried() throws {
         let name = "app.portavoz.dictation-test." + UUID().uuidString
         let board = NSPasteboard(name: .init(name))

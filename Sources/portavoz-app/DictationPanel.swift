@@ -93,9 +93,18 @@ private struct DictationStripView: View {
     private var dictatingView: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Image(systemName: "waveform.badge.mic")
-                    .foregroundStyle(isFailed ? Color.orange : PVDesign.accent)
-                    .symbolEffect(.pulse, isActive: controller.phase == .listening)
+                if showsModelLoading {
+                    // Audio is kept (D561), but no words can appear yet.
+                    Image(systemName: "hourglass")
+                        .foregroundStyle(.orange)
+                        .symbolEffect(.pulse)
+                        .accessibilityLabel(L10n.text("Loading the speech model"))
+                        .accessibilityIdentifier("dictation-panel-loading")
+                } else {
+                    Image(systemName: "waveform.badge.mic")
+                        .foregroundStyle(isFailed ? Color.orange : PVDesign.accent)
+                        .symbolEffect(.pulse, isActive: controller.phase == .listening)
+                }
                 Text(title)
                     .accessibilityIdentifier("dictation-panel-state")
                     .font(.caption.weight(.semibold))
@@ -139,6 +148,7 @@ private struct DictationStripView: View {
                 EmptyView()
             } else if controller.confirmedText.isEmpty && controller.partialText.isEmpty {
                 Text(emptyCaptionHint)
+                    .accessibilityIdentifier("dictation-panel-hint")
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -209,7 +219,7 @@ private struct DictationStripView: View {
             Capsule().fill(.quaternary)
             GeometryReader { geometry in
                 Capsule()
-                    .fill(PVDesign.accent)
+                    .fill(showsModelLoading ? Color.secondary : PVDesign.accent)
                     .frame(width: geometry.size.width * meterFraction)
             }
         }
@@ -223,6 +233,8 @@ private struct DictationStripView: View {
         return CGFloat(max(0, min(1, (Double(decibels) + 60) / 60)))
     }
 
+    private var showsModelLoading: Bool { controller.phase == .listening && controller.isLoadingModel }
+
     private var isFailed: Bool {
         if case .failed = controller.phase { return true }
         return false
@@ -230,8 +242,9 @@ private struct DictationStripView: View {
 
     private var emptyCaptionHint: String {
         if controller.phase == .preparing { return L10n.text("Preparing microphone…") }
-        return controller.isLoadingModel
-            ? L10n.text("Listening… the speech model is still loading.") : L10n.text("Listening…")
+        return showsModelLoading
+            ? L10n.text("Keep talking. Your words appear once the model is ready.")
+            : L10n.text("Listening…")
     }
 
     private var title: String {
@@ -239,7 +252,7 @@ private struct DictationStripView: View {
         case .preparing:
             return L10n.text("Preparing dictation…")
         case .listening:
-            return L10n.text("Dictating")
+            return showsModelLoading ? L10n.text("Loading speech model…") : L10n.text("Dictating")
         case .delivering:
             return L10n.text("Inserting…")
         case .failed(let message):
