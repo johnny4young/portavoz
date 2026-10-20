@@ -21,6 +21,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **🤏 A tiny dictation indicator** — turn on "Show only a small indicator" to see just a floating sound wave and the time while you dictate, without the live text.
 - **🌊 A sound wave that follows your voice** — the dictation strip now shows moving sine waves instead of a level bar.
 - **⌛ See when the speech model is still loading** — the dictation strip shows an hourglass and "Loading speech model…" until words can appear, so you know to keep talking.
+- **📋 Paste last rescues text that wasn't sent** — if a dictation couldn't land because you switched apps, click into the new field and choose Paste last (or ⌃⌥⌘V) to drop it there.
+- **⏳ Pauses count only once the model is ready** — "Stop after a pause" no longer ends a dictation while the speech model is still loading.
 
 ## October 18, 2026
 

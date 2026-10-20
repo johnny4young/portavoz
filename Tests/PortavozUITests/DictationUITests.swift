@@ -236,7 +236,9 @@ final class DictationUITests: PortavozUITestCase {
         let hint = UITestLocale.environmentLocale == "es"
             ? "Sigue hablando. Tus palabras aparecen cuando el modelo esté listo."
             : "Keep talking. Your words appear once the model is ready."
-        XCTAssertEqual(renderedText(of: app.staticTexts["dictation-panel-hint"]), hint)
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            renderedText(of: app.staticTexts["dictation-panel-hint"]) == hint
+        })
         XCTAssertFalse(app.staticTexts["dictation-panel-transcript"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["dictation-panel-meter"].exists, "audio is still captured")
         let cancel = app.buttons["dictation-panel-cancel"]
@@ -258,7 +260,10 @@ final class DictationUITests: PortavozUITestCase {
         dictate.click()
         let compact = app.descendants(matching: .any)["dictation-panel-compact"]
         XCTAssertTrue(compact.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(app.descendants(matching: .any)["dictation-panel-elapsed"].exists)
+        let elapsed = app.staticTexts["dictation-panel-elapsed"]
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            renderedText(of: elapsed).range(of: #"^\d+:\d{2}$"#, options: .regularExpression) != nil
+        }, "the elapsed time reads as m:ss")
         XCTAssertTrue(app.descendants(matching: .any)["dictation-panel-meter"].exists)
         XCTAssertFalse(app.buttons["dictation-panel-cancel"].exists, "no buttons in the compact indicator")
         XCTAssertFalse(app.staticTexts["dictation-panel-state"].exists, "no live text or title")
