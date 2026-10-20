@@ -21459,3 +21459,16 @@ and secure fields are skipped. Apps that expose no caret bounds, such as Zed or
 some Electron editors, fall back to the mouse pointer. The user can drag the
 strip during a dictation; the position is not remembered, so the next one opens
 at the caret again. Disposable UI launches keep the bottom-center placement.
+
+## D574 — Stop qualifying macOS 15 Sequoia in hosted CI
+
+The `sequoia-compatibility` lane ran the whole package suite on a macos-15
+runner with a pinned standalone Swift compiler. It took 22 to 30 minutes per
+run, sat at its 30-minute timeout on slow runners, and was a required check on
+every pull request. Hosted CI now qualifies macOS 26 only, and the lane, its
+standalone-compiler installer and the verifier's standalone mode are removed.
+Portavoz 1.1.0 is the last release officially supported on macOS 15 Sequoia
+(and on the 14.4 Sonoma floor). The source still builds for 14.4 and keeps its
+`#available(macOS 26)` fallbacks; removing that support code, raising the
+deployment target and retiring the Sequoia release receipts are separate work
+(GAPS T39).

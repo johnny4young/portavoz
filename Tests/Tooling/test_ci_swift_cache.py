@@ -61,7 +61,8 @@ class SwiftCacheIdentityTests(unittest.TestCase):
 
     def test_lane_image_architecture_and_developer_directory_are_separate(self):
         baseline = self.key()
-        self.assertNotEqual(self.key("sequoia-compatibility"), baseline)
+        with self.assertRaises(ValueError):
+            self.key("sequoia-compatibility")
         for name in ("ImageOS", "ImageVersion", "DEVELOPER_DIR"):
             with self.subTest(name=name):
                 changed = self.root / "other-xcode"

@@ -13,7 +13,7 @@ import subprocess
 
 
 ROOT = Path(__file__).resolve().parents[1]
-LANES = ("build-and-test", "sequoia-compatibility")
+LANES = ("build-and-test",)
 # These owners define the dependency graph, compiler arguments and cache policy.
 INPUTS = (
     "Package.swift",
@@ -21,7 +21,6 @@ INPUTS = (
     ".github/workflows/ci.yml",
     "scripts/run-swift-tests.sh",
     "scripts/verify-ci-toolchain.sh",
-    "scripts/install-ci-swift-toolchain.sh",
     "scripts/ci_swift_cache_key.py",
     "scripts/ci_swift_source_stamps.py",
 )

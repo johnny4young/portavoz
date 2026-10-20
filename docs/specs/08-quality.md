@@ -3550,7 +3550,7 @@ receipt ordering, D147, and D391.
 `docs/evidence/source-integration-qualification.json` freezes one read-only
 GitHub authority: `johnny4young/portavoz`, `main`, the versioned REST API, one
 current independent human approval, the hosted `CI` push workflow, and the
-`build-and-test`, `ios-portability`, `sequoia-compatibility`, `lint`, and
+`build-and-test`, `ios-portability`, `lint`, and
 `repository-hygiene` jobs. `.github/workflows/source-integration-evidence.yml`
 is manual-dispatch only and grants `actions`, `contents`, and `pull-requests`
 read permissions. It accepts dispatch only from `main`, checks out trusted
