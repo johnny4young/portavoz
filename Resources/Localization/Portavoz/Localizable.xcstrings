@@ -18286,6 +18286,16 @@
           }
         }
       }
+    },
+    "Sent, not verified": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviado, sin verificar"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

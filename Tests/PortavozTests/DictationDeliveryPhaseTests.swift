@@ -70,17 +70,43 @@ extension DictationControllerTests {
             harness.controller.toggle(using: dependencies)
             let delivered = await awaitEventually { harness.insertions == [text] }
             XCTAssertTrue(delivered)
-            XCTAssertEqual(keys.active, 0, "Delivery returns Escape to the destination")
+            let notice = await awaitEventually { if case .dispatched = harness.controller.phase { true } else { false } }
+            XCTAssertTrue(notice)
+            XCTAssertEqual(keys.active, 1, "The unverified notice claims Escape while it counts down")
             keys.press()
-            await Task.yield()
-            XCTAssertEqual(harness.insertions, [text])
-            XCTAssertNotEqual(harness.controller.phase, .idle, "A stale Escape cannot hide the outcome")
+            let closed = await awaitEventually { harness.controller.phase == .idle }
+            XCTAssertTrue(closed, "Escape closes the unverified notice")
+            XCTAssertEqual(keys.active, 0, "Closing returns Escape to the destination")
+            XCTAssertEqual(harness.insertions, [text], "Escape never re-sends the output")
         }
     }
 }
 
 @MainActor
 extension DictationControllerTests {
+    func testCopyHandsEscapeBackAndAQueuedPressKeepsTheNotice() async {
+        let text = "Send the report."
+        let harness = DictationControllerHarness(text: text)
+        let keys = CancelKeyRecorder()
+        defer { harness.controller.cancel() }
+        var dependencies = harness.dependencies
+        dependencies.registerCancelKey = keys.register
+        dependencies.copyText = { _ in true }
+        harness.controller.toggle(using: dependencies)
+        let ready = await awaitEventually { harness.controller.partialText == text }
+        XCTAssertTrue(ready)
+        harness.now = harness.now.addingTimeInterval(1)
+        harness.controller.toggle(using: dependencies)
+        let notice = await awaitEventually { if case .dispatched = harness.controller.phase { true } else { false } }
+        XCTAssertTrue(notice)
+        XCTAssertEqual(keys.active, 1)
+        harness.controller.copyPendingText()
+        XCTAssertEqual(keys.active, 0, "Using the panel hands Escape back to the destination")
+        keys.press()
+        for _ in 0..<5 { await Task.yield() }
+        XCTAssertNotEqual(harness.controller.phase, .idle, "A queued Escape cannot close a panel in use")
+    }
+
     func testEscapeQueuedDuringAnInFlightPasteCannotCancelIt() async {
         for text in ["No borres estas notas.", "Don’t delete these notes."] {
             let harness = DictationControllerHarness(text: text)

@@ -6,11 +6,21 @@ struct DictationUnverifiedDeliveryView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Sent — insertion not verified", systemImage: "paperplane.circle")
-                .font(.headline)
-                .foregroundStyle(.orange)
-                .accessibilityAddTraits(.isHeader)
-                .accessibilityIdentifier("dictation-panel-delivery-status")
+            HStack(alignment: .firstTextBaseline) {
+                Label("Sent — insertion not verified", systemImage: "paperplane.circle")
+                    .font(.headline)
+                    .foregroundStyle(.orange)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityIdentifier("dictation-panel-delivery-status")
+                Spacer()
+                Button(action: controller.dismissFeedback) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L10n.text("Close"))
+                .accessibilityIdentifier("dictation-unverified-close")
+            }
             Text("Check the destination before pasting again. Nothing was saved in Portavoz.")
                 .font(.callout)
                 .foregroundStyle(.secondary)

@@ -400,6 +400,21 @@ final class DictationUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testUnverifiedNoticeClosesWithItsCloseButton() throws {
+        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-delivery"]
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+        enterDestinationDelivery(app)
+        let close = app.buttons["dictation-unverified-close"]
+        XCTAssertTrue(close.waitForStableFrame(timeout: 5))
+        close.click()
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { !close.exists }, "× closes the notice at once")
+        XCTAssertFalse(app.staticTexts["dictation-unverified-text"].exists)
+    }
+
+    @MainActor
     func testSilentDictationIsOfferedToCopyInsteadOfPasted() throws {
         let name = "app.portavoz.dictation-test." + UUID().uuidString
         let board = NSPasteboard(name: .init(name))
@@ -659,7 +674,7 @@ private extension DictationUITests {
         let originalStatus = renderedText(of: status)
         let panel = app.dialogs["dictation-panel"]
         let originalFrame = panel.frame
-        for identifier in ["dictation-unverified-copy", "dictation-unverified-discard"] {
+        for identifier in ["dictation-unverified-copy", "dictation-unverified-discard", "dictation-unverified-close"] {
             let button = app.buttons[identifier]
             XCTAssertTrue(button.waitForStableFrame(timeout: 5))
             XCTAssertFalse(button.label.isEmpty)

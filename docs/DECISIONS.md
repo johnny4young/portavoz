@@ -21430,3 +21430,17 @@ dictation early. The held-modifier trigger now acts only on a dictation it
 started. During a tap-, hotkey- or menu-started session, pressing or releasing it
 does nothing, and the session keeps its own stop. The mouse button keeps D566's
 behavior, because it carries no shortcuts.
+
+## D572 — Let an unverified delivery notice close itself
+
+Under D555 the "Sent — insertion not verified" panel stayed until Discard or the
+next dictation. Editors that expose no accessibility text, such as Zed, make
+every dictation unverified, so the panel covered the screen after each one. The
+notice now closes after 4 seconds and has a × to close it sooner. Nothing is
+lost: Paste last keeps the words in memory for 15 minutes. Using Copy cancels
+the expiry, so a panel someone is working with stays until they close it.
+Escape also closes it, but only during that countdown: the notice claims Escape
+from the destination for at most 4 seconds, an accepted cost for editors that
+use Escape themselves. Copy hands Escape back at once, and a press queued after
+that cannot close the panel. Verification itself, Reinsert's absence and the
+no-history rule are unchanged.

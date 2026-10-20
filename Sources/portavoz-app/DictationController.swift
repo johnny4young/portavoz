@@ -85,8 +85,7 @@ final class DictationController {
     private var stopTask: Task<Void, Never>?
     private var stopIssuedSessionID: UUID?
     private var relayEndedSessionID: UUID?
-    private var feedbackDismissTask: Task<Void, Never>?
-    private var feedbackID: UUID?
+    @ObservationIgnored private let feedback = DictationFeedbackTimer()
     var pressedSessionID: UUID?
     private var sessionFeedbackWait: (@MainActor (Duration) async throws -> Void)?
     private(set) var activeSessionID: UUID?
@@ -661,6 +660,19 @@ extension DictationController {
     func copyPendingText() {
         guard hasPendingOutput, !isRetryingDelivery, let dependencies else { return }
         copyStatus = dependencies.copyText(recoveryText) ? .copied : .failed
+        // Someone using the panel decides when it closes; Escape returns to the destination.
+        if case .dispatched = phase {
+            cancelFeedbackDismissal()
+            releaseCancelKey()
+        }
+    }
+
+    /// Closes a delivery notice now, keeping the text for Paste last.
+    func dismissFeedback() {
+        switch phase {
+        case .verified, .dispatched: closeFeedback()
+        default: return
+        }
     }
 
     func retryUndeliveredText() {
@@ -680,17 +692,6 @@ extension DictationController {
         let id = UUID()
         deliveryID = id
         replay(text, into: dependencies.captureDestination(), id: id)
-    }
-
-    /// Whether Paste last has words to deliver, including ones left in recovery.
-    var hasPastableText: Bool {
-        if case .recovery = phase, !recoveryText.isEmpty { return true }
-        return lastText.current != nil
-    }
-
-    private func pastableText() -> String? {
-        if case .recovery = phase, !recoveryText.isEmpty { return recoveryText }
-        return lastText.takeCurrent()
     }
 
     private func replay(_ text: String, into destination: CapturedDictationDestination, id: UUID) {
@@ -722,8 +723,11 @@ extension DictationController {
         // A posted event may arrive late; retained output never authorizes replay.
         recoveryText = result == .dispatched ? text : ""
         showPanel()
-        guard result == .verified else { return }
-        scheduleFeedbackDismiss(after: .milliseconds(1600), wait: dependencies.waitForFeedbackDismissal)
+        // Unverified output closes too; Paste last still holds it for 15 minutes.
+        scheduleFeedbackDismiss(
+            after: result == .verified ? .milliseconds(1600) : Self.unverifiedFeedbackDuration,
+            wait: dependencies.waitForFeedbackDismissal)
+        if result == .dispatched { armFeedbackDismissKey(dependencies) }
     }
 }
 
@@ -731,6 +735,7 @@ extension DictationController {
 extension DictationController {
     /// When the first audio arrived, for the compact indicator's elapsed time.
     var captureStartedAt: Date? { microphoneReadiness?.firstFrameAt }
+    static let unverifiedFeedbackDuration: Duration = .seconds(4)
     /// Listening while the model still loads; the relay holds the speech.
     var isLoadingModel: Bool { loadingModelSessionID != nil && loadingModelSessionID == activeSessionID }
     var textMode: DictationTextMode { textPolicy.mode }
@@ -791,33 +796,38 @@ private extension DictationController {
     }
 
     func cancelFeedbackDismissal() {
-        feedbackID = nil
-        feedbackDismissTask?.cancel()
-        feedbackDismissTask = nil
+        feedback.cancel()
     }
 
     func scheduleFeedbackDismiss(
         after delay: Duration,
         wait: @escaping @MainActor (Duration) async throws -> Void
     ) {
-        cancelFeedbackDismissal()
-        let id = UUID()
-        feedbackID = id
-        feedbackDismissTask = Task { [weak self] in
-            do {
-                try await wait(delay)
-            } catch {
-                return
+        feedback.schedule(after: delay, wait: wait) { [weak self] in self?.closeFeedback() }
+    }
+
+    /// Escape closes the unverified notice only while it counts down.
+    func armFeedbackDismissKey(_ dependencies: DictationSessionDependencies) {
+        releaseCancelKey()
+        cancelKey = dependencies.registerCancelKey { [weak self] in
+            Task { @MainActor [weak self] in
+                // A queued press after Copy or a newer session must not close anything.
+                guard let self, case .dispatched = self.phase, self.feedback.isCounting else { return }
+                self.dismissFeedback()
             }
-            guard let self, self.feedbackID == id, !Task.isCancelled else { return }
-            self.feedbackID = nil
-            self.feedbackDismissTask = nil
-            self.deliveryID = nil
-            self.destination = nil
-            self.dependencies = nil
-            self.phase = .idle
-            self.panel.close()
         }
+    }
+
+    func closeFeedback() {
+        releaseCancelKey()
+        cancelFeedbackDismissal()
+        deliveryID = nil
+        destination = nil
+        dependencies = nil
+        recoveryText = ""
+        copyStatus = .idle
+        phase = .idle
+        panel.close()
     }
 
 }
