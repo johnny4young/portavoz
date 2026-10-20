@@ -236,7 +236,9 @@ final class DictationUITests: PortavozUITestCase {
         let hint = UITestLocale.environmentLocale == "es"
             ? "Sigue hablando. Tus palabras aparecen cuando el modelo esté listo."
             : "Keep talking. Your words appear once the model is ready."
-        XCTAssertEqual(renderedText(of: app.staticTexts["dictation-panel-hint"]), hint)
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            renderedText(of: app.staticTexts["dictation-panel-hint"]) == hint
+        })
         XCTAssertFalse(app.staticTexts["dictation-panel-transcript"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["dictation-panel-meter"].exists, "audio is still captured")
         let cancel = app.buttons["dictation-panel-cancel"]
