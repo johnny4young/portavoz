@@ -18296,6 +18296,166 @@
           }
         }
       }
+    },
+    "the practice field": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "el campo de práctica"
+          }
+        }
+      }
+    },
+    "Try it here": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pruébalo aquí"
+          }
+        }
+      }
+    },
+    "Uses your microphone and the on-device model. The words stay in this field and are not saved.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa tu micrófono y el modelo de este Mac. Las palabras se quedan en este campo y no se guardan."
+          }
+        }
+      }
+    },
+    "You can also press %@ while this window is in front.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "También puedes pulsar %@ mientras esta ventana esté al frente."
+          }
+        }
+      }
+    },
+    "Your words appear here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus palabras aparecen aquí."
+          }
+        }
+      }
+    },
+    "Finish": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminar"
+          }
+        }
+      }
+    },
+    "Dictate here": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dictar aquí"
+          }
+        }
+      }
+    },
+    "Prepare the speech model": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparar el modelo de voz"
+          }
+        }
+      }
+    },
+    "The microphone stays off until the model is ready.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El micrófono sigue apagado hasta que el modelo esté listo."
+          }
+        }
+      }
+    },
+    "Preparing the speech model…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparando el modelo de voz…"
+          }
+        }
+      }
+    },
+    "Press %@ in any app, speak, and press it again. Your words appear where your cursor is.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pulsa %@ en cualquier app, habla y vuelve a pulsarlo. Tus palabras aparecen donde está el cursor."
+          }
+        }
+      }
+    },
+    "Turn on dictation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activar el dictado"
+          }
+        }
+      }
+    },
+    "Accessibility": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accesibilidad"
+          }
+        }
+      }
+    },
+    "Allowed. Dictation can type into other apps.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitido. El dictado puede escribir en otras apps."
+          }
+        }
+      }
+    },
+    "Lets dictation type into other apps. You can try it here without it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permite que el dictado escriba en otras apps. Puedes probarlo aquí sin este permiso."
+          }
+        }
+      }
+    },
+    "Allowed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitido"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

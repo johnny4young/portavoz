@@ -11,11 +11,14 @@ extension AppServices {
         }
         // Temporary composition must never open real audio or prompt for
         // Accessibility just because a test clicked the production menu item.
-        guard usesTemporaryMeetingStore else { return .live(services: self, beginCapture: beginCapture) }
+        guard usesTemporaryMeetingStore else {
+            return dictationPractice.route(
+                .live(services: self, beginCapture: beginCapture), appIsActive: NSApplication.shared.isActive)
+        }
         var dependencies = DictationUITestFixture.dependencies(
             fixture: dictationUITestFixture, beginCapture: beginCapture)
         dependencies.waitForFeedbackDismissal = DictationUITestFixture.waitHoldingUnverifiedNotices
-        return dependencies
+        return dictationPractice.route(dependencies, appIsActive: NSApplication.shared.isActive)
     }
 }
 

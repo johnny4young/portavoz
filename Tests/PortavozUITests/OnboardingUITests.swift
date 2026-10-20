@@ -31,7 +31,7 @@ final class OnboardingUITests: PortavozUITestCase {
             "the second step must introduce Apuntador, Radar and Automations")
         XCTAssertTrue(app.control(withIdentifier: "onboarding-apuntador-toggle").exists)
         XCTAssertTrue(app.control(withIdentifier: "onboarding-example-card").exists)
-        for _ in 0..<3 {
+        for _ in 0..<4 {
             app.control(withIdentifier: "onboarding-continue").click()
         }
 
@@ -65,7 +65,7 @@ final class OnboardingUITests: PortavozUITestCase {
         attachScreenshot(of: app, named: "onboarding-model-recovery")
 
         app.control(withIdentifier: "onboarding-models-continue-without").click()
-        XCTAssertTrue(app.control(withIdentifier: "onboarding-voice-enroll").waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(app.control(withIdentifier: "onboarding-dictation").waitForExistenceFast(timeout: 5))
         app.control(withIdentifier: "onboarding-back").click()
         XCTAssertTrue(failure.waitForExistenceFast(timeout: 5))
         app.control(withIdentifier: "onboarding-models-retry").click()
@@ -75,6 +75,8 @@ final class OnboardingUITests: PortavozUITestCase {
         app.control(withIdentifier: "onboarding-back").click()
         app.control(withIdentifier: "onboarding-continue").click()
         XCTAssertTrue(app.control(withIdentifier: "onboarding-models-ready").waitForExistenceFast(timeout: 5))
+        app.control(withIdentifier: "onboarding-continue").click()
+        XCTAssertTrue(app.control(withIdentifier: "onboarding-dictation-practice-start").waitForExistenceFast(timeout: 5))
         app.control(withIdentifier: "onboarding-continue").click()
         XCTAssertTrue(app.control(withIdentifier: "onboarding-voice-enroll").waitForExistenceFast(timeout: 5))
         app.control(withIdentifier: "onboarding-skip").click()

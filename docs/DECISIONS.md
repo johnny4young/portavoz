@@ -21472,3 +21472,24 @@ Portavoz 1.1.0 is the last release officially supported on macOS 15 Sequoia
 `#available(macOS 26)` fallbacks; removing that support code, raising the
 deployment target and retiring the Sequoia release receipts are separate work
 (GAPS T39).
+
+## D575 — Set up and practice dictation in Portavoz's own field
+
+New users never met dictation: setup skipped it, it starts off, and without
+Accessibility the first attempt fails. Setup now has a dictation step after the
+models. Its switch starts off and continuing past the step registers no global
+shortcut. Accessibility is requested in this step, only from its button and
+only once dictation is on, because only delivery into other apps needs it.
+Continue never waits for it.
+
+Trying dictation should prove the real microphone and model, not a canned demo,
+and should not need Accessibility or the clipboard. So both setup and Settings
+show a practice field. While that field's window is key and Portavoz is active,
+a new session delivers into the field: a real session in every other way
+(strip, Escape, text mode, Paste last) whose destination appends in memory and
+reports verified. The destination is fixed at start, the text is dropped when
+no view shows the field, and a late delivery goes to the normal recovery panel.
+In setup the practice waits for the model preparation, so the microphone never
+opens while a model downloads. Rejected: a pre-recorded demo (it proves nothing
+about the user's microphone), and practising through the regular clipboard paste
+into a text field (it needs Accessibility and borrows the clipboard).

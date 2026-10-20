@@ -27,19 +27,12 @@ struct DictationSection: View {
         Section("Dictation") {
             Toggle("Dictate anywhere", isOn: $enabled)
                 .accessibilityIdentifier("settings-dictation-toggle")
-                .onChange(of: enabled) {
-                    services.dictation.syncHotkey(services: services)
-                    services.syncPasteLastShortcut()
-                    services.dictation.syncMousePTT(
-                        services: services, promptIfNeeded: enabled)
-                    services.dictation.syncModifierPTT(services: services, promptIfNeeded: enabled)
-                    services.prewarmDictationIfConfigured()
-                    if enabled { Task { await services.prepareSpeechGateIfEnabled() } }
-                }
+                .onChange(of: enabled) { services.applyDictationEnabled(enabled) }
             if enabled {
                 DictationShortcutSettings(shortcut: services.dictation.shortcut) {
                     services.dictation.syncHotkey(services: services)
                 }
+                DictationPracticeView(identifierPrefix: "settings-dictation")
                 MouseButtonRecorder {
                     services.dictation.syncMousePTT(
                         services: services, promptIfNeeded: true)

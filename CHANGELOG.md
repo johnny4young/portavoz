@@ -31,6 +31,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 20, 2026
 
+- **🎙️ Try dictation before you rely on it** — setup now has a dictation step: turn it on, check the shortcut and Accessibility, and dictate into a practice field with your real microphone; the same field lives in Settings › Audio & dictation.
 - **🔒 Paste last forgets when your Mac sleeps** — text that wasn't sent can no longer be pasted after your Mac sleeps or locks; the notice still lets you copy it.
 
 ## October 19, 2026
