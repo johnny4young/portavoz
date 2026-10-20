@@ -1,15 +1,9 @@
 import Foundation
 
 extension DictationController {
-    /// Whether Paste last has words to deliver, including ones left in recovery.
-    var hasPastableText: Bool {
-        if case .recovery = phase, !recoveryText.isEmpty { return true }
-        return lastText.current != nil
-    }
+    /// Words in recovery are the last dictation too, so they follow its lifetime:
+    /// sleep, lock or 15 minutes end Paste last, while the panel keeps Copy.
+    var hasPastableText: Bool { lastText.current != nil }
 
-    /// Undelivered words in recovery are the last dictation, so they paste first.
-    func pastableText() -> String? {
-        if case .recovery = phase, !recoveryText.isEmpty { return recoveryText }
-        return lastText.takeCurrent()
-    }
+    func pastableText() -> String? { lastText.takeCurrent() }
 }

@@ -59,6 +59,46 @@ extension DictationControllerTests {
         XCTAssertNil(last.current, "sleep drops the remembered text")
     }
 
+    func testSleepOrExpiryEndsPasteLastForRecoveryWordsButKeepsCopy() async {
+        for forgets in ["sleep", "expiry"] {
+            let text = "Send the report."
+            var now = Date(timeIntervalSince1970: 1_000)
+            let last = DictationLastText(now: { now }, observesSystem: forgets == "sleep")
+            let harness = DictationControllerHarness(
+                text: text, controller: DictationController(presentsPanel: false, lastText: last))
+            defer { harness.controller.cancel() }
+            var copies: [String] = []
+            var refusing = harness.dependencies
+            refusing.captureDestination = {
+                CapturedDictationDestination(name: "Refusing receiver", canRetry: true) { _ in .refused(.cancelled) }
+            }
+            refusing.copyText = { copies.append($0); return true }
+            harness.controller.toggle(using: refusing)
+            let ready = await awaitEventually { harness.controller.partialText == text }
+            XCTAssertTrue(ready)
+            harness.now = harness.now.addingTimeInterval(1)
+            harness.controller.toggle(using: refusing)
+            let refused = await awaitEventually {
+                if case .recovery = harness.controller.phase { return true }
+                return false
+            }
+            XCTAssertTrue(refused)
+
+            if forgets == "sleep" {
+                NSWorkspace.shared.notificationCenter.post(name: NSWorkspace.willSleepNotification, object: nil)
+            } else {
+                now += DictationLastText.lifetime + 1
+            }
+            XCTAssertFalse(harness.controller.hasPastableText, "\(forgets) ends Paste last for the waiting words")
+            harness.controller.pasteLastDictation(using: harness.dependencies)
+            for _ in 0..<5 { await Task.yield() }
+            XCTAssertTrue(harness.insertions.isEmpty, "nothing is pasted after \(forgets)")
+            XCTAssertEqual(harness.controller.recoveryText, text, "the panel still holds the words")
+            harness.controller.copyPendingText()
+            XCTAssertEqual(copies, [text], "Copy still works from the panel")
+        }
+    }
+
     func testRecoveryPastesWhereTheUserIsNowAndKeepsTheWordsIfRefusedAgain() async {
         let text = "Send the report."
         var now = Date(timeIntervalSince1970: 1_000)
@@ -84,8 +124,7 @@ extension DictationControllerTests {
             return false
         }
         XCTAssertTrue(refused)
-        now += DictationLastText.lifetime + 1
-        XCTAssertNil(last.current)
+        now += DictationLastText.lifetime - 1
         XCTAssertTrue(harness.controller.hasPastableText, "the menu offers Paste last for the waiting words")
         harness.controller.pasteLastDictation(using: refusing)
         let stillWaiting = await awaitEventually {
