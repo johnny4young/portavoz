@@ -59,11 +59,11 @@ extension DictationControllerTests {
         XCTAssertNil(last.current, "sleep drops the remembered text")
     }
 
-    func testSleepOrExpiryEndsPasteLastForRecoveryWordsButKeepsCopy() async {
-        for forgets in ["sleep", "expiry"] {
+    func testSleepLockOrExpiryEndsPasteLastForRecoveryWordsButKeepsCopy() async {
+        for forgets in ["sleep", "lock", "expiry"] {
             let text = "Send the report."
             var now = Date(timeIntervalSince1970: 1_000)
-            let last = DictationLastText(now: { now }, observesSystem: forgets == "sleep")
+            let last = DictationLastText(now: { now }, observesSystem: forgets != "expiry")
             let harness = DictationControllerHarness(
                 text: text, controller: DictationController(presentsPanel: false, lastText: last))
             defer { harness.controller.cancel() }
@@ -86,6 +86,9 @@ extension DictationControllerTests {
 
             if forgets == "sleep" {
                 NSWorkspace.shared.notificationCenter.post(name: NSWorkspace.willSleepNotification, object: nil)
+            } else if forgets == "lock" {
+                NSWorkspace.shared.notificationCenter.post(
+                    name: NSWorkspace.sessionDidResignActiveNotification, object: nil)
             } else {
                 now += DictationLastText.lifetime + 1
             }
