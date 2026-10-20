@@ -21388,7 +21388,8 @@ been heard. It never acts on a session that a held hotkey, mouse button or
 modifier owns, because releasing that trigger already ends it. A dropped chunk,
 a detector failure or a missing model turns it off for that session rather than
 risk cutting the speaker off. Meetings keep the earlier decision not to stop on
-silence. The detector is the speech gate's pinned 1 MB bundle, so turning this
+silence. Silence counts only once the speech model is ready, so a cold load
+(D561) never ends the dictation. The detector is the speech gate's pinned 1 MB bundle, so turning this
 on is the same consent; the gate's per-session analysis stays separate,
 because the gate stops at the first speech.
 

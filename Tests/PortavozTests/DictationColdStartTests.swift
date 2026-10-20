@@ -31,6 +31,55 @@ final class DictationColdStartTests: XCTestCase {
         }
     }
 
+    func testAPauseWhileTheModelLoadsNeverEndsATapStartedDictation() async {
+        for text in ["No borres estas notas", "Don’t delete these notes"] {
+            let cold = ColdHarness(text: text)
+            var reportPause: (@Sendable () -> Void)?
+            var dependencies = cold.dependencies
+            dependencies.makePauseDetector = { onPause in
+                reportPause = onPause
+                return nil
+            }
+            cold.harness.controller.toggle(using: dependencies)
+            let listening = await eventually { cold.harness.controller.phase == .listening }
+            XCTAssertTrue(listening)
+            XCTAssertTrue(cold.harness.controller.isLoadingModel)
+            cold.harness.now = cold.harness.now.addingTimeInterval(3)
+            reportPause?()
+            // Longer than the stop tail a wrongful finish would take.
+            try? await Task.sleep(for: .milliseconds(600))
+            XCTAssertTrue(cold.harness.controller.isActive, "the load is not a pause")
+            let stops = await cold.harness.microphone.stops
+            XCTAssertEqual(stops, 0)
+
+            cold.gate.release()
+            let ready = await eventually { !cold.harness.controller.isLoadingModel }
+            XCTAssertTrue(ready)
+            reportPause?()
+            let delivered = await eventually { cold.harness.insertions == [text] }
+            XCTAssertTrue(delivered, "once the model is ready a pause ends the dictation")
+        }
+    }
+
+    func testThePauseClockStartsWhenTheModelIsReady() async {
+        let cold = ColdHarness(text: "Send the report.")
+        var detector: DictationPauseDetector?
+        var dependencies = cold.dependencies
+        dependencies.makePauseDetector = { onPause in
+            let made = DictationPauseDetector(pause: 1.5, load: { { _ in nil } }, onPause: onPause)
+            detector = made
+            return made
+        }
+        defer { cold.harness.controller.cancel() }
+        cold.harness.controller.toggle(using: dependencies)
+        let listening = await eventually { cold.harness.controller.phase == .listening }
+        XCTAssertTrue(listening)
+        XCTAssertEqual(detector?.isArmed, false, "no pause clock while the model loads")
+        cold.gate.release()
+        let armed = await eventually { detector?.isArmed == true }
+        XCTAssertTrue(armed, "the pause clock starts once the model is ready")
+    }
+
     func testHeldHotkeyReleasedDuringColdLoadDeliversInsteadOfCancelling() async {
         let cold = ColdHarness(text: "Hold to talk survives a cold model")
         let pressed = cold.harness.now

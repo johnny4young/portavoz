@@ -325,6 +325,7 @@ final class DictationController {
                 mirror: analysis.offer)
 
             let runtime = try await awaitRuntime(acquisition, id: id, measurement: measurement)
+            analysis.pause?.arm()
             try await consumeCaptions(
                 from: runtime.engine.transcribe(audio, hints: dependencies.transcriptionHints()),
                 sessionID: id, measurement: measurement)
@@ -684,17 +685,27 @@ extension DictationController {
     }
 
     /// Pastes the remembered text into whatever is focused now, through the
-    /// same delivery and recovery path as a fresh dictation.
+    /// same delivery and recovery path as a fresh dictation. Undelivered words
+    /// in recovery are that text, so they paste where the user is now.
     func pasteLastDictation(using dependencies: DictationSessionDependencies) {
-        // Undelivered words keep their own Retry; nothing replaces them silently.
-        if case .recovery = phase { return }
-        guard !isActive, retryDeliveryTask == nil, let text = lastText.takeCurrent(), dependencies.canInsert()
+        guard !isActive, retryDeliveryTask == nil, let text = pastableText(), dependencies.canInsert()
         else { return }
         cancelFeedbackDismissal()
         self.dependencies = dependencies
         let id = UUID()
         deliveryID = id
         replay(text, into: dependencies.captureDestination(), id: id)
+    }
+
+    /// Whether Paste last has words to deliver, including ones left in recovery.
+    var hasPastableText: Bool {
+        if case .recovery = phase, !recoveryText.isEmpty { return true }
+        return lastText.current != nil
+    }
+
+    private func pastableText() -> String? {
+        if case .recovery = phase, !recoveryText.isEmpty { return recoveryText }
+        return lastText.takeCurrent()
     }
 
     private func replay(_ text: String, into destination: CapturedDictationDestination, id: UUID) {
@@ -779,7 +790,7 @@ private extension DictationController {
 
     /// A tap-started dictation ends itself after a pause; a held trigger never does.
     func stopAfterPause(sessionID: UUID) {
-        guard activeSessionID == sessionID, phase == .listening, stopTask == nil, !mouseOwnsSession,
+        guard activeSessionID == sessionID, phase == .listening, !isLoadingModel, stopTask == nil, !mouseOwnsSession,
               !modifierTrigger.ownsSession, pressedSessionID != sessionID else { return }
         finishAndInsert()
     }
