@@ -191,6 +191,8 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     "onboarding": (
         test_id("OnboardingUITests", "testAdvancesFromFirstListenToLocalVoiceEnrollment"),
         test_id("OnboardingUITests", "testModelFailureCanContinueBackAndRetryWithoutDownloading"),
+        test_id("DictationPracticeUITests", "testOnboardingDictationStepPracticesInItsOwnFieldWithoutTheClipboard"),
+        test_id("DictationPracticeUITests", "testOnboardingDictationStepOffersShortcutAndAccessibilityOnceTurnedOn"),
     ),
     "meeting-performance": (
         test_id("MeetingDetailUITests", "testFiveThousandSegmentDetailRendersFromDisposableScaleFixture"),
@@ -455,6 +457,9 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("SettingsUITests", "testHeldFnTriggerExplainsTheGlobeKeySetting"),
         test_id("SettingsUITests", "testParakeetUltraIsAnExplicitDictationOnlyDownload"),
         test_id("SettingsUITests", "testAnUltraDownloadInFlightCanBeCancelled"),
+        test_id("DictationPracticeUITests", "testOnboardingDictationStepPracticesInItsOwnFieldWithoutTheClipboard"),
+        test_id("DictationPracticeUITests", "testOnboardingDictationStepOffersShortcutAndAccessibilityOnceTurnedOn"),
+        test_id("DictationPracticeUITests", "testSettingsPracticeFieldReceivesDictationWithoutTheClipboard"),
     ),
     "settings-audio": (
         test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),

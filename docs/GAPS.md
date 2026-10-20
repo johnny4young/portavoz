@@ -273,6 +273,16 @@ or the delay between release and insertion on a cold model. Measure
 those on hardware before claiming a cold-start latency, and before considering
 sounds or the launch pre-warm on by default.
 
+### Dictation setup needs a clean-install walk-through
+
+D575 adds the setup dictation step and the practice field. UI journeys run them
+with the deterministic dictation fixture and a fixed Accessibility state, so
+they do not show the real system prompt, the once-a-second refresh after the
+user grants Accessibility in System Settings, the real shortcut delivering into
+the practice field while setup is in front, or a cold model download started
+from the practice button. Walk through setup on a clean user account in English
+and Spanish, with VoiceOver on once, before calling the step finished.
+
 ### Dictation still needs a complete, phase-separated qualification
 
 The public corpus now specifies 480 variants over 60 text families, with exact

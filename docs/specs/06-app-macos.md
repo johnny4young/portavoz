@@ -2559,13 +2559,26 @@ verb, and the Today ask chips carry the Ask symbol.
 
 ## First-run setup (Sep 2026, D536)
 
-`OnboardingView` runs five steps in a 520×520 window: the live first listen;
+`OnboardingView` runs six steps in a 520×520 window: the live first listen;
 **During the meeting** (`onboarding-during-meeting`), which introduces
 Apuntador (with the real opt-in switch, `onboarding-apuntador-toggle`, bound
 to the recording controller), Radar and Automations in one line each plus one
 example card (`onboarding-example-card`) drawn like a live Apuntador card;
-permissions; on-device models; and the optional voice enrollment. Skip stays
-available on every step (`onboarding-skip`).
+permissions; on-device models; dictation; and the optional voice enrollment.
+Skip stays available on every step (`onboarding-skip`).
+
+**Dictation step (Oct 2026, D575).** `OnboardingDictationStep`
+(`onboarding-dictation`) explains the shortcut and shows the same enable switch
+as Settings (`onboarding-dictation-toggle`), off until the user turns it on, so
+Continue registers nothing. Turning it on runs `applyDictationEnabled` (the
+Settings path) and reveals the shortcut recorder plus an Accessibility row
+(`onboarding-dictation-accessibility-status`/`-allow`) that requests the system
+prompt only from its button and re-reads `AXIsProcessTrusted` once a second
+while visible; Continue never waits for it. The step ends with the practice
+field (`onboarding-dictation-practice-*`), gated on the onboarding model
+preparation: before it is ready the step offers `-practice-prepare` with the
+preparation's failure text, and the microphone never opens during a download.
+Disposable launches report Accessibility as not granted and never prompt.
 
 ## Ask and Radar layout (Sep 2026, D536)
 
@@ -2938,6 +2951,22 @@ movable by its background, including the backdrop-free compact indicator (a
 caret. Growing into the full panel keeps it on screen horizontally too.
 Disposable launches supply no anchor and keep the bottom-center
 placement that UI journeys rely on.
+
+**Practice field (D575).** `DictationPracticeView` shows an in-app field with
+Dictate here / Finish (`<prefix>-practice-start`, a toggle of the shared
+controller), Clear and the result (`<prefix>-practice-field`), in onboarding and
+under the shortcut in Settings › Audio & dictation (`settings-dictation-`). Each
+visible field reports whether its window is key (`controlActiveState`) to
+`AppServices.dictationPractice`. While one is key and Portavoz is active,
+`makeDictationSessionDependencies` replaces only `canInsert`,
+`captureDestination` and the strip anchor (a band of 24 pt around the pointer,
+since the field has no caret, also in disposable launches, so the strip never
+covers the button that started the session): the session is otherwise a real one (microphone, model,
+strip, Escape, text mode, Paste last), but delivery appends to the field and
+reports `verified`, with no clipboard loan, synthetic paste or Accessibility.
+The destination is fixed at start like any other. The field forgets its text
+when no view shows it, and a delivery that arrives after that is refused into
+the normal recovery panel.
 
 The strip view reports layout changes to `DictationPanelController.relayout`,
 so the window follows every phase change (including failures that arrive

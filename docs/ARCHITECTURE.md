@@ -1280,6 +1280,11 @@ adapter retains the original `NSRunningApplication` and focused AX element:
 application equality, termination state and `CFEqual` on the focused element
 must still match. Names and bundle identifiers are never authority. Core and
 capability targets receive no AppKit or Accessibility dependency.
+The one in-process destination is the practice field shown in onboarding and
+Settings: composition swaps in its destination only while that field's window
+is key and the app is active, so practice never borrows the clipboard, posts a
+paste or needs Accessibility, and every other session keeps the captured
+external destination.
 
 The last-mile `TextInserter` returns a typed result. It waits for physical
 modifiers, revalidates the captured destination before borrowing the clipboard
