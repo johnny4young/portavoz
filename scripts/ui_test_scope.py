@@ -446,6 +446,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("DictationUITests", "testCompactIndicatorShowsOnlyTheLevelAndTime"),
         test_id("DictationUITests", "testCompactIndicatorOpensTheFullPanelForAFailure"),
         test_id("DictationUITests", "testUnverifiedNoticeClosesWithItsCloseButton"),
+        test_id("DictationUITests", "testCompactIndicatorCanBeDraggedWhileDictating"),
         test_id("DictationUITests", "testUndeliveredTextCanBeCopiedAndExplicitlyRetried"),
         test_id("DictationUITests", "testUndeliveredTextSurvivesAnotherTriggerUntilDiscarded"),
         test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),

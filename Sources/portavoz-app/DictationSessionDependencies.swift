@@ -33,6 +33,8 @@ struct DictationSessionDependencies {
     var waitForFirstBufferDeadline: @Sendable () async throws -> Void = {
         try await Task.sleep(for: .seconds(5))
     }
+    /// Where the strip first appears; nil keeps it bottom-center (disposable launches).
+    var locatePanelAnchor: @MainActor () -> DictationPanelAnchor? = { nil }
     /// Claims Escape system-wide while capture runs; nil leaves cancel to the panel.
     var registerCancelKey: (@escaping () -> Void) -> (any GlobalHotkeyRegistration)? = { _ in nil }
 
@@ -92,6 +94,7 @@ struct DictationSessionDependencies {
             copyText: { TextInserter.copy($0) },
             defaults: services.defaults,
             beginCapture: beginCapture,
+            locatePanelAnchor: { DictationPanelAnchor.current() },
             registerCancelKey: { GlobalHotkey(keyCode: UInt32(kVK_Escape), modifiers: 0, onPress: $0) },
             playCue: DictationSoundCue.player(defaults: services.defaults),
             makeSpeechGate: { [defaults = services.defaults, store = services.modelStore] in

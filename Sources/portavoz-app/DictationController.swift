@@ -61,6 +61,8 @@ final class DictationController {
     /// The app that was frontmost when dictation started — where the text
     /// will land. The strip shows it so you never dictate "blind" (4b).
     private(set) var targetApp: String?
+    /// The caret or pointer the strip opens beside, read with the destination.
+    private(set) var panelAnchor: DictationPanelAnchor?
 
     enum CopyStatus: Equatable { case idle, copied, failed }
     private(set) var recoveryText = ""
@@ -233,6 +235,7 @@ final class DictationController {
         let destination = dependencies.captureDestination()
         self.destination = destination
         targetApp = destination.name
+        panelAnchor = dependencies.locatePanelAnchor()
         textPolicy = DictationTextPreferences.snapshot(
             in: dependencies.defaults, bundleIdentifier: destination.bundleIdentifier)
         textPolicySealed = false

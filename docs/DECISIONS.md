@@ -21444,3 +21444,15 @@ from the destination for at most 4 seconds, an accepted cost for editors that
 use Escape themselves. Copy hands Escape back at once, and a press queued after
 that cannot close the panel. Verification itself, Reinsert's absence and the
 no-history rule are unchanged.
+
+## D573 — Open the dictation strip beside the text caret
+
+The strip used to open bottom-center on the main screen, often far from where
+the words would land. It now opens just under the text caret of the focused
+field, read once at start through public AX geometry
+(`kAXBoundsForRangeParameterizedAttribute` on the selection), with the same
+100 ms per-object timeouts as delivery. Only a rectangle is read, never text,
+and secure fields are skipped. Apps that expose no caret bounds, such as Zed or
+some Electron editors, fall back to the mouse pointer. The user can drag the
+strip during a dictation; the position is not remembered, so the next one opens
+at the caret again. Disposable UI launches keep the bottom-center placement.

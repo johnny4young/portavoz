@@ -271,6 +271,27 @@ final class DictationUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testCompactIndicatorCanBeDraggedWhileDictating() throws {
+        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-model-loading"]
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
+            #"{"globalDictationEnabled":true,"dictationCompactIndicator":true}"#
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+        let dictate = app.buttons["menu-bar-dictate"]
+        XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+        dictate.click()
+        let panel = app.dialogs["dictation-panel"]
+        XCTAssertTrue(panel.waitForExistenceFast(timeout: 5))
+        let before = panel.frame
+        let grab = panel.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5))
+        grab.press(forDuration: 0.2, thenDragTo: grab.withOffset(CGVector(dx: -160, dy: -120)))
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { panel.frame.origin != before.origin },
+                      "the floating indicator moves where the user drags it")
+        XCTAssertEqual(panel.frame.size, before.size)
+    }
+
+    @MainActor
     func testCompactIndicatorOpensTheFullPanelForAFailure() throws {
         let app = try XCUIApplication.portavoz(showMenuBarContent: true)
         app.launchArguments += ["-seed-dictation", "-seed-dictation-capture-failure"]
