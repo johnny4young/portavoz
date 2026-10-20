@@ -18,7 +18,6 @@ class CIWorkflowTests(unittest.TestCase):
         expected = [
             "build-and-test",
             "ios-portability",
-            "sequoia-compatibility",
             "lint",
             "repository-hygiene",
         ]
@@ -44,32 +43,12 @@ class CIWorkflowTests(unittest.TestCase):
         self.assertNotIn("Select newest Xcode", workflow)
         self.assertNotIn("sort -V", workflow)
 
-    def test_sequoia_lane_is_real_and_exact(self):
+    def test_no_sequoia_lane_remains(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-
-        self.assertEqual(workflow.count("runs-on: macos-15"), 1)
-        self.assertIn(
-            "DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer",
-            workflow,
-        )
-        self.assertIn("scripts/verify-ci-toolchain.sh 15 26.3 6.3.3", workflow)
-        self.assertEqual(workflow.count("run: scripts/install-ci-swift-toolchain.sh"), 1)
-        sequoia = workflow.split("  sequoia-compatibility:\n", 1)[1].split("  ios-portability:", 1)[0]
-        self.assertIn("timeout-minutes: 30", sequoia)
-        self.assertLess(sequoia.index("Install fixed standalone Swift compiler"),
-                        sequoia.index("Identify compatible Swift build state"))
-        self.assertIn("scripts/run-swift-tests.sh", workflow)
-
-    def test_sequoia_standalone_compiler_enables_sdk_cross_import_overlays(self):
-        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        sequoia = workflow.split("  sequoia-compatibility:\n", 1)[1].split("  ios-portability:", 1)[0]
-        self.assertIn(
-            "run: scripts/run-swift-tests.sh -Xswiftc -Xfrontend -Xswiftc -enable-cross-import-overlays",
-            sequoia,
-        )
-        self.assertEqual(sequoia.count("run: scripts/run-swift-tests.sh"), 1)
-        self.assertIn("runs-on: macos-15", sequoia)
-        self.assertIn("timeout-minutes: 30", sequoia)
+        self.assertNotIn("sequoia-compatibility", workflow)
+        self.assertNotIn("runs-on: macos-15", workflow)
+        self.assertNotIn("install-ci-swift-toolchain.sh", workflow)
+        self.assertFalse((ROOT / "scripts/install-ci-swift-toolchain.sh").exists())
 
     def test_ios_portability_is_isolated_without_fake_runtime_evidence(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
@@ -167,7 +146,7 @@ class CIWorkflowTests(unittest.TestCase):
         ui = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
 
         self.assertEqual(ci.count("run: scripts/check-repository-hygiene.sh"), 1)
-        self.assertEqual(ci.count("needs: repository-hygiene"), 4)
+        self.assertEqual(ci.count("needs: repository-hygiene"), 3)
         self.assertNotIn("python3 -m unittest Tests.Tooling", ui)
         self.assertEqual(
             ui.count("scripts/ui_test_scope.py --validate-catalog"),

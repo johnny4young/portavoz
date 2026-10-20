@@ -87,9 +87,6 @@ class CISwiftToolchainTests(unittest.TestCase):
                               env=dict(self.env, **environment), capture_output=True,
                               text=True, timeout=10)
 
-    def installer(self, *args, **environment):
-        return self.run_script("install-ci-swift-toolchain.sh", *args, **environment)
-
     def command_names(self):
         if not self.calls.exists():
             return []
@@ -105,60 +102,11 @@ class CISwiftToolchainTests(unittest.TestCase):
         shutil.copyfile(self.bin / "swift", self.toolchain / "usr/bin/swift")
         (self.toolchain / "usr/bin/swift").chmod(0o755)
 
-    def test_installer_refuses_non_ci_other_os_and_arguments_before_download(self):
-        for args, environment in (((), {"GITHUB_ACTIONS": "false"}),
-                                  ((), {"GITHUB_ENV": ""}), ((), {"FAKE_OS": "26.6"}),
-                                  (("unexpected",), {})):
-            with self.subTest(environment=environment, args=args):
-                result = self.installer(*args, **environment)
+    def test_verifier_accepts_only_the_current_sdk_lane(self):
+        for args in (("15", "26.3"), ("26", "26.6", "6.3.3"), ("26",)):
+            with self.subTest(args=args):
+                result = self.run_script("verify-ci-toolchain.sh", *args, FAKE_OS="26.6", FAKE_XCODE="26.6")
                 self.assertEqual(result.returncode, 64, result.stderr)
-                self.assertNotIn("curl", self.command_names())
-                self.assert_not_exported()
-
-    def test_checksum_and_signature_fail_before_install_or_exports(self):
-        for failure in ("curl", "shasum", "pkgutil"):
-            with self.subTest(failure=failure):
-                result = self.installer(FAIL_COMMAND=failure)
-                self.assertNotEqual(result.returncode, 0)
-                self.assertNotIn("installer", self.command_names())
-                self.assert_not_exported()
-        result = self.installer(FAKE_SIGNER="Developer ID Installer: Someone Else (WRONG)")
-        self.assertNotEqual(result.returncode, 0)
-        self.assertNotIn("installer", self.command_names())
-        self.assert_not_exported()
-
-    def test_failed_install_identity_or_version_never_exports_selection(self):
-        for environment in ({"FAIL_COMMAND": "installer"},
-                            {"FAKE_IDENTIFIER": "wrong.identifier"}, {"FAKE_VERSION": "6.4"}):
-            with self.subTest(environment=environment):
-                result = self.installer(**environment)
-                self.assertNotEqual(result.returncode, 0)
-                self.assert_not_exported()
-
-    def test_verified_user_home_install_exports_exact_identity_and_compiler_path(self):
-        result = self.installer()
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.github_env.read_text(), f"TOOLCHAINS={IDENTIFIER}\n")
-        self.assertEqual(self.github_path.read_text(), f"{self.toolchain}/usr/bin\n")
-        calls = self.command_names()
-        self.assertLess(calls.index("shasum"), calls.index("pkgutil"))
-        self.assertLess(calls.index("pkgutil"), calls.index("installer"))
-        installer_call = next(json.loads(line) for line in self.calls.read_text().splitlines()
-                              if json.loads(line)[0] == "installer")
-        self.assertEqual(installer_call[1:3], ["-target", "CurrentUserHomeDirectory"])
-
-    def test_verifier_accepts_only_exact_sequoia_compiler_sdk_and_selector(self):
-        self.seed_toolchain()
-        result = self.run_script("verify-ci-toolchain.sh", "15", "26.3", "6.3.3")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        for environment in ({"TOOLCHAINS": "swift"}, {"FAKE_IDENTIFIER": "wrong"},
-                            {"FAKE_VERSION": "6.3.2"}, {"FAKE_OS": "26.6"},
-                            {"FAKE_XCODE": "26.6"}, {"FAKE_SWIFT_LOCATION": "default"},
-                            {"PATH": f"{self.bin}{os.pathsep}{os.environ['PATH']}"}):
-            with self.subTest(environment=environment):
-                result = self.run_script("verify-ci-toolchain.sh", "15", "26.3", "6.3.3", **environment)
-                self.assertNotEqual(result.returncode, 0)
-        self.assertNotEqual(self.run_script("verify-ci-toolchain.sh", "26", "26.6", "6.3.3").returncode, 0)
 
     def test_default_xcode_lane_keeps_existing_outside_toolchain_rejection(self):
         default = self.developer / "Toolchains/XcodeDefault.xctoolchain/usr/bin"

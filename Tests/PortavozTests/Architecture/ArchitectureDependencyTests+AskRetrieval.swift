@@ -1734,7 +1734,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(presentationTests.contains("swiftlang/swift#87316"))
         XCTAssertEqual(
             ci.components(separatedBy: "scripts/run-swift-tests.sh").count,
-            3)
+            2)
         XCTAssertTrue(uiTest.contains("ask-consented-cited-web-answer"))
         XCTAssertTrue(uiTest.contains("one-request Web consent must be consumed"))
 

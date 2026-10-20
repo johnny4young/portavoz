@@ -5642,14 +5642,11 @@ sources compile warning-free under Xcode 27 (Swift 6.4): the FoundationModels
 helper in IntelligenceKit, and closures that hand model-download progress to
 the main actor capture `self` weakly at their outermost boundary. Hosted
 CI uses the
-explicit macos-26/Xcode 26.6 pair for that lane and macos-15/Xcode 26.3 for the
-oldest supported runtime lane; `DEVELOPER_DIR` is verified instead of selecting
-the newest installed Xcode. The Sequoia lane retains Xcode 26.3 for its SDK,
-XCTest and Metal tools, and selects the official standalone Swift 6.3.3 compiler
-required by MLX. Its installer is fixed by SHA-256 and the Swift Open Source
-Developer ID signature, installs only in the disposable runner's home, and
-exports one exact toolchain identifier and executable path. Verification rejects
-mismatches between the selector, bundle identity, shell compiler and `xcrun`.
+explicit macos-26/Xcode 26.6 pair for every macOS lane; `DEVELOPER_DIR` is
+verified instead of selecting the newest installed Xcode, and `xcrun` must
+resolve Swift inside that Xcode. Hosted CI no longer runs a macOS 15 Sequoia
+lane: 1.1.0 is the last release officially supported on Sequoia, and the
+source still builds for the 14.4 deployment floor until a later cleanup.
 The standalone compiler explicitly enables SDK cross-import overlays, matching
 the Apple compiler default and retaining Translation's public SwiftUI modifier.
 This does not install a compiler on developer Macs, change app deployment targets,
