@@ -5645,7 +5645,7 @@ CI uses the
 explicit macos-26/Xcode 26.6 pair for every macOS lane; `DEVELOPER_DIR` is
 verified instead of selecting the newest installed Xcode, and `xcrun` must
 resolve Swift inside that Xcode. Hosted CI no longer runs a macOS 15 Sequoia
-lane (D574): 1.1.0 is the last release officially supported on Sequoia, and the
+lane: 1.1.0 is the last release officially supported on Sequoia, and the
 source still builds for the 14.4 deployment floor until a later cleanup.
 The standalone compiler explicitly enables SDK cross-import overlays, matching
 the Apple compiler default and retaining Translation's public SwiftUI modifier.
