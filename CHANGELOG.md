@@ -4,6 +4,20 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## 1.2.0 — October 20, 2026
+
+**Dictation that keeps up with you.**
+
+- **🎯 Parakeet Ultra for dictation** — an optional, more accurate dictation model (a 613 MB download you can cancel) with a third fewer word errors and much better mixed English and Spanish; meetings keep using Parakeet.
+- **🎙️ It hears your first word** — the microphone opens the moment you press the shortcut, even while the model loads, and an hourglass tells you to keep talking; optionally load the model at launch and add start/stop sounds.
+- **🌐 Hold Fn to dictate** — hold Fn, Right Option or Right Command while you speak and let go to paste; shortcuts with those keys keep working, and Fn never ends a dictation you started another way.
+- **⏸️ It stops when you do, and never pastes silence** — turn on "Stop after a pause" to finish hands-free, while a tiny on-device voice detector keeps silence and background noise out of your text.
+- **↩️ Paste last** — dictated into the wrong place, or the text couldn't be sent? Paste it again within 15 minutes from the menu bar or ⌃⌥⌘V; it lives only in memory and is forgotten when your Mac sleeps or locks.
+- **📍 A dictation strip that stays out of the way** — it opens under your text cursor, drags anywhere, can shrink to a floating sound wave and timer, and "not verified" notices close by themselves.
+- **📥 Also** — an audio import queue for several files at once, "new line" and "new paragraph" by voice, credits for every on-device model, and clearer recovery when a download needs more disk space.
+
+1.2.0 is qualified on macOS 26 Tahoe. Portavoz 1.1.0 is the last release officially supported on macOS 15 Sequoia.
+
 ## 1.1.0 — September 17, 2026
 
 **Less noise, one place for everything.**
