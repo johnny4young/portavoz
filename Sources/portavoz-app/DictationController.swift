@@ -697,17 +697,6 @@ extension DictationController {
         replay(text, into: dependencies.captureDestination(), id: id)
     }
 
-    /// Whether Paste last has words to deliver, including ones left in recovery.
-    var hasPastableText: Bool {
-        if case .recovery = phase, !recoveryText.isEmpty { return true }
-        return lastText.current != nil
-    }
-
-    private func pastableText() -> String? {
-        if case .recovery = phase, !recoveryText.isEmpty { return recoveryText }
-        return lastText.takeCurrent()
-    }
-
     private func replay(_ text: String, into destination: CapturedDictationDestination, id: UUID) {
         self.destination = destination
         isRetryingDelivery = true
