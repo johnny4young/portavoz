@@ -21377,6 +21377,9 @@ insertion mechanism. The shortcut is a fixed ⌃⌥⌘V, off by default, because
 and ⇧⌥⌘V already mean "move" and "paste and match style" in many apps. A
 recorder for a custom shortcut and a persistent, consented history remain
 separate work.
+Words left in recovery are that same text and follow the same lifetime, so
+sleep, lock or 15 minutes end Paste last for them; the recovery panel still
+offers Copy.
 
 ## D568 — Let a tap-started dictation stop itself after a pause
 

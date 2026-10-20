@@ -3311,8 +3311,9 @@ disk, preferences or the clipboard. `pasteLastDictation(using:)` runs only
 while no session captures. In recovery it pastes the undelivered words, which
 are that same text, so moving to another field and choosing Paste last delivers
 them there and closes the panel. If that paste is refused too, the panel stays
-with the field from that attempt as Retry's target. The menu shows "Paste last"
-while recovery holds words, even past the 15-minute lifetime. An
+with the field from that attempt as Retry's target. Those words follow the same
+lifetime as any remembered text: sleep, lock or 15 minutes end Paste last for
+them, while the recovery panel keeps them for Copy and Retry. An
 expired text is dropped on that attempt, so the menu action disappears. It
 captures the destination focused at that moment
 and replays the text through the same `replay` → `presentDelivery` path as
