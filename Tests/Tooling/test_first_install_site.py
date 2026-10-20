@@ -31,7 +31,8 @@ class FirstInstallSiteTests(unittest.TestCase):
 
     def test_both_languages_state_distributed_release_floor(self):
         html = (ROOT / "site/index.html").read_text()
-        self.assertEqual(html.count("macOS Sequoia (15)+ · Apple Silicon"), 2)
+        self.assertEqual(html.count("macOS Tahoe (26)+ · Apple Silicon"), 2)
+        self.assertNotIn("macOS Sequoia (15)+", html)
         self.assertNotIn("macOS 14.4+ · Apple Silicon", html)
         self.assertIn("Open the DMG and drag Portavoz to Applications.", html)
         self.assertIn("Abre el DMG y arrastra Portavoz a Aplicaciones.", html)
