@@ -248,6 +248,45 @@ final class DictationUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testCompactIndicatorShowsOnlyTheLevelAndTime() throws {
+        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-model-loading"]
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
+            #"{"globalDictationEnabled":true,"dictationCompactIndicator":true}"#
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+        let dictate = app.buttons["menu-bar-dictate"]
+        XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+        dictate.click()
+        let compact = app.descendants(matching: .any)["dictation-panel-compact"]
+        XCTAssertTrue(compact.waitForExistenceFast(timeout: 5))
+        let elapsed = app.staticTexts["dictation-panel-elapsed"]
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            renderedText(of: elapsed).range(of: #"^\d+:\d{2}$"#, options: .regularExpression) != nil
+        }, "the elapsed time reads as m:ss")
+        XCTAssertTrue(app.descendants(matching: .any)["dictation-panel-meter"].exists)
+        XCTAssertFalse(app.buttons["dictation-panel-cancel"].exists, "no buttons in the compact indicator")
+        XCTAssertFalse(app.staticTexts["dictation-panel-state"].exists, "no live text or title")
+        XCTAssertLessThan(app.dialogs["dictation-panel"].frame.width, 200)
+    }
+
+    @MainActor
+    func testCompactIndicatorOpensTheFullPanelForAFailure() throws {
+        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-capture-failure"]
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
+            #"{"globalDictationEnabled":true,"dictationCompactIndicator":true}"#
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+        let dictate = app.buttons["menu-bar-dictate"]
+        XCTAssertTrue(dictate.waitForStableFrame(timeout: 5))
+        dictate.click()
+        let cancel = app.buttons["dictation-panel-cancel"]
+        XCTAssertTrue(cancel.waitForStableFrame(timeout: 5), "a failure shows the full panel and its controls")
+        XCTAssertGreaterThan(app.dialogs["dictation-panel"].frame.width, 500, "the panel grows to fit the message")
+    }
+
+    @MainActor
     func testUndeliveredTextCanBeCopiedAndExplicitlyRetried() throws {
         let name = "app.portavoz.dictation-test." + UUID().uuidString
         let board = NSPasteboard(name: .init(name))

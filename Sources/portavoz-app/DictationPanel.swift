@@ -10,19 +10,14 @@ final class DictationPanelController {
     private var panel: NSPanel?
 
     func show(controller: DictationController) {
-        let height = DictationPanelLayout.height(for: controller.phase)
+        let size = DictationPanelLayout.size(for: controller)
         if let panel {
-            let origin = panel.frame.origin
-            panel.setContentSize(NSSize(width: 520, height: height))
-            if let visible = panel.screen?.visibleFrame {
-                panel.setFrameOrigin(NSPoint(
-                    x: origin.x, y: max(visible.minY, min(origin.y, visible.maxY - panel.frame.height))))
-            }
+            resize(panel, to: size)
             panel.orderFrontRegardless()
             return
         }
         let panel = DictationPanelWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: height),
+            contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false)
@@ -34,12 +29,14 @@ final class DictationPanelController {
         panel.isOpaque = false
         panel.hasShadow = true
         panel.contentView = NSHostingView(
-            rootView: DictationStripView(controller: controller).portavozLocalized())
+            rootView: DictationStripView(controller: controller) { [weak self] in
+                self?.relayout(for: controller)
+            }.portavozLocalized())
         // Bottom-center of the main screen, above the Dock — near where
         // the eye already is while typing.
         if let screen = NSScreen.main {
             let frame = screen.visibleFrame
-            panel.setFrameOrigin(NSPoint(x: frame.midX - 260, y: frame.minY + 48))
+            panel.setFrameOrigin(NSPoint(x: frame.midX - size.width / 2, y: frame.minY + 48))
         }
         panel.orderFrontRegardless()
         self.panel = panel
@@ -49,11 +46,35 @@ final class DictationPanelController {
         panel?.orderOut(nil)
         panel = nil
     }
+
+    /// Follows a layout change without ever reopening a closed panel.
+    private func relayout(for controller: DictationController) {
+        guard let panel else { return }
+        resize(panel, to: DictationPanelLayout.size(for: controller))
+    }
+
+    private func resize(_ panel: NSPanel, to size: NSSize) {
+        guard panel.contentRect(forFrameRect: panel.frame).size != size else { return }
+        let origin = panel.frame.origin
+        // Keep the horizontal center when the compact indicator grows into the full panel.
+        let midX = panel.frame.midX
+        panel.setContentSize(size)
+        guard let visible = panel.screen?.visibleFrame else { return }
+        panel.setFrameOrigin(NSPoint(
+            x: midX - panel.frame.width / 2,
+            y: max(visible.minY, min(origin.y, visible.maxY - panel.frame.height))))
+    }
 }
 
 /// One height authority for AppKit and SwiftUI: a conflicting intrinsic size
 /// otherwise moves the panel again after every explicit re-show.
 private enum DictationPanelLayout {
+    @MainActor
+    static func size(for controller: DictationController) -> NSSize {
+        DictationCompactIndicator.applies(to: controller)
+            ? DictationCompactIndicator.size : NSSize(width: 520, height: height(for: controller.phase))
+    }
+
     static func height(for phase: DictationController.Phase) -> CGFloat {
         switch phase {
         case .recovery, .dispatched, .noSpeech: 288
@@ -68,8 +89,21 @@ private final class DictationPanelWindow: NSPanel {
 
 private struct DictationStripView: View {
     let controller: DictationController
+    /// Lets the panel follow phases that change without an explicit re-show, such as a failure.
+    let relayout: () -> Void
 
     var body: some View {
+        Group {
+            if DictationCompactIndicator.applies(to: controller) {
+                DictationCompactStripView(controller: controller)
+            } else {
+                fullStrip
+            }
+        }
+        .onChange(of: DictationPanelLayout.size(for: controller)) { relayout() }
+    }
+
+    private var fullStrip: some View {
         Group {
             if case .recovery(let failure) = controller.phase {
                 DictationRecoveryView(controller: controller, failure: failure)
@@ -123,7 +157,8 @@ private struct DictationStripView: View {
                 }
                 Spacer()
                 if controller.phase == .listening {
-                    meter
+                    DictationWaveform(level: controller.micLevel, isActive: true, dimmed: showsModelLoading)
+                        .frame(width: 70, height: 18)
                         .accessibilityIdentifier("dictation-panel-meter")
                 }
                 Button {
@@ -211,26 +246,6 @@ private struct DictationStripView: View {
         .padding(.horizontal, 7)
         .padding(.vertical, 2)
         .background(PVDesign.accent.opacity(0.14), in: Capsule())
-    }
-
-    /// Same dB mapping as the recording HUD's meter: −60 dB → 0, 0 dB → 1.
-    private var meter: some View {
-        ZStack(alignment: .leading) {
-            Capsule().fill(.quaternary)
-            GeometryReader { geometry in
-                Capsule()
-                    .fill(showsModelLoading ? Color.secondary : PVDesign.accent)
-                    .frame(width: geometry.size.width * meterFraction)
-            }
-        }
-        .frame(width: 70, height: 4)
-    }
-
-    private var meterFraction: CGFloat {
-        let level = controller.micLevel
-        guard level > 0.0001 else { return 0 }
-        let decibels = 20 * log10(level)
-        return CGFloat(max(0, min(1, (Double(decibels) + 60) / 60)))
     }
 
     private var showsModelLoading: Bool { controller.phase == .listening && controller.isLoadingModel }

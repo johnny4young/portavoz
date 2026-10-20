@@ -524,6 +524,7 @@ final class SettingsUITests: PortavozUITestCase {
                 "settings-dictation-modifier-key",
                 "settings-dictation-paste-last-hotkey",
                 "settings-dictation-sounds",
+                "settings-dictation-compact",
                 "settings-dictation-prewarm",
                 "settings-dictation-speech-gate",
                 "settings-dictation-auto-stop",
@@ -537,7 +538,8 @@ final class SettingsUITests: PortavozUITestCase {
                 "settings-dictation-prewarm-note": .staticText,
                 "settings-dictation-speech-gate-status": .staticText,
                 "settings-dictation-spoken-commands": .staticText,
-                "settings-dictation-paste-last-note": .staticText
+                "settings-dictation-paste-last-note": .staticText,
+                "settings-dictation-compact-note": .staticText
             ],
             expectedText: ["settings-dictation-language-support": expectedSupport],
             timeout: 5,
@@ -557,6 +559,8 @@ final class SettingsUITests: PortavozUITestCase {
             ? "15 minutos" : "15 minutes"))
         XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-sounds")),
                        "start and stop sounds are opt-in")
+        XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-compact")),
+                       "the compact indicator is opt-in")
         XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-prewarm")),
                        "loading the model at launch is opt-in")
         XCTAssertTrue(Self.isOn(app.control(withIdentifier: "settings-dictation-speech-gate")),
