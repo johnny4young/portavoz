@@ -115,7 +115,7 @@ final class DictationTextModeUITests: PortavozUITestCase {
     private func revealSettings(_ control: XCUIElement, in app: XCUIApplication) throws {
         let window = app.windows.containing(.any, identifier: "settings-search-field").firstMatch
         let form = window.scrollViews.element(boundBy: 1)
-        _ = try XCTUnwrap(control.revealVertically(in: form, maxScrolls: 3, maximumStep: 240) ? control : nil,
+        _ = try XCTUnwrap(control.revealVertically(in: form, maxScrolls: 6, maximumStep: 240) ? control : nil,
                           "The settings control must be fully visible before interaction")
     }
 
