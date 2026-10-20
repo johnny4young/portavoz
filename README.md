@@ -44,7 +44,7 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 
 ## Status
 
-**Current release: 1.1.0. Shipping and self-updating on macOS Sequoia and later.** 1.1.0 is the last release officially supported on macOS 15 Sequoia; later releases are qualified on macOS 26 Tahoe. The source-build deployment target is macOS 14.4; that lower compiler target does not establish validation of the published app on Sonoma. Install with Homebrew or grab the notarized DMG from [Releases](https://github.com/johnny4young/portavoz/releases); updates arrive automatically via Sparkle:
+**Current release: 1.2.0. Shipping and self-updating on macOS 26 Tahoe.** Portavoz 1.1.0 is the last release officially supported on macOS 15 Sequoia. The source-build deployment target is macOS 14.4; that lower compiler target does not establish validation of the published app on Sonoma. Install with Homebrew or grab the notarized DMG from [Releases](https://github.com/johnny4young/portavoz/releases); updates arrive automatically via Sparkle:
 
 ```sh
 brew install --cask johnny4young/tap/portavoz
