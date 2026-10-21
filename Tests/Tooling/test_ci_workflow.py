@@ -25,6 +25,17 @@ class CIWorkflowTests(unittest.TestCase):
         for job in expected:
             self.assertEqual(workflow.count(f"  {job}:\n"), 1, job)
 
+    def test_main_ci_can_be_dispatched_when_a_push_run_is_missing(self):
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        triggers = workflow.split("\npermissions:", 1)[0]
+
+        self.assertIn("  push:\n    branches: [main]\n", triggers)
+        self.assertIn("  pull_request:\n", triggers)
+        self.assertIn("  workflow_dispatch:\n", triggers)
+        # A dispatched run follows the push cache policy, never the pull-request restore path.
+        self.assertIn("lookup-only: ${{ github.event_name != 'pull_request' }}", workflow)
+        self.assertIn("if: github.event_name == 'pull_request' &&", workflow)
+
     def test_current_sdk_uses_one_fixed_toolchain_test_build(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
 

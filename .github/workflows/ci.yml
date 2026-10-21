@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Re-runs main by hand when GitHub drops a push event and creates no run.
+  workflow_dispatch:
 
 permissions:
   contents: read
