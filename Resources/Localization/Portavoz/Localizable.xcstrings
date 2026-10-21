@@ -2431,16 +2431,6 @@
         }
       }
     },
-    "Check the destination before pasting again. Nothing was saved in Portavoz.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Revisa el destino antes de volver a pegar. No se guardó nada en Portavoz."
-          }
-        }
-      }
-    },
     "Check the source before adding anything to your commitments.": {
       "localizations": {
         "es": {
@@ -4499,16 +4489,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reemplazos del dictado"
-          }
-        }
-      }
-    },
-    "Dictation stays on this Mac and is not stored. Inserting text requires Accessibility permission.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El dictado permanece en esta Mac y no se guarda. Insertar texto requiere el permiso de Accesibilidad."
           }
         }
       }
@@ -18453,6 +18433,316 @@
           "stringUnit": {
             "state": "translated",
             "value": "Permitido"
+          }
+        }
+      }
+    },
+    "Dictations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dictados"
+          }
+        }
+      }
+    },
+    "Find what you dictated, when you keep a history": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Encuentra lo que dictaste, si guardas un historial"
+          }
+        }
+      }
+    },
+    "Dictation history could not be loaded.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo cargar el historial de dictado."
+          }
+        }
+      }
+    },
+    "The history setting could not be saved.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo guardar el ajuste del historial."
+          }
+        }
+      }
+    },
+    "The dictation could not be deleted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo eliminar el dictado."
+          }
+        }
+      }
+    },
+    "The dictations could not be deleted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron eliminar los dictados."
+          }
+        }
+      }
+    },
+    "Saving to your dictation history…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardando en tu historial de dictado…"
+          }
+        }
+      }
+    },
+    "Saved to your dictation history.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardado en tu historial de dictado."
+          }
+        }
+      }
+    },
+    "Not saved to your dictation history.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se guardó en tu historial de dictado."
+          }
+        }
+      }
+    },
+    "Check the destination before pasting again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa el destino antes de volver a pegar."
+          }
+        }
+      }
+    },
+    "Delete every saved dictation?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Eliminar todos los dictados guardados?"
+          }
+        }
+      }
+    },
+    "Delete all": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar todo"
+          }
+        }
+      }
+    },
+    "This removes them from this Mac. Copies you pasted elsewhere are not affected.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se eliminan de este Mac. Lo que ya pegaste en otras apps no cambia."
+          }
+        }
+      }
+    },
+    "Kept on this Mac for %d days.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se guardan en este Mac durante %d días."
+          }
+        }
+      }
+    },
+    "History is off. New dictations are not saved.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El historial está apagado. Los dictados nuevos no se guardan."
+          }
+        }
+      }
+    },
+    "Your dictations will appear here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus dictados aparecerán aquí."
+          }
+        }
+      }
+    },
+    "Show older dictations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver dictados anteriores"
+          }
+        }
+      }
+    },
+    "Keep a private history": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guarda un historial privado"
+          }
+        }
+      }
+    },
+    "Find what you dictated later, including text that didn't reach its app. It stays on this Mac, passwords and practice are never kept, and nothing is saved until you turn it on.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Encuentra después lo que dictaste, incluso el texto que no llegó a su app. Se queda en este Mac, nunca guarda contraseñas ni prácticas, y no se guarda nada hasta que lo actives."
+          }
+        }
+      }
+    },
+    "Turn on history": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activar el historial"
+          }
+        }
+      }
+    },
+    "Original": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Original"
+          }
+        }
+      }
+    },
+    "Copied": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiado"
+          }
+        }
+      }
+    },
+    "Inserted": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Insertado"
+          }
+        }
+      }
+    },
+    "Not delivered": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No entregado"
+          }
+        }
+      }
+    },
+    "Dictation history": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Historial de dictado"
+          }
+        }
+      }
+    },
+    "Save dictation history": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar historial de dictado"
+          }
+        }
+      }
+    },
+    "Keep dictations for": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar dictados durante"
+          }
+        }
+      }
+    },
+    "%d days": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d días"
+          }
+        }
+      }
+    },
+    "Also keep the words before Clean mode": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar también las palabras antes del modo Limpio"
+          }
+        }
+      }
+    },
+    "History stays on this Mac. Passwords, practice and silence are never saved.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El historial se queda en este Mac. Nunca se guardan contraseñas, prácticas ni silencios."
+          }
+        }
+      }
+    },
+    "Dictation stays on this Mac and is saved only if you turn on its history. Inserting text requires Accessibility permission.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El dictado se queda en este Mac y solo se guarda si activas su historial. Para insertar texto se necesita el permiso de Accesibilidad."
           }
         }
       }

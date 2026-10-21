@@ -100,12 +100,12 @@ struct DictationSection: View {
                         .accessibilityIdentifier("settings-dictation-clean-only")
                 }
             }
-            Text(
-                "Dictation stays on this Mac and is not stored. Inserting text requires Accessibility permission."
-            )
+            // swiftlint:disable:next line_length
+            Text("Dictation stays on this Mac and is saved only if you turn on its history. Inserting text requires Accessibility permission.")
             .font(.caption)
             .foregroundStyle(.secondary)
         }
+        DictationHistorySettingsSection()
     }
 
     @ViewBuilder private var autoStopControls: some View {

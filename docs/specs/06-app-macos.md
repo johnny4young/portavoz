@@ -2966,7 +2966,32 @@ strip, Escape, text mode, Paste last), but delivery appends to the field and
 reports `verified`, with no clipboard loan, synthetic paste or Accessibility.
 The destination is fixed at start like any other. The field forgets its text
 when no view shows it, and a delivery that arrives after that is refused into
-the normal recovery panel.
+the normal recovery panel. Practice sessions are never saved to the history.
+
+**Dictation history (D576).** `AppServices.dictationHistory`
+(`DictationHistoryModel`) loads the consent and the newest page at launch and
+purges expired rows. When a session starts, `beginHistory` asks it to `admit()`
+the dictation: nil while history is off or not yet loaded, otherwise a writer
+that keeps the consent generation of that moment. `deliver()` prepares a
+`DictationHistorySession` entry with the final and original text, mode, language,
+engine, destination name and bundle ID, and duration from the first audio;
+`presentDelivery` records its outcome off the paste path (verified, dispatched,
+or not delivered; a secure field, cancellation or empty text is never saved, and
+silence never reaches delivery). A recovery retry updates the same row; Paste
+last replays are not new dictations. The delivered and unverified notices state
+what happened (`dictation-panel-delivery-detail`): "Nothing was saved in
+Portavoz." when history is off, otherwise saving, saved, or not saved.
+The sidebar destination **Dictations** (`library-dictations-button`, route
+`.dictations`) shows `DictationHistoryView` (`dictation-history`): an off state
+with Turn on history (`dictation-history-enable`), the retention line
+(`dictation-history-status`), rows with text, original, details, Copy and
+Delete (`dictation-history-text-N`, `-original-N`, `-details-N`, `-copy-N`,
+`-delete-N`), Show older dictations (`dictation-history-more`) and Delete all
+with a confirmation (`dictation-history-delete-all`, `-confirm`). Settings ›
+Audio & dictation adds a Dictation history section with every switch off
+(`settings-dictation-history`, `-retention`, `-original`, `-note`). Disposable
+launches can turn history on in the temporary database with
+`-seed-dictation-history` and add two rows with `-seed-dictation-history-records`.
 
 The strip view reports layout changes to `DictationPanelController.relayout`,
 so the window follows every phase change (including failures that arrive

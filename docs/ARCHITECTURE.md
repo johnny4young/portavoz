@@ -1280,6 +1280,13 @@ adapter retains the original `NSRunningApplication` and focused AX element:
 application equality, termination state and `CFEqual` on the focused element
 must still match. Names and bundle identifiers are never authority. Core and
 capability targets receive no AppKit or Accessibility dependency.
+Dictation history is a separate domain in the same database: a single consent
+row and saved dictations behind `MeetingStore`, reached through ApplicationKit
+use cases. A session reads the consent generation when it starts and the store
+revalidates it inside the write transaction, so turning history off or
+deleting everything wins over a dictation still finishing. Saving runs after
+delivery and never delays the paste. Sync, exports, Spotlight and MCP do not
+read these tables.
 The one in-process destination is the practice field shown in onboarding and
 Settings: composition swaps in its destination only while that field's window
 is key and the app is active, so practice never borrows the clipboard, posts a
@@ -1634,7 +1641,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 53. A nonunique meeting-directory index serves
+The current schema version is 54. A nonunique meeting-directory index serves
 compression admission without rejecting historical duplicate owners. Its
 skill-identity write constraints preserve
 historical denials rather than rejecting a populated library during upgrade.
@@ -1691,6 +1698,8 @@ It includes:
   device-local enabled state, plus append-once exact-occurrence authority and
   one bounded digest-verified local artifact per successful standing run;
 - immutable generation-run provenance;
+- one opt-in dictation-history consent row with a generation, and saved
+  dictations keyed by session with bounded text and closed outcome values;
 - one regenerable enhanced-notes document per meeting (raw notes stay
   untouched; provenance commits atomically with the artifact);
 - content-free meeting egress attempts and receipt coverage;

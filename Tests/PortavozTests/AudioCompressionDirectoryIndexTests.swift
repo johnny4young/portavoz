@@ -22,7 +22,7 @@ struct AudioCompressionDirectoryIndexTests {
         let before = try database.read { try ownerQueryPlan(in: $0, directory: directory) }
         #expect(before.contains { $0.contains("SCAN meeting") })
 
-        try migrator.migrate(database)
+        try migrator.migrate(database, upTo: "v53")
 
         try database.read { db in
             #expect(try String.fetchOne(

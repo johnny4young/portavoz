@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 154
+    "expectedCaseCount": 158
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -177,6 +177,10 @@
     "OnboardingUITests/testModelFailureCanContinueBackAndRetryWithoutDownloading()": 35.0,
     "DictationPracticeUITests/testOnboardingDictationStepPracticesInItsOwnFieldWithoutTheClipboard()": 35.0,
     "DictationPracticeUITests/testOnboardingDictationStepOffersShortcutAndAccessibilityOnceTurnedOn()": 25.0,
-    "DictationPracticeUITests/testSettingsPracticeFieldReceivesDictationWithoutTheClipboard()": 25.0
+    "DictationPracticeUITests/testSettingsPracticeFieldReceivesDictationWithoutTheClipboard()": 25.0,
+    "DictationHistoryUITests/testHistoryStartsOffAndTurnsOnFromTheDictationsPage()": 25.0,
+    "DictationHistoryUITests/testSavedDictationsCanBeDeletedOneByOneOrAll()": 30.0,
+    "DictationHistoryUITests/testADictationSavedToHistorySaysSoInsteadOfNothingWasSaved()": 25.0,
+    "DictationHistoryUITests/testSettingsAskForHistoryConsentWithEverySwitchOff()": 25.0
   }
 }

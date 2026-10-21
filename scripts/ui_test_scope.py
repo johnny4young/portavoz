@@ -460,6 +460,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("DictationPracticeUITests", "testOnboardingDictationStepPracticesInItsOwnFieldWithoutTheClipboard"),
         test_id("DictationPracticeUITests", "testOnboardingDictationStepOffersShortcutAndAccessibilityOnceTurnedOn"),
         test_id("DictationPracticeUITests", "testSettingsPracticeFieldReceivesDictationWithoutTheClipboard"),
+        test_id("DictationHistoryUITests", "testHistoryStartsOffAndTurnsOnFromTheDictationsPage"),
+        test_id("DictationHistoryUITests", "testSavedDictationsCanBeDeletedOneByOneOrAll"),
+        test_id("DictationHistoryUITests", "testADictationSavedToHistorySaysSoInsteadOfNothingWasSaved"),
+        test_id("DictationHistoryUITests", "testSettingsAskForHistoryConsentWithEverySwitchOff"),
     ),
     "settings-audio": (
         test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),

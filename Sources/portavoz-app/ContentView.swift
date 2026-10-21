@@ -14,6 +14,7 @@ enum Route: Hashable {
     case ask
     case insights
     case commitments(CommitmentRadarRouteFocus?)
+    case dictations
 }
 
 extension Route {
@@ -108,6 +109,8 @@ struct ContentView: View {
                         })
                 case .insights:
                     InsightsView(model: insightsModel, route: $route)
+                case .dictations:
+                    DictationHistoryView(model: services.dictationHistory)
                 case .commitments(let focus):
                     CommitmentRadarView(
                         model: commitmentRadarModel,

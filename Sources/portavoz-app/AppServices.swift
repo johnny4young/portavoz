@@ -220,6 +220,7 @@ final class AppServices {
     let dictation: DictationController
     let dictationTextSettings: DictationTextSettingsModel
     @ObservationIgnored let dictationPractice = DictationPracticeField()
+    @ObservationIgnored lazy var dictationHistory = DictationHistoryModel(store: store)
     @ObservationIgnored let dictationUITestFixture: DictationUITestFixture?
     let dictationNativeUITestFixture: DictationNativeUITestFixture?
     /// THE recording session (one at a time by design): shared so the

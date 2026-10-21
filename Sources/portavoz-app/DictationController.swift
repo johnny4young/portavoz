@@ -69,9 +69,10 @@ final class DictationController {
     private(set) var copyStatus: CopyStatus = .idle
     private(set) var isRetryingDelivery = false
     var canRetryDelivery: Bool { destination?.canRetry == true }
-    private var destination: CapturedDictationDestination?
+    private(set) var destination: CapturedDictationDestination?
     private var dependencies: DictationSessionDependencies?
-    private var deliveryID: UUID?
+    private(set) var deliveryID: UUID?
+    private(set) var history: DictationHistorySession?
     @ObservationIgnored private(set) var retryDeliveryTask: Task<Void, Never>?
 
     let shortcut = DictationShortcut()
@@ -248,6 +249,7 @@ final class DictationController {
         stopTask?.cancel()
         stopTask = nil
         let sessionID = UUID()
+        history = dependencies.beginHistory().map { DictationHistorySession(sessionID: sessionID, write: $0) }
         activeSessionID = sessionID
         sessionClock = dependencies.now
         armCancelKey(dependencies, sessionID: sessionID)
@@ -296,8 +298,7 @@ final class DictationController {
                 "Your preferred microphone is unavailable. Using the system default for this dictation.") : nil
             // Audio-first: speech during a cold load waits in the bounded relay.
             acquisition.start()
-            let readiness = makeMicrophoneReadiness(
-                id: id, dependencies: dependencies, measurement: measurement)
+            let readiness = makeMicrophoneReadiness(id: id, dependencies: dependencies, measurement: measurement)
             defer { readiness.finish() }
             monitorCaptureFailure(input.source, id: id)
             readiness.beginDeadline(wait: dependencies.waitForFirstBufferDeadline)
@@ -430,8 +431,9 @@ final class DictationController {
         // filter run on the final text only — meeting transcripts stay
         // verbatim records and never pass through here.
         let measurement = self.measurement
-        let text = textPolicy.applying(to: DictationAssembler.text(
-            confirmed: confirmedText, partial: partialText))
+        let original = DictationAssembler.text(confirmed: confirmedText, partial: partialText)
+        let text = textPolicy.applying(to: original)
+        prepareHistory(original: original, text: text, dependencies: dependencies)
         // Stop bookkeeping retires below while the phase stays active until the
         // insertion settles; the panel must not offer a choice that cannot apply.
         textPolicySealed = true
@@ -645,8 +647,7 @@ private extension DictationController {
         failCapture(id: id)
         if activeSessionID == id {
             measurement?.finish(.pipelineFailed)
-            failSession(
-                id: id, message: DictationMicrophoneReadiness.Failure.interrupted.message, autoDismiss: false)
+            failSession(id: id, message: DictationMicrophoneReadiness.Failure.interrupted.message, autoDismiss: false)
         }
         return CancellationError()
     }
@@ -714,6 +715,7 @@ extension DictationController {
         cancelFeedbackDismissal()
         copyStatus = .idle
         lastText.remember(text)
+        recordHistory(result, id: id)
         if case .refused(let failure) = result {
             recoveryText = text
             phase = .recovery(failure)
