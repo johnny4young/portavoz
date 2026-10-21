@@ -146,3 +146,39 @@ public enum DictationAgentRead<Value: Equatable & Sendable>: Equatable, Sendable
     case notAllowed
     case allowed(Value)
 }
+
+/// A finished meeting a dictation can be added to as a note.
+public struct DictationMeetingChoice: Equatable, Identifiable, Sendable {
+    public let id: MeetingID
+    public let title: String
+    public let startedAt: Date
+    /// The dictation was made while this meeting was being recorded.
+    public let containsDictation: Bool
+
+    public init(id: MeetingID, title: String, startedAt: Date, containsDictation: Bool) {
+        self.id = id
+        self.title = title
+        self.startedAt = startedAt
+        self.containsDictation = containsDictation
+    }
+}
+
+/// A meeting whose notes hold a copy of a dictation.
+public struct DictationMeetingLink: Equatable, Sendable {
+    public let meetingID: MeetingID
+    public let title: String
+
+    public init(meetingID: MeetingID, title: String) {
+        self.meetingID = meetingID
+        self.title = title
+    }
+}
+
+public enum AddDictationToMeetingOutcome: Equatable, Sendable {
+    /// `tidiedNotes`: the meeting shows tidied notes, which hide raw notes until tidied again.
+    case added(noteID: UUID, tidiedNotes: Bool)
+    case alreadyAdded
+    case dictationMissing
+    /// The meeting is deleted, unknown or still recording.
+    case meetingUnavailable
+}

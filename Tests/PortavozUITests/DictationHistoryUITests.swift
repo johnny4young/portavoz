@@ -88,6 +88,38 @@ final class DictationHistoryUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testADictationCanBeAddedToAMeetingsNotes() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true)
+        app.launchArguments += ["-seed-dictation-history", "-seed-dictation-history-records"]
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        openDictations(in: app)
+        let text = app.control(withIdentifier: "dictation-history-text-0")
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: text) == "No borres estas notas." })
+        app.buttons["dictation-history-add-meeting-0"].click()
+        XCTAssertTrue(app.control(withIdentifier: "dictation-meeting-picker-title").waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(app.control(withIdentifier: "dictation-meeting-picker-note").exists)
+        let option = app.buttons["dictation-meeting-option-0"]
+        XCTAssertTrue(option.waitForExistenceFast(timeout: 5))
+        attachScreenshot(of: app, named: "dictation-meeting-picker")
+        option.click()
+
+        let linked = app.control(withIdentifier: "dictation-history-linked-0")
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: linked).contains("Test meeting") })
+        XCTAssertFalse(app.control(withIdentifier: "dictation-history-tidy-hint-0").exists)
+
+        let meeting = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
+            .firstMatch
+        XCTAssertTrue(meeting.waitForStableFrame(timeout: 10))
+        meeting.click()
+        XCTAssertTrue(
+            app.staticTexts["No borres estas notas."].waitForExistenceFast(timeout: 10),
+            "the dictation is now one of the meeting's notes")
+    }
+
+    @MainActor
     func testADictationSavedToHistorySaysSoInsteadOfNothingWasSaved() throws {
         let app = try XCUIApplication.portavoz(showMenuBarContent: true)
         app.launchArguments += [

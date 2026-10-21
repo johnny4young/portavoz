@@ -6,6 +6,7 @@ import SwiftUI
 struct DictationHistoryView: View {
     let model: DictationHistoryModel
     @State private var confirmingDeleteAll = false
+    @State private var addingToMeeting: DictationRecord?
     @State private var query = ""
 
     var body: some View {
@@ -25,6 +26,7 @@ struct DictationHistoryView: View {
         }
         .accessibilityIdentifier("dictation-history")
         .task { await model.load() }
+        .sheet(item: $addingToMeeting) { DictationMeetingPicker(record: $0, model: model) }
         .task(id: query) {
             // Typing settles before the query runs; each keystroke cancels the last wait.
             try? await Task.sleep(for: .milliseconds(250))
@@ -82,9 +84,11 @@ struct DictationHistoryView: View {
         } else {
             LazyVStack(alignment: .leading, spacing: 10) {
                 ForEach(Array(model.records.enumerated()), id: \.element.id) { index, record in
-                    DictationHistoryRow(record: record, index: index) {
-                        Task { await model.delete(record.id) }
-                    }
+                    DictationHistoryRow(
+                        record: record, index: index, meetings: model.meetingLinks[record.id] ?? [],
+                        needsTidyUp: model.needsTidyUp.contains(record.id),
+                        onAddToMeeting: { addingToMeeting = record },
+                        onDelete: { Task { await model.delete(record.id) } })
                 }
                 if model.hasMore {
                     Button("Show older dictations") { Task { await model.loadMore() } }
@@ -159,6 +163,9 @@ struct DictationHistoryView: View {
 private struct DictationHistoryRow: View {
     let record: DictationRecord
     let index: Int
+    let meetings: [DictationMeetingLink]
+    let needsTidyUp: Bool
+    let onAddToMeeting: () -> Void
     let onDelete: () -> Void
     @State private var copied = false
 
@@ -180,8 +187,29 @@ private struct DictationHistoryRow: View {
                     .font(.caption)
                     .foregroundStyle(record.delivery == .notDelivered ? .orange : .secondary)
                     .accessibilityIdentifier("dictation-history-details-\(index)")
+                if !meetings.isEmpty {
+                    Label(
+                        L10n.format("Added to %@", meetings.map(\.title).joined(separator: ", ")),
+                        systemImage: PVSymbol.success)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("dictation-history-linked-\(index)")
+                }
+                if needsTidyUp {
+                    Text("That meeting shows tidied notes. Tidy up again to include this one.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("dictation-history-tidy-hint-\(index)")
+                }
             }
             Spacer(minLength: 0)
+            Button(action: onAddToMeeting) {
+                Label("Add to a meeting", systemImage: "note.text.badge.plus")
+            }
+            .labelStyle(.iconOnly)
+            .help(L10n.text("Add to a meeting's notes"))
+            .accessibilityIdentifier("dictation-history-add-meeting-\(index)")
             Button {
                 copied = TextInserter.copy(record.text)
             } label: {
