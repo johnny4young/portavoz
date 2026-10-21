@@ -2986,7 +2986,11 @@ The sidebar destination **Dictations** (`library-dictations-button`, route
 with Turn on history (`dictation-history-enable`), the retention line
 (`dictation-history-status`), rows with text, original, details, Copy and
 Delete (`dictation-history-text-N`, `-original-N`, `-details-N`, `-copy-N`,
-`-delete-N`), Show older dictations (`dictation-history-more`) and Delete all
+`-delete-N`), a search field (`dictation-history-search`, `-search-clear`) that
+applies 250 ms after typing stops, an application menu
+(`dictation-history-app-filter`) and an "only not delivered" checkbox
+(`dictation-history-undelivered-filter`), with "No dictations match."
+(`dictation-history-no-results`) when a filter empties the list (D577), Show older dictations (`dictation-history-more`) and Delete all
 with a confirmation (`dictation-history-delete-all`, `-confirm`). Settings ›
 Audio & dictation adds a Dictation history section with every switch off
 (`settings-dictation-history`, `-retention`, `-original`, `-note`). Disposable

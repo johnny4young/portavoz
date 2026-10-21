@@ -204,13 +204,14 @@ hidden stage. A main-file or WAL size/modification change across the private
 copy also fails closed rather than publishing a mixed point in time. The source is never opened through `MeetingStore`, so no
 migration/configuration write can occur, and it is never renamed or deleted.
 
-### Schema (`v1`–`v54` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v55` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
 | Table | Key columns |
 |---|---|
 | `meeting` | id (UUID TEXT PK), title, startedAt, endedAt, language, audioDirectory (RELATIVE), retention, visibility (reserved), **lifecycleState**, **transcriptRevision**, **lastProcessingError** (v6), createdAt/updatedAt/deletedAt |
+| `dictationRecordSearch` (v55) | FTS5 external content over `dictationRecord.text` and `originalText`, `unicode61` tokenizer, kept in sync by GRDB triggers; see Dictation history |
 | `dictationHistoryPolicy` / `dictationRecord` (v54) | one consent row (isEnabled, keepsOriginal, retentionDays 7/30/90, generation) and saved dictations keyed by session UUID with `(createdAt, id)` index; see Dictation history |
 | `meeting_on_audioDirectory` (v53) | nonunique `(audioDirectory)` index for exact compression-directory ownership; duplicate rows remain valid evidence, and admission reads at most two matching owners before refusing ambiguity |
 | `speaker` | id, meetingID (FK CASCADE), label (S1/Me…), displayName, isMe, personID? (v8, FK SET NULL), tombstone |
@@ -2124,4 +2125,26 @@ them: the Markdown backup stage (a 0600 temporary file excluded from backup that
 renders only meetings) and the launch recovery copy the user requests when the
 database cannot open. Like meetings, the main database is part of Time Machine
 backups; deletion is a SQLite `DELETE`, not forensic erasure.
+
+### Dictation search (schema v55, D577)
+
+`dictationRecordSearch` is an FTS5 external-content index over the final and the
+kept original text, built with `unicode61` (diacritics and case removed, so
+"accion" finds "acción") and backfilled with `rebuild` for rows saved under v54.
+GRDB's insert, update and delete triggers keep it in step, so a deleted, purged
+or cleared dictation leaves the index in the same transaction.
+
+`dictationRecords(matching:before:limit:)` takes a `DictationRecordFilter`:
+query, application name and "only not delivered". Every condition sits in the
+`WHERE` clause before `LIMIT`, and paging keeps the `(createdAt, id)` keyset, so a
+filtered list pages without gaps or repeats. `dictationSearchQuery` keeps at most
+200 characters and 16 words that contain a letter or digit, quotes each word with
+doubled inner quotes, requires every word and lets only the last one match as a
+prefix. FTS5 operators, column filters and `NEAR` typed by the user are matched
+as text; a query with no usable word returns nothing. `dictationApplications()`
+lists distinct application names for the filter menu.
+
+Measured once with 10,000 dictations (release build, M-series Mac): newest page
+p95 0.2 ms, single-word, prefix and application-plus-word searches p95 about
+1.2 ms, database 6.6 MB. No timing assertion guards it.
 

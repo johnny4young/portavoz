@@ -1641,7 +1641,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 54. A nonunique meeting-directory index serves
+The current schema version is 55. A nonunique meeting-directory index serves
 compression admission without rejecting historical duplicate owners. Its
 skill-identity write constraints preserve
 historical denials rather than rejecting a populated library during upgrade.
@@ -1699,7 +1699,8 @@ It includes:
   one bounded digest-verified local artifact per successful standing run;
 - immutable generation-run provenance;
 - one opt-in dictation-history consent row with a generation, and saved
-  dictations keyed by session with bounded text and closed outcome values;
+  dictations keyed by session with bounded text and closed outcome values,
+  searchable through their own full-text index;
 - one regenerable enhanced-notes document per meeting (raw notes stay
   untouched; provenance commits atomically with the artifact);
 - content-free meeting egress attempts and receipt coverage;

@@ -29,6 +29,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## October 21, 2026
+
+- **🔎 Search your dictations** — type a few letters in Dictations to find what you said, even without the accents, and narrow it to one app or to text that didn't reach its app.
+
 ## October 20, 2026
 
 - **🗂️ A private dictation history, if you want one** — turn it on to find what you dictated in the new Dictations page, including text that never reached its app; it stays on this Mac for 7, 30 or 90 days, and you can delete one or all.

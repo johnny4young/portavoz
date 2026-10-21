@@ -13,7 +13,12 @@ final class DictationHistoryModel {
     private(set) var records: [DictationRecord] = []
     private(set) var hasMore = false
     private(set) var failure: String?
+    private(set) var filter = DictationRecordFilter.all
+    /// Applications with saved dictations, for the filter menu.
+    private(set) var applications: [String] = []
     @ObservationIgnored private let store: any DictationHistoryStore
+    /// Drops a page that arrives after a newer filter was applied.
+    @ObservationIgnored private var pageRequest = 0
 
     init(store: any DictationHistoryStore) {
         self.store = store
@@ -24,10 +29,24 @@ final class DictationHistoryModel {
         do {
             _ = try await PurgeExpiredDictations(store: store).execute(())
             policy = try await LoadDictationHistoryPolicy(store: store).execute(())
-            let page = try await ListDictations(store: store).execute(nil)
-            records = page
-            hasMore = page.count == ListDictations.pageSize
+            applications = try await ListDictationApplications(store: store).execute(())
+            if let application = filter.applicationName, !applications.contains(application) {
+                filter.applicationName = nil
+            }
+            try await reloadPage()
             isLoaded = true
+            failure = nil
+        } catch {
+            failure = L10n.text("Dictation history could not be loaded.")
+        }
+    }
+
+    /// Shows the newest page that matches; every filter applies before the page limit.
+    func apply(_ filter: DictationRecordFilter) async {
+        guard filter != self.filter else { return }
+        self.filter = filter
+        do {
+            try await reloadPage()
             failure = nil
         } catch {
             failure = L10n.text("Dictation history could not be loaded.")
@@ -36,13 +55,24 @@ final class DictationHistoryModel {
 
     func loadMore() async {
         guard hasMore, let last = records.last else { return }
+        let request = pageRequest
         do {
-            let page = try await ListDictations(store: store).execute(last)
+            let page = try await ListDictations(store: store).execute(.init(filter: filter, after: last))
+            guard request == pageRequest else { return }
             records += page
             hasMore = page.count == ListDictations.pageSize
         } catch {
             failure = L10n.text("Dictation history could not be loaded.")
         }
+    }
+
+    private func reloadPage() async throws {
+        pageRequest += 1
+        let request = pageRequest
+        let page = try await ListDictations(store: store).execute(.init(filter: filter))
+        guard request == pageRequest else { return }
+        records = page
+        hasMore = page.count == ListDictations.pageSize
     }
 
     func update(isEnabled: Bool? = nil, keepsOriginal: Bool? = nil, retentionDays: Int? = nil) async {
@@ -73,6 +103,8 @@ final class DictationHistoryModel {
             _ = try await DeleteAllDictations(store: store).execute(())
             records = []
             hasMore = false
+            applications = []
+            filter = .all
             policy = try await LoadDictationHistoryPolicy(store: store).execute(())
         } catch {
             failure = L10n.text("The dictations could not be deleted.")
@@ -101,9 +133,14 @@ final class DictationHistoryModel {
     }
 
     private func show(_ record: DictationRecord) {
+        if let application = record.applicationName, !applications.contains(application) {
+            applications = (applications + [application]).sorted {
+                $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
+            }
+        }
         if let index = records.firstIndex(where: { $0.id == record.id }) {
             records[index] = record
-        } else {
+        } else if filter.isUnfiltered {
             records.insert(record, at: 0)
         }
     }
