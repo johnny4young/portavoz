@@ -5,7 +5,7 @@ import StorageKit
 public protocol DictationHistoryStore: Sendable {
     func dictationHistoryPolicy() async throws -> DictationHistoryPolicy
     func setDictationHistoryPolicy(
-        isEnabled: Bool, keepsOriginal: Bool, retentionDays: Int, at now: Date
+        isEnabled: Bool, keepsOriginal: Bool, retentionDays: Int, exposesToAgents: Bool, at now: Date
     ) async throws -> DictationHistoryPolicy
     func recordDictation(
         _ record: DictationRecord, admittedGeneration: Int, at now: Date
@@ -38,11 +38,13 @@ public struct UpdateDictationHistoryPolicy: ApplicationUseCase {
         public let isEnabled: Bool
         public let keepsOriginal: Bool
         public let retentionDays: Int
+        public let exposesToAgents: Bool
 
-        public init(isEnabled: Bool, keepsOriginal: Bool, retentionDays: Int) {
+        public init(isEnabled: Bool, keepsOriginal: Bool, retentionDays: Int, exposesToAgents: Bool = false) {
             self.isEnabled = isEnabled
             self.keepsOriginal = keepsOriginal
             self.retentionDays = retentionDays
+            self.exposesToAgents = exposesToAgents
         }
     }
 
@@ -57,7 +59,7 @@ public struct UpdateDictationHistoryPolicy: ApplicationUseCase {
     public func execute(_ request: Request) async throws -> DictationHistoryPolicy {
         try await store.setDictationHistoryPolicy(
             isEnabled: request.isEnabled, keepsOriginal: request.keepsOriginal,
-            retentionDays: request.retentionDays, at: now())
+            retentionDays: request.retentionDays, exposesToAgents: request.exposesToAgents, at: now())
     }
 }
 

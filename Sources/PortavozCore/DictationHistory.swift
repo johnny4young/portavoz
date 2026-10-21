@@ -84,13 +84,21 @@ public struct DictationHistoryPolicy: Equatable, Sendable {
     public let keepsOriginal: Bool
     public let retentionDays: Int
     public let generation: Int
+    /// Local agents may read the history through the MCP server.
+    public let exposesToAgents: Bool
 
-    public init(isEnabled: Bool, keepsOriginal: Bool, retentionDays: Int, generation: Int) {
+    public init(
+        isEnabled: Bool, keepsOriginal: Bool, retentionDays: Int, generation: Int, exposesToAgents: Bool = false
+    ) {
         self.isEnabled = isEnabled
         self.keepsOriginal = keepsOriginal
         self.retentionDays = retentionDays
         self.generation = generation
+        self.exposesToAgents = exposesToAgents
     }
+
+    /// Agents read only while the history itself is on.
+    public var agentsCanRead: Bool { isEnabled && exposesToAgents }
 }
 
 public enum DictationRecordOutcome: Equatable, Sendable {
@@ -118,4 +126,23 @@ public struct DictationRecordFilter: Equatable, Sendable {
     public var isUnfiltered: Bool {
         query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && applicationName == nil && !onlyNotDelivered
     }
+}
+
+/// One page of the history, newest first, with the total that matched.
+public struct DictationRecordPage: Equatable, Sendable {
+    public let total: Int
+    public let offset: Int
+    public let records: [DictationRecord]
+
+    public init(total: Int, offset: Int, records: [DictationRecord]) {
+        self.total = total
+        self.offset = offset
+        self.records = records
+    }
+}
+
+/// A read made for a local agent; consent is checked in the same read.
+public enum DictationAgentRead<Value: Equatable & Sendable>: Equatable, Sendable {
+    case notAllowed
+    case allowed(Value)
 }

@@ -204,7 +204,7 @@ hidden stage. A main-file or WAL size/modification change across the private
 copy also fails closed rather than publishing a mixed point in time. The source is never opened through `MeetingStore`, so no
 migration/configuration write can occur, and it is never renamed or deleted.
 
-### Schema (`v1`–`v55` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v56` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
@@ -212,7 +212,7 @@ Singular camelCase tables, 1:1 with Codable records:
 |---|---|
 | `meeting` | id (UUID TEXT PK), title, startedAt, endedAt, language, audioDirectory (RELATIVE), retention, visibility (reserved), **lifecycleState**, **transcriptRevision**, **lastProcessingError** (v6), createdAt/updatedAt/deletedAt |
 | `dictationRecordSearch` (v55) | FTS5 external content over `dictationRecord.text` and `originalText`, `unicode61` tokenizer, kept in sync by GRDB triggers; see Dictation history |
-| `dictationHistoryPolicy` / `dictationRecord` (v54) | one consent row (isEnabled, keepsOriginal, retentionDays 7/30/90, generation) and saved dictations keyed by session UUID with `(createdAt, id)` index; see Dictation history |
+| `dictationHistoryPolicy` / `dictationRecord` (v54, v56) | one consent row (isEnabled, keepsOriginal, retentionDays 7/30/90, generation, and since v56 exposesToAgents) and saved dictations keyed by session UUID with `(createdAt, id)` index; see Dictation history |
 | `meeting_on_audioDirectory` (v53) | nonunique `(audioDirectory)` index for exact compression-directory ownership; duplicate rows remain valid evidence, and admission reads at most two matching owners before refusing ambiguity |
 | `speaker` | id, meetingID (FK CASCADE), label (S1/Me…), displayName, isMe, personID? (v8, FK SET NULL), tombstone |
 | `segment` | id, meetingID, speakerID?, channel, text, language?, startTime/endTime, confidence?, isFinal, **embedding BLOB** (v2), **embeddingFingerprint** (v17), generationRunID? (v6), tombstone |
@@ -2147,4 +2147,16 @@ lists distinct application names for the filter menu.
 Measured once with 10,000 dictations (release build, M-series Mac): newest page
 p95 0.2 ms, single-word, prefix and application-plus-word searches p95 about
 1.2 ms, database 6.6 MB. No timing assertion guards it.
+
+### Agent access to dictations (schema v56, D578)
+
+v56 adds `exposesToAgents` (default 0) to `dictationHistoryPolicy`. The setter
+stores it only together with `isEnabled`, so turning history off withdraws
+agent access and turning it back on does not restore it. `agentsCanRead`
+requires both. `dictationRecordsForAgents(matching:offset:limit:)` and
+`dictationRecordForAgents(_:)` read the policy and the rows in one read
+transaction and return `.notAllowed` without touching any row when access is
+off. Agent pages reuse the history filter (`dictationFilterConditions`), count
+the filtered total, and use newest-first offset paging with the offset clamped
+at 0 and the limit to 1–100.
 

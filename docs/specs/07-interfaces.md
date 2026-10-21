@@ -189,7 +189,7 @@ reported (D75/D103).
 
 - Transport: **JSON-RPC 2.0 over stdio, newline-delimited**; protocolVersion `2024-11-05`. Storage-agnostic protocol layer in IntegrationsKit (`MCPServer`, `MCPTool` with Data→String handlers, raw JSON schemas); the toolbox is assembled in the CLI (`MeetingToolbox`).
 - Registration with an agent: `claude mcp add portavoz -- portavoz-cli mcp`.
-- **9 tools**: the frozen ordered prefix `list_meetings` · `search_meetings` (FTS with snippets+ids+timestamps) · `get_transcript` (attributed) · `get_summary` (latest read-consistent General snapshot + action items) · `get_action_items` (global pending items) · `ask` (the shared ApplicationKit hybrid on-device workflow with bounded per-term lexical candidates, complete selected segments, and citations), plus the appended `portavoz-reading/2` tools `get_transcript_v2` · `get_summary_v2` · `get_action_items_v2`.
+- **12 tools**: the frozen ordered prefix `list_meetings` · `search_meetings` (FTS with snippets+ids+timestamps) · `get_transcript` (attributed) · `get_summary` (latest read-consistent General snapshot + action items) · `get_action_items` (global pending items) · `ask` (the shared ApplicationKit hybrid on-device workflow with bounded per-term lexical candidates, complete selected segments, and citations), plus the appended `portavoz-reading/2` tools `get_transcript_v2` · `get_summary_v2` · `get_action_items_v2`, then the dictation tools `list_dictations` · `search_dictations` · `get_dictation`.
 - **Correction boundary (D233/D234/D313):** search and Ask serve the corrected
   text of an active `replaceText` correction under its accepted segment
   identity, keep speaker-only-corrected lines findable, and continue omitting
@@ -205,6 +205,23 @@ reported (D75/D103).
   `get_action_items_v2` always read accepted generated artifacts but disclose
   whether they predate the current corrections via `composed=pending`.
 - **Read-only shape (MCP-001, Jul 2026)**: the `initialize` response carries `instructions` declaring the contract — every tool only reads, nothing can mutate the library, processing stays local, and `ask` is the preferred entry for questions. `get_transcript` is paginated by segment (`offset`/`limit`, default 200, cap 500) with a self-describing header naming the covered range, the total, and the exact offset to continue from — an agent never guesses whether more remains, and a past-the-end offset gets an honest one-line answer instead of an error. `search_meetings` accepts `limit` (default 20, cap 50); the boundary never sees an unbounded client value. `MeetingToolboxTests` covers the real catalog (shape, schemas, pagination overlap/bounds/caps, search clamping) — previously only the protocol layer had tests, against fakes.
+- **Dictation history (D578, Oct 2026)**: `DictationToolbox` appends three
+  read-only tools after the frozen meeting catalog. They read only while the
+  user has turned on both the dictation history and "Let agents read the
+  history"; that consent lives in the database (`dictationHistoryPolicy.exposesToAgents`)
+  because the server is another process, and the store checks it in the same
+  read as the rows on every call. With it off, every call answers one fixed line
+  explaining how to turn it on; the tools stay listed so the catalog never
+  changes. `list_dictations` pages newest first (`offset`/`limit`, default 20,
+  cap 100); `search_dictations` takes `query` plus optional `application` and
+  `only_not_delivered` (default 20, cap 50) and uses the same quoted FTS query
+  as the app; `get_dictation` returns one dictation in full, with the words
+  before Clean mode only when the user kept them. Each response opens with a
+  content-free `portavoz-dictations/1` header (`total`, `range`, `next_offset`,
+  or `id`); entries name the application, delivery (`inserted`, `sent, not
+  verified`, `not delivered`) and mode, and lists preview at most 280
+  characters. `DictationToolboxTests` cover the real catalog, refusal and
+  revocation, paging, filters, hostile queries and the full read.
 - Verified E2E: an MCP agent answered "what did we agree about the transcription budget?" with the correct sources.
 
 ## Exporters — IntegrationsKit

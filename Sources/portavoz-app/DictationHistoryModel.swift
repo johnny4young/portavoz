@@ -75,11 +75,14 @@ final class DictationHistoryModel {
         hasMore = page.count == ListDictations.pageSize
     }
 
-    func update(isEnabled: Bool? = nil, keepsOriginal: Bool? = nil, retentionDays: Int? = nil) async {
+    func update(
+        isEnabled: Bool? = nil, keepsOriginal: Bool? = nil, retentionDays: Int? = nil, exposesToAgents: Bool? = nil
+    ) async {
         let request = UpdateDictationHistoryPolicy.Request(
             isEnabled: isEnabled ?? policy.isEnabled,
             keepsOriginal: keepsOriginal ?? policy.keepsOriginal,
-            retentionDays: retentionDays ?? policy.retentionDays)
+            retentionDays: retentionDays ?? policy.retentionDays,
+            exposesToAgents: exposesToAgents ?? policy.exposesToAgents)
         do {
             policy = try await UpdateDictationHistoryPolicy(store: store).execute(request)
             if retentionDays != nil { await load() }

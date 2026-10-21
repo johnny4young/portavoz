@@ -122,6 +122,10 @@ final class DictationHistoryUITests: PortavozUITestCase {
         toggle.click()
         XCTAssertTrue(app.control(withIdentifier: "settings-dictation-history-retention").waitForExistenceFast(timeout: 5))
         XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-history-original")))
+        XCTAssertFalse(
+            Self.isOn(app.control(withIdentifier: "settings-dictation-history-agents")),
+            "agents never read the history until the user shares it")
+        XCTAssertTrue(app.control(withIdentifier: "settings-dictation-history-agents-note").exists)
         attachScreenshot(of: app, named: "settings-dictation-history")
     }
 

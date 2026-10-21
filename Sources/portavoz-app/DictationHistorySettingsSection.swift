@@ -22,6 +22,16 @@ struct DictationHistorySettingsSection: View {
                     "Also keep the words before Clean mode",
                     isOn: binding(\.keepsOriginal) { await model.update(keepsOriginal: $0) })
                     .accessibilityIdentifier("settings-dictation-history-original")
+                Toggle(
+                    "Let agents read the history",
+                    isOn: binding(\.exposesToAgents) { await model.update(exposesToAgents: $0) })
+                    .accessibilityIdentifier("settings-dictation-history-agents")
+                // swiftlint:disable:next line_length
+                Text("Local AI tools connected to Portavoz's MCP server can list, search and read your saved dictations. Every request checks this switch.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("settings-dictation-history-agents-note")
             }
             Text("History stays on this Mac. Passwords, practice and silence are never saved.")
                 .font(.caption)

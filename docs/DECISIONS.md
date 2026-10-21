@@ -21527,3 +21527,20 @@ All typed words must appear and the last one matches as a prefix, so results
 narrow while the user types; accents and case are ignored. The query builder
 quotes every word, so FTS5 syntax is searched as text. Measured at 10,000
 dictations, a search takes about a millisecond.
+
+## D578 — Let local agents read the dictation history only with their own consent
+
+The MCP server lets local agents read the meeting library, and the dictation
+history is the natural next source. It gets three read-only tools appended after
+the frozen meeting catalog, so existing consumers see no change. Reading needs
+its own consent, off by default and only available while the history itself is
+on, because handing dictated text to an agent is a different choice from
+keeping it. The consent lives in the database rather than in preferences, since
+the server runs as a separate process, and the store checks it in the same read
+as the rows on every call, so turning it off takes effect on the next request
+without reconnecting. The tools stay listed while access is off and answer one
+line explaining how to turn it on, which keeps the catalog stable for clients.
+Responses carry a content-free header and always state where each dictation
+went and whether it reached its app, so an agent never treats undelivered text
+as something the user sent. Turning the history off withdraws agent access, and
+turning it back on does not restore it.
