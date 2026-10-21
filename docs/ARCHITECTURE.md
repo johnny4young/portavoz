@@ -5662,6 +5662,9 @@ verified instead of selecting the newest installed Xcode, and `xcrun` must
 resolve Swift inside that Xcode. Hosted CI no longer runs a macOS 15 Sequoia
 lane: 1.1.0 is the last release officially supported on Sequoia, and the
 source still builds for the 14.4 deployment floor until a later cleanup.
+CI runs on pull requests and pushes to main and can also be dispatched by hand,
+so a push whose event GitHub dropped can still be qualified on main; a
+dispatched run follows the push cache policy.
 The standalone compiler explicitly enables SDK cross-import overlays, matching
 the Apple compiler default and retaining Translation's public SwiftUI modifier.
 This does not install a compiler on developer Macs, change app deployment targets,
