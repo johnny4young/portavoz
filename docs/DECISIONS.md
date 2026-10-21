@@ -21514,3 +21514,16 @@ destination; search, statistics and MCP access are separate, later decisions.
 Rejected: saving to UserDefaults or a separate database (no transactional
 consent check, second backup and deletion path), and saving every dictation by
 default.
+
+## D577 — Search the dictation history with its own full-text index
+
+The history needed search once it could hold weeks of dictations. Dictations get
+their own FTS5 index rather than a place in the meeting search, so meeting
+results never mix with dictation text and deleting a dictation removes it from
+search in the same transaction. Results stay newest first like the list, with
+every filter (words, application, not delivered) applied before the page limit
+and the same keyset paging, instead of relevance ranking that pages unstably.
+All typed words must appear and the last one matches as a prefix, so results
+narrow while the user types; accents and case are ignored. The query builder
+quotes every word, so FTS5 syntax is searched as text. Measured at 10,000
+dictations, a search takes about a millisecond.

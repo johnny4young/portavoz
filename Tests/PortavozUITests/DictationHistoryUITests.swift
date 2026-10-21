@@ -54,6 +54,40 @@ final class DictationHistoryUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testSearchAndFiltersNarrowTheHistory() throws {
+        let app = try XCUIApplication.portavoz()
+        app.launchArguments += ["-seed-dictation-history", "-seed-dictation-history-records"]
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        openDictations(in: app)
+        let first = app.control(withIdentifier: "dictation-history-text-0")
+        let second = app.control(withIdentifier: "dictation-history-text-1")
+        XCTAssertTrue(second.waitForExistenceFast(timeout: 5))
+
+        app.control(withIdentifier: "dictation-history-search").click()
+        typeText("repor", in: app)
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            renderedText(of: first) == "Send the report on Friday." && !second.exists
+        })
+        typeText("tzz", in: app)
+        XCTAssertTrue(app.control(withIdentifier: "dictation-history-no-results").waitForExistenceFast(timeout: 5))
+        app.buttons["dictation-history-search-clear"].click()
+        XCTAssertTrue(second.waitForExistenceFast(timeout: 5))
+
+        app.control(withIdentifier: "dictation-history-app-filter").click()
+        let notes = app.menuItems["Notes"]
+        XCTAssertTrue(notes.waitForExistenceFast(timeout: 5))
+        notes.click()
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            renderedText(of: first) == "No borres estas notas." && !second.exists
+        })
+        app.control(withIdentifier: "dictation-history-undelivered-filter").click()
+        XCTAssertTrue(app.control(withIdentifier: "dictation-history-no-results").waitForExistenceFast(timeout: 5))
+        attachScreenshot(of: app, named: "dictation-history-filters")
+    }
+
+    @MainActor
     func testADictationSavedToHistorySaysSoInsteadOfNothingWasSaved() throws {
         let app = try XCUIApplication.portavoz(showMenuBarContent: true)
         app.launchArguments += [

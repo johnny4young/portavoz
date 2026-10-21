@@ -6,11 +6,13 @@ import SwiftUI
 struct DictationHistoryView: View {
     let model: DictationHistoryModel
     @State private var confirmingDeleteAll = false
+    @State private var query = ""
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header
+                if showsFilters { filters }
                 if let failure = model.failure {
                     Label(failure, systemImage: PVSymbol.warning)
                         .foregroundStyle(.orange)
@@ -23,10 +25,21 @@ struct DictationHistoryView: View {
         }
         .accessibilityIdentifier("dictation-history")
         .task { await model.load() }
+        .task(id: query) {
+            // Typing settles before the query runs; each keystroke cancels the last wait.
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled else { return }
+            var filter = model.filter
+            filter.query = query
+            await model.apply(filter)
+        }
         .confirmationDialog(
             "Delete every saved dictation?", isPresented: $confirmingDeleteAll, titleVisibility: .visible
         ) {
-            Button("Delete all", role: .destructive) { Task { await model.deleteAll() } }
+            Button("Delete all", role: .destructive) {
+                query = ""
+                Task { await model.deleteAll() }
+            }
                 .accessibilityIdentifier("dictation-history-delete-all-confirm")
         } message: {
             Text("This removes them from this Mac. Copies you pasted elsewhere are not affected.")
@@ -56,6 +69,10 @@ struct DictationHistoryView: View {
     @ViewBuilder private var content: some View {
         if !model.isLoaded {
             ProgressView().controlSize(.small)
+        } else if model.records.isEmpty, !model.filter.isUnfiltered {
+            Text("No dictations match.")
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("dictation-history-no-results")
         } else if model.records.isEmpty, !model.policy.isEnabled {
             emptyOff
         } else if model.records.isEmpty {
@@ -75,6 +92,49 @@ struct DictationHistoryView: View {
                 }
             }
         }
+    }
+
+    private var showsFilters: Bool {
+        !model.records.isEmpty || !model.applications.isEmpty || !model.filter.isUnfiltered
+    }
+
+    private var filters: some View {
+        HStack(spacing: 12) {
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary).accessibilityHidden(true)
+                TextField("Search dictations", text: $query)
+                    .textFieldStyle(.plain)
+                    .accessibilityIdentifier("dictation-history-search")
+                if !query.isEmpty {
+                    Button { query = "" } label: { Image(systemName: "xmark.circle.fill") }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel(L10n.text("Clear search"))
+                        .accessibilityIdentifier("dictation-history-search-clear")
+                }
+            }
+            .padding(8)
+            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: PVDesign.radiusSmall))
+            Picker("App", selection: filterBinding(\.applicationName)) {
+                Text("All apps").tag(String?.none)
+                ForEach(model.applications, id: \.self) { Text($0).tag(Optional($0)) }
+            }
+            .fixedSize()
+            .accessibilityIdentifier("dictation-history-app-filter")
+            Toggle("Only not delivered", isOn: filterBinding(\.onlyNotDelivered))
+                .toggleStyle(.checkbox)
+                .accessibilityIdentifier("dictation-history-undelivered-filter")
+        }
+    }
+
+    private func filterBinding<Value>(_ keyPath: WritableKeyPath<DictationRecordFilter, Value>) -> Binding<Value> {
+        Binding(
+            get: { model.filter[keyPath: keyPath] },
+            set: { value in
+                var filter = model.filter
+                filter[keyPath: keyPath] = value
+                Task { await model.apply(filter) }
+            })
     }
 
     private var emptyOff: some View {

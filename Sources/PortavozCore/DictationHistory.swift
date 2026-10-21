@@ -98,3 +98,24 @@ public enum DictationRecordOutcome: Equatable, Sendable {
     /// History was off, or its consent changed after the dictation started.
     case refused
 }
+
+/// What the history list shows. Every filter applies before the page limit.
+public struct DictationRecordFilter: Equatable, Sendable {
+    public static let all = Self()
+    public static let maximumQueryLength = 200
+    public static let maximumQueryTerms = 16
+
+    public var query: String
+    public var applicationName: String?
+    public var onlyNotDelivered: Bool
+
+    public init(query: String = "", applicationName: String? = nil, onlyNotDelivered: Bool = false) {
+        self.query = query
+        self.applicationName = applicationName
+        self.onlyNotDelivered = onlyNotDelivered
+    }
+
+    public var isUnfiltered: Bool {
+        query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && applicationName == nil && !onlyNotDelivered
+    }
+}

@@ -10,7 +10,10 @@ public protocol DictationHistoryStore: Sendable {
     func recordDictation(
         _ record: DictationRecord, admittedGeneration: Int, at now: Date
     ) async throws -> DictationRecordOutcome
-    func dictationRecords(before cursor: DictationRecord?, limit: Int) async throws -> [DictationRecord]
+    func dictationRecords(
+        matching filter: DictationRecordFilter, before cursor: DictationRecord?, limit: Int
+    ) async throws -> [DictationRecord]
+    func dictationApplications() async throws -> [String]
     func deleteDictationRecord(_ id: DictationRecordID) async throws -> Bool
     func deleteAllDictationRecords() async throws -> Int
     func purgeExpiredDictationRecords(at now: Date) async throws -> Int
@@ -87,15 +90,37 @@ public struct RecordDictation: ApplicationUseCase {
 public struct ListDictations: ApplicationUseCase {
     public static let pageSize = 50
 
+    public struct Request: Sendable {
+        public let filter: DictationRecordFilter
+        /// The last row already shown; nil for the newest page.
+        public let after: DictationRecord?
+
+        public init(filter: DictationRecordFilter = .all, after: DictationRecord? = nil) {
+            self.filter = filter
+            self.after = after
+        }
+    }
+
     private let store: any DictationHistoryStore
 
     public init(store: any DictationHistoryStore) {
         self.store = store
     }
 
-    /// The next page after `request`, or the newest page when nil.
-    public func execute(_ request: DictationRecord?) async throws -> [DictationRecord] {
-        try await store.dictationRecords(before: request, limit: Self.pageSize)
+    public func execute(_ request: Request) async throws -> [DictationRecord] {
+        try await store.dictationRecords(matching: request.filter, before: request.after, limit: Self.pageSize)
+    }
+}
+
+public struct ListDictationApplications: ApplicationUseCase {
+    private let store: any DictationHistoryStore
+
+    public init(store: any DictationHistoryStore) {
+        self.store = store
+    }
+
+    public func execute(_ request: Void) async throws -> [String] {
+        try await store.dictationApplications()
     }
 }
 

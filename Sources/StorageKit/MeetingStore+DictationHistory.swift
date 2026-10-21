@@ -67,33 +67,69 @@ extension MeetingStore {
         }
     }
 
-    /// Newest first. `before` continues after the last row of the previous page.
+    /// Newest first, with every filter applied before the limit. `before`
+    /// continues after the last row of the previous page.
     public func dictationRecords(
-        before cursor: DictationRecord? = nil, limit: Int
+        matching filter: DictationRecordFilter = .all, before cursor: DictationRecord? = nil, limit: Int
     ) async throws -> [DictationRecord] {
         guard (1...Self.maximumDictationPageSize).contains(limit) else { return [] }
-        return try await database.read { database in
-            let columns = """
-                SELECT id, createdAt, durationMs, text, originalText, mode, language,
-                       engine, applicationName, applicationBundleID, delivery
-                FROM dictationRecord
-                """
-            let rows: [Row]
-            if let cursor {
-                rows = try Row.fetchAll(
-                    database,
-                    sql: columns + """
-
-                        WHERE createdAt < ? OR (createdAt = ? AND id < ?)
-                        ORDER BY createdAt DESC, id DESC LIMIT ?
-                        """,
-                    arguments: [cursor.createdAt, cursor.createdAt, cursor.id.rawValue.uuidString, limit])
-            } else {
-                rows = try Row.fetchAll(
-                    database, sql: columns + "\nORDER BY createdAt DESC, id DESC LIMIT ?", arguments: [limit])
-            }
-            return try rows.map(Self.dictationRecord(from:))
+        let match = Self.dictationSearchQuery(filter.query)
+        if !filter.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, match == nil { return [] }
+        var conditions: [String] = []
+        var arguments = StatementArguments()
+        if let match {
+            conditions.append("""
+                dictationRecord.rowid IN (
+                    SELECT rowid FROM dictationRecordSearch WHERE dictationRecordSearch MATCH ?)
+                """)
+            arguments += [match]
         }
+        if let application = filter.applicationName {
+            conditions.append("applicationName = ?")
+            arguments += [application]
+        }
+        if filter.onlyNotDelivered {
+            conditions.append("delivery = ?")
+            arguments += [DictationRecordDelivery.notDelivered.rawValue]
+        }
+        if let cursor {
+            conditions.append("(createdAt < ? OR (createdAt = ? AND id < ?))")
+            arguments += [cursor.createdAt, cursor.createdAt, cursor.id.rawValue.uuidString]
+        }
+        arguments += [limit]
+        let filters = conditions.isEmpty ? "" : "WHERE " + conditions.joined(separator: " AND ")
+        let sql = """
+            SELECT id, createdAt, durationMs, text, originalText, mode, language,
+                   engine, applicationName, applicationBundleID, delivery
+            FROM dictationRecord
+            \(filters)
+            ORDER BY createdAt DESC, id DESC LIMIT ?
+            """
+        return try await database.read { [arguments] database in
+            try Row.fetchAll(database, sql: sql, arguments: arguments).map(Self.dictationRecord(from:))
+        }
+    }
+
+    /// Applications with at least one saved dictation, for the filter menu.
+    public func dictationApplications() async throws -> [String] {
+        try await database.read { database in
+            try String.fetchAll(database, sql: """
+                SELECT DISTINCT applicationName FROM dictationRecord
+                WHERE applicationName IS NOT NULL ORDER BY applicationName COLLATE NOCASE
+                """)
+        }
+    }
+
+    /// Every word must appear and the last one may be unfinished. Words are
+    /// quoted, so FTS5 syntax typed by the user is matched as text, never run.
+    static func dictationSearchQuery(_ text: String) -> String? {
+        let terms = text.prefix(DictationRecordFilter.maximumQueryLength)
+            .split(whereSeparator: \.isWhitespace)
+            .filter { $0.contains { $0.isLetter || $0.isNumber } }
+            .prefix(DictationRecordFilter.maximumQueryTerms)
+            .map { "\"\($0.replacingOccurrences(of: "\"", with: "\"\""))\"" }
+        guard let last = terms.last else { return nil }
+        return (terms.dropLast() + [last + "*"]).joined(separator: " ")
     }
 
     public func deleteDictationRecord(_ id: DictationRecordID) async throws -> Bool {
