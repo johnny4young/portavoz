@@ -109,13 +109,19 @@ final class DictationHistoryUITests: PortavozUITestCase {
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: linked).contains("Test meeting") })
         XCTAssertFalse(app.control(withIdentifier: "dictation-history-tidy-hint-0").exists)
 
+        // Adding the note re-renders the library; select its row only once it settles.
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        XCTAssertTrue(app.prepareForInteraction())
         let meeting = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
             .firstMatch
         XCTAssertTrue(meeting.waitForStableFrame(timeout: 10))
         meeting.click()
+        let notes = app.control(withIdentifier: "detail-notes-section")
+        XCTAssertTrue(notes.waitForExistenceFast(timeout: 10), "the meeting detail must open")
+        attachScreenshot(of: app, named: "dictation-meeting-notes")
         XCTAssertTrue(
-            app.staticTexts["No borres estas notas."].waitForExistenceFast(timeout: 10),
+            notes.staticTexts["No borres estas notas."].waitForExistenceFast(timeout: 10),
             "the dictation is now one of the meeting's notes")
     }
 
