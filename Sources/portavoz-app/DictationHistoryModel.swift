@@ -1,0 +1,110 @@
+import ApplicationKit
+import Foundation
+import Observation
+import PortavozCore
+
+/// The history consent and the loaded pages. Dictation reads the consent
+/// generation from here when a session starts; the store revalidates it.
+@MainActor
+@Observable
+final class DictationHistoryModel {
+    private(set) var policy = DictationHistoryPolicy.off
+    private(set) var isLoaded = false
+    private(set) var records: [DictationRecord] = []
+    private(set) var hasMore = false
+    private(set) var failure: String?
+    @ObservationIgnored private let store: any DictationHistoryStore
+
+    init(store: any DictationHistoryStore) {
+        self.store = store
+    }
+
+    /// Reads the consent, drops expired rows and loads the newest page.
+    func load() async {
+        do {
+            _ = try await PurgeExpiredDictations(store: store).execute(())
+            policy = try await LoadDictationHistoryPolicy(store: store).execute(())
+            let page = try await ListDictations(store: store).execute(nil)
+            records = page
+            hasMore = page.count == ListDictations.pageSize
+            isLoaded = true
+            failure = nil
+        } catch {
+            failure = L10n.text("Dictation history could not be loaded.")
+        }
+    }
+
+    func loadMore() async {
+        guard hasMore, let last = records.last else { return }
+        do {
+            let page = try await ListDictations(store: store).execute(last)
+            records += page
+            hasMore = page.count == ListDictations.pageSize
+        } catch {
+            failure = L10n.text("Dictation history could not be loaded.")
+        }
+    }
+
+    func update(isEnabled: Bool? = nil, keepsOriginal: Bool? = nil, retentionDays: Int? = nil) async {
+        let request = UpdateDictationHistoryPolicy.Request(
+            isEnabled: isEnabled ?? policy.isEnabled,
+            keepsOriginal: keepsOriginal ?? policy.keepsOriginal,
+            retentionDays: retentionDays ?? policy.retentionDays)
+        do {
+            policy = try await UpdateDictationHistoryPolicy(store: store).execute(request)
+            if retentionDays != nil { await load() }
+        } catch {
+            failure = L10n.text("The history setting could not be saved.")
+        }
+    }
+
+    func delete(_ id: DictationRecordID) async {
+        do {
+            if try await DeleteDictation(store: store).execute(id) {
+                records.removeAll { $0.id == id }
+            }
+        } catch {
+            failure = L10n.text("The dictation could not be deleted.")
+        }
+    }
+
+    func deleteAll() async {
+        do {
+            _ = try await DeleteAllDictations(store: store).execute(())
+            records = []
+            hasMore = false
+            policy = try await LoadDictationHistoryPolicy(store: store).execute(())
+        } catch {
+            failure = L10n.text("The dictations could not be deleted.")
+        }
+    }
+
+    /// Nil unless history is on now; the writer keeps this generation.
+    func admit() -> DictationHistoryWriter? {
+        guard isLoaded, policy.isEnabled else { return nil }
+        let generation = policy.generation
+        return { [weak self] record in
+            guard let self else { return false }
+            return await self.save(record, generation: generation)
+        }
+    }
+
+    private func save(_ record: DictationRecord, generation: Int) async -> Bool {
+        do {
+            let outcome = try await RecordDictation(store: store).execute(
+                .init(record: record, admittedGeneration: generation))
+            if outcome == .saved { show(record) }
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    private func show(_ record: DictationRecord) {
+        if let index = records.firstIndex(where: { $0.id == record.id }) {
+            records[index] = record
+        } else {
+            records.insert(record, at: 0)
+        }
+    }
+}

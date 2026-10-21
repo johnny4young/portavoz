@@ -21,7 +21,7 @@ struct DictationUnverifiedDeliveryView: View {
                 .accessibilityLabel(L10n.text("Close"))
                 .accessibilityIdentifier("dictation-unverified-close")
             }
-            Text("Check the destination before pasting again. Nothing was saved in Portavoz.")
+            Text(L10n.text("Check the destination before pasting again.") + " " + controller.deliveryPrivacyLine)
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

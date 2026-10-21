@@ -31,6 +31,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 20, 2026
 
+- **🗂️ A private dictation history, if you want one** — turn it on to find what you dictated in the new Dictations page, including text that never reached its app; it stays on this Mac for 7, 30 or 90 days, and you can delete one or all.
 - **🎙️ Try dictation before you rely on it** — setup now has a dictation step: turn it on, check the shortcut and Accessibility, and dictate into a practice field with your real microphone; the same field lives in Settings › Audio & dictation.
 - **🔒 Paste last forgets when your Mac sleeps** — text that wasn't sent can no longer be pasted after your Mac sleeps or locks; the notice still lets you copy it.
 

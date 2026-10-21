@@ -150,6 +150,7 @@ enum PVSymbol {
     static let ask = "bubble.left.and.text.bubble.right"
     static let insights = "chart.bar.xaxis"
     static let radar = "checklist"
+    static let dictation = "text.bubble"
     // Assistants and generated work
     static let apuntador = "questionmark.bubble.fill"
     /// The same mark, outlined: Apuntador exists here but is switched off.

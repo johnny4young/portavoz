@@ -204,13 +204,14 @@ hidden stage. A main-file or WAL size/modification change across the private
 copy also fails closed rather than publishing a mixed point in time. The source is never opened through `MeetingStore`, so no
 migration/configuration write can occur, and it is never renamed or deleted.
 
-### Schema (`v1`–`v53` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v54` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
 | Table | Key columns |
 |---|---|
 | `meeting` | id (UUID TEXT PK), title, startedAt, endedAt, language, audioDirectory (RELATIVE), retention, visibility (reserved), **lifecycleState**, **transcriptRevision**, **lastProcessingError** (v6), createdAt/updatedAt/deletedAt |
+| `dictationHistoryPolicy` / `dictationRecord` (v54) | one consent row (isEnabled, keepsOriginal, retentionDays 7/30/90, generation) and saved dictations keyed by session UUID with `(createdAt, id)` index; see Dictation history |
 | `meeting_on_audioDirectory` (v53) | nonunique `(audioDirectory)` index for exact compression-directory ownership; duplicate rows remain valid evidence, and admission reads at most two matching owners before refusing ambiguity |
 | `speaker` | id, meetingID (FK CASCADE), label (S1/Me…), displayName, isMe, personID? (v8, FK SET NULL), tombstone |
 | `segment` | id, meetingID, speakerID?, channel, text, language?, startTime/endTime, confidence?, isFinal, **embedding BLOB** (v2), **embeddingFingerprint** (v17), generationRunID? (v6), tombstone |
@@ -2091,3 +2092,36 @@ through commit or rollback; recording start checks it before publishing
 `preparing`, with no suspension between those steps. If capture wins admission
 first, the existing migration activity gate rejects its preparing/recording/
 processing phase. This is a process-local fence, not an interprocess file lock.
+
+## Dictation history (schema v54, D576)
+
+Dictation is a second domain on the same `DatabaseQueue`, written only through
+`MeetingStore+DictationHistory`. `dictationHistoryPolicy` holds a single row that
+starts off (`isEnabled = 0`, `keepsOriginal = 0`, 30 days, generation 0).
+`setDictationHistoryPolicy` accepts only 7, 30 or 90 days, advances `generation`
+when saving turns off, and purges rows older than the new retention in the same
+transaction. `deleteAllDictationRecords` deletes every row and advances the
+generation too.
+
+`recordDictation(_:admittedGeneration:at:)` revalidates consent inside its write
+transaction: it returns `refused` unless history is on and the generation still
+equals the one read when the dictation started, so turning history off or
+deleting everything while a dictation finishes keeps it out. The row ID is the
+session UUID; a second write for the same session (a recovery retry) updates only
+`delivery`. `originalText` is stored only when `keepsOriginal` is on and it
+differs from the final text. Every write also purges expired rows, and the app
+purges once at launch. CHECK constraints bound text to 20,000 and labels to 256
+Unicode scalars and close `mode`, `language` and `delivery` to their known values.
+
+`dictationRecords(before:limit:)` pages newest first with a `(createdAt, id)`
+keyset cursor and a 1–100 limit. No audio, window title, URL or surrounding text
+is stored; the destination is the application name and bundle ID.
+
+Isolation: sync aggregates, per-meeting export/import, Spotlight, MCP/CLI,
+support diagnostics and settings transfer name their tables, so none reads
+dictation rows. Two paths copy the whole database file and therefore include
+them: the Markdown backup stage (a 0600 temporary file excluded from backup that
+renders only meetings) and the launch recovery copy the user requests when the
+database cannot open. Like meetings, the main database is part of Time Machine
+backups; deletion is a SQLite `DELETE`, not forensic erasure.
+

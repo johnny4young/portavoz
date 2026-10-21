@@ -21493,3 +21493,24 @@ In setup the practice waits for the model preparation, so the microphone never
 opens while a model downloads. Rejected: a pre-recorded demo (it proves nothing
 about the user's microphone), and practising through the regular clipboard paste
 into a text field (it needs Accessibility and borrows the clipboard).
+
+## D576 — Keep an opt-in private dictation history in the library database
+
+Dictated text was gone once Paste last expired, including text that never
+reached its app. Portavoz now offers a history, off until the user turns it on,
+in the same SQLite database and write queue as meetings rather than in a new
+store, so backups, migrations and deletion follow one path. Consent lives in the
+database, not in preferences: a session takes the consent generation when it
+starts and the store compares it inside the write transaction. Turning history
+off or deleting everything advances the generation, so a dictation that was
+still finishing cannot repopulate the history. The history keeps finished
+dictations that were inserted, sent without verification, or not delivered, with
+their application name, mode and duration, for 7, 30 or 90 days (30 by default).
+It never keeps audio, window titles, URLs, surrounding text, secure fields,
+practice, cancelled sessions or silence, and keeps the words before Clean mode
+only when asked. Saving happens after delivery and never delays the paste; a
+failed save is shown on the delivery notice. The list lives in its own sidebar
+destination; search, statistics and MCP access are separate, later decisions.
+Rejected: saving to UserDefaults or a separate database (no transactional
+consent check, second backup and deletion path), and saving every dictation by
+default.

@@ -66,6 +66,8 @@ struct DictationSessionDependencies {
     /// Nil leaves delivery to the lexical check alone (the gate is opt-in).
     var makeSpeechGate: () -> DictationSpeechGate? = { nil }
     var makePauseDetector: (@escaping @Sendable () -> Void) -> DictationPauseDetector? = { _ in nil }
+    /// Nil when history is off: read once when the session starts.
+    var beginHistory: () -> DictationHistoryWriter? = { nil }
 
     func transcriptionHints() -> TranscriptionHints {
         let language = defaults.string(forKey: DictationController.languageKey)

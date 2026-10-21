@@ -216,7 +216,7 @@ private struct DictationStripView: View {
     }
 
     /// The brief confirmation after insertion: N words → the target app,
-    /// and the honest reassurance that nothing was stored.
+    /// and whether the dictation history kept it.
     private func verifiedDeliveryView(_ words: Int) -> some View {
         HStack(spacing: 10) {
             Image(systemName: PVSymbol.success)
@@ -226,7 +226,7 @@ private struct DictationStripView: View {
                 Text(insertedTitle(words))
                     .accessibilityIdentifier("dictation-panel-delivery-status")
                     .font(.callout.weight(.medium))
-                Text("Nothing was saved in Portavoz.")
+                Text(controller.deliveryPrivacyLine)
                     .accessibilityIdentifier("dictation-panel-delivery-detail")
                     .font(.caption)
                     .foregroundStyle(.secondary)

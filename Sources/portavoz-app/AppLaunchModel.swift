@@ -180,6 +180,7 @@ final class AppLaunchModel {
         services.startResourcePressureMonitoring()
         Task { await services.standingPreMeetingBriefs.start() }
         services.requestSearchReconciliation()
+        Task { await services.loadDictationHistory() }
         Task { @MainActor in
             await services.commitmentReminders.send(.start)
         }
