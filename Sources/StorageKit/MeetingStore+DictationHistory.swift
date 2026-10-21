@@ -10,9 +10,11 @@ extension MeetingStore {
     }
 
     /// Turning saving off advances the generation so a dictation admitted
-    /// earlier cannot be written; a shorter retention purges at once.
+    /// earlier cannot be written, and withdraws agent access; a shorter
+    /// retention purges at once.
     public func setDictationHistoryPolicy(
-        isEnabled: Bool, keepsOriginal: Bool, retentionDays: Int, at now: Date = Date()
+        isEnabled: Bool, keepsOriginal: Bool, retentionDays: Int, exposesToAgents: Bool = false,
+        at now: Date = Date()
     ) async throws -> DictationHistoryPolicy {
         guard DictationHistoryPolicy.retentionChoices.contains(retentionDays) else {
             throw StorageError.invalidDictationRecord("unsupported retention")
@@ -23,10 +25,10 @@ extension MeetingStore {
             try database.execute(
                 sql: """
                     UPDATE dictationHistoryPolicy
-                    SET isEnabled = ?, keepsOriginal = ?, retentionDays = ?, generation = ?
+                    SET isEnabled = ?, keepsOriginal = ?, retentionDays = ?, generation = ?, exposesToAgents = ?
                     WHERE id = 1
                     """,
-                arguments: [isEnabled, keepsOriginal, retentionDays, generation])
+                arguments: [isEnabled, keepsOriginal, retentionDays, generation, isEnabled && exposesToAgents])
             try Self.purgeExpiredDictations(in: database, retentionDays: retentionDays, now: now)
             return try Self.dictationHistoryPolicy(in: database)
         }
@@ -72,9 +74,37 @@ extension MeetingStore {
     public func dictationRecords(
         matching filter: DictationRecordFilter = .all, before cursor: DictationRecord? = nil, limit: Int
     ) async throws -> [DictationRecord] {
-        guard (1...Self.maximumDictationPageSize).contains(limit) else { return [] }
-        let match = Self.dictationSearchQuery(filter.query)
-        if !filter.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, match == nil { return [] }
+        guard (1...Self.maximumDictationPageSize).contains(limit),
+            var (conditions, arguments) = Self.dictationFilterConditions(filter)
+        else { return [] }
+        if let cursor {
+            conditions.append("(createdAt < ? OR (createdAt = ? AND id < ?))")
+            arguments += [cursor.createdAt, cursor.createdAt, cursor.id.rawValue.uuidString]
+        }
+        arguments += [limit]
+        let filters = conditions.isEmpty ? "" : "WHERE " + conditions.joined(separator: " AND ")
+        let sql = Self.dictationColumns + """
+
+            \(filters)
+            ORDER BY createdAt DESC, id DESC LIMIT ?
+            """
+        return try await database.read { [arguments] database in
+            try Row.fetchAll(database, sql: sql, arguments: arguments).map(Self.dictationRecord(from:))
+        }
+    }
+
+    static let dictationColumns = """
+        SELECT id, createdAt, durationMs, text, originalText, mode, language,
+               engine, applicationName, applicationBundleID, delivery
+        FROM dictationRecord
+        """
+
+    /// The WHERE conditions for a filter, or nil when its query has no usable word.
+    static func dictationFilterConditions(
+        _ filter: DictationRecordFilter
+    ) -> (conditions: [String], arguments: StatementArguments)? {
+        let match = dictationSearchQuery(filter.query)
+        if !filter.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, match == nil { return nil }
         var conditions: [String] = []
         var arguments = StatementArguments()
         if let match {
@@ -92,22 +122,7 @@ extension MeetingStore {
             conditions.append("delivery = ?")
             arguments += [DictationRecordDelivery.notDelivered.rawValue]
         }
-        if let cursor {
-            conditions.append("(createdAt < ? OR (createdAt = ? AND id < ?))")
-            arguments += [cursor.createdAt, cursor.createdAt, cursor.id.rawValue.uuidString]
-        }
-        arguments += [limit]
-        let filters = conditions.isEmpty ? "" : "WHERE " + conditions.joined(separator: " AND ")
-        let sql = """
-            SELECT id, createdAt, durationMs, text, originalText, mode, language,
-                   engine, applicationName, applicationBundleID, delivery
-            FROM dictationRecord
-            \(filters)
-            ORDER BY createdAt DESC, id DESC LIMIT ?
-            """
-        return try await database.read { [arguments] database in
-            try Row.fetchAll(database, sql: sql, arguments: arguments).map(Self.dictationRecord(from:))
-        }
+        return (conditions, arguments)
     }
 
     /// Applications with at least one saved dictation, for the filter menu.
@@ -166,17 +181,21 @@ extension MeetingStore {
         return database.changesCount
     }
 
-    private static func dictationHistoryPolicy(in database: Database) throws -> DictationHistoryPolicy {
+    static func dictationHistoryPolicy(in database: Database) throws -> DictationHistoryPolicy {
         guard let row = try Row.fetchOne(
             database,
-            sql: "SELECT isEnabled, keepsOriginal, retentionDays, generation FROM dictationHistoryPolicy WHERE id = 1")
+            sql: """
+                SELECT isEnabled, keepsOriginal, retentionDays, generation, exposesToAgents
+                FROM dictationHistoryPolicy WHERE id = 1
+                """)
         else { return .off }
         return DictationHistoryPolicy(
             isEnabled: row["isEnabled"], keepsOriginal: row["keepsOriginal"],
-            retentionDays: row["retentionDays"], generation: row["generation"])
+            retentionDays: row["retentionDays"], generation: row["generation"],
+            exposesToAgents: row["exposesToAgents"])
     }
 
-    private static func dictationRecord(from row: Row) throws -> DictationRecord {
+    static func dictationRecord(from row: Row) throws -> DictationRecord {
         let rawID: String = row["id"]
         guard let uuid = UUID(uuidString: rawID) else {
             throw StorageError.invalidPersistedUUID(table: "dictationRecord", column: "id", value: rawID)

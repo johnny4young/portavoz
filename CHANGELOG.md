@@ -31,6 +31,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 21, 2026
 
+- **🤖 Let your AI tools read your dictations** — turn on "Let agents read the history" and local agents connected to Portavoz's MCP server can list, search and read what you dictated; off by default, and checked on every request.
 - **🔎 Search your dictations** — type a few letters in Dictations to find what you said, even without the accents, and narrow it to one app or to text that didn't reach its app.
 
 ## October 20, 2026

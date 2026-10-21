@@ -18806,6 +18806,26 @@
           }
         }
       }
+    },
+    "Let agents read the history": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitir que los agentes lean el historial"
+          }
+        }
+      }
+    },
+    "Local AI tools connected to Portavoz's MCP server can list, search and read your saved dictations. Every request checks this switch.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las herramientas de IA locales conectadas al servidor MCP de Portavoz pueden listar, buscar y leer tus dictados guardados. Cada consulta revisa este interruptor."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
