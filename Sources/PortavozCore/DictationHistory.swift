@@ -116,15 +116,22 @@ public struct DictationRecordFilter: Equatable, Sendable {
     public var query: String
     public var applicationName: String?
     public var onlyNotDelivered: Bool
+    /// Shows only this dictation, as when an Ask citation opens the history.
+    public var recordID: DictationRecordID?
 
-    public init(query: String = "", applicationName: String? = nil, onlyNotDelivered: Bool = false) {
+    public init(
+        query: String = "", applicationName: String? = nil, onlyNotDelivered: Bool = false,
+        recordID: DictationRecordID? = nil
+    ) {
         self.query = query
         self.applicationName = applicationName
         self.onlyNotDelivered = onlyNotDelivered
+        self.recordID = recordID
     }
 
     public var isUnfiltered: Bool {
         query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && applicationName == nil && !onlyNotDelivered
+            && recordID == nil
     }
 }
 

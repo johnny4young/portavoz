@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 160
+    "expectedCaseCount": 161
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -183,6 +183,7 @@
     "DictationHistoryUITests/testADictationSavedToHistorySaysSoInsteadOfNothingWasSaved()": 25.0,
     "DictationHistoryUITests/testSettingsAskForHistoryConsentWithEverySwitchOff()": 25.0,
     "DictationHistoryUITests/testSearchAndFiltersNarrowTheHistory()": 30.0,
-    "DictationHistoryUITests/testADictationCanBeAddedToAMeetingsNotes()": 30.0
+    "DictationHistoryUITests/testADictationCanBeAddedToAMeetingsNotes()": 30.0,
+    "DictationHistoryUITests/testAskAboutDictationsCitesAndOpensTheDictation()": 30.0
   }
 }

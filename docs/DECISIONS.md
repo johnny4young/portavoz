@@ -21559,3 +21559,44 @@ dictation to be added again. Meetings still recording are left out, because
 their notes belong to the live session. Nothing is linked automatically and no
 meeting is created for a dictation. When the meeting already shows tidied notes,
 which hide raw notes, the app says to tidy again rather than changing them.
+
+## D580 — Ask about saved dictations as a separate, consent-bound source
+
+Asking "what did I tell Ana about the report?" should reach what was dictated,
+not only what was said in meetings. Ask gains **Dictations** as its own source,
+next to Library, Meeting, Notes and Web. It is a typed lane like raw notes: a
+dictation is cited by its own identity, date and app, never as a meeting moment,
+and the answer prompt states that a dictation is the user's words sent to
+another app, not a transcript or what anyone else said. The source is usable
+only while the dictation history is on; the store reads the consent in the same
+transaction as the rows, so a history turned off between the check and the
+question returns nothing. Nothing new is stored: there is no index, embedding
+or cache beyond the history's own FTS table, so deleting a dictation or the
+history removes it from Ask at once. A dictation's date and app are metadata,
+not words in it, so "today's dictations" can never match lexically or by
+meaning. The question is therefore parsed locally and deterministically, in
+English and Spanish, for a period and for a saved app named after a
+preposition ("in Slack"); request words such as "show me" or "dictados" and
+function words are dropped. A named unit ("last week", "la semana pasada", "el
+mes anterior", "anoche") covers that whole unit, while a span counted back
+("hace una semana", "a couple of days ago", "the past few days", "recently")
+reaches from the start of that day until now, so asking on the 22nd about "a
+week ago" includes the 20th and 21st; "since"/"desde" stretches any period
+until now. The two are deliberately different: a span that stopped at a
+calendar boundary would hide the most recent dictations the user expects. What remains is an any-word
+FTS5 search within those filters, then everywhere (a weekday may be the
+topic), and finally the newest dictations within the filters. A listing is
+the answer itself: it is shown at once under a header that names its period
+and app ("Your dictations from yesterday:", "You have no saved dictations in
+Slack from today.") without calling the engine, unless the question asks for
+a summary, which the engine writes above the list. Every dictation an answer
+cites is shown with its own text, because a dictation's words are the
+content. Up to 12 whole dictations fit the note budgets;
+one longer than 4,000 characters is not cited. The prompt carries the local
+time now and each dictation's local time. Semantic search over dictations is
+deliberately not part of this decision: it would store derived vectors and
+needs its own consent, deletion and quality evidence. The answer uses the selected local engine
+under the existing meeting-answer egress class, with no provider fallback.
+Opening a citation shows only that dictation in Dictations until the user
+chooses Show all or changes a filter.
+

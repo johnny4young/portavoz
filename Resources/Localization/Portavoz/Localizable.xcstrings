@@ -18916,6 +18916,236 @@
           }
         }
       }
+    },
+    "Dictation history is off, so nothing was searched.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El historial de dictado está apagado, así que no se buscó nada."
+          }
+        }
+      }
+    },
+    "Closest dictations:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dictados más cercanos:"
+          }
+        }
+      }
+    },
+    "From your dictations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De tus dictados"
+          }
+        }
+      }
+    },
+    "Checking dictation history…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisando el historial de dictado…"
+          }
+        }
+      }
+    },
+    "Only your saved dictations on this Mac will be searched.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo se buscará en tus dictados guardados en este Mac."
+          }
+        }
+      }
+    },
+    "Dictation history is off. Turn it on in Dictations to ask about what you dictate.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El historial de dictado está apagado. Actívalo en Dictados para preguntar por lo que dictas."
+          }
+        }
+      }
+    },
+    "Dictation history unavailable.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El historial de dictado no está disponible."
+          }
+        }
+      }
+    },
+    "Source: Dictations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuente: Dictados"
+          }
+        }
+      }
+    },
+    "Showing the dictation cited in Ask.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrando el dictado citado en Preguntar."
+          }
+        }
+      }
+    },
+    "Show all dictations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar todos los dictados"
+          }
+        }
+      }
+    },
+    "You have no saved dictations %@.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No tienes dictados guardados %@."
+          }
+        }
+      }
+    },
+    "You have no saved dictations yet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no tienes dictados guardados."
+          }
+        }
+      }
+    },
+    "Your dictations %@:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus dictados %@:"
+          }
+        }
+      }
+    },
+    "Your most recent dictations:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus dictados más recientes:"
+          }
+        }
+      }
+    },
+    "No saved dictation mentions that.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ningún dictado guardado menciona eso."
+          }
+        }
+      }
+    },
+    "in %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "en %@"
+          }
+        }
+      }
+    },
+    "since %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "desde el %@"
+          }
+        }
+      }
+    },
+    "between %@ and %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "entre el %@ y el %@"
+          }
+        }
+      }
+    },
+    "from today": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "de hoy"
+          }
+        }
+      }
+    },
+    "from yesterday": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "de ayer"
+          }
+        }
+      }
+    },
+    "from %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "del %@"
+          }
+        }
+      }
+    },
+    "Ask about your dictations…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pregunta por tus dictados…"
+          }
+        }
+      }
+    },
+    "Open in Dictations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir en Dictados"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

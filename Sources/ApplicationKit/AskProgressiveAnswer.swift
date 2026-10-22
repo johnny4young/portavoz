@@ -286,9 +286,7 @@ actor AskProgressiveUpdateGate {
             true
         case .meeting(let meetingID):
             citations.allSatisfy { $0.meetingID == meetingID }
-        case .notes:
-            false
-        case .web:
+        case .notes, .dictations, .web:
             false
         }
     }

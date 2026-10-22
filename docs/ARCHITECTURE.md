@@ -1113,6 +1113,17 @@ per-note and aggregate budgets, an eight-second timeout, cancellation, and
 exact per-sentence numbered-citation admission keep evidence usable when
 generation abstains, is unavailable, fails, or times out.
 
+Dictation Ask is a second typed lane (`AskDictations`) with the same
+admission rules, shared through `AskTypedSource`. `LocalAskDictationRetrieval`
+reads the dictation history's FTS table through
+`MeetingStore.dictationRecordsForAsk`, which checks the history consent in the
+same read and returns nothing while it is off. `AskDictationQuestion` parses a
+period, a saved app and the remaining words from the question deterministically,
+so date and app questions filter instead of searching for words the dictations
+never contain. Citations carry the dictation's identity, date, app and delivery, and the engine receives
+`RAGDictationPassage` values under a dictation-specific prompt; no derivative of
+a dictation is stored.
+
 Live interview assistance is a separate pull-based ApplicationKit workflow,
 not automatic Companion publication. Its pure policy examines at most 24 live
 caption callbacks, chooses the chronologically current final system/room question,

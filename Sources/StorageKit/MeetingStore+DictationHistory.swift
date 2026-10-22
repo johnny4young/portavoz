@@ -122,6 +122,10 @@ extension MeetingStore {
             conditions.append("delivery = ?")
             arguments += [DictationRecordDelivery.notDelivered.rawValue]
         }
+        if let recordID = filter.recordID {
+            conditions.append("id = ?")
+            arguments += [recordID.rawValue.uuidString]
+        }
         return (conditions, arguments)
     }
 

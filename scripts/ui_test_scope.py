@@ -144,6 +144,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id("LibraryUITests", "testAskConfirmedMemoryLoadsAllTopicJobsAndExactCitations"),
         test_id("LibraryUITests", "testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState"),
+        test_id("DictationHistoryUITests", "testAskAboutDictationsCitesAndOpensTheDictation"),
     ),
     "insights": (
         test_id("InsightsUITests", "testInsightsShowsCompleteLocalDashboard"),
@@ -466,6 +467,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("DictationHistoryUITests", "testSettingsAskForHistoryConsentWithEverySwitchOff"),
         test_id("DictationHistoryUITests", "testSearchAndFiltersNarrowTheHistory"),
         test_id("DictationHistoryUITests", "testADictationCanBeAddedToAMeetingsNotes"),
+        test_id("DictationHistoryUITests", "testAskAboutDictationsCitesAndOpensTheDictation"),
     ),
     "settings-audio": (
         test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),

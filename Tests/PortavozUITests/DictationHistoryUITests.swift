@@ -170,6 +170,56 @@ final class DictationHistoryUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testAskAboutDictationsCitesAndOpensTheDictation() throws {
+        let app = try XCUIApplication.portavoz()
+        app.launchArguments += ["-seed-dictation-history", "-seed-dictation-history-records"]
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        let ask = app.buttons["library-ask-button"]
+        XCTAssertTrue(ask.waitForStableFrame(timeout: 15))
+        ask.click()
+        let source = app.descendants(matching: .any)["ask-source-dictations"]
+        XCTAssertTrue(source.waitForExistenceFast(timeout: 5))
+        source.click()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["ask-source-status-dictations"].waitForExistenceFast(timeout: 5),
+            "Dictations disclose that only the saved history is searched")
+        let field = app.control(withIdentifier: "ask-question-field")
+        let citations = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'ask-dictation-citation-'"))
+        field.click()
+        typeText("dame los dictados de hoy", in: app)
+        XCTAssertTrue(field.waitForValue("dame los dictados de hoy", timeout: 5))
+        app.buttons["ask-submit"].click()
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 10) { citations.count == 2 },
+            "a question about today lists both of today's dictations")
+        XCTAssertTrue(
+            app.staticTexts[spanish ? "Tus dictados de hoy:" : "Your dictations from today:"].exists,
+            "a listing names its period instead of a generic answer")
+
+        field.click()
+        typeText("report", in: app)
+        XCTAssertTrue(field.waitForValue("report", timeout: 5))
+        app.buttons["ask-submit"].click()
+        XCTAssertTrue(waitForUITestCondition(timeout: 10) { citations.count == 3 })
+        XCTAssertTrue(app.staticTexts["You said you would send the report on Friday."].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["ask-exchange-source-dictations"].exists)
+        let citation = app.buttons.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'ask-dictation-citation-' AND label CONTAINS 'Slack'")).firstMatch
+        XCTAssertTrue(citation.waitForExistenceFast(timeout: 5))
+        attachScreenshot(of: app, named: "ask-dictations-answer")
+        citation.click()
+
+        XCTAssertTrue(app.control(withIdentifier: "dictation-history-focus").waitForExistenceFast(timeout: 5))
+        let first = app.control(withIdentifier: "dictation-history-text-0")
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: first) == "Send the report on Friday." })
+        XCTAssertFalse(app.control(withIdentifier: "dictation-history-text-1").exists)
+        app.buttons["dictation-history-focus-clear"].click()
+        XCTAssertTrue(app.control(withIdentifier: "dictation-history-text-1").waitForExistenceFast(timeout: 5))
+    }
+
+    @MainActor
     private func openDictations(in app: XCUIApplication) {
         let button = app.buttons["library-dictations-button"]
         XCTAssertTrue(button.waitForStableFrame(timeout: 15))

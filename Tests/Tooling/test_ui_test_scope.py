@@ -985,8 +985,9 @@ class UITestScopeTests(unittest.TestCase):
         # Includes five distinct assist journeys: layout, identity/reentry,
         # manual requests, coalesced arrivals and unsubmitted drafts, plus four
         # durable-input journeys: recovery, retry, removal and held-write Stop.
-        # Topic jobs share one owner without dropping their four result/citation paths.
-        self.assertEqual(len(expected), 17)
+        # Topic jobs share one owner without dropping their four result/citation paths;
+        # Ask also owns the dictation-source journey.
+        self.assertEqual(len(expected), 18)
         self.assertTrue(ui_scope.APUNTADOR_LEAK_EVIDENCE_FILES.isdisjoint(
             ui_scope.FULL_BILINGUAL_HARNESS_FILES
         ))

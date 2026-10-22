@@ -31,6 +31,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 21, 2026
 
+- **💬 Ask about your dictations** — pick Dictations in Ask to ask what you dictated, or just "today's dictations" or "what I wrote in Slack this week", with each answer citing the app and time; it works only while your history is on, and a citation opens that dictation.
 - **📎 Add a dictation to a meeting's notes** — from Dictations, send what you said to any finished meeting; it lands next to the moment you dictated it and travels with that meeting's notes.
 - **🤖 Let your AI tools read your dictations** — turn on "Let agents read the history" and local agents connected to Portavoz's MCP server can list, search and read what you dictated; off by default, and checked on every request.
 - **🔎 Search your dictations** — type a few letters in Dictations to find what you said, even without the accents, and narrow it to one app or to text that didn't reach its app.

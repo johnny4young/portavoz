@@ -154,7 +154,10 @@ public struct AskNotes: ApplicationUseCase {
         limit: Int = 6,
         onEvidence: @escaping AskNoteEvidenceReceiver = { _ in }
     ) async throws -> AskNoteAnswer {
-        let question = try Self.validatedQuestion(rawQuestion, limit: limit)
+        let question = try AskTypedSource.validatedQuestion(
+            rawQuestion,
+            limit: limit,
+            maximumLimit: AskNoteLimits.maximumResultCount)
         guard let question else {
             return AskNoteAnswer(
                 question: rawQuestion.trimmingCharacters(
@@ -235,7 +238,7 @@ public struct AskNotes: ApplicationUseCase {
                     citations: citations,
                     outcome: .unavailable)
             }
-            guard let admitted = Self.admitAnswer(raw, citations: citations) else {
+            guard let admitted = AskTypedSource.admitAnswer(raw, citations: citations) else {
                 return response(
                     question: question,
                     citations: citations,
@@ -273,36 +276,6 @@ public struct AskNotes: ApplicationUseCase {
             generatedText: nil,
             citations: citations,
             generationOutcome: outcome)
-    }
-
-    private static func admitAnswer(
-        _ raw: String,
-        citations: [AskNoteCitation]
-    ) -> (text: String, citations: [AskNoteCitation])? {
-        guard raw.count <= AskRequestLimits.maximumAnswerCharacters,
-              raw.utf8.count <= AskRequestLimits.maximumAnswerUTF8Bytes,
-              let indexes = NumberedCitationAnswer.exactIndexes(
-                in: raw,
-                evidenceCount: citations.count),
-              let text = CompanionAnswer.usable(raw)
-        else { return nil }
-        return (text, indexes.map { citations[$0] })
-    }
-
-    private static func validatedQuestion(
-        _ value: String,
-        limit: Int
-    ) throws -> String? {
-        guard value.count <= AskRequestLimits.maximumQuestionCharacters,
-              value.utf8.count <= AskRequestLimits.maximumQuestionUTF8Bytes
-        else { throw AskRequestError.questionTooLong }
-        guard limit > 0, limit <= AskNoteLimits.maximumResultCount else {
-            if limit <= 0 { return nil }
-            throw AskRequestError.resultLimitExceeded
-        }
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        try Task.checkCancellation()
-        return trimmed.isEmpty ? nil : trimmed
     }
 }
 
