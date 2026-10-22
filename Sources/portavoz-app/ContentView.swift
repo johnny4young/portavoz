@@ -106,6 +106,10 @@ struct ContentView: View {
                                 meetingID: citation.meetingID,
                                 timestamp: citation.timestamp)
                             route = .meeting(citation.meetingID)
+                        },
+                        onOpenDictationCitation: { citation in
+                            services.dictationHistory.focus(on: citation.dictationID)
+                            route = .dictations
                         })
                 case .insights:
                     InsightsView(model: insightsModel, route: $route)

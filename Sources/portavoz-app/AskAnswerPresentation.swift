@@ -47,4 +47,15 @@ enum AskAnswerPresentation {
         return result.generatedText
             ?? L10n.text("Closest raw notes:")
     }
+
+    static func text(for result: AskDictationAnswer) -> String {
+        if result.historyIsOff {
+            return L10n.text("Dictation history is off, so nothing was searched.")
+        }
+        guard !result.citations.isEmpty else {
+            return L10n.text("Nothing related in your dictations yet.")
+        }
+        return result.generatedText
+            ?? L10n.text("Closest dictations:")
+    }
 }

@@ -21559,3 +21559,23 @@ dictation to be added again. Meetings still recording are left out, because
 their notes belong to the live session. Nothing is linked automatically and no
 meeting is created for a dictation. When the meeting already shows tidied notes,
 which hide raw notes, the app says to tidy again rather than changing them.
+
+## D580 — Ask about saved dictations as a separate, consent-bound source
+
+Asking "what did I tell Ana about the report?" should reach what was dictated,
+not only what was said in meetings. Ask gains **Dictations** as its own source,
+next to Library, Meeting, Notes and Web. It is a typed lane like raw notes: a
+dictation is cited by its own identity, date and app, never as a meeting moment,
+and the answer prompt states that a dictation is the user's words sent to
+another app, not a transcript or what anyone else said. The source is usable
+only while the dictation history is on; the store reads the consent in the same
+transaction as the rows, so a history turned off between the check and the
+question returns nothing. Nothing new is stored: there is no index, embedding
+or cache beyond the history's own FTS table, so deleting a dictation or the
+history removes it from Ask at once. Retrieval matches any word, ranks with
+FTS5 and cites whole dictations within the note budgets; a dictation longer
+than 4,000 characters is not cited. The answer uses the selected local engine
+under the existing meeting-answer egress class, with no provider fallback.
+Opening a citation shows only that dictation in Dictations until the user
+chooses Show all or changes a filter.
+

@@ -14,6 +14,7 @@ struct DictationHistoryView: View {
             VStack(alignment: .leading, spacing: 16) {
                 header
                 if showsFilters { filters }
+                if model.filter.recordID != nil { focusNotice }
                 if let failure = model.failure {
                     Label(failure, systemImage: PVSymbol.warning)
                         .foregroundStyle(.orange)
@@ -32,6 +33,7 @@ struct DictationHistoryView: View {
             try? await Task.sleep(for: .milliseconds(250))
             guard !Task.isCancelled else { return }
             var filter = model.filter
+            if filter.query != query { filter.recordID = nil }
             filter.query = query
             await model.apply(filter)
         }
@@ -131,12 +133,24 @@ struct DictationHistoryView: View {
         }
     }
 
+    private var focusNotice: some View {
+        HStack(spacing: 12) {
+            Label("Showing the dictation cited in Ask.", systemImage: PVSymbol.dictation)
+                .foregroundStyle(.secondary)
+            Button("Show all dictations") { Task { await model.apply(.all) } }
+                .accessibilityIdentifier("dictation-history-focus-clear")
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("dictation-history-focus")
+    }
+
     private func filterBinding<Value>(_ keyPath: WritableKeyPath<DictationRecordFilter, Value>) -> Binding<Value> {
         Binding(
             get: { model.filter[keyPath: keyPath] },
             set: { value in
                 var filter = model.filter
                 filter[keyPath: keyPath] = value
+                filter.recordID = nil
                 Task { await model.apply(filter) }
             })
     }

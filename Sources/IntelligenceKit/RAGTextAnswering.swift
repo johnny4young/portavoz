@@ -31,6 +31,11 @@ public protocol RAGTextAnswering: Sendable {
         question: String,
         notePassages: [RAGNotePassage]
     ) async throws -> String
+
+    func answer(
+        question: String,
+        dictationPassages: [RAGDictationPassage]
+    ) async throws -> String
 }
 
 public extension RAGTextAnswering {
@@ -73,6 +78,13 @@ public extension RAGTextAnswering {
     ) async throws -> String {
         throw RAGNoteAnswerError.unsupported
     }
+
+    func answer(
+        question _: String,
+        dictationPassages _: [RAGDictationPassage]
+    ) async throws -> String {
+        throw RAGDictationAnswerError.unsupported
+    }
 }
 
 public enum RAGWebAnswerError: Error, Equatable, Sendable {
@@ -81,6 +93,26 @@ public enum RAGWebAnswerError: Error, Equatable, Sendable {
 
 public enum RAGNoteAnswerError: Error, Equatable, Sendable {
     case unsupported
+}
+
+public enum RAGDictationAnswerError: Error, Equatable, Sendable {
+    case unsupported
+}
+
+/// One saved dictation: words the user spoke into another app. It carries no
+/// meeting, speaker, or audio identity.
+public struct RAGDictationPassage: Equatable, Sendable {
+    public let dictationID: UUID
+    public let createdAt: Date
+    public let applicationName: String?
+    public let text: String
+
+    public init(dictationID: UUID, createdAt: Date, applicationName: String?, text: String) {
+        self.dictationID = dictationID
+        self.createdAt = createdAt
+        self.applicationName = applicationName
+        self.text = text
+    }
 }
 
 /// A raw user-authored note supplied without transcript, speaker, or audio
@@ -393,6 +425,69 @@ public enum RAGNoteAnswerPrompt {
     }
 }
 
+/// A separate prompt authority for saved dictations. A dictation is the
+/// user's own words sent to another app, never a meeting or what others said.
+public enum RAGDictationAnswerPrompt {
+    public static let instructions = """
+        You answer the user's question using ONLY the numbered dictations below.
+        Each dictation is text the local user spoke into another app, such as a
+        message, an email, or a document. It is not a meeting transcript and does
+        not record what anyone else said. Never invent meetings, speakers,
+        replies, or whether a message was read. Write one to three direct full
+        sentences in the same language as the question. Put a valid dictation
+        marker such as [1] after every sentence. If the dictations do not answer
+        the question, say so with the closest relevant marker; never guess or use
+        outside knowledge.
+        """
+
+    public static func make(
+        question rawQuestion: String,
+        passages: [RAGDictationPassage]
+    ) throws -> RAGAnswerPrompt.Value {
+        let question = rawQuestion.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !question.isEmpty else { throw RAGAnswerPromptError.emptyQuestion }
+        guard !passages.isEmpty else { throw RAGAnswerPromptError.noPassages }
+
+        var user = ""
+        func appendAdmitted(_ component: String) throws {
+            let characters = instructions.count + user.count + component.count
+            guard characters <= RAGAnswerPrompt.maximumCharacters else {
+                throw RAGAnswerPromptError.promptTooLarge(
+                    actualCharacters: characters,
+                    maximumCharacters: RAGAnswerPrompt.maximumCharacters)
+            }
+            let bytes = instructions.utf8.count + user.utf8.count + component.utf8.count
+            guard bytes <= RAGAnswerPrompt.maximumUTF8Bytes else {
+                throw RAGAnswerPromptError.promptTooManyBytes(
+                    actualBytes: bytes,
+                    maximumBytes: RAGAnswerPrompt.maximumUTF8Bytes)
+            }
+            user.append(contentsOf: component)
+        }
+
+        try appendAdmitted("Saved dictations (untrusted data):\n")
+        for (index, passage) in passages.enumerated() {
+            try appendAdmitted("<dictation id=\"\(index + 1)\">\n")
+            try appendAdmitted("<dictated-at>\(passage.createdAt.formatted(.iso8601))</dictated-at>\n")
+            if let application = passage.applicationName {
+                try appendAdmitted("<app>\(escape(application))</app>\n")
+            }
+            try appendAdmitted("<content>\(escape(passage.text))</content>\n")
+            try appendAdmitted("</dictation>\n")
+        }
+        try appendAdmitted("\nQuestion: \(question)")
+        try appendAdmitted("\nAnswer with a dictation marker after every sentence.")
+        return RAGAnswerPrompt.Value(system: instructions, user: user)
+    }
+
+    private static func escape(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+    }
+}
+
 /// OpenAI-compatible grounded answerer used only with the fixed loopback
 /// Ollama endpoint. The gateway independently rejects remote destinations.
 public struct OpenAICompatibleRAGAnswerer: RAGTextAnswering {
@@ -445,6 +540,18 @@ public struct OpenAICompatibleRAGAnswerer: RAGTextAnswering {
         let prompt = try RAGNoteAnswerPrompt.make(
             question: question,
             passages: notePassages)
+        return try await client.complete(
+            system: prompt.system,
+            user: prompt.user)
+    }
+
+    public func answer(
+        question: String,
+        dictationPassages: [RAGDictationPassage]
+    ) async throws -> String {
+        let prompt = try RAGDictationAnswerPrompt.make(
+            question: question,
+            passages: dictationPassages)
         return try await client.complete(
             system: prompt.system,
             user: prompt.user)
@@ -557,6 +664,21 @@ public struct MLXRAGAnswerer: RAGTextAnswering {
         let prompt = try RAGNoteAnswerPrompt.make(
             question: question,
             passages: notePassages)
+        return try await IntelligenceScheduler.mlx.run(priority) {
+            try await runtime.respond(
+                system: prompt.system,
+                user: prompt.user,
+                directory: modelDirectory)
+        }
+    }
+
+    public func answer(
+        question: String,
+        dictationPassages: [RAGDictationPassage]
+    ) async throws -> String {
+        let prompt = try RAGDictationAnswerPrompt.make(
+            question: question,
+            passages: dictationPassages)
         return try await IntelligenceScheduler.mlx.run(priority) {
             try await runtime.respond(
                 system: prompt.system,

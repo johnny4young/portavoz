@@ -9,6 +9,7 @@ struct AskView: View {
     let model: AskModel
     let onOpenCitation: (AskCitation) -> Void
     let onOpenNoteCitation: (AskNoteCitation) -> Void
+    let onOpenDictationCitation: (AskDictationCitation) -> Void
 
     @FocusState private var questionFocused: Bool
 
@@ -157,6 +158,14 @@ struct AskView: View {
                         model.state.pendingNoteCitations,
                         identifierPrefix: "ask-pending-note-citation")
                 }
+                if !model.state.pendingDictationCitations.isEmpty {
+                    Text("From your dictations")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    dictationCitationButtons(
+                        model.state.pendingDictationCitations,
+                        identifierPrefix: "ask-pending-dictation-citation")
+                }
                 if !model.state.pendingWebCitations.isEmpty {
                     Text("Web sources available now")
                         .font(.caption.weight(.semibold))
@@ -187,9 +196,7 @@ struct AskView: View {
                 .accessibilityIdentifier("ask-answer-\(exchange.id.uuidString)")
             if let status = AskAnswerPresentation.statusText(
                 for: exchange.generationOutcome,
-                hasCitations: !exchange.citations.isEmpty
-                    || !exchange.noteCitations.isEmpty
-                    || !exchange.webCitations.isEmpty
+                hasCitations: exchange.hasCitations
             ) {
                 Label(status, systemImage: "cpu")
                     .font(.caption)
@@ -197,10 +204,9 @@ struct AskView: View {
                     .accessibilityIdentifier(
                         "ask-generation-\(exchange.generationOutcome.rawValue)")
             }
-            if !exchange.citations.isEmpty || !exchange.noteCitations.isEmpty
-                || !exchange.webCitations.isEmpty {
-                // One line of sources per answer: meeting moments, your notes
-                // and web pages flow together; each keeps its own mark.
+            if exchange.hasCitations {
+                // One line of sources per answer: meeting moments, notes,
+                // dictations and web pages flow together; each keeps its own mark.
                 FlowLayout(spacing: 10, rowSpacing: 4) {
                     Text("Sources")
                         .font(.caption.weight(.semibold))
@@ -212,6 +218,10 @@ struct AskView: View {
                         exchange.noteCitations,
                         identifierPrefix:
                             "ask-note-citation-\(exchange.id.uuidString)")
+                    dictationCitationButtons(
+                        exchange.dictationCitations,
+                        identifierPrefix:
+                            "ask-dictation-citation-\(exchange.id.uuidString)")
                     webCitationLinks(
                         exchange.webCitations,
                         identifierPrefix:
@@ -250,6 +260,31 @@ extension AskView {
             .buttonStyle(.plain)
             .foregroundStyle(PVDesign.accent)
             .help("\(citation.authoredAt.formatted())\n\(citation.text)")
+            .accessibilityIdentifier("\(identifierPrefix)-\(index)")
+        }
+    }
+
+    @ViewBuilder
+    private func dictationCitationButtons(
+        _ citations: [AskDictationCitation],
+        identifierPrefix: String
+    ) -> some View {
+        ForEach(Array(citations.enumerated()), id: \.offset) { index, citation in
+            Button {
+                onOpenDictationCitation(citation)
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: PVSymbol.dictation)
+                    Text(
+                        "\(citation.applicationName ?? L10n.text("Dictation")) · "
+                            + citation.createdAt.formatted(date: .abbreviated, time: .shortened))
+                        .lineLimit(1)
+                }
+                .font(.caption)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(PVDesign.accent)
+            .help(citation.text)
             .accessibilityIdentifier("\(identifierPrefix)-\(index)")
         }
     }
@@ -340,12 +375,15 @@ extension AskView {
                 Label("Notes", systemImage: "note.text")
                     .tag(AskModel.SourceMode.notes)
                     .accessibilityIdentifier("ask-source-notes")
+                Label("Dictations", systemImage: PVSymbol.dictation)
+                    .tag(AskModel.SourceMode.dictations)
+                    .accessibilityIdentifier("ask-source-dictations")
                 Label("Web", systemImage: "globe")
                     .tag(AskModel.SourceMode.web)
                     .accessibilityIdentifier("ask-source-web")
             }
             .pickerStyle(.segmented)
-            .frame(maxWidth: 520)
+            .frame(maxWidth: 640)
             .accessibilityIdentifier("ask-source-picker")
 
             sourcePolicyStatus
@@ -369,8 +407,41 @@ extension AskView {
                 "Only your explicit local notes will be searched. AI-enhanced notes are excluded.",
                 systemImage: "person.crop.circle.badge.checkmark")
                 .accessibilityIdentifier("ask-source-status-notes")
+        case .dictations:
+            // One stable container, so the consent is read once per showing.
+            VStack(alignment: .leading) { dictationSourceStatus }
+                .task { model.refreshDictationSource() }
         case .web:
             webSourceStatus
+        }
+    }
+
+    @ViewBuilder
+    private var dictationSourceStatus: some View {
+        switch model.state.dictationSourceState {
+        case .unknown, .checking:
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Checking dictation history…")
+            }
+            .accessibilityIdentifier("ask-source-dictations-checking")
+        case .available:
+            Label(
+                "Only your saved dictations on this Mac will be searched.",
+                systemImage: "lock")
+                .accessibilityIdentifier("ask-source-status-dictations")
+        case .historyOff:
+            Label(
+                "Dictation history is off. Turn it on in Dictations to ask about what you dictate.",
+                systemImage: "lock.slash")
+                .accessibilityIdentifier("ask-source-status-dictations-off")
+        case .failed:
+            HStack(spacing: 8) {
+                Label("Dictation history unavailable.", systemImage: PVSymbol.warning)
+                Button("Try again") { model.refreshDictationSource() }
+                    .accessibilityIdentifier("ask-source-dictations-retry")
+            }
+            .accessibilityIdentifier("ask-source-dictations-failed")
         }
     }
 
@@ -437,6 +508,11 @@ extension AskView {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("\(identifier)-notes")
+        case .dictations:
+            Label("Source: Dictations", systemImage: PVSymbol.dictation)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("\(identifier)-dictations")
         case .web(let host):
             Label("Source: \(host)", systemImage: "globe")
                 .font(.caption)
@@ -465,6 +541,8 @@ extension AskView {
             selectedMeetingTitle != nil
         case .notes:
             true
+        case .dictations:
+            model.state.dictationSourceState == .available
         case .web:
             model.state.webConsentApproved && model.canApproveWebConsent
         }

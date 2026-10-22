@@ -539,6 +539,26 @@ public struct RAGAnswerer: RAGTextAnswering {
         }
     }
 
+    public func answer(
+        question: String,
+        dictationPassages: [RAGDictationPassage]
+    ) async throws -> String {
+        if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
+            throw IntelligenceError.modelUnavailable(reason)
+        }
+        let prompt = try RAGDictationAnswerPrompt.make(
+            question: question,
+            passages: dictationPassages)
+        let session = LanguageModelSession(
+            instructions: RAGDictationAnswerPrompt.instructions)
+        return try await IntelligenceScheduler.shared.run(.interactive) {
+            try await session.respond(
+                to: prompt.user,
+                options: .greedy(maximumResponseTokens: RAGAnswerPrompt.maximumResponseTokens)
+            ).content
+        }
+    }
+
     /// Answers from separately typed transcript and graph lanes. Fact markers
     /// expose structure to the model, while only exact transcript/source
     /// markers are valid citations in generated prose.

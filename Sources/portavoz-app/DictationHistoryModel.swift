@@ -57,6 +57,13 @@ final class DictationHistoryModel {
         }
     }
 
+    /// Shows only this dictation the next time the history loads, as when an
+    /// Ask citation opens it.
+    func focus(on id: DictationRecordID) {
+        filter = DictationRecordFilter(recordID: id)
+        records = records.filter { $0.id == id }
+    }
+
     func loadMore() async {
         guard hasMore, let last = records.last else { return }
         let request = pageRequest
