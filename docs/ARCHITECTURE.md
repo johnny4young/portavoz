@@ -1117,8 +1117,10 @@ Dictation Ask is a second typed lane (`AskDictations`) with the same
 admission rules, shared through `AskTypedSource`. `LocalAskDictationRetrieval`
 reads the dictation history's FTS table through
 `MeetingStore.dictationRecordsForAsk`, which checks the history consent in the
-same read and returns nothing while it is off. Citations carry the dictation's
-identity, date, app and delivery, and the engine receives
+same read and returns nothing while it is off. `AskDictationQuestion` parses a
+period, a saved app and the remaining words from the question deterministically,
+so date and app questions filter instead of searching for words the dictations
+never contain. Citations carry the dictation's identity, date, app and delivery, and the engine receives
 `RAGDictationPassage` values under a dictation-specific prompt; no derivative of
 a dictation is stored.
 

@@ -116,7 +116,9 @@ failed with Try again (`ask-source-dictations-retry`). Pending and final
 dictation citations (`ask-pending-dictation-citation-N`,
 `ask-dictation-citation-<exchange>-N`) show the app (or "Dictation") and date,
 with the text as help; the exchange badge is `ask-exchange-source-dictations`.
-An answer that finds the history off says so and locks the source. Opening a
+Ask requests up to 12 dictations, so a question such as "dame los dictados de
+hoy" lists the day's dictations. An answer that finds the history off says so
+and locks the source. Opening a
 citation calls `DictationHistoryModel.focus(on:)` and routes to Dictations,
 which shows only that dictation with "Showing the dictation cited in Ask."
 (`dictation-history-focus`) and Show all dictations

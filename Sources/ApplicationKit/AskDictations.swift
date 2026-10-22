@@ -28,7 +28,10 @@ public struct AskDictationCitation: Equatable, Identifiable, Sendable {
 public enum AskDictationEvidence: Equatable, Sendable {
     /// The history is off, so nothing was read.
     case historyOff
+    /// Dictations that match the question's words.
     case found([AskDictationCitation])
+    /// The newest dictations in the question's period or app; all stay cited.
+    case listed([AskDictationCitation])
 }
 
 public typealias AskDictationEvidenceReceiver = @Sendable (
@@ -142,13 +145,20 @@ public struct AskDictations: ApplicationUseCase {
     ) async throws -> AskDictationAnswer {
         let evidence = try await retrieval.retrieve(question: question, limit: limit)
         try Task.checkCancellation()
-        guard case .found(let returned) = evidence else {
+        let returned: [AskDictationCitation]
+        let listed: Bool
+        switch evidence {
+        case .historyOff:
             return AskDictationAnswer(
                 question: question,
                 generatedText: nil,
                 citations: [],
                 generationOutcome: .notRequested,
                 historyIsOff: true)
+        case .found(let citations):
+            (returned, listed) = (citations, false)
+        case .listed(let citations):
+            (returned, listed) = (citations, true)
         }
         guard let citations = Self.validated(returned, limit: limit) else {
             throw AskDictationEvidenceError.invalid
@@ -159,12 +169,13 @@ public struct AskDictations: ApplicationUseCase {
         trace.reach(.firstEvidence)
         await onEvidence(citations)
         try Task.checkCancellation()
-        return try await generate(question: question, citations: citations, trace: trace)
+        return try await generate(question: question, citations: citations, listed: listed, trace: trace)
     }
 
     private func generate(
         question: String,
         citations: [AskDictationCitation],
+        listed: Bool,
         trace: AskPipelineTrace
     ) async throws -> AskDictationAnswer {
         do {
@@ -185,7 +196,7 @@ public struct AskDictations: ApplicationUseCase {
             return AskDictationAnswer(
                 question: question,
                 generatedText: admitted.text,
-                citations: admitted.citations,
+                citations: listed ? citations : admitted.citations,
                 generationOutcome: .generated)
         } catch is CancellationError {
             throw CancellationError()

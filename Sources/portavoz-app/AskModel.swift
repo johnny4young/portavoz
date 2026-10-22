@@ -502,7 +502,7 @@ extension AskModel {
             do {
                 let result = try await client.answerAskDictations(
                     question,
-                    limit: 6,
+                    limit: AskDictationLimits.maximumResultCount,
                     onEvidence: { [weak self] citations in
                         await self?.publish(
                             dictationCitations: citations,

@@ -21572,9 +21572,20 @@ only while the dictation history is on; the store reads the consent in the same
 transaction as the rows, so a history turned off between the check and the
 question returns nothing. Nothing new is stored: there is no index, embedding
 or cache beyond the history's own FTS table, so deleting a dictation or the
-history removes it from Ask at once. Retrieval matches any word, ranks with
-FTS5 and cites whole dictations within the note budgets; a dictation longer
-than 4,000 characters is not cited. The answer uses the selected local engine
+history removes it from Ask at once. A dictation's date and app are metadata,
+not words in it, so "today's dictations" can never match lexically or by
+meaning. The question is therefore parsed locally and deterministically, in
+English and Spanish, for a period (today, yesterday, this or last week or
+month, this morning, the last N days or hours, a weekday, a date) and for a
+saved app named after a preposition ("in Slack"); request words such as "show
+me" or "dictados" and function words are dropped. What remains is an any-word
+FTS5 search within those filters, then everywhere (a weekday may be the
+topic), and finally the newest dictations within the filters; a listing keeps
+every listed dictation cited. Up to 12 whole dictations fit the note budgets;
+one longer than 4,000 characters is not cited. The prompt carries the local
+time now and each dictation's local time. Semantic search over dictations is
+deliberately not part of this decision: it would store derived vectors and
+needs its own consent, deletion and quality evidence. The answer uses the selected local engine
 under the existing meeting-answer egress class, with no provider fallback.
 Opening a citation shows only that dictation in Dictations until the user
 chooses Show all or changes a filter.

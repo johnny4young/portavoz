@@ -13,25 +13,60 @@ final class AskDictationRetrievalTests: XCTestCase {
         _ = try await store.setDictationHistoryPolicy(isEnabled: false, keepsOriginal: false, retentionDays: 30, at: now)
 
         let rows = try await store.dictationRecordsForAsk(matchingAny: ["report"], limit: 10)
-        let evidence = try await LocalAskDictationRetrieval(store: store).retrieve(question: "report", limit: 6)
+        let applications = try await store.dictationApplicationsForAsk()
+        let evidence = try await retrieval(store).retrieve(question: "dame los dictados de hoy", limit: 6)
 
         XCTAssertNil(rows)
+        XCTAssertNil(applications)
         XCTAssertEqual(evidence, .historyOff)
     }
 
     func testAnyWordMatchesAndTheBestMatchComesFirst() async throws {
         let store = try await populatedStore()
 
-        let evidence = try await LocalAskDictationRetrieval(store: store).retrieve(
-            question: "When do I send the report?", limit: 6)
-        let noWord = try await store.dictationRecordsForAsk(matchingAny: ["¿?", "🙂"], limit: 10)
+        let evidence = try await retrieval(store).retrieve(question: "When do I send the report?", limit: 6)
 
         guard case .found(let citations) = evidence else { return XCTFail("expected evidence") }
         XCTAssertEqual(citations.first?.text, "Send the report on Friday.")
         XCTAssertEqual(citations.first?.applicationName, "Slack")
         XCTAssertTrue(citations.contains { $0.text == "Report the crash to the team." })
         XCTAssertFalse(citations.contains { $0.text == "No borres estas notas." })
-        XCTAssertEqual(noWord, [])
+    }
+
+    func testAPeriodWithNothingToSearchListsItsNewestDictations() async throws {
+        let store = try await populatedStore()
+        _ = try await store.recordDictation(
+            record("Dictated last week.", app: "Slack", createdAt: now.addingTimeInterval(-8 * 86_400)),
+            admittedGeneration: 0, at: now)
+
+        let today = try await retrieval(store).retrieve(question: "dame los dictados de hoy", limit: 12)
+        let slack = try await retrieval(store).retrieve(question: "what did I dictate in Slack", limit: 12)
+        let everything = try await retrieval(store).retrieve(question: "dame mis dictados", limit: 12)
+
+        guard case .listed(let todays) = today else { return XCTFail("expected a listing") }
+        XCTAssertEqual(todays.map(\.text), [
+            "No borres estas notas.", "Send the report on Friday.",
+            "Report the crash to the team.", "Revisa la acción pendiente."
+        ])
+        guard case .listed(let slackCitations) = slack else { return XCTFail("expected a listing") }
+        XCTAssertEqual(slackCitations.map(\.text), ["Send the report on Friday.", "Dictated last week."])
+        guard case .listed(let all) = everything else { return XCTFail("expected a listing") }
+        XCTAssertEqual(all.count, 5)
+    }
+
+    func testWordsSearchWithinTheFiltersThenEverywhereThenListTheFilters() async throws {
+        let store = try await populatedStore()
+
+        let inPeriod = try await retrieval(store).retrieve(question: "the report today", limit: 6)
+        let topicWeekday = try await retrieval(store).retrieve(question: "acción on Monday", limit: 6)
+        let nothingMatches = try await retrieval(store).retrieve(question: "presupuesto de hoy", limit: 6)
+
+        guard case .found(let found) = inPeriod else { return XCTFail("expected matches") }
+        XCTAssertEqual(found.first?.text, "Send the report on Friday.")
+        guard case .found(let topic) = topicWeekday else { return XCTFail("expected matches outside Monday") }
+        XCTAssertEqual(topic.map(\.text), ["Revisa la acción pendiente."])
+        guard case .listed(let listed) = nothingMatches else { return XCTFail("expected today's listing") }
+        XCTAssertEqual(listed.count, 4)
     }
 
     func testQuestionSyntaxIsMatchedAsTextNeverRun() async throws {
@@ -40,9 +75,11 @@ final class AskDictationRetrievalTests: XCTestCase {
             _ = try await store.dictationRecordsForAsk(matchingAny: [question], limit: 10)
         }
         let columnSyntax = try await store.dictationRecordsForAsk(matchingAny: ["originalText:eh"], limit: 10)
+        let noWord = try await store.dictationRecordsForAsk(matchingAny: ["¿?", "🙂"], limit: 10)
         let stillThere = try await store.dictationRecords(limit: 10).count
 
         XCTAssertEqual(columnSyntax, [])
+        XCTAssertEqual(noWord?.count, 4, "no usable word lists the newest")
         XCTAssertEqual(stillThere, 4)
     }
 
@@ -91,19 +128,26 @@ final class AskDictationRetrievalTests: XCTestCase {
         ]
         for (offset, sample) in samples.enumerated() {
             _ = try await store.recordDictation(
-                DictationRecord(
-                    id: DictationRecordID(), createdAt: now.addingTimeInterval(Double(-offset)), duration: 2,
-                    text: sample.0, originalText: sample.1, mode: .literal, language: "en", engine: "parakeet",
-                    applicationName: sample.2, applicationBundleID: nil, delivery: .verified),
+                record(sample.0, original: sample.1, app: sample.2, createdAt: now.addingTimeInterval(Double(-offset * 60))),
                 admittedGeneration: 0, at: now)
         }
         return store
     }
 
-    private func record(_ text: String) -> DictationRecord {
+    /// `now` is Friday, January 15, 2027, 08:00 UTC; the calendar is UTC.
+    private func retrieval(_ store: MeetingStore) -> LocalAskDictationRetrieval {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        let now = now
+        return LocalAskDictationRetrieval(store: store, now: { now }, calendar: calendar)
+    }
+
+    private func record(
+        _ text: String, original: String? = nil, app: String? = nil, createdAt: Date? = nil
+    ) -> DictationRecord {
         DictationRecord(
-            id: DictationRecordID(), createdAt: now, duration: 1, text: text, originalText: nil,
-            mode: .literal, language: nil, engine: "parakeet", applicationName: nil,
+            id: DictationRecordID(), createdAt: createdAt ?? now, duration: 1, text: text, originalText: original,
+            mode: .literal, language: nil, engine: "parakeet", applicationName: app,
             applicationBundleID: nil, delivery: .verified)
     }
 }

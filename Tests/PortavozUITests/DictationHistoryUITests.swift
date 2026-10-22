@@ -186,18 +186,25 @@ final class DictationHistoryUITests: PortavozUITestCase {
             app.descendants(matching: .any)["ask-source-status-dictations"].waitForExistenceFast(timeout: 5),
             "Dictations disclose that only the saved history is searched")
         let field = app.control(withIdentifier: "ask-question-field")
+        let citations = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'ask-dictation-citation-'"))
+        field.click()
+        typeText("dame los dictados de hoy", in: app)
+        XCTAssertTrue(field.waitForValue("dame los dictados de hoy", timeout: 5))
+        app.buttons["ask-submit"].click()
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 10) { citations.count == 2 },
+            "a question about today lists both of today's dictations")
+
         field.click()
         typeText("report", in: app)
         XCTAssertTrue(field.waitForValue("report", timeout: 5))
         app.buttons["ask-submit"].click()
-
-        XCTAssertTrue(
-            app.staticTexts["You said you would send the report on Friday."].waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(waitForUITestCondition(timeout: 10) { citations.count == 3 })
+        XCTAssertTrue(app.staticTexts["You said you would send the report on Friday."].exists)
         XCTAssertTrue(app.descendants(matching: .any)["ask-exchange-source-dictations"].exists)
-        let citation = app.buttons.matching(
-            NSPredicate(format: "identifier BEGINSWITH 'ask-dictation-citation-'")).firstMatch
+        let citation = app.buttons.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'ask-dictation-citation-' AND label CONTAINS 'Slack'")).firstMatch
         XCTAssertTrue(citation.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(citation.label.contains("Slack"), citation.label)
         attachScreenshot(of: app, named: "ask-dictations-answer")
         citation.click()
 

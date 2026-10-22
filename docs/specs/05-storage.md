@@ -2182,12 +2182,16 @@ returns only links whose note and meeting are still live.
 
 ### Dictations in Ask (D580)
 
-`dictationRecordsForAsk(matchingAny:limit:)` reads `dictationHistoryPolicy` and
-the rows in one read transaction and returns nil while the history is off.
-`dictationAskQuery` joins every distinct word that has a letter or digit, from
-all query variants, as quoted FTS5 terms with `OR` (at most 48), so any word may
-match and FTS5 syntax in a question is matched as text. Rows are ordered by
-`rank`, then newest, with the limit clamped to 1–100. `DictationRecordFilter`
+`dictationRecordsForAsk(matchingAny:period:applicationName:limit:)` reads
+`dictationHistoryPolicy` and the rows in one read transaction and returns nil
+while the history is off. `dictationAskQuery` joins every distinct word that
+has a letter or digit, from all query variants, as quoted FTS5 terms with `OR`
+(at most 48), so any word may match and FTS5 syntax in a question is matched as
+text. The optional period (`createdAt` half-open interval) and exact app name
+filter before the limit. With a usable word, rows are ordered by `rank`, then
+newest; without one, the newest rows are listed. The limit is clamped to
+1–100. `dictationApplicationsForAsk()` returns distinct app names under the
+same consent check. `DictationRecordFilter`
 gains `recordID`, which narrows the history list to one dictation when an Ask
 citation opens it. No schema change.
 

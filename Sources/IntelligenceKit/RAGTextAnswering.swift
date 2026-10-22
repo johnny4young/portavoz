@@ -433,20 +433,28 @@ public enum RAGDictationAnswerPrompt {
         Each dictation is text the local user spoke into another app, such as a
         message, an email, or a document. It is not a meeting transcript and does
         not record what anyone else said. Never invent meetings, speakers,
-        replies, or whether a message was read. Write one to three direct full
-        sentences in the same language as the question. Put a valid dictation
-        marker such as [1] after every sentence. If the dictations do not answer
-        the question, say so with the closest relevant marker; never guess or use
-        outside knowledge.
+        replies, or whether a message was read. Times are local; "now" tells you
+        what today is. Write one to five direct full sentences in the same
+        language as the question; when it asks for the dictations of a period or
+        an app, summarize them. Put a valid dictation marker such as [1] after
+        every sentence. If the dictations do not answer the question, say so with
+        the closest relevant marker; never guess or use outside knowledge.
         """
 
     public static func make(
         question rawQuestion: String,
-        passages: [RAGDictationPassage]
+        passages: [RAGDictationPassage],
+        now: Date = Date(),
+        timeZone: TimeZone = .current
     ) throws -> RAGAnswerPrompt.Value {
         let question = rawQuestion.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !question.isEmpty else { throw RAGAnswerPromptError.emptyQuestion }
         guard !passages.isEmpty else { throw RAGAnswerPromptError.noPassages }
+        let local = Date.ISO8601FormatStyle(timeZone: timeZone)
+        var weekday = Calendar(identifier: .gregorian)
+        weekday.timeZone = timeZone
+        weekday.locale = Locale(identifier: "en_US_POSIX")
+        let today = weekday.weekdaySymbols[weekday.component(.weekday, from: now) - 1]
 
         var user = ""
         func appendAdmitted(_ component: String) throws {
@@ -465,10 +473,11 @@ public enum RAGDictationAnswerPrompt {
             user.append(contentsOf: component)
         }
 
+        try appendAdmitted("<now>\(now.formatted(local)) (\(today))</now>\n")
         try appendAdmitted("Saved dictations (untrusted data):\n")
         for (index, passage) in passages.enumerated() {
             try appendAdmitted("<dictation id=\"\(index + 1)\">\n")
-            try appendAdmitted("<dictated-at>\(passage.createdAt.formatted(.iso8601))</dictated-at>\n")
+            try appendAdmitted("<dictated-at>\(passage.createdAt.formatted(local))</dictated-at>\n")
             if let application = passage.applicationName {
                 try appendAdmitted("<app>\(escape(application))</app>\n")
             }
