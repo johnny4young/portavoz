@@ -16,11 +16,15 @@ final class DictationHistoryModel {
     private(set) var filter = DictationRecordFilter.all
     /// Applications with saved dictations, for the filter menu.
     private(set) var applications: [String] = []
-    @ObservationIgnored private let store: any DictationHistoryStore
+    /// Meetings whose notes hold a copy of each loaded dictation.
+    private(set) var meetingLinks: [DictationRecordID: [DictationMeetingLink]] = [:]
+    /// Dictations just added to a meeting whose tidied notes hide new raw notes.
+    private(set) var needsTidyUp: Set<DictationRecordID> = []
+    @ObservationIgnored private let store: any DictationHistoryStore & DictationMeetingNoteStore
     /// Drops a page that arrives after a newer filter was applied.
     @ObservationIgnored private var pageRequest = 0
 
-    init(store: any DictationHistoryStore) {
+    init(store: any DictationHistoryStore & DictationMeetingNoteStore) {
         self.store = store
     }
 
@@ -61,6 +65,7 @@ final class DictationHistoryModel {
             guard request == pageRequest else { return }
             records += page
             hasMore = page.count == ListDictations.pageSize
+            await refreshMeetingLinks()
         } catch {
             failure = L10n.text("Dictation history could not be loaded.")
         }
@@ -73,6 +78,35 @@ final class DictationHistoryModel {
         guard request == pageRequest else { return }
         records = page
         hasMore = page.count == ListDictations.pageSize
+        await refreshMeetingLinks()
+    }
+
+    /// Finished meetings for the picker; the one recorded during the dictation first.
+    func meetingChoices(for record: DictationRecord) async -> [DictationMeetingChoice] {
+        do {
+            return try await ListMeetingsForDictation(store: store).execute(record)
+        } catch {
+            failure = L10n.text("Meetings could not be loaded.")
+            return []
+        }
+    }
+
+    @discardableResult
+    func add(_ record: DictationRecord, to meeting: DictationMeetingChoice) async -> AddDictationToMeetingOutcome? {
+        do {
+            let outcome = try await AddDictationToMeeting(store: store).execute(
+                .init(dictationID: record.id, meetingID: meeting.id))
+            if case .added(_, let tidiedNotes) = outcome, tidiedNotes { needsTidyUp.insert(record.id) }
+            await refreshMeetingLinks()
+            return outcome
+        } catch {
+            failure = L10n.text("The dictation could not be added to the meeting.")
+            return nil
+        }
+    }
+
+    private func refreshMeetingLinks() async {
+        meetingLinks = (try? await LoadDictationMeetingLinks(store: store).execute(records.map(\.id))) ?? [:]
     }
 
     func update(

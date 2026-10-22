@@ -21544,3 +21544,18 @@ Responses carry a content-free header and always state where each dictation
 went and whether it reached its app, so an agent never treats undelivered text
 as something the user sent. Turning the history off withdraws agent access, and
 turning it back on does not restore it.
+
+## D579 — Copy a dictation into a finished meeting's notes, by explicit action
+
+Dictating a thought and finding it later next to the meeting it belongs to is
+the point of keeping dictation inside Portavoz. A saved dictation can now be
+added to a finished meeting's notes from the Dictations page. The note is an
+ordinary copy, placed at the moment it was dictated when that falls inside the
+meeting, so it follows every existing note path: search, sync, exports and Ask.
+The picker says so before anything is added. A local link records which note
+came from which dictation; it is not synced, deleting the dictation keeps the
+note because it now belongs to the meeting, and removing the note frees the
+dictation to be added again. Meetings still recording are left out, because
+their notes belong to the live session. Nothing is linked automatically and no
+meeting is created for a dictation. When the meeting already shows tidied notes,
+which hide raw notes, the app says to tidy again rather than changing them.

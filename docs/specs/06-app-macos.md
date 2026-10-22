@@ -2991,7 +2991,13 @@ applies 250 ms after typing stops, an application menu
 (`dictation-history-app-filter`) and an "only not delivered" checkbox
 (`dictation-history-undelivered-filter`), with "No dictations match."
 (`dictation-history-no-results`) when a filter empties the list (D577), Show older dictations (`dictation-history-more`) and Delete all
-with a confirmation (`dictation-history-delete-all`, `-confirm`). Settings ›
+with a confirmation (`dictation-history-delete-all`, `-confirm`). Each row can be
+added to a finished meeting's notes (`dictation-history-add-meeting-N`, D579)
+through `DictationMeetingPicker` (`dictation-meeting-picker-title`, `-note`,
+`-empty`, `-cancel`, options `dictation-meeting-option-N`), which says the text
+will follow the meeting's notes into sync, exports and Ask; the row then shows
+`Added to <meeting>` (`dictation-history-linked-N`) and, when that meeting shows
+tidied notes, a hint to tidy again (`dictation-history-tidy-hint-N`). Settings ›
 Audio & dictation adds a Dictation history section with every switch off
 (`settings-dictation-history`, `-retention`, `-original`, `-note`). Disposable
 launches can turn history on in the temporary database with

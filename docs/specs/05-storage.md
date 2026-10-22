@@ -204,13 +204,14 @@ hidden stage. A main-file or WAL size/modification change across the private
 copy also fails closed rather than publishing a mixed point in time. The source is never opened through `MeetingStore`, so no
 migration/configuration write can occur, and it is never renamed or deleted.
 
-### Schema (`v1`–`v56` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v57` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
 | Table | Key columns |
 |---|---|
 | `meeting` | id (UUID TEXT PK), title, startedAt, endedAt, language, audioDirectory (RELATIVE), retention, visibility (reserved), **lifecycleState**, **transcriptRevision**, **lastProcessingError** (v6), createdAt/updatedAt/deletedAt |
+| `dictationMeetingNote` (v57) | local link (dictationID → dictationRecord, meetingID → meeting, unique contextItemID → contextItem, all ON DELETE CASCADE; primary key dictation + meeting) recording which meeting note was copied from which dictation; see Dictation history |
 | `dictationRecordSearch` (v55) | FTS5 external content over `dictationRecord.text` and `originalText`, `unicode61` tokenizer, kept in sync by GRDB triggers; see Dictation history |
 | `dictationHistoryPolicy` / `dictationRecord` (v54, v56) | one consent row (isEnabled, keepsOriginal, retentionDays 7/30/90, generation, and since v56 exposesToAgents) and saved dictations keyed by session UUID with `(createdAt, id)` index; see Dictation history |
 | `meeting_on_audioDirectory` (v53) | nonunique `(audioDirectory)` index for exact compression-directory ownership; duplicate rows remain valid evidence, and admission reads at most two matching owners before refusing ambiguity |
@@ -2159,4 +2160,23 @@ transaction and return `.notAllowed` without touching any row when access is
 off. Agent pages reuse the history filter (`dictationFilterConditions`), count
 the filtered total, and use newest-first offset paging with the offset clamped
 at 0 and the limit to 1–100.
+
+### Dictations added to meeting notes (schema v57, D579)
+
+`addDictationToMeeting(_:meetingID:at:)` is the only path that writes a raw
+note to a meeting outside a live recording. In one write transaction it
+requires the dictation, a live meeting with `endedAt` set and a lifecycle other
+than `recording`, and no live note already copied from that dictation into that
+meeting (a tombstoned copy is cleared so it can be added again). It inserts an
+ordinary `contextItem` of kind `note` with the dictation's text, at the
+dictation's offset into the meeting when it falls inside it, otherwise clamped
+to 0 or to the meeting's duration, plus one `dictationMeetingNote` row. The note
+therefore follows every existing note path: FTS, meeting sync triggers, export
+and Ask. The link table has no sync triggers and stays on this Mac. Deleting the
+dictation cascades only the link; deleting the meeting or purging the note
+cascades the link too. The outcome reports whether the meeting already shows
+tidied (enhanced) notes, which hide raw notes until the user tidies again.
+`meetingsForDictation(createdAt:limit:)` lists live finished meetings, the one
+whose recording contains the dictation first, then newest; `dictationMeetingLinks`
+returns only links whose note and meeting are still live.
 

@@ -18826,6 +18826,96 @@
           }
         }
       }
+    },
+    "Meetings could not be loaded.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron cargar las reuniones."
+          }
+        }
+      }
+    },
+    "The dictation could not be added to the meeting.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo añadir el dictado a la reunión."
+          }
+        }
+      }
+    },
+    "Add to a meeting's notes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir a las notas de una reunión"
+          }
+        }
+      }
+    },
+    "The text becomes a note of that meeting and goes wherever its notes go: sync, exports and Ask.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El texto pasa a ser una nota de esa reunión y va a donde van sus notas: sincronización, exportaciones y Preguntar."
+          }
+        }
+      }
+    },
+    "No finished meetings yet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todavía no hay reuniones terminadas."
+          }
+        }
+      }
+    },
+    "%@ · recorded while you dictated": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · grabada mientras dictabas"
+          }
+        }
+      }
+    },
+    "Add to a meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir a una reunión"
+          }
+        }
+      }
+    },
+    "Added to %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadido a %@"
+          }
+        }
+      }
+    },
+    "That meeting shows tidied notes. Tidy up again to include this one.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esa reunión muestra notas ordenadas. Vuelve a ordenar para incluir esta."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

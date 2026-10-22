@@ -465,6 +465,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("DictationHistoryUITests", "testADictationSavedToHistorySaysSoInsteadOfNothingWasSaved"),
         test_id("DictationHistoryUITests", "testSettingsAskForHistoryConsentWithEverySwitchOff"),
         test_id("DictationHistoryUITests", "testSearchAndFiltersNarrowTheHistory"),
+        test_id("DictationHistoryUITests", "testADictationCanBeAddedToAMeetingsNotes"),
     ),
     "settings-audio": (
         test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),
