@@ -21600,3 +21600,48 @@ under the existing meeting-answer egress class, with no provider fallback.
 Opening a citation shows only that dictation in Dictations until the user
 chooses Show all or changes a filter.
 
+## D581 — Measure dictation search by meaning; ship on-device question rewriting, not embeddings
+
+Lexical dictation search cannot find a dictation phrased differently from the
+question, nor one dictated in the other language. Before building semantic
+search, a public synthetic bilingual corpus (160 short dictations in English,
+Spanish and mixed text, 80 questions: exact, Spanish and English paraphrase,
+cross-lingual, code-switched and unanswerable, with no content word shared
+between a meaning question and its dictation) and `bench-dictation-search`
+compared lanes in one disposable store. The agreed gate: mean recall@5 over the
+four meaning groups at least 0.15 above lexical, no exact hit@1 regression, at
+most 25% of unanswerable questions with a semantic or rewritten hit, and query
+p95 at most 150 ms at 10,000 dictations.
+
+Measured in a Release build on Apple silicon (macOS 26):
+
+- Lexical: exact hit@1 1.00, every meaning group 0.00, no false positives.
+- Apple's contextual Latin embedding (`SentenceEmbedder`, mean pooled): top
+  similarities stay between 0.80 and 0.95 whatever the question, so the hybrid
+  passes only at a 0.90 threshold (meaning recall 0.23, 25% false positives)
+  with 100% false positives one step lower and no recall one step higher.
+  Subtracting the corpus mean moves the cliff to 0.50 without removing it.
+  Cross-lingual recall is 0 in both. A 10,000-dictation scan costs about 11 ms
+  p95.
+- The existing on-device meeting rewrite (`RAGAnswerer.expandQuery`: one
+  English and one Spanish keyword query) added to the word search: cross-lingual
+  recall 0.62, code-switched 0.12, paraphrase 0.06, exact 1.00, no false
+  positives, about 450 ms p50 and 600 ms p95 per question. It passes with no
+  threshold to tune.
+- A dictation-specific synonym rewrite found more paraphrases (0.38 English,
+  0.44 Spanish) but lowered exact hit@1 to 0.94, reached 38% false positives,
+  took about 1 s, and once tripped the model's guardrail.
+- Rewriting only when the word search finds nothing, as meeting Ask does,
+  drops meaning recall to 0.08, because spurious word matches suppress it.
+
+Ask › Dictations therefore rewrites every question that has words to search
+with the on-device model and adds the rewrites' content words to the search,
+within the same period and app filters. A rewrite that fails, is refused or
+takes over two seconds is dropped and the word search runs alone; without
+Apple Intelligence nothing changes. Only the question reaches the local model,
+and nothing derived from a dictation is stored, so no consent beyond the
+history is needed. Embeddings are not adopted: their threshold is calibrated on
+eight questions at the edge of a cliff and they would add stored vectors and a
+consent for no cross-lingual gain. Same-language paraphrase remains weak (GAPS
+T40); the benchmark is kept to measure a stronger multilingual model.
+

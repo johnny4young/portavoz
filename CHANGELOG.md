@@ -29,6 +29,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## October 22, 2026
+
+- **🌎 Ask about dictations in either language** — ask in English about something you dictated in Spanish, or the other way around; Portavoz rewrites your question with the on-device model and stores nothing about your dictations.
+
 ## October 21, 2026
 
 - **💬 Ask about your dictations** — pick Dictations in Ask to ask what you dictated, or just "today's dictations" or "what I wrote in Slack this week", with each answer citing the app and time; it works only while your history is on, and a citation opens that dictation.

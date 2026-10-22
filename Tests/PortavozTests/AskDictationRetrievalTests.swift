@@ -75,6 +75,27 @@ final class AskDictationRetrievalTests: XCTestCase {
         XCTAssertNotNil(scope.period, "an empty listing still names its period")
     }
 
+    func testOnDeviceRewritesFindDictationsInTheOtherLanguage() async throws {
+        let store = try await populatedStore()
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        let now = now
+        func retrieval(_ rewriter: any AskQueryExpanding) -> LocalAskDictationRetrieval {
+            LocalAskDictationRetrieval(store: store, rewriter: rewriter, now: { now }, calendar: calendar)
+        }
+
+        let plain = try await retrieval(FixedRewriter([])).retrieve(question: "¿Qué informe envío?", limit: 6)
+        let rewritten = try await retrieval(FixedRewriter(["send report", "enviar informe"]))
+            .retrieve(question: "¿Qué informe envío?", limit: 6)
+        let failing = try await retrieval(FailingRewriter()).retrieve(question: "the report", limit: 6)
+
+        XCTAssertEqual(plain, .found([]))
+        guard case .found(let citations) = rewritten else { return XCTFail("expected rewritten matches") }
+        XCTAssertEqual(citations.first?.text, "Send the report on Friday.")
+        guard case .found(let fallback) = failing else { return XCTFail("a failed rewrite keeps the word search") }
+        XCTAssertEqual(fallback.first?.text, "Send the report on Friday.")
+    }
+
     func testQuestionSyntaxIsMatchedAsTextNeverRun() async throws {
         let store = try await populatedStore()
         for question in ["\"", "NEAR(report friday)", "text:report", "report*", "'; DROP TABLE dictationRecord;--"] {
@@ -145,7 +166,7 @@ final class AskDictationRetrievalTests: XCTestCase {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "UTC")!
         let now = now
-        return LocalAskDictationRetrieval(store: store, now: { now }, calendar: calendar)
+        return LocalAskDictationRetrieval(store: store, rewriter: FixedRewriter([]), now: { now }, calendar: calendar)
     }
 
     private func record(
@@ -156,4 +177,19 @@ final class AskDictationRetrievalTests: XCTestCase {
             mode: .literal, language: nil, engine: "parakeet", applicationName: app,
             applicationBundleID: nil, delivery: .verified)
     }
+}
+
+/// Returns the question followed by fixed rewrites, as the on-device expansion does.
+private struct FixedRewriter: AskQueryExpanding {
+    let rewrites: [String]
+
+    init(_ rewrites: [String]) {
+        self.rewrites = rewrites
+    }
+
+    func expand(_ question: String) async throws -> [String] { [question] + rewrites }
+}
+
+private struct FailingRewriter: AskQueryExpanding {
+    func expand(_ question: String) async throws -> [String] { throw CocoaError(.featureUnsupported) }
 }
