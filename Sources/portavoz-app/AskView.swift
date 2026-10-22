@@ -204,9 +204,10 @@ struct AskView: View {
                     .accessibilityIdentifier(
                         "ask-generation-\(exchange.generationOutcome.rawValue)")
             }
-            if exchange.hasCitations {
-                // One line of sources per answer: meeting moments, notes,
-                // dictations and web pages flow together; each keeps its own mark.
+            if !exchange.citations.isEmpty || !exchange.noteCitations.isEmpty
+                || !exchange.webCitations.isEmpty {
+                // One line of sources per answer: meeting moments, notes and
+                // web pages flow together; each keeps its own mark.
                 FlowLayout(spacing: 10, rowSpacing: 4) {
                     Text("Sources")
                         .font(.caption.weight(.semibold))
@@ -218,10 +219,6 @@ struct AskView: View {
                         exchange.noteCitations,
                         identifierPrefix:
                             "ask-note-citation-\(exchange.id.uuidString)")
-                    dictationCitationButtons(
-                        exchange.dictationCitations,
-                        identifierPrefix:
-                            "ask-dictation-citation-\(exchange.id.uuidString)")
                     webCitationLinks(
                         exchange.webCitations,
                         identifierPrefix:
@@ -231,6 +228,11 @@ struct AskView: View {
                 .accessibilityIdentifier("ask-sources-\(exchange.id.uuidString)")
             }
             webFailureNotice(exchange.webSourceFailures)
+            if !exchange.dictationCitations.isEmpty {
+                dictationCitationCards(
+                    exchange.dictationCitations,
+                    identifierPrefix: "ask-dictation-citation-\(exchange.id.uuidString)")
+            }
         }
         .id(exchange.id)
     }
@@ -275,10 +277,9 @@ extension AskView {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: PVSymbol.dictation)
-                    Text(
-                        "\(citation.applicationName ?? L10n.text("Dictation")) · "
-                            + citation.createdAt.formatted(date: .abbreviated, time: .shortened))
+                    Text("“\(citation.text)” · \(dictationCaption(citation))")
                         .lineLimit(1)
+                        .truncationMode(.middle)
                 }
                 .font(.caption)
             }
@@ -287,6 +288,43 @@ extension AskView {
             .help(citation.text)
             .accessibilityIdentifier("\(identifierPrefix)-\(index)")
         }
+    }
+
+    /// In an answer the dictation's own words are the content, so each one
+    /// shows its text; a click opens it in Dictations.
+    private func dictationCitationCards(
+        _ citations: [AskDictationCitation],
+        identifierPrefix: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(Array(citations.enumerated()), id: \.offset) { index, citation in
+                Button {
+                    onOpenDictationCitation(citation)
+                } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(citation.text)
+                            .lineLimit(3)
+                            .multilineTextAlignment(.leading)
+                            .foregroundStyle(.primary)
+                        Label(dictationCaption(citation), systemImage: PVSymbol.dictation)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: 640, alignment: .leading)
+                    .padding(10)
+                    .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: PVDesign.radiusSmall))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(L10n.text("Open in Dictations"))
+                .accessibilityIdentifier("\(identifierPrefix)-\(index)")
+            }
+        }
+    }
+
+    private func dictationCaption(_ citation: AskDictationCitation) -> String {
+        "\(citation.applicationName ?? L10n.text("Dictation")) · "
+            + citation.createdAt.formatted(date: .abbreviated, time: .shortened)
     }
 
     @ViewBuilder

@@ -25,13 +25,27 @@ public struct AskDictationCitation: Equatable, Identifiable, Sendable {
     }
 }
 
+/// What a listing covered, so the answer can name it, even when it is empty.
+public struct AskDictationScope: Equatable, Sendable {
+    public let period: DateInterval?
+    public let applicationName: String?
+    /// The question asked for a summary, so the engine writes one above the list.
+    public let summarize: Bool
+
+    public init(period: DateInterval?, applicationName: String?, summarize: Bool) {
+        self.period = period
+        self.applicationName = applicationName
+        self.summarize = summarize
+    }
+}
+
 public enum AskDictationEvidence: Equatable, Sendable {
     /// The history is off, so nothing was read.
     case historyOff
     /// Dictations that match the question's words.
     case found([AskDictationCitation])
     /// The newest dictations in the question's period or app; all stay cited.
-    case listed([AskDictationCitation])
+    case listed([AskDictationCitation], AskDictationScope)
 }
 
 public typealias AskDictationEvidenceReceiver = @Sendable (
@@ -57,19 +71,23 @@ public struct AskDictationAnswer: Equatable, Sendable {
     public let citations: [AskDictationCitation]
     public let generationOutcome: AskGenerationOutcome
     public let historyIsOff: Bool
+    /// Set when the answer lists dictations rather than searching their words.
+    public let listing: AskDictationScope?
 
     public init(
         question: String,
         generatedText: String?,
         citations: [AskDictationCitation],
         generationOutcome: AskGenerationOutcome,
-        historyIsOff: Bool = false
+        historyIsOff: Bool = false,
+        listing: AskDictationScope? = nil
     ) {
         self.question = question
         self.generatedText = generatedText
         self.citations = citations
         self.generationOutcome = generationOutcome
         self.historyIsOff = historyIsOff
+        self.listing = listing
     }
 }
 
@@ -146,7 +164,7 @@ public struct AskDictations: ApplicationUseCase {
         let evidence = try await retrieval.retrieve(question: question, limit: limit)
         try Task.checkCancellation()
         let returned: [AskDictationCitation]
-        let listed: Bool
+        let listing: AskDictationScope?
         switch evidence {
         case .historyOff:
             return AskDictationAnswer(
@@ -156,26 +174,30 @@ public struct AskDictations: ApplicationUseCase {
                 generationOutcome: .notRequested,
                 historyIsOff: true)
         case .found(let citations):
-            (returned, listed) = (citations, false)
-        case .listed(let citations):
-            (returned, listed) = (citations, true)
+            (returned, listing) = (citations, nil)
+        case .listed(let citations, let scope):
+            (returned, listing) = (citations, scope)
         }
         guard let citations = Self.validated(returned, limit: limit) else {
             throw AskDictationEvidenceError.invalid
         }
         guard !citations.isEmpty else {
-            return response(question: question, citations: [], outcome: .insufficientEvidence)
+            return response(question: question, citations: [], outcome: .insufficientEvidence, listing: listing)
         }
         trace.reach(.firstEvidence)
         await onEvidence(citations)
         try Task.checkCancellation()
-        return try await generate(question: question, citations: citations, listed: listed, trace: trace)
+        // A plain listing is the answer itself; only a requested summary needs the engine.
+        if let listing, !listing.summarize {
+            return response(question: question, citations: citations, outcome: .notRequested, listing: listing)
+        }
+        return try await generate(question: question, citations: citations, listing: listing, trace: trace)
     }
 
     private func generate(
         question: String,
         citations: [AskDictationCitation],
-        listed: Bool,
+        listing: AskDictationScope?,
         trace: AskPipelineTrace
     ) async throws -> AskDictationAnswer {
         do {
@@ -186,37 +208,41 @@ public struct AskDictations: ApplicationUseCase {
                 operation: { try await answering.answer(question: question, citations: citations) })
             try Task.checkCancellation()
             guard let raw else {
-                return response(question: question, citations: citations, outcome: .unavailable)
+                return response(question: question, citations: citations, outcome: .unavailable, listing: listing)
             }
             guard let admitted = AskTypedSource.admitAnswer(raw, citations: citations) else {
-                return response(question: question, citations: citations, outcome: .insufficientEvidence)
+                return response(
+                    question: question, citations: citations, outcome: .insufficientEvidence, listing: listing)
             }
             try deadline.check()
             trace.reach(.firstToken)
             return AskDictationAnswer(
                 question: question,
                 generatedText: admitted.text,
-                citations: listed ? citations : admitted.citations,
-                generationOutcome: .generated)
+                citations: listing == nil ? admitted.citations : citations,
+                generationOutcome: .generated,
+                listing: listing)
         } catch is CancellationError {
             throw CancellationError()
         } catch is AskTimeoutError {
-            return response(question: question, citations: citations, outcome: .timedOut)
+            return response(question: question, citations: citations, outcome: .timedOut, listing: listing)
         } catch {
-            return response(question: question, citations: citations, outcome: .failed)
+            return response(question: question, citations: citations, outcome: .failed, listing: listing)
         }
     }
 
     private func response(
         question: String,
         citations: [AskDictationCitation],
-        outcome: AskGenerationOutcome
+        outcome: AskGenerationOutcome,
+        listing: AskDictationScope? = nil
     ) -> AskDictationAnswer {
         AskDictationAnswer(
             question: question,
             generatedText: nil,
             citations: citations,
-            generationOutcome: outcome)
+            generationOutcome: outcome,
+            listing: listing)
     }
 
     /// Fails closed on evidence the retrieval contract does not allow.

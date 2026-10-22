@@ -70,6 +70,40 @@ final class AskDictationPresentationTests: XCTestCase {
                 historyIsOff: true)))
     }
 
+    func testListingsNameTheirPeriodAndAppInsteadOfAGenericAnswer() async throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let today = try XCTUnwrap(calendar.dateInterval(of: .day, for: now))
+        let yesterday = try XCTUnwrap(calendar.dateInterval(of: .day, for: now.addingTimeInterval(-86_400)))
+        let week = try XCTUnwrap(calendar.dateInterval(of: .weekOfYear, for: now))
+        func text(_ scope: AskDictationScope, citations: [AskDictationCitation]) -> String {
+            AskAnswerPresentation.text(
+                for: AskDictationAnswer(
+                    question: "q", generatedText: nil, citations: citations, generationOutcome: .notRequested,
+                    listing: scope),
+                now: now, calendar: calendar)
+        }
+
+        XCTAssertEqual(
+            text(.init(period: today, applicationName: nil, summarize: false), citations: [citation]),
+            "Your dictations from today:")
+        XCTAssertEqual(
+            text(.init(period: yesterday, applicationName: "Slack", summarize: false), citations: []),
+            "You have no saved dictations in Slack from yesterday.")
+        XCTAssertEqual(
+            text(.init(period: nil, applicationName: nil, summarize: false), citations: [citation]),
+            "Your most recent dictations:")
+        XCTAssertTrue(
+            text(.init(period: week, applicationName: nil, summarize: false), citations: [citation])
+                .hasPrefix("Your dictations between "))
+        XCTAssertEqual(
+            AskAnswerPresentation.text(for: AskDictationAnswer(
+                question: "q", generatedText: nil, citations: [], generationOutcome: .insufficientEvidence)),
+            "No saved dictation mentions that.")
+        XCTAssertNil(AskAnswerPresentation.statusText(for: .notRequested, hasCitations: true))
+    }
+
     func testAnOpenedCitationShowsOnlyThatDictationUntilFiltersChange() async throws {
         let store = try MeetingStore.inMemory()
         let model = DictationHistoryModel(store: store)

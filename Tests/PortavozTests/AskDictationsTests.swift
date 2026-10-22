@@ -32,15 +32,32 @@ final class AskDictationsTests: XCTestCase {
         XCTAssertEqual(evidence, [citations])
     }
 
-    func testAListingKeepsEveryDictationCitedEvenWhenTheAnswerNamesOne() async throws {
-        let useCase = AskDictations(
-            retrieval: DictationRetrievalFake(.listed(citations)),
-            answering: DictationAnsweringFake(text: "Today you dictated two things, starting with the report [1]."))
+    func testAListingAnswersWithoutTheEngineUnlessASummaryIsAsked() async throws {
+        let plain = AskDictationScope(period: nil, applicationName: "Slack", summarize: false)
+        let summary = AskDictationScope(period: nil, applicationName: nil, summarize: true)
+        let answering = DictationAnsweringFake(text: "Today you dictated two things, starting with the report [1].")
 
-        let answer = try await useCase.answer("dame los dictados de hoy")
+        let listed = try await AskDictations(
+            retrieval: DictationRetrievalFake(.listed(citations, plain)), answering: answering
+        ).answer("dame los dictados de Slack")
+        let inputsAfterListing = await answering.inputs
+        let summarized = try await AskDictations(
+            retrieval: DictationRetrievalFake(.listed(citations, summary)), answering: answering
+        ).answer("resúmeme mis dictados")
+        let empty = try await AskDictations(
+            retrieval: DictationRetrievalFake(.listed([], plain)), answering: answering
+        ).answer("dame los dictados de Slack")
 
-        XCTAssertEqual(answer.generationOutcome, .generated)
-        XCTAssertEqual(answer.citations, citations)
+        XCTAssertEqual(listed.generationOutcome, .notRequested)
+        XCTAssertNil(listed.generatedText)
+        XCTAssertEqual(listed.citations, citations)
+        XCTAssertEqual(listed.listing, plain)
+        XCTAssertEqual(inputsAfterListing, [], "a plain listing never reaches the engine")
+        XCTAssertEqual(summarized.generationOutcome, .generated)
+        XCTAssertEqual(summarized.citations, citations, "a summarized listing keeps every dictation")
+        XCTAssertEqual(summarized.listing, summary)
+        XCTAssertEqual(empty.citations, [])
+        XCTAssertEqual(empty.listing, plain)
     }
 
     func testHistoryOffAndNoEvidenceNeverReachTheEngine() async throws {

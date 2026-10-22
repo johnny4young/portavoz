@@ -194,6 +194,9 @@ final class DictationHistoryUITests: PortavozUITestCase {
         XCTAssertTrue(
             waitForUITestCondition(timeout: 10) { citations.count == 2 },
             "a question about today lists both of today's dictations")
+        XCTAssertTrue(
+            app.staticTexts[spanish ? "Tus dictados de hoy:" : "Your dictations from today:"].exists,
+            "a listing names its period instead of a generic answer")
 
         field.click()
         typeText("report", in: app)

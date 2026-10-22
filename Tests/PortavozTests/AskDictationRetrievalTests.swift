@@ -43,14 +43,16 @@ final class AskDictationRetrievalTests: XCTestCase {
         let slack = try await retrieval(store).retrieve(question: "what did I dictate in Slack", limit: 12)
         let everything = try await retrieval(store).retrieve(question: "dame mis dictados", limit: 12)
 
-        guard case .listed(let todays) = today else { return XCTFail("expected a listing") }
+        guard case .listed(let todays, let scope) = today else { return XCTFail("expected a listing") }
         XCTAssertEqual(todays.map(\.text), [
             "No borres estas notas.", "Send the report on Friday.",
             "Report the crash to the team.", "Revisa la acción pendiente."
         ])
-        guard case .listed(let slackCitations) = slack else { return XCTFail("expected a listing") }
+        XCTAssertNotNil(scope.period)
+        XCTAssertFalse(scope.summarize)
+        guard case .listed(let slackCitations, _) = slack else { return XCTFail("expected a listing") }
         XCTAssertEqual(slackCitations.map(\.text), ["Send the report on Friday.", "Dictated last week."])
-        guard case .listed(let all) = everything else { return XCTFail("expected a listing") }
+        guard case .listed(let all, _) = everything else { return XCTFail("expected a listing") }
         XCTAssertEqual(all.count, 5)
     }
 
@@ -65,8 +67,12 @@ final class AskDictationRetrievalTests: XCTestCase {
         XCTAssertEqual(found.first?.text, "Send the report on Friday.")
         guard case .found(let topic) = topicWeekday else { return XCTFail("expected matches outside Monday") }
         XCTAssertEqual(topic.map(\.text), ["Revisa la acción pendiente."])
-        guard case .listed(let listed) = nothingMatches else { return XCTFail("expected today's listing") }
+        guard case .listed(let listed, _) = nothingMatches else { return XCTFail("expected today's listing") }
         XCTAssertEqual(listed.count, 4)
+        let emptyDay = try await retrieval(store).retrieve(question: "dictados de anteayer", limit: 6)
+        guard case .listed(let none, let scope) = emptyDay else { return XCTFail("expected an empty listing") }
+        XCTAssertEqual(none, [])
+        XCTAssertNotNil(scope.period, "an empty listing still names its period")
     }
 
     func testQuestionSyntaxIsMatchedAsTextNeverRun() async throws {

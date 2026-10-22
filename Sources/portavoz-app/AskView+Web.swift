@@ -69,9 +69,11 @@ extension AskView {
     }
 
     var questionPlaceholder: String {
-        model.state.sourceMode == .web
-            ? L10n.text("Ask about this page…")
-            : L10n.text("Ask about your meetings…")
+        switch model.state.sourceMode {
+        case .web: L10n.text("Ask about this page…")
+        case .dictations: L10n.text("Ask about your dictations…")
+        default: L10n.text("Ask about your meetings…")
+        }
     }
 
     private var webPrivacyDisclosure: String {

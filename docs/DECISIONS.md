@@ -21580,8 +21580,13 @@ month, this morning, the last N days or hours, a weekday, a date) and for a
 saved app named after a preposition ("in Slack"); request words such as "show
 me" or "dictados" and function words are dropped. What remains is an any-word
 FTS5 search within those filters, then everywhere (a weekday may be the
-topic), and finally the newest dictations within the filters; a listing keeps
-every listed dictation cited. Up to 12 whole dictations fit the note budgets;
+topic), and finally the newest dictations within the filters. A listing is
+the answer itself: it is shown at once under a header that names its period
+and app ("Your dictations from yesterday:", "You have no saved dictations in
+Slack from today.") without calling the engine, unless the question asks for
+a summary, which the engine writes above the list. Every dictation an answer
+cites is shown with its own text, because a dictation's words are the
+content. Up to 12 whole dictations fit the note budgets;
 one longer than 4,000 characters is not cited. The prompt carries the local
 time now and each dictation's local time. Semantic search over dictations is
 deliberately not part of this decision: it would store derived vectors and

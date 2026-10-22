@@ -35,6 +35,8 @@ public struct LocalAskDictationRetrieval: AskDictationRetrieving {
         let parsed = AskDictationQuestion.parse(
             question, applications: applications, now: now(), calendar: calendar)
         let filtered = parsed.period != nil || parsed.applicationName != nil
+        let scope = AskDictationScope(
+            period: parsed.period, applicationName: parsed.applicationName, summarize: parsed.asksForSummary)
         var attempts: [(queries: [String], filtered: Bool)] = []
         if !parsed.isListing {
             let words = parsed.searchWords.joined(separator: " ")
@@ -53,9 +55,9 @@ public struct LocalAskDictationRetrieval: AskDictationRetrieving {
             try Task.checkCancellation()
             guard !records.isEmpty else { continue }
             let citations = Self.select(records, limit: limit)
-            return attempt.queries.isEmpty ? .listed(citations) : .found(citations)
+            return attempt.queries.isEmpty ? .listed(citations, scope) : .found(citations)
         }
-        return .found([])
+        return parsed.isListing || filtered ? .listed([], scope) : .found([])
     }
 
     static func select(_ records: [DictationRecord], limit: Int) -> [AskDictationCitation] {

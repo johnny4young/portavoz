@@ -117,7 +117,15 @@ dictation citations (`ask-pending-dictation-citation-N`,
 `ask-dictation-citation-<exchange>-N`) show the app (or "Dictation") and date,
 with the text as help; the exchange badge is `ask-exchange-source-dictations`.
 Ask requests up to 12 dictations, so a question such as "dame los dictados de
-hoy" lists the day's dictations. An answer that finds the history off says so
+hoy" lists the day's dictations. With Dictations selected the field reads "Ask
+about your dictations…". A listing answers immediately with a header from
+`AskAnswerPresentation.dictationScope` ("Your dictations from today:", "…in
+Slack from yesterday:", "…between <date> and <date>:", "…since <time>:", or
+"Your most recent dictations:") and, when empty, "You have no saved dictations
+<scope>." A word search with no match says "No saved dictation mentions that."
+Answer citations render as cards with up to three lines of the dictation's
+text and its app and time; pending ones stay chips that start with the
+text. An answer that finds the history off says so
 and locks the source. Opening a
 citation calls `DictationHistoryModel.focus(on:)` and routes to Dictations,
 which shows only that dictation with "Showing the dictation cited in Ask."

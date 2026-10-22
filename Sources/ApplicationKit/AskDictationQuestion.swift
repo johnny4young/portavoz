@@ -7,14 +7,17 @@ public struct AskDictationQuestion: Equatable, Sendable {
     public let period: DateInterval?
     public let applicationName: String?
     public let searchWords: [String]
+    /// "resume", "summarize": the answer should summarize, not only list.
+    public let asksForSummary: Bool
 
     /// Nothing left to search: the newest dictations within the filters answer it.
     public var isListing: Bool { searchWords.isEmpty }
 
-    public init(period: DateInterval?, applicationName: String?, searchWords: [String]) {
+    public init(period: DateInterval?, applicationName: String?, searchWords: [String], asksForSummary: Bool = false) {
         self.period = period
         self.applicationName = applicationName
         self.searchWords = searchWords
+        self.asksForSummary = asksForSummary
     }
 
     public static func parse(
@@ -34,7 +37,9 @@ public struct AskDictationQuestion: Equatable, Sendable {
             .map { tokens[$0] }
             .filter { $0.count > 1 || $0.allSatisfy(\.isNumber) }
             .filter { !BilingualFunctionWords.all.contains($0) && !Self.requestWords.contains($0) }
-        return Self(period: period?.interval, applicationName: application?.name, searchWords: words)
+        return Self(
+            period: period?.interval, applicationName: application?.name, searchWords: words,
+            asksForSummary: tokens.contains(where: summaryWords.contains))
     }
 
     /// The longest saved app name introduced by a preposition ("en Slack", "in Mail").
@@ -58,6 +63,10 @@ public struct AskDictationQuestion: Equatable, Sendable {
         return best
     }
 
+    private static let summaryWords: Set<String> = [
+        "resume", "resumen", "resumeme", "resumir", "resumelos", "summarize", "summary", "recap"
+    ]
+
     private static let applicationPrepositions: Set<String> = [
         "en", "de", "del", "desde", "a", "para", "in", "on", "from", "to", "into"
     ]
@@ -68,7 +77,8 @@ public struct AskDictationQuestion: Equatable, Sendable {
         "busca", "buscame", "buscar", "encuentra", "dime", "quiero", "ver", "todo", "todos", "todas",
         "mis", "mi", "cuales", "cuantos", "cuantas", "dicte", "dictaste", "dicto", "dictado", "dictados",
         "dictacion", "dictaciones", "dije", "dijiste", "hable", "escribi", "sobre", "acerca", "hice",
-        "tengo", "hay", "puedes", "podrias", "favor", "resume", "resumen", "resumeme",
+        "tengo", "hay", "puedes", "podrias", "favor", "resume", "resumen", "resumeme", "resumir", "resumelos",
+        "hace", "ago", "recap",
         "show", "me", "give", "list", "find", "search", "tell", "all", "my", "dictate", "dictated",
         "dictation", "dictations", "say", "said", "wrote", "write", "about", "please", "any", "have",
         "there", "were", "was", "everything", "summarize", "summary"
@@ -123,7 +133,7 @@ struct AskDictationPeriodParser {
     private static let numberWords: [String: Int] = [
         "un": 1, "uno": 1, "una": 1, "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5, "seis": 6, "siete": 7,
         "ocho": 8, "nueve": 9, "diez": 10, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
-        "seven": 7, "eight": 8, "nine": 9, "ten": 10
+        "seven": 7, "eight": 8, "nine": 9, "ten": 10, "an": 1
     ]
 
     /// Words that make a following weekday a topic ("sobre el viernes"), not a period.
@@ -133,7 +143,7 @@ struct AskDictationPeriodParser {
     func find(in tokens: [String]) -> Match? {
         for start in tokens.indices {
             if let match = relative(tokens, at: start) ?? lastSpan(tokens, at: start)
-                ?? date(tokens, at: start) ?? weekday(tokens, at: start) {
+                ?? ago(tokens, at: start) ?? date(tokens, at: start) ?? weekday(tokens, at: start) {
                 return match
             }
         }
@@ -182,6 +192,32 @@ struct AskDictationPeriodParser {
               let from = calendar.date(byAdding: unit, value: -count, to: now)
         else { return nil }
         return Match(interval: DateInterval(start: from, end: now), tokens: start..<(start + 3))
+    }
+
+    /// "3 days ago", "a week ago" (or "hace" before the count): that day or
+    /// week; hours ago reach back from now.
+    private func ago(_ tokens: [String], at start: Int) -> Match? {
+        let spanish = tokens[start] == "hace"
+        let countIndex = spanish ? start + 1 : start
+        guard countIndex + 1 < tokens.count,
+              let count = Int(tokens[countIndex]) ?? Self.numberWords[tokens[countIndex]]
+                ?? (tokens[countIndex] == "a" ? 1 : nil),
+              (1...366).contains(count),
+              spanish || tokens.matches(["ago"], at: countIndex + 2)
+        else { return nil }
+        let end = spanish ? countIndex + 2 : countIndex + 3
+        let match: (Calendar.Component, Calendar.Component)?
+        switch tokens[countIndex + 1] {
+        case "dia", "dias", "day", "days": match = (.day, .day)
+        case "semana", "semanas", "week", "weeks": match = (.weekOfYear, .weekOfYear)
+        case "hora", "horas", "hour", "hours": match = (.hour, .hour)
+        default: match = nil
+        }
+        guard let (unit, span) = match,
+              let then = calendar.date(byAdding: unit, value: -count, to: now)
+        else { return nil }
+        if unit == .hour { return Match(interval: DateInterval(start: then, end: now), tokens: start..<end) }
+        return calendar.dateInterval(of: span, for: then).map { Match(interval: $0, tokens: start..<end) }
     }
 
     /// "21 de octubre", "October 21", "21 October 2026", "2026 10 21".

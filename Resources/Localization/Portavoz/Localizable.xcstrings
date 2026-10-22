@@ -18927,16 +18927,6 @@
         }
       }
     },
-    "Nothing related in your dictations yet.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aún no hay nada relacionado en tus dictados."
-          }
-        }
-      }
-    },
     "Closest dictations:": {
       "localizations": {
         "es": {
@@ -19023,6 +19013,136 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mostrar todos los dictados"
+          }
+        }
+      }
+    },
+    "You have no saved dictations %@.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No tienes dictados guardados %@."
+          }
+        }
+      }
+    },
+    "You have no saved dictations yet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no tienes dictados guardados."
+          }
+        }
+      }
+    },
+    "Your dictations %@:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus dictados %@:"
+          }
+        }
+      }
+    },
+    "Your most recent dictations:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus dictados más recientes:"
+          }
+        }
+      }
+    },
+    "No saved dictation mentions that.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ningún dictado guardado menciona eso."
+          }
+        }
+      }
+    },
+    "in %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "en %@"
+          }
+        }
+      }
+    },
+    "since %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "desde el %@"
+          }
+        }
+      }
+    },
+    "between %@ and %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "entre el %@ y el %@"
+          }
+        }
+      }
+    },
+    "from today": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "de hoy"
+          }
+        }
+      }
+    },
+    "from yesterday": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "de ayer"
+          }
+        }
+      }
+    },
+    "from %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "del %@"
+          }
+        }
+      }
+    },
+    "Ask about your dictations…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pregunta por tus dictados…"
+          }
+        }
+      }
+    },
+    "Open in Dictations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir en Dictados"
           }
         }
       }

@@ -65,6 +65,18 @@ final class AskDictationQuestionTests: XCTestCase {
         XCTAssertEqual(topic.searchWords, ["viernes"])
     }
 
+    func testDaysAndWeeksAgoAndSummaries() {
+        XCTAssertEqual(parse("dictado de hace dos dias").period, interval(day(2026, 10, 20), days: 1))
+        XCTAssertTrue(parse("dictado de hace dos dias").isListing)
+        XCTAssertEqual(parse("what I dictated 3 days ago").period, interval(day(2026, 10, 19), days: 1))
+        XCTAssertEqual(parse("a week ago").period, interval(day(2026, 10, 12), days: 7))
+        XCTAssertEqual(
+            parse("hace 2 horas").period, DateInterval(start: day(2026, 10, 22, hour: 8), end: now))
+        XCTAssertTrue(parse("resúmeme lo que dicté ayer").asksForSummary)
+        XCTAssertTrue(parse("resúmeme lo que dicté ayer").isListing)
+        XCTAssertFalse(parse("dame los dictados de ayer").asksForSummary)
+    }
+
     func testDatesInferThePastYear() {
         XCTAssertEqual(parse("los del 21 de octubre").period, interval(day(2026, 10, 21), days: 1))
         XCTAssertEqual(parse("October 1st").period, interval(day(2026, 10, 1), days: 1))
