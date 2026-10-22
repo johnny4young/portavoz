@@ -21575,10 +21575,15 @@ or cache beyond the history's own FTS table, so deleting a dictation or the
 history removes it from Ask at once. A dictation's date and app are metadata,
 not words in it, so "today's dictations" can never match lexically or by
 meaning. The question is therefore parsed locally and deterministically, in
-English and Spanish, for a period (today, yesterday, this or last week or
-month, this morning, the last N days or hours, a weekday, a date) and for a
-saved app named after a preposition ("in Slack"); request words such as "show
-me" or "dictados" and function words are dropped. What remains is an any-word
+English and Spanish, for a period and for a saved app named after a
+preposition ("in Slack"); request words such as "show me" or "dictados" and
+function words are dropped. A named unit ("last week", "la semana pasada", "el
+mes anterior", "anoche") covers that whole unit, while a span counted back
+("hace una semana", "a couple of days ago", "the past few days", "recently")
+reaches from the start of that day until now, so asking on the 22nd about "a
+week ago" includes the 20th and 21st; "since"/"desde" stretches any period
+until now. The two are deliberately different: a span that stopped at a
+calendar boundary would hide the most recent dictations the user expects. What remains is an any-word
 FTS5 search within those filters, then everywhere (a weekday may be the
 topic), and finally the newest dictations within the filters. A listing is
 the answer itself: it is shown at once under a header that names its period
