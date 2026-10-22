@@ -117,8 +117,10 @@ final class DictationHistoryUITests: PortavozUITestCase {
             .firstMatch
         XCTAssertTrue(meeting.waitForStableFrame(timeout: 10))
         meeting.click()
+        // A compact window splits the detail into panes; the notes live in Summary.
+        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"), "the meeting detail must open")
         let notes = app.control(withIdentifier: "detail-notes-section")
-        XCTAssertTrue(notes.waitForExistenceFast(timeout: 10), "the meeting detail must open")
+        XCTAssertTrue(notes.waitForExistenceFast(timeout: 10))
         attachScreenshot(of: app, named: "dictation-meeting-notes")
         XCTAssertTrue(
             notes.staticTexts["No borres estas notas."].waitForExistenceFast(timeout: 10),
