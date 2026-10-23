@@ -60,7 +60,9 @@ def make_app(
     # bundle mode is applied only after constructing the valid baseline.
     for entry in [app, *app.rglob("*")]:
         if entry.is_symlink():
-            entry.chmod(0o755, follow_symlinks=False)
+            # macOS checks a link's own mode; Linux ignores it and has no lchmod.
+            if os.chmod in os.supports_follow_symlinks:
+                entry.chmod(0o755, follow_symlinks=False)
             continue
         entry.chmod(0o755 if entry.is_dir() or entry == binary else 0o644)
     staged.chmod(mode)
