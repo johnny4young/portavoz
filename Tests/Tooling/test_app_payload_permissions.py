@@ -26,6 +26,8 @@ def make_app(
     loadable: bool = True,
     mode: int = 0o755,
     nested_layout: bool = False,
+    cli_link: str | None = "../MacOS/portavoz-app",
+    mcp_answers: bool = True,
 ) -> Path:
     """A synthetic app whose binary reports what a real one would report.
 
@@ -41,16 +43,25 @@ def make_app(
     binary = app / "Contents/MacOS/portavoz-app"
     binary.parent.mkdir(parents=True)
     reported = staged if resolved is None else Path(resolved)
+    mcp_reply = '{"jsonrpc":"2.0","id":1,"result":{"serverInfo":{"name":"portavoz"}}}' if mcp_answers else ""
     binary.write_text(
         "#!/bin/bash\n"
+        f"if [ \"$1\" = mcp ]; then cat >/dev/null; printf '%s\\n' '{mcp_reply}'; exit 0; fi\n"
         f'printf "classifierBundle={reported}\\nclassifierLoadable={str(loadable).lower()}\\n"\n'
         f"exit {0 if loadable else 1}\n",
         encoding="utf-8",
     )
+    if cli_link is not None:
+        helpers = app / "Contents/Helpers"
+        helpers.mkdir(parents=True)
+        (helpers / "portavoz-cli").symlink_to(cli_link)
     # Match packaging's readable payload, not the caller's creation mask.
     # The enclosing temporary directory remains private; an intentionally bad
     # bundle mode is applied only after constructing the valid baseline.
     for entry in [app, *app.rglob("*")]:
+        if entry.is_symlink():
+            entry.chmod(0o755, follow_symlinks=False)
+            continue
         entry.chmod(0o755 if entry.is_dir() or entry == binary else 0o644)
     staged.chmod(mode)
     return app
@@ -84,6 +95,23 @@ class AppPayloadPermissionTests(unittest.TestCase):
             VERIFY.index("record-distribution"),
             "no receipt is written for a payload the installing user cannot use",
         )
+
+    def test_packaging_links_the_command_line_tool_before_it_signs(self):
+        link = MAKE_APP.index('ln -s ../MacOS/portavoz-app "$APP/Contents/Helpers/portavoz-cli"')
+        link_mode = MAKE_APP.index('chmod -h 755 "$APP/Contents/Helpers/portavoz-cli"')
+        self.assertLess(link, link_mode)
+        self.assertLess(link_mode, MAKE_APP.index("codesign "), "links keep their own mode under a strict umask")
+
+    def test_payload_gate_requires_a_command_line_tool_that_answers_mcp(self):
+        for options, accepted in [
+            ({}, True),
+            ({"cli_link": None}, False),
+            ({"cli_link": "/usr/bin/true"}, False),
+            ({"mcp_answers": False}, False),
+        ]:
+            with self.subTest(options=options), tempfile.TemporaryDirectory() as directory:
+                result = self.run_payload_gate(make_app(Path(directory), resolved=None, **options))
+                self.assertEqual(result.returncode == 0, accepted, result.stderr)
 
     def run_payload_gate(self, app: Path) -> subprocess.CompletedProcess:
         return subprocess.run(

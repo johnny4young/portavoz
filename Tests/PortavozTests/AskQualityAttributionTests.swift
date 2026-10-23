@@ -3,7 +3,7 @@ import Foundation
 import PortavozCore
 import StorageKit
 import XCTest
-@testable import portavoz_cli
+@testable import PortavozCLIKit
 
 final class AskQualityAttributionTests: XCTestCase {
     func testAttributionPreservesRealCanonicalObservationAndNoPayloadEscapes() async throws {

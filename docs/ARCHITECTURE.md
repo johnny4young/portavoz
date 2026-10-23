@@ -66,7 +66,11 @@ copies are never treated as transaction-owned cleanup. The app adapter owns prog
 
 `portavoz-app` and `portavoz-cli` are the current composition roots. They link
 the concrete capability modules needed to construct production adapters and
-also enter characterized workflows through `ApplicationKit`.
+also enter characterized workflows through `ApplicationKit`. The command-line
+sources compile as the `PortavozCLIKit` library: the `portavoz-cli` executable
+only calls it, and the app's `PortavozLauncher` calls it instead of starting
+the app when the process was launched as `portavoz-cli`, the name of the link
+the bundle ships in `Contents/Helpers`.
 
 ```mermaid
 flowchart TB
@@ -175,7 +179,7 @@ remote replacement cannot silently undo a dismissal or deferral.
 | `AudioPlaybackKit` | Synchronized channel playback, reversible role-aware clear mixing validated on the timescale it is delivered on, stateless task-cancellable Accelerate waveform generation, silence skipping, voice-only playback, clip export, and AAC compression. |
 | `IntegrationsKit` | Canonical Markdown/PDF, identity-preserving diarized SRT/WebVTT, and issue exports; meeting bundles; EventKit mapping; MCP protocol handling; policy-checked HTTP transport and direct public-page Web retrieval; deterministic sync envelopes; protected CloudKit record/state adapters; and sync lifecycle policy. The current signed-entitlement capability probe is a macOS composition and fails closed on iOS until a signed iOS app adapter exists. |
 | `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners including recording-scoped proactive-assist state, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
-| `portavoz-cli` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface. |
+| `portavoz-cli` / `PortavozCLIKit` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface, in a library the app executable also runs when started as `portavoz-cli`. |
 
 ### Audio export compatibility boundary
 

@@ -96,6 +96,7 @@ targets:
           - StorageKit
           - IntegrationsKit
           - AudioPlaybackKit
+          - PortavozCLIKit
       - package: Sparkle
 
   PortavozDictationReceiver:

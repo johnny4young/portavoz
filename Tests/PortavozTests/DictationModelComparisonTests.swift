@@ -3,7 +3,7 @@ import ModelStoreKit
 import os
 import XCTest
 
-@testable import portavoz_cli
+@testable import PortavozCLIKit
 @testable import TranscriptionKit
 
 /// Explicit local lane: v3 and Ultra over the same public cells and feed. Both

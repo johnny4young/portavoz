@@ -4,7 +4,7 @@ import IntegrationsKit
 import PortavozCore
 import XCTest
 
-@testable import portavoz_cli
+@testable import PortavozCLIKit
 
 /// The real MCP tools (not the protocol fakes in `MCPServerTests`): the
 /// catalog shape, argument defaults and bounds, and — above all — the

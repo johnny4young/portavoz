@@ -5,7 +5,7 @@ import PortavozCore
 import StorageKit
 import XCTest
 
-@testable import portavoz_cli
+@testable import PortavozCLIKit
 
 /// The dictation MCP tools against a real in-memory store: the agent consent
 /// is rechecked on every call and the meeting catalog stays a frozen prefix.

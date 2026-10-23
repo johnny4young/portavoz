@@ -133,6 +133,7 @@ struct SettingsView: View {
                 case .integrations:
                     byokSection
                     GitHubSection()
+                    CommandLineToolSection()
                 case .data:
                     LedgerSection(model: services.localDataLedger)
                     MeetingSyncSettingsSection()

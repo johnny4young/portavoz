@@ -181,7 +181,7 @@ extension ArchitectureDependencyTests {
         XCTAssertEqual(
             try XCTUnwrap(targets["PlatformKit"]).dependencies,
             ["PortavozCore"])
-        for target in ["portavoz-app", "portavoz-cli", "PortavozTests"] {
+        for target in ["portavoz-app", "PortavozCLIKit", "PortavozTests"] {
             XCTAssertTrue(try XCTUnwrap(targets[target]).dependencies.contains("PlatformKit"))
         }
 

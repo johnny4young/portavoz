@@ -1,7 +1,7 @@
 import ApplicationKit
 import Foundation
 import XCTest
-@testable import portavoz_cli
+@testable import PortavozCLIKit
 
 final class RetrievalChunkEvidenceBenchmarkTests: XCTestCase {
     func testOptionsRequireEverySourceAndHostIdentityOnce() throws {

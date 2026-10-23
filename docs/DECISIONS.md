@@ -21645,3 +21645,25 @@ eight questions at the edge of a cliff and they would add stored vectors and a
 consent for no cross-lingual gain. Same-language paraphrase remains weak (GAPS
 T40); the benchmark is kept to measure a stronger multilingual model.
 
+## D582 — Ship the command-line tool inside the app as the same executable
+
+The README promises a local MCP server and Settings lets agents read the
+dictation history, but releases shipped only `Portavoz.app`: reaching the MCP
+server meant building the repository. A separate `portavoz-cli` binary would
+add 86 MB to every download and Sparkle update, because it statically links
+the same frameworks as the app. Instead the command-line sources become the
+`PortavozCLIKit` library, linked by both the thin `portavoz-cli` executable and
+the app. The app's `PortavozLauncher` runs the command-line tool when the
+process was started under the name `portavoz-cli`, and the app otherwise, so
+`Contents/Helpers/portavoz-cli` is only a relative link to
+`Contents/MacOS/portavoz-app`. The bundle grows by the command-line code alone,
+the tool is notarized, signed and updated with the app, and from inside the
+bundle it shares the app's data directory and resources.
+
+Users reach it in two ways. The Homebrew cask declares the link as a `binary`.
+Settings › Integrations offers to create `~/.local/bin/portavoz-cli` after a
+confirmation; it only creates, replaces or removes a symbolic link, never
+overwrites a file and never edits shell configuration, and it shows the Claude
+Code command and an MCP JSON configuration to copy. The release payload gate
+requires the link and an MCP handshake against a throwaway library.
+

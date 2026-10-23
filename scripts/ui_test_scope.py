@@ -310,6 +310,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("SettingsUITests", "testCategoryNavigationRevealsEachPane"),
         test_id("SettingsUITests", "testLanguageToggleSwitchesVisibleTextWithoutRelaunch"),
     ),
+    "settings-integrations": (
+        test_id("CommandLineToolUITests", "testIntegrationsInstallsAndRemovesTheCommandLineToolLink"),
+        test_id("CommandLineToolUITests", "testABuildWithoutTheToolSaysSo"),
+    ),
     "settings-skills": (
         test_id(
             "SkillsSettingsUITests",
@@ -645,6 +649,7 @@ FEATURE_SOURCE_SENTINELS: dict[str, str] = {
     "meeting-correction": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
     "settings-navigation": "Sources/portavoz-app/SettingsView.swift",
     "settings-skills": "Sources/portavoz-app/SkillsSettingsSection.swift",
+    "settings-integrations": "Sources/portavoz-app/CommandLineToolSection.swift",
     "settings-standing-skills": "Sources/portavoz-app/StandingSkillRulesSection.swift",
     "settings-data": "Sources/portavoz-app/AppServices+MeetingSync.swift",
     "settings-transfer": "Sources/portavoz-app/SettingsTransferSection.swift",
@@ -714,6 +719,8 @@ def tests_for_ui_test_file(path: str) -> set[str]:
 
 def app_features(filename: str) -> set[str]:
     lowered = filename.lower()
+    if "commandlinetool" in lowered:
+        return {"settings-integrations"}
     if "liveassistvalidation" in lowered:
         return {"live-assist"}
     if "backgroundwork" in lowered:

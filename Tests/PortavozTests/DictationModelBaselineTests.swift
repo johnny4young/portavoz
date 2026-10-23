@@ -5,7 +5,7 @@ import os
 import TranscriptionKit
 import XCTest
 
-@testable import portavoz_cli
+@testable import PortavozCLIKit
 
 final class DictationModelBaselineTests: XCTestCase {
     private struct CellReceipt: Encodable {

@@ -299,7 +299,10 @@ account, the Apuntador classifier must be staged inside `Contents/Resources`,
 and the app itself must report resolving that bundle from within its own copy.
 Portavoz 1.0.0 shipped before this gate existed and fails it: its resources
 resolved only on the build machine, so a clean install quit at the first
-recording.
+recording. The same gate requires `Contents/Helpers/portavoz-cli`, the relative
+link to the app executable that serves the command-line tool, and an MCP
+`initialize` answer from it against a throwaway library (D582). The cask
+template's `binary` stanza links that tool into the Homebrew `bin`.
 
 The distribution verifier is intentionally stricter than opening the DMG. A
 stapled outer image can open while a cask-extracted app has no embedded ticket
