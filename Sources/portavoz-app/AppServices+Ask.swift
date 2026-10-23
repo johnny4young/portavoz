@@ -307,7 +307,9 @@ extension AppServices {
             ? UITestAskDictationAnswering()
             : selectedAnswering
         let dictationsAsk = AskDictations(
-            retrieval: LocalAskDictationRetrieval(store: store),
+            retrieval: usesTemporaryStore
+                ? LocalAskDictationRetrieval(store: store, rewriter: UITestNoQueryRewriting())
+                : LocalAskDictationRetrieval(store: store),
             answering: dictationAnswering,
             telemetry: usesTemporaryStore ? .disabled : pipelineTelemetry)
         let webAsk = makeWebAsk(
@@ -597,6 +599,11 @@ private struct UITestAskMeetingRetrieval: AskMeetingRetrieving {
             throw AskSourcePolicyError.webUnavailable
         }
     }
+}
+
+/// Disposable launches never call the on-device model, so journeys stay deterministic.
+private struct UITestNoQueryRewriting: AskQueryExpanding {
+    func expand(_ question: String) async throws -> [String] { [question] }
 }
 
 private struct UITestAskDictationAnswering: AskDictationAnswering {

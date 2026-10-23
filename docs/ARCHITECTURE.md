@@ -1120,7 +1120,10 @@ reads the dictation history's FTS table through
 same read and returns nothing while it is off. `AskDictationQuestion` parses a
 period, a saved app and the remaining words from the question deterministically,
 so date and app questions filter instead of searching for words the dictations
-never contain. Citations carry the dictation's identity, date, app and delivery, and the engine receives
+never contain. A question with words is also rewritten by the injected
+`AskQueryExpanding` (the on-device model in production, a no-op in tests and
+disposable launches), and the rewrites' content words join the search, which
+finds dictations in the other language without storing anything. Citations carry the dictation's identity, date, app and delivery, and the engine receives
 `RAGDictationPassage` values under a dictation-specific prompt; no derivative of
 a dictation is stored.
 

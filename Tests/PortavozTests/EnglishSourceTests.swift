@@ -128,6 +128,12 @@ final class EnglishSourceTests: XCTestCase {
             return line.contains("f\"") || line.contains(".replace(\"")
                 || line.contains("owners = [")
         }
+        if relative == "scripts/dictation_search_quality.py" {
+            // The public dictation-search corpus generator carries quoted
+            // Spanish dictations and questions. Comments stay English.
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            return trimmed.hasPrefix("(") || trimmed.hasPrefix("\"")
+        }
         if relative == "scripts/retrieval_chunk_resource_fixture.py" {
             // The canonical resource fixture generator carries literal
             // Spanish fixture data. Comments and explanatory prose stay English.
