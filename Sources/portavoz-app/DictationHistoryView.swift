@@ -28,6 +28,10 @@ struct DictationHistoryView: View {
         .accessibilityIdentifier("dictation-history")
         .task { await model.load() }
         .sheet(item: $addingToMeeting) { DictationMeetingPicker(record: $0, model: model) }
+        // A search set from outside, such as a Shortcut, fills the field.
+        .onChange(of: model.filter.query, initial: true) { _, words in
+            if query != words { query = words }
+        }
         .task(id: query) {
             // Typing settles before the query runs; each keystroke cancels the last wait.
             try? await Task.sleep(for: .milliseconds(250))

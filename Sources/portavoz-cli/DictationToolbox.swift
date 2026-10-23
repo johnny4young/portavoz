@@ -30,7 +30,7 @@ enum DictationToolbox {
     static let previewLength = 280
     static let notAllowed = """
         Dictation history is not shared with agents. The user can turn on \
-        "Let agents read the history" in Portavoz Settings › Audio & dictation.
+        "Let agents and Shortcuts read the history" in Portavoz Settings › Audio & dictation.
         """
 
     enum ToolboxError: Error, LocalizedError {

@@ -21,6 +21,7 @@ extension AppServices {
         guard usesTemporaryMeetingStore, arguments.contains("-seed-dictation-history") else { return }
         let seedsRecords = arguments.contains("-seed-dictation-history-records")
         await dictationHistory.update(isEnabled: true, keepsOriginal: seedsRecords)
+        defer { simulateOpenDictationsIntentIfRequested(arguments) }
         guard seedsRecords, let write = dictationHistory.admit() else { return }
         let now = Date()
         for (offset, sample) in [
@@ -32,6 +33,14 @@ extension AppServices {
                 text: sample.0, originalText: sample.1, mode: sample.1 == nil ? .literal : .clean, language: nil,
                 engine: "parakeet", applicationName: sample.2, applicationBundleID: nil, delivery: sample.3))
         }
+    }
+
+    /// XCUITest-only: the Open dictations Shortcut's request, through the same bridge.
+    private func simulateOpenDictationsIntentIfRequested(_ arguments: [String]) {
+        guard let flag = arguments.firstIndex(of: "-simulate-open-dictations-intent"),
+              arguments.indices.contains(flag + 1)
+        else { return }
+        PortavozAppIntentBridge.requestNavigation(.dictations(arguments[flag + 1]))
     }
 
     /// Disposable launches report a fixed state and never show the system prompt.

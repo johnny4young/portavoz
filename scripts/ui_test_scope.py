@@ -57,6 +57,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "AutomationUITests",
             "testRecordingAutomationRoutesStartAndStopThroughVisibleApp",
         ),
+        test_id("AutomationUITests", "testOpenDictationsShortcutShowsItsSearch"),
     ),
     "home": (
         test_id("HomeUITests", "testTodayShowsAgendaOpenWorkAndRecentMeetingsAboveTheFold"),

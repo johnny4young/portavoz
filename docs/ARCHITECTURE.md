@@ -6253,9 +6253,11 @@ only after that contract passes; signer exit status or a merely present XML
 file is not release evidence.
 The script-built app also carries native App Intents metadata extracted
 separately from one SDK-only source under the shipping module name. Packaging
-fails unless metadata declares exactly five actions — Start/Stop recording and
-open meeting/person commitments/confirmed commitment — plus the three entity
-types and their three string queries. On macOS 26+, Start and Stop declare
+fails unless metadata declares exactly nine actions — Start/Stop recording,
+open meeting/person commitments/confirmed commitment, and Dictate, Paste last
+dictation, Search dictations and Open dictations — plus the three entity types
+and their three string queries. The dictation actions that act on the app in
+front run in the background and are answered synchronously, never replayed. On macOS 26+, Start and Stop declare
 `supportedModes = [.foreground(.immediate)]`; the SDK-documented deprecated
 compatibility property preserves the same foreground behavior on the macOS
 14.4/15 deployment range. `perform()` uses a buffered process-local handoff

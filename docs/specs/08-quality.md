@@ -5659,9 +5659,9 @@ literal `%`/`_` handling, exact identifier order, canonical-person and
 confirmed-commitment exclusion rules, app-value mapping, navigation buffering,
 typed malformed-ID recovery, exact Radar filter precedence, and model focus
 restore behavior. The architecture ratchet pins the SDK-only import boundary,
-standard dependency injection, three entities/queries/open actions, five-action
+standard dependency injection, three entities/queries/open actions, nine-action
 metadata contract, availability-gated `IndexedEntity`, and explicit absence of
-entity publication. Metadata extraction must report exactly five actions,
+entity publication. Metadata extraction must report exactly nine actions,
 three entities, and three queries. One real-app case per locale performs three
 isolated disposable launches through the same production SDK-only open-action
 logic used by each `OpenIntent`: meeting
@@ -5680,7 +5680,7 @@ relaunch, and content-free telemetry cases. App Entity attributes separately
 prove meeting title/date/capped body, canonical-person name, and commitment
 title/due date. The source compiles under strict Swift 6 with the 14.4 target;
 the macOS 15 backend is availability-gated and keeps the non-Sendable
-AppIntents index receiver task-local. Metadata must remain exactly five actions,
+AppIntents index receiver task-local. Metadata must remain exactly nine actions,
 three entities, and three queries. Bilingual XCUITest reuses the exact entity
 open-route journey because temporary stores deliberately suppress host Spotlight
 publication. Feature-owner tests also require successful commitment confirmation

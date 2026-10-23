@@ -21667,3 +21667,26 @@ overwrites a file and never edits shell configuration, and it shows the Claude
 Code command and an MCP JSON configuration to copy. The release payload gate
 requires the link and an MCP handshake against a throwaway library.
 
+## D583 — Dictation actions in Shortcuts run in the background
+
+Shortcuts, Stream Deck keys and keyboard-triggered Shortcuts could start a
+meeting recording but not dictation. Four dictation App Intents join the
+SDK-only intents source. Dictate and Paste last dictation do exactly what the
+dictation shortcut and Paste last do, and declare `supportedModes =
+[.background]` on macOS 26 without the foreground compatibility property, so
+Portavoz is never brought forward and the app in front stays the destination
+of the text. Their request is answered during the synchronous notification,
+like Stop recording, and is never buffered: a dictation started after a slow
+launch could type into whatever app is in front by then, so a request that
+arrives before the app is ready reports that Portavoz is still opening. Both
+honor the dictation switch, report busy while a dictation is delivering or
+needs recovery, and stay silent on success; failures throw a localized message
+Shortcuts shows. Search dictations returns saved dictation texts, newest first,
+through an `AppDependency` reader that uses the agents read, so it requires the
+same consent as the MCP tools, checked in the same read as the rows; that switch
+is renamed "Let agents and Shortcuts read the history". Open dictations
+foregrounds Portavoz on the Dictations page with an optional search, which the
+page now adopts from the model instead of clearing. D141 still holds: actions,
+no `AppShortcutsProvider`. Whether Shortcuts invoked from Spotlight or Siri
+leaves the intended app in front is field validation (GAPS #10).
+

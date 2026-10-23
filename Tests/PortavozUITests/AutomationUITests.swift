@@ -21,6 +21,25 @@ final class AutomationUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testOpenDictationsShortcutShowsItsSearch() throws {
+        let app = try XCUIApplication.portavoz()
+        app.launchArguments += [
+            "-seed-dictation-history", "-seed-dictation-history-records",
+            "-simulate-open-dictations-intent", "report"
+        ]
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        XCTAssertTrue(app.control(withIdentifier: "dictation-history-title").waitForExistenceFast(timeout: 15))
+        let search = app.control(withIdentifier: "dictation-history-search")
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { (search.value as? String) == "report" })
+        let first = app.control(withIdentifier: "dictation-history-text-0")
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: first) == "Send the report on Friday." })
+        XCTAssertFalse(app.control(withIdentifier: "dictation-history-text-1").exists)
+        attachScreenshot(of: app, named: "open-dictations-shortcut")
+    }
+
+    @MainActor
     private func assertMeetingEntityRoute(in app: XCUIApplication) {
         XCTAssertTrue(
             app.control(withIdentifier: "detail-header-section")
