@@ -6,7 +6,7 @@ import TranscriptionKit
 import XCTest
 
 @testable import portavoz_app
-@testable import portavoz_cli
+@testable import PortavozCLIKit
 
 /// Explicit local lane: the production speech-gate rule over every public cell.
 /// The model comes only from the selected scratch store, never the app's.

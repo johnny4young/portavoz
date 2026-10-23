@@ -7,11 +7,11 @@ import Foundation
 ///
 /// The first run prompts for microphone (and audio-recording) permission on
 /// behalf of the terminal.
-@main
-struct PortavozCLI {
+public enum PortavozCLI {
     // The development dispatcher is inherently one branch per subcommand.
+    @MainActor
     // swiftlint:disable:next cyclomatic_complexity function_body_length
-    static func main() async {
+    public static func main() async {
         let platform = CLIPlatformDependencies()
         var arguments = Array(CommandLine.arguments.dropFirst())
         guard let command = arguments.first else {

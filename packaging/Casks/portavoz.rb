@@ -26,6 +26,8 @@ cask "portavoz" do
   depends_on macos: :sonoma
 
   app "Portavoz.app"
+  # The command-line tool and MCP server ship inside the app (D582).
+  binary "#{appdir}/Portavoz.app/Contents/Helpers/portavoz-cli"
 
   zap trash: [
     "~/Library/Application Support/Portavoz",

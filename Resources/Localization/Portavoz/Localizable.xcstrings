@@ -19146,6 +19146,166 @@
           }
         }
       }
+    },
+    "Command-line tool & MCP": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Herramienta de línea de comandos y MCP"
+          }
+        }
+      }
+    },
+    "Local AI tools such as Claude Code can read your meetings through Portavoz's MCP server. It runs only on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las herramientas de IA locales, como Claude Code, pueden leer tus reuniones a través del servidor MCP de Portavoz. Solo funciona en este Mac."
+          }
+        }
+      }
+    },
+    "This build doesn't include the command-line tool.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta versión no incluye la herramienta de línea de comandos."
+          }
+        }
+      }
+    },
+    "Install the command-line tool?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Instalar la herramienta de línea de comandos?"
+          }
+        }
+      }
+    },
+    "Install": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instalar"
+          }
+        }
+      }
+    },
+    "Portavoz will create a link at ~/.local/bin/portavoz-cli to the tool inside this app. Your shell settings aren't changed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz creará un enlace en ~/.local/bin/portavoz-cli a la herramienta dentro de esta app. No se cambia la configuración de tu shell."
+          }
+        }
+      }
+    },
+    "Install…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instalar…"
+          }
+        }
+      }
+    },
+    "Replace link…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reemplazar enlace…"
+          }
+        }
+      }
+    },
+    "If your terminal can't find portavoz-cli, add ~/.local/bin to your PATH.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si tu terminal no encuentra portavoz-cli, agrega ~/.local/bin a tu PATH."
+          }
+        }
+      }
+    },
+    "Connect Claude Code": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conectar Claude Code"
+          }
+        }
+      }
+    },
+    "Other MCP clients (JSON)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otros clientes MCP (JSON)"
+          }
+        }
+      }
+    },
+    "Installed at ~/.local/bin/portavoz-cli.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instalada en ~/.local/bin/portavoz-cli."
+          }
+        }
+      }
+    },
+    "Not on your shell path yet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no está en el PATH de tu shell."
+          }
+        }
+      }
+    },
+    "~/.local/bin/portavoz-cli points to another copy.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "~/.local/bin/portavoz-cli apunta a otra copia."
+          }
+        }
+      }
+    },
+    "A file Portavoz didn't create is already at ~/.local/bin/portavoz-cli.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ya hay en ~/.local/bin/portavoz-cli un archivo que Portavoz no creó."
+          }
+        }
+      }
+    },
+    "The command-line tool could not be installed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo instalar la herramienta de línea de comandos."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

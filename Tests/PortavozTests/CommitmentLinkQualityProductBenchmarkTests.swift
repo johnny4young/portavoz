@@ -2,7 +2,7 @@ import ApplicationKit
 import Foundation
 import PortavozCore
 import XCTest
-@testable import portavoz_cli
+@testable import PortavozCLIKit
 
 final class CommitmentLinkQualityProductBenchmarkTests: XCTestCase {
     func testOptionsDefaultToInstalledAssetsAndRejectAmbiguity() throws {

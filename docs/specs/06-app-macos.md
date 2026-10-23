@@ -4937,3 +4937,23 @@ through commit or rollback; recording start checks it before publishing
 `preparing`, with no suspension between those steps. If capture wins admission
 first, the existing migration activity gate rejects its preparing/recording/
 processing phase. This is a process-local fence, not an interprocess file lock.
+
+### Command-line tool in Settings (D582)
+
+`PortavozLauncher` is the app's `@main`: when `CommandLine.arguments[0]` ends in
+`portavoz-cli` it runs `PortavozCLI.main()` on the main actor and exits,
+otherwise it calls `PortavozApp.main()`. Settings › Integrations adds
+`CommandLineToolSection`. With the tool present it shows the
+link status (`settings-cli-status`), Install… or Replace link… behind a
+confirmation (`settings-cli-install`, `-install-confirm`), Remove when the link
+is this app's (`settings-cli-remove`), the PATH line to copy once installed
+(`settings-cli-copy-path`), and copyable Claude Code and MCP JSON commands
+(`settings-cli-copy-claude`, `-copy-json`) that name the link once installed and
+the tool inside the app otherwise; failures show `settings-cli-error`. A build
+without the tool says so (`settings-cli-unavailable`). `CommandLineToolLink`
+(PlatformKit) only creates, replaces or removes a symbolic link at
+`~/.local/bin/portavoz-cli`; a file there is reported as blocked and left
+alone. Disposable launches use a scratch directory, and `-seed-command-line-tool`
+adds a stand-in tool so the install journey runs without touching the home
+directory.
+

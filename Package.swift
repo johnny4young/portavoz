@@ -19,6 +19,7 @@ let package = Package(
         .library(name: "IntelligenceKit", targets: ["IntelligenceKit"]),
         .library(name: "StorageKit", targets: ["StorageKit"]),
         .library(name: "AudioPlaybackKit", targets: ["AudioPlaybackKit"]),
+        .library(name: "PortavozCLIKit", targets: ["PortavozCLIKit"]),
         .library(name: "IntegrationsKit", targets: ["IntegrationsKit"]),
         .executable(name: "portavoz-cli", targets: ["portavoz-cli"]),
         .executable(name: "portavoz-app", targets: ["portavoz-app"]),
@@ -153,27 +154,36 @@ let package = Package(
                 "ApplicationKit", "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
                 "PlatformKit",
                 "TranscriptionKit", "DiarizationKit", "IntelligenceKit",
-                "StorageKit", "IntegrationsKit", "AudioPlaybackKit",
+                "StorageKit", "IntegrationsKit", "AudioPlaybackKit", "PortavozCLIKit",
                 .product(name: "Sparkle", package: "Sparkle"),
             ]
         ),
 
-        .executableTarget(
-            name: "portavoz-cli",
+        // The command-line tool is a library so the app executable can serve
+        // it too when invoked as `portavoz-cli` (D582); the sources stay put.
+        .target(
+            name: "PortavozCLIKit",
             dependencies: [
                 "ApplicationKit", "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
                 "PlatformKit",
                 "TranscriptionKit", "DiarizationKit", "IntelligenceKit",
                 "StorageKit", "IntegrationsKit", "AudioPlaybackKit",
                 .product(name: "GRDB", package: "GRDB.swift"),
-            ]
+            ],
+            path: "Sources/portavoz-cli"
+        ),
+
+        .executableTarget(
+            name: "portavoz-cli",
+            dependencies: ["PortavozCLIKit"],
+            path: "Sources/portavoz-cli-main"
         ),
 
         .testTarget(
             name: "PortavozTests",
             dependencies: [
                 "portavoz-app",
-                "portavoz-cli",
+                "PortavozCLIKit",
                 "ApplicationKit",
                 "PortavozCore",
                 "PlatformKit",

@@ -296,6 +296,13 @@ fi
 cp "$BIN" "$APP/Contents/MacOS/portavoz-app"
 install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/portavoz-app" 2>/dev/null || true
 
+# The command-line tool and MCP server are the same executable started under
+# another name (D582); a relative link keeps the bundle movable and sealed.
+mkdir -p "$APP/Contents/Helpers"
+ln -s ../MacOS/portavoz-app "$APP/Contents/Helpers/portavoz-cli"
+# `chmod -R` below leaves links alone; a restrictive umask would hide this one.
+chmod -h 755 "$APP/Contents/Helpers/portavoz-cli"
+
 # Notarization demands the hardened runtime + secure timestamp; the
 # timestamp needs a real certificate, so it's skipped when ad-hoc.
 SIGN_FLAGS=(--force --options runtime)
