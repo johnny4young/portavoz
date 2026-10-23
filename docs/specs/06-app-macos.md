@@ -4943,7 +4943,7 @@ processing phase. This is a process-local fence, not an interprocess file lock.
 `PortavozLauncher` is the app's `@main`: when `CommandLine.arguments[0]` ends in
 `portavoz-cli` it runs `PortavozCLI.main()` on the main actor and exits,
 otherwise it calls `PortavozApp.main()`. Settings › Integrations adds
-`CommandLineToolSection` (`settings-cli`). With the tool present it shows the
+`CommandLineToolSection`. With the tool present it shows the
 link status (`settings-cli-status`), Install… or Replace link… behind a
 confirmation (`settings-cli-install`, `-install-confirm`), Remove when the link
 is this app's (`settings-cli-remove`), the PATH line to copy once installed

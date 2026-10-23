@@ -8,10 +8,12 @@ struct CommandLineToolSection: View {
     @State private var copied: String?
 
     var body: some View {
+        // Modifiers on a Form section reach every row, so each row carries its own.
         Section("Command-line tool & MCP") {
             Text(L10n.text(Self.explanationKey))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .onAppear { model.refresh() }
             if model.toolAvailable {
                 installRow
                 commandRows
@@ -25,16 +27,6 @@ struct CommandLineToolSection: View {
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier("settings-cli-error")
             }
-        }
-        .accessibilityIdentifier("settings-cli")
-        .onAppear { model.refresh() }
-        .confirmationDialog(
-            "Install the command-line tool?", isPresented: $confirmingInstall, titleVisibility: .visible
-        ) {
-            Button("Install") { model.install() }
-                .accessibilityIdentifier("settings-cli-install-confirm")
-        } message: {
-            Text(L10n.text(Self.confirmationKey))
         }
     }
 
@@ -50,6 +42,14 @@ struct CommandLineToolSection: View {
             case .notInstalled, .linkedElsewhere:
                 Button(model.state == .notInstalled ? "Install…" : "Replace link…") { confirmingInstall = true }
                     .accessibilityIdentifier("settings-cli-install")
+                    .confirmationDialog(
+                        "Install the command-line tool?", isPresented: $confirmingInstall, titleVisibility: .visible
+                    ) {
+                        Button("Install") { model.install() }
+                            .accessibilityIdentifier("settings-cli-install-confirm")
+                    } message: {
+                        Text(L10n.text(Self.confirmationKey))
+                    }
             case .blocked:
                 EmptyView()
             }
