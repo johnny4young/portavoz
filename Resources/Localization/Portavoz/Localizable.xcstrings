@@ -18807,26 +18807,6 @@
         }
       }
     },
-    "Let agents read the history": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Permitir que los agentes lean el historial"
-          }
-        }
-      }
-    },
-    "Local AI tools connected to Portavoz's MCP server can list, search and read your saved dictations. Every request checks this switch.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Las herramientas de IA locales conectadas al servidor MCP de Portavoz pueden listar, buscar y leer tus dictados guardados. Cada consulta revisa este interruptor."
-          }
-        }
-      }
-    },
     "Meetings could not be loaded.": {
       "localizations": {
         "es": {
@@ -19303,6 +19283,166 @@
           "stringUnit": {
             "state": "translated",
             "value": "No se pudo instalar la herramienta de línea de comandos."
+          }
+        }
+      }
+    },
+    "Let agents and Shortcuts read the history": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dejar que los agentes y Shortcuts lean el historial"
+          }
+        }
+      }
+    },
+    "Local AI tools connected to Portavoz's MCP server, and your Shortcuts, can list, search and read your saved dictations. Every request checks this switch.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las herramientas de IA locales conectadas al servidor MCP de Portavoz, y tus atajos de Shortcuts, pueden listar, buscar y leer tus dictados guardados. Cada solicitud revisa este interruptor."
+          }
+        }
+      }
+    },
+    "Paste last dictation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegar el último dictado"
+          }
+        }
+      }
+    },
+    "Open dictations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir dictados"
+          }
+        }
+      }
+    },
+    "Starts dictation into the app in front, or finishes the one in progress, without bringing Portavoz forward.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza a dictar en la app que está al frente, o termina el dictado en curso, sin traer Portavoz al frente."
+          }
+        }
+      }
+    },
+    "Pastes your last dictation into the app in front, while Portavoz still remembers it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pega tu último dictado en la app que está al frente, mientras Portavoz aún lo recuerda."
+          }
+        }
+      }
+    },
+    "Finds your saved dictations that contain these words, newest first. Works only while Portavoz lets agents and Shortcuts read the history.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Busca tus dictados guardados que contienen estas palabras, del más reciente al más antiguo. Solo funciona mientras Portavoz deje que los agentes y Shortcuts lean el historial."
+          }
+        }
+      }
+    },
+    "Opens your saved dictations in Portavoz, optionally searching for words.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre tus dictados guardados en Portavoz y, si quieres, busca palabras."
+          }
+        }
+      }
+    },
+    "Words": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Palabras"
+          }
+        }
+      }
+    },
+    "Limit": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Límite"
+          }
+        }
+      }
+    },
+    "Search": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar"
+          }
+        }
+      }
+    },
+    "Portavoz is still opening. Run the action again in a moment.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz todavía se está abriendo. Vuelve a ejecutar la acción en un momento."
+          }
+        }
+      }
+    },
+    "Dictation is off. Turn it on in Portavoz Settings › Audio & dictation.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El dictado está apagado. Actívalo en Ajustes de Portavoz › Audio y dictado."
+          }
+        }
+      }
+    },
+    "Portavoz is finishing the current dictation. Run the action again when it's done.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz está terminando el dictado actual. Vuelve a ejecutar la acción cuando termine."
+          }
+        }
+      }
+    },
+    "There's no recent dictation to paste.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay un dictado reciente para pegar."
+          }
+        }
+      }
+    },
+    "Turn on “Let agents and Shortcuts read the history” in Portavoz Settings › Audio & dictation.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activa «Dejar que los agentes y Shortcuts lean el historial» en Ajustes de Portavoz › Audio y dictado."
           }
         }
       }

@@ -473,6 +473,135 @@ extension StopRecordingIntent {
     static var openAppWhenRun: Bool { true }
 }
 
+@available(*, deprecated)
+extension OpenDictationsIntent {
+    static var openAppWhenRun: Bool { true }
+}
+
+// MARK: - Dictation
+
+/// Starts or finishes dictation like the global shortcut. It runs in the
+/// background so the app in front stays the destination of the text.
+struct DictateIntent: AppIntent {
+    static let title: LocalizedStringResource = "Dictate"
+    static let description = IntentDescription(
+        "Starts dictation into the app in front, or finishes the one in progress, without bringing Portavoz forward.")
+    @available(macOS 26.0, *)
+    static let supportedModes: IntentModes = [.background]
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        try PortavozAppIntentBridge.requestDictation(.toggle).throwUnlessAccepted()
+        return .result()
+    }
+}
+
+/// Pastes the last dictation into the app in front, like Paste last.
+struct PasteLastDictationIntent: AppIntent {
+    static let title: LocalizedStringResource = "Paste last dictation"
+    static let description = IntentDescription(
+        "Pastes your last dictation into the app in front, while Portavoz still remembers it.")
+    @available(macOS 26.0, *)
+    static let supportedModes: IntentModes = [.background]
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        try PortavozAppIntentBridge.requestDictation(.pasteLast).throwUnlessAccepted()
+        return .result()
+    }
+}
+
+/// Saved dictation texts for a Shortcut, newest first. Each request checks
+/// the same consent as local agents, in the same read as the rows.
+struct SearchDictationsIntent: AppIntent {
+    static let title: LocalizedStringResource = "Search dictations"
+    static let description = IntentDescription(
+        // swiftlint:disable:next line_length
+        "Finds your saved dictations that contain these words, newest first. Works only while Portavoz lets agents and Shortcuts read the history.")
+    @available(macOS 26.0, *)
+    static let supportedModes: IntentModes = [.background]
+
+    @Parameter(title: "Words")
+    var words: String?
+
+    @Parameter(title: "Limit", default: 10, inclusiveRange: (1, 50))
+    var limit: Int
+
+    @AppDependency(default: UnavailablePortavozDictationReader())
+    private var reader: any PortavozDictationReader
+
+    func perform() async throws -> some IntentResult & ReturnsValue<[String]> {
+        .result(value: try await PortavozDictationSearchAction.search(words ?? "", limit: limit, reader: reader))
+    }
+}
+
+/// Opens Portavoz on the dictation history, optionally searching for words.
+struct OpenDictationsIntent: AppIntent {
+    static let title: LocalizedStringResource = "Open dictations"
+    static let description = IntentDescription(
+        "Opens your saved dictations in Portavoz, optionally searching for words.")
+    @available(macOS 26.0, *)
+    static let supportedModes: IntentModes = [.foreground(.immediate)]
+
+    @Parameter(title: "Search")
+    var search: String?
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        let words = (search ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        PortavozAppIntentBridge.requestNavigation(.dictations(String(words.prefix(200))))
+        return .result()
+    }
+}
+
+/// App-installed read of saved dictations. nil means the user has not shared
+/// the history with agents and Shortcuts; nothing was read.
+protocol PortavozDictationReader: Sendable {
+    func dictationTexts(matching words: String, limit: Int) async throws -> [String]?
+}
+
+struct UnavailablePortavozDictationReader: PortavozDictationReader {
+    func dictationTexts(matching _: String, limit _: Int) async throws -> [String]? {
+        throw PortavozDictationIntentError.notReady
+    }
+}
+
+/// Called by the intent and by tests, since App Intents only fills
+/// `@AppDependency` while it owns `perform()`.
+enum PortavozDictationSearchAction {
+    static func search(_ words: String, limit: Int, reader: any PortavozDictationReader) async throws -> [String] {
+        let trimmed = String(words.trimmingCharacters(in: .whitespacesAndNewlines).prefix(200))
+        guard let texts = try await reader.dictationTexts(matching: trimmed, limit: min(max(limit, 1), 50)) else {
+            throw PortavozDictationIntentError.notShared
+        }
+        return texts
+    }
+}
+
+/// Why a dictation action did nothing. Shortcuts shows the message; success stays silent.
+enum PortavozDictationIntentError: Error, Equatable, CustomLocalizedStringResourceConvertible {
+    case notReady
+    case dictationOff
+    case busy
+    case nothingToPaste
+    case notShared
+
+    var localizedStringResource: LocalizedStringResource {
+        switch self {
+        case .notReady:
+            "Portavoz is still opening. Run the action again in a moment."
+        case .dictationOff:
+            "Dictation is off. Turn it on in Portavoz Settings › Audio & dictation."
+        case .busy:
+            "Portavoz is finishing the current dictation. Run the action again when it's done."
+        case .nothingToPaste:
+            "There's no recent dictation to paste."
+        case .notShared:
+            "Turn on “Let agents and Shortcuts read the history” in Portavoz Settings › Audio & dictation."
+        }
+    }
+}
+
 /// SDK-only process handoff shared by the intent and the app delegate.
 ///
 /// App Intents metadata extraction compiles this file by itself, so the
@@ -486,6 +615,8 @@ enum PortavozAppIntentBridge {
         case meeting(String)
         case person(String)
         case commitment(String)
+        /// Dictations, searching for these words when not empty.
+        case dictations(String)
     }
 
     enum StopRecordingRequestDisposition: Equatable {
@@ -520,6 +651,34 @@ enum PortavozAppIntentBridge {
         "app.portavoz.stop-recording-intent")
     static let navigationRequested = Notification.Name(
         "app.portavoz.navigation-intent")
+    static let dictationRequested = Notification.Name(
+        "app.portavoz.dictation-intent")
+
+    enum DictationRequest: Equatable {
+        case toggle
+        case pasteLast
+    }
+
+    enum DictationRequestOutcome: Equatable {
+        case accepted
+        case notReady
+        case dictationOff
+        case busy
+        case nothingToPaste
+
+        func throwUnlessAccepted() throws {
+            switch self {
+            case .accepted: return
+            case .notReady: throw PortavozDictationIntentError.notReady
+            case .dictationOff: throw PortavozDictationIntentError.dictationOff
+            case .busy: throw PortavozDictationIntentError.busy
+            case .nothingToPaste: throw PortavozDictationIntentError.nothingToPaste
+            }
+        }
+    }
+
+    private static var pendingDictationRequest: DictationRequest?
+    private static var dictationOutcome = DictationRequestOutcome.notReady
 
     private static var hasPendingStartRecording = false
     private static var hasPendingStopRecording = false
@@ -553,6 +712,25 @@ enum PortavozAppIntentBridge {
         NotificationCenter.default.post(
             name: stopRecordingRequested,
             object: nil)
+    }
+
+    /// Answered during the synchronous post and never replayed: dictating
+    /// after a slow launch could put text into whatever app is in front then.
+    static func requestDictation(_ request: DictationRequest) -> DictationRequestOutcome {
+        pendingDictationRequest = request
+        dictationOutcome = .notReady
+        NotificationCenter.default.post(name: dictationRequested, object: nil)
+        pendingDictationRequest = nil
+        return dictationOutcome
+    }
+
+    static func consumeDictationRequest() -> DictationRequest? {
+        defer { pendingDictationRequest = nil }
+        return pendingDictationRequest
+    }
+
+    static func answerDictationRequest(_ outcome: DictationRequestOutcome) {
+        dictationOutcome = outcome
     }
 
     static func requestNavigation(_ request: NavigationRequest) {

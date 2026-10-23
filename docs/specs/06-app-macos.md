@@ -4957,3 +4957,16 @@ alone. Disposable launches use a scratch directory, and `-seed-command-line-tool
 adds a stand-in tool so the install journey runs without touching the home
 directory.
 
+### Dictation actions in Shortcuts (D583)
+
+The delegate answers `PortavozAppIntentBridge.dictationRequested` without
+activating the app: it consults `dictationIntentOutcome(for:dictationEnabled:
+phase:hasPastableText:)` and then calls `DictationController.toggle(services:)`
+or `pasteLastDictation()`. `AppDictationIntentReader` is installed with the entity
+catalog once services are ready. `.dictations(words)` calls
+`DictationHistoryModel.show(search:)`, which replaces the filter, and
+`DictationHistoryView` mirrors `model.filter.query` into its search field. The
+history consent switch reads "Let agents and Shortcuts read the history"
+(`settings-dictation-history-agents`). `-simulate-open-dictations-intent <words>`
+requests the same navigation after the disposable history is seeded.
+

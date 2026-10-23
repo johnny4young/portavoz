@@ -447,13 +447,21 @@ extension ArchitectureDependencyTests {
             intents.components(separatedBy:
                 "static let supportedModes: IntentModes = [.foreground(.immediate)]")
                 .count - 1,
-            2,
-            "Start and Stop must use Tahoe's immediate foreground mode")
+            3,
+            "Start, Stop and Open dictations must use Tahoe's immediate foreground mode")
         XCTAssertEqual(
             intents.components(separatedBy: "static var openAppWhenRun: Bool { true }")
                 .count - 1,
-            2,
-            "Start and Stop must preserve the pre-Tahoe foreground contract")
+            3,
+            "Start, Stop and Open dictations must preserve the pre-Tahoe foreground contract")
+        // Dictation actions run in the background so the app in front keeps the text.
+        XCTAssertEqual(
+            intents.components(separatedBy: "static let supportedModes: IntentModes = [.background]").count - 1,
+            3)
+        let dictationHandler = try XCTUnwrap(
+            appDelegate.components(separatedBy: "private func dictationIntentRequested").last?
+                .components(separatedBy: "static func dictationIntentOutcome").first)
+        XCTAssertFalse(dictationHandler.contains("NSApp.activate"))
         XCTAssertFalse(
             intents.contains("AppShortcutsProvider"),
             "macOS publishes the action only; an App Shortcut duplicates it in the picker")

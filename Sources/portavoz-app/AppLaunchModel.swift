@@ -160,6 +160,7 @@ final class AppLaunchModel {
             BenchMode.runsIsolatedBenchmark(arguments: arguments)
         if !runsIsolatedBenchmark {
             services.installAutomationEntityCatalog()
+            services.installDictationIntentReader()
             PortavozAppDelegate.services = services
         }
 

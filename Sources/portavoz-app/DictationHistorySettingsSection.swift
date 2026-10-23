@@ -23,11 +23,11 @@ struct DictationHistorySettingsSection: View {
                     isOn: binding(\.keepsOriginal) { await model.update(keepsOriginal: $0) })
                     .accessibilityIdentifier("settings-dictation-history-original")
                 Toggle(
-                    "Let agents read the history",
+                    "Let agents and Shortcuts read the history",
                     isOn: binding(\.exposesToAgents) { await model.update(exposesToAgents: $0) })
                     .accessibilityIdentifier("settings-dictation-history-agents")
                 // swiftlint:disable:next line_length
-                Text("Local AI tools connected to Portavoz's MCP server can list, search and read your saved dictations. Every request checks this switch.")
+                Text("Local AI tools connected to Portavoz's MCP server, and your Shortcuts, can list, search and read your saved dictations. Every request checks this switch.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

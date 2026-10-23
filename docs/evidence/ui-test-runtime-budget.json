@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 163
+    "expectedCaseCount": 164
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -186,6 +186,7 @@
     "DictationHistoryUITests/testADictationCanBeAddedToAMeetingsNotes()": 30.0,
     "DictationHistoryUITests/testAskAboutDictationsCitesAndOpensTheDictation()": 30.0,
     "CommandLineToolUITests/testIntegrationsInstallsAndRemovesTheCommandLineToolLink()": 30.0,
-    "CommandLineToolUITests/testABuildWithoutTheToolSaysSo()": 25.0
+    "CommandLineToolUITests/testABuildWithoutTheToolSaysSo()": 25.0,
+    "AutomationUITests/testOpenDictationsShortcutShowsItsSearch()": 25.0
   }
 }

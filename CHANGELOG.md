@@ -31,6 +31,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 23, 2026
 
+- **⌨️ Dictate from Shortcuts** — new Shortcuts actions start or finish dictation, paste your last dictation, search your saved dictations or open them in Portavoz; dictating from a Shortcut keeps your app in front.
 - **🔌 Connect your AI tools in one click** — Portavoz now includes its command-line tool and MCP server: install it from Settings › Integrations (or get it with Homebrew) and copy the ready-made command for Claude Code or any MCP client.
 
 ## October 22, 2026

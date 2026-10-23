@@ -57,6 +57,12 @@ final class DictationHistoryModel {
         }
     }
 
+    /// Searches for these words the next time the history loads, as when a
+    /// Shortcut opens Dictations; other filters are cleared.
+    func show(search words: String) {
+        filter = DictationRecordFilter(query: words)
+    }
+
     /// Shows only this dictation the next time the history loads, as when an
     /// Ask citation opens it.
     func focus(on id: DictationRecordID) {
