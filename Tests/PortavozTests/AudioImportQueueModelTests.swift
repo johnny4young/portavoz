@@ -198,14 +198,7 @@ final class AudioImportQueueModelTests: XCTestCase {
         let fixture = try ImportQueueFixture()
         defer { fixture.remove() }
         _ = try await fixture.admit()
-        var configuration = Configuration()
-        configuration.readonly = true
-        configuration.allowsUnsafeTransactions = true
-        let reader = try DatabaseQueue(path: fixture.databaseURL.path, configuration: configuration)
-        try await reader.unsafeRead { database in
-            try database.execute(sql: "BEGIN")
-            _ = try Int.fetchOne(database, sql: "SELECT count(*) FROM processingJob")
-        }
+        let reader = try await heldReader(fixture)
         let finished = expectation(description: "failed drain finished")
         finished.assertForOverFulfill = false
         let client = ImportQueueModelClient(fixture: fixture, onFinish: { finished.fulfill() })
@@ -220,6 +213,25 @@ final class AudioImportQueueModelTests: XCTestCase {
         XCTAssertEqual(client.workerStarts, 1, "A busy claim must not re-kick an overdue wake at once")
         await model.suspend()
         try await reader.unsafeRead { try $0.execute(sql: "ROLLBACK") }
+    }
+
+    func testFailedClaimOnUnscheduledImportRetriesAfterBackoff() async throws {
+        let fixture = try ImportQueueFixture()
+        defer { fixture.remove() }
+        _ = try await fixture.admit()
+        let reader = try await heldReader(fixture)
+        let failed = expectation(description: "failed drain finished")
+        failed.assertForOverFulfill = false
+        let client = ImportQueueModelClient(fixture: fixture, onFinish: { failed.fulfill() })
+        let model = AudioImportQueueModel(client: client)
+        model.start()
+        await fulfillment(of: [failed], timeout: 10)
+        client.onFinish = {}
+        try await reader.unsafeRead { try $0.execute(sql: "ROLLBACK") }
+
+        try await waitForState { model.page.entries.first?.job.state == .succeeded }
+        XCTAssertEqual(client.workerStarts, 2, "Admitted work without a retry date must not wait for another signal")
+        await model.suspend()
     }
 
     func testStorageMoveExcludesAdmissionAndDoesNotInventSuccess() async throws {
@@ -237,6 +249,18 @@ final class AudioImportQueueModelTests: XCTestCase {
         XCTAssertFalse(model.isAdmitting)
         model.endStorageMove()
         await model.suspend()
+    }
+
+    private func heldReader(_ fixture: ImportQueueFixture) async throws -> DatabaseQueue {
+        var configuration = Configuration()
+        configuration.readonly = true
+        configuration.allowsUnsafeTransactions = true
+        let reader = try DatabaseQueue(path: fixture.databaseURL.path, configuration: configuration)
+        try await reader.unsafeRead { database in
+            try database.execute(sql: "BEGIN")
+            _ = try Int.fetchOne(database, sql: "SELECT count(*) FROM processingJob")
+        }
+        return reader
     }
 
     private func waitForState(_ condition: () -> Bool) async throws {
