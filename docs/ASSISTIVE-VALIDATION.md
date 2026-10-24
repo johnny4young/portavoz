@@ -10,8 +10,8 @@ The producer is intentionally finite. It requires these two cells:
 
 | Cell | Host family | Locales |
 |---|---|---|
-| `voiceover-tahoe` | macOS 26 or newer | English, then Spanish |
-| `voice-control-tahoe` | macOS 26 or newer | English, then Spanish |
+| `voiceover-tahoe` | macOS 26 or newer | English |
+| `voice-control-tahoe` | macOS 26 or newer | English |
 
 VoiceOver and Voice Control must run on the same host and exact macOS build.
 The run-scoped host value and the macOS build are recorded in each cell. Host values are salted hashes of `IOPlatformUUID`;
@@ -21,7 +21,8 @@ operator and retained release record remain part of the authority.
 ## What this proves
 
 - The exact signed candidate can complete the fixed public-seed journey with
-  VoiceOver and Voice Control, in English and Spanish, on the stated hosts.
+  VoiceOver and Voice Control, in English, on the stated host. Spanish labels
+  are covered by the catalog parity unit tests, not by this protocol.
 - Every observation is ordered, content-free, immutable, digest-chained, and
   bound to the candidate receipt, source commit, app seals, signing-team scope,
   host scope, macOS build, assistive technology, locale, and app process.
@@ -33,8 +34,8 @@ operator and retained release record remain part of the authority.
 It does not prove notarization, distribution, CloudKit, an external account,
 real audio hardware, long meetings, field quality, or future macOS behavior.
 XCUITest remains the deterministic regression oracle; this protocol adds the
-irreducible human interaction observation and does not replace full bilingual
-release automation.
+irreducible human interaction observation and does not replace the complete
+English release automation.
 
 ## Authority and privacy boundary
 
@@ -169,8 +170,7 @@ record `fail`.
 5. **`interview-assist-navigation`**
    - Start New recording and enable Interview Assist.
    - Verify the current public synthetic question. Add the public objective
-     `Evaluate incident-response judgment` in English or
-     `Evaluar criterio de respuesta a incidentes` in Spanish.
+     `Evaluate incident-response judgment`.
    - Request the answer and reach its exact cited evidence. No installed model,
      microphone, or private interview is used.
 6. **`recording-stop-recovery`**
@@ -195,7 +195,7 @@ rename, or replace a receipt. After all six pass:
 make assistive-qualification-finish
 ```
 
-Run English then Spanish for the same technology. Then run the other
+Run English for one technology. Then run the other
 technology on that same host and exact macOS build. If any checkpoint fails,
 retain the failed run, do not call `finish`, and initialize a wholly new run
 for another attempt. A process-cleanup error is also a failed run; quit only

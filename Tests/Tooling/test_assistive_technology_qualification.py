@@ -77,7 +77,7 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
             "runNonce": "6" * 64,
         }
 
-    def test_contract_freezes_tahoe_cells_bilingual_journey_and_real_selectors(self):
+    def test_contract_freezes_tahoe_cells_english_journey_and_real_selectors(self):
         self.assertEqual(
             tuple(
                 (row["id"], row["minimumMajor"], row["maximumMajor"])
@@ -91,8 +91,9 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
             ["voiceover", "voice-control"],
         )
         self.assertEqual(
-            [row["id"] for row in self.contract["locales"]], ["en", "es"]
+            [row["id"] for row in self.contract["locales"]], ["en"]
         )
+        self.assertEqual(assistive.EXPECTED_LOCALES, (("en", "en_US"),))
         self.assertEqual(
             tuple(
                 (row["id"], tuple(row["automationSelectors"]))
@@ -166,6 +167,22 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
             assistive.AssistiveQualificationError, "fixed assistive journey"
         ):
             assistive.validate_contract(reduced_journey)
+
+    def test_contract_rejects_any_spanish_locale_step(self):
+        spanish = {"id": "es", "appleLocale": "es_ES"}
+        for locales, message in (
+            ([{"id": "en", "appleLocale": "en_US"}, spanish], "must be English only"),
+            ([spanish, {"id": "en", "appleLocale": "en_US"}], "must be English only"),
+            ([spanish], "must be exactly EN"),
+            ([{"id": "en", "appleLocale": "es_ES"}], "must be exactly EN"),
+        ):
+            with self.subTest(locales=locales):
+                document = copy.deepcopy(self.contract_document)
+                document["locales"] = locales
+                with self.assertRaisesRegex(
+                    assistive.AssistiveQualificationError, message
+                ):
+                    assistive.validate_contract(document)
 
     def test_contract_rejects_duplicate_selector_and_noncontiguous_sequence(self):
         duplicate = copy.deepcopy(self.contract_document)
@@ -482,7 +499,7 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
             ):
                 assistive.start_locale(arguments)
 
-    def test_start_locale_requires_completed_english_before_spanish(self):
+    def test_start_locale_rejects_a_spanish_session(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "evidence"
             root.mkdir(mode=0o700)
@@ -503,11 +520,14 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
                 assistive.subprocess, "Popen"
             ) as launch, self.assertRaisesRegex(
                 assistive.AssistiveQualificationError,
-                "locale es requires completed locale en",
+                "locale is not in the contract",
             ):
                 assistive.start_locale(arguments)
 
             launch.assert_not_called()
+            self.assertFalse(assistive.session_path(
+                assistive.cell_root(root, "voice-control-tahoe"), "es"
+            ).exists())
 
     def test_failed_launch_preserves_runtime_when_graceful_cleanup_times_out(self):
         class UnstoppableCandidate(FakeCandidateProcess):
@@ -587,7 +607,7 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
     def test_failed_observation_is_immutable_and_closes_only_owned_process(self):
         with tempfile.TemporaryDirectory() as directory:
             context = self.materialize_active_locale(
-                Path(directory), "voice-control", "es"
+                Path(directory), "voice-control", "en"
             )
             checkpoint = self.contract["checkpoints"][0]["id"]
             with self.active_boundaries(context), mock.patch.object(
@@ -602,7 +622,7 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
                 context["session"]["processStarted"],
                 self.contract["limits"]["processExitTimeoutSeconds"],
             )
-            self.assertFalse(assistive.runtime_path(context["cell_path"], "es").exists())
+            self.assertFalse(assistive.runtime_path(context["cell_path"], "en").exists())
             with self.active_boundaries(context), self.assertRaisesRegex(
                 assistive.AssistiveQualificationError, "immutable"
             ):
@@ -753,6 +773,27 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
                         output=root / "authority",
                     )
                 )
+
+    def test_finalize_rejects_a_stray_spanish_session(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            evidence, candidate = self.materialize_complete_run(root)
+            cell = assistive.cell_root(evidence, "voiceover-tahoe")
+            english = assistive.session_path(cell, "en")
+            spanish = assistive.session_path(cell, "es")
+            spanish.write_bytes(english.read_bytes())
+            os.chmod(spanish, 0o600)
+            with mock.patch.object(assistive, "require_exact_checkout"), self.assertRaisesRegex(
+                assistive.AssistiveQualificationError, "unexpected evidence"
+            ):
+                assistive.finalize(
+                    argparse.Namespace(
+                        evidence_root=evidence,
+                        candidate_receipt=candidate,
+                        output=root / "authority-spanish",
+                    )
+                )
+            self.assertFalse((root / "authority-spanish").exists())
 
     def test_finalize_rejects_extra_evidence_and_duplicate_process_nonce(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1082,7 +1123,7 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
                         "os": operating_system,
                     }
                     assistive.atomic_write_json(cell_path / "cell.json", cell)
-                    for locale in ("en", "es"):
+                    for locale in assistive.EXPECTED_LOCALE_IDS:
                         process_index += 1
                         activation = (
                             {

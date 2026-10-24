@@ -61,6 +61,32 @@ final class LocalizationTests: XCTestCase {
         }
     }
 
+    func testSpanishMatchesEnglishOnlyForUntranslatableTerms() throws {
+        let sameInBothLanguages: Set = [
+            "%@ min", "%d min", "%d%%", "1:1", "Agenda", "App", "Apuntador", "Audio",
+            "BYOK OpenAI-compatible · GitHub gists · MCP", "Brief", "Control", "Email", "English",
+            "Español", "Feedback", "Fn (🌐)", "GitHub", "HUD", "Literal", "Markdown", "OK",
+            "Ollama (local)", "Original", "Portavoz", "Postmortem", "Radar", "Slack", "Standup", "Web",
+            "byok api key github gist token mcp endpoint openai", "https://example.com/article"
+        ]
+        for catalog in try Self.loadCatalogs() {
+            for (key, value) in catalog.strings {
+                for unit in Self.esUnits(value) where unit.value == key {
+                    XCTAssertTrue(
+                        sameInBothLanguages.contains(key),
+                        "\(catalog.path): '\(key)' is identical in Spanish; translate it or allow it here")
+                }
+            }
+        }
+    }
+
+    func testCatalogsHaveNoStaleKeys() throws {
+        for catalog in try Self.loadCatalogs() {
+            let stale = catalog.strings.filter { $0.value["extractionState"] as? String == "stale" }.keys
+            XCTAssertTrue(stale.isEmpty, "\(catalog.path) has stale keys: \(stale.sorted().joined(separator: ", "))")
+        }
+    }
+
     func testAppProseLiteralsAreCataloged() throws {
         let localizable = try Self.catalog(at: "Resources/Localization/Portavoz/Localizable.xcstrings")
         let keys = Set(localizable.strings.keys)
@@ -73,11 +99,8 @@ final class LocalizationTests: XCTestCase {
             #"\.(?:navigationTitle|alert|confirmationDialog|help)\(\s*\"([^\"\\]+)\""#,
             #"L10n\.(?:text|format)\(\s*\"([^\"\\]+)\""#
         ].map { try NSRegularExpression(pattern: $0) }
-        let shortVisible = Set([
-            "Add", "Apply", "Audio", "Cancel", "Delete", "Discard", "English", "Español",
-            "GitHub", "Language", "Model", "OK", "Portavoz", "Recordings", "Reset", "Retry", "Save",
-            "Summary", "Transcript", "Vocabulary"
-        ])
+        // Example values and glyphs read the same in every language.
+        let untranslatable = Set(["gpt-4o-mini", "https://api.openai.com/v1", "owner/name"])
 
         for file in files {
             let source = try String(contentsOf: appDir.appendingPathComponent(file), encoding: .utf8)
@@ -87,7 +110,7 @@ final class LocalizationTests: XCTestCase {
                     guard let range = Range(match.range(at: 1), in: source) else { continue }
                     let literal = String(source[range])
                     guard !literal.contains(#"\("#) else { continue }
-                    guard literal.contains(" ") || shortVisible.contains(literal) else { continue }
+                    guard literal.contains(where: \.isLetter), !untranslatable.contains(literal) else { continue }
                     XCTAssertTrue(keys.contains(literal), "Sources/portavoz-app/\(file): '\(literal)' is not in Localizable.xcstrings")
                 }
             }

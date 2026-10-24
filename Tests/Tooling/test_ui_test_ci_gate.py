@@ -64,7 +64,6 @@ class UITestCIGateTests(unittest.TestCase):
         *,
         locales: str = "en",
         english_outcome: str = "success",
-        spanish_outcome: str = "skipped",
         receipts: dict[str, dict] | None = None,
         executions: dict[str, dict] | None = None,
     ) -> subprocess.CompletedProcess[str]:
@@ -80,7 +79,7 @@ class UITestCIGateTests(unittest.TestCase):
                 execution_documents = {}
                 for locale in locales.split():
                     has_runtime = locale in documents
-                    outcome = english_outcome if locale == "en" else spanish_outcome
+                    outcome = english_outcome
                     if outcome == "failure" and has_runtime:
                         execution_documents[locale] = execution(
                             locale,
@@ -115,8 +114,6 @@ class UITestCIGateTests(unittest.TestCase):
                     locales,
                     "--english-outcome",
                     english_outcome,
-                    "--spanish-outcome",
-                    spanish_outcome,
                     "--summary",
                     str(summary),
                     "--github-output",
@@ -236,25 +233,30 @@ class UITestCIGateTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("step outcome skipped", result.stderr)
 
-    def test_unselected_locale_must_remain_skipped(self):
-        result = self.run_gate(spanish_outcome="success")
+    def test_hosted_gate_selects_english_only(self):
+        for locales in ("es", "en es", "es en", "en en", ""):
+            with self.subTest(locales=locales):
+                result = self.run_gate(
+                    locales=locales,
+                    receipts={"en": receipt("en"), "es": receipt("es")},
+                )
+
+                self.assertEqual(result.returncode, 2)
+                self.assertIn("unsupported selected locales", result.stderr)
+                self.assertNotIn("verified", self.outputs)
+
+    def test_stray_spanish_lane_evidence_fails_closed(self):
+        result = self.run_gate(
+            receipts={"en": receipt("en"), "es": receipt("es")},
+            executions={"en": execution("en"), "es": execution("es")},
+        )
 
         self.assertEqual(result.returncode, 1)
-        self.assertIn("unselected locale ran", result.stderr)
-
-    def test_bilingual_gate_requires_both_exact_receipts(self):
-        result = self.run_gate(
-            locales="en es",
-            spanish_outcome="success",
-            receipts={"en": receipt("en"), "es": receipt("es")},
-        )
-
-        self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn(
-            "| es | success | 1 | passed | advisory passed | 0 |",
-            self.summary,
+            "es: unsupported locale lane produced hosted evidence", result.stderr
         )
-        self.assertEqual(self.outputs["verified"], "true")
+        self.assertIn("| es | - | - | unsupported locale | - | - |", self.summary)
+        self.assertEqual(self.outputs["verified"], "false")
 
     def test_nonpassing_result_violation_is_functional_not_malformed_evidence(self):
         document = receipt("en", result="Failed", drift=True)
@@ -403,13 +405,11 @@ class UITestExecutionContractTests(unittest.TestCase):
             outputs = root / "outputs.txt"
             gate = subprocess.run([
                 sys.executable, str(SCRIPT), "--results", str(root),
-                "--locales", locale,
-                "--english-outcome", outcome if locale == "en" else "skipped",
-                "--spanish-outcome", outcome if locale == "es" else "skipped",
+                "--locales", locale, "--english-outcome", outcome,
                 "--summary", str(summary), "--github-output", str(outputs),
             ], cwd=ROOT, capture_output=True, text=True, check=False)
             values = dict(line.split("=", 1) for line in
-                          outputs.read_text(encoding="utf-8").splitlines())
+                          outputs.read_text(encoding="utf-8").splitlines()) if outputs.exists() else {}
             return writer, gate, execution_document, values
 
     def test_interrupted_writer_receipts_round_trip_but_never_qualify(self):
@@ -425,6 +425,13 @@ class UITestExecutionContractTests(unittest.TestCase):
                             )
                             self.assertEqual(writer.returncode, 2, writer.stderr)
                             self.assertEqual(document["classification"], "evidence-failure")
+                            if locale == "es":
+                                # The manual Spanish writer still works, but
+                                # hosted evidence never accepts its lane.
+                                self.assertEqual(gate.returncode, 2, gate.stderr)
+                                self.assertIn("unsupported selected locales", gate.stderr)
+                                self.assertEqual(outputs, {})
+                                continue
                             self.assertEqual(gate.returncode, 1, gate.stderr)
                             self.assertIn("unusable execution evidence", gate.stderr)
                             self.assertNotIn("contradicts", gate.stderr)

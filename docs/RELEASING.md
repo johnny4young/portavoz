@@ -9,7 +9,7 @@ Distribution is direct-download only (no App Store) — decision D10/D20.
 ## Code-ready candidate versus public distribution
 
 A code-ready 1.0.0 milestone is distinct from executing this public-distribution
-recipe. Its automated tests, bilingual UI, code review and resource evidence
+recipe. Its automated tests, complete English UI, code review and resource evidence
 must be real and source-bound. Human/account/hardware-dependent observations
 may remain in the explicit follow-up backlog in [GAPS.md](GAPS.md); do not mark
 them passed or call the complete certification scorecard green. This milestone
@@ -86,7 +86,7 @@ make release-reliability-deterministic
 This command runs hygiene, warnings-as-errors build, the complete package
 suite, the isolated twenty-sample Release correction-composition budget,
 strict SwiftLint, 25 recording/recovery stress iterations, the exact mixed-language
-policy corpus, and seven focused XCUITest journeys in English and Spanish. It
+policy corpus, and seven focused XCUITest journeys in English. It
 writes `dist/release-readiness/deterministic.json` only after every command
 passes. Do not reuse a receipt after the commit, version, or build changes.
 
@@ -156,8 +156,9 @@ weaken this by editing JSON or dispatching again for the same unchanged commit.
 
 Run this only from the clean commit intended to become the candidate. It is a
 long sequential gate by design: benchmark, model, resource, and UI processes
-must not contend with one another. The runner reuses one XCUITest build across
-English and Spanish and accepts no caller-supplied proof state.
+must not contend with one another. The runner builds XCUITest once, runs the
+complete English catalogue, and accepts no caller-supplied proof state.
+Spanish is covered by the catalog parity unit tests, not by a UI pass.
 
 ```sh
 make candidate-automation \
@@ -472,7 +473,7 @@ failure by signing the restricted entitlements without one.
 Follow [`ASSISTIVE-VALIDATION.md`](ASSISTIVE-VALIDATION.md) after candidate
 automation has passed for the exact source and the unchanged Developer-ID-
 signed `app.portavoz.mac.dev` bundle is available. The owner runs the public
-disposable seed in English and Spanish through VoiceOver and Voice Control on
+disposable seed in English through VoiceOver and Voice Control on
 a physical Tahoe-or-newer Apple-silicon Mac. It binds every ordered
 human observation to the candidate, app seals, assistive technology, app
 process, run-scoped host, and exact macOS build.
@@ -482,8 +483,8 @@ VoiceOver requires both the human acknowledgment and the documented
 human authority only because this project has no documented public active-
 state API for it. A failed checkpoint is immutable and requires a new run; it
 cannot be overwritten or retried into the same green cell. Finalization writes
-one new `authority.json` plus `qualification.json` pair only after all four
-physical cells have complete EN/ES chains. Host-scope inequality is not
+one new `authority.json` plus `qualification.json` pair only after both
+physical cells have complete English chains. Host-scope inequality is not
 physical-hardware attestation, and deterministic XCUITest does not replace the
 human VoiceOver/Voice Control observation.
 

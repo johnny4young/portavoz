@@ -5284,7 +5284,7 @@ unit, packaging, and XCUITest evidence do not mint its receipt.
 
 `docs/evidence/assistive-technology-qualification.json` freezes two cells:
 VoiceOver and Voice Control on Tahoe or newer, each executed in
-English then Spanish. Every locale launches the unchanged Developer-ID-signed
+English. Every run launches the unchanged Developer-ID-signed
 `app.portavoz.mac.dev` executable directly against isolated paths with the
 public demo, duplicate-Skill, waiting-receipt, and synthetic Interview Assist
 fixtures. The exact launch vector is closed; inherited Portavoz, test-runner,
@@ -5336,7 +5336,8 @@ assistive release gate remains open.
 Candidate automation has one executable owner rather than a generic receipt
 recorder. `docs/evidence/candidate-automation.json` schema 9 freezes the eight
 proof order, six installed-model classes, seven upgrade/recovery classes, nine
-resource scenarios, four real-app memory-leak scenarios, two UI locales, and
+resource scenarios, four real-app memory-leak scenarios, the English UI locale,
+and
 the performance-ledger partition.
 `scripts/candidate_automation.py` requires a completely clean checkout, fixes
 one full source commit, and rechecks that identity around every sequential
@@ -5381,12 +5382,12 @@ collection can create competing work. It then directly runs the deterministic
 release suite, public bilingual Apuntador corpus, installed-model classes, a
 content-free real-app leak pass, current-host Release resource baseline,
 canonical synthetic three-hour capture, upgrade/recovery classes, and complete
-bilingual real-app XCUITest.
+English real-app XCUITest.
 Specialized validators then require the deterministic receipt's exact release
 identity, an authoritative performance inventory, three passing resource
 samples for every scenario plus the Ask timing pipeline, zero-drift bounded
 long capture, zero detected leaks or leaked bytes in all four exact Apuntador
-paths, and the exact current EN/ES UI catalog with one reused build and passing
+paths, and the exact current English UI catalog with one build and passing
 runtime budgets. Only that in-process sequence can write the
 owner-only `candidate-automation` qualification receipt; there is no CLI for
 caller-supplied proof state.
@@ -5419,9 +5420,9 @@ answer/citation evidence, while `BenchMode+ResourceIndexing.swift` owns the ten
 isolated file-backed stores and real publication passes; `BenchMode.swift` keeps
 only the shared benchmark composition and fixture surface.
 The leak parser, runner, contract, and benchmark workload owners map to the
-exact bilingual Ask, background-work, and Live Assist UI scopes (12 unique
-journeys per locale), not the shared-harness fallback. Candidate automation
-remains a full bilingual harness owner because it validates the final UI
+exact Ask, background-work, and Live Assist UI scopes (12 unique journeys),
+not the shared-harness fallback. Candidate automation remains a full
+shared-harness owner because it validates the final UI
 receipt itself. Selector or other shared-harness changes still run the complete
 catalogue.
 
@@ -5712,8 +5713,11 @@ invalidation checks; a hit alone is not evidence of a faster or passing build.
 Pull-request UI evidence is selected deterministically from changed paths.
 Known presentation and application files map to feature-level XCUITest
 selectors; localization and shared-harness changes expand to the complete
-bilingual catalogue; unknown production Swift paths fall back to the complete
-English suite. A pull-request update compares the new head with the newest
+English catalogue, as do unknown production Swift paths. XCUITest runs in
+English only: Spanish parity is a unit-test property of the string catalogs
+(every key translated, matching placeholders, every visible literal
+cataloged, Spanish equal to English only for an explicit list of terms), and
+`make test-ui-es` remains a manual, non-gating pass. A pull-request update compares the new head with the newest
 successful first-attempt ancestor that published one exact-SHA, content-free
 verification artifact after complete selected functional evidence (or a
 verified no-UI selection). The resolver rejects retries, failed runs,
@@ -5776,7 +5780,7 @@ remains available, and no adjustment changes a functional result, selector,
 assertion, timeout, locale, budget, or retry policy.
 
 The changed-file classifier treats every shared UI evidence owner as a complete
-bilingual integration change. This includes the workflow, build/runner,
+integration change. This includes the workflow, build/runner,
 preflight, selection, execution/runtime classification, verified-base and
 anchor owners, candidate receipt validator, and the versioned runtime budget.
 Those files cannot fall through the general `scripts/`, `.github/`, or `docs/`
@@ -6225,7 +6229,7 @@ construction rather than by control truncation. Three controls stay visible
 with their state shown as switches. Its wide layout is one row; at the 900 pt minimum window,
 `ViewThatFits` moves secondary actions to an icon-only second row while
 keeping the elapsed clock horizontal and Stop visible beside it. The focused external-recording XCUITest enforces those
-geometric invariants in both locales.
+geometric invariants.
 
 The live transcript has reader-owned scroll state independent from the
 playback lyrics treatment. Direct interaction pauses following indefinitely,
@@ -6306,11 +6310,11 @@ deliberately omits `AppShortcutsProvider`, because automatic App Shortcuts are
 not a supported macOS product surface and otherwise duplicate identically
 titled actions. Spotlight and Siri use a user-created Shortcut containing a
 Portavoz-icon action. The XcodeGen-only test app registers the public
-`portavoz://record` adapter, and one bilingual focused XCUITest directs that URL
+`portavoz://record` adapter, and one focused XCUITest directs that URL
 to the exact disposable app, proves Start enters a visible recording, then
 executes the native Stop handoff after `.recording` and requires the existing
-typed no-audio recovery. App Intent source changes select this boundary in both
-locales; shared harness changes retain three bilingual canaries. `make-app.sh`
+typed no-audio recovery. App Intent source changes select this boundary; shared harness changes
+retain three canaries. `make-app.sh`
 also verifies the complete nested signature before it reports a successful
 package, so a malformed Sparkle component or application seal fails at the
 packaging boundary rather than during installation.
@@ -6578,20 +6582,14 @@ reliability evidence retained from 9 Aug, is:
 - the deterministic tooling suites and the 223-case architecture subset pass;
 - the Meeting Detail interaction contract contains 431 signals, 15 feature
   owners, and 30 explicitly owned UI journeys;
-- 103 XCUITest cases per locale define the 206-case bilingual release gate;
-- the latest controlled run reused one 18-second build and passed all 103
-  English cases in 847.719 summed seconds (p95 17.851) and all 103 Spanish
-  cases in 854.580 seconds (p95 17.901), with every unchanged budget green,
-  no retry, and no runtime adjustment;
+- the complete English XCUITest catalogue is the release UI gate;
 - pull requests run only their minimum-safe selected feature evidence; shared
-  localization/harness changes and release closure expand to the complete
-  bilingual gate, while unknown production paths fail safe to complete English;
-- hosted pull-request UI runs compile once, execute every selected locale as an
-  independent first attempt, preserve all result bundles, and then apply one
-  fail-closed functional/receipt classifier; one locale cannot prevent the next
-  selected locale from producing evidence. The enclosing job has a 90-minute
-  orchestration ceiling so the complete 105-case bilingual catalogue can retain
-  both locale receipts under observed hosted variance; this does not alter any
+  localization/harness changes, release closure and unknown production paths
+  expand to the complete English catalogue;
+- hosted pull-request UI runs compile once, execute the English selection as a
+  first attempt, preserve its result bundle, and then apply one fail-closed
+  functional/receipt classifier. The enclosing job keeps a 90-minute
+  orchestration ceiling under observed hosted variance; this does not alter any
   per-journey wait, assertion, runtime budget, selector, or retry policy;
 - every UI run emits content-free runtime and execution receipts. Controlled
   local/stable-Mac integration and release runs enforce the unchanged per-journey, exact-
@@ -6630,7 +6628,7 @@ make test-recording-stress
 swiftlint lint --strict --no-cache
 scripts/check-repository-hygiene.sh
 make test-ui-changed UI_BASE=origin/main
-make test-ui-bilingual # explicit release/architecture closure
+make test-ui-release # explicit release/architecture closure
 make release-reliability-deterministic # exact version/build required
 make release-reliability # missing field or distribution evidence blocks
 make install

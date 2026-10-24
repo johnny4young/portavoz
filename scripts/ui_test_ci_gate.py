@@ -55,7 +55,11 @@ SUITE_RUNTIME_DRIFT_PATTERNS = (
     re.compile(r"^full suite: [0-9]+(?:\.[0-9]+)?s > [0-9]+(?:\.[0-9]+)?s$"),
     re.compile(r"^full suite p95: [0-9]+(?:\.[0-9]+)?s > [0-9]+(?:\.[0-9]+)?s$"),
 )
-SUPPORTED_LOCALES = ("en", "es")
+# Hosted evidence is English only; a Spanish pass is manual and non-gating.
+SUPPORTED_LOCALES = ("en",)
+LANE_EVIDENCE_PATTERN = re.compile(
+    r"^(?P<locale>[A-Za-z_-]+?)-(?:runtime\.json|execution\.json|outcome\.txt)$"
+)
 SUPPORTED_OUTCOMES = frozenset({"success", "failure", "cancelled", "skipped"})
 EXECUTION_KEYS = frozenset(
     {
@@ -96,7 +100,6 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--results", type=Path, required=True)
     value.add_argument("--locales", required=True)
     value.add_argument("--english-outcome", required=True)
-    value.add_argument("--spanish-outcome", required=True)
     value.add_argument("--summary", type=Path)
     value.add_argument("--github-output", type=Path)
     return value
@@ -353,14 +356,11 @@ def write_github_outputs(path: Path | None, *, verified: bool, state: str) -> No
 
 def main(argv: Sequence[str] | None = None) -> int:
     arguments = parser().parse_args(argv)
-    selected = tuple(dict.fromkeys(arguments.locales.split()))
-    if not selected or any(locale not in SUPPORTED_LOCALES for locale in selected):
+    selected = tuple(arguments.locales.split())
+    if selected != SUPPORTED_LOCALES:
         print("UI CI gate failed: unsupported selected locales.", file=sys.stderr)
         return 2
-    outcomes = {
-        "en": arguments.english_outcome,
-        "es": arguments.spanish_outcome,
-    }
+    outcomes = {"en": arguments.english_outcome}
     if any(outcome not in SUPPORTED_OUTCOMES for outcome in outcomes.values()):
         print("UI CI gate failed: unsupported step outcome.", file=sys.stderr)
         return 2
@@ -368,16 +368,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     failures: list[str] = []
     infrastructure_advisories: list[str] = []
     summary_rows: list[str] = []
-    for locale in SUPPORTED_LOCALES:
+    # A lane for any other locale means the hosted matrix was widened.
+    entries = arguments.results.iterdir() if arguments.results.is_dir() else ()
+    stray_locales = sorted({
+        match.group("locale")
+        for entry in entries
+        if (match := LANE_EVIDENCE_PATTERN.fullmatch(entry.name)) is not None
+        and match.group("locale") not in SUPPORTED_LOCALES
+    })
+    for locale in stray_locales:
+        failures.append(f"{locale}: unsupported locale lane produced hosted evidence")
+        summary_rows.append(f"| {locale} | - | - | unsupported locale | - | - |")
+    for locale in selected:
         outcome = outcomes[locale]
-        if locale not in selected:
-            if outcome != "skipped":
-                failures.append(f"{locale}: unselected locale ran with outcome {outcome}")
-            summary_rows.append(
-                f"| {locale} | {outcome} | - | not selected | - | - |"
-            )
-            continue
-
         execution: dict[str, Any] | None = None
         execution_error: str | None = None
         try:

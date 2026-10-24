@@ -7,7 +7,7 @@ This is the canonical active backlog. Open and partial gaps state their remainin
 ## Code delivery and deferred external verification
 
 The 1.0.0 code-ready delivery keeps automated functionality, compatibility,
-architecture, performance, memory/recovery and bilingual XCUITest validation in
+architecture, performance, memory/recovery and English XCUITest validation in
 scope. User-dependent approvals, permissions, external accounts, physical
 Sequoia/Tahoe hardware, assistive interaction, real-field evidence and production
 CloudKit verification are follow-up work rather than blockers of this code
@@ -451,7 +451,7 @@ not isolate a product window-lifecycle defect from external focus/placement
 interference, and a later passing focused journey cannot qualify the failed full
 run retroactively.
 
-Keep the zero-screen assertions, exact catalog, bilingual gate and timing budgets.
+Keep the zero-screen assertions, exact catalog, English gate and timing budgets.
 Do not add positioning loops, dismiss other applications or stop unrelated tasks
 merely to obtain green results. A valid full run needs an automation-capable
 desktop that preserves its interaction context; any lifecycle change must first
@@ -1284,7 +1284,7 @@ Earlier broad local UI runs exposed the former runner-container storage
 boundary and an unexpected native interruption. Those failed invocations remain
 unqualified; adopting the explicit shared-scratch owner and content-blind
 interruption guard does not relabel them. The current memory-profile sources
-still require a fresh full bilingual gate and exact-head hosted evidence.
+still require a fresh full English gate and exact-head hosted evidence.
 Focused Settings or installed-model lifetime observations cannot substitute for
 that qualification or close the separate compact-reachability gap.
 

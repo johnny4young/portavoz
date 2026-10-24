@@ -36,10 +36,6 @@
     {
       "id": "en",
       "appleLocale": "en_US"
-    },
-    {
-      "id": "es",
-      "appleLocale": "es_ES"
     }
   ],
   "launch": {

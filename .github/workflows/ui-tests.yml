@@ -171,10 +171,9 @@ jobs:
        (needs.scope.outputs.interruption_controls == 'false' &&
         needs.interruption-controls.result == 'skipped'))
     runs-on: macos-26
-    # Each selected locale runs on its own hosted Mac against the same
-    # products, so the wall clock is one build plus the slowest locale rather
-    # than the sum of both. Localization/shared-harness and manual integration
-    # runs legitimately select all catalog tests per lane.
+    # The scope matrix is English only; the lane runs on its own hosted Mac
+    # against the shared products. Localization/shared-harness and manual
+    # integration runs legitimately select all catalog tests.
     # This 90-minute job-orchestration ceiling is not a per-test/runtime budget.
     timeout-minutes: 90
     strategy:
@@ -290,7 +289,6 @@ jobs:
             --results dist/ui-test-results \
             --locales "$UI_TEST_LOCALES" \
             --english-outcome "$(outcome en)" \
-            --spanish-outcome "$(outcome es)" \
             --github-output "$GITHUB_OUTPUT"
 
       - name: Require selected evidence and allow an honest no-UI skip

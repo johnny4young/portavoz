@@ -14,7 +14,8 @@ the process in [SECURITY.md](SECURITY.md), never through a public issue.
 - **UI evidence follows impact.** Give every interactive control an
   `accessibilityIdentifier`; use `make test-ui-changed UI_BASE=origin/main` to
   run the feature-level XCUITest selectors chosen from the diff. Localization
-  and shared-harness changes expand to bilingual evidence automatically.
+  and shared-harness changes expand to the complete English suite
+  automatically; Spanish is checked by `LocalizationTests`, not by a UI pass.
 - **Domain types live in `PortavozCore`**; Kits depend on Core, never on each other (except `IntegrationsKit`, the cross-cutting layer: it may depend on `IntelligenceKit` and `StorageKit` — D31).
 - **License hygiene:** we are MIT. Do not port code from GPL projects (e.g. MacParakeet) — patterns and ideas are fine, code is not. MIT/Apache sources are fine with attribution.
 - **Explain the code, not the ticket.** Do not put private tracker keys,
@@ -39,6 +40,6 @@ the process in [SECURITY.md](SECURITY.md), never through a public issue.
    make test-ui-changed UI_BASE=origin/main UI_HEAD=HEAD
    ```
 
-   Use `make test-ui-bilingual` only for an intentional full bilingual gate.
+   Use `make test-ui-release` only for an intentional full release gate.
    The selector falls back to the complete English suite for an unknown
    production path rather than incorrectly skipping UI validation.

@@ -275,13 +275,21 @@ class CandidateAutomationTests(unittest.TestCase):
         ):
             candidate.validate_contract(weak_resource)
 
-        weak_ui = copy.deepcopy(self.contract_document)
-        weak_ui["ui"]["locales"] = ["en"]
-        with self.assertRaisesRegex(
-            candidate.CandidateAutomationError,
-            "exactly en and es",
+        self.assertEqual(self.contract["ui"]["locales"], ("en",))
+        for locales, message in (
+            (["en", "es"], "UI locales must be exactly en"),
+            (["es"], "UI locales must be exactly en"),
+            (["es", "en"], "UI locales must be exactly en"),
+            (["en", "en"], "contains duplicates"),
+            ([], "non-empty array"),
         ):
-            candidate.validate_contract(weak_ui)
+            with self.subTest(locales=locales):
+                weak_ui = copy.deepcopy(self.contract_document)
+                weak_ui["ui"]["locales"] = locales
+                with self.assertRaisesRegex(
+                    candidate.CandidateAutomationError, message,
+                ):
+                    candidate.validate_contract(weak_ui)
 
         weak_leaks = copy.deepcopy(self.contract_document)
         weak_leaks["memoryLeaks"]["requiredScenarios"].pop()
@@ -1004,31 +1012,32 @@ class CandidateAutomationTests(unittest.TestCase):
             ):
                 candidate.validate_long_capture(path, self.commit)
 
-    def test_complete_bilingual_ui_requires_exact_catalog_and_shared_build(self):
+    def test_complete_ui_requires_exact_english_catalog(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             self.write_ui_receipts(root)
+            self.assertEqual(sorted(path.name for path in root.iterdir()), ["en-runtime.json"])
             candidate.validate_ui_receipts(root, self.contract)
 
-            spanish = json.loads((root / "es-runtime.json").read_text())
-            spanish["tests"].pop()
-            spanish["caseCount"] -= 1
-            (root / "es-runtime.json").write_text(json.dumps(spanish))
+            english = json.loads((root / "en-runtime.json").read_text())
+            english["tests"].pop()
+            english["caseCount"] -= 1
+            (root / "en-runtime.json").write_text(json.dumps(english))
             with self.assertRaisesRegex(
                 candidate.CandidateAutomationError,
                 "cases; expected",
             ):
                 candidate.validate_ui_receipts(root, self.contract)
 
-    def test_complete_bilingual_ui_rejects_budget_failure_and_two_builds(self):
+    def test_complete_ui_rejects_budget_failure_and_missing_build_evidence(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             self.write_ui_receipts(root)
-            spanish_path = root / "es-runtime.json"
-            spanish = json.loads(spanish_path.read_text())
-            spanish["budgetStatus"] = "failed"
-            spanish["budgetViolations"] = ["slow"]
-            spanish_path.write_text(json.dumps(spanish))
+            english_path = root / "en-runtime.json"
+            english = json.loads(english_path.read_text())
+            english["budgetStatus"] = "failed"
+            english["budgetViolations"] = ["slow"]
+            english_path.write_text(json.dumps(english))
             with self.assertRaisesRegex(
                 candidate.CandidateAutomationError,
                 "failed its budget",
@@ -1036,16 +1045,59 @@ class CandidateAutomationTests(unittest.TestCase):
                 candidate.validate_ui_receipts(root, self.contract)
 
             self.write_ui_receipts(root)
-            spanish = json.loads(spanish_path.read_text())
-            spanish["buildDurationSeconds"] = 13.0
-            spanish_path.write_text(json.dumps(spanish))
-            with self.assertRaisesRegex(
-                candidate.CandidateAutomationError,
-                "do not share one build duration",
-            ):
+            english = json.loads(english_path.read_text())
+            english["buildDurationSeconds"] = float("nan")
+            english_path.write_text(json.dumps(english))
+            with self.assertRaises(candidate.CandidateAutomationError):
                 candidate.validate_ui_receipts(root, self.contract)
 
-    def test_complete_bilingual_ui_validates_split_harness_attribution(self):
+            # A policy that yields no receipt can never pass as a shared build.
+            self.write_ui_receipts(root)
+            empty = copy.deepcopy(self.contract)
+            empty["ui"]["locales"] = ()
+            with self.assertRaisesRegex(
+                candidate.CandidateAutomationError,
+                "exactly one shared build duration",
+            ):
+                candidate.validate_ui_receipts(root, empty)
+
+    def test_complete_ui_ignores_a_manual_spanish_receipt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.write_ui_receipts(root)
+            spanish = json.loads((root / "en-runtime.json").read_text())
+            spanish["locale"] = "es"
+            spanish["budgetStatus"] = "failed"
+            (root / "es-runtime.json").write_text(json.dumps(spanish))
+            candidate.validate_ui_receipts(root, self.contract)
+
+            (root / "en-runtime.json").unlink()
+            with self.assertRaises(candidate.CandidateAutomationError):
+                candidate.validate_ui_receipts(root, self.contract)
+
+    def test_candidate_runs_the_english_release_ui_gate(self):
+        source = (ROOT / "scripts/candidate_automation.py").read_text()
+        self.assertIn('"Complete real-app XCUITest",\n        ["make", "test-ui-release"],', source)
+        self.assertNotIn("test-ui-bilingual", source)
+        makefile = (ROOT / "Makefile").read_text()
+        self.assertNotIn("test-ui-bilingual", makefile)
+        release = [
+            line for line in makefile.splitlines() if line.startswith("test-ui-release:")
+        ]
+        self.assertEqual(release, [
+            "test-ui-release: UI_TEST_LOCALES = en",
+            "test-ui-release: UI_TEST_INTERRUPTION_REQUIRED = true",
+            "test-ui-release: test-ui-scoped",
+        ])
+        phony = makefile.split(".PHONY:", 1)[1].split("\n\n", 1)[0]
+        self.assertIn("test-ui-release", phony.split())
+        self.assertIn("test-ui-es", phony.split())
+        self.assertIn(
+            "## Manual, non-gating Spanish pass",
+            makefile.split("test-ui-es: UI_TEST_LOCALES = es", 1)[0].rsplit("\n\n", 1)[1],
+        )
+
+    def test_complete_ui_validates_split_harness_attribution(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             self.write_ui_receipts(root)

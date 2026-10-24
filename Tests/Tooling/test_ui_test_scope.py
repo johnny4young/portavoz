@@ -1,4 +1,6 @@
+import contextlib
 import hashlib
+import io
 import json
 import re
 import subprocess
@@ -54,16 +56,16 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
 
     def test_package_changes_cannot_bypass_ui_evidence(self):
-        for path, locales in [("Package.swift", ("en", "es")), ("Package.resolved", ("en",))]:
+        for path, locales in [("Package.swift", ("en",)), ("Package.resolved", ("en",))]:
             selection = select_paths([path])
             self.assertTrue(selection.required, path)
             self.assertEqual(selection.tests, ALL_TESTS, path)
             self.assertEqual(selection.locales, locales, path)
 
-    def test_package_changes_keep_bilingual_harness_expansion(self):
+    def test_package_changes_keep_complete_harness_expansion(self):
         selection = select_paths(["Package.swift", "project.yml"])
         self.assertEqual(selection.tests, ALL_TESTS)
-        self.assertEqual(selection.locales, ("en", "es"))
+        self.assertEqual(selection.locales, ("en",))
 
     def minimal_catalog_root(self, *methods: str, with_owner: bool = True):
         temporary = tempfile.TemporaryDirectory()
@@ -135,7 +137,7 @@ class UITestScopeTests(unittest.TestCase):
         )
         selection = ui_scope.Selection(
             tests=ui_scope.ALL_TESTS,
-            locales=("en", "es"),
+            locales=("en",),
             reasons=reasons,
         )
 
@@ -144,7 +146,7 @@ class UITestScopeTests(unittest.TestCase):
 
         self.assertEqual(outputs["required"], "true")
         self.assertEqual(outputs["tests"].split(), list(ui_scope.ALL_TESTS))
-        self.assertEqual(outputs["locales"], "en es")
+        self.assertEqual(outputs["locales"], "en")
         self.assertLessEqual(
             len(outputs["summary"].encode("utf-8")),
             ui_scope.MAX_SUMMARY_BYTES,
@@ -362,10 +364,43 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
             self.assertEqual(set(selection.tests), owned_tests, path)
 
-    def test_localization_expands_to_the_complete_bilingual_catalog(self):
+    def test_localization_expands_to_the_complete_english_catalog(self):
         selection = select_paths(["Resources/Localization/Portavoz/Localizable.xcstrings"])
         self.assertEqual(selection.tests, HARNESS_TESTS)
-        self.assertEqual(selection.locales, ("en", "es"))
+        self.assertEqual(selection.tests, ALL_TESTS)
+        self.assertEqual(selection.locales, ("en",))
+        self.assertEqual(
+            selection.reasons,
+            ("Resources/Localization/Portavoz/Localizable.xcstrings: "
+             "complete localization fallback",),
+        )
+
+    def test_no_path_combination_selects_spanish(self):
+        selection = select_paths([
+            "Resources/Localization/Portavoz/Localizable.xcstrings",
+            "Tests/PortavozUITests/UITestSupport.swift",
+            "Sources/portavoz-app/UITestDefaults.swift",
+            "Sources/portavoz-app/PortavozAppIntents.swift",
+            "Fixtures/ApuntadorWeb/public-local-v1.json",
+            *sorted(ui_scope.APUNTADOR_LEAK_EVIDENCE_FILES),
+        ])
+        self.assertEqual(selection.tests, ALL_TESTS)
+        self.assertEqual(selection.locales, ("en",))
+        self.assertEqual(ui_scope.SELECTION_LOCALES, ("en",))
+
+    def test_all_selects_every_test_in_english_only(self):
+        for output_format, expected in (
+            ("github", {"locales=en", 'matrix=["en"]', "interruption_controls=true"}),
+            ("shell", {"export UI_TEST_LOCALES=en"}),
+            ("human", {"Locales: en", f"UI tests: {len(ALL_TESTS)}/{len(ALL_TESTS)}"}),
+        ):
+            with self.subTest(output_format=output_format):
+                stdout = io.StringIO()
+                with contextlib.redirect_stdout(stdout):
+                    status = ui_scope.main(["--all", "--format", output_format])
+                self.assertEqual(status, 0)
+                self.assertLessEqual(expected, set(stdout.getvalue().splitlines()))
+        self.assertIn("Select every UI test in English", ui_scope.parser().format_help())
 
     def test_feature_handshake_support_selects_only_ask_and_skills(self):
         expected = set(FEATURE_TESTS["ask"])
@@ -415,7 +450,7 @@ class UITestScopeTests(unittest.TestCase):
         self.assertIn("UI_TEST_LOCALES: ${{ matrix.locale }}", workflow)
         self.assertIn("UI_TEST_PRODUCTS_PATH:", workflow)
         self.assertIn('--english-outcome "$(outcome en)"', workflow)
-        self.assertIn('--spanish-outcome "$(outcome es)"', workflow)
+        self.assertNotIn("--spanish-outcome", workflow)
         self.assertIn("runs-on: macos-26", workflow)
         self.assertIn("Xcode_26.6.app/Contents/Developer", workflow)
         for job in ("interruption-controls", "build-ui-products"):
@@ -430,11 +465,11 @@ class UITestScopeTests(unittest.TestCase):
     def test_github_selection_emits_a_json_locale_matrix(self):
         selection = ui_scope.Selection(
             tests=("PortavozUITests/HomeUITests/testTodayAsksAndRecordsWithoutTyping",),
-            locales=("en", "es"),
+            locales=("en",),
             reasons=("localization catalog changed",),
         )
         rendered = ui_scope.render(selection, "github")
-        self.assertIn('matrix=["en", "es"]', rendered)
+        self.assertIn('matrix=["en"]', rendered)
         empty = ui_scope.Selection(tests=(), locales=(), reasons=())
         self.assertIn("matrix=[]", ui_scope.render(empty, "github"))
 
@@ -637,7 +672,7 @@ class UITestScopeTests(unittest.TestCase):
         ):
             selection = select_paths([path])
             self.assertEqual(selection.tests, expected, path)
-            self.assertEqual(selection.locales, ("en", "es"), path)
+            self.assertEqual(selection.locales, ("en",), path)
 
     def test_legacy_scroll_bridge_selects_only_recording_recovery_evidence(self):
         selection = select_paths(
@@ -804,7 +839,7 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en",), path)
 
-    def test_window_placement_expands_to_the_complete_bilingual_catalog(self):
+    def test_window_placement_expands_to_the_complete_english_catalog(self):
         for path in (
             "Sources/portavoz-app/UITestWindowPlacement.swift",
             "Sources/portavoz-app/SettingsSkillReceiptNavigation.swift",
@@ -812,9 +847,9 @@ class UITestScopeTests(unittest.TestCase):
             with self.subTest(path=path):
                 selection = select_paths([path])
                 self.assertEqual(selection.tests, HARNESS_TESTS)
-                self.assertEqual(selection.locales, ("en", "es"))
+                self.assertEqual(selection.locales, ("en",))
 
-    def test_seed_fixtures_expand_to_the_complete_bilingual_catalog(self):
+    def test_seed_fixtures_expand_to_the_complete_english_catalog(self):
         for path in (
             "Sources/portavoz-app/AppServices+UITestFixtures.swift",
             "Sources/portavoz-app/AppServices+LiveAssistUITestFixture.swift",
@@ -825,7 +860,7 @@ class UITestScopeTests(unittest.TestCase):
             with self.subTest(path=path):
                 selection = select_paths([path])
                 self.assertEqual(selection.tests, HARNESS_TESTS)
-                self.assertEqual(selection.locales, ("en", "es"))
+                self.assertEqual(selection.locales, ("en",))
                 self.assertIn("seed-fixture fallback", selection.reasons[0])
 
     def test_subtitle_export_selects_only_its_meeting_export_smoke(self):
@@ -947,13 +982,13 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
             self.assertEqual(len(selection.tests), 2, path)
 
-    def test_atomic_snapshot_helper_requires_both_locales_without_neighboring_changes(self):
+    def test_atomic_snapshot_helper_requires_the_complete_catalog_without_neighboring_changes(self):
         path = "Tests/PortavozUITests/UITestSnapshotSupport.swift"
         selection = select_paths([path])
         self.assertEqual(selection.tests, HARNESS_TESTS)
-        self.assertEqual(selection.locales, ("en", "es"))
+        self.assertEqual(selection.locales, ("en",))
 
-    def test_shared_fixture_build_sources_and_permission_require_full_bilingual(self):
+    def test_shared_fixture_build_sources_and_permission_require_full_catalog(self):
         for path in (
             "Package.swift",
             "packaging/portavoz-uitests.entitlements",
@@ -963,19 +998,19 @@ class UITestScopeTests(unittest.TestCase):
             with self.subTest(path=path):
                 selection = select_paths([path])
                 self.assertEqual(selection.tests, HARNESS_TESTS)
-                self.assertEqual(selection.locales, ("en", "es"))
+                self.assertEqual(selection.locales, ("en",))
 
-    def test_harness_change_expands_to_the_complete_bilingual_catalog(self):
+    def test_harness_change_expands_to_the_complete_english_catalog(self):
         self.assertIn(
             "scripts/candidate_automation.py",
-            ui_scope.FULL_BILINGUAL_HARNESS_FILES,
+            ui_scope.FULL_HARNESS_FILES,
         )
-        for path in sorted(ui_scope.FULL_BILINGUAL_HARNESS_FILES):
+        for path in sorted(ui_scope.FULL_HARNESS_FILES):
             selection = select_paths([path])
             self.assertEqual(selection.tests, HARNESS_TESTS, path)
-            self.assertEqual(selection.locales, ("en", "es"), path)
+            self.assertEqual(selection.locales, ("en",), path)
 
-    def test_leak_evidence_owners_select_only_bilingual_product_paths(self):
+    def test_leak_evidence_owners_select_only_their_product_paths(self):
         expected_set = set(
             FEATURE_TESTS["ask"]
             + FEATURE_TESTS["background-work"]
@@ -989,14 +1024,14 @@ class UITestScopeTests(unittest.TestCase):
         # Ask also owns the dictation-source journey.
         self.assertEqual(len(expected), 18)
         self.assertTrue(ui_scope.APUNTADOR_LEAK_EVIDENCE_FILES.isdisjoint(
-            ui_scope.FULL_BILINGUAL_HARNESS_FILES
+            ui_scope.FULL_HARNESS_FILES
         ))
         for path in sorted(ui_scope.APUNTADOR_LEAK_EVIDENCE_FILES):
             selection = select_paths([path])
             self.assertEqual(selection.tests, expected, path)
-            self.assertEqual(selection.locales, ("en", "es"), path)
+            self.assertEqual(selection.locales, ("en",), path)
 
-    def test_app_intents_selects_only_the_bilingual_recording_handoff(self):
+    def test_app_intents_selects_only_the_recording_handoff(self):
         selection = select_paths(
             ["Sources/portavoz-app/PortavozAppIntents.swift"]
         )
@@ -1004,7 +1039,7 @@ class UITestScopeTests(unittest.TestCase):
             selection.tests,
             FEATURE_TESTS["automation-entry"],
         )
-        self.assertEqual(selection.locales, ("en", "es"))
+        self.assertEqual(selection.locales, ("en",))
 
     def test_app_entity_catalog_files_select_only_entry_and_radar(self):
         expected_set = set(
@@ -1057,7 +1092,7 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(selection.tests, FEATURE_TESTS["insights"])
         self.assertTrue(all("InsightsUITests" in test for test in selection.tests))
 
-    def test_web_fixture_selects_only_its_bilingual_real_app_journey(self):
+    def test_web_fixture_selects_only_its_real_app_journey(self):
         for path in (
             "Fixtures/ApuntadorWeb/public-local-v1.json",
             "Tests/PortavozUITests/ApuntadorWebFixtureSupport.swift",
@@ -1072,7 +1107,7 @@ class UITestScopeTests(unittest.TestCase):
                 ),
                 path,
             )
-            self.assertEqual(selection.locales, ("en", "es"), path)
+            self.assertEqual(selection.locales, ("en",), path)
 
     def test_unknown_production_source_falls_back_to_full_english(self):
         selection = select_paths(["Sources/NewCapabilityKit/Unknown.swift"])
