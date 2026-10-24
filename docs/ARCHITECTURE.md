@@ -557,7 +557,7 @@ Any provider, transport, decode, settlement, or interruption failure after the
 attempt begins is terminal outcome unknown and cannot trigger an automatic
 retry. Disposable UI automation exercises the same draft, codec, metadata,
 receipt, and settlement paths through a no-network provider-shaped response;
-real Keychain, GitHub, network, and physical Sequoia/Tahoe behavior remain
+real Keychain, GitHub, network, and physical Mac behavior remain
 field evidence.
 
 The resident pre-meeting brief uses the same execution authority without
@@ -1650,7 +1650,7 @@ and malformed audio/model output, and is reachable only through the explicit
 `bench-live --engine nemotron-latin-1120` CLI path. It is absent from the app
 composition and `ModelCatalog.recommended`; Parakeet remains the default live authority.
 The descriptor and adapter are executable benchmark plumbing, not accepted
-quality, memory, thermal, license-distribution, Sequoia, or Tahoe evidence.
+quality, memory, thermal, license-distribution, or physical Tahoe evidence.
 
 ## Persistence and aggregate integrity
 
@@ -1833,8 +1833,8 @@ schema-2 Release matrix seals clean source, binary, Apple toolchain, host,
 profile, synthetic fixture/query pack, configuration, stages, and scales.
 Three stable same-host matrices become one aggregate current-control receipt.
 The cross-host comparator then requires one such canonical receipt for each of
-the shared 8 GiB, 16 GiB, and reference memory profiles, with Sequoia and Tahoe
-both represented. Source, Swift/Xcode versions, semantic profile, fixture, and
+the shared 8 GiB, 16 GiB, and reference memory profiles, all on macOS 26
+Tahoe. Source, Swift/Xcode versions, semantic profile, fixture, and
 configuration must remain exact. The host-derived Swift target and Release
 binary remain sealed per receipt and may differ only with a coherent supported
 Apple-Silicon host.
@@ -2955,7 +2955,7 @@ abstained, cancelled, or failed. Only a random process-local correlation token
 and those closed enums cross the port: person/topic/meeting/commitment IDs,
 text, evidence, result counts, abstention reasons, and errors are structurally
 absent. The spans are neither persisted nor sent over a network and establish
-no performance baseline by themselves; accepted Sequoia/Tahoe receipts remain
+no performance baseline by themselves; accepted Tahoe receipts remain
 external evidence.
 
 Content-free graph query product timing receipts are collected only by a
@@ -4662,7 +4662,7 @@ product authority.
 Host acceptance is a separate tooling-only boundary. The tracked
 `exact-path-shadow-matrix.json` contract requires one Release build, the fixed
 fixture and measurement policies, five runs per query, three observations at
-each canonical scale, Apple Silicon, supported Sequoia/Tahoe majors, and one
+each canonical scale, Apple Silicon, macOS 26 Tahoe, and one
 of the existing 8 GB, 16 GB, or reference-memory profiles.
 `exact_path_matrix.py` rejects duplicate JSON keys, extra fields, non-finite or
 inconsistent measurements, mixed hosts, noncanonical engine order, incomplete
@@ -4699,8 +4699,8 @@ cross-host scorecard; that scale is explicitly not comparable.
 
 Cross-host acceptance is another tooling-only boundary. The tracked
 `exact-path-cross-host-matrix.json` contract requires exactly one valid host
-receipt for each 8 GB, 16 GB, and reference-memory profile, with Sequoia and
-Tahoe each represented at least once. `exact_path_cross_host.py` rejects
+receipt for each 8 GB, 16 GB, and reference-memory profile, all on macOS 26
+Tahoe. `exact_path_cross_host.py` rejects
 malformed, payload-bearing, duplicate, or repeated-profile receipts and emits
 one `exact-path-shadow-cross-host-scorecard` to stdout. Missing profile or OS
 coverage, a blocked host receipt, or different source commits or Swift
@@ -4772,7 +4772,7 @@ remain later SEARCH-5 boundaries.
 The next evidence boundary is deliberately threshold-free. The versioned
 `exact-path-mutation-matrix.json` contract requires three complete mutation
 benchmark observations at every canonical scale from one clean Release checkout
-and one declared 8 GB, 16 GB, or reference host on supported Sequoia/Tahoe. The
+and one declared 8 GB, 16 GB, or reference host on macOS 26 Tahoe. The
 `exact_path_mutation_matrix.py` validator rejects unknown fields, duplicate
 JSON keys or observations, mixed hosts, invalid lifecycle labels, incomplete
 batch/engine order, non-finite or non-monotonic distributions, and malformed
@@ -5157,14 +5157,14 @@ authority.
 
 Release admission consumes this evidence through a separate, fail-closed
 ledger. `docs/evidence/reliability-gates.json` declares every required proof
-and its schema-2 Portavoz 1.0 contract classifies 29 proofs as deterministic
+and its schema-2 Portavoz 1.0 contract classifies 25 proofs as deterministic
 automation, candidate automation, reviewed source integration, signed-build
 verification, production-sync admission, real-hardware validation, physical
 assistive-technology validation, or user-field validation. Deterministic gates
 write one receipt bound to the exact version, build, and Git commit. Strict
 qualification receipts use one closed scope vocabulary for the eight complete
 candidate gates, reviewed integration plus hosted CI, production sync, and
-physical VoiceOver/Voice Control on Sequoia and Tahoe. Protocol-2 field
+physical VoiceOver/Voice Control on Tahoe or newer. Protocol-2 field
 packages remain the only source for the eight real-device/conversation cells.
 Source-integration, production-sync, and assistive-technology receipts
 additionally carry the canonical digest of their owner-specific
@@ -5190,7 +5190,7 @@ dismissed approvals do not count.
 
 The same exact commit must have one first-attempt successful `push` run of the
 tracked `CI` workflow on `main`; multiple unchanged-commit runs, a rerun, a
-failed/cancelled job, a missing Sequoia/build/lint/hygiene job, or metadata
+failed/cancelled job, a missing build/lint/hygiene job, or metadata
 drift blocks. The producer also queries its own exact commit-titled dispatch
 and requires the in-progress run to be the only matching first attempt; a
 second dispatch or workflow rerun cannot mint a replacement receipt. Only
@@ -5271,8 +5271,8 @@ digest. The host hash is derived from IOPlatformUUID plus the random run nonce;
 the raw identifier is never written. Finalization requires 27 exact receipts,
 two distinct IOPlatformUUID-derived host scopes, one original account shared by
 both roles, a genuinely different switched account followed by restoration,
-one consistent OS identity per role, a cross-version pair containing one
-Sequoia Mac and one Tahoe-or-newer Mac, and no extra files. It atomically
+one consistent OS identity per role, macOS 26 or newer on both Macs, and no
+extra files. It atomically
 publishes the authority and generic admission receipt as a pair; the receipt
 binds the canonical authority digest and release evaluation requires the
 unchanged sibling. Host-scope inequality is not hardware attestation: the
@@ -5282,8 +5282,8 @@ unit, packaging, and XCUITest evidence do not mint its receipt.
 
 ### Physical assistive-technology qualification
 
-`docs/evidence/assistive-technology-qualification.json` freezes four cells:
-VoiceOver and Voice Control on Sequoia and Tahoe-or-newer, each executed in
+`docs/evidence/assistive-technology-qualification.json` freezes two cells:
+VoiceOver and Voice Control on Tahoe or newer, each executed in
 English then Spanish. Every locale launches the unchanged Developer-ID-signed
 `app.portavoz.mac.dev` executable directly against isolated paths with the
 public demo, duplicate-Skill, waiting-receipt, and synthetic Interview Assist
@@ -5321,10 +5321,9 @@ state only after confirmed exit, blocks the entire cell, and requires a new run
 rather than an overwrite or retry-to-green. A graceful-cleanup timeout preserves
 scratch state and surfaces its own failure instead of hiding a possible orphan.
 
-Finalization admits all and only the four complete cells and their two locale
+Finalization admits all and only the two complete cells and their two locale
 chains, requires VoiceOver and Voice Control to share one host scope and exact
-OS build within each platform, requires distinct Sequoia/Tahoe host scopes,
-rejects reused process/cell nonces and every extra, symbolic-link, special, or
+OS build, rejects reused process/cell nonces and every extra, symbolic-link, special, or
 mode-drifted entry, then atomically publishes a new owner-only
 `authority.json`/`qualification.json` pair. JSON publication uses a no-clobber
 hard-link boundary and never changes a pre-existing shared parent directory's
@@ -5492,7 +5491,7 @@ remain explicitly `not-measured` in this runner—neither absent nor silently
 green—and continue to be owned by their specialized or physical evidence
 lanes. Likewise, the resource proof describes the one actual Mac that ran the
 candidate; it does not stand in for the 8 GB/16 GB/reference matrix,
-Sequoia/Tahoe hardware, assistive technology, signed distribution, production
+Tahoe hardware, assistive technology, signed distribution, production
 CloudKit, hosted CI, or user-field evidence.
 
 The deterministic package gate keeps failure diagnosis private without making
@@ -5654,16 +5653,19 @@ thermal or battery behavior, physical devices, or two-device convergence.
 
 ## Packaging and platform operation
 
-The package minimum is macOS 14.4 because system-audio process taps require it.
-Newer OS capabilities degrade through explicit availability checks. The app is
+The package minimum is macOS 26 Tahoe. The bundle's
+`LSMinimumSystemVersion`, the signed appcast's `sparkle:minimumSystemVersion`
+and the Homebrew cask carry the same floor, so neither Sparkle nor Homebrew
+offers a newer release to an older Mac. Pre-Tahoe availability fallbacks remain
+in the source as unreachable code until their removal (GAPS T39). The app is
 built from SwiftPM and wrapped by `scripts/make-app.sh`; `project.yml` exists for
 XCUITest generation. Generated projects, result bundles, local screenshots,
 agent state, scratch plans, and local work-item files remain outside version control;
 `scripts/check-repository-hygiene.sh` rejects both tracked local state and
 private work-item identifier leakage in implementation files. SwiftUI APIs with SDK-
 overloaded defaults and presentation math that crosses `CGFloat`/`Double`
-boundaries use explicit signatures and types so both the Sequoia and latest
-compiler lanes resolve the same behavior. The focused transcript measures rows
+boundaries use explicit signatures and types so the current and next compilers
+resolve the same behavior. The focused transcript measures rows
 in SwiftUI's built-in vertical scroll-view coordinate space instead of sharing
 a generic named coordinate key with a concurrent visual-effect closure.
 Current dependency APIs are used without deprecated compatibility shims. The
@@ -5679,16 +5681,13 @@ the main actor capture `self` weakly at their outermost boundary. Hosted
 CI uses the
 explicit macos-26/Xcode 26.6 pair for every macOS lane; `DEVELOPER_DIR` is
 verified instead of selecting the newest installed Xcode, and `xcrun` must
-resolve Swift inside that Xcode. Hosted CI no longer runs a macOS 15 Sequoia
-lane: 1.1.0 is the last release officially supported on Sequoia, and the
-source still builds for the 14.4 deployment floor until a later cleanup.
+resolve Swift inside that Xcode. Hosted CI qualifies macOS 26 only, which is
+also the deployment floor; 1.2.0 is the last release that installs on macOS 15
+Sequoia or 14 Sonoma.
 CI runs on pull requests and pushes to main and can also be dispatched by hand,
 so a push whose event GitHub dropped can still be qualified on main; a
 dispatched run follows the push cache policy.
-The standalone compiler explicitly enables SDK cross-import overlays, matching
-the Apple compiler default and retaining Translation's public SwiftUI modifier.
-This does not install a compiler on developer Macs, change app deployment targets,
-or substitute a compile-only check for the complete suite on Sequoia. Each lane
+Each lane
 owns one complete test invocation so its compiler flags cannot trigger a second
 differently configured package build.
 SwiftLint 0.65.0 and XcodeGen 2.46.0 come from official release archives with
@@ -5939,14 +5938,14 @@ locales. English measures 853.399 summed XCTest seconds, 879 seconds wall, p50
 seconds, 888 seconds wall, p50 6.554, p95 18.181, and maximum 36.890. Both pass
 the unchanged 1,300-second aggregate, 30-second p95, and independent per-
 journey ceilings without retry or runtime adjustment. These are one-host
-measurements, not physical Sequoia or separate-hardware Tahoe evidence.
+measurements, not separate-hardware evidence.
 
 The published predecessor `19084e4e` passed its four CI jobs and all 103
 English plus 103 Spanish real-app journeys on their first attempts. Earlier red
 receipts remain diagnosis for genuine assertion failures and hosted runtime
 variance rather than being erased by reruns. Changes after that published head
 still require fresh hosted evidence. These are hosted functional observations,
-not physical Sequoia or separate-hardware Tahoe evidence.
+not separate-hardware evidence.
 
 Autonomous assistant validation has a separate, non-serving public authority.
 `Fixtures/ApuntadorValidation/public-bilingual-v1.json` freezes six synthetic

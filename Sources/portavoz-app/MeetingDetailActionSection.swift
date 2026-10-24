@@ -113,12 +113,8 @@ struct MeetingDetailActionSection: View {
                     values.includeCorrectionProvenance
                         ? "detail-export-correction-provenance-on"
                         : "detail-export-correction-provenance-off")
-                .accessibilityLabel(
-                    Text("Include edit history")
-                        + Text(verbatim: ", ")
-                        + (values.includeCorrectionProvenance
-                            ? Text("On")
-                            : Text("Off")))
+                .accessibilityLabel(Text("Include edit history"))
+                .accessibilityValue(values.includeCorrectionProvenance ? Text("On") : Text("Off"))
             Button("Export meeting file (.portavoz)…") {
                 actions.export(.meetingBundle(includeAudio: false))
             }

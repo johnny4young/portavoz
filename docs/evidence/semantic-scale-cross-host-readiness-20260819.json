@@ -80,11 +80,6 @@
     "observedReceiptCount": 1,
     "operatingSystems": [
       {
-        "family": "sequoia",
-        "majorVersion": 15,
-        "state": "missing"
-      },
-      {
         "family": "tahoe",
         "majorVersion": 26,
         "state": "present"
@@ -114,7 +109,7 @@
   },
   "generatedAt": "2026-08-19T00:00:00Z",
   "kind": "semantic-scale-cross-host-matrix",
-  "matrixSHA256": "169380b72c82ab6a3f0ca3d9e25fc0bd0c53759589e6219aedd7c81c9ca41cea",
+  "matrixSHA256": "1dc6b4b693c16de1171e97a40fb0c6c83207685d66ee716cd5e30bd3134da6bb",
   "outcome": "incomplete-required-matrix",
   "policy": {
     "acceptedReceiptKind": "semantic-scale-control-baseline",
@@ -123,10 +118,6 @@
     "budgetSegments": 100000,
     "hostSwiftTargetPolicy": "matching-host-architecture-and-os-major-v1",
     "requiredOperatingSystems": [
-      {
-        "family": "sequoia",
-        "majorVersion": 15
-      },
       {
         "family": "tahoe",
         "majorVersion": 26
@@ -154,8 +145,7 @@
   },
   "reasons": [
     "missing-profile:memory-8gb",
-    "missing-profile:memory-16gb",
-    "missing-operating-system:sequoia"
+    "missing-profile:memory-16gb"
   ],
   "receipts": [
     {

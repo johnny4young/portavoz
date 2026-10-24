@@ -222,6 +222,26 @@ class ExactPathMutationMatrixTests(unittest.TestCase):
         ):
             self.receipt(observations)
 
+    def test_sequoia_host_and_sequoia_contract_are_rejected(self):
+        observations = self.observations()
+        for observation in observations:
+            observation["host"]["operatingSystem"] = "Version 15.7 (Build 24G222)"
+        with self.assertRaisesRegex(
+            mutation_matrix.MatrixError, "not a supported Tahoe host"
+        ):
+            self.receipt(observations)
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "contract.json"
+            raw = json.loads(mutation_matrix.DEFAULT_CONTRACT.read_text())
+            self.assertEqual(raw["supportedOperatingSystemMajors"], [26])
+            raw["supportedOperatingSystemMajors"] = [15, 26]
+            path.write_text(json.dumps(raw))
+            with self.assertRaisesRegex(
+                mutation_matrix.MatrixError, "operating-system matrix"
+            ):
+                mutation_matrix.load_contract(path)
+
     def test_receipt_rejects_tampered_state_and_ratio_shape(self):
         receipt = self.receipt(self.observations())
         receipt["scales"][0]["state"] = "agreement-failed"

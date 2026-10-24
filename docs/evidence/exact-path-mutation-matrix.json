@@ -23,7 +23,6 @@
   "runsPerBatch": 5,
   "schemaVersion": 1,
   "supportedOperatingSystemMajors": [
-    15,
     26
   ]
 }

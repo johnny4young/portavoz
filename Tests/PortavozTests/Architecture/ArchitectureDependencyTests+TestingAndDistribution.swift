@@ -820,7 +820,7 @@ extension ArchitectureDependencyTests {
             at: "docs/evidence/reliability-gates.json")
         let proofs = try XCTUnwrap(contract["proofs"] as? [[String: Any]])
         XCTAssertEqual(contract["schemaVersion"] as? Int, 2)
-        XCTAssertEqual(proofs.count, 29)
+        XCTAssertEqual(proofs.count, 25)
         XCTAssertEqual(
             Set(proofs.compactMap { $0["class"] as? String }),
             Set([
@@ -1558,8 +1558,7 @@ extension ArchitectureDependencyTests {
             "failed candidate launch did not exit after graceful cleanup"))
         XCTAssertTrue(owner.contains(
             "a failed observation makes the cell immutable"))
-        XCTAssertTrue(owner.contains(
-            "Sequoia and Tahoe must use distinct Mac host scopes"))
+        XCTAssertFalse(owner.lowercased().contains("sequoia"))
         XCTAssertTrue(owner.contains(
             "cryptographically attest physical hardware."))
         XCTAssertTrue(owner.contains("canonical_document_sha256(authority)"))
