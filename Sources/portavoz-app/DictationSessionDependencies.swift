@@ -68,6 +68,8 @@ struct DictationSessionDependencies {
     var makePauseDetector: (@escaping @Sendable () -> Void) -> DictationPauseDetector? = { _ in nil }
     /// Nil when history is off: read once when the session starts.
     var beginHistory: () -> DictationHistoryWriter? = { nil }
+    /// Counts a finished dictation when statistics are on; the store checks consent.
+    var recordStats: (DictationStatsSample) -> Void = { _ in }
 
     func transcriptionHints() -> TranscriptionHints {
         let language = defaults.string(forKey: DictationController.languageKey)

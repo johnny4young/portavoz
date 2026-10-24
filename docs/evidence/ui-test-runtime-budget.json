@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 164
+    "expectedCaseCount": 166
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -187,6 +187,8 @@
     "DictationHistoryUITests/testAskAboutDictationsCitesAndOpensTheDictation()": 30.0,
     "CommandLineToolUITests/testIntegrationsInstallsAndRemovesTheCommandLineToolLink()": 30.0,
     "CommandLineToolUITests/testABuildWithoutTheToolSaysSo()": 25.0,
-    "AutomationUITests/testOpenDictationsShortcutShowsItsSearch()": 25.0
+    "AutomationUITests/testOpenDictationsShortcutShowsItsSearch()": 25.0,
+    "DictationHistoryUITests/testStatisticsSummarizeTheWeekWithoutTheHistory()": 25.0,
+    "DictationHistoryUITests/testStatisticsStartOffAndTurnOnFromSettings()": 25.0
   }
 }

@@ -42,6 +42,37 @@ final class DictationHistoryRecordingTests: XCTestCase {
         controller.cancel()
     }
 
+    func testStatisticsCountADictationWithTheHistoryOffButNeverPractice() async throws {
+        let (controller, services) = try makeServices()
+        await services.dictationHistory.load()
+        await services.dictationStats.update(isEnabled: true)
+        let dependencies = services.makeDictationSessionDependencies()
+        // The session clock may be a fixture; count on the day it reports.
+        let day = [DictationStatsCalendar.day(of: dependencies.now(), calendar: .current)]
+
+        try await dictate(controller, using: dependencies)
+        var totals = DictationStatsTotals.zero
+        for _ in 0..<200 where totals.dictations == 0 {
+            totals = try await services.store.dictationStatsSummary(days: day).totals
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let apps = try await services.store.dictationStatsSummary(days: day).topApplications
+        XCTAssertEqual(totals.dictations, 1)
+        XCTAssertEqual(totals.words, 4)
+        XCTAssertEqual(apps.first?.name, "Dictation test receiver")
+        XCTAssertEqual(services.dictationHistory.records, [], "statistics never save the text")
+
+        let holder = UUID()
+        services.dictationPractice.show(holder, isKey: true)
+        defer { services.dictationPractice.hide(holder) }
+        let practice = services.dictationPractice.route(services.makeDictationSessionDependencies(), appIsActive: true)
+        try await dictate(controller, using: practice)
+        try await Task.sleep(for: .milliseconds(200))
+        let afterPractice = try await services.store.dictationStatsSummary(days: day).totals
+        XCTAssertEqual(afterPractice.dictations, 1, "practice is never counted")
+        controller.cancel()
+    }
+
     func testDeletingEverythingWhileADictationFinishesKeepsItOut() async throws {
         let (_, services) = try makeServices()
         let history = services.dictationHistory

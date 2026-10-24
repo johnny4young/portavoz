@@ -106,6 +106,7 @@ struct DictationSection: View {
             .foregroundStyle(.secondary)
         }
         DictationHistorySettingsSection()
+        DictationStatsSettingsSection()
     }
 
     @ViewBuilder private var autoStopControls: some View {

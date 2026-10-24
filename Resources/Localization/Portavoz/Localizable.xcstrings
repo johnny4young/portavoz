@@ -19446,6 +19446,186 @@
           }
         }
       }
+    },
+    "Dictation statistics": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estadísticas de dictado"
+          }
+        }
+      }
+    },
+    "Keep dictation statistics": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar estadísticas de dictado"
+          }
+        }
+      }
+    },
+    "Counts dictations, words and speaking time per day and app, never what you said. Kept for one year on this Mac, separate from the history.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuenta dictados, palabras y tiempo hablando por día y por app, nunca lo que dijiste. Se guardan un año en este Mac, aparte del historial."
+          }
+        }
+      }
+    },
+    "Delete statistics": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrar estadísticas"
+          }
+        }
+      }
+    },
+    "Delete your dictation statistics?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Borrar tus estadísticas de dictado?"
+          }
+        }
+      }
+    },
+    "Your dictation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu dictado"
+          }
+        }
+      }
+    },
+    "Period": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Periodo"
+          }
+        }
+      }
+    },
+    "7 days": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "7 días"
+          }
+        }
+      }
+    },
+    "30 days": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "30 días"
+          }
+        }
+      }
+    },
+    "No dictations counted in this period yet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay dictados contados en este periodo."
+          }
+        }
+      }
+    },
+    "Time saved assumes typing at 40 words per minute.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El tiempo ahorrado supone escribir a 40 palabras por minuto."
+          }
+        }
+      }
+    },
+    "Speaking": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hablando"
+          }
+        }
+      }
+    },
+    "Time saved": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiempo ahorrado"
+          }
+        }
+      }
+    },
+    "Where you dictate most": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dónde más dictas"
+          }
+        }
+      }
+    },
+    "%@: %d words": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: %d palabras"
+          }
+        }
+      }
+    },
+    "Dictation statistics could not be loaded.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron cargar las estadísticas de dictado."
+          }
+        }
+      }
+    },
+    "The statistics setting could not be saved.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo guardar el ajuste de estadísticas."
+          }
+        }
+      }
+    },
+    "The statistics could not be deleted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron borrar las estadísticas."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -21690,3 +21690,21 @@ page now adopts from the model instead of clearing. D141 still holds: actions,
 no `AppShortcutsProvider`. Whether Shortcuts invoked from Spotlight or Siri
 leaves the intended app in front is field validation (GAPS #10).
 
+## D584 — Dictation statistics are daily counts behind their own consent
+
+Seeing how much one dictates, and roughly how much typing it saves, should not
+require keeping what was said. Statistics are a separate consent, off by
+default and independent of the history: with the history off they still count
+but never store text, and with the history on they stay off until turned on.
+Schema v58 keeps one row per day and app with the number of dictations, words,
+speaking time and deliveries that did not land; the app name is the only
+label, as in the history. A dictation is counted once, when its delivery
+settles, under the same rule as the history (secure fields, empty and
+cancelled deliveries never count). A short ledger of counted dictation
+identities, forgotten after two days, lets a later retry move it from not
+delivered to delivered instead of counting it again. Days older than a year are
+purged when the next dictation is counted. Turning statistics off stops
+counting and keeps the totals until the user deletes them. The Dictations page
+shows the last 7 or 30 days, words per day, the five apps dictated into most,
+and an estimate of time saved at 40 typed words per minute, stated beside it.
+

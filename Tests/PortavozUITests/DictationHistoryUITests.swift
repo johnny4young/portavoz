@@ -220,6 +220,41 @@ final class DictationHistoryUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testStatisticsSummarizeTheWeekWithoutTheHistory() throws {
+        let app = try XCUIApplication.portavoz()
+        app.launchArguments += ["-seed-dictation-stats"]
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        openDictations(in: app)
+        XCTAssertTrue(app.control(withIdentifier: "dictation-stats").waitForExistenceFast(timeout: 5))
+        let dictations = app.control(withIdentifier: "dictation-stats-dictations")
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: dictations).contains("4") })
+        XCTAssertTrue(renderedText(of: app.control(withIdentifier: "dictation-stats-app-0")).contains("Slack"))
+        XCTAssertTrue(app.control(withIdentifier: "dictation-stats-not-delivered").exists)
+        XCTAssertTrue(app.control(withIdentifier: "dictation-history-enable").exists, "the history itself stays off")
+        attachScreenshot(of: app, named: "dictation-stats")
+
+        app.radioButtons[spanish ? "30 días" : "30 days"].click()
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: dictations).contains("4") })
+    }
+
+    @MainActor
+    func testStatisticsStartOffAndTurnOnFromSettings() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        XCTAssertTrue(app.openSettingsCategory("settings-category-audio", revealing: "settings-dictation-stats"))
+        let toggle = app.control(withIdentifier: "settings-dictation-stats")
+        XCTAssertFalse(Self.isOn(toggle))
+        XCTAssertTrue(app.control(withIdentifier: "settings-dictation-stats-note").exists)
+        toggle.click()
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { Self.isOn(toggle) })
+        XCTAssertTrue(app.buttons["settings-dictation-stats-delete"].exists)
+    }
+
+    @MainActor
     private func openDictations(in app: XCUIApplication) {
         let button = app.buttons["library-dictations-button"]
         XCTAssertTrue(button.waitForStableFrame(timeout: 15))

@@ -5,6 +5,7 @@ import SwiftUI
 /// user turns history on; rows can be copied or deleted one by one or all.
 struct DictationHistoryView: View {
     let model: DictationHistoryModel
+    let stats: DictationStatsModel
     @State private var confirmingDeleteAll = false
     @State private var addingToMeeting: DictationRecord?
     @State private var query = ""
@@ -13,6 +14,7 @@ struct DictationHistoryView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header
+                if stats.isEnabled { DictationStatsPanel(model: stats) }
                 if showsFilters { filters }
                 if model.filter.recordID != nil { focusNotice }
                 if let failure = model.failure {

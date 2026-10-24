@@ -114,7 +114,7 @@ struct ContentView: View {
                 case .insights:
                     InsightsView(model: insightsModel, route: $route)
                 case .dictations:
-                    DictationHistoryView(model: services.dictationHistory)
+                    DictationHistoryView(model: services.dictationHistory, stats: services.dictationStats)
                 case .commitments(let focus):
                     CommitmentRadarView(
                         model: commitmentRadarModel,

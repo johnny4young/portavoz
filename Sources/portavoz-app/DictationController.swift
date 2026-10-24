@@ -1,3 +1,7 @@
+// Session and delivery state stays private to this type and its same-file
+// extensions; splitting it only for the line-count rule would expose it.
+// swiftlint:disable file_length
+
 import AppKit
 import AudioCaptureKit
 import Carbon.HIToolbox
@@ -73,6 +77,7 @@ final class DictationController {
     private var dependencies: DictationSessionDependencies?
     private(set) var deliveryID: UUID?
     private(set) var history: DictationHistorySession?
+    var statsDraft: DictationStatsDraft?
     @ObservationIgnored private(set) var retryDeliveryTask: Task<Void, Never>?
 
     let shortcut = DictationShortcut()

@@ -20,6 +20,7 @@ extension AppServices {
             dependencies = .live(services: self, beginCapture: beginCapture)
         }
         dependencies.beginHistory = { [weak self] in self?.dictationHistory.admit() }
+        dependencies.recordStats = { [weak self] sample in self?.dictationStats.record(sample) }
         return dictationPractice.route(dependencies, appIsActive: NSApplication.shared.isActive)
     }
 }

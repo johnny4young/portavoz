@@ -473,6 +473,8 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("DictationHistoryUITests", "testSearchAndFiltersNarrowTheHistory"),
         test_id("DictationHistoryUITests", "testADictationCanBeAddedToAMeetingsNotes"),
         test_id("DictationHistoryUITests", "testAskAboutDictationsCitesAndOpensTheDictation"),
+        test_id("DictationHistoryUITests", "testStatisticsSummarizeTheWeekWithoutTheHistory"),
+        test_id("DictationHistoryUITests", "testStatisticsStartOffAndTurnOnFromSettings"),
     ),
     "settings-audio": (
         test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),
