@@ -183,7 +183,7 @@ extension ArchitectureDependencyTests {
             of: "Classify functional evidence and hosted runtime drift"))
         XCTAssertLessThan(artifact.lowerBound, classifier.lowerBound)
         XCTAssertTrue(workflow.contains("--english-outcome \"$(outcome en)\""))
-        XCTAssertTrue(workflow.contains("--spanish-outcome \"$(outcome es)\""))
+        XCTAssertFalse(workflow.contains("--spanish-outcome"))
         XCTAssertFalse(workflow.contains("run: make test-ui-scoped"))
         XCTAssertTrue(workflow.contains("scripts/ui_test_verified_base.py"))
         XCTAssertTrue(workflow.contains("ui-verification-${{"))
@@ -255,7 +255,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(candidate.contains("UI_RECEIPT_SCHEMA_VERSION = 3"))
         XCTAssertTrue(candidate.contains(
             "UI_HARNESS_NOISE_THRESHOLD_SECONDS = 1.0"))
-        XCTAssertTrue(scope.contains("FULL_BILINGUAL_HARNESS_FILES"))
+        XCTAssertTrue(scope.contains("FULL_HARNESS_FILES"))
         XCTAssertTrue(scope.contains("scripts/ui_test_runtime.py"))
         XCTAssertTrue(scope.contains("scripts/ui_test_ci_gate.py"))
         XCTAssertTrue(scope.contains("scripts/candidate_automation.py"))
@@ -1133,7 +1133,7 @@ extension ArchitectureDependencyTests {
             "scripts/run-resource-baseline.sh",
             "scripts/run-apuntador-leak-baseline.sh",
             "scripts/run-long-capture-baseline.sh",
-            "make\", \"test-ui-bilingual",
+            "make\", \"test-ui-release",
             "validate_performance_ledger",
             "validate_resource_receipt",
             "validate_memory_leak_receipt",

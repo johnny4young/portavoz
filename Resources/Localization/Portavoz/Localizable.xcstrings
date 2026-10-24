@@ -6079,6 +6079,16 @@
         }
       }
     },
+    "Hangout": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Charla"
+          }
+        }
+      }
+    },
     "HUD": {
       "localizations": {
         "es": {
@@ -11029,6 +11039,16 @@
         }
       }
     },
+    "Refresh": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualizar"
+          }
+        }
+      }
+    },
     "Refresh activity": {
       "localizations": {
         "es": {
@@ -12347,6 +12367,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Guardando tu cambio…"
+          }
+        }
+      }
+    },
+    "Saving…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardando…"
           }
         }
       }

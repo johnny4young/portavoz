@@ -37,7 +37,7 @@ PORTAVOZ_LSREGISTER := /System/Library/Frameworks/CoreServices.framework/Framewo
 	test-exact-path-cross-host exact-path-cross-host test-exact-path-baseline exact-path-baseline \
 	test-meeting-detail-baseline meeting-detail-baseline \
 	test-recording-stress test-model-gated test-ui-real-audio test-ui test-ui-en test-ui-es \
-	test-ui-bilingual test-ui-native-dictation test-ui-scoped test-ui-build test-ui-run test-ui-changed \
+	test-ui-release test-ui-native-dictation test-ui-scoped test-ui-build test-ui-run test-ui-changed \
 	test-ui-preflight project app install \
 	production-sync-qualification-app production-sync-qualification-init \
 	production-sync-qualification-stage production-sync-qualification-status \
@@ -727,7 +727,7 @@ candidate-automation:
 test-source-integration-qualification:
 	python3 -m unittest Tests.Tooling.test_source_integration_qualification
 
-## Validate the fixed bilingual VoiceOver/Voice Control physical-evidence
+## Validate the fixed English VoiceOver/Voice Control physical-evidence
 ## contract and its content-free, fail-closed owner without launching the app.
 test-assistive-technology-qualification:
 	python3 -m unittest Tests.Tooling.test_assistive_technology_qualification
@@ -783,19 +783,21 @@ project:
 ## UI tests launch the real app against disposable state. Feature work should
 ## use test-ui-changed or an explicit minimum-safe scope. The runner builds
 ## once and reuses those products sequentially for every requested locale;
-## the complete bilingual suite is an integration/RC/release gate.
+## the complete English suite is an integration/RC/release gate.
 test-ui: UI_TEST_LOCALES = default
 test-ui: test-ui-scoped
 
 test-ui-en: UI_TEST_LOCALES = en
 test-ui-en: test-ui-scoped
 
+## Manual, non-gating Spanish pass; no CI, release or candidate gate runs it.
 test-ui-es: UI_TEST_LOCALES = es
 test-ui-es: test-ui-scoped
 
-test-ui-bilingual: UI_TEST_LOCALES = en es
-test-ui-bilingual: UI_TEST_INTERRUPTION_REQUIRED = true
-test-ui-bilingual: test-ui-scoped
+## Release gate: the complete English suite plus the interruption controls.
+test-ui-release: UI_TEST_LOCALES = en
+test-ui-release: UI_TEST_INTERRUPTION_REQUIRED = true
+test-ui-release: test-ui-scoped
 
 ## Cross-process paste is an explicit permission-dependent physical gate. It
 ## uses the real app and disposable receiver, and fails if the app has not been
@@ -803,7 +805,7 @@ test-ui-bilingual: test-ui-scoped
 test-ui-native-dictation:
 	@$(MAKE) --no-print-directory test-ui-scoped \
 		UI_TESTS="PortavozUITests/DictationUITests/testNativeInserterUsesDisposableReceiverAndClipboard PortavozUITests/DictationUITests/testNativeControllerModeChoicePreservesReceiverAndClipboard" \
-		UI_TEST_LOCALES="en es" \
+		UI_TEST_LOCALES="en" \
 		UI_TEST_RUNTIME_BUDGET="$(CURDIR)/docs/evidence/ui-test-native-dictation-runtime-budget.json"
 
 ## Permission-free negative controls use the same base/cleanup as real journeys.
@@ -836,7 +838,7 @@ test-ui-run:
 
 ## Select UI evidence from committed, staged, unstaged, and untracked changes
 ## against UI_BASE. Known views map to feature-level tests;
-## shared/localization changes expand to the complete bilingual gate; unknown
+## shared/localization changes expand to the complete English gate; unknown
 ## production paths fail safe to complete English; docs-only changes skip
 ## XCUITest. Set UI_HEAD explicitly to inspect a committed Git range instead.
 UI_BASE ?= origin/main

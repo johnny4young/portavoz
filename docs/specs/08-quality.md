@@ -48,7 +48,7 @@ value-first text semantics. The Topic and Skills phases share this bounded
 observation helper. Citation clicks
 and exact playback seeks still use live elements, and no snapshot crosses a
 user action. A change to the shared snapshot helper alone requires the complete
-bilingual catalog; neighboring changes cannot supply its missing locale scope.
+catalog; neighboring changes cannot supply its missing scope.
 The existing iterative snapshot traversal is shared with detail
 evidence and publication-receipt tests without changing those assertions. This
 reduces repeated cross-process observations, not launches, jobs, screenshots,
@@ -497,6 +497,18 @@ these negative controls are not passing feature tests.
 
 ### Scoped UI execution
 
+Locale policy (D586): XCUITest runs in English only. Pull requests, hosted
+CI, `make test-ui-release` and candidate automation select the `en` locale,
+and the physical VoiceOver/Voice Control cells run English only. Spanish is a
+unit-test property of the string catalogs in `LocalizationTests`: every key
+has a translated, non-empty Spanish value with the same placeholders, every
+visible SwiftUI/AppKit literal (single words included) is cataloged, Spanish
+equals English only for an explicit list of untranslatable terms, and no key
+is stale. `SettingsUITests/testLanguageToggleSwitchesVisibleTextWithoutRelaunch`
+still switches the running app to Spanish inside the English run.
+`make test-ui-es` remains a manual pass that no gate requires. Earlier
+bilingual receipts below are history.
+
 `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates macOS UI runners only when product presentation is
 affected: one job builds the exact products once into an `xctestproducts`
@@ -509,7 +521,7 @@ changes. It ignores earlier child anchors because they may prove only the
 child diff; several criss-cross merge bases widen to their common ancestor,
 and an unavailable default-branch ref fails selection rather than falling back
 to the parent (D542). Manual dispatch selects the complete
-bilingual catalog. Because a prebuilt-products run does not hand the XCTest
+English catalog. Because a prebuilt-products run does not hand the XCTest
 process the app's language, bilingual expectations read
 `UITestLocale.environmentLocale` — the locale the run declared — rather than
 the ambient `Locale.current`; `scripts/check-repository-hygiene.sh` rejects the
@@ -699,8 +711,8 @@ gate passed. No general clipboard, real meeting, model download or microphone
 participates.
 Missing Accessibility permission for the disposable app is an explicit failing
 native gate, not a skipped success, a trust prompt or a simulated delivery.
-`make test-ui-bilingual` and scoped hosted runs select the 140 unattended cases;
-`make test-ui-native-dictation` selects two real receiver cases in EN and ES.
+`make test-ui-release` and scoped hosted runs select the unattended cases;
+`make test-ui-native-dictation` selects two real receiver cases in English.
 The second enters the production controller with scripted audio/recognition,
 chooses Clean from the actual nonactivating panel, explicitly acknowledges Stop
 after the pointer gesture returns on a distinct UUID control board, and reads back the replacement

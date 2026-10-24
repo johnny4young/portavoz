@@ -131,8 +131,7 @@
   "ui": {
     "budget": "docs/evidence/ui-test-runtime-budget.json",
     "locales": [
-      "en",
-      "es"
+      "en"
     ]
   },
   "upgradeRecoveryTestClasses": [

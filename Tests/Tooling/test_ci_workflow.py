@@ -108,7 +108,7 @@ class CIWorkflowTests(unittest.TestCase):
         self.assertNotIn("test-iterations", workflow)
         self.assertIn("cannot manufacture qualifying UI evidence", workflow)
 
-    def test_complete_bilingual_ui_job_has_bounded_orchestration_headroom(self):
+    def test_complete_ui_job_has_bounded_orchestration_headroom(self):
         workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
             encoding="utf-8"
         )
@@ -151,6 +151,10 @@ class CIWorkflowTests(unittest.TestCase):
         self.assertIn("scripts/ui_test_ci_gate.py", gate_job)
         self.assertIn("merge-multiple: true", gate_job)
         self.assertIn("needs.ui-test-gate.outputs.verified == 'true'", workflow)
+        # Hosted evidence is English only; Spanish is never wired as a lane.
+        self.assertIn('--english-outcome "$(outcome en)"', gate_job)
+        self.assertNotIn("spanish", workflow.lower())
+        self.assertNotIn("outcome es", workflow)
 
     def test_repository_contracts_have_one_linux_owner_before_macos(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
@@ -319,10 +323,11 @@ class UIArtifactTransportTests(unittest.TestCase):
         self.assertIn("name: scoped-ui-${{ matrix.locale }}-${{ github.run_id }}", raw)
         self.assertIn("path: dist/ui-test-results", raw)
         self.assertIn("retention-days: 7", raw)
-        for locale in ("en", "es"):
-            self.receipt_paths(locale)
+        self.receipt_paths("en")
 
-    def classify_transported_files(self, *, remove=None, replace=None):
+    def classify_transported_files(
+        self, *, remove=None, replace=None, lanes=("en",), selected="en",
+    ):
         import os
         import shutil
         import subprocess
@@ -340,7 +345,7 @@ class UIArtifactTransportTests(unittest.TestCase):
             producer = root / "producer"
             results = producer / "dist/ui-test-results"
             results.mkdir(parents=True)
-            for locale in ("en", "es"):
+            for locale in lanes:
                 (results / f"{locale}-runtime.json").write_text(json.dumps(receipt(locale)))
                 (results / f"{locale}-execution.json").write_text(json.dumps(execution(locale)))
                 (results / f"{locale}-outcome.txt").write_text("success\n")
@@ -356,7 +361,7 @@ class UIArtifactTransportTests(unittest.TestCase):
             consumer = root / "consumer"
             destination = consumer / "dist/ui-test-results"
             destination.mkdir(parents=True)
-            for locale in ("en", "es"):
+            for locale in lanes:
                 for relative in self.receipt_paths(locale):
                     source = producer / relative
                     if source.exists():
@@ -368,19 +373,31 @@ class UIArtifactTransportTests(unittest.TestCase):
             shutil.copyfile(ROOT / "scripts/ui_test_ci_gate.py",
                             consumer / "scripts/ui_test_ci_gate.py")
             output = root / "github-output"
-            environment = dict(os.environ, UI_TEST_LOCALES="en es", GITHUB_OUTPUT=str(output))
+            environment = dict(os.environ, UI_TEST_LOCALES=selected, GITHUB_OUTPUT=str(output))
             result = subprocess.run(["bash", "-euo", "pipefail", "-c", shell],
                                     cwd=consumer, env=environment, capture_output=True,
                                     text=True, timeout=5)
             return result, output.read_text() if output.exists() else ""
 
-    def test_actual_classifier_accepts_both_transported_locales_without_result_bundles(self):
+    def test_actual_classifier_accepts_the_english_lane_without_result_bundles(self):
         run, outputs = self.classify_transported_files()
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
         self.assertIn("verified=true", outputs)
 
+    def test_transported_spanish_lane_never_qualifies(self):
+        run, outputs = self.classify_transported_files(lanes=("en", "es"))
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn("es: unsupported locale lane", run.stderr)
+        self.assertIn("verified=false", outputs)
+        for selected in ("en es", "es"):
+            with self.subTest(selected=selected):
+                run, outputs = self.classify_transported_files(
+                    lanes=("en", "es"), selected=selected)
+                self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
+                self.assertNotIn("verified=true", outputs)
+
     def test_transport_cannot_hide_missing_or_corrupt_required_evidence(self):
-        for locale in ("en", "es"):
+        for locale in ("en",):
             for suffix in ("runtime.json", "execution.json", "outcome.txt"):
                 name = f"{locale}-{suffix}"
                 with self.subTest(missing=name):

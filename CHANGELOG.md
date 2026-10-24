@@ -31,6 +31,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 24, 2026
 
+- **🌎 Spanish all the way** — the last labels that still showed in English with Portavoz in Spanish, such as "Saving…" when you stop a recording, are now translated.
 - **🍏 Made for macOS 26 Tahoe** — the next Portavoz requires macOS 26; Macs on Sequoia or earlier keep 1.2.0, and updates and Homebrew won't offer them a version they can't open.
 
 ## October 23, 2026

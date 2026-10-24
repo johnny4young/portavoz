@@ -53,6 +53,9 @@ SELECTOR_PATTERN = re.compile(
     r"^PortavozUITests/[A-Za-z][A-Za-z0-9]+UITests/test[A-Za-z0-9]+$"
 )
 EXPECTED_PLATFORMS = (("tahoe", 26, None),)
+# Each cell runs English only; a Spanish session is never part of the proof.
+EXPECTED_LOCALES = (("en", "en_US"),)
+EXPECTED_LOCALE_IDS = tuple(identifier for identifier, _ in EXPECTED_LOCALES)
 PLATFORM_IDENTIFIERS = tuple(identifier for identifier, _, _ in EXPECTED_PLATFORMS)
 EXPECTED_TECHNOLOGIES = (
     (
@@ -561,8 +564,8 @@ def validate_contract(document: Any) -> dict[str, Any]:
         )
 
     locales = root["locales"]
-    if not isinstance(locales, list) or len(locales) != 2:
-        raise AssistiveQualificationError("contract.locales must be bilingual")
+    if not isinstance(locales, list) or len(locales) != len(EXPECTED_LOCALES):
+        raise AssistiveQualificationError("contract.locales must be English only")
     locale_pairs = []
     for index, raw in enumerate(locales):
         locale = exact_object(
@@ -571,8 +574,8 @@ def validate_contract(document: Any) -> dict[str, Any]:
             ("id", "appleLocale"),
         )
         locale_pairs.append((locale["id"], locale["appleLocale"]))
-    if locale_pairs != [("en", "en_US"), ("es", "es_ES")]:
-        raise AssistiveQualificationError("contract locales must be ordered EN then ES")
+    if tuple(locale_pairs) != EXPECTED_LOCALES:
+        raise AssistiveQualificationError("contract locales must be exactly EN")
 
     launch = exact_object(
         root["launch"],
@@ -1353,7 +1356,7 @@ def prepare_cell_directories(evidence_root: Path, proof: str) -> Path:
     cell = prepare_owner_subdirectory(cells, proof)
     sessions = prepare_owner_subdirectory(cell, "sessions")
     receipts = prepare_owner_subdirectory(cell, "receipts")
-    for locale in ("en", "es"):
+    for locale in EXPECTED_LOCALE_IDS:
         prepare_owner_subdirectory(receipts, locale)
     prepare_owner_subdirectory(cell, "completions")
     require_owner_directory(sessions, "assistive sessions directory")

@@ -74,6 +74,16 @@ class UITestVerificationAnchorTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 2)
         self.assertIsNone(document)
 
+    def test_hosted_anchor_rejects_spanish_locales(self):
+        for locales in ("es", "en es"):
+            with self.subTest(locales=locales):
+                temporary, completed, document = self.run_anchor(locales=locales)
+                self.addCleanup(temporary.cleanup)
+
+                self.assertEqual(completed.returncode, 2)
+                self.assertIn("locales are invalid", completed.stderr)
+                self.assertIsNone(document)
+
 
 if __name__ == "__main__":
     unittest.main()

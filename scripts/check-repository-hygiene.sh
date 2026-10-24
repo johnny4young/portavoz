@@ -53,7 +53,7 @@ fi
 
 # A UI run started from prebuilt products does not give the XCTest process the
 # app's language: `-testLanguage` reaches the app, `Locale.current` in the test
-# does not follow. Bilingual expectations must read the locale the run declared
+# does not follow. Locale-aware expectations must read the locale the run declared
 # (`UITestLocale.environmentLocale`), which the runner forwards explicitly.
 ambient_locale_reads="$(
   grep -rn 'Locale\.current' Tests/PortavozUITests \

@@ -21725,3 +21725,21 @@ sync needs two distinct Macs on macOS 26 or newer, and the exact-path, semantic
 and retrieval-chunk host contracts accept macOS 26 only. The pre-Tahoe
 availability checks and fallbacks are removed separately (GAPS T39); until
 then they are unreachable.
+
+## D586 — Spanish is a unit-tested catalog property, not a UI pass
+
+Every XCUITest journey asserts accessibility identifiers and seed content, so
+a second pass in Spanish repeated the same journeys and could not see a
+missing translation. Across 89 recent hosted runs it never failed where
+English passed, while it cost a macOS runner for about 35 minutes per pull
+request and doubled the local and release UI gates. Spanish parity therefore
+lives in `LocalizationTests`: every key has a translated, non-empty Spanish
+value with matching placeholders, every visible SwiftUI and AppKit literal is
+cataloged (single words included, which surfaced three untranslated labels),
+Spanish may equal English only for an explicit list of terms, and no key is
+stale. XCUITest selects English only in pull requests, hosted CI,
+`make test-ui-release` (which replaces `test-ui-bilingual`) and candidate
+automation, and the physical VoiceOver and Voice Control cells run English
+only. The in-app language toggle journey still renders Spanish inside the
+English run, and `make test-ui-es` stays as a manual pass no gate requires.
+This supersedes the bilingual UI requirements of D117, D379 and D405.
