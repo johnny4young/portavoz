@@ -113,7 +113,7 @@ D391 keeps this original deterministic receipt as one input rather than
 pretending it covers all of 1.0. The final schema-2 scorecard also requires four
 strict qualification receipts: complete candidate automation, reviewed source
 integration/hosted CI, production-sync admission, and physical VoiceOver/Voice
-Control on Sequoia and Tahoe. A missing receipt is a normal release-blocking
+Control on Tahoe or newer. A missing receipt is a normal release-blocking
 state; do not hand-author or copy one from a neighboring commit. Pass each
 receipt explicitly to the evaluator only after its owning gate or field
 workflow has produced it.
@@ -186,7 +186,7 @@ automated scale/semantic/Spotlight metrics. It also requires the other thirteen
 declared waveform, Instruments, and manual/real-data metrics to remain exactly
 and visibly `not-measured`; this receipt does not certify those lanes. The
 resource subgate selects only this Mac's accepted profile and requires three
-Release samples for all nine scenarios. Additional hosts, Sequoia/Tahoe,
+Release samples for all nine scenarios. Additional hosts, physical hardware,
 VoiceOver/Voice Control, signed distribution, production CloudKit, hosted CI,
 and field evidence still follow their separate procedures below.
 
@@ -269,8 +269,9 @@ scripts/make-release.sh "$PORTAVOZ_RELEASE_VERSION"
    notarizes/staples the DMG. It mounts the result and verifies a copied-out
    app exactly as Homebrew will consume it.
 4. Generates the **EdDSA-signed `appcast.xml`** (`generate_appcast --account portavoz`), then fails closed unless one regular XML item has the exact version,
-   build, GitHub DMG URL, DMG byte length, and a valid-base64 64-byte EdDSA
-   signature.
+   build, GitHub DMG URL, DMG byte length, a valid-base64 64-byte EdDSA
+   signature, and `sparkle:minimumSystemVersion` 26.0, so Sparkle never offers
+   the update to a Mac that cannot open it (D585).
 5. Renders the Homebrew **cask** with the real version + sha256.
 
 Output lands in **`dist/release/`**: `Portavoz-<version>.dmg`, `appcast.xml`, `portavoz.rb`.
@@ -368,8 +369,7 @@ does not close the two-Mac matrix.
 ### Run the staged production-sync qualification (D404)
 
 This is an authorized physical gate, not routine local QA. Use two clean Macs,
-assign one role to Sequoia and the other to Tahoe or newer,
-the same exact source commit and unchanged qualification app, production
+both on macOS 26 Tahoe or newer, the same exact source commit and unchanged qualification app, production
 CloudKit/APNs access, the original iCloud account on both roles, and a second
 real iCloud account for role A's switch stages. Never point it at a Portavoz
 library: the owner creates its fixed public EN/ES meeting under role-local
@@ -473,7 +473,7 @@ Follow [`ASSISTIVE-VALIDATION.md`](ASSISTIVE-VALIDATION.md) after candidate
 automation has passed for the exact source and the unchanged Developer-ID-
 signed `app.portavoz.mac.dev` bundle is available. The owner runs the public
 disposable seed in English and Spanish through VoiceOver and Voice Control on
-physical Sequoia and Tahoe-or-newer Apple-silicon Macs. It binds every ordered
+a physical Tahoe-or-newer Apple-silicon Mac. It binds every ordered
 human observation to the candidate, app seals, assistive technology, app
 process, run-scoped host, and exact macOS build.
 
@@ -491,7 +491,7 @@ human VoiceOver/Voice Control observation.
 
 Install the candidate-stamped developer build and collect the protocol-2
 packages in [`FIELD-VALIDATION.md`](FIELD-VALIDATION.md). The release contract
-requires built-in speaker/mic and AirPods on both macOS 15 and macOS 26, plus
+requires built-in speaker/mic and AirPods on macOS 26, plus
 callback-recovery, long-call, model-cold-start, and mixed-language packages.
 Every package must report the exact release version and build above.
 
@@ -506,9 +506,7 @@ make release-reliability \
     --qualification-receipt /path/to/production-sync-authority/qualification.json
     --qualification-receipt /path/to/assistive-technology-authority/qualification.json' \
   PORTAVOZ_FIELD_EVIDENCE_ARGS='
-    --field-evidence /path/to/built-in-sequoia
     --field-evidence /path/to/built-in-tahoe
-    --field-evidence /path/to/airpods-sequoia
     --field-evidence /path/to/airpods-tahoe
     --field-evidence /path/to/callback-recovery
     --field-evidence /path/to/long-call
@@ -516,7 +514,7 @@ make release-reliability \
     --field-evidence /path/to/mixed-language'
 ```
 
-Review `dist/release-readiness/scorecard/readiness.md`. It must contain all 29
+Review `dist/release-readiness/scorecard/readiness.md`. It must contain all 25
 schema-2 cells, name the exact artifact digest, and say **PASS**.
 Missing, failed, incomplete, not-observed, stale-version, stale-build, and
 stale-commit evidence blocks publication. The scorecard is content-free and
@@ -593,8 +591,8 @@ spctl -a -vvv -t exec "$APPDIR/Portavoz.app"
 brew uninstall --cask --force portavoz
 ```
 
-The release criterion is one additional clean-machine launch on macOS 15
-Sequoia with no previous Portavoz app or Homebrew receipt. If it fails, preserve
+The release criterion is one additional clean-machine launch on macOS 26
+Tahoe with no previous Portavoz app or Homebrew receipt. If it fails, preserve
 the exact output from
 `brew install --verbose --debug --cask johnny4young/tap/portavoz`; do not infer
 a packaging cause from a paraphrased alert.

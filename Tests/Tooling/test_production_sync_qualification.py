@@ -497,29 +497,27 @@ class ProductionSyncQualificationTests(unittest.TestCase):
             "role b changed operating system",
         )
 
-    def test_same_os_generation_on_both_roles_cannot_finalize(self):
+    def test_sequoia_role_cannot_finalize(self):
         def mutate(receipts):
             for receipt in receipts.values():
-                receipt["os"].update(
-                    {
-                        "major": 26,
-                        "minor": 0,
-                        "patch": 1,
-                        "build": "25A362",
-                    }
-                )
+                if receipt["role"] == "a":
+                    receipt["os"].update(
+                        {
+                            "major": 15,
+                            "minor": 7,
+                            "patch": 1,
+                            "build": "24G90",
+                        }
+                    )
 
-        self.assert_finalizer_mutation_fails(
-            mutate,
-            "must pair Sequoia with Tahoe or newer",
-        )
+        self.assert_finalizer_mutation_fails(mutate, "is not Tahoe or newer")
 
     def test_unsupported_macos_major_cannot_finalize(self):
         self.assert_finalizer_mutation_fails(
             lambda receipts: receipts["a.enable"]["os"].update(
                 {"major": 25}
             ),
-            "not Sequoia, Tahoe, or newer",
+            "is not Tahoe or newer",
         )
 
     def test_broken_predecessor_chain_cannot_finalize(self):
@@ -925,10 +923,10 @@ class ProductionSyncQualificationTests(unittest.TestCase):
             "lifecycle": lifecycle,
             "pushWakes": 1 if key == "b.await-push" else 0,
             "os": {
-                "major": 15 if stage["role"] == "a" else 26,
-                "minor": 7 if stage["role"] == "a" else 0,
+                "major": 26,
+                "minor": 1 if stage["role"] == "a" else 0,
                 "patch": 1,
-                "build": "24G90" if stage["role"] == "a" else "25A362",
+                "build": "25B78" if stage["role"] == "a" else "25A362",
                 "architecture": "arm64",
             },
         }

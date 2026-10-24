@@ -1338,8 +1338,7 @@ extension ArchitectureDependencyTests {
             #""observedReceiptCount": 1"#))
         XCTAssertTrue(semanticCrossHost.contains(
             #""crossHostBudget": "none""#))
-        XCTAssertTrue(semanticCrossHost.contains(
-            #""missing-operating-system:sequoia""#))
+        XCTAssertFalse(semanticCrossHost.contains("sequoia"))
         XCTAssertTrue(decisions.contains(
             "## D347 — Cross-host semantic control requires real profile and OS receipts"))
         XCTAssertTrue(waveformCLI.contains("withWaveformTemporaryDirectory"))

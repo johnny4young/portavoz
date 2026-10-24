@@ -6,18 +6,15 @@ candidate with VoiceOver and Voice Control on physical Apple-silicon Macs. It
 uses only the public bilingual demo corpus and disposable storage; it never
 opens the user's library or `/Applications/Portavoz.app`.
 
-The producer is intentionally finite. It requires these four cells:
+The producer is intentionally finite. It requires these two cells:
 
 | Cell | Host family | Locales |
 |---|---|---|
-| `voiceover-sequoia` | macOS 15 only | English, then Spanish |
 | `voiceover-tahoe` | macOS 26 or newer | English, then Spanish |
-| `voice-control-sequoia` | macOS 15 only | English, then Spanish |
 | `voice-control-tahoe` | macOS 26 or newer | English, then Spanish |
 
-VoiceOver and Voice Control must run on the same host and exact macOS build
-within each OS family. The Sequoia and Tahoe families must expose different
-run-scoped host values. Those values are salted hashes of `IOPlatformUUID`;
+VoiceOver and Voice Control must run on the same host and exact macOS build.
+The run-scoped host value and the macOS build are recorded in each cell. Host values are salted hashes of `IOPlatformUUID`;
 they do **not** cryptographically attest physical hardware. The trusted
 operator and retained release record remain part of the authority.
 
@@ -79,9 +76,9 @@ Apple's operating references are:
 3. Check out that exact commit, with no tracked or untracked files, on every
    participating Mac. The Python owner and this repository must remain
    unchanged throughout collection and finalization.
-4. Use physical Apple-silicon Macs: one exact macOS 15 build and one exact
-   macOS 26-or-newer build. Record which trusted operator owns each host in the
-   private release log, not in the machine-readable evidence.
+4. Use one physical Apple-silicon Mac on an exact macOS 26-or-newer build.
+   Record which trusted operator owns the host in the private release log, not
+   in the machine-readable evidence.
 5. Copy the exact app bundle without re-signing it. Re-run
    `codesign --verify --deep --strict --verbose=2` after every copy.
 6. Keep every evidence root and transfer directory mode `0700`; keep every JSON
@@ -206,9 +203,8 @@ the exact Portavoz Dev copy if it remains visible.
 
 ## Assemble and finalize
 
-Bring the two completed cell directories from the Sequoia host and the two
-from the Tahoe host back under the original run's `cells/` directory, preserving
-file modes and bytes. Do not merge partial cells or copy runtime directories.
+Bring the two completed cell directories back under the original run's
+`cells/` directory, preserving file modes and bytes. Do not merge partial cells or copy runtime directories.
 The finalizer rejects missing, extra, symbolic-link, special, mode-drifted,
 reordered, failed, copied-process, mixed-host, mixed-build, candidate-drifted,
 or digest-broken evidence.

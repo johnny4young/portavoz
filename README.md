@@ -44,7 +44,7 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 
 ## Status
 
-**Current release: 1.2.0. Shipping and self-updating on macOS 26 Tahoe.** Portavoz 1.1.0 is the last release officially supported on macOS 15 Sequoia. The source-build deployment target is macOS 14.4; that lower compiler target does not establish validation of the published app on Sonoma. Install with Homebrew or grab the notarized DMG from [Releases](https://github.com/johnny4young/portavoz/releases); updates arrive automatically via Sparkle:
+**Current release: 1.2.0. Shipping and self-updating on macOS 26 Tahoe.** Releases after 1.2.0 require macOS 26 Tahoe; Macs on macOS 15 Sequoia or earlier keep 1.2.0, and neither Sparkle nor Homebrew offers them a newer version. Install with Homebrew or grab the notarized DMG from [Releases](https://github.com/johnny4young/portavoz/releases); updates arrive automatically via Sparkle:
 
 ```sh
 brew install --cask johnny4young/tap/portavoz
@@ -52,7 +52,7 @@ brew install --cask johnny4young/tap/portavoz
 
 Both the app bundle and its disk image are independently signed, notarized,
 and stapled, so Homebrew extraction and direct DMG installation cross the same
-Gatekeeper boundary on Sequoia and later.
+Gatekeeper boundary.
 
 Capture, live + refine transcription, on-device diarization, bilingual summaries (three local engines), audio playback, co-authoring notes, pre-meeting briefs, and the live companion are all built and measured (see below). Every feature that ships lands in the [changelog](CHANGELOG.md).
 
@@ -288,7 +288,7 @@ no cloud service or transcript translation is involved.
 
 ## Build from source
 
-Requires **Xcode 26+ / Swift 6.2 on macOS 14.4+**.
+Requires **Xcode 26+ / Swift 6.2 on macOS 26+**.
 
 ```sh
 swift build

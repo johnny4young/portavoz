@@ -117,7 +117,7 @@ printf '%s\n' "$SIGN_ENTITLEMENTS" > dist/.portavoz-sign-entitlements
 cp -a "$BIN_DIR/Sparkle.framework" "$APP/Contents/Frameworks/"
 
 # LIVE-1 question admission is a tiny SwiftPM resource bundle. It is a
-# mandatory serving asset on both Sequoia and Tahoe: shipping the executable
+# mandatory serving asset: shipping the executable
 # without it would expose a working toggle that can never publish a card.
 # SwiftPM stages the compiled model at the bundle root (Xcode 26) or under
 # Contents/Resources (Xcode 27's Swift Build); Foundation resolves both.
@@ -154,7 +154,7 @@ fi
 # resolves. Users who picked a specific system accent still win, per macOS.
 if [[ -d assets/Assets.xcassets ]]; then
   xcrun actool assets/Assets.xcassets --compile "$APP/Contents/Resources" \
-    --platform macosx --minimum-deployment-target 14.4 \
+    --platform macosx --minimum-deployment-target 26.0 \
     --output-format human-readable-text > /dev/null
 fi
 
@@ -198,7 +198,7 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>LSMinimumSystemVersion</key>
-    <string>14.4</string>
+    <string>26.0</string>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.productivity</string>
     <key>NSHighResolutionCapable</key>

@@ -210,6 +210,22 @@ class ExactPathMatrixTests(unittest.TestCase):
         with self.assertRaisesRegex(matrix.MatrixError, "repeats an identical"):
             self.receipt(observations)
 
+    def test_sequoia_host_and_sequoia_contract_are_rejected(self):
+        observations = self.observations()
+        for observation in observations:
+            observation["host"]["operatingSystem"] = "Version 15.7 (Build 24G222)"
+        with self.assertRaisesRegex(matrix.MatrixError, "not a supported Tahoe host"):
+            self.receipt(observations)
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "contract.json"
+            raw = json.loads(matrix.DEFAULT_CONTRACT.read_text())
+            self.assertEqual(raw["supportedOperatingSystemMajors"], [26])
+            raw["supportedOperatingSystemMajors"] = [15, 26]
+            path.write_text(json.dumps(raw))
+            with self.assertRaisesRegex(matrix.MatrixError, "operating-system matrix"):
+                matrix.load_contract(path)
+
     def test_duplicate_json_keys_are_rejected_before_validation(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "observations.jsonl"

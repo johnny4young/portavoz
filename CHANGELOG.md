@@ -29,6 +29,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## October 24, 2026
+
+- **🍏 Made for macOS 26 Tahoe** — the next Portavoz requires macOS 26; Macs on Sequoia or earlier keep 1.2.0, and updates and Homebrew won't offer them a version they can't open.
+
 ## October 23, 2026
 
 - **📊 See how much you dictate** — turn on dictation statistics to see dictations, words, speaking time and an estimate of the typing you saved over the last week or month, plus the apps you dictate into most; only counts are kept, never what you said.

@@ -21708,3 +21708,20 @@ counting and keeps the totals until the user deletes them. The Dictations page
 shows the last 7 or 30 days, words per day, the five apps dictated into most,
 and an estimate of time saved at 40 typed words per minute, stated beside it.
 
+
+## D585 — Portavoz requires macOS 26 Tahoe
+
+D574 stopped qualifying Sequoia in hosted CI, so its fallback paths were
+compiled but never run and its release gates asked for receipts from a system
+no longer supported. Releases after 1.2.0 deploy to macOS 26: the package,
+the XcodeGen project, the bundle's `LSMinimumSystemVersion`, the asset catalog
+and the App Intents metadata share that floor, and a tooling test keeps them
+equal. Generated appcasts carry `sparkle:minimumSystemVersion` 26.0, which the
+release verifier now requires, and the Homebrew cask depends on Tahoe, so a
+Mac on Sequoia or Sonoma stays on 1.2.0 instead of downloading an update it
+cannot open. Every release gate drops its Sequoia proof: the reliability
+contract has 25 proofs, assistive validation has two Tahoe cells, production
+sync needs two distinct Macs on macOS 26 or newer, and the exact-path, semantic
+and retrieval-chunk host contracts accept macOS 26 only. The pre-Tahoe
+availability checks and fallbacks are removed separately (GAPS T39); until
+then they are unreachable.

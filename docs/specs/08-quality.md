@@ -362,7 +362,7 @@ failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: explicit macos-26/Xcode 26.6 current-SDK
-build/test, explicit macos-15/Xcode 26.3 Sequoia build/test, checksum-pinned
+build/test, checksum-pinned
 **SwiftLint 0.65.0 `--strict`** on Linux, a separate current-SDK iOS 17
 Simulator compile for the four shared targets, and a repository-hygiene/tooling
 gate that runs before macOS allocation). Each behavioral Swift lane owns one
@@ -372,7 +372,7 @@ sequential destination compiles and cannot claim runtime/device behavior.
 
 ### Compatible Swift build reuse, not test-result reuse (D557)
 
-The current-SDK and Sequoia jobs restore only `.build` with commit-pinned
+The current-SDK job restores only `.build` with commit-pinned
 `actions/cache` restore/save actions. `scripts/ci_swift_cache_key.py` binds each
 immutable seed to its lane, absolute workspace and developer paths, CPU
 architecture, macOS version/build, runner image/version, Xcode and Swift build,
@@ -3517,8 +3517,8 @@ notarization, stapling, Gatekeeper, and production CloudKit capability checks.
 classes. The original deterministic, signed-build, real-hardware, and user-field
 cells remain. Schema 2 adds complete candidate automation, reviewed source
 integration plus hosted CI, production-sync admission, and physical
-assistive-technology cells for VoiceOver and Voice Control on Sequoia and
-Tahoe. Candidate automation explicitly separates frozen scope, autonomous
+assistive-technology cells for VoiceOver and Voice Control on Tahoe or newer
+(D585 removed the Sequoia cells). Candidate automation explicitly separates frozen scope, autonomous
 Apuntador validation, installed-model coverage, authoritative performance,
 resource/memory, synthetic long capture, upgrade/recovery, and complete
 bilingual XCUITest.
@@ -3649,14 +3649,14 @@ so a notification burst cannot grow process memory without bound. The app uses
 real Foundation CloudKit account, engine, and notification paths against the
 production container, but only the fixed public corpus.
 Finalization requires one exact OS per role, distinct run-scoped host hashes,
-and a cross-version pair with one Sequoia Mac and one Tahoe-or-newer Mac; it also
+and macOS 26 or newer on both Macs (D585); it also
 rejects a fake account switch.
 No deterministic test, XCUITest, packaging check, or locally shaped JSON file
 can replace this authorized two-Mac/account/APNs observation.
 
 **Physical assistive-technology owner (D405).**
 `docs/evidence/assistive-technology-qualification.json` freezes VoiceOver and
-Voice Control on Sequoia and Tahoe-or-newer, English then Spanish, and six
+Voice Control on Tahoe or newer, English then Spanish, and six
 ordered checkpoints backed by nine existing real-app XCUITest selectors. The
 fixed disposable launch includes the public meeting, duplicate Skills
 proposals, one Waiting receipt, and synthetic Interview Assist. It uses the
@@ -4508,7 +4508,7 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
 - `make exact-path-mutation-cross-host
   PORTAVOZ_EXACT_PATH_MUTATION_RECEIPTS=/private/path/receipts.jsonl`:
   revalidate exactly one mutation host receipt per 8 GB, 16 GB, and reference
-  profile, require Sequoia/Tahoe coverage plus one source commit/toolchain, and
+  profile, require macOS 26 Tahoe hosts plus one source commit/toolchain, and
   emit a detached, exactly recomputable schema-1 review scorecard. Complete
   comparable evidence remains `review-required`; missing, blocked, or
   identity-divergent evidence is blocked, while malformed/repeated evidence
@@ -4912,9 +4912,8 @@ source, Swift/Xcode, profile, fixture, query-pack, stage-policy, scale, or
 configuration drift. Only Apple-Silicon hosts qualify. The required set is one
 receipt for each shared resource profile: 7–10 GiB (`memory-8gb`), 14–18 GiB
 (`memory-16gb`), and at least
-32 GiB (`reference`). Those three receipts must collectively cover Sequoia
-(major 15) and Tahoe (major 26). This is the established three-profile/two-OS
-contract, not an unapproved six-cell Cartesian expansion.
+32 GiB (`reference`). Since D585 all three receipts run on Tahoe (major 26); the Sequoia (major 15)
+requirement was retired with the deployment floor.
 
 The host-derived Swift target may differ only when its architecture and macOS
 major match the sealed host; Swift and Xcode version/build identity must remain
@@ -4931,7 +4930,8 @@ The tracked
 `docs/evidence/semantic-scale-cross-host-readiness-20260819.json` contains the
 only real receipt currently available: Tahoe on the 36 GiB reference host. It
 is therefore an explicit 1/3 incomplete result, naming the missing 8 GiB,
-16 GiB, and Sequoia evidence rather than synthesizing it. Both semantic
+16 GiB evidence rather than synthesizing it (its Sequoia row was retired by
+D585). Both semantic
 collectors accept `PORTAVOZ_SEMANTIC_SOURCE_ROOT`, so the current validation
 tool can build and measure a separate clean worktree at the exact D345 source
 commit named by that receipt. Tool and source roots never become one dirty
@@ -5445,7 +5445,7 @@ verification anchor.
 | Semantic cosine with bounded local mapping at 100k × 512 dimensions | p95 < 100 ms | ✅ 9 Aug canonical Release ledger: **wall/CPU p95 63.53/64.54 ms; 0.17 MiB incremental process footprint**; three independent A/B runs also held wall p95 63.49–67.25 ms and CPU p95 64.30–68.07 ms (D318) |
 | D330 accepted-only semantic regression check at 100k × 512 dimensions | p95 < 100 ms | ✅ 11 Aug 20-sample Release development check: **wall/CPU p95 77.09/78.29 ms; 0.16 MiB incremental process footprint; 12/12 results**. This preserves the accepted fast-path budget but is not a correction-heavy or multi-host field baseline. |
 | D346 clean repeated schema-2 semantic current control at 100k × 512 dimensions | p95 < 100 ms | ✅ 13 Aug one-vector wall/CPU p95 maximum **73.92/74.50 ms** across three stable same-identity observations; separate three-vector diagnostic **80.37/81.63 ms**, no cross-identity delta or budget authority |
-| D347 cross-host semantic current-control matrix | 8 GiB + 16 GiB + reference; Sequoia + Tahoe | **Incomplete 1/3**: Tahoe/reference present; 8 GiB, 16 GiB, and Sequoia receipts missing; cross-host authority `none` |
+| D347 cross-host semantic current-control matrix | 8 GiB + 16 GiB + reference; Tahoe (D585) | **Incomplete 1/3**: Tahoe/reference present; 8 GiB and 16 GiB receipts missing; cross-host authority `none` |
 | Waveform, 55.9-minute dual channel / 600 buckets | first wall < 150 ms; repeat wall/CPU p95 < 100 ms | ✅ first wall/CPU **109.25/94.81 ms**; repeat wall/CPU p50 **69.22/70.10 ms**, p95 **70.11/71.33 ms**, down from 747.53/754.79 ms; **0.33 MiB** incremental footprint p95; exact fingerprint preserved and replacement changes it (D84) |
 | Spotlight projection, 100k meetings | wall/CPU p95 < 500 ms; absolute/incremental footprint < 160/96 MiB | ✅ wall/CPU p95 **425.64/423.58 ms**, down from 22,085.35/22,720.40 ms; **141.14/76.03 MiB** absolute/incremental footprint p95; exact fingerprint preserved. Synthetic 1k protected named-index delivery: **21.19 ms**, cleanup succeeded (D85) |
 | Detail core read, 2 h / 5k segments | diagnostic | **p50 16.31 ms / p95 17.22 ms** |
