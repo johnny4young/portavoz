@@ -200,10 +200,9 @@ private struct DictationStripView: View {
                 // it reads gray — it firms up as the engine commits it.
                 let visible = DictationPanelTranscript.visible(
                     confirmed: controller.confirmedText, partial: controller.partialText)
-                (Text(visible.confirmed)
-                    .foregroundStyle(.primary)
-                    + Text(visible.partial)
-                    .foregroundStyle(.tertiary))
+                let confirmed = Text(visible.confirmed).foregroundStyle(.primary)
+                let partial = Text(visible.partial).foregroundStyle(.tertiary)
+                Text("\(confirmed)\(partial)")
                     .accessibilityIdentifier("dictation-panel-transcript")
                     // The strip elides earlier words visually; VoiceOver keeps the whole dictation.
                     .accessibilityLabel(DictationAssembler.text(

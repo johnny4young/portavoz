@@ -14,6 +14,8 @@ from pathlib import Path
 
 SPARKLE_NAMESPACE = "http://www.andymatuschak.org/xml-namespaces/sparkle"
 MAXIMUM_APPCAST_BYTES = 1_048_576
+# Must match LSMinimumSystemVersion, so Sparkle never offers the update to an older Mac.
+MINIMUM_SYSTEM_VERSION = "26.0"
 
 
 class AppcastValidationError(RuntimeError):
@@ -56,6 +58,11 @@ def validate_appcast(appcast: Path, version: str, build: str, dmg: Path) -> None
     if actual_version != version or actual_build != build:
         raise AppcastValidationError(
             "release appcast version/build does not match the requested release"
+        )
+    minimum_system = item.findtext("sparkle:minimumSystemVersion", namespaces=namespace)
+    if minimum_system != MINIMUM_SYSTEM_VERSION:
+        raise AppcastValidationError(
+            f"release appcast must require macOS {MINIMUM_SYSTEM_VERSION} or newer"
         )
 
     enclosures = item.findall("enclosure")

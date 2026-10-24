@@ -5,7 +5,7 @@ let package = Package(
     name: "Portavoz",
     defaultLocalization: "en",
     platforms: [
-        .macOS("14.4"),
+        .macOS(.v26),
         .iOS(.v17),
     ],
     products: [

@@ -77,7 +77,7 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
             "runNonce": "6" * 64,
         }
 
-    def test_contract_freezes_four_cells_bilingual_journey_and_real_selectors(self):
+    def test_contract_freezes_tahoe_cells_bilingual_journey_and_real_selectors(self):
         self.assertEqual(
             tuple(
                 (row["id"], row["minimumMajor"], row["maximumMajor"])
@@ -85,6 +85,7 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
             ),
             assistive.EXPECTED_PLATFORMS,
         )
+        self.assertEqual(assistive.EXPECTED_PLATFORMS, (("tahoe", 26, None),))
         self.assertEqual(
             [row["id"] for row in self.contract["technologies"]],
             ["voiceover", "voice-control"],
@@ -102,7 +103,7 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
         proofs = {
             assistive.proof_for(self.contract, technology, platform)
             for technology in ("voiceover", "voice-control")
-            for platform in ("sequoia", "tahoe")
+            for platform in ("tahoe",)
         }
         self.assertEqual(
             proofs,
@@ -125,13 +126,29 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
 
     def test_contract_rejects_duplicate_or_weakened_matrix_rows(self):
         duplicate_platform = copy.deepcopy(self.contract_document)
-        duplicate_platform["platforms"][1] = copy.deepcopy(
-            duplicate_platform["platforms"][0]
+        duplicate_platform["platforms"].append(
+            copy.deepcopy(duplicate_platform["platforms"][0])
         )
         with self.assertRaisesRegex(
             assistive.AssistiveQualificationError, "platform matrix"
         ):
             assistive.validate_contract(duplicate_platform)
+
+        sequoia_platform = copy.deepcopy(self.contract_document)
+        sequoia_platform["platforms"].insert(
+            0, {"id": "sequoia", "minimumMajor": 15, "maximumMajor": 15}
+        )
+        with self.assertRaisesRegex(
+            assistive.AssistiveQualificationError, "platform matrix"
+        ):
+            assistive.validate_contract(sequoia_platform)
+
+        lowered_floor = copy.deepcopy(self.contract_document)
+        lowered_floor["platforms"][0]["minimumMajor"] = 15
+        with self.assertRaisesRegex(
+            assistive.AssistiveQualificationError, "platform matrix"
+        ):
+            assistive.validate_contract(lowered_floor)
 
         duplicate_technology = copy.deepcopy(self.contract_document)
         duplicate_technology["technologies"][1]["id"] = "voiceover"
@@ -357,9 +374,9 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
         def result(arguments, **kwargs):
             self.assertEqual(kwargs["timeout"], 15)
             if arguments[-1] == "-productVersion":
-                stdout = "15.6.1\n"
+                stdout = "26.0.1\n"
             elif arguments[-1] == "-buildVersion":
-                stdout = "24G90\n"
+                stdout = "25A123\n"
             elif arguments[-1] == "-m":
                 stdout = "arm64\n"
             else:
@@ -369,8 +386,8 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
         with mock.patch.object(assistive.subprocess, "run", side_effect=result):
             first = assistive.current_system_observation("a" * 64)
             second = assistive.current_system_observation("b" * 64)
-        self.assertEqual(first["os"]["major"], 15)
-        self.assertEqual(first["os"]["build"], "24G90")
+        self.assertEqual(first["os"]["major"], 26)
+        self.assertEqual(first["os"]["build"], "25A123")
         self.assertNotEqual(first["hostScopeSHA256"], second["hostScopeSHA256"])
 
     def test_launch_environment_removes_inherited_test_and_portavoz_state(self):
@@ -425,7 +442,7 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
             ):
                 assistive.start_locale(arguments)
 
-            cell = assistive.cell_root(root, "voice-control-sequoia")
+            cell = assistive.cell_root(root, "voice-control-tahoe")
             session = json.loads(assistive.session_path(cell, "en").read_text())
             self.assertEqual(session["locale"], "en")
             self.assertEqual(session["activation"]["authority"], "human-observed")
@@ -526,7 +543,7 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
             ):
                 assistive.start_locale(arguments)
 
-            cell = assistive.cell_root(root, "voice-control-sequoia")
+            cell = assistive.cell_root(root, "voice-control-tahoe")
             self.assertTrue(
                 assistive.runtime_path(cell, "en").is_dir(),
                 "scratch state must remain for diagnosis while the process may be alive",
@@ -647,7 +664,7 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
             ):
                 assistive.publish_authority(link, {"a": 1}, {"b": 2})
 
-    def test_finalize_requires_complete_cross_platform_matrix_and_publishes_pair(self):
+    def test_finalize_requires_complete_tahoe_matrix_and_publishes_pair(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             evidence, candidate = self.materialize_complete_run(root)
@@ -687,19 +704,47 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
                 stat.S_IMODE((output / "authority.json").stat().st_mode), 0o600
             )
 
-    def test_finalize_rejects_same_host_across_sequoia_and_tahoe(self):
+    def test_macos_15_host_cannot_start_or_satisfy_an_assistive_cell(self):
+        with self.assertRaisesRegex(
+            assistive.AssistiveQualificationError, "Tahoe or newer"
+        ):
+            assistive.platform_for_major(self.contract, 15)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "evidence"
+            root.mkdir(mode=0o700)
+            app_info = {
+                "path": Path(directory) / "Portavoz Dev.app",
+                "executable": Path(directory) / "Portavoz Dev",
+                "release": self.release,
+                "identity": self.app,
+            }
+            arguments = argparse.Namespace(
+                evidence_root=root,
+                app=app_info["path"],
+                technology="voice-control",
+                locale="en",
+                confirm_technology_active="voice-control",
+            )
+            with self.start_boundaries(root, app_info), mock.patch.object(
+                assistive, "current_system_observation", return_value=self.system(15)
+            ), mock.patch.object(
+                assistive.subprocess, "Popen"
+            ) as launch, self.assertRaisesRegex(
+                assistive.AssistiveQualificationError, "Tahoe or newer"
+            ):
+                assistive.start_locale(arguments)
+            launch.assert_not_called()
+
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            evidence, candidate = self.materialize_complete_run(
-                root, tahoe_host="7" * 64
-            )
-            for proof in ("voiceover-sequoia", "voice-control-sequoia"):
-                cell_path = assistive.cell_root(evidence, proof) / "cell.json"
-                cell = json.loads(cell_path.read_text())
-                cell["hostScopeSHA256"] = "7" * 64
-                self.rewrite_owner_json(cell_path, cell)
+            evidence, candidate = self.materialize_complete_run(root)
+            cell_path = assistive.cell_root(evidence, "voiceover-tahoe") / "cell.json"
+            cell = json.loads(cell_path.read_text())
+            cell["os"] = self.system(15)["os"]
+            self.rewrite_owner_json(cell_path, cell)
             with mock.patch.object(assistive, "require_exact_checkout"), self.assertRaisesRegex(
-                assistive.AssistiveQualificationError, "distinct Mac host scopes"
+                assistive.AssistiveQualificationError, "Tahoe or newer"
             ):
                 assistive.finalize(
                     argparse.Namespace(
@@ -713,7 +758,7 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             evidence, candidate = self.materialize_complete_run(root)
-            extra = assistive.cell_root(evidence, "voiceover-sequoia") / "extra"
+            extra = assistive.cell_root(evidence, "voiceover-tahoe") / "extra"
             extra.write_text("unexpected")
             os.chmod(extra, 0o600)
             with mock.patch.object(assistive, "require_exact_checkout"), self.assertRaisesRegex(
@@ -731,10 +776,10 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
             root = Path(directory)
             evidence, candidate = self.materialize_complete_run(root)
             first = assistive.session_path(
-                assistive.cell_root(evidence, "voiceover-sequoia"), "en"
+                assistive.cell_root(evidence, "voiceover-tahoe"), "en"
             )
             second = assistive.session_path(
-                assistive.cell_root(evidence, "voice-control-sequoia"), "en"
+                assistive.cell_root(evidence, "voice-control-tahoe"), "en"
             )
             first_document = json.loads(first.read_text())
             second_document = json.loads(second.read_text())
@@ -775,7 +820,7 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
             root = Path(directory)
             evidence, _ = self.materialize_complete_run(root)
             completion = assistive.completion_path(
-                assistive.cell_root(evidence, "voiceover-sequoia"), "en"
+                assistive.cell_root(evidence, "voiceover-tahoe"), "en"
             )
             completion_document = json.loads(completion.read_text())
             completion_document["sessionSHA256"] = "9" * 64
@@ -785,8 +830,8 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
             with mock.patch("sys.stdout", output):
                 assistive.status(argparse.Namespace(evidence_root=evidence))
 
-            self.assertIn("INVALID voiceover-sequoia", output.getvalue())
-            self.assertNotIn("PASS    voiceover-sequoia/en", output.getvalue())
+            self.assertIn("INVALID voiceover-tahoe", output.getvalue())
+            self.assertNotIn("PASS    voiceover-tahoe/en", output.getvalue())
 
     def write_candidate_receipt(self, path):
         document = {
@@ -828,7 +873,7 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
         (signature / "CodeResources").write_bytes(b"candidate seal")
         return app
 
-    def system(self, major=15, host="7" * 64):
+    def system(self, major=26, host="7" * 64):
         return {
             "hostScopeSHA256": host,
             "os": {
@@ -866,7 +911,7 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
         if not root.exists():
             root.mkdir(mode=0o700)
         os.chmod(root, 0o700)
-        platform = "sequoia"
+        platform = "tahoe"
         proof = assistive.proof_for(self.contract, technology, platform)
         cell_path = assistive.prepare_cell_directories(root, proof)
         activation = (
@@ -1011,10 +1056,7 @@ class AssistiveTechnologyQualificationTests(unittest.TestCase):
             cell_index = 0
             process_index = 0
             for technology in ("voiceover", "voice-control"):
-                for platform, major, host in (
-                    ("sequoia", 15, "7" * 64),
-                    ("tahoe", 26, tahoe_host),
-                ):
+                for platform, major, host in (("tahoe", 26, tahoe_host),):
                     cell_index += 1
                     proof = assistive.proof_for(self.contract, technology, platform)
                     cell_path = assistive.prepare_cell_directories(evidence, proof)

@@ -168,7 +168,7 @@ class ExactPathMutationBaselineTests(unittest.TestCase):
     def test_scorecard_must_match_the_exact_receipt_set(self):
         receipts = self.cross_case.receipts()
         scorecard = self.cross_case.scorecard(receipts)
-        receipts[0] = self.cross_case.receipt("memory-8gb", 8, 15, 9)
+        receipts[0] = self.cross_case.receipt("memory-8gb", 8, 26, 9)
         self.write_evidence(receipts, scorecard)
 
         with self.assertRaisesRegex(baseline.BaselineError, "does not exactly match"):
@@ -191,7 +191,7 @@ class ExactPathMutationBaselineTests(unittest.TestCase):
     def test_scalar_payload_duplicate_and_nonfinite_json_fail_closed(self):
         receipts = self.cross_case.receipts()
         scorecard = self.cross_case.scorecard(receipts)
-        scorecard["coverage"]["presentOperatingSystemMajors"][0] = 15.0
+        scorecard["coverage"]["presentOperatingSystemMajors"][0] = 26.0
         self.write_evidence(receipts, scorecard)
         with self.assertRaisesRegex(baseline.BaselineError, "does not exactly match"):
             self.admit()

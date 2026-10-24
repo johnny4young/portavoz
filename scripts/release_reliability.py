@@ -17,6 +17,7 @@ from pathlib import Path
 RECEIPT_SCHEMA_VERSION = 1
 CONTRACT_SCHEMA_VERSION = 2
 SCORECARD_SCHEMA_VERSION = 2
+MINIMUM_MACOS_MAJOR = 26
 DEFAULT_CONTRACT = (
     Path(__file__).resolve().parents[1]
     / "docs"
@@ -68,9 +69,7 @@ QUALIFICATION_RECEIPTS = {
     "assistive-technology": {
         "class": "assistive-technology",
         "proofs": (
-            "voiceover-sequoia",
             "voiceover-tahoe",
-            "voice-control-sequoia",
             "voice-control-tahoe",
         ),
         "authorityKind": "assistive-technology-authority",
@@ -94,16 +93,12 @@ CONTRACT_PROOF_IDS = (
     "integration.hosted-ci",
     "signed.distribution",
     "sync.production-admission",
-    "hardware.built-in.sequoia",
     "hardware.built-in.tahoe",
-    "hardware.airpods.sequoia",
     "hardware.airpods.tahoe",
     "hardware.callback-recovery",
     "hardware.long-call",
     "hardware.model-cold-start",
-    "assistive.voiceover.sequoia",
     "assistive.voiceover.tahoe",
-    "assistive.voice-control.sequoia",
     "assistive.voice-control.tahoe",
     "field.mixed-language",
 )
@@ -697,6 +692,8 @@ def validate_field_manifest(document, label):
         raise ReliabilityError(
             f"{label}.macOS.productVersion must begin with a major version"
         ) from error
+    if os_major < MINIMUM_MACOS_MAJOR:
+        raise ReliabilityError(f"{label}.macOS must be Tahoe or newer")
     if not isinstance(root["evidence"], list) or not root["evidence"]:
         raise ReliabilityError(f"{label}.evidence must be a non-empty array")
     evidence_by_id = {}

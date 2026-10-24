@@ -52,16 +52,13 @@ TEAM_PATTERN = re.compile(r"^[A-Z0-9]{4,20}$")
 SELECTOR_PATTERN = re.compile(
     r"^PortavozUITests/[A-Za-z][A-Za-z0-9]+UITests/test[A-Za-z0-9]+$"
 )
-EXPECTED_PLATFORMS = (
-    ("sequoia", 15, 15),
-    ("tahoe", 26, None),
-)
+EXPECTED_PLATFORMS = (("tahoe", 26, None),)
+PLATFORM_IDENTIFIERS = tuple(identifier for identifier, _, _ in EXPECTED_PLATFORMS)
 EXPECTED_TECHNOLOGIES = (
     (
         "voiceover",
         "nsworkspace-and-human",
         {
-            "sequoia": "voiceover-sequoia",
             "tahoe": "voiceover-tahoe",
         },
     ),
@@ -69,7 +66,6 @@ EXPECTED_TECHNOLOGIES = (
         "voice-control",
         "human-observed",
         {
-            "sequoia": "voice-control-sequoia",
             "tahoe": "voice-control-tahoe",
         },
     ),
@@ -487,8 +483,10 @@ def validate_contract(document: Any) -> dict[str, Any]:
         raise AssistiveQualificationError("contract.app is not the Dev qualification app")
 
     platforms = root["platforms"]
-    if not isinstance(platforms, list) or len(platforms) != 2:
-        raise AssistiveQualificationError("contract.platforms must contain two rows")
+    if not isinstance(platforms, list) or len(platforms) != len(EXPECTED_PLATFORMS):
+        raise AssistiveQualificationError(
+            "contract.platforms must match the supported platform matrix"
+        )
     observed_platforms = []
     for index, raw in enumerate(platforms):
         platform = exact_object(
@@ -546,7 +544,7 @@ def validate_contract(document: Any) -> dict[str, Any]:
         proofs = exact_object(
             technology["proofs"],
             f"contract.technologies[{index}].proofs",
-            ("sequoia", "tahoe"),
+            PLATFORM_IDENTIFIERS,
         )
         normalized_proofs = {}
         for platform_identifier, proof in proofs.items():
@@ -720,7 +718,7 @@ def platform_for_major(contract: dict[str, Any], major: int) -> str:
             matches.append(identifier)
     if len(matches) != 1:
         raise AssistiveQualificationError(
-            "host must run physical macOS Sequoia or Tahoe-or-newer"
+            "host must run physical macOS Tahoe or newer (macOS 26+)"
         )
     return matches[0]
 
@@ -2405,10 +2403,11 @@ def finalize(args: argparse.Namespace) -> None:
         raise AssistiveQualificationError(
             "each locale must run in a unique app process"
         )
-    platform_hosts: dict[str, set[str]] = {"sequoia": set(), "tahoe": set()}
+    platform_hosts: dict[str, set[str]] = {
+        identifier: set() for identifier in PLATFORM_IDENTIFIERS
+    }
     platform_os: dict[str, set[tuple[Any, ...]]] = {
-        "sequoia": set(),
-        "tahoe": set(),
+        identifier: set() for identifier in PLATFORM_IDENTIFIERS
     }
     for cell in cells.values():
         document = cell["document"]
@@ -2432,11 +2431,6 @@ def finalize(args: argparse.Namespace) -> None:
         raise AssistiveQualificationError(
             "VoiceOver and Voice Control must share one macOS build per platform"
         )
-    host_values = [next(iter(values)) for values in platform_hosts.values()]
-    if len(set(host_values)) != 2:
-        raise AssistiveQualificationError(
-            "Sequoia and Tahoe must use distinct Mac host scopes"
-        )
     validate_root_inventory(evidence_root, proofs)
     collected_at = utc_now()
     authority = {
@@ -2459,7 +2453,7 @@ def finalize(args: argparse.Namespace) -> None:
                     )
                 ),
             }
-            for platform_identifier in ("sequoia", "tahoe")
+            for platform_identifier in PLATFORM_IDENTIFIERS
         ],
         "cells": [
             {
@@ -2489,7 +2483,7 @@ def status(args: argparse.Namespace) -> None:
     manifest, contract, _ = load_run(evidence_root)
     cells_directory = evidence_root / "cells"
     for technology in technology_catalog(contract):
-        for platform_identifier in ("sequoia", "tahoe"):
+        for platform_identifier in PLATFORM_IDENTIFIERS:
             proof = proof_for(contract, technology, platform_identifier)
             cell = cell_root(evidence_root, proof)
             if not cell.exists():
@@ -2616,7 +2610,7 @@ def parser() -> argparse.ArgumentParser:
     status_parser.set_defaults(handler=status)
 
     finalize_parser = subparsers.add_parser(
-        "finalize", help="mint authority from all four complete physical cells"
+        "finalize", help="mint authority from both complete physical Tahoe cells"
     )
     finalize_parser.add_argument("--evidence-root", type=Path, required=True)
     finalize_parser.add_argument("--candidate-receipt", type=Path, required=True)

@@ -35,6 +35,7 @@ FROZEN_CONTRACT_SHA256 = "2f6fb818d79dde06f8334203a807e0f8e34d2eae926d22facbd2b7
 QUALIFICATION_BUNDLE_ID = "app.portavoz.mac"
 QUALIFICATION_DISPLAY_NAME = "Portavoz Sync Qualification"
 DIGEST_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+MINIMUM_MACOS_MAJOR = 26
 OS_BUILD_PATTERN = re.compile(r"^[0-9]{2}[A-Z][0-9A-Za-z]{1,15}$")
 UUID_PATTERN = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
@@ -747,9 +748,9 @@ def validate_stage_receipt(
         exact_integer(os_value[key], f"{label}.os.{key}")
     exact_string(os_value["build"], f"{label}.os.build", OS_BUILD_PATTERN)
     major = os_value["major"]
-    if major != 15 and major < 26:
+    if major < MINIMUM_MACOS_MAJOR:
         raise ProductionSyncQualificationError(
-            f"{label}.os.major is not Sequoia, Tahoe, or newer"
+            f"{label}.os.major is not Tahoe or newer"
         )
     if os_value["architecture"] not in {"arm64", "x86_64"}:
         raise ProductionSyncQualificationError(f"{label}.os.architecture is invalid")
@@ -1277,11 +1278,9 @@ def validate_authority_relationships(receipts: dict[str, dict[str, Any]]) -> dic
                 f"role {role} changed operating system during qualification"
             )
         role_os_majors[role] = next(iter(operating_systems))[0]
-    if 15 not in role_os_majors.values() or not any(
-        major >= 26 for major in role_os_majors.values()
-    ):
+    if any(major < MINIMUM_MACOS_MAJOR for major in role_os_majors.values()):
         raise ProductionSyncQualificationError(
-            "production sync must pair Sequoia with Tahoe or newer"
+            "every production sync role must run Tahoe or newer"
         )
     original_keys = {
         key

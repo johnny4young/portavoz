@@ -166,7 +166,9 @@ class ExactPathBaselineTests(unittest.TestCase):
     def test_scorecard_must_match_the_exact_receipt_set(self):
         receipts = self.cross_case.receipts()
         scorecard = self.cross_case.scorecard(receipts)
-        receipts[0] = self.cross_case.receipt("memory-8gb", 26)
+        receipts[0] = self.cross_case.receipt(
+            "memory-8gb", 26, zero_control_timing=True
+        )
         self.write_evidence(receipts, scorecard)
 
         with self.assertRaisesRegex(baseline.BaselineError, "does not exactly match"):
@@ -186,7 +188,7 @@ class ExactPathBaselineTests(unittest.TestCase):
     def test_scalar_spelling_payload_and_duplicate_json_fail_closed(self):
         receipts = self.cross_case.receipts()
         scorecard = self.cross_case.scorecard(receipts)
-        scorecard["coverage"]["presentOperatingSystemMajors"][0] = 15.0
+        scorecard["coverage"]["presentOperatingSystemMajors"][0] = 26.0
         self.write_evidence(receipts, scorecard)
         with self.assertRaisesRegex(baseline.BaselineError, "does not exactly match"):
             self.admit()

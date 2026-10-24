@@ -55,7 +55,7 @@ HOST_PROFILES = {
     "memory-16gb": (14 * GIBIBYTE, 18 * GIBIBYTE),
     "reference": (32 * GIBIBYTE, None),
 }
-SUPPORTED_OS_MAJOR = {15, 26}
+SUPPORTED_OS_MAJOR = {26}
 OS_VERSION = re.compile(r"(?:^|\s)(\d{1,2})\.")
 
 
@@ -355,7 +355,7 @@ def validate_observation(
         raise RetrievalChunkEvidenceError("host architecture must be arm64")
     version = OS_VERSION.search(host["operatingSystem"])
     if version is None or int(version.group(1)) not in SUPPORTED_OS_MAJOR:
-        raise RetrievalChunkEvidenceError("host must be supported Sequoia or Tahoe")
+        raise RetrievalChunkEvidenceError("host must be supported Tahoe")
     require_positive_count(host["processorCount"], "host.processorCount")
     memory = require_positive_count(
         host["physicalMemoryBytes"], "host.physicalMemoryBytes"
