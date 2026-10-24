@@ -45,6 +45,7 @@ final class DictationPracticeField {
         var routed = dependencies
         routed.canInsert = { true }
         routed.beginHistory = { nil }
+        routed.recordStats = { _ in }
         routed.locatePanelAnchor = { Self.panelAnchor(around: NSEvent.mouseLocation) }
         routed.captureDestination = { [weak self] in
             CapturedDictationDestination(name: L10n.text("the practice field"), canRetry: false) { text in

@@ -182,6 +182,7 @@ final class AppLaunchModel {
         Task { await services.standingPreMeetingBriefs.start() }
         services.requestSearchReconciliation()
         Task { await services.loadDictationHistory() }
+        Task { await services.loadDictationStats() }
         Task { @MainActor in
             await services.commitmentReminders.send(.start)
         }

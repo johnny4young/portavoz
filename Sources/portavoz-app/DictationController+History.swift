@@ -57,7 +57,11 @@ final class DictationHistorySession {
 }
 
 extension DictationController {
+    /// Also prepares the statistics, which count a session without its text.
     func prepareHistory(original: String, text: String, dependencies: DictationSessionDependencies) {
+        if let sessionID = activeSessionID {
+            prepareStats(text: text, sessionID: sessionID, dependencies: dependencies)
+        }
         guard let history else { return }
         let now = dependencies.now()
         let startedAt = captureStartedAt ?? now
@@ -76,6 +80,7 @@ extension DictationController {
     }
 
     func recordHistory(_ result: DictationDeliveryOutcome, id: UUID) {
+        recordStats(result, id: id)
         guard let history, history.sessionID == id else { return }
         history.record(result)
     }

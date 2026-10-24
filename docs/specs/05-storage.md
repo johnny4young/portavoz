@@ -2161,6 +2161,22 @@ off. Agent pages reuse the history filter (`dictationFilterConditions`), count
 the filtered total, and use newest-first offset paging with the offset clamped
 at 0 and the limit to 1–100.
 
+### Dictation statistics (schema v58, D584)
+
+v58 adds `dictationStatsPolicy` (one row, `isEnabled` 0 by default),
+`dictationStatsDay` (primary key `day` `yyyy-MM-dd` plus `applicationName`,
+`''` when unknown; `dictations`, `words`, `spokenMs`, `notDelivered`, all
+non-negative) and `dictationStatsCounted` (`dictationID` primary key, its `day`,
+`applicationName`, `delivered`, `countedAt`). `recordDictationStats(_:at:calendar:)`
+validates the sample, then in one write transaction returns false while the
+consent is off, purges days older than 365 days and counted identities older
+than two days, and either flips `notDelivered` for an already counted identity
+whose delivery changed or inserts the identity and upserts the day row.
+`dictationStatsSummary(days:)` sums each requested day across apps (empty days
+included) and ranks at most five named apps by dictations, then words, then
+name. `deleteDictationStats()` clears both data tables and keeps the consent.
+`setDictationStatsEnabled(_:)` only changes the consent.
+
 ### Dictations added to meeting notes (schema v57, D579)
 
 `addDictationToMeeting(_:meetingID:at:)` is the only path that writes a raw

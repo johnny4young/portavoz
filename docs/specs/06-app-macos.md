@@ -4970,3 +4970,23 @@ history consent switch reads "Let agents and Shortcuts read the history"
 (`settings-dictation-history-agents`). `-simulate-open-dictations-intent <words>`
 requests the same navigation after the disposable history is seeded.
 
+### Dictation statistics (D584)
+
+`DictationController` keeps a `DictationStatsDraft` (session, start, speaking
+time, word count, app; no text) from `prepareStats` and sends a
+`DictationStatsSample` through `DictationSessionDependencies.recordStats` when
+the delivery settles, with the history's exclusion rule; the practice field
+records nothing. `DictationStatsModel` (on `AppServices`) loads the consent and
+a 7- or 30-day summary and refreshes after each counted dictation. While
+statistics are on, the Dictations page shows `DictationStatsPanel`
+(`dictation-stats`): a 7 days / 30 days picker (`dictation-stats-range`), tiles
+for dictations, words, speaking time, time saved and, when any, not delivered
+(`dictation-stats-dictations`, `-words`, `-speaking`, `-saved`,
+`-not-delivered`), words per day as bars, the busiest apps
+(`dictation-stats-app-N`) and an empty state (`dictation-stats-empty`).
+Settings › Audio & dictation adds Dictation statistics: Keep dictation
+statistics (`settings-dictation-stats`, off by default), its note
+(`settings-dictation-stats-note`) and Delete statistics with a confirmation
+(`settings-dictation-stats-delete`, `-delete-confirm`). `-seed-dictation-stats`
+turns statistics on in disposable launches with four sample dictations.
+
