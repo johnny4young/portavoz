@@ -12,6 +12,7 @@ import Testing
 struct DictationPolishDeliveryTests {
     private final class Recorder {
         var polishCalls: [String] = []
+        var recipes: [String?] = []
         var capturesEnded = 0
         var capturesEndedBeforePolish: Int?
         var records: [DictationRecord] = []
@@ -24,8 +25,9 @@ struct DictationPolishDeliveryTests {
         var dependencies = harness.dependencies
         dependencies.beginCapture = { { recorder.capturesEnded += 1 } }
         dependencies.beginHistory = { { record in recorder.records.append(record); return true } }
-        dependencies.polishDictation = { text, _ in
+        dependencies.polishDictation = { text, _, recipe in
             recorder.polishCalls.append(text)
+            recorder.recipes.append(recipe)
             recorder.capturesEndedBeforePolish = recorder.capturesEnded
             return await polish(text)
         }
@@ -97,6 +99,20 @@ struct DictationPolishDeliveryTests {
         #expect(harness.insertions == ["so we ship it tomorrow"])
         #expect(!harness.controller.isPolishing)
         #expect(harness.controller.polishNotice == "Pasted without polish.")
+    }
+
+    @Test
+    func theChosenRecipeReachesTheEngine() async throws {
+        let harness = DictationControllerHarness(text: "so we ship it tomorrow")
+        defer { harness.controller.cancel() }
+        harness.set(DictationTextMode.polish.rawValue, forKey: DictationTextPreferences.modeKey)
+        harness.set("builtin.bullets", forKey: DictationTextPreferences.polishRecipeKey)
+        let recorder = Recorder()
+        try await dictate(harness, dependencies(harness, recorder: recorder) { _ in .polished("- So we ship it.") })
+        try await eventually { harness.insertions.count == 1 }
+        let bullets = try #require(DictationRecipe.builtIns.first { $0.id == "builtin.bullets" })
+        #expect(recorder.recipes == [bullets.instruction])
+        #expect(harness.insertions == ["- So we ship it."])
     }
 
     @Test(arguments: [DictationTextMode.literal, .clean])

@@ -2847,6 +2847,23 @@ remembers the Clean version beside it: the menu bar offers
 UI journeys use `-seed-dictation-polish`, `-polish-held` and `-polish-unfaithful`
 fixtures with no engine.
 
+**Polish recipes (D588).** `DictationRecipe` (PortavozCore) is an id, a name of at
+most 60 characters and an instruction of at most 500. Four built-ins
+(`builtin.formal`, `builtin.friendly`, `builtin.bullets`, `builtin.concise`)
+have catalog-key names and can only be duplicated; up to 20 custom recipes are a
+JSON catalog under `dictationRecipes` (32 KiB, unique ids, no built-in prefix).
+`DictationTextChoice` is a mode plus an optional recipe id: the default stores
+it in `dictationTextMode` and `dictationPolishRecipe`, an application profile in
+its `polishRecipeID`, and the strip's picker sets it for one session. The
+snapshot reads the recipes at session start; a missing id is the conservative
+edit. `DictationTextModePicker` lists Literal, Clean, Polish and then "Polish:
+<name>" per recipe (`<identifier>-recipe-<id>`). Settings › Dictation shows
+`settings-dictation-recipes` with Duplicate for built-ins, Edit and Delete for
+custom recipes, `settings-dictation-recipe-new` and an editor sheet
+(`dictation-recipe-name`, `-instruction`, `-save`, `-cancel`). The controller
+passes the instruction to `PolishDictation`, which allows restructuring in
+`DictationPolishFidelity`: no length bound and list markers are not numbers.
+
 Resolution is session override, then exact captured bundle-ID profile, then
 global mode. The destination's existing NSRunningApplication capture supplies
 its bundle ID even when the captured field is secure or focus cannot be read;

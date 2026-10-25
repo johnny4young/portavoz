@@ -774,6 +774,16 @@ extension DictationController {
         guard canChangeTextMode else { return }
         textPolicy.mode = mode
     }
+
+    var textChoice: DictationTextChoice { textPolicy.choice }
+    /// The recipes read when this session started, for the strip's choice.
+    var availableRecipes: [DictationRecipe] { textPolicy.recipes }
+
+    func selectTextChoice(_ choice: DictationTextChoice) {
+        guard canChangeTextMode else { return }
+        textPolicy.mode = choice.mode
+        textPolicy.recipeID = choice.recipeID
+    }
 }
 
 /// One pending rewrite: the delivery waiting for it, the task and its token.
@@ -806,10 +816,11 @@ private extension DictationController {
         showPanel()
         armPolishSkipKey(dependencies, sessionID: sessionID)
         let terms = textPolicy.replacements.map(\.replacement)
+        let recipe = textPolicy.polishRecipe?.instruction
         let outcome: DictationPolishOutcome? = await withCheckedContinuation { continuation in
             polishRun.wait = continuation
             polishRun.task = Task { [weak self] in
-                let outcome = await dependencies.polishDictation(clean, terms)
+                let outcome = await dependencies.polishDictation(clean, terms, recipe)
                 guard let self, self.polishRun.token == token else { return }
                 self.endPolish(outcome)
             }

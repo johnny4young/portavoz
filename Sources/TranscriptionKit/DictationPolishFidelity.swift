@@ -30,12 +30,14 @@ public enum DictationPolishFidelity {
     ]
 
     /// Returns the first rule the candidate breaks, or nil when it is safe to paste.
-    /// `protectedTerms` are the user's own spellings (dictionary replacements).
+    /// `protectedTerms` are the user's own spellings (dictionary replacements). A recipe
+    /// may restructure: its length is free and list markers are not numbers.
     public static func violation(
-        original: String, candidate: String, protectedTerms: [String] = []
+        original: String, candidate: String, protectedTerms: [String] = [], allowsRestructuring: Bool = false
     ) -> Violation? {
-        let candidate = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
+        var candidate = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !candidate.isEmpty else { return .empty }
+        if allowsRestructuring { candidate = strippingListMarkers(candidate) }
         if numbers(in: original) != numbers(in: candidate) { return .numbers }
         if identifiers(in: original) != identifiers(in: candidate) { return .identifiers }
         for term in protectedTerms where containsWord(term, in: original, caseSensitive: false) {
@@ -43,7 +45,7 @@ public enum DictationPolishFidelity {
         }
         if negationMarkers(in: original) != negationMarkers(in: candidate) { return .negation }
         let ratio = Double(words(in: candidate).count) / Double(max(words(in: original).count, 1))
-        if ratio < minimumLengthRatio || ratio > maximumLengthRatio { return .length }
+        if !allowsRestructuring, ratio < minimumLengthRatio || ratio > maximumLengthRatio { return .length }
         if startsWithPreamble(candidate) && !startsWithPreamble(original) { return .preamble }
         if let before = dominantLanguage(of: original), let after = dominantLanguage(of: candidate),
            before != after {
@@ -65,6 +67,12 @@ public enum DictationPolishFidelity {
             + #"|[\w.+-]+@[\w-]+(?:\.[\w-]+)+"#
             + #"|(?<![\w@])[@#][\p{L}\p{N}_]+"#
         return matches(of: pattern, in: text).sorted()
+    }
+
+    /// "1. ", "2) " or "- " at a line start: list structure a recipe may add.
+    static func strippingListMarkers(_ text: String) -> String {
+        text.replacingOccurrences(
+            of: #"(?m)^[ \t]*(?:\d{1,2}[.)]|[-*\x{2022}])[ \t]+"#, with: "", options: .regularExpression)
     }
 
     static func negationMarkers(in text: String) -> Set<String> {

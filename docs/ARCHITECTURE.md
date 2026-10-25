@@ -1288,7 +1288,9 @@ drift. The app router resolves the selected summary engine on every call (Apple
 on-device, Ollama on loopback through the egress gateway, or embedded MLX through
 its lease) and never falls through to another engine. The controller polishes
 inside `.delivering` after ending its capture claim; Escape or the strip pastes
-Clean at once, and every fallback carries a visible reason.
+Clean at once, and every fallback carries a visible reason. A Polish recipe, a
+bounded user instruction chosen with the mode, travels fenced beside the text;
+it frees length and list structure from the fidelity check but nothing else.
 The app resolves explicit Literal/Clean/Polish mode by session choice, captured bundle-ID
 profile, then global preference. The existing destination capture supplies identity;
 no profile recaptures focus or grants insertion authority. Missing preferences

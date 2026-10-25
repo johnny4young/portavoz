@@ -21766,3 +21766,21 @@ rewrite starts only after the dictation's capture claim ends, so a local model
 is never refused for overlapping its own microphone. Ollama calls cross the
 egress gateway as their own loopback-only operation with a receipt in the
 global journal (schema v59).
+
+## D588 — Polish recipes reshape form, never facts
+
+Polish's conservative copy edit cannot turn a dictation into a list, a formal
+email or a shorter note. A recipe is a name and an instruction of at most 500
+characters that Polish sends with the dictation, chosen as Polish's style
+wherever the mode is chosen: the default, an application profile, or the
+strip for one dictation. It is not a separate mode, so the history keeps the
+`polish` mode without a migration, and a recipe that no longer exists falls
+back to the conservative edit. Four built-ins (Formal, Friendly, Bullet list,
+Concise) can be duplicated but not edited; up to 20 custom recipes live in a
+validated preference catalog, and an unreadable catalog offers only the
+built-ins until it is reset. The recipe travels fenced in its own prompt
+section and may change wording, tone, length and structure only; the
+fidelity check therefore drops its length bound and ignores list markers, but
+still refuses a lost or changed number, identifier, dictionary spelling or
+negation, a language switch or a preamble. Recipes are plain text, not
+Skills, and reach only the selected local summary engine.
