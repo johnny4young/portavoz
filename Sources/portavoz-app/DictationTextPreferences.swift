@@ -10,6 +10,8 @@ struct DictationTextPreferenceSnapshot: Sendable {
     var recipeID: String?
     /// The built-in and custom recipes read with the snapshot, for a session choice.
     var recipes: [DictationRecipe] = []
+    /// Translation after the text mode; a session choice may change it until Stop.
+    var translationTarget: DictationTranslationTarget = .off
 
     /// No session: nothing optional applies.
     static let inert = Self(mode: .literal, removeFillers: false, replacements: [])
@@ -33,6 +35,7 @@ struct DictationTextPreferenceSnapshot: Sendable {
 enum DictationTextPreferences {
     static let modeKey = "dictationTextMode"
     static let polishRecipeKey = "dictationPolishRecipe"
+    static let translationKey = "dictationTranslationTarget"
     static let recipesKey = "dictationRecipes"
     static let maximumRecipeBytes = 32_768
     static let profilesKey = "dictationApplicationTextProfiles"
@@ -81,7 +84,12 @@ enum DictationTextPreferences {
             replacements: DictationTextRules.decode(
                 replacements: defaults.string(forKey: DictationController.replacementsKey) ?? ""),
             recipeID: profile.map(\.polishRecipeID) ?? globalRecipeID(in: defaults),
-            recipes: recipes(in: defaults))
+            recipes: recipes(in: defaults),
+            translationTarget: profile?.translationTarget ?? globalTranslationTarget(in: defaults))
+    }
+
+    static func globalTranslationTarget(in defaults: UserDefaults) -> DictationTranslationTarget {
+        defaults.string(forKey: translationKey).flatMap(DictationTranslationTarget.init(rawValue:)) ?? .off
     }
 
     static func globalRecipeID(in defaults: UserDefaults) -> String? {

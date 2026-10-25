@@ -2912,6 +2912,26 @@ insertion fails without pasting; a refused edit changes nothing. A success shows
 and records no history or statistics. Disposable launches use
 `-seed-dictation-correction` with an in-memory `DictationFixtureReceiver`.
 
+**Translation (D592).** `DictationTextPreferences` resolves
+`dictationTranslationTarget` (`off`, `en`, `es`) from the profile's optional
+`translationTarget`, else the global value; the strip's `dictation-panel-translate`
+changes it for one session. After the mode's text (and Polish), the controller
+picks the source from `dictationLanguage` when it is `es` or `en`, else
+`SpokenLanguageDetector.dictationLanguage` (at least eight letters, confidence
+0.6), and runs `TranslateDictation` through the same bounded transform as Polish:
+"Translating…", `dictation-panel-skip-translation`, Escape, five seconds.
+`AppleDictationTranslator` uses `TranslationSession(installedSource:target:)` only
+when `LanguageAvailability` reports the pair installed; `.supported` is reported
+as not downloaded. A kept outcome pastes the untranslated text and appends its
+reason to the strip notice. A translation is pasted, saved to the history and held
+by Paste last with the untranslated text as its alternate, which the menu offers
+as `menu-bar-paste-original`. Settings shows `settings-dictation-translate`, the
+per-profile `settings-dictation-profile-translate-<bundleID>`, the language
+status and `settings-dictation-translate-download`, which calls
+`prepareTranslation()` through `.translationTask`. Disposable launches use a
+fixture translator; `-seed-dictation-translate-missing` reports missing languages and
+`-seed-dictation-translate-held` never answers.
+
 Resolution is session override, then exact captured bundle-ID profile, then
 global mode. The destination's existing NSRunningApplication capture supplies
 its bundle ID even when the captured field is secure or focus cannot be read;

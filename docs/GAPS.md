@@ -202,6 +202,13 @@ range (native text views, browsers, Electron, terminals), how a rich-text
 replacement keeps formatting, and how a global Return registration behaves in
 apps that bind it remain field validation.
 
+### Dictation translation quality and language packs
+
+D592 translates through Apple's installed English and Spanish languages. The
+translation quality of short, informal dictations, how the language download
+behaves offline or under managed devices, and how often Auto misreads mixed
+dictations remain field validation.
+
 ### Spoken corrections in real editors
 
 D591 edits the last insertion by setting Accessibility's selected range and text.

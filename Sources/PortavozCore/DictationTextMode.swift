@@ -15,13 +15,29 @@ public struct DictationApplicationTextProfile: Codable, Equatable, Identifiable,
     public var mode: DictationTextMode
     /// The Polish recipe for this application; nil is the conservative copy edit.
     public var polishRecipeID: String?
+    /// Nil follows the default translation; `.off` keeps this application untranslated.
+    public var translationTarget: DictationTranslationTarget?
     public var id: String { bundleIdentifier }
 
-    public init(bundleIdentifier: String, mode: DictationTextMode, polishRecipeID: String? = nil) {
+    public init(
+        bundleIdentifier: String, mode: DictationTextMode, polishRecipeID: String? = nil,
+        translationTarget: DictationTranslationTarget? = nil
+    ) {
         self.bundleIdentifier = bundleIdentifier
         self.mode = mode
         self.polishRecipeID = mode == .polish ? polishRecipeID : nil
+        self.translationTarget = translationTarget
     }
 
     public var choice: DictationTextChoice { DictationTextChoice(mode: mode, recipeID: polishRecipeID) }
+}
+
+/// Where dictated text is translated before it is pasted. Off and the two recognized languages only.
+public enum DictationTranslationTarget: String, Codable, CaseIterable, Sendable {
+    case off
+    case english = "en"
+    case spanish = "es"
+
+    /// The BCP-47 language the translator produces, or nil when off.
+    public var languageCode: String? { self == .off ? nil : rawValue }
 }

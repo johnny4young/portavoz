@@ -75,6 +75,10 @@ struct DictationSessionDependencies {
     /// with no Paste last, history, statistics or delivery notice.
     var textModeOverride: DictationTextMode?
     var deliversInternally = false
+    /// Translation only: the text, its language when known, and the target language.
+    var translateDictation: (String, String?, String) async -> DictationTranslationOutcome = { _, _, _ in
+        .kept(.unsupported)
+    }
     /// Polish mode only: the clean text, the user's own spellings to keep and an optional recipe.
     var polishDictation: (String, [String], String?) async -> DictationPolishOutcome = { _, _, _ in .kept(.failed) }
 
@@ -115,6 +119,9 @@ struct DictationSessionDependencies {
                 guard DictationAutoStop.isEnabled(in: defaults) else { return nil }
                 let pause = DictationAutoStop.pause(in: defaults)
                 return DictationAutoStop.silero(store: store, pause: pause, onPause: onPause)
+            },
+            translateDictation: { text, source, target in
+                await TranslateDictation(translator: AppleDictationTranslator())(text, source: source, target: target)
             },
             polishDictation: { [polisher = services.dictationPolisher] text, terms, recipe in
                 await PolishDictation(polisher: polisher)(text, protectedTerms: terms, recipe: recipe)
