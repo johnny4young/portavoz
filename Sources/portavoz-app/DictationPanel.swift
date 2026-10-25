@@ -158,10 +158,11 @@ private struct DictationStripView: View {
                 if controller.isActive, controller.phase != .delivering {
                     DictationTextModePicker(
                         identifier: "dictation-panel-text-mode", label: Text("Text mode"), selection: Binding(
-                        get: { controller.textMode }, set: { controller.selectTextMode($0) }))
+                        get: { controller.textChoice }, set: { controller.selectTextChoice($0) }),
+                        recipes: controller.availableRecipes)
                         .labelsHidden()
                         .controlSize(.mini)
-                        .frame(width: 80)
+                        .frame(width: 124)
                         .disabled(!controller.canChangeTextMode)
                 }
                 Spacer()

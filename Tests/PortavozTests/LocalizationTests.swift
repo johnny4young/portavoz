@@ -65,7 +65,7 @@ final class LocalizationTests: XCTestCase {
         let sameInBothLanguages: Set = [
             "%@ min", "%d min", "%d%%", "1:1", "Agenda", "App", "Apuntador", "Audio",
             "BYOK OpenAI-compatible · GitHub gists · MCP", "Brief", "Control", "Email", "English",
-            "Español", "Feedback", "Fn (🌐)", "GitHub", "HUD", "Literal", "Markdown", "OK",
+            "Español", "Feedback", "Fn (🌐)", "Formal", "GitHub", "HUD", "Literal", "Markdown", "OK",
             "Ollama (local)", "Original", "Portavoz", "Postmortem", "Radar", "Slack", "Standup", "Web",
             "byok api key github gist token mcp endpoint openai", "https://example.com/article"
         ]

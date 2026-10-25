@@ -19,6 +19,14 @@ final class DictationPolishRouterTests: XCTestCase {
         XCTAssertEqual([first, second, third], ["ollama", "mlx", "apple"])
     }
 
+    func testTheRecipeReachesTheSelectedEngine() async throws {
+        let router = makeRouter(selected: EngineSelectionBox(.ollama))
+
+        let polished = try await router.polish("hola", recipe: "Make it formal.")
+
+        XCTAssertEqual(polished, "ollama|Make it formal.")
+    }
+
     func testUnconfiguredOllamaNeverFallsThroughToAnotherEngine() async {
         let router = makeRouter(selected: EngineSelectionBox(.ollama), ollamaModel: nil)
 
@@ -184,10 +192,10 @@ private final class BuildCounter: @unchecked Sendable {
 
 private struct FixedPolisher: DictationTextPolishing {
     let text: String
-    func polish(_: String) async throws -> String { text }
+    func polish(_: String, recipe: String?) async throws -> String { recipe.map { text + "|" + $0 } ?? text }
 }
 
 private struct ThrowingPolisher: DictationTextPolishing {
     let error: any Error
-    func polish(_: String) async throws -> String { throw error }
+    func polish(_: String, recipe: String?) async throws -> String { throw error }
 }

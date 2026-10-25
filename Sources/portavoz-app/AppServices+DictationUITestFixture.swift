@@ -155,10 +155,12 @@ final class DictationUITestFixture {
             beginCapture: beginCapture, makeSpeechGate: { noSpeechGate(fixture) })
     }
 
-    static func polishing(_ fixture: DictationUITestFixture?) -> (String, [String]) async -> DictationPolishOutcome {
-        { text, terms in
+    static func polishing(
+        _ fixture: DictationUITestFixture?
+    ) -> (String, [String], String?) async -> DictationPolishOutcome {
+        { text, terms, recipe in
             await PolishDictation(polisher: FixturePolisher(behavior: fixture?.polish ?? .polishes))(
-                text, protectedTerms: terms)
+                text, protectedTerms: terms, recipe: recipe)
         }
     }
 
@@ -166,10 +168,11 @@ final class DictationUITestFixture {
     private struct FixturePolisher: DictationTextPolishing {
         let behavior: PolishBehavior
 
-        func polish(_ text: String) async throws -> String {
+        func polish(_ text: String, recipe: String?) async throws -> String {
             switch behavior {
             case .polishes:
-                return text.trimmingCharacters(in: .punctuationCharacters) + "!"
+                // A recipe turns the sentence into a one-item list.
+                return (recipe == nil ? "" : "- ") + text.trimmingCharacters(in: .punctuationCharacters) + "!"
             case .holds:
                 try await Task.sleep(for: .seconds(3_600))
                 return text

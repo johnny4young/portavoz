@@ -16,8 +16,8 @@ public struct OpenAICompatibleDictationPolisher: DictationTextPolishing {
         self.gateway = gateway
     }
 
-    public func polish(_ text: String) async throws -> String {
-        let prompt = try DictationPolishPrompt.make(text)
+    public func polish(_ text: String, recipe: String?) async throws -> String {
+        let prompt = try DictationPolishPrompt.make(text, recipe: recipe)
         let request = try OpenAICompatibleChatCodec.urlRequest(
             endpoint: endpoint,
             model: model,
@@ -60,8 +60,8 @@ public struct MLXDictationPolisher: DictationTextPolishing {
         self.runtime = runtime
     }
 
-    public func polish(_ text: String) async throws -> String {
-        let prompt = try DictationPolishPrompt.make(text)
+    public func polish(_ text: String, recipe: String?) async throws -> String {
+        let prompt = try DictationPolishPrompt.make(text, recipe: recipe)
         let content = try await IntelligenceScheduler.mlx.run(priority) {
             try await runtime.respond(
                 system: prompt.system,
@@ -103,11 +103,11 @@ public struct FoundationModelDictationPolisher: DictationTextPolishing {
         self.unavailabilityReason = unavailabilityReason
     }
 
-    public func polish(_ text: String) async throws -> String {
+    public func polish(_ text: String, recipe: String?) async throws -> String {
         if let reason = unavailabilityReason() {
             throw DictationPolishUnavailable(reason: reason)
         }
-        let prompt = try DictationPolishPrompt.make(text)
+        let prompt = try DictationPolishPrompt.make(text, recipe: recipe)
         let session = LanguageModelSession(instructions: prompt.system)
         let content = try await IntelligenceScheduler.shared.run(.interactive) {
             try await session.respond(

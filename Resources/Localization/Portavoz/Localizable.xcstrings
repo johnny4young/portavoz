@@ -201,6 +201,16 @@
         }
       }
     },
+    "%d of %d characters": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d de %d caracteres"
+          }
+        }
+      }
+    },
     "%d of %d confirmations": {
       "localizations": {
         "es": {
@@ -477,6 +487,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hay un resumen de reunión listo para usar."
+          }
+        }
+      }
+    },
+    "A recipe tells Polish how to reshape what you dictate. It never changes facts, names or numbers.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una receta le dice a Pulir cómo dar otra forma a lo que dictas. Nunca cambia datos, nombres ni números."
           }
         }
       }
@@ -1731,12 +1751,52 @@
         }
       }
     },
+    "Bullet list": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lista de viñetas"
+          }
+        }
+      }
+    },
     "Complete the audio import before compressing it.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Completa la importación de audio antes de comprimirlo."
+          }
+        }
+      }
+    },
+    "Concise": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conciso"
+          }
+        }
+      }
+    },
+    "Duplicate": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duplicar"
+          }
+        }
+      }
+    },
+    "Edit": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar"
           }
         }
       }
@@ -5799,6 +5859,16 @@
         }
       }
     },
+    "Formal": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formal"
+          }
+        }
+      }
+    },
     "Free disk used by the variant you do not use": {
       "localizations": {
         "es": {
@@ -5835,6 +5905,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "El viernes, después de la revisión — dicho a las 12:40."
+          }
+        }
+      }
+    },
+    "Friendly": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cercano"
           }
         }
       }
@@ -6085,6 +6165,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Charla"
+          }
+        }
+      }
+    },
+    "How should Polish reshape your dictation?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Cómo debe Pulir dar forma a tu dictado?"
           }
         }
       }
@@ -7969,6 +8059,16 @@
         }
       }
     },
+    "New recipe…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nueva receta…"
+          }
+        }
+      }
+    },
     "New recording": {
       "localizations": {
         "es": {
@@ -9665,6 +9765,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pulir"
+          }
+        }
+      }
+    },
+    "Polish recipe": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Receta de Pulir"
+          }
+        }
+      }
+    },
+    "Polish recipes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recetas de Pulir"
+          }
+        }
+      }
+    },
+    "Polish: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pulir: %@"
           }
         }
       }
@@ -11799,6 +11929,16 @@
         }
       }
     },
+    "Reset recipes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restablecer recetas"
+          }
+        }
+      }
+    },
     "Restore": {
       "localizations": {
         "es": {
@@ -13701,6 +13841,16 @@
         }
       }
     },
+    "Status update": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualización de estado"
+          }
+        }
+      }
+    },
     "Stays on this Mac. Included only when you export a .portavoz file.": {
       "localizations": {
         "es": {
@@ -15441,6 +15591,16 @@
         }
       }
     },
+    "This recipe could not be saved.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo guardar esta receta."
+          }
+        }
+      }
+    },
     "This recording supports up to %d objectives.": {
       "localizations": {
         "es": {
@@ -16817,6 +16977,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tu micrófono preferido no está disponible. Se usará el predeterminado del sistema para este dictado."
+          }
+        }
+      }
+    },
+    "Your recipes could not be read. Polish uses the built-in ones until you reset them.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron leer tus recetas. Pulir usa las incluidas hasta que las restablezcas."
           }
         }
       }

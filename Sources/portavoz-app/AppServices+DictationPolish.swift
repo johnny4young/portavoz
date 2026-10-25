@@ -21,13 +21,13 @@ struct AppDictationPolishRouter: DictationTextPolishing {
     let makeOllama: @Sendable (_ endpoint: URL, _ model: String) -> any DictationTextPolishing
     let makeMLX: @MainActor @Sendable (_ directory: URL) -> any DictationTextPolishing
 
-    func polish(_ text: String) async throws -> String {
+    func polish(_ text: String, recipe: String?) async throws -> String {
         guard let current = await selection() else {
             throw DictationPolishUnavailable(reason: L10n.text("Polish is unavailable right now."))
         }
         let polisher = try await resolve(current)
         do {
-            return try await polisher.polish(text)
+            return try await polisher.polish(text, recipe: recipe)
         } catch {
             throw Self.presented(error)
         }
@@ -132,7 +132,7 @@ extension AppServices {
 }
 
 private struct AppUnavailableDictationPolisher: DictationTextPolishing {
-    func polish(_ text: String) async throws -> String {
+    func polish(_ text: String, recipe: String?) async throws -> String {
         throw DictationPolishUnavailable(reason: L10n.text("Polish is unavailable right now."))
     }
 }

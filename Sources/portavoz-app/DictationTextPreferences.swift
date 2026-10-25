@@ -7,9 +7,20 @@ struct DictationTextPreferenceSnapshot: Sendable {
     var mode: DictationTextMode
     let removeFillers: Bool
     let replacements: [DictationReplacement]
+    var recipeID: String?
+    /// The built-in and custom recipes read with the snapshot, for a session choice.
+    var recipes: [DictationRecipe] = []
 
     /// No session: nothing optional applies.
     static let inert = Self(mode: .literal, removeFillers: false, replacements: [])
+
+    /// A recipe that no longer exists falls back to the conservative copy edit.
+    var polishRecipe: DictationRecipe? {
+        guard mode == .polish, let recipeID else { return nil }
+        return recipes.first { $0.id == recipeID }
+    }
+
+    var choice: DictationTextChoice { DictationTextChoice(mode: mode, recipeID: polishRecipe?.id) }
 
     func applying(to text: String) -> String {
         DictationTextRules.apply(
@@ -21,6 +32,9 @@ struct DictationTextPreferenceSnapshot: Sendable {
 @MainActor
 enum DictationTextPreferences {
     static let modeKey = "dictationTextMode"
+    static let polishRecipeKey = "dictationPolishRecipe"
+    static let recipesKey = "dictationRecipes"
+    static let maximumRecipeBytes = 32_768
     static let profilesKey = "dictationApplicationTextProfiles"
     static let maximumProfiles = 64
     static let maximumProfileBytes = 32_768
@@ -65,7 +79,40 @@ enum DictationTextPreferences {
             mode: profile?.mode ?? globalMode(in: defaults),
             removeFillers: DictationController.fillerFilterEnabled(in: defaults),
             replacements: DictationTextRules.decode(
-                replacements: defaults.string(forKey: DictationController.replacementsKey) ?? ""))
+                replacements: defaults.string(forKey: DictationController.replacementsKey) ?? ""),
+            recipeID: profile.map(\.polishRecipeID) ?? globalRecipeID(in: defaults),
+            recipes: recipes(in: defaults))
+    }
+
+    static func globalRecipeID(in defaults: UserDefaults) -> String? {
+        defaults.string(forKey: polishRecipeKey).flatMap { $0.isEmpty ? nil : $0 }
+    }
+
+    /// Built-ins first; unreadable custom recipes contribute none until they are reset.
+    static func recipes(in defaults: UserDefaults) -> [DictationRecipe] {
+        DictationRecipe.builtIns + ((try? decodeRecipes(defaults.string(forKey: recipesKey) ?? "[]")) ?? [])
+    }
+
+    static func decodeRecipes(_ json: String) throws -> [DictationRecipe] {
+        guard json.utf8.count <= maximumRecipeBytes, let data = json.data(using: .utf8),
+              let recipes = try? JSONDecoder().decode([DictationRecipe].self, from: data)
+        else { throw ProfileFailure.invalid }
+        try validate(recipes)
+        return recipes
+    }
+
+    static func encodeRecipes(_ recipes: [DictationRecipe]) throws -> String {
+        try validate(recipes)
+        let data = try JSONEncoder().encode(recipes)
+        guard data.count <= maximumRecipeBytes, let json = String(data: data, encoding: .utf8)
+        else { throw ProfileFailure.invalid }
+        return json
+    }
+
+    private static func validate(_ recipes: [DictationRecipe]) throws {
+        guard recipes.count <= DictationRecipe.maximumCustomRecipes else { throw ProfileFailure.tooMany }
+        guard recipes.allSatisfy({ $0.isValid && !$0.isBuiltIn }),
+              Set(recipes.map(\.id)).count == recipes.count else { throw ProfileFailure.invalid }
     }
 
     static func isValidBundleIdentifier(_ value: String) -> Bool {
