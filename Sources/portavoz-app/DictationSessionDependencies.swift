@@ -71,6 +71,10 @@ struct DictationSessionDependencies {
     var beginHistory: () -> DictationHistoryWriter? = { nil }
     /// Counts a finished dictation when statistics are on; the store checks consent.
     var recordStats: (DictationStatsSample) -> Void = { _ in }
+    /// A rewrite's spoken instruction: a fixed mode, and the text goes to its own destination
+    /// with no Paste last, history, statistics or delivery notice.
+    var textModeOverride: DictationTextMode?
+    var deliversInternally = false
     /// Polish mode only: the clean text, the user's own spellings to keep and an optional recipe.
     var polishDictation: (String, [String], String?) async -> DictationPolishOutcome = { _, _, _ in .kept(.failed) }
 

@@ -13,6 +13,8 @@ final class SelectionRewriteController {
         case idle
         case capturing
         case choosing
+        /// The user is saying how to rewrite it, through an ordinary dictation session.
+        case listening
         case rewriting
         case preview(String)
         case replacing
@@ -31,6 +33,10 @@ final class SelectionRewriteController {
         var registerKey: (_ keyCode: UInt32, _ onPress: @escaping () -> Void) -> (any GlobalHotkeyRegistration)?
             = { _, _ in nil }
         var wait: (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
+        /// "Say how": start and finish the dictation session that captures the instruction.
+        var startDictation: () -> Void = {}
+        var finishDictation: () -> Void = {}
+        var isDictating: () -> Bool = { false }
     }
 
     /// A selection can be long and the user is waiting on a preview, so it gets more time than a dictation.
@@ -45,6 +51,8 @@ final class SelectionRewriteController {
     private(set) var notice: String?
     private(set) var result: String?
     private(set) var copied = false
+    /// What the user said for this rewrite; it acts as a one-time recipe.
+    private(set) var spokenInstruction: String?
     @ObservationIgnored private var selection: CapturedSelection?
     @ObservationIgnored private var dependencies: Dependencies?
     @ObservationIgnored private var task: Task<Void, Never>?
@@ -84,15 +92,84 @@ final class SelectionRewriteController {
 
     /// Nil is Polish's conservative copy edit.
     func choose(_ recipe: DictationRecipe?) {
+        guard phase == .choosing else { return }
+        spokenInstruction = nil
+        rewrite(recipeID: recipe?.id, instruction: recipe?.instruction)
+    }
+
+    /// While choosing, any dictation trigger captures the instruction instead of pasting.
+    var capturesInstruction: Bool { phase == .choosing || phase == .listening }
+
+    func sayHow() {
+        guard phase == .choosing else { return }
+        dependencies?.startDictation()
+    }
+
+    func finishSayingHow() {
+        guard phase == .listening else { return }
+        dependencies?.finishDictation()
+    }
+
+    /// Redirects one dictation session to this rewrite: Clean mode, no history,
+    /// statistics, Paste last or delivery notice, and the text becomes the recipe.
+    func instructionDependencies(_ base: DictationSessionDependencies) -> DictationSessionDependencies {
+        var result = base
+        result.captureDestination = { [weak self] in
+            CapturedDictationDestination(name: L10n.text("Rewrite instruction"), canRetry: false) { [weak self] text in
+                self?.receiveInstruction(text)
+                return .verified
+            }
+        }
+        result.locatePanelAnchor = { nil }
+        result.beginHistory = { nil }
+        result.recordStats = { _ in }
+        result.textModeOverride = .clean
+        result.deliversInternally = true
+        beginListening()
+        return result
+    }
+
+    private func beginListening() {
         guard phase == .choosing, let dependencies else { return }
-        chosenRecipeID = recipe?.id
+        // The dictation session claims Escape for itself while it listens.
+        releaseKeys()
+        notice = nil
+        phase = .listening
+        show()
+        let id = generation
+        Task { [weak self] in
+            // The session may not have started yet; then wait for it to end.
+            for _ in 0..<20 where !dependencies.isDictating() {
+                do { try await Task.sleep(for: .milliseconds(50)) } catch { return }
+            }
+            while dependencies.isDictating() {
+                do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
+            }
+            guard let self, self.generation == id, self.phase == .listening else { return }
+            self.phase = .choosing
+            self.armKeys(replaces: false)
+            self.show()
+        }
+    }
+
+    private func receiveInstruction(_ text: String) {
+        let instruction = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard phase == .listening, !instruction.isEmpty else { return }
+        spokenInstruction = instruction
+        rewrite(recipeID: nil, instruction: String(instruction.prefix(DictationRecipe.maximumInstructionLength)))
+    }
+
+    private func rewrite(recipeID: String?, instruction: String?) {
+        guard let dependencies else { return }
+        chosenRecipeID = recipeID
         notice = nil
         phase = .rewriting
+        armKeys(replaces: false)
         show()
         let id = generation
         let text = original
         task = Task { [weak self] in
-            let outcome = await dependencies.polish(text, dependencies.protectedTerms(), recipe?.instruction)
+            let outcome = await dependencies.polish(text, dependencies.protectedTerms(), instruction)
             guard let self, self.generation == id else { return }
             switch outcome {
             case .polished(let rewritten):
@@ -158,6 +235,7 @@ final class SelectionRewriteController {
         notice = nil
         result = nil
         copied = false
+        spokenInstruction = nil
         phase = .idle
         panel?.close()
     }

@@ -247,8 +247,7 @@ final class DictationController {
         self.destination = destination
         targetApp = destination.name
         panelAnchor = dependencies.locatePanelAnchor()
-        textPolicy = DictationTextPreferences.snapshot(
-            in: dependencies.defaults, bundleIdentifier: destination.bundleIdentifier)
+        textPolicy = Self.textPolicy(for: dependencies, bundleIdentifier: destination.bundleIdentifier)
         textPolicySealed = false
         phase = .preparing
         confirmedText = ""
@@ -732,7 +731,7 @@ extension DictationController {
     private func presentDelivery(
         _ result: DictationDeliveryOutcome, text: String, unpolished: String? = nil, id: UUID
     ) {
-        guard deliveryID == id, let dependencies else { return }
+        guard deliveryID == id, let dependencies, !closesInternalDelivery() else { return }
         cancelFeedbackDismissal()
         copyStatus = .idle
         lastText.remember(text, unpolished: unpolished)
@@ -882,6 +881,24 @@ private extension DictationController {
 }
 
 extension DictationController {
+    static func textPolicy(
+        for dependencies: DictationSessionDependencies, bundleIdentifier: String?
+    ) -> DictationTextPreferenceSnapshot {
+        var policy = DictationTextPreferences.snapshot(in: dependencies.defaults, bundleIdentifier: bundleIdentifier)
+        if let mode = dependencies.textModeOverride {
+            policy.mode = mode
+            policy.recipeID = nil
+        }
+        return policy
+    }
+
+    /// An internal destination already holds the text; the strip just closes.
+    func closesInternalDelivery() -> Bool {
+        guard dependencies?.deliversInternally == true else { return false }
+        closeFeedback()
+        return true
+    }
+
     /// Polish rewrites inside `.delivering`, so every delivering guard still applies.
     var isPolishing: Bool { polishRun.token != nil }
 
@@ -927,6 +944,7 @@ private extension DictationController {
     func presentNoSpeech(_ text: String, id: UUID) {
         measurement?.finish(.noSpeech)
         completeSession(id: id)
+        if closesInternalDelivery() { return }
         deliveryID = id
         destination = nil
         cancelFeedbackDismissal()

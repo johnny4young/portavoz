@@ -7,7 +7,8 @@ import PortavozCore
 import TranscriptionKit
 
 extension AppServices {
-    func makeDictationSessionDependencies() -> DictationSessionDependencies {
+    /// Paste last passes false: a replay is never a rewrite instruction.
+    func makeDictationSessionDependencies(capturesInstruction: Bool = true) -> DictationSessionDependencies {
         let beginCapture: () -> () -> Void = { [weak self] in
             self?.beginDictationCapture() ?? {}
         }
@@ -24,7 +25,10 @@ extension AppServices {
         }
         dependencies.beginHistory = { [weak self] in self?.dictationHistory.admit() }
         dependencies.recordStats = { [weak self] sample in self?.dictationStats.record(sample) }
-        return dictationPractice.route(dependencies, appIsActive: NSApplication.shared.isActive)
+        let routed = dictationPractice.route(dependencies, appIsActive: NSApplication.shared.isActive)
+        // A rewrite waiting for "Say how" takes the next session's words as its instruction.
+        return capturesInstruction && selectionRewrite.capturesInstruction
+            ? selectionRewrite.instructionDependencies(routed) : routed
     }
 }
 

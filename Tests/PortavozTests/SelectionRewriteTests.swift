@@ -179,3 +179,91 @@ struct SelectionCopyClipboardTests {
         #expect(board.string(forType: .string) == "The user's clipboard")
     }
 }
+
+@Suite(.serialized, .timeLimit(.minutes(1)))
+@MainActor
+struct SelectionRewriteSayHowTests {
+    private final class Recorder {
+        var recipes: [String?] = []
+        var insertions: [String] = []
+        var dictating = false
+    }
+
+    private func dependencies(_ recorder: Recorder) -> SelectionRewriteController.Dependencies {
+        var dependencies = SelectionRewriteController.Dependencies(
+            capture: {
+                .success(CapturedSelection(
+                    text: "so we ship it tomorrow", source: .accessibility, applicationName: "Receiver",
+                    revalidate: { nil },
+                    destination: CapturedDictationDestination(name: "Receiver", canRetry: false) { text in
+                        recorder.insertions.append(text)
+                        return .verified
+                    }))
+            },
+            polish: { text, _, recipe in
+                recorder.recipes.append(recipe)
+                return .polished(text.uppercased())
+            },
+            recipes: { [] }, protectedTerms: { [] }, copyText: { _ in true },
+            wait: { _ in try await Task.sleep(for: .seconds(3_600)) })
+        dependencies.isDictating = { recorder.dictating }
+        return dependencies
+    }
+
+    private func eventually(_ condition: @MainActor () -> Bool) async throws {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
+        while !condition(), ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        try #require(condition())
+    }
+
+    @Test
+    func theSpokenInstructionBecomesTheRecipeAndNothingIsDelivered() async throws {
+        let recorder = Recorder()
+        let rewrite = SelectionRewriteController(presentsPanel: false)
+        defer { rewrite.cancel() }
+        rewrite.start(using: dependencies(recorder))
+        try await eventually { rewrite.phase == .choosing }
+        #expect(rewrite.capturesInstruction)
+
+        let harness = DictationControllerHarness(text: "um make it formal")
+        defer { harness.controller.cancel() }
+        harness.set(DictationTextMode.polish.rawValue, forKey: DictationTextPreferences.modeKey)
+        var history: [DictationRecord] = []
+        var base = harness.dependencies
+        base.beginHistory = { { record in history.append(record); return true } }
+        let session = rewrite.instructionDependencies(base)
+        #expect(rewrite.phase == .listening)
+        #expect(session.textModeOverride == .clean)
+        #expect(session.deliversInternally)
+
+        recorder.dictating = true
+        harness.controller.toggle(using: session)
+        try await eventually { harness.controller.partialText == harness.text }
+        harness.now = harness.now.addingTimeInterval(1)
+        harness.controller.toggle(using: session)
+        try await eventually { rewrite.phase == .preview("SO WE SHIP IT TOMORROW") }
+        recorder.dictating = false
+        #expect(recorder.recipes == ["make it formal"])
+        #expect(rewrite.spokenInstruction == "make it formal")
+        #expect(harness.insertions.isEmpty)
+        #expect(history.isEmpty)
+        #expect(harness.controller.lastText.current == nil)
+        try await eventually { harness.controller.phase == .idle }
+        #expect(recorder.insertions.isEmpty)
+    }
+
+    @Test
+    func aDictationThatEndsWithoutWordsReturnsToTheChoices() async throws {
+        let recorder = Recorder()
+        let rewrite = SelectionRewriteController(presentsPanel: false)
+        defer { rewrite.cancel() }
+        rewrite.start(using: dependencies(recorder))
+        try await eventually { rewrite.phase == .choosing }
+        _ = rewrite.instructionDependencies(DictationControllerHarness(text: "").dependencies)
+        #expect(rewrite.phase == .listening)
+        try await eventually { rewrite.phase == .choosing }
+        #expect(recorder.recipes.isEmpty)
+    }
+}

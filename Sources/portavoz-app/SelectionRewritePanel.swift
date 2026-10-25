@@ -65,7 +65,7 @@ struct SelectionRewriteView: View {
     static func height(for phase: SelectionRewriteController.Phase) -> CGFloat {
         switch phase {
         case .preview: 300
-        case .choosing, .rewriting: 190
+        case .choosing, .rewriting, .listening: 190
         default: 96
         }
     }
@@ -115,7 +115,28 @@ struct SelectionRewriteView: View {
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier("rewrite-notice")
             }
+            if let instruction = controller.spokenInstruction {
+                Text(verbatim: "“\(instruction)”")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .accessibilityIdentifier("rewrite-instruction")
+            }
             choices
+        case .listening:
+            Text(verbatim: controller.original)
+                .font(.callout)
+                .lineLimit(3)
+                .foregroundStyle(.secondary)
+            HStack {
+                Text("Say how to rewrite it, then press Done or your dictation shortcut.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("rewrite-say-how-hint")
+                Spacer()
+                Button("Done") { controller.finishSayingHow() }
+                    .accessibilityIdentifier("rewrite-say-how-done")
+            }
         case .preview(let text):
             ScrollView {
                 Text(verbatim: text)
@@ -158,6 +179,13 @@ struct SelectionRewriteView: View {
             }
             .fixedSize()
             .accessibilityIdentifier("rewrite-recipes")
+            Button {
+                controller.sayHow()
+            } label: {
+                Label("Say how", systemImage: PVSymbol.dictation)
+            }
+            .help(Text("Or hold your dictation shortcut and say how to rewrite it."))
+            .accessibilityIdentifier("rewrite-say-how")
             Spacer()
         }
         .disabled(controller.phase == .rewriting)
@@ -175,6 +203,7 @@ struct SelectionRewriteView: View {
         case .choosing:
             controller.applicationName.map { L10n.format("Rewrite your selection in %@", $0) }
                 ?? L10n.text("Rewrite your selection")
+        case .listening: L10n.text("Listening…")
         case .rewriting: L10n.text("Rewriting…")
         case .preview: L10n.text("Preview")
         case .replacing: L10n.text("Replacing…")

@@ -65,3 +65,30 @@ final class SelectionRewriteUITests: PortavozUITestCase {
         rewrite.click()
     }
 }
+
+extension SelectionRewriteUITests {
+    @MainActor
+    func testSayingHowRewritesTheSelectionWithTheSpokenInstruction() throws {
+        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-english"]
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+        XCTAssertTrue(app.prepareForInteraction())
+        let rewrite = app.buttons["menu-bar-rewrite-selection"]
+        XCTAssertTrue(rewrite.waitForStableFrame(timeout: 5))
+        rewrite.click()
+        let sayHow = app.buttons["rewrite-say-how"]
+        XCTAssertTrue(sayHow.waitForHittable(timeout: 5))
+        sayHow.click()
+        XCTAssertTrue(app.staticTexts["dictation-panel-transcript"].waitForExistenceFast(timeout: 5))
+        let done = app.buttons["rewrite-say-how-done"]
+        XCTAssertTrue(done.waitForHittable(timeout: 5))
+        done.click()
+        let preview = app.staticTexts["rewrite-preview"]
+        XCTAssertTrue(preview.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(renderedText(of: preview).hasPrefix("- "))
+        XCTAssertTrue(app.buttons["rewrite-replace"].exists)
+        XCTAssertFalse(app.buttons["menu-bar-paste-last"].exists, "An instruction is not a dictation to paste again")
+    }
+}

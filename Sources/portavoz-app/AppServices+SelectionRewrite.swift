@@ -41,11 +41,22 @@ extension AppServices {
                 replacements: defaults.string(forKey: DictationController.replacementsKey) ?? ""
             ).map(\.replacement)
         }
-        if usesTemporaryMeetingStore {
-            return SelectionRewriteUITestFixture(arguments: ProcessInfo.processInfo.arguments)
-                .dependencies(recipes: recipes)
+        var dependencies = usesTemporaryMeetingStore
+            ? SelectionRewriteUITestFixture(arguments: ProcessInfo.processInfo.arguments).dependencies(recipes: recipes)
+            : liveSelectionRewriteDependencies(recipes: recipes, terms: terms)
+        dependencies.startDictation = { [weak self] in
+            guard let self else { return }
+            self.dictation.toggle(services: self)
         }
-        return SelectionRewriteController.Dependencies(
+        dependencies.finishDictation = { [weak self] in self?.dictation.finishAndInsert() }
+        dependencies.isDictating = { [weak self] in self?.dictation.isActive ?? false }
+        return dependencies
+    }
+
+    private func liveSelectionRewriteDependencies(
+        recipes: @escaping () -> [DictationRecipe], terms: @escaping () -> [String]
+    ) -> SelectionRewriteController.Dependencies {
+        SelectionRewriteController.Dependencies(
             capture: { await TextInserter.captureSelection() },
             polish: { [polisher = dictationPolisher] text, protectedTerms, recipe in
                 await PolishDictation(polisher: polisher, timeout: SelectionRewriteController.timeout)(

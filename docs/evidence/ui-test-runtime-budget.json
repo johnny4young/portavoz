@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 175
+    "expectedCaseCount": 176
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -41,6 +41,7 @@
     "SelectionRewriteUITests/testRewriteSelectionPreviewsBeforeReplacing()": 20.0,
     "SelectionRewriteUITests/testARecipeRewriteIsNeverPastedOverAChangedSelection()": 20.0,
     "SelectionRewriteUITests/testRewritingWithoutASelectionExplainsWhatToDo()": 20.0,
+    "SelectionRewriteUITests/testSayingHowRewritesTheSelectionWithTheSpokenInstruction()": 25.0,
     "DictationPolishUITests/testARecipeCanBeCreatedAndChosenAsTheDefault()": 30.0,
     "DictationPolishUITests/testARecipeShapesTheDictationAndKeepsItsFacts()": 20.0,
     "DictationPolishUITests/testAPolishedDictationCanStillBePastedWithoutPolish()": 20.0,

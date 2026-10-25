@@ -1295,6 +1295,9 @@ it frees length and list structure from the fidelity check but nothing else.
 another app: `TextInserter.captureSelection` reads it through Accessibility or a
 restored-clipboard copy, the panel previews the result, and the pinned delivery
 path replaces it only after revalidating the same application, field and selection.
+While it offers its choices, the next dictation session is redirected to it as a
+spoken one-time recipe: Clean mode, an internal destination, and no history,
+statistics, Paste last or delivery notice.
 The app resolves explicit Literal/Clean/Polish mode by session choice, captured bundle-ID
 profile, then global preference. The existing destination capture supplies identity;
 no profile recaptures focus or grants insertion authority. Missing preferences
