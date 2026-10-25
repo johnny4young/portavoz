@@ -70,7 +70,9 @@ extension SelectionRewriteUITests {
     @MainActor
     func testSayingHowRewritesTheSelectionWithTheSpokenInstruction() throws {
         let app = try XCUIApplication.portavoz(showMenuBarContent: true)
-        app.launchArguments += ["-seed-dictation", "-seed-dictation-english"]
+        // The delivery fixture's clock keeps Done from landing inside the 0.75 s minimum capture.
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-english", "-seed-dictation-delivery",
+                                "-seed-dictation-verified"]
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
         app.launchPortavoz()
         defer { finishUITestApplication(app) }
