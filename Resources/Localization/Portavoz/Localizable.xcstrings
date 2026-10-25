@@ -551,6 +551,16 @@
         }
       }
     },
+    "Another app already uses ⌃⌥⌘R. Rewrite the selection from the menu bar instead.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otra app ya usa ⌃⌥⌘R. Reescribe la selección desde la barra de menús."
+          }
+        }
+      }
+    },
     "API key": {
       "localizations": {
         "es": {
@@ -1757,6 +1767,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Lista de viñetas"
+          }
+        }
+      }
+    },
+    "Cancel rewrite": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar reescritura"
+          }
+        }
+      }
+    },
+    "Choose another": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegir otra"
           }
         }
       }
@@ -8849,6 +8879,16 @@
         }
       }
     },
+    "Nothing was replaced. Copy the rewrite instead.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se reemplazó nada. Copia la reescritura."
+          }
+        }
+      }
+    },
     "Nothing was saved in Portavoz.": {
       "localizations": {
         "es": {
@@ -9495,6 +9535,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Parakeet (multilingüe)"
+          }
+        }
+      }
+    },
+    "Password fields cannot be rewritten.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los campos de contraseña no se pueden reescribir."
           }
         }
       }
@@ -10929,6 +10979,16 @@
         }
       }
     },
+    "Reading the selection…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leyendo la selección…"
+          }
+        }
+      }
+    },
     "Ready to review": {
       "localizations": {
         "es": {
@@ -11005,6 +11065,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Eliminadas recientemente"
+          }
+        }
+      }
+    },
+    "Recipe": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Receta"
           }
         }
       }
@@ -11879,12 +11949,52 @@
         }
       }
     },
+    "Replace": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reemplazar"
+          }
+        }
+      }
+    },
     "Replaced": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Reemplazada"
+          }
+        }
+      }
+    },
+    "Replaced in %@.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reemplazado en %@."
+          }
+        }
+      }
+    },
+    "Replaced.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reemplazado."
+          }
+        }
+      }
+    },
+    "Replacing…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reemplazando…"
           }
         }
       }
@@ -12111,6 +12221,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reintentar atajo"
+          }
+        }
+      }
+    },
+    "Return replaces the selection. Escape closes without changing it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retorno reemplaza la selección. Escape cierra sin cambiarla."
           }
         }
       }
@@ -12441,6 +12561,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "Revocando la aprobación…"
+          }
+        }
+      }
+    },
+    "Rewrite selection": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reescribir selección"
+          }
+        }
+      }
+    },
+    "Rewrite the selected text with ⌃⌥⌘R": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reescribir el texto seleccionado con ⌃⌥⌘R"
+          }
+        }
+      }
+    },
+    "Rewrite your selection": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reescribir tu selección"
+          }
+        }
+      }
+    },
+    "Rewrite your selection in %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reescribir tu selección en %@"
+          }
+        }
+      }
+    },
+    "Rewriting needs the Accessibility permission. Grant it in System Settings and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reescribir necesita el permiso de Accesibilidad. Concédelo en Ajustes del Sistema y vuelve a intentarlo."
+          }
+        }
+      }
+    },
+    "Rewriting…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reescribiendo…"
           }
         }
       }
@@ -12911,6 +13091,26 @@
         }
       }
     },
+    "Select at least three words to rewrite.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecciona al menos tres palabras para reescribir."
+          }
+        }
+      }
+    },
+    "Select at most 2,000 characters to rewrite.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecciona como máximo 2.000 caracteres para reescribir."
+          }
+        }
+      }
+    },
     "Select meeting %lld: %@, ended %@": {
       "localizations": {
         "es": {
@@ -12927,6 +13127,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Seleccionar la reunión %lld: %@, comenzó %@"
+          }
+        }
+      }
+    },
+    "Select some text first, then try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Primero selecciona un texto y vuelve a intentarlo."
+          }
+        }
+      }
+    },
+    "Select text in any app, choose Polish or a recipe, check the preview and press Return to replace it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecciona texto en cualquier app, elige Pulir o una receta, revisa la vista previa y pulsa Retorno para reemplazarlo."
           }
         }
       }
@@ -15031,6 +15251,16 @@
         }
       }
     },
+    "The rewrite changed a fact, name or number, so it is not offered. Try another recipe.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La reescritura cambiaba un dato, un nombre o un número, así que no se ofrece. Prueba otra receta."
+          }
+        }
+      }
+    },
     "The saved shortcut is invalid. Using %@ instead.": {
       "localizations": {
         "es": {
@@ -15071,6 +15301,16 @@
         }
       }
     },
+    "The selection changed, so nothing was replaced. Copy the rewrite instead.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La selección cambió, así que no se reemplazó nada. Copia la reescritura."
+          }
+        }
+      }
+    },
     "The sources do not support an answer. Exact matches are still shown.": {
       "localizations": {
         "es": {
@@ -15087,6 +15327,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "La sugerencia sigue segura en este Mac. Inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "The summary engine could not rewrite it. Try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El motor de resúmenes no pudo reescribirlo. Vuelve a intentarlo."
+          }
+        }
+      }
+    },
+    "The summary engine took too long. Try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El motor de resúmenes tardó demasiado. Vuelve a intentarlo."
           }
         }
       }
@@ -15257,6 +15517,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pensando una buena pregunta…"
+          }
+        }
+      }
+    },
+    "This app does not let Portavoz read its selection.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta app no deja que Portavoz lea su selección."
           }
         }
       }

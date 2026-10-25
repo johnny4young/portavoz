@@ -119,6 +119,10 @@ struct MenuBarContent: View {
                     }
                     .accessibilityIdentifier("menu-bar-paste-last")
                 }
+                quickAction("Rewrite selection", PVSymbol.generate, tint: .secondary) {
+                    services.rewriteSelection()
+                }
+                .accessibilityIdentifier("menu-bar-rewrite-selection")
                 if services.dictation.hasUnpolishedText {
                     quickAction("Paste without polish", "text.badge.minus", tint: .secondary) {
                         services.pasteLastDictation(unpolished: true)

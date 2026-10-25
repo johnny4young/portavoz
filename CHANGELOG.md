@@ -31,6 +31,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 25, 2026
 
+- **🪄 Rewrite any selection** — select text in any app, choose Polish or a recipe from the menu bar or with ⌃⌥⌘R, check the preview and press Return to replace it; facts, names and numbers stay as you wrote them.
 - **🧑‍🍳 Polish recipes** — tell Polish how to shape what you dictate: Formal, Friendly, Bullet list, Concise or your own recipe, as the default, per app or for one dictation, and it still never changes a fact, name or number.
 - **✨ Polish your dictation** — a new Polish text mode fixes grammar, punctuation and false starts with your summary engine on this Mac before pasting, never changes a fact, name or number, and you can always paste the version without polish.
 

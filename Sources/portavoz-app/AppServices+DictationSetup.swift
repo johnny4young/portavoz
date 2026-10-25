@@ -8,6 +8,7 @@ extension AppServices {
     func applyDictationEnabled(_ enabled: Bool) {
         dictation.syncHotkey(services: self)
         syncPasteLastShortcut()
+        syncRewriteSelectionShortcut()
         dictation.syncMousePTT(services: self, promptIfNeeded: enabled)
         dictation.syncModifierPTT(services: self, promptIfNeeded: enabled)
         prewarmDictationIfConfigured()

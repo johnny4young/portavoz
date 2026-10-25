@@ -2864,6 +2864,26 @@ custom recipes, `settings-dictation-recipe-new` and an editor sheet
 passes the instruction to `PolishDictation`, which allows restructuring in
 `DictationPolishFidelity`: no length bound and list markers are not numbers.
 
+**Rewrite selection (D589).** `menu-bar-rewrite-selection` or the opt-in
+⌃⌥⌘R shortcut (`settings-dictation-rewrite-hotkey`, `dictationRewriteSelectionHotkey`,
+registered with dictation enabled, never in disposable launches) starts
+`SelectionRewriteController` in a non-activating `rewrite-panel`.
+`TextInserter.captureSelection` requires Accessibility, refuses a secure field,
+reads the selected range and text through `DictationTextReadback`, and otherwise
+waits for the shortcut's modifiers to lift, posts ⌘C to the process and reads the
+board through `DictationClipboard.copySelection`, which restores the snapshot only
+when the copy is still the latest change. The panel shows `rewrite-original`, then
+`rewrite-choice-polish` or the `rewrite-recipes` menu (`rewrite-choice-<id>`);
+`PolishDictation` runs with a 10-second limit, and a kept rewrite returns to the
+choices with `rewrite-notice`. `rewrite-preview` offers `rewrite-replace` (also a
+global Return while the preview is open), `rewrite-choose-again` and
+`rewrite-copy`; global Escape cancels. Replace revalidates the same frontmost
+application and focused element and, for an Accessibility read, the same range
+and text, then inserts through the captured dictation destination. A changed
+selection or a refused paste fails with the rewrite still copyable. Disposable
+launches use `SelectionRewriteUITestFixture` (`-seed-rewrite-selection-changes`,
+`-seed-rewrite-nothing-selected`) with no Accessibility, clipboard or engine.
+
 Resolution is session override, then exact captured bundle-ID profile, then
 global mode. The destination's existing NSRunningApplication capture supplies
 its bundle ID even when the captured field is secure or focus cannot be read;
