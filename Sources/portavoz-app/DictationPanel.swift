@@ -236,7 +236,7 @@ private struct DictationStripView: View {
                 .foregroundStyle(.green)
                 .font(.title3)
             VStack(alignment: .leading, spacing: 1) {
-                Text(insertedTitle(words))
+                Text(controller.correctionSummary ?? insertedTitle(words))
                     .accessibilityIdentifier("dictation-panel-delivery-status")
                     .font(.callout.weight(.medium))
                 Text(controller.deliveryPrivacyLine)

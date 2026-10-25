@@ -10,6 +10,8 @@ struct CapturedDictationDestination {
     var bundleIdentifier: String?
     let canRetry: Bool
     let insert: (String) async -> DictationDeliveryOutcome
+    /// The latest verified insertion through this destination, for a spoken correction.
+    var lastInsertion: () -> DictationInsertion? = { nil }
 
     static func unavailable(
         name: String?, bundleIdentifier: String? = nil, result: DictationDeliveryOutcome.Refusal
@@ -81,10 +83,17 @@ extension TextInserter {
             case .unavailable: return .focusUnavailable
             }
         }
-        return CapturedDictationDestination(
+        let recorded = DictationInsertionRecord()
+        var destination = CapturedDictationDestination(
             name: application.localizedName, bundleIdentifier: application.bundleIdentifier, canRetry: true) { text in
-            await insert(text, into: target, pasteboard: pasteboard)
+            await insert(text, into: target, pasteboard: pasteboard) { span, output in
+                guard let readback = target.readback else { return }
+                recorded.value = DictationInsertion.accessibility(
+                    element: element, readback: readback, validate: target.validate, range: span, text: output)
+            }
         }
+        destination.lastInsertion = { recorded.value }
+        return destination
     }
 
     @MainActor

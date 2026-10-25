@@ -21816,3 +21816,20 @@ limit of 500 characters, is that rewrite's one-time recipe, under the same
 prompt fence, fidelity check and preview as a saved one. The dictation strip
 keeps its own Escape while it listens; a session that ends without words
 returns the panel to its choices.
+
+## D591 — Spoken corrections edit only Portavoz's last verified insertion
+
+Fixing a misheard word meant selecting it and typing. With "Correct the last
+dictation by voice" on (off by default), a dictation that starts with a
+command corrects instead of pasting: "change X to Y" / "cambia X por Y",
+"delete X" / "borra X", and "scratch that" / "borra eso". Parsing is
+deterministic and bilingual, and a phrase is a command only when the X it names
+is in Portavoz's last pasted text, so "change of plans to Monday" is still
+dictation. The edit applies only to the last insertion that delivery verified
+through Accessibility, in the same field, while that exact text is still at its
+range, within Paste last's 15 minutes and before sleep or lock. It selects the
+span and sets the selected text through Accessibility, never the clipboard or
+synthesized keys, and reads the result back. An application that exposes no
+verifiable range, a changed field, or an editor that refuses the edit is told
+so and nothing is pasted or changed. A correction is not a dictation: it is not
+saved to the history or counted, and Paste last then holds the corrected text.

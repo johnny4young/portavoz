@@ -2897,6 +2897,21 @@ and returns to its choices if the session ends without words. The delivered
 text becomes the rewrite's instruction (`rewrite-instruction`), bounded to 500
 characters, under the recipe prompt and fidelity rules.
 
+**Spoken corrections (D591).** `TextInserter.insert` reports the verified span
+and output; the pinned destination keeps it as a `DictationInsertion` whose
+`isIntact` revalidates the target and reads that span back, and whose `edit` sets
+`kAXSelectedTextRange` and `kAXSelectedText`, then confirms the edited span within
+about half a second. The controller keeps the last verified insertion. When
+`dictationCorrectionCommands` (`settings-dictation-corrections`) is on and Paste
+last still holds text, `DictationCorrectionCommand.parse` reads the filler-free
+recognized words; its `edit(in:)` must find the named text as a whole word (last
+occurrence, case kept, one adjoining space removed on delete) in that insertion, or
+the dictation is pasted normally. A command against a missing, stale or changed
+insertion fails without pasting; a refused edit changes nothing. A success shows
+`correctionSummary` in the verified strip, updates the insertion and Paste last,
+and records no history or statistics. Disposable launches use
+`-seed-dictation-correction` with an in-memory `DictationFixtureReceiver`.
+
 Resolution is session override, then exact captured bundle-ID profile, then
 global mode. The destination's existing NSRunningApplication capture supplies
 its bundle ID even when the captured field is secure or focus cannot be read;

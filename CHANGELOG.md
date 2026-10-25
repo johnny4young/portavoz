@@ -31,6 +31,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 25, 2026
 
+- **✏️ Fix it by voice** — turn on spoken corrections and start your next dictation with “change Friday to Monday”, “delete Friday” or “scratch that”: Portavoz fixes only what it just pasted, while it is unchanged, instead of typing the command.
 - **🗣️ Say how to rewrite it** — while rewriting a selection, press Say how or your dictation shortcut and just say what you want ("shorter, with a greeting"); Portavoz rewrites it that way, previews it and still keeps every fact.
 - **🪄 Rewrite any selection** — select text in any app, choose Polish or a recipe from the menu bar or with ⌃⌥⌘R, check the preview and press Return to replace it; facts, names and numbers stay as you wrote them.
 - **🧑‍🍳 Polish recipes** — tell Polish how to shape what you dictate: Formal, Friendly, Bullet list, Concise or your own recipe, as the default, per app or for one dictation, and it still never changes a fact, name or number.

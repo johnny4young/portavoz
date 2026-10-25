@@ -1298,6 +1298,10 @@ path replaces it only after revalidating the same application, field and selecti
 While it offers its choices, the next dictation session is redirected to it as a
 spoken one-time recipe: Clean mode, an internal destination, and no history,
 statistics, Paste last or delivery notice.
+A verified delivery also records its exact span (`DictationInsertion`). With spoken
+corrections on, a dictation that parses as a bilingual command naming text in that
+span edits it in place through Accessibility instead of pasting, after confirming
+the same field still holds it.
 The app resolves explicit Literal/Clean/Polish mode by session choice, captured bundle-ID
 profile, then global preference. The existing destination capture supplies identity;
 no profile recaptures focus or grants insertion authority. Missing preferences

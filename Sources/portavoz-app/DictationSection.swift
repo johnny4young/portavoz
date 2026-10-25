@@ -20,6 +20,7 @@ struct DictationSection: View {
     @AppStorage(DictationAutoStop.pauseKey) private var autoStopPause = DictationAutoStop.defaultPause
     @AppStorage(PasteLastShortcut.defaultsKey) private var pasteLastShortcut = false
     @AppStorage(RewriteSelectionShortcut.defaultsKey) private var rewriteShortcut = false
+    @AppStorage(DictationCorrections.defaultsKey) private var correctsByVoice = false
     @AppStorage(DictationSpeechGate.defaultsKey) private var skipsSilence = DictationSpeechGate.enabledByDefault
     @AppStorage(AppModelMemoryPreferences.key) private var memoryProfile =
         AppModelMemoryPreferences.Profile.balanced.rawValue
@@ -155,6 +156,15 @@ struct DictationSection: View {
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("settings-dictation-rewrite-note")
+        Toggle("Correct the last dictation by voice", isOn: $correctsByVoice)
+            .accessibilityIdentifier("settings-dictation-corrections")
+        // One-line UI copy.
+        // swiftlint:disable:next line_length
+        Text("Start a dictation with “change Friday to Monday”, “delete Friday” or “scratch that” to fix only what Portavoz just pasted, while it is unchanged. Apps that do not expose their text cannot be corrected.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("settings-dictation-corrections-note")
     }
 
     @ViewBuilder private var modifierKeyControls: some View {
