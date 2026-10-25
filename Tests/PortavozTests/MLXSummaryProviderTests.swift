@@ -69,6 +69,15 @@ private actor MLXRuntimeClientSpy: MLXSummaryRuntimeClient {
         return response
     }
 
+    func respond(
+        system: String,
+        user: String,
+        directory: URL,
+        maximumResponseTokens _: Int
+    ) -> String {
+        respond(system: system, user: user, directory: directory)
+    }
+
     func lastCall() -> Call? {
         call
     }

@@ -3,6 +3,7 @@
 // swiftlint:disable file_length
 
 import AppKit
+import ApplicationKit
 import AudioCaptureKit
 import Carbon.HIToolbox
 import Foundation
@@ -60,6 +61,10 @@ final class DictationController {
     private(set) var micLevel: Float = 0
     private(set) var microphoneNotice: String?
     private var loadingModelSessionID: UUID?
+    /// Why the last delivery kept its clean text; nil when it was polished or not asked to be.
+    private(set) var polishNotice: String?
+    /// Observed: the strip shows "Polishing…" while a rewrite is pending.
+    private var polishRun = DictationPolishRun()
 
     var isActive: Bool { phase == .preparing || phase == .listening || phase == .delivering }
     /// The app that was frontmost when dictation started — where the text
@@ -250,6 +255,7 @@ final class DictationController {
         partialText = ""
         micLevel = 0
         microphoneNotice = nil
+        polishNotice = nil
         retireMicrophoneReadiness()
         stopTask?.cancel()
         stopTask = nil
@@ -262,23 +268,24 @@ final class DictationController {
         dependencies.playCue(.start)
         showPanel()
 
-        let finishCapture = dependencies.beginCapture()
+        let capture = DictationCaptureOwnership(finish: dependencies.beginCapture())
         let measurement = self.measurement
         session = Task { [weak self] in
-            defer { finishCapture() }
-            await self?.runSession(id: sessionID, dependencies: dependencies, measurement: measurement)
+            defer { capture.end() }
+            await self?.runSession(
+                id: sessionID, dependencies: dependencies, measurement: measurement, capture: capture)
         }
     }
 
     private func runSession(
         id: UUID, dependencies: DictationSessionDependencies,
-        measurement: DictationSessionMeasurementRecorder?
+        measurement: DictationSessionMeasurementRecorder?, capture: DictationCaptureOwnership
     ) async {
         var microphone: (any AudioCaptureSource)?
         let acquisition = DictationRuntimeAcquisition(acquire: dependencies.acquireRuntime)
         await runCapture(
             id: id, dependencies: dependencies, measurement: measurement,
-            acquisition: acquisition, microphone: &microphone)
+            acquisition: acquisition, capture: capture, microphone: &microphone)
         // The lease outlives catch-path native cleanup, never the session.
         await acquisition.settle()
         // EOF can precede native teardown, and a cancelled session can overlap
@@ -290,6 +297,7 @@ final class DictationController {
         id: UUID, dependencies: DictationSessionDependencies,
         measurement: DictationSessionMeasurementRecorder?,
         acquisition: DictationRuntimeAcquisition,
+        capture: DictationCaptureOwnership,
         microphone: inout (any AudioCaptureSource)?
     ) async {
         var localFeed: AsyncStream<AudioChunk>.Continuation?
@@ -338,7 +346,7 @@ final class DictationController {
             // Captions that end while audio still flows leave the rest untranscribed.
             if activeSessionID == id, relayEndedSessionID != id { throw rejectDelivery(id: id) }
             try await awaitCaptureCompletion(id: id, pump: pump, source: input.source)
-            await deliver(sessionID: id, dependencies: dependencies)
+            await deliver(sessionID: id, dependencies: dependencies, capture: capture)
         } catch {
             let cancelled = Task.isCancelled || activeSessionID != id
             let permissionDenied = (error as? DictationMicrophoneReadiness.Failure) == .permissionRequired
@@ -393,6 +401,7 @@ final class DictationController {
     func cancel() {
         releaseCancelKey()
         releaseSpeechGate()
+        abandonPolish()
         retryDeliveryTask?.cancel()
         retryDeliveryTask = nil
         deliveryID = nil
@@ -430,7 +439,9 @@ final class DictationController {
         panel.close()
     }
 
-    private func deliver(sessionID: UUID, dependencies: DictationSessionDependencies) async {
+    private func deliver(
+        sessionID: UUID, dependencies: DictationSessionDependencies, capture: DictationCaptureOwnership
+    ) async {
         guard activeSessionID == sessionID, let destination else { return }
         // The two-tier dictionary's deterministic tier plus the filler
         // filter run on the final text only — meeting transcripts stay
@@ -464,14 +475,16 @@ final class DictationController {
             presentNoSpeech(text, id: sessionID)
             return
         }
-        guard activeSessionID == sessionID else { return }
+        guard activeSessionID == sessionID, let (delivered, unpolished) = await textToDeliver(
+            text, original: original, sessionID: sessionID, dependencies: dependencies, capture: capture)
+        else { return }
         measurement?.record(.deliveryStarted)
-        let result = await destination.insert(text)
+        let result = await destination.insert(delivered)
         measurement?.finishDelivery(result)
         guard activeSessionID == sessionID else { return }
         completeSession(id: sessionID)
         deliveryID = sessionID
-        presentDelivery(result, text: text, id: sessionID)
+        presentDelivery(result, text: delivered, unpolished: unpolished, id: sessionID)
     }
 
     private func completeSession(id: UUID) {
@@ -693,8 +706,9 @@ extension DictationController {
     /// Pastes the remembered text into whatever is focused now, through the
     /// same delivery and recovery path as a fresh dictation. Undelivered words
     /// in recovery are that text, so they paste where the user is now.
-    func pasteLastDictation(using dependencies: DictationSessionDependencies) {
-        guard !isActive, retryDeliveryTask == nil, let text = pastableText(), dependencies.canInsert()
+    func pasteLastDictation(using dependencies: DictationSessionDependencies, unpolished: Bool = false) {
+        guard !isActive, retryDeliveryTask == nil,
+              let text = unpolished ? lastText.takeCurrentUnpolished() : pastableText(), dependencies.canInsert()
         else { return }
         cancelFeedbackDismissal()
         self.dependencies = dependencies
@@ -715,11 +729,13 @@ extension DictationController {
         }
     }
 
-    private func presentDelivery(_ result: DictationDeliveryOutcome, text: String, id: UUID) {
+    private func presentDelivery(
+        _ result: DictationDeliveryOutcome, text: String, unpolished: String? = nil, id: UUID
+    ) {
         guard deliveryID == id, let dependencies else { return }
         cancelFeedbackDismissal()
         copyStatus = .idle
-        lastText.remember(text)
+        lastText.remember(text, unpolished: unpolished)
         recordHistory(result, id: id)
         if case .refused(let failure) = result {
             recoveryText = text
@@ -735,7 +751,7 @@ extension DictationController {
         showPanel()
         // Unverified output closes too; Paste last still holds it for 15 minutes.
         scheduleFeedbackDismiss(
-            after: result == .verified ? .milliseconds(1600) : Self.unverifiedFeedbackDuration,
+            after: result == .verified && polishNotice == nil ? .milliseconds(1600) : Self.unverifiedFeedbackDuration,
             wait: dependencies.waitForFeedbackDismissal)
         if result == .dispatched { armFeedbackDismissKey(dependencies) }
     }
@@ -757,6 +773,111 @@ extension DictationController {
     func selectTextMode(_ mode: DictationTextMode) {
         guard canChangeTextMode else { return }
         textPolicy.mode = mode
+    }
+}
+
+/// One pending rewrite: the delivery waiting for it, the task and its token.
+struct DictationPolishRun {
+    var wait: CheckedContinuation<DictationPolishOutcome?, Never>?
+    var task: Task<Void, Never>?
+    var token: UUID?
+}
+
+// Polish: one bounded rewrite between the speech gate and the paste.
+private extension DictationController {
+    /// The clean text unless Polish applies; nil when the session ended meanwhile.
+    func textToDeliver(
+        _ clean: String, original: String, sessionID: UUID, dependencies: DictationSessionDependencies,
+        capture: DictationCaptureOwnership
+    ) async -> (text: String, unpolished: String?)? {
+        guard textPolicy.mode == .polish else { return (clean, nil) }
+        // The microphone is done; a large local model must not see live capture.
+        capture.end()
+        return await polish(clean, original: original, sessionID: sessionID, dependencies: dependencies)
+    }
+
+    /// Nil when the session ended meanwhile. A skip, Escape or the strip's button,
+    /// pastes the clean text at once; the rewrite is abandoned, never awaited.
+    func polish(
+        _ clean: String, original: String, sessionID: UUID, dependencies: DictationSessionDependencies
+    ) async -> (text: String, unpolished: String?)? {
+        let token = UUID()
+        polishRun.token = token
+        showPanel()
+        armPolishSkipKey(dependencies, sessionID: sessionID)
+        let terms = textPolicy.replacements.map(\.replacement)
+        let outcome: DictationPolishOutcome? = await withCheckedContinuation { continuation in
+            polishRun.wait = continuation
+            polishRun.task = Task { [weak self] in
+                let outcome = await dependencies.polishDictation(clean, terms)
+                guard let self, self.polishRun.token == token else { return }
+                self.endPolish(outcome)
+            }
+        }
+        releaseCancelKey()
+        guard activeSessionID == sessionID else { return nil }
+        switch outcome {
+        case .polished(let polished):
+            reviseHistory(text: polished, original: original, mode: .polish)
+            return (polished, clean)
+        case .kept(let skip):
+            polishNotice = Self.polishNotice(for: skip)
+        case nil:
+            polishNotice = L10n.text("Pasted without polish.")
+        }
+        reviseHistory(text: clean, original: original, mode: .clean)
+        return (clean, nil)
+    }
+
+    /// Resumes the waiting delivery once; a late rewrite after a skip is dropped.
+    func endPolish(_ outcome: DictationPolishOutcome?) {
+        if outcome == nil { polishRun.task?.cancel() }
+        let wait = polishRun.wait
+        polishRun = DictationPolishRun()
+        wait?.resume(returning: outcome)
+    }
+
+    func abandonPolish() {
+        endPolish(nil)
+        polishNotice = nil
+    }
+
+    func armPolishSkipKey(_ dependencies: DictationSessionDependencies, sessionID: UUID) {
+        releaseCancelKey()
+        cancelKey = dependencies.registerCancelKey { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self, self.activeSessionID == sessionID else { return }
+                self.skipPolish()
+            }
+        }
+    }
+
+    static func polishNotice(for skip: DictationPolishSkip) -> String? {
+        switch skip {
+        case .tooShort:
+            nil
+        case .tooLong:
+            L10n.text("Pasted without polish: the dictation is too long to polish.")
+        case .unavailable(let reason):
+            L10n.format("Pasted without polish: %@", reason)
+        case .timedOut:
+            L10n.text("Pasted without polish: the summary engine took too long.")
+        case .failed:
+            L10n.text("Pasted without polish: the summary engine could not rewrite it.")
+        case .changedMeaning:
+            L10n.text("Pasted without polish: the rewrite changed a fact, name or number.")
+        }
+    }
+}
+
+extension DictationController {
+    /// Polish rewrites inside `.delivering`, so every delivering guard still applies.
+    var isPolishing: Bool { polishRun.token != nil }
+
+    /// Escape or the strip: paste the clean text now.
+    func skipPolish() {
+        guard isPolishing else { return }
+        endPolish(nil)
     }
 }
 
@@ -831,6 +952,7 @@ private extension DictationController {
     func closeFeedback() {
         releaseCancelKey()
         cancelFeedbackDismissal()
+        polishNotice = nil
         deliveryID = nil
         destination = nil
         dependencies = nil

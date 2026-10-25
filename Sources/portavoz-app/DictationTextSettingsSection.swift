@@ -15,6 +15,8 @@ struct DictationTextModePicker: View {
                     .accessibilityIdentifier(identifier + "-literal")
                 Button("Clean") { selection = .clean }
                     .accessibilityIdentifier(identifier + "-clean")
+                Button("Polish") { selection = .polish }
+                    .accessibilityIdentifier(identifier + "-polish")
             } label: {
                 modeTitle
             }
@@ -24,7 +26,15 @@ struct DictationTextModePicker: View {
         } label: { label }
     }
 
-    private var modeTitle: Text { selection == .literal ? Text("Literal") : Text("Clean") }
+    private var modeTitle: Text { Self.title(for: selection) }
+
+    static func title(for mode: DictationTextMode) -> Text {
+        switch mode {
+        case .literal: Text("Literal")
+        case .clean: Text("Clean")
+        case .polish: Text("Polish")
+        }
+    }
 
 }
 
@@ -38,7 +48,9 @@ struct DictationTextSettingsSection: View {
             identifier: "settings-dictation-text-mode", label: Text("Default text mode"), selection: Binding(
             get: { model.globalMode }, set: { model.setGlobalMode($0) }))
         Text(
-            "Literal keeps recognized words. Clean uses your filler filter and replacements. Neither rewrites.")
+            // One-line UI copy.
+            // swiftlint:disable:next line_length
+            "Literal keeps recognized words. Clean uses your filler filter and replacements. Polish starts from Clean, then your summary engine fixes grammar and punctuation on this Mac; if it would change a fact, Clean is pasted.")
             .font(.caption)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)

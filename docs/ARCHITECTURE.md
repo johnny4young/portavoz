@@ -1279,7 +1279,17 @@ the Accessibility permission flow. Invalid persisted button numbers normalize
 to disabled; CGEvent indices 0/1 (left/right) are never eligible.
 TranscriptionKit owns only the post-ASR text policy: optional bilingual filler
 removal followed by one non-cascading, longest-trigger-first replacement pass.
-The app resolves explicit Literal/Clean mode by session choice, captured bundle-ID
+Polish is the one generative mode. `PolishDictation` (ApplicationKit) sends the
+Clean text, from three words to 2,000 characters, to the `DictationTextPolishing`
+port for at most five seconds, and pastes the reply only when the deterministic
+`DictationPolishFidelity` (TranscriptionKit) finds no lost or changed number,
+identifier, dictionary spelling or negation, no length, language or preamble
+drift. The app router resolves the selected summary engine on every call (Apple
+on-device, Ollama on loopback through the egress gateway, or embedded MLX through
+its lease) and never falls through to another engine. The controller polishes
+inside `.delivering` after ending its capture claim; Escape or the strip pastes
+Clean at once, and every fallback carries a visible reason.
+The app resolves explicit Literal/Clean/Polish mode by session choice, captured bundle-ID
 profile, then global preference. The existing destination capture supplies identity;
 no profile recaptures focus or grants insertion authority. Missing preferences
 initialize before the first UI enable action: prior configured choices retain
@@ -1659,7 +1669,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 58. A nonunique meeting-directory index serves
+The current schema version is 59. A nonunique meeting-directory index serves
 compression admission without rejecting historical duplicate owners. Its
 skill-identity write constraints preserve
 historical denials rather than rejecting a populated library during upgrade.

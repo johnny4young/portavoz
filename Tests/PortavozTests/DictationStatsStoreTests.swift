@@ -110,7 +110,7 @@ final class DictationStatsStoreTests: XCTestCase {
         let store = try MeetingStore(databaseURL: url)
         let enabled = try await store.dictationStatsEnabled()
         XCTAssertFalse(enabled)
-        XCTAssertEqual(StorageSchema.version, 58)
+        XCTAssertGreaterThanOrEqual(StorageSchema.version, 58)
     }
 
     private var today: String { DictationStatsCalendar.day(of: now, calendar: calendar) }

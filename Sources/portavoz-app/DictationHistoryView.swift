@@ -249,7 +249,12 @@ private struct DictationHistoryRow: View {
     private var details: String {
         var parts = [record.createdAt.formatted(date: .abbreviated, time: .shortened)]
         if let app = record.applicationName { parts.append(app) }
-        parts.append(record.mode == .clean ? L10n.text("Clean") : L10n.text("Literal"))
+        let mode = switch record.mode {
+        case .literal: L10n.text("Literal")
+        case .clean: L10n.text("Clean")
+        case .polish: L10n.text("Polish")
+        }
+        parts.append(mode)
         let delivery = switch record.delivery {
         case .verified: L10n.text("Inserted")
         case .dispatched: L10n.text("Sent, not verified")

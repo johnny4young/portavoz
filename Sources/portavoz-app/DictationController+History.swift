@@ -32,6 +32,10 @@ final class DictationHistorySession {
         self.draft = draft
     }
 
+    func revise(text: String, originalText: String, mode: DictationTextMode) {
+        draft = draft?.with(text: text, originalText: originalText, mode: mode)
+    }
+
     /// A retry of the same dictation updates its delivery instead of adding a row.
     func record(_ result: DictationDeliveryOutcome) {
         guard let draft, let delivery = Self.delivery(for: result) else {
@@ -77,6 +81,14 @@ extension DictationController {
             applicationName: destination?.name,
             applicationBundleID: destination?.bundleIdentifier,
             delivery: .notDelivered))
+    }
+
+    /// What Polish settled on: the delivered text and the mode that produced it.
+    func reviseHistory(text: String, original: String, mode: DictationTextMode) {
+        if let sessionID = activeSessionID, statsDraft?.sessionID == sessionID {
+            statsDraft?.words = DictationStatsCalendar.wordCount(text)
+        }
+        history?.revise(text: text, originalText: original, mode: mode)
     }
 
     func recordHistory(_ result: DictationDeliveryOutcome, id: UUID) {

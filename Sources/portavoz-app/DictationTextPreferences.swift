@@ -13,8 +13,8 @@ struct DictationTextPreferenceSnapshot: Sendable {
 
     func applying(to text: String) -> String {
         DictationTextRules.apply(
-            text, replacements: mode == .clean ? replacements : [],
-            removeFillers: mode == .clean && removeFillers, spokenCommands: mode == .clean)
+            text, replacements: mode.appliesCleanRules ? replacements : [],
+            removeFillers: mode.appliesCleanRules && removeFillers, spokenCommands: mode.appliesCleanRules)
     }
 }
 

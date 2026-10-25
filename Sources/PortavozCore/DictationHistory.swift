@@ -71,6 +71,14 @@ public struct DictationRecord: Equatable, Identifiable, Sendable {
             mode: mode, language: language, engine: engine, applicationName: applicationName,
             applicationBundleID: applicationBundleID, delivery: delivery)
     }
+
+    /// A polished delivery replaces the text and mode it was prepared with.
+    public func with(text: String, originalText: String?, mode: DictationTextMode) -> Self {
+        Self(
+            id: id, createdAt: createdAt, duration: duration, text: text, originalText: originalText,
+            mode: mode, language: language, engine: engine, applicationName: applicationName,
+            applicationBundleID: applicationBundleID, delivery: delivery)
+    }
 }
 
 /// The persisted consent for the history. `generation` advances whenever

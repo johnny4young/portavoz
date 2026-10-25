@@ -10,8 +10,8 @@ enum PasteLastShortcut {
 }
 
 extension AppServices {
-    func pasteLastDictation() {
-        dictation.pasteLastDictation(using: makeDictationSessionDependencies())
+    func pasteLastDictation(unpolished: Bool = false) {
+        dictation.pasteLastDictation(using: makeDictationSessionDependencies(), unpolished: unpolished)
     }
 
     func syncPasteLastShortcut() {

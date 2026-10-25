@@ -435,6 +435,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("SettingsUITests", "testIntelligencePaneCreatesACustomStructure"),
     ),
     "dictation": (
+        test_id("DictationPolishUITests", "testPolishIsOfferedAsTheDefaultTextMode"),
+        test_id("DictationPolishUITests", "testAPolishedDictationCanStillBePastedWithoutPolish"),
+        test_id("DictationPolishUITests", "testPolishingCanBeSkippedToPasteTheCleanText"),
+        test_id("DictationPolishUITests", "testARewriteThatChangesTheMeaningPastesCleanAndSaysWhy"),
         test_id("DictationTextModeUITests", "testApplicationProfileUsesNativePickerAndKeepsTheOriginal"),
         test_id("DictationTextModeUITests", "testCorruptProfilesShowAnExplicitResetWithoutChangingTheDefault"),
         test_id("DictationTextModeUITests", "testSessionModeOverrideCancelsAndRestartsWithoutChangingDefaults"),

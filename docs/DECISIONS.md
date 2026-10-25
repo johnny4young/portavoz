@@ -21743,3 +21743,26 @@ automation, and the physical VoiceOver and Voice Control cells run English
 only. The in-app language toggle journey still renders Spanish inside the
 English run, and `make test-ui-es` stays as a manual pass no gate requires.
 This supersedes the bilingual UI requirements of D117, D379 and D405.
+
+## D587 — Polish is a generative dictation mode that can only fix form
+
+Literal and Clean never rewrite (D558), and users asked for dictated text that
+reads as written. Polish is a third text mode, chosen globally, per
+application or for one session, and off unless chosen: choosing it is the
+consent. It starts from the Clean text and asks the selected summary engine
+(Apple's on-device model, Ollama on loopback, or embedded MLX) for a
+conservative rewrite: grammar, punctuation, fillers and false starts, in the
+same language and word order. In-app BYOK is not a summary engine, so dictated
+text never leaves the Mac, and an unavailable engine is reported instead of
+silently replaced (D385). A deterministic check runs before the paste and keeps
+the Clean text when the rewrite drops or changes a number, URL, email,
+@mention, #tag, dictionary spelling or negation, moves outside 60–140 % of the
+length, switches language or adds a preamble; dictations under three words or
+over 2,000 characters are not sent at all. The engine has five seconds, and
+Escape or the strip's button pastes the Clean text at once. Every fallback says
+why, the history stores the mode that produced the delivered text, and Paste
+last keeps the Clean version beside the polished one for its 15 minutes. The
+rewrite starts only after the dictation's capture claim ends, so a local model
+is never refused for overlapping its own microphone. Ollama calls cross the
+egress gateway as their own loopback-only operation with a receipt in the
+global journal (schema v59).

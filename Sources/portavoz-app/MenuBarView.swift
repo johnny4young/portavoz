@@ -119,6 +119,12 @@ struct MenuBarContent: View {
                     }
                     .accessibilityIdentifier("menu-bar-paste-last")
                 }
+                if services.dictation.hasUnpolishedText {
+                    quickAction("Paste without polish", "text.badge.minus", tint: .secondary) {
+                        services.pasteLastDictation(unpolished: true)
+                    }
+                    .accessibilityIdentifier("menu-bar-paste-unpolished")
+                }
             }
             quickAction("Ask", "bubble.left.and.text.bubble.right", tint: .secondary) {
                 openMainWindow()

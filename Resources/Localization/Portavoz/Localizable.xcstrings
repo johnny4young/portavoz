@@ -6979,12 +6979,12 @@
         }
       }
     },
-    "Literal keeps recognized words. Clean uses your filler filter and replacements. Neither rewrites.": {
+    "Literal keeps recognized words. Clean uses your filler filter and replacements. Polish starts from Clean, then your summary engine fixes grammar and punctuation on this Mac; if it would change a fact, Clean is pasted.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Literal conserva las palabras reconocidas. Limpio usa tu filtro de muletillas y reemplazos. Ninguno reescribe."
+            "value": "Literal conserva las palabras reconocidas. Limpio usa tu filtro de muletillas y tus reemplazos. Pulir parte de Limpio y luego tu motor de resúmenes corrige la gramática y la puntuación en este Mac; si fuera a cambiar un dato, se pega Limpio."
           }
         }
       }
@@ -9439,6 +9439,76 @@
         }
       }
     },
+    "Paste without polish": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegar sin pulir"
+          }
+        }
+      }
+    },
+    "Pasted without polish.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegado sin pulir."
+          }
+        }
+      }
+    },
+    "Pasted without polish: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegado sin pulir: %@"
+          }
+        }
+      }
+    },
+    "Pasted without polish: the dictation is too long to polish.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegado sin pulir: el dictado es demasiado largo para pulirlo."
+          }
+        }
+      }
+    },
+    "Pasted without polish: the rewrite changed a fact, name or number.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegado sin pulir: la reescritura cambiaba un dato, un nombre o un número."
+          }
+        }
+      }
+    },
+    "Pasted without polish: the summary engine could not rewrite it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegado sin pulir: el motor de resúmenes no pudo reescribirlo."
+          }
+        }
+      }
+    },
+    "Pasted without polish: the summary engine took too long.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegado sin pulir: el motor de resúmenes tardó demasiado."
+          }
+        }
+      }
+    },
     "Pause": {
       "localizations": {
         "es": {
@@ -9585,6 +9655,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reproduce solo tus turnos — salta a los demás"
+          }
+        }
+      }
+    },
+    "Polish": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pulir"
+          }
+        }
+      }
+    },
+    "Polishing…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puliendo…"
           }
         }
       }
@@ -17477,6 +17567,16 @@
         }
       }
     },
+    "Your words are being polished. Esc pastes them without polish.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estamos puliendo tus palabras. Esc las pega sin pulir."
+          }
+        }
+      }
+    },
     "→ English": {
       "localizations": {
         "es": {
@@ -19653,6 +19753,86 @@
           "stringUnit": {
             "state": "translated",
             "value": "No se pudieron borrar las estadísticas."
+          }
+        }
+      }
+    },
+    "Polish is unavailable right now.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pulir no está disponible en este momento."
+          }
+        }
+      }
+    },
+    "Choose an Ollama model in Intelligence Settings to polish dictations.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige un modelo de Ollama en Ajustes de Inteligencia para pulir los dictados."
+          }
+        }
+      }
+    },
+    "Polish only uses Ollama on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pulir solo usa Ollama en este Mac."
+          }
+        }
+      }
+    },
+    "Download the built-in model in Intelligence Settings to polish dictations.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descarga el modelo integrado en Ajustes de Inteligencia para pulir los dictados."
+          }
+        }
+      }
+    },
+    "Polish needs Apple Intelligence on macOS 26.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pulir necesita Apple Intelligence en macOS 26."
+          }
+        }
+      }
+    },
+    "Apple Intelligence is unavailable: %@.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Intelligence no está disponible: %@."
+          }
+        }
+      }
+    },
+    "The built-in model is busy. Try again in a moment.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El modelo integrado está ocupado. Inténtalo de nuevo en un momento."
+          }
+        }
+      }
+    },
+    "Dictation polish text": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Texto de dictado para pulir"
           }
         }
       }

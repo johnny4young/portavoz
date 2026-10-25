@@ -12,11 +12,11 @@ final class DictationTextSettingsModel {
     private(set) var hasInvalidProfiles = false
     private(set) var selectionError: SelectionError?
     private(set) var isSelectingApplication = false
-    /// Whether any session can use Clean mode, the only mode that applies the
+    /// Whether any session can use Clean or Polish, the modes that apply the
     /// filler filter and replacement rules. Unreadable profiles fall back to
     /// the default mode at runtime, so they do not count.
     var cleanModeInUse: Bool {
-        globalMode == .clean || (!hasInvalidProfiles && profiles.contains { $0.mode == .clean })
+        globalMode.appliesCleanRules || (!hasInvalidProfiles && profiles.contains { $0.mode.appliesCleanRules })
     }
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private let temporary: Bool

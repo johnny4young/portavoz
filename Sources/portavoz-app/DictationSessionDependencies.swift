@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationKit
 import AudioCaptureKit
 import Carbon.HIToolbox
 import Foundation
@@ -70,6 +71,8 @@ struct DictationSessionDependencies {
     var beginHistory: () -> DictationHistoryWriter? = { nil }
     /// Counts a finished dictation when statistics are on; the store checks consent.
     var recordStats: (DictationStatsSample) -> Void = { _ in }
+    /// Polish mode only: the clean text and the user's own spellings to keep.
+    var polishDictation: (String, [String]) async -> DictationPolishOutcome = { _, _ in .kept(.failed) }
 
     func transcriptionHints() -> TranscriptionHints {
         let language = defaults.string(forKey: DictationController.languageKey)
@@ -108,6 +111,9 @@ struct DictationSessionDependencies {
                 guard DictationAutoStop.isEnabled(in: defaults) else { return nil }
                 let pause = DictationAutoStop.pause(in: defaults)
                 return DictationAutoStop.silero(store: store, pause: pause, onPause: onPause)
+            },
+            polishDictation: { [polisher = services.dictationPolisher] text, terms in
+                await PolishDictation(polisher: polisher)(text, protectedTerms: terms)
             })
     }
 }
