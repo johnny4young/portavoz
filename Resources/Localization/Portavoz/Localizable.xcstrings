@@ -1781,6 +1781,16 @@
         }
       }
     },
+    "Changed “%@” to “%@”.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiado “%@” por “%@”."
+          }
+        }
+      }
+    },
     "Choose another": {
       "localizations": {
         "es": {
@@ -1807,6 +1817,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Conciso"
+          }
+        }
+      }
+    },
+    "Correct the last dictation by voice": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corregir el último dictado con la voz"
+          }
+        }
+      }
+    },
+    "Deleted the last dictation.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrado el último dictado."
+          }
+        }
+      }
+    },
+    "Deleted “%@”.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrado “%@”."
           }
         }
       }
@@ -9899,6 +9939,16 @@
         }
       }
     },
+    "Portavoz can correct only its last insertion while it is unchanged in a field it can read.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz solo puede corregir lo último que pegó mientras siga igual, en un campo que pueda leer."
+          }
+        }
+      }
+    },
     "Portavoz could not check the iCloud account. Try again.": {
       "localizations": {
         "es": {
@@ -14041,6 +14091,16 @@
         }
       }
     },
+    "Start a dictation with “change Friday to Monday”, “delete Friday” or “scratch that” to fix only what Portavoz just pasted, while it is unchanged. Apps that do not expose their text cannot be corrected.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza un dictado con “cambia viernes por lunes”, “borra viernes” o “borra eso” para corregir solo lo que Portavoz acaba de pegar, mientras siga igual. Las apps que no exponen su texto no se pueden corregir."
+          }
+        }
+      }
+    },
     "Start a new recording": {
       "localizations": {
         "es": {
@@ -15577,6 +15637,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Esta app no deja que Portavoz lea su selección."
+          }
+        }
+      }
+    },
+    "This field did not accept the correction. Nothing changed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este campo no aceptó la corrección. No cambió nada."
           }
         }
       }

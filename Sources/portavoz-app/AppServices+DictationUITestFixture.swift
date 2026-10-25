@@ -20,6 +20,9 @@ extension AppServices {
                 fixture: dictationUITestFixture, beginCapture: beginCapture)
             dependencies.waitForFeedbackDismissal = DictationUITestFixture.waitHoldingUnverifiedNotices
             dependencies.polishDictation = DictationUITestFixture.polishing(dictationUITestFixture)
+            if let fixture = dictationUITestFixture, fixture.correctsByVoice {
+                dependencies.captureDestination = { DictationUITestFixture.correctionDestination(fixture) }
+            }
         } else {
             dependencies = .live(services: self, beginCapture: beginCapture)
         }
@@ -35,6 +38,10 @@ extension AppServices {
 @MainActor
 final class DictationUITestFixture {
     let text: String
+    /// The second dictation is a spoken correction of the first, into an in-memory receiver.
+    let correctsByVoice: Bool
+    let receiver = DictationFixtureReceiver()
+    private var sessions = 0
     let recoversDestination: Bool
     let deliveryOutcome: DictationDeliveryOutcome?
     /// Real clipboard borrowing on a named board, with inert native effects.
@@ -76,6 +83,13 @@ final class DictationUITestFixture {
         text = arguments.contains("-seed-dictation-english")
             ? "Don't delete these notes."
             : "No borres estas notas."
+        correctsByVoice = arguments.contains("-seed-dictation-correction")
+    }
+
+    func nextSessionText() -> String {
+        sessions += 1
+        guard correctsByVoice, sessions > 1 else { return text }
+        return text.hasPrefix("Don't") ? "change notes to files" : "cambia notas por archivos"
     }
 
     /// UI journeys inspect unverified notices; unit tests own their expiry.
@@ -125,7 +139,7 @@ final class DictationUITestFixture {
                 guard let fixture, await fixture.modelArrives() else { throw CancellationError() }
                 return LiveTranscriptionRuntime(
                     engine: DictationFixtureEngine(
-                        text: fixture.text,
+                        text: fixture.nextSessionText(),
                         streamsDeltas: fixture.streamsDeltas,
                         onFirstCaption: { await fixture.triggerCaptureFailure() }),
                     completion: {})
@@ -184,6 +198,14 @@ final class DictationUITestFixture {
                 return text.split(separator: " ").dropFirst().joined(separator: " ")
             }
         }
+    }
+
+    static func correctionDestination(_ fixture: DictationUITestFixture) -> CapturedDictationDestination {
+        var destination = CapturedDictationDestination(name: "Dictation test receiver", canRetry: true) {
+            fixture.receiver.insert($0)
+        }
+        destination.lastInsertion = { fixture.receiver.last }
+        return destination
     }
 
     private static func noSpeechGate(_ fixture: DictationUITestFixture?) -> DictationSpeechGate? {
@@ -289,5 +311,37 @@ private struct DictationFixtureEngine: TranscriptionEngine {
         }
         continuation.onTermination = { _ in task.cancel() }
         return stream
+    }
+}
+
+/// An in-memory field that verifies every paste, so a spoken correction can edit it.
+@MainActor
+final class DictationFixtureReceiver {
+    private(set) var text = ""
+    private(set) var last: DictationInsertion?
+
+    func insert(_ value: String) -> DictationDeliveryOutcome {
+        let range = NSRange(location: text.utf16.count, length: value.utf16.count)
+        text += value
+        last = insertion(at: range, value)
+        return .verified
+    }
+
+    private func insertion(at range: NSRange, _ value: String) -> DictationInsertion {
+        DictationInsertion(
+            text: value, insertedAt: Date(),
+            isIntact: { [weak self] in
+                guard let self, NSMaxRange(range) <= self.text.utf16.count else { return false }
+                return (self.text as NSString).substring(with: range) == value
+            },
+            edit: { [weak self] subrange, replacement in
+                guard let self else { return nil }
+                let absolute = NSRange(location: range.location + subrange.location, length: subrange.length)
+                self.text = (self.text as NSString).replacingCharacters(in: absolute, with: replacement)
+                let edited = (value as NSString).replacingCharacters(in: subrange, with: replacement)
+                let updated = self.insertion(at: NSRange(location: range.location, length: edited.utf16.count), edited)
+                self.last = updated
+                return updated
+            })
     }
 }

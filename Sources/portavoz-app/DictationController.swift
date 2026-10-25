@@ -63,6 +63,9 @@ final class DictationController {
     private var loadingModelSessionID: UUID?
     /// Why the last delivery kept its clean text; nil when it was polished or not asked to be.
     private(set) var polishNotice: String?
+    /// What a spoken correction changed, shown instead of the inserted-words line.
+    private(set) var correctionSummary: String?
+    @ObservationIgnored private var lastInsertion: DictationInsertion?
     /// Observed: the strip shows "Polishing…" while a rewrite is pending.
     private var polishRun = DictationPolishRun()
 
@@ -255,6 +258,7 @@ final class DictationController {
         micLevel = 0
         microphoneNotice = nil
         polishNotice = nil
+        correctionSummary = nil
         retireMicrophoneReadiness()
         stopTask?.cancel()
         stopTask = nil
@@ -365,37 +369,6 @@ final class DictationController {
         }
     }
 
-    /// Second hotkey press: stop the mic; the drained stream delivers.
-    func finishAndInsert() {
-        guard phase == .preparing || phase == .listening else { return }
-        guard stopTask == nil else { return }
-        measurement?.record(.stopRequested)
-        guard DictationCapturePolicy.finishDecision(
-            captureStartedAt: microphoneReadiness?.firstFrameAt,
-            now: sessionClock?() ?? Date()) == .stopAfterTail
-        else {
-            cancel()
-            return
-        }
-        guard let sessionID = activeSessionID else {
-            cancel()
-            return
-        }
-        let microphone = self.microphone
-        let playCue = dependencies?.playCue
-        stopTask = Task { [weak self] in
-            do {
-                try await Task.sleep(for: Self.stopTail)
-            } catch {
-                return
-            }
-            guard let self, self.activeSessionID == sessionID else { return }
-            self.stopIssuedSessionID = sessionID
-            await microphone?.stop()
-            playCue?(.stop)
-        }
-    }
-
     /// Esc or the panel's cancel control: throw everything away.
     func cancel() {
         releaseCancelKey()
@@ -474,6 +447,7 @@ final class DictationController {
             presentNoSpeech(text, id: sessionID)
             return
         }
+        if await correctsLastInsertion(original: original, sessionID: sessionID, dependencies: dependencies) { return }
         guard activeSessionID == sessionID, let (delivered, unpolished) = await textToDeliver(
             text, original: original, sessionID: sessionID, dependencies: dependencies, capture: capture)
         else { return }
@@ -732,6 +706,7 @@ extension DictationController {
         _ result: DictationDeliveryOutcome, text: String, unpolished: String? = nil, id: UUID
     ) {
         guard deliveryID == id, let dependencies, !closesInternalDelivery() else { return }
+        lastInsertion = result == .verified ? destination?.lastInsertion() : nil
         cancelFeedbackDismissal()
         copyStatus = .idle
         lastText.remember(text, unpolished: unpolished)
@@ -790,6 +765,87 @@ struct DictationPolishRun {
     var wait: CheckedContinuation<DictationPolishOutcome?, Never>?
     var task: Task<Void, Never>?
     var token: UUID?
+}
+
+extension DictationController {
+    /// Second hotkey press: stop the mic; the drained stream delivers.
+    func finishAndInsert() {
+        guard phase == .preparing || phase == .listening else { return }
+        guard stopTask == nil else { return }
+        measurement?.record(.stopRequested)
+        guard DictationCapturePolicy.finishDecision(
+            captureStartedAt: microphoneReadiness?.firstFrameAt,
+            now: sessionClock?() ?? Date()) == .stopAfterTail
+        else {
+            cancel()
+            return
+        }
+        guard let sessionID = activeSessionID else {
+            cancel()
+            return
+        }
+        let microphone = self.microphone
+        let playCue = dependencies?.playCue
+        stopTask = Task { [weak self] in
+            do {
+                try await Task.sleep(for: Self.stopTail)
+            } catch {
+                return
+            }
+            guard let self, self.activeSessionID == sessionID else { return }
+            self.stopIssuedSessionID = sessionID
+            await microphone?.stop()
+            playCue?(.stop)
+        }
+    }
+}
+
+// Spoken corrections: an opt-in command changes only Portavoz's last insertion.
+private extension DictationController {
+    /// True when this dictation was a correction command, applied or refused; it is never pasted.
+    func correctsLastInsertion(
+        original: String, sessionID: UUID, dependencies: DictationSessionDependencies
+    ) async -> Bool {
+        guard DictationCorrections.isEnabled(in: dependencies.defaults),
+              let command = DictationCorrectionCommand.parse(
+                  DictationTextRules.apply(original, replacements: [], removeFillers: true)),
+              let pasted = lastText.current else { return false }
+        // Sleep, lock or 15 minutes end Paste last, and with it the right to edit that text.
+        let reference = lastInsertion?.text ?? pasted
+        guard let edit = command.edit(in: reference) else { return false }
+        guard let last = lastInsertion, last.text == reference, last.isFresh(at: dependencies.now()), last.isIntact()
+        else {
+            failSession(id: sessionID, message: L10n.text(
+                "Portavoz can correct only its last insertion while it is unchanged in a field it can read."))
+            return true
+        }
+        guard let updated = await last.edit(edit.range, edit.replacement) else {
+            guard activeSessionID == sessionID else { return true }
+            failSession(id: sessionID, message: L10n.text("This field did not accept the correction. Nothing changed."))
+            return true
+        }
+        guard activeSessionID == sessionID else { return true }
+        lastInsertion = updated
+        lastText.remember(updated.text)
+        correctionSummary = Self.correctionSummary(for: command, edit: edit, in: reference)
+        completeSession(id: sessionID)
+        destination = nil
+        phase = .verified(0)
+        showPanel()
+        scheduleFeedbackDismiss(after: .milliseconds(1600), wait: dependencies.waitForFeedbackDismissal)
+        return true
+    }
+
+    static func correctionSummary(
+        for command: DictationCorrectionCommand, edit: DictationCorrectionCommand.Edit, in text: String
+    ) -> String {
+        let removed = (text as NSString).substring(with: edit.range).trimmingCharacters(in: .whitespaces)
+        switch command {
+        case .replace: return L10n.format("Changed “%@” to “%@”.", removed, edit.replacement)
+        case .delete: return L10n.format("Deleted “%@”.", removed)
+        case .deleteLast: return L10n.text("Deleted the last dictation.")
+        }
+    }
 }
 
 // Polish: one bounded rewrite between the speech gate and the paste.
@@ -982,6 +1038,7 @@ private extension DictationController {
         releaseCancelKey()
         cancelFeedbackDismissal()
         polishNotice = nil
+        correctionSummary = nil
         deliveryID = nil
         destination = nil
         dependencies = nil

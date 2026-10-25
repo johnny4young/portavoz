@@ -108,7 +108,8 @@ enum TextInserter {
     @MainActor
     static func insert(
         _ text: String, into target: Target, pasteboard: NSPasteboard = .general,
-        effects: Effects = .live, clipboard: DictationClipboard = .shared
+        effects: Effects = .live, clipboard: DictationClipboard = .shared,
+        onVerified: ((_ span: NSRange, _ output: String) -> Void)? = nil
     ) async -> DictationDeliveryOutcome {
         guard !text.isEmpty else { return .refused(.emptyText) }
         guard target.processID > 0, effects.isProcessLive(target.processID) else {
@@ -155,7 +156,9 @@ enum TextInserter {
         clipboard.restoreLater(loan, on: pasteboard, after: restoreDelay)
         // Beyond post, no observation failure can make retry safe.
         guard let baseline, let readback = target.readback else { return .dispatched }
-        return await readback.verify(output, from: baseline, target: target) ? .verified : .dispatched
+        guard await readback.verify(output, from: baseline, target: target) else { return .dispatched }
+        onVerified?(NSRange(location: baseline.selection.location, length: output.utf16.count), output)
+        return .verified
     }
 
     @MainActor

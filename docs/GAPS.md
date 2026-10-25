@@ -202,6 +202,13 @@ range (native text views, browsers, Electron, terminals), how a rich-text
 replacement keeps formatting, and how a global Return registration behaves in
 apps that bind it remain field validation.
 
+### Spoken corrections in real editors
+
+D591 edits the last insertion by setting Accessibility's selected range and text.
+Which editors accept a settable selected text (native text views, browsers,
+Electron, terminals), and how rich text and undo grouping behave there, remain
+field validation.
+
 ### Queued audio imports across a restart or remount
 
 Before copying, a queued import compares the source's `fileResourceIdentifier`
