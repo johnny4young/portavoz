@@ -2884,6 +2884,19 @@ selection or a refused paste fails with the rewrite still copyable. Disposable
 launches use `SelectionRewriteUITestFixture` (`-seed-rewrite-selection-changes`,
 `-seed-rewrite-nothing-selected`) with no Accessibility, clipboard or engine.
 
+**Say how (D590).** While the panel is choosing, `rewrite-say-how` (or any
+dictation trigger) makes `AppServices.makeDictationSessionDependencies` wrap the
+session through `SelectionRewriteController.instructionDependencies`: an internal
+"Rewrite instruction" destination, `textModeOverride = .clean`,
+`deliversInternally = true` (no Paste last, history, statistics or delivery
+notice), no history writer and no panel anchor. Paste last builds its
+dependencies with `capturesInstruction: false`. The panel enters `.listening`,
+releases its Escape and Return so the strip owns Escape, shows
+`rewrite-say-how-hint` and `rewrite-say-how-done` (which finishes the session),
+and returns to its choices if the session ends without words. The delivered
+text becomes the rewrite's instruction (`rewrite-instruction`), bounded to 500
+characters, under the recipe prompt and fidelity rules.
+
 Resolution is session override, then exact captured bundle-ID profile, then
 global mode. The destination's existing NSRunningApplication capture supplies
 its bundle ID even when the captured field is secure or focus cannot be read;

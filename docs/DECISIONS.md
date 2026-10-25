@@ -21801,3 +21801,18 @@ same application, field and selection are confirmed again; a changed selection
 is never replaced and the rewrite can be copied instead. Escape abandons a
 pending rewrite. Rewrites are not dictations, so they are not saved to the
 history or counted.
+
+## D590 — "Say how" captures a rewrite instruction with an ordinary dictation
+
+A saved recipe cannot cover every one-off request ("shorter, and add a
+greeting"). While the rewrite panel offers its choices, "Say how" or any
+dictation trigger (the shortcut, holding Fn or a modifier, the mouse button,
+the menu) starts an ordinary dictation session whose destination is the
+rewrite itself. That session runs in Clean mode so the instruction is never
+polished, and it is never pasted, saved to the history, counted in the
+statistics, kept for Paste last or announced by a delivery notice; Paste last
+itself never becomes an instruction. The spoken text, trimmed to the recipe
+limit of 500 characters, is that rewrite's one-time recipe, under the same
+prompt fence, fidelity check and preview as a saved one. The dictation strip
+keeps its own Escape while it listens; a session that ends without words
+returns the panel to its choices.

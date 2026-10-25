@@ -55,11 +55,14 @@ final class DictationPolishUITests: PortavozUITestCase {
 
     @MainActor
     func testARewriteThatChangesTheMeaningPastesCleanAndSaysWhy() throws {
-        let app = try launchPolishing("-seed-dictation-polish-unfaithful")
-        defer { finishUITestApplication(app) }
-        deliver(app)
-        XCTAssertTrue(app.staticTexts["dictation-panel-polish-notice"].waitForExistenceFast(timeout: 5))
-        XCTAssertFalse(app.buttons["menu-bar-paste-unpolished"].exists)
+        for verified in [true, false] {
+            let app = try launchPolishing(verified: verified, "-seed-dictation-polish-unfaithful")
+            defer { finishUITestApplication(app) }
+            deliver(app)
+            XCTAssertTrue(app.staticTexts["dictation-panel-polish-notice"].waitForExistenceFast(timeout: 5),
+                          "The reason must show on the \(verified ? "verified" : "unverified") delivery too")
+            XCTAssertFalse(app.buttons["menu-bar-paste-unpolished"].exists)
+        }
     }
 
     @MainActor
@@ -123,10 +126,10 @@ final class DictationPolishUITests: PortavozUITestCase {
     }
 
     @MainActor
-    private func launchPolishing(_ arguments: String...) throws -> XCUIApplication {
+    private func launchPolishing(verified: Bool = true, _ arguments: String...) throws -> XCUIApplication {
         let app = try XCUIApplication.portavoz(showMenuBarContent: true)
-        app.launchArguments += ["-seed-dictation", "-seed-dictation-delivery", "-seed-dictation-verified",
-                                "-seed-dictation-english"] + arguments
+        app.launchArguments += ["-seed-dictation", "-seed-dictation-delivery", "-seed-dictation-english"]
+            + (verified ? ["-seed-dictation-verified"] : []) + arguments
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
             #"{"globalDictationEnabled":true,"dictationTextMode":"polish"}"#
         app.launchPortavoz()

@@ -8879,6 +8879,16 @@
         }
       }
     },
+    "Nothing was heard. Say how again, or choose a recipe.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se oyó nada. Vuelve a decir cómo o elige una receta."
+          }
+        }
+      }
+    },
     "Nothing was replaced. Copy the rewrite instead.": {
       "localizations": {
         "es": {
@@ -9405,6 +9415,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Con activación"
+          }
+        }
+      }
+    },
+    "Or hold your dictation shortcut and say how to rewrite it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O mantén tu atajo de dictado y di cómo reescribirlo."
           }
         }
       }
@@ -12565,6 +12585,16 @@
         }
       }
     },
+    "Rewrite instruction": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instrucción de reescritura"
+          }
+        }
+      }
+    },
     "Rewrite selection": {
       "localizations": {
         "es": {
@@ -12797,6 +12827,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Di una frase, lo que sea sobre tu día. Portavoz la transcribe en vivo."
+          }
+        }
+      }
+    },
+    "Say how": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Decir cómo"
+          }
+        }
+      }
+    },
+    "Say how to rewrite it, then press Done or your dictation shortcut.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Di cómo reescribirlo y luego pulsa Listo o tu atajo de dictado."
           }
         }
       }

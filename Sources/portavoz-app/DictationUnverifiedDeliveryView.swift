@@ -26,6 +26,12 @@ struct DictationUnverifiedDeliveryView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("dictation-panel-delivery-detail")
+            if let notice = controller.polishNotice {
+                Text(notice)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("dictation-panel-polish-notice")
+            }
             // Like recovery, the complete output stays reachable when Copy
             // fails: it scrolls inside the bounded panel and can be selected.
             ScrollView {

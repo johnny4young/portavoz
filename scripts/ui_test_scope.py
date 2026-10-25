@@ -439,6 +439,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("SelectionRewriteUITests", "testRewriteSelectionPreviewsBeforeReplacing"),
         test_id("SelectionRewriteUITests", "testARecipeRewriteIsNeverPastedOverAChangedSelection"),
         test_id("SelectionRewriteUITests", "testRewritingWithoutASelectionExplainsWhatToDo"),
+        test_id("SelectionRewriteUITests", "testSayingHowRewritesTheSelectionWithTheSpokenInstruction"),
         test_id("DictationPolishUITests", "testAPolishedDictationCanStillBePastedWithoutPolish"),
         test_id("DictationPolishUITests", "testPolishingCanBeSkippedToPasteTheCleanText"),
         test_id("DictationPolishUITests", "testARewriteThatChangesTheMeaningPastesCleanAndSaysWhy"),
