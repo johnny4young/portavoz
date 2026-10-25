@@ -645,6 +645,27 @@ final class DataEgressGatewayTests: XCTestCase {
         XCTAssertEqual(events.first?.operation, .askAnswerGeneration)
     }
 
+    func testGatewayPersistsGlobalDictationPolishReceiptBeforeLoopbackTransport() async throws {
+        let state = ReceiptTransportState.shared
+        state.reset(responseData: Data(#"{"choices":[{"message":{"content":"Hola."}}]}"#.utf8))
+        let store = try MeetingStore.inMemory()
+        let recorder = GlobalAskReceiptRecorderProbe(state: state, store: store)
+        let session = receiptSession()
+        defer { session.invalidateAndCancel(); state.reset() }
+        let gateway = URLSessionDataEgressGateway(session: session, receiptRecorder: recorder)
+
+        let polished = try await OllamaService.dictationPolisher(model: "qwen-local", gateway: gateway)
+            .polish("eh hola")
+
+        XCTAssertEqual(polished, "Hola.")
+        XCTAssertEqual(state.snapshot().timeline, ["receipt", "transport"])
+        let events = try await store.globalDataEgressEvents()
+        XCTAssertEqual(events.map(\.operation), [.dictationPolish])
+        XCTAssertEqual(events.first?.dataClassification, .dictationText)
+        XCTAssertEqual(events.first?.consentSource, .dictationPolishMode)
+        XCTAssertNil(events.first?.meetingID)
+    }
+
     func testReceiptFailurePreventsTransport() async throws {
         let state = ReceiptTransportState.shared
         state.reset()

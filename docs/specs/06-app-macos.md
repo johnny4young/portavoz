@@ -2805,7 +2805,7 @@ creating an evidence package; it does not certify an unobserved real-world check
 
 ## Global dictation (Jul 2026)
 
-**Explicit deterministic text modes.** PortavozCore owns Literal/Clean and the
+**Explicit text modes.** PortavozCore owns Literal/Clean/Polish and the
 bundle-ID profile value; the app owns preference resolution and presentation.
 The Settings model initializes a missing `dictationTextMode` before UI can write
 its first enable toggle. Previously configured dictation keys, including a saved
@@ -2828,6 +2828,24 @@ translation/provider/model beyond recognition. Rules and filler choices remain
 configured while Literal is selected. Settings keeps those controls visible but
 disables them, with a "Clean mode only" note, unless the default or at least one
 readable application profile uses Clean (`DictationTextSettingsModel.cleanModeInUse`).
+
+**Polish (D587).** The third mode starts from the Clean text, so the rules and
+filler controls count Polish as in use. After the speech gate the controller
+ends the session's capture claim, sets `isPolishing` inside `.delivering`
+(every delivering guard still applies), claims Escape and shows "Polishing…"
+with `dictation-panel-polish-hint` and `dictation-panel-skip-polish`. The
+rewrite comes from the selected summary engine through
+`AppServices.dictationPolisher` and `PolishDictation`: under three words or over
+2,000 characters it is never sent; an unavailable engine, an error, five
+seconds without a reply or a fidelity violation keep the Clean text, and the
+verified strip shows why in `dictation-panel-polish-notice`. A skip abandons
+the rewrite; a late reply is dropped by its token. The history record is
+revised to the delivered text and the mode that produced it (`polish` only when
+the rewrite was pasted), statistics count the delivered words, and Paste last
+remembers the Clean version beside it: the menu bar offers
+`menu-bar-paste-unpolished` under the same 15-minute, sleep and lock lifetime.
+UI journeys use `-seed-dictation-polish`, `-polish-held` and `-polish-unfaithful`
+fixtures with no engine.
 
 Resolution is session override, then exact captured bundle-ID profile, then
 global mode. The destination's existing NSRunningApplication capture supplies

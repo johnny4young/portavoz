@@ -9,6 +9,8 @@ final class DictationLastText {
     static let lifetime: TimeInterval = 15 * 60
 
     private var text: String?
+    /// The clean text a polished dictation started from, under the same lifetime.
+    private var unpolished: String?
     private var storedAt: Date?
     @ObservationIgnored private let now: () -> Date
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
@@ -38,19 +40,28 @@ final class DictationLastText {
         return text
     }
 
+    var currentUnpolished: String? { current == nil ? nil : unpolished }
+
     /// The current text, dropping an expired one so its menu action disappears.
     func takeCurrent() -> String? {
         if current == nil, text != nil { clear() }
         return current
     }
 
-    func remember(_ value: String) {
+    func takeCurrentUnpolished() -> String? {
+        if current == nil, text != nil { clear() }
+        return currentUnpolished
+    }
+
+    func remember(_ value: String, unpolished: String? = nil) {
         text = value
+        self.unpolished = unpolished == value ? nil : unpolished
         storedAt = now()
     }
 
     func clear() {
         text = nil
+        unpolished = nil
         storedAt = nil
     }
 }

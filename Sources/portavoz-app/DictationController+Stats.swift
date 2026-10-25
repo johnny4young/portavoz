@@ -6,7 +6,7 @@ struct DictationStatsDraft {
     let sessionID: UUID
     let startedAt: Date
     let spokenDuration: TimeInterval
-    let words: Int
+    var words: Int
     let applicationName: String?
     let record: (DictationStatsSample) -> Void
 }

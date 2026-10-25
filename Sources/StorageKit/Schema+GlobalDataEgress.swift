@@ -95,4 +95,60 @@ extension StorageSchema {
                 columns: ["attemptedAt"])
         }
     }
+
+    /// v59: admits local dictation polish beside local Ask and Web Ask. A
+    /// dictation belongs to no meeting, so its only receipt home is this journal.
+    static func admitDictationPolishEgress(in database: Database) throws {
+        try database.create(table: "globalDataEgressEvent_v59") { table in
+            table.primaryKey("id", .text)
+            table.column("operation", .text).notNull()
+            table.column("destinationScope", .text).notNull()
+            table.column("destinationHost", .text).notNull().check(
+                sql: "length(trim(destinationHost)) > 0")
+            table.column("dataClassification", .text).notNull()
+            table.column("consentSource", .text).notNull()
+            table.column("providerID", .text).notNull().check(
+                sql: "length(trim(providerID)) > 0")
+            table.column("modelID", .text)
+            table.column("attemptedAt", .datetime).notNull()
+            table.check(sql: """
+                (operation = 'ask-answer-generation'
+                    AND destinationScope = 'local-device'
+                    AND dataClassification IN (
+                        'meeting-answer-material',
+                        'public-web-answer-material')
+                    AND consentSource = 'summary-engine-settings'
+                    AND length(trim(modelID)) > 0)
+                OR
+                (operation = 'web-source-retrieval'
+                    AND destinationScope IN ('local-device', 'remote')
+                    AND dataClassification = 'public-web-source-request'
+                    AND consentSource = 'explicit-web-ask'
+                    AND modelID IS NULL)
+                OR
+                (operation = 'dictation-polish'
+                    AND destinationScope = 'local-device'
+                    AND dataClassification = 'dictation-text'
+                    AND consentSource = 'dictation-polish-mode'
+                    AND length(trim(modelID)) > 0)
+                """)
+        }
+        try database.execute(sql: """
+            INSERT INTO globalDataEgressEvent_v59 (
+                rowid, id, operation, destinationScope, destinationHost,
+                dataClassification, consentSource, providerID,
+                modelID, attemptedAt)
+            SELECT rowid, id, operation, destinationScope, destinationHost,
+                dataClassification, consentSource, providerID,
+                modelID, attemptedAt
+            FROM globalDataEgressEvent
+            """)
+        try database.drop(table: "globalDataEgressEvent")
+        try database.execute(
+            sql: "ALTER TABLE globalDataEgressEvent_v59 RENAME TO globalDataEgressEvent")
+        try database.create(
+            index: "globalDataEgressEvent_on_attemptedAt",
+            on: "globalDataEgressEvent",
+            columns: ["attemptedAt"])
+    }
 }

@@ -1,6 +1,8 @@
 import AppKit
+import ApplicationKit
 import AudioCaptureKit
 import Foundation
+import IntelligenceKit
 import PortavozCore
 import TranscriptionKit
 
@@ -16,6 +18,7 @@ extension AppServices {
             dependencies = DictationUITestFixture.dependencies(
                 fixture: dictationUITestFixture, beginCapture: beginCapture)
             dependencies.waitForFeedbackDismissal = DictationUITestFixture.waitHoldingUnverifiedNotices
+            dependencies.polishDictation = DictationUITestFixture.polishing(dictationUITestFixture)
         } else {
             dependencies = .live(services: self, beginCapture: beginCapture)
         }
@@ -42,6 +45,9 @@ final class DictationUITestFixture {
     let captureFailure: Bool
     /// A deterministic voice detector that never hears speech; no model is loaded.
     let simulatesNoSpeech: Bool
+    /// The polish rewrite: a punctuation-only change, one that never answers, or one that drops the negation.
+    enum PolishBehavior { case polishes, holds, changesMeaning }
+    let polish: PolishBehavior
     private var finishesNextCapture: Bool
     private var permissionRequests = 0
     private var sourceCreations = 0
@@ -61,6 +67,8 @@ final class DictationUITestFixture {
         captureFailure = arguments.contains("-seed-dictation-capture-failure")
         exerciseClipboard = arguments.contains("-seed-dictation-clipboard")
         simulatesNoSpeech = arguments.contains("-seed-dictation-no-speech")
+        polish = arguments.contains("-seed-dictation-polish-held") ? .holds
+            : arguments.contains("-seed-dictation-polish-unfaithful") ? .changesMeaning : .polishes
         text = arguments.contains("-seed-dictation-english")
             ? "Don't delete these notes."
             : "No borres estas notas."
@@ -145,6 +153,30 @@ final class DictationUITestFixture {
             defaults: .standard,
             now: fixtureClock(fixture),
             beginCapture: beginCapture, makeSpeechGate: { noSpeechGate(fixture) })
+    }
+
+    static func polishing(_ fixture: DictationUITestFixture?) -> (String, [String]) async -> DictationPolishOutcome {
+        { text, terms in
+            await PolishDictation(polisher: FixturePolisher(behavior: fixture?.polish ?? .polishes))(
+                text, protectedTerms: terms)
+        }
+    }
+
+    /// No engine: the fixture edits punctuation, holds, or drops the first word.
+    private struct FixturePolisher: DictationTextPolishing {
+        let behavior: PolishBehavior
+
+        func polish(_ text: String) async throws -> String {
+            switch behavior {
+            case .polishes:
+                return text.trimmingCharacters(in: .punctuationCharacters) + "!"
+            case .holds:
+                try await Task.sleep(for: .seconds(3_600))
+                return text
+            case .changesMeaning:
+                return text.split(separator: " ").dropFirst().joined(separator: " ")
+            }
+        }
     }
 
     private static func noSpeechGate(_ fixture: DictationUITestFixture?) -> DictationSpeechGate? {

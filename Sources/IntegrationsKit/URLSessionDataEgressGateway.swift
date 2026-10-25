@@ -128,6 +128,8 @@ public struct URLSessionDataEgressGateway: DataEgressGateway {
             try validateGitHubIssueRequest(networkRequest, metadata: metadata)
         case .createLinearIssue:
             try validateLinearIssueRequest(networkRequest, metadata: metadata)
+        case .dictationPolish:
+            try validateDictationPolishRequest(networkRequest, metadata: metadata)
         }
     }
 
@@ -175,6 +177,30 @@ public struct URLSessionDataEgressGateway: DataEgressGateway {
         guard metadata.consentSource == .summaryEngineSettings else {
             throw DataEgressGatewayError.invalidMetadata(
                 "Ask answer generation requires local-engine consent")
+        }
+    }
+
+    /// Dictated text belongs to no meeting and may only reach a local engine.
+    private static func validateDictationPolishRequest(
+        _ networkRequest: URLRequest,
+        metadata: DataEgressRequest
+    ) throws {
+        try validateChatRequest(
+            networkRequest,
+            metadata: metadata,
+            classification: .dictationText,
+            label: "Dictation polish")
+        guard metadata.meetingID == nil else {
+            throw DataEgressGatewayError.invalidMetadata(
+                "Dictation polish never carries a meeting identity")
+        }
+        guard metadata.destination.scope == .localDevice else {
+            throw DataEgressGatewayError.invalidMetadata(
+                "Dictation polish requires a loopback destination")
+        }
+        guard metadata.consentSource == .dictationPolishMode else {
+            throw DataEgressGatewayError.invalidMetadata(
+                "Dictation polish requires Polish-mode consent")
         }
     }
 
@@ -240,7 +266,8 @@ public struct URLSessionDataEgressGateway: DataEgressGateway {
              .summaryGeneration,
              .publishGitHubGist,
              .createGitHubIssue,
-             .createLinearIssue:
+             .createLinearIssue,
+             .dictationPolish:
             2 * 1_024 * 1_024
         }
     }

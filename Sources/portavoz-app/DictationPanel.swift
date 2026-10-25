@@ -80,7 +80,8 @@ private enum DictationPanelLayout {
     @MainActor
     static func size(for controller: DictationController) -> NSSize {
         DictationCompactIndicator.applies(to: controller)
-            ? DictationCompactIndicator.size : NSSize(width: 520, height: height(for: controller.phase))
+            ? DictationCompactIndicator.size
+            : NSSize(width: 520, height: height(for: controller.phase) + (controller.isPolishing ? 28 : 0))
     }
 
     static func height(for phase: DictationController.Phase) -> CGFloat {
@@ -126,7 +127,7 @@ private struct DictationStripView: View {
             }
         }
         .padding(12)
-        .frame(width: 520, height: DictationPanelLayout.height(for: controller.phase))
+        .frame(width: 520, height: DictationPanelLayout.size(for: controller).height)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
     }
 
@@ -187,6 +188,18 @@ private struct DictationStripView: View {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("dictation-panel-microphone-notice")
             }
+            if controller.isPolishing {
+                HStack {
+                    Text("Your words are being polished. Esc pastes them without polish.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("dictation-panel-polish-hint")
+                    Spacer()
+                    Button("Paste without polish") { controller.skipPolish() }
+                        .controlSize(.small)
+                        .accessibilityIdentifier("dictation-panel-skip-polish")
+                }
+            }
             if isFailed {
                 EmptyView()
             } else if controller.confirmedText.isEmpty && controller.partialText.isEmpty {
@@ -229,6 +242,13 @@ private struct DictationStripView: View {
                     .accessibilityIdentifier("dictation-panel-delivery-detail")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                if let notice = controller.polishNotice {
+                    Text(notice)
+                        .accessibilityIdentifier("dictation-panel-polish-notice")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
             }
             Spacer()
         }
@@ -276,7 +296,7 @@ private struct DictationStripView: View {
         case .listening:
             return showsModelLoading ? L10n.text("Loading speech model…") : L10n.text("Dictating")
         case .delivering:
-            return L10n.text("Inserting…")
+            return controller.isPolishing ? L10n.text("Polishing…") : L10n.text("Inserting…")
         case .failed(let message):
             return message
         case .idle, .verified, .dispatched, .noSpeech, .recovery:

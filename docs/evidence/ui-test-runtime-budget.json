@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 166
+    "expectedCaseCount": 170
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -37,6 +37,10 @@
     "CommitmentRadarUITests/testReminderAlertOpensCommitmentRadar()": 20.0,
     "CommitmentRadarUITests/testReminderDraftRequiresExplicitAccessAndLeavesDurableReceipt()": 20.0,
     "CommitmentRadarUITests/testReviewQueueKeepsSuggestionsSeparateAndOpensExactEvidence()": 20.0,
+    "DictationPolishUITests/testPolishIsOfferedAsTheDefaultTextMode()": 20.0,
+    "DictationPolishUITests/testAPolishedDictationCanStillBePastedWithoutPolish()": 20.0,
+    "DictationPolishUITests/testPolishingCanBeSkippedToPasteTheCleanText()": 20.0,
+    "DictationPolishUITests/testARewriteThatChangesTheMeaningPastesCleanAndSaysWhy()": 20.0,
     "DictationTextModeUITests/testApplicationProfileUsesNativePickerAndKeepsTheOriginal()": 40.0,
     "DictationTextModeUITests/testCorruptProfilesShowAnExplicitResetWithoutChangingTheDefault()": 20.0,
     "DictationTextModeUITests/testSessionModeOverrideCancelsAndRestartsWithoutChangingDefaults()": 20.0,
