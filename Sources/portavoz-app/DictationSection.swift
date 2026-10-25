@@ -19,6 +19,7 @@ struct DictationSection: View {
     @AppStorage(DictationAutoStop.defaultsKey) private var autoStops = false
     @AppStorage(DictationAutoStop.pauseKey) private var autoStopPause = DictationAutoStop.defaultPause
     @AppStorage(PasteLastShortcut.defaultsKey) private var pasteLastShortcut = false
+    @AppStorage(RewriteSelectionShortcut.defaultsKey) private var rewriteShortcut = false
     @AppStorage(DictationSpeechGate.defaultsKey) private var skipsSilence = DictationSpeechGate.enabledByDefault
     @AppStorage(AppModelMemoryPreferences.key) private var memoryProfile =
         AppModelMemoryPreferences.Profile.balanced.rawValue
@@ -144,6 +145,16 @@ struct DictationSection: View {
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("settings-dictation-paste-last-note")
+        Toggle("Rewrite the selected text with ⌃⌥⌘R", isOn: $rewriteShortcut)
+            .accessibilityIdentifier("settings-dictation-rewrite-hotkey")
+            .onChange(of: rewriteShortcut) { services.syncRewriteSelectionShortcut() }
+        let rewriteTaken = services.rewriteSelectionShortcutUnavailable && rewriteShortcut
+        // swiftlint:disable:next line_length
+        Text(rewriteTaken ? L10n.text("Another app already uses ⌃⌥⌘R. Rewrite the selection from the menu bar instead.") : L10n.text("Select text in any app, choose Polish or a recipe, check the preview and press Return to replace it."))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("settings-dictation-rewrite-note")
     }
 
     @ViewBuilder private var modifierKeyControls: some View {

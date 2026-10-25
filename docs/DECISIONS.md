@@ -21784,3 +21784,20 @@ fidelity check therefore drops its length bound and ignores list markers, but
 still refuses a lost or changed number, identifier, dictionary spelling or
 negation, a language switch or a preamble. Recipes are plain text, not
 Skills, and reach only the selected local summary engine.
+
+## D589 — Rewrite a selection only through a preview and the same selection
+
+Polish and its recipes only reshaped new dictation; text already written in
+another app could not be reworked. Rewrite selection starts from the menu bar
+or an opt-in ⌃⌥⌘R shortcut and opens a non-activating panel, so the edited app
+keeps focus. The selection is read through Accessibility (its range and text);
+an app that exposes neither is read with ⌘C on a snapshotted clipboard, which
+is restored only while the copy is still the latest. Secure fields, empty
+selections and more than 2,000 characters are refused. Polish or a recipe
+rewrites it with the same engine routing, fidelity check and a ten-second
+limit, and the panel always previews the result: Return or Replace pastes it
+over the selection through the pinned dictation delivery path only after the
+same application, field and selection are confirmed again; a changed selection
+is never replaced and the rewrite can be copied instead. Escape abandons a
+pending rewrite. Rewrites are not dictations, so they are not saved to the
+history or counted.

@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 172
+    "expectedCaseCount": 175
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -38,6 +38,9 @@
     "CommitmentRadarUITests/testReminderDraftRequiresExplicitAccessAndLeavesDurableReceipt()": 20.0,
     "CommitmentRadarUITests/testReviewQueueKeepsSuggestionsSeparateAndOpensExactEvidence()": 20.0,
     "DictationPolishUITests/testPolishIsOfferedAsTheDefaultTextMode()": 20.0,
+    "SelectionRewriteUITests/testRewriteSelectionPreviewsBeforeReplacing()": 20.0,
+    "SelectionRewriteUITests/testARecipeRewriteIsNeverPastedOverAChangedSelection()": 20.0,
+    "SelectionRewriteUITests/testRewritingWithoutASelectionExplainsWhatToDo()": 20.0,
     "DictationPolishUITests/testARecipeCanBeCreatedAndChosenAsTheDefault()": 30.0,
     "DictationPolishUITests/testARecipeShapesTheDictationAndKeepsItsFacts()": 20.0,
     "DictationPolishUITests/testAPolishedDictationCanStillBePastedWithoutPolish()": 20.0,

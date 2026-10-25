@@ -436,6 +436,9 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "dictation": (
         test_id("DictationPolishUITests", "testPolishIsOfferedAsTheDefaultTextMode"),
+        test_id("SelectionRewriteUITests", "testRewriteSelectionPreviewsBeforeReplacing"),
+        test_id("SelectionRewriteUITests", "testARecipeRewriteIsNeverPastedOverAChangedSelection"),
+        test_id("SelectionRewriteUITests", "testRewritingWithoutASelectionExplainsWhatToDo"),
         test_id("DictationPolishUITests", "testAPolishedDictationCanStillBePastedWithoutPolish"),
         test_id("DictationPolishUITests", "testPolishingCanBeSkippedToPasteTheCleanText"),
         test_id("DictationPolishUITests", "testARewriteThatChangesTheMeaningPastesCleanAndSaysWhy"),
@@ -831,7 +834,10 @@ def app_features(filename: str) -> set[str]:
     # the Settings controls. Keep this ahead of generic presentation buckets.
     if any(
         token in lowered
-        for token in ("dictation", "mousebutton", "mouseptt", "hotkey", "textinserter", "pasteboardsnapshot")
+        for token in (
+            "dictation", "mousebutton", "mouseptt", "hotkey", "textinserter", "pasteboardsnapshot",
+            "selectionrewrite", "selectioncapture",
+        )
     ):
         return {"dictation"}
     if "semanticsearchpreparation" in lowered:

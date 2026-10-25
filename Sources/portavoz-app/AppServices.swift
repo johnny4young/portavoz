@@ -185,6 +185,10 @@ final class AppServices {
     @ObservationIgnored var parakeetUltraDownload: Task<Void, Never>?
     @ObservationIgnored var pasteLastHotkey: GlobalHotkey?
     var pasteLastShortcutUnavailable = false
+    @ObservationIgnored var rewriteSelectionHotkey: GlobalHotkey?
+    var rewriteSelectionShortcutUnavailable = false
+    /// Rewrites a selection in another app with Polish or a recipe.
+    let selectionRewrite = SelectionRewriteController()
     /// IntelligenceKit owns container mechanics; composition owns the one
     /// process runtime and every residency transition around it.
     @ObservationIgnored let mlxSummaryRuntime = MLXSummaryRuntime()

@@ -1291,6 +1291,10 @@ inside `.delivering` after ending its capture claim; Escape or the strip pastes
 Clean at once, and every fallback carries a visible reason. A Polish recipe, a
 bounded user instruction chosen with the mode, travels fenced beside the text;
 it frees length and list structure from the fidelity check but nothing else.
+`SelectionRewriteController` applies the same rewrite to text already selected in
+another app: `TextInserter.captureSelection` reads it through Accessibility or a
+restored-clipboard copy, the panel previews the result, and the pinned delivery
+path replaces it only after revalidating the same application, field and selection.
 The app resolves explicit Literal/Clean/Polish mode by session choice, captured bundle-ID
 profile, then global preference. The existing destination capture supplies identity;
 no profile recaptures focus or grants insertion authority. Missing preferences

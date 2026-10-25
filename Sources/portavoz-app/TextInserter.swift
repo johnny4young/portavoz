@@ -217,7 +217,7 @@ enum TextInserter {
     /// paste can fire milliseconds after the keypress, while the chord is
     /// still down. The bound keeps a stuck key from blocking delivery.
     @MainActor
-    private static func waitForModifierRelease() async -> Bool {
+    static func waitForModifierRelease() async -> Bool {
         for _ in 0..<50 {
             guard !Task.isCancelled else { return false }
             let flags = CGEventSource.flagsState(.combinedSessionState)
@@ -250,9 +250,22 @@ enum TextInserter {
         return true
     }
 
+    /// Copies the target's selection; the caller owns the clipboard around it.
+    static func postCommandC(to processID: pid_t) -> Bool {
+        let qwertyC = CGKeyCode(kVK_ANSI_C)
+        let keyCode = currentLayoutUsesQwertyCommandPositions() ? qwertyC : (keyCode(for: "c") ?? qwertyC)
+        guard let (keyDown, keyUp) = commandEvents(keyCode: keyCode) else { return false }
+        keyDown.postToPid(processID)
+        keyUp.postToPid(processID)
+        return true
+    }
+
     private static func commandVEvents() -> (CGEvent, CGEvent)? {
+        commandEvents(keyCode: pasteKeyCode())
+    }
+
+    private static func commandEvents(keyCode: CGKeyCode) -> (CGEvent, CGEvent)? {
         let source = CGEventSource(stateID: .combinedSessionState)
-        let keyCode = pasteKeyCode()
         guard
             let keyDown = CGEvent(
                 keyboardEventSource: source, virtualKey: keyCode, keyDown: true),

@@ -203,6 +203,7 @@ final class AppLaunchModel {
         }
         services.dictation.syncHotkey(services: services)
         services.syncPasteLastShortcut()
+        services.syncRewriteSelectionShortcut()
         services.dictation.syncMousePTT(services: services)
         services.dictation.syncModifierPTT(services: services)
         services.prewarmDictationIfConfigured()

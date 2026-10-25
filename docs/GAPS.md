@@ -194,6 +194,14 @@ launch, so importing settings with filler removal and replacements from another
 Mac leaves them inactive until the user chooses Clean. Carrying the mode in
 settings transfer would widen the allowlist and needs an explicit decision.
 
+### Rewrite selection in real applications
+
+D589 reads a selection through Accessibility and falls back to ⌘C on a restored
+clipboard. Automated journeys use a fixture; which editors expose the selected
+range (native text views, browsers, Electron, terminals), how a rich-text
+replacement keeps formatting, and how a global Return registration behaves in
+apps that bind it remain field validation.
+
 ### Queued audio imports across a restart or remount
 
 Before copying, a queued import compares the source's `fileResourceIdentifier`
