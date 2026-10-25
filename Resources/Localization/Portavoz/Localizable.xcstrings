@@ -8879,6 +8879,16 @@
         }
       }
     },
+    "Nothing was heard. Say how again, or choose a recipe.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se oyó nada. Vuelve a decir cómo o elige una receta."
+          }
+        }
+      }
+    },
     "Nothing was replaced. Copy the rewrite instead.": {
       "localizations": {
         "es": {

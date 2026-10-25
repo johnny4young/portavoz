@@ -146,6 +146,7 @@ final class SelectionRewriteController {
                 do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
             }
             guard let self, self.generation == id, self.phase == .listening else { return }
+            self.notice = L10n.text("Nothing was heard. Say how again, or choose a recipe.")
             self.phase = .choosing
             self.armKeys(replaces: false)
             self.show()

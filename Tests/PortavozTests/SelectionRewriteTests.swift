@@ -265,5 +265,6 @@ struct SelectionRewriteSayHowTests {
         #expect(rewrite.phase == .listening)
         try await eventually { rewrite.phase == .choosing }
         #expect(recorder.recipes.isEmpty)
+        #expect(rewrite.notice == "Nothing was heard. Say how again, or choose a recipe.")
     }
 }
