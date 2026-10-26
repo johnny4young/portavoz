@@ -57,7 +57,7 @@ function PVIndicators() {
 
 function PVFindings() {
   const items = [
-    { title: "«Trinity» apareció en 4 reuniones — y sigue sin decisión.", body: "3 preguntas abiertas apuntan al mismo tema.", cta: "✦ Ver las 4 menciones" },
+    { title: "«Zephyr» apareció en 4 reuniones — y sigue sin decisión.", body: "3 preguntas abiertas apuntan al mismo tema.", cta: "✦ Ver las 4 menciones" },
     { title: "1.4 h esta semana en reuniones sin ninguna decisión.", body: "Los dos syncs del jueves cerraron sin decisiones ni pendientes.", cta: "✦ ¿Cuáles fueron?" },
     { title: "«¿El presupuesto Q3…?» lleva 2 semanas sin respuesta.", body: "La hiciste tú el 27 jun y reapareció el 9 jul.", cta: "✦ Preguntar a mi historial" },
   ];
@@ -110,9 +110,9 @@ function PVRhythm() {
 
 function PVPeople() {
   const rows = [
-    { name: "Alejo", meta: "2 reuniones · 58 min", them: 55, you: 45 },
-    { name: "Cesare", meta: "2 reuniones · 41 min", them: 70, you: 30 },
-    { name: "Daniel", meta: "2 reuniones · 39 min", them: 35, you: 65 },
+    { name: "Marta", meta: "2 reuniones · 58 min", them: 55, you: 45 },
+    { name: "Ilarion", meta: "2 reuniones · 41 min", them: 70, you: 30 },
+    { name: "Nora", meta: "2 reuniones · 39 min", them: 35, you: 65 },
   ];
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10, padding: 16, borderRadius: 12, background: "var(--surface-card-soft)" }}>
@@ -132,7 +132,7 @@ function PVPeople() {
           </div>
         </div>
       ))}
-      <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>violeta = hablan ellos · ámbar = hablas tú. Con Daniel dominas el 65% — ✦ ¿1:1 con más escucha?</span>
+      <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>violeta = hablan ellos · ámbar = hablas tú. Con Nora dominas el 65% — ✦ ¿1:1 con más escucha?</span>
     </div>
   );
 }
