@@ -288,19 +288,35 @@ no cloud service or transcript translation is involved.
 
 ## Build from source
 
-Requires **Xcode 26+ / Swift 6.2 on macOS 26+**.
+Requires **Xcode 26+ / Swift 6.2 on macOS 26+**. Use the full Xcode
+toolchain; when the active tools are Command Line Tools, set
+`export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` in this shell.
 
 ```sh
-swift build
+git clone https://github.com/johnny4young/portavoz.git
+cd portavoz
 swift build -Xswiftc -warnings-as-errors
-swift test
+scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors
 
-# Build and run the app bundle (Info.plist with the mic + system-audio entitlements):
-scripts/make-app.sh && open dist/Portavoz.app
-
-# Fetch and verify the models:
-swift run portavoz-cli models download
+# Build the local app bundle and explore a disposable demo library:
+scripts/make-app.sh
+open -na dist/Portavoz.app --args -use-temp-store -seed-demo
 ```
+
+The demo flags use a temporary store and synthetic meetings. Launching without
+`-use-temp-store` uses the normal local library. Microphone and system-audio
+permissions are needed for capture; inspecting the demo does not require a real
+meeting. The bundled app supplies the Info.plist required by macOS capture APIs.
+
+Models download on first use; see [Models](#models) for disk and RAM needs. To
+prepare them explicitly, run `swift run portavoz-cli models download`. Optional
+remote providers are configured in the app; keep API keys in its Keychain-backed
+settings, never in tracked files. No remote provider is required for the local
+path.
+
+For contributor checks and UI test selection, read [CONTRIBUTING.md](CONTRIBUTING.md).
+For the source map, start with [Architecture](#architecture), the focused
+[domain specs](docs/specs/README.md), and the remaining [validation gaps](docs/GAPS.md).
 
 Distributed as a notarized DMG with Sparkle auto-updates, plus the Homebrew cask above (tap: [johnny4young/homebrew-tap](https://github.com/johnny4young/homebrew-tap)).
 
@@ -330,4 +346,4 @@ non-negotiable and we are MIT-licensed (no GPL code ports).
 
 ### Spanish-speaking users
 
-Portavoz started from a real need: Spanish-speaking developers living in English-language meetings. Bilingual summaries, a technical glossary that respects real-world Spanglish (`deploy`, `PR`, `rollback`), and live translated captions are core roadmap items, not side quests.
+Portavoz started from a real need: Spanish-speaking developers living in English-language meetings. Bilingual summaries, a technical glossary that respects real-world Spanglish (`deploy`, `PR`, `rollback`), and live translated captions are part of the implemented experience described above.
