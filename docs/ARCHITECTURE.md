@@ -1311,6 +1311,10 @@ spelling as aliases of one term.
 With caret capitalization on, the inserter's readback reads up to 80 units before
 the caret and `DictationCaretCase` adapts only the first word's case before the
 caret spacing join.
+A meeting transcript can be translated on request: a durable
+`transcript-translation` job, claimed by the post-capture runner only when a
+translator is composed, stores a per-language overlay fenced to the transcript and
+correction revision, and never changes the meeting lifecycle.
 The app resolves explicit Literal/Clean/Polish mode by session choice, captured bundle-ID
 profile, then global preference. The existing destination capture supplies identity;
 no profile recaptures focus or grants insertion authority. Missing preferences
@@ -1691,7 +1695,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 59. A nonunique meeting-directory index serves
+The current schema version is 60. A nonunique meeting-directory index serves
 compression admission without rejecting historical duplicate owners. Its
 skill-identity write constraints preserve
 historical denials rather than rejecting a populated library during upgrade.

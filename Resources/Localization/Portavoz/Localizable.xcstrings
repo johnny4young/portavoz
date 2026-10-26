@@ -1911,6 +1911,16 @@
         }
       }
     },
+    "Download languages": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar idiomas"
+          }
+        }
+      }
+    },
     "Duplicate": {
       "localizations": {
         "es": {
@@ -15301,6 +15311,16 @@
         }
       }
     },
+    "The last translation failed. Try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La última traducción falló. Inténtalo de nuevo."
+          }
+        }
+      }
+    },
     "The launch diagnostics couldn't be saved": {
       "localizations": {
         "es": {
@@ -15647,6 +15667,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "El motor de resúmenes tardó demasiado. Vuelve a intentarlo."
+          }
+        }
+      }
+    },
+    "The transcript changed after this translation. Translate again to update it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La transcripción cambió después de esta traducción. Tradúcela otra vez para actualizarla."
           }
         }
       }
@@ -16511,6 +16541,16 @@
         }
       }
     },
+    "Transcript language": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma de la transcripción"
+          }
+        }
+      }
+    },
     "Transcript recovery stopped after repeated attempts. Your audio and current transcript are still saved.": {
       "localizations": {
         "es": {
@@ -16571,6 +16611,16 @@
         }
       }
     },
+    "Translating a transcript": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduciendo una transcripción"
+          }
+        }
+      }
+    },
     "Translating…": {
       "localizations": {
         "es": {
@@ -16587,6 +16637,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Traducción"
+          }
+        }
+      }
+    },
+    "Translation failed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traducción falló"
+          }
+        }
+      }
+    },
+    "Translation needs Apple's English and Spanish languages on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traducción necesita los idiomas inglés y español de Apple en este Mac."
+          }
+        }
+      }
+    },
+    "Translation out of date": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducción desactualizada"
           }
         }
       }

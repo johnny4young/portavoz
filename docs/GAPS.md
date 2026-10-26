@@ -202,6 +202,13 @@ range (native text views, browsers, Electron, terminals), how a rich-text
 replacement keeps formatting, and how a global Return registration behaves in
 apps that bind it remain field validation.
 
+### Meeting translation quality and scale
+
+D595 translates row by row with Apple's installed languages. Translation quality
+of conversational meeting speech, the time a long meeting takes, and how often
+language detection leaves short mixed rows untranslated remain field validation.
+The translated export is the next slice.
+
 ### Caret capitalization in real editors
 
 D594 trusts the system dictionary and NaturalLanguage name tagging. Names

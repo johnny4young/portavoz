@@ -40,6 +40,7 @@
     "Sources/portavoz-app/MeetingPlayerBar.swift",
     "Sources/portavoz-app/MeetingRecapSheet.swift",
     "Sources/portavoz-app/MeetingTranscriptSection.swift",
+    "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
     "Sources/portavoz-app/MirrorCard.swift",
     "Sources/portavoz-app/SpeakerPill.swift",
     "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
@@ -1670,6 +1671,12 @@
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "navigation",
+      "source": "openTranslationSettings: { sceneActions.openSettings(.audio) }))",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "state",
       "source": "@State private var playbackNavigation = MeetingDetailPlaybackNavigation()",
       "occurrences": 1
@@ -2193,6 +2200,12 @@
     {
       "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
       "category": "navigation",
+      "source": "cancel: actions.cancelTranslation, openSettings: actions.openTranslationSettings)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "navigation",
       "source": "onSeek: actions.seekAndPlay,",
       "occurrences": 1
     },
@@ -2205,7 +2218,103 @@
     {
       "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
       "category": "state",
+      "source": "@State private var language: String?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "state",
+      "source": "@State private var requestedLanguage: String?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "state",
       "source": "@State private var showingHiddenLines = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
+      "category": "control",
+      "source": "Button(\"Cancel\") { cancel() }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
+      "category": "control",
+      "source": "Button(\"Download languages\") { openSettings() }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
+      "category": "control",
+      "source": "Button(Self.name(code)) { translate(code) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
+      "category": "control",
+      "source": "Menu {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
+      "category": "control",
+      "source": "Picker(\"Transcript language\", selection: $language) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-transcript-language\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-transcript-translate\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-transcript-translate-\\(code)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-transcript-translation-cancel\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-transcript-translation-failure\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-transcript-translation-settings\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-transcript-translation-stale\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
+      "category": "navigation",
+      "source": "Button(\"Download languages\") { openSettings() }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
+      "category": "navigation",
+      "source": "let openSettings: @MainActor () -> Void",
       "occurrences": 1
     },
     {

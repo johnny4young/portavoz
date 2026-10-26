@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 182
+    "expectedCaseCount": 184
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -43,6 +43,8 @@
     "SelectionRewriteUITests/testRewritingWithoutASelectionExplainsWhatToDo()": 20.0,
     "SelectionRewriteUITests/testSayingHowRewritesTheSelectionWithTheSpokenInstruction()": 25.0,
     "DictationCorrectionUITests/testASpokenCorrectionChangesTheLastDictationInsteadOfPasting()": 25.0,
+    "MeetingTranscriptTranslationUITests/testATranscriptIsTranslatedOnRequestAndTheOriginalStaysOneClickAway()": 30.0,
+    "MeetingTranscriptTranslationUITests/testMissingLanguagesPointToTheirDownload()": 30.0,
     "DictationCorrectionUITests/testTheDictionaryGroupsEveryHeardFormUnderItsSpelling()": 20.0,
     "DictationPolishUITests/testARecipeCanBeCreatedAndChosenAsTheDefault()": 30.0,
     "DictationPolishUITests/testARecipeShapesTheDictationAndKeepsItsFacts()": 20.0,

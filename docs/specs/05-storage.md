@@ -2211,3 +2211,21 @@ same consent check. `DictationRecordFilter`
 gains `recordID`, which narrows the history list to one dictation when an Ask
 citation opens it. No schema change.
 
+
+### Transcript translation (schema v60, D595)
+
+v60 adds `transcriptTranslation` (primary key `meetingID` + `targetLanguage` in
+`en`/`es`, `sourceTranscriptRevision`, `sourceCorrectionRevision` of `accepted`
+or a 64-character digest, `createdAt`; cascades from `meeting`) and
+`transcriptTranslationLine` (`rowID` of the transcript row, non-empty `text` up to
+20,000 characters; cascades from its translation). Only translated rows are stored.
+`requestTranscriptTranslation` enqueues the `transcript-translation` job for one
+reading fingerprint without reconciling the meeting lifecycle, returns an active
+job as is and resets a settled one; `cancelTranscriptTranslation` cancels pending
+and running ones, so a running worker loses its lease.
+`completeTranscriptTranslationJob` requires the owned lease, the job's kind,
+meeting and fingerprint, the current `transcriptRevision`, and the current
+correction revision, then replaces that language's translation and succeeds the
+job in one transaction. `reconcileProcessingLifecycle` ignores translation jobs.
+`observeTranscriptTranslations` feeds Meeting Detail; a tombstoned meeting exposes
+none.

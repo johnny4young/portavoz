@@ -481,8 +481,10 @@ extension MeetingStore {
         guard var meeting = try MeetingRecord.fetchOne(db, key: key), meeting.deletedAt == nil else {
             return
         }
+        // A translation is an optional overlay: it never makes a meeting processing or failed.
         let jobs = try ProcessingJobRecord
             .filter(Column("meetingID") == key)
+            .filter(Column("kind") != ProcessingJobKind.transcriptTranslation.rawValue)
             .fetchAll(db)
         let pendingCaptureCount = try AudioAssetRecord
             .filter(Column("meetingID") == key)
@@ -549,6 +551,7 @@ extension MeetingStore {
             || kind == ProcessingJobKind.refine.rawValue
             || kind == ProcessingJobKind.diarization.rawValue
             || kind == ProcessingJobKind.summary.rawValue
+            || kind == ProcessingJobKind.transcriptTranslation.rawValue
     }
 
     private static func validateWorker(
@@ -575,7 +578,7 @@ extension MeetingStore {
         }
     }
 
-    private static func validateOwner(_ owner: String) throws {
+    static func validateOwner(_ owner: String) throws {
         guard isCanonical(owner) else {
             throw StorageError.invalidProcessingJob("lease owner must be canonical and non-empty")
         }
@@ -604,7 +607,7 @@ extension MeetingStore {
         }
     }
 
-    private static func validateArtifactJob(
+    static func validateArtifactJob(
         _ record: ProcessingJobRecord,
         kind: ProcessingJobKind,
         meetingID: MeetingID,
@@ -619,7 +622,7 @@ extension MeetingStore {
         }
     }
 
-    private static func liveMeeting(
+    static func liveMeeting(
         _ meetingID: MeetingID,
         in db: Database
     ) throws -> MeetingRecord {
@@ -631,7 +634,7 @@ extension MeetingStore {
         return meeting
     }
 
-    private static func requireRevision(
+    static func requireRevision(
         _ expected: Int,
         for job: ProcessingJobRecord,
         meeting: MeetingRecord

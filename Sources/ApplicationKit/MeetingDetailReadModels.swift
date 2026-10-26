@@ -75,6 +75,7 @@ public struct MeetingReviewReadModel: Sendable {
     public let processingJobs: [ProcessingJob]
     public let notes: MeetingReviewNotes
     public let commitmentReviewStates: [CommitmentReviewState]
+    public let translations: [TranscriptTranslation]
 
     public init(
         core: MeetingReviewCore,
@@ -84,7 +85,8 @@ public struct MeetingReviewReadModel: Sendable {
         privacyReceipt: PrivacyReceipt?,
         processingJobs: [ProcessingJob],
         notes: MeetingReviewNotes = MeetingReviewNotes(),
-        commitmentReviewStates: [CommitmentReviewState] = []
+        commitmentReviewStates: [CommitmentReviewState] = [],
+        translations: [TranscriptTranslation] = []
     ) {
         self.core = core
         self.summary = summary
@@ -94,6 +96,7 @@ public struct MeetingReviewReadModel: Sendable {
         self.processingJobs = processingJobs
         self.notes = notes
         self.commitmentReviewStates = commitmentReviewStates
+        self.translations = translations
     }
 
     public var meeting: Meeting { core.meeting }
@@ -139,6 +142,7 @@ public enum MeetingReviewSection: CaseIterable, Hashable, Sendable {
     case processing
     case notes
     case commitments
+    case translations
 }
 
 /// Independent updates emitted by the Meeting Detail read side.
@@ -153,5 +157,6 @@ public enum MeetingReviewUpdate: Sendable {
     case processingJobs([ProcessingJob])
     case notes(MeetingReviewNotes)
     case commitmentReviewStates([CommitmentReviewState])
+    case translations([TranscriptTranslation])
     case failed(MeetingReviewSection)
 }

@@ -1,5 +1,6 @@
 import ApplicationKit
 import Foundation
+import OSLog
 import PortavozCore
 import StorageKit
 
@@ -22,6 +23,22 @@ extension AppServices {
     }
 }
 
+extension AppServices {
+    func translateMeetingTranscript(_ core: MeetingReviewCore, into language: String) async {
+        do {
+            _ = try await RequestTranscriptTranslation(store: store)(core, into: language)
+            kickPostCaptureProcessing()
+        } catch {
+            Logger(subsystem: "app.portavoz.mac", category: "transcript-translation")
+                .error("Translation request failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    func cancelMeetingTranscriptTranslation(_ meetingID: MeetingID) async {
+        try? await store.cancelTranscriptTranslation(for: meetingID)
+    }
+}
+
 enum MeetingDetailRefineApplyError: Error {
     case staleDraft
 }
@@ -37,7 +54,8 @@ extension AppServices: MeetingDetailModelClient {
             privacy: store.observeMeetingReviewPrivacyReceipt(meetingID),
             processing: store.observeMeetingReviewProcessingJobs(meetingID),
             notes: store.observeMeetingReviewNotes(meetingID),
-            commitments: store.observeCommitmentReviewStates(for: meetingID)))
+            commitments: store.observeCommitmentReviewStates(for: meetingID),
+            translations: store.observeTranscriptTranslations(meetingID)))
     }
 
     func renameMeetingDetailMeeting(_ meeting: Meeting) async throws {
@@ -146,6 +164,7 @@ private struct MeetingReviewStreams: Sendable {
     let processing: AsyncThrowingStream<[ProcessingJob], Error>
     let notes: AsyncThrowingStream<(items: [ContextItem], enhanced: EnhancedNote?), Error>
     let commitments: AsyncThrowingStream<[CommitmentReviewState], Error>
+    let translations: AsyncThrowingStream<[TranscriptTranslation], Error>
 }
 
 private func makeApplicationMeetingReviewStream(
@@ -250,6 +269,11 @@ private func addMeetingSupportReviewTasks(
             section: .commitments
         ) {
             .commitmentReviewStates($0)
+        }
+    }
+    group.addTask {
+        await forwardMeetingReview(streams.translations, to: continuation, section: .translations) {
+            .translations($0)
         }
     }
 }
