@@ -7,6 +7,20 @@ final class TranscriptNoiseFilterTests: XCTestCase {
         TranscriptNoiseFilter.isLikelyNoise(text: t, confidence: c)
     }
 
+    func testOwnedTokenFragmentsRequireTheExistingConfidenceFloor() {
+        for text in ["I", "a", "2", ".", ",", "€", "s"] {
+            XCTAssertFalse(TranscriptNoiseFilter.isLikelyNoise(
+                text: text, confidence: 0.9, allowsTokenFragments: true), text)
+            XCTAssertTrue(TranscriptNoiseFilter.isLikelyNoise(
+                text: text, confidence: 0.2, allowsTokenFragments: true), text)
+            XCTAssertTrue(TranscriptNoiseFilter.isLikelyNoise(
+                text: text, confidence: nil, allowsTokenFragments: true), text)
+            XCTAssertTrue(noise(text, 0.9), "Phrase policy is unchanged: " + text)
+        }
+        XCTAssertTrue(TranscriptNoiseFilter.isLikelyNoise(
+            text: " ", confidence: 1, allowsTokenFragments: true))
+    }
+
     func testLoneLettersAreNoiseRegardlessOfConfidence() {
         // Field garbage from a barely-used mic — single letters even at mid confidence.
         XCTAssertTrue(noise("R", 0.52))

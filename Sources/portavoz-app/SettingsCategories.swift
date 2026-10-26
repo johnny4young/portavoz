@@ -82,7 +82,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
             ["byok api key github gist token mcp endpoint openai"]
         case .data:
             [
-                "export markdown backup folder recordings trash privacy local",
+                "export markdown backup folder recordings trash privacy local model credits licenses attribution",
                 "icloud cloud sync status existing library encrypted devices pause remove",
                 "background activity recovery processing jobs spotlight semantic index graph retry progress"
             ]

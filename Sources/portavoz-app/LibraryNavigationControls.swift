@@ -23,6 +23,10 @@ struct LibraryNavigationControls: View {
                 "Radar", symbol: PVSymbol.radar, id: "library-commitment-radar-button",
                 help: "Track confirmed commitments, deadlines, sources and changes",
                 selected: route?.isCommitmentRadar == true) { onNavigate(.commitments(nil)) }
+            navigationButton(
+                "Dictations", symbol: PVSymbol.dictation, id: "library-dictations-button",
+                help: "Find what you dictated, when you keep a history",
+                selected: route == .dictations) { onNavigate(.dictations) }
         }
     }
 

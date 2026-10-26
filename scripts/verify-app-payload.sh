@@ -49,4 +49,21 @@ if ! printf '%s\n' "$STATUS" | grep -q '^classifierLoadable=true$'; then
   exit 65
 fi
 
-echo "OK → $APP reads its own payload and resolves its bundled classifier."
+# The command-line tool is the app executable started through a bundled link
+# (D582); Homebrew and the Settings install both point at it, so it must answer
+# an MCP handshake against a throwaway library.
+HELPER="$APP/Contents/Helpers/portavoz-cli"
+if [[ ! -L "$HELPER" || "$(readlink "$HELPER")" != "../MacOS/portavoz-app" ]]; then
+  echo "The app is missing its command-line tool link." >&2
+  exit 65
+fi
+SCRATCH="$(mktemp -d)"
+trap 'rm -rf "$SCRATCH"' EXIT
+HANDSHAKE='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"verify-app-payload","version":"1"}}}'
+REPLY="$(printf '%s\n' "$HANDSHAKE" | "$HELPER" mcp --db "$SCRATCH/library.sqlite" 2>/dev/null || true)"
+if ! printf '%s\n' "$REPLY" | grep -q '"serverInfo"'; then
+  echo "The bundled command-line tool did not answer an MCP handshake." >&2
+  exit 65
+fi
+
+echo "OK → $APP reads its own payload, resolves its bundled classifier and serves its command-line tool."

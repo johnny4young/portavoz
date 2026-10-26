@@ -181,7 +181,7 @@ extension ArchitectureDependencyTests {
         XCTAssertEqual(
             try XCTUnwrap(targets["PlatformKit"]).dependencies,
             ["PortavozCore"])
-        for target in ["portavoz-app", "portavoz-cli", "PortavozTests"] {
+        for target in ["portavoz-app", "PortavozCLIKit", "PortavozTests"] {
             XCTAssertTrue(try XCTUnwrap(targets[target]).dependencies.contains("PlatformKit"))
         }
 
@@ -447,13 +447,21 @@ extension ArchitectureDependencyTests {
             intents.components(separatedBy:
                 "static let supportedModes: IntentModes = [.foreground(.immediate)]")
                 .count - 1,
-            2,
-            "Start and Stop must use Tahoe's immediate foreground mode")
+            3,
+            "Start, Stop and Open dictations must use Tahoe's immediate foreground mode")
         XCTAssertEqual(
             intents.components(separatedBy: "static var openAppWhenRun: Bool { true }")
                 .count - 1,
-            2,
-            "Start and Stop must preserve the pre-Tahoe foreground contract")
+            3,
+            "Start, Stop and Open dictations must preserve the pre-Tahoe foreground contract")
+        // Dictation actions run in the background so the app in front keeps the text.
+        XCTAssertEqual(
+            intents.components(separatedBy: "static let supportedModes: IntentModes = [.background]").count - 1,
+            3)
+        let dictationHandler = try XCTUnwrap(
+            appDelegate.components(separatedBy: "private func dictationIntentRequested").last?
+                .components(separatedBy: "static func dictationIntentOutcome").first)
+        XCTAssertFalse(dictationHandler.contains("NSApp.activate"))
         XCTAssertFalse(
             intents.contains("AppShortcutsProvider"),
             "macOS publishes the action only; an App Shortcut duplicates it in the picker")
@@ -776,7 +784,7 @@ extension ArchitectureDependencyTests {
 
         for wakePolicy in [
             "public func nextScheduledProcessingDate",
-            "SELECT MIN(wakeAt)",
+            "SELECT MAX(MIN(wakeAt), ?)",
             "SELECT notBefore AS wakeAt",
             "SELECT leaseExpiresAt AS wakeAt"
         ] {
@@ -934,7 +942,14 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(model.contains("didCompleteTitleSuggestion"))
         XCTAssertTrue(model.contains("didCompleteRecipeSuggestion"))
         XCTAssertTrue(coordinator.contains("model.send(.loadMetadataSuggestions)"))
-        XCTAssertTrue(view.contains("model.state.chapterTitles"))
+        let transcriptPresentation = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailTranscriptPresentation.swift")
+        XCTAssertTrue(model.contains("next.transcriptPresentationState.mergeChapterTitles("))
+        XCTAssertTrue(model.contains("suggestions.chapterTitles, detail: state.readModel"))
+        XCTAssertTrue(transcriptPresentation.contains("chapterTitles = merged"))
+        XCTAssertTrue(transcriptPresentation.contains(
+            "MeetingDetailTranscriptPresentation(detail: $0, chapterTitles: merged)"))
+        XCTAssertTrue(view.contains("model.state.transcriptPresentation"))
         XCTAssertTrue(view.contains("model.state.suggestedTitle"))
         XCTAssertTrue(view.contains("model.state.suggestedRecipe"))
         XCTAssertFalse(view.contains("ProcessInfo.processInfo"))

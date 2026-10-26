@@ -7,11 +7,11 @@ import Foundation
 ///
 /// The first run prompts for microphone (and audio-recording) permission on
 /// behalf of the terminal.
-@main
-struct PortavozCLI {
+public enum PortavozCLI {
     // The development dispatcher is inherently one branch per subcommand.
+    @MainActor
     // swiftlint:disable:next cyclomatic_complexity function_body_length
-    static func main() async {
+    public static func main() async {
         let platform = CLIPlatformDependencies()
         var arguments = Array(CommandLine.arguments.dropFirst())
         guard let command = arguments.first else {
@@ -69,6 +69,8 @@ struct PortavozCLI {
             await BenchCaptureCommand.run(arguments)
         case "bench-ask-quality":
             await BenchAskQualityCommand.run(arguments)
+        case "bench-dictation-search":
+            await BenchDictationSearchCommand.run(arguments)
         case "bench-ask-attribution":
             await BenchAskQualityCommand.run(arguments, attribution: true)
         case "bench-retrieval-chunks":
@@ -117,6 +119,10 @@ struct PortavozCLI {
                                               [--asset-download never|if-needed]
                 units: segment, speaker-turn, conversation-window,
                        semantic-boundary
+              portavoz-cli bench-dictation-search --fixture <json> --output <json>
+                                                   --build <id> --commit <sha>
+                                                   [--asset-download never|if-needed]
+                                                   [--scales 1000,10000]
               portavoz-cli bench-ask-attribution --fixture <json> --output <json>
                                                   --build <id> --commit <sha>
                                                   [--retrieval-unit <unit>]

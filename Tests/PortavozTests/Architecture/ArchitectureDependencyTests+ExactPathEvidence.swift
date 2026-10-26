@@ -1198,7 +1198,7 @@ extension ArchitectureDependencyTests {
         XCTAssertFalse(makefile.contains(#"tail -20 "$$log""#))
 
         XCTAssertTrue(architecture.contains("4096-token guided-generation context"))
-        XCTAssertTrue(intelligenceSpec.contains("FluidAudio \(try Self.requiredFluidAudioVersion())"))
+        XCTAssertTrue(intelligenceSpec.contains("FluidAudio fork at `\(try Self.requiredFluidAudioRevision())`"))
         XCTAssertTrue(decisions.contains("## D380"))
     }
 
@@ -1338,8 +1338,7 @@ extension ArchitectureDependencyTests {
             #""observedReceiptCount": 1"#))
         XCTAssertTrue(semanticCrossHost.contains(
             #""crossHostBudget": "none""#))
-        XCTAssertTrue(semanticCrossHost.contains(
-            #""missing-operating-system:sequoia""#))
+        XCTAssertFalse(semanticCrossHost.contains("sequoia"))
         XCTAssertTrue(decisions.contains(
             "## D347 — Cross-host semantic control requires real profile and OS receipts"))
         XCTAssertTrue(waveformCLI.contains("withWaveformTemporaryDirectory"))
@@ -1479,7 +1478,7 @@ extension ArchitectureDependencyTests {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            486)
+            504)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
             16)

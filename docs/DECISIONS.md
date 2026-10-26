@@ -928,7 +928,10 @@ already identity-remapped document from a private IntegrationsKit app adapter.
 That adapter reads, decodes, and remaps on a utility task; ApplicationKit does
 not add an IntegrationsKit dependency. The boundary clears every incoming
 machine-local audio path and accepts only one canonical `system` and/or
-`microphone` attachment with a normalized `m4a`, `caf`, or `wav` extension.
+`microphone` attachment with a normalized extension in the shared closed
+`MeetingAudioLayout.channelExtensions` catalog. It includes the original
+m4a/caf/wav formats and selected external mp3/aac/aiff/aif/m4b audio so a bundle
+can preserve the same bytes playback and Refine resolve.
 An app filesystem adapter stages those attachments only as
 `Audio/<fresh-meeting-id>/<channel>.<extension>` and removes a partial
 directory if writing fails.
@@ -966,10 +969,10 @@ aggregate through an `ExportMeetingBundleStore` port. `MeetingStore` implements
 that port with one GRDB read of the live meeting, cast, ordered transcript,
 newest immutable summary across recipes, notes, and Companion cards. The use
 case captures the relative audio directory, clears it before document
-assembly, optionally requests only unique validated system/microphone m4a/caf/wav
-attachments, and sends the result to an external-document port. It does not
-import IntegrationsKit or receive SwiftUI, AppKit, absolute paths, or localized
-copy.
+assembly, optionally requests only unique validated system/microphone attachments
+from that shared channel-extension catalog, and sends the result to an external-document
+port. It does not import IntegrationsKit or receive SwiftUI, AppKit, absolute paths,
+or localized copy.
 
 Private app adapters retain `RecordingsLocation` fallback resolution,
 `MeetingAudioLayout` preference order, best-effort omission of missing or
@@ -10410,6 +10413,22 @@ reclaiming remains impossible before expiry, and a reclaim is a new attempt
 against the same bounded retry budget. A tombstoned meeting's lease wakes
 nobody. Two deterministic tests fail against the previous implementation and
 pass against this one.
+
+**October 13, 2026 clarification:** a retry or lease deadline that crosses
+between the final empty claim and scheduling read must remain discoverable.
+Scheduling now takes the earliest non-null deadline and clamps it to the read
+timestamp. Unscheduled pending work, including intentional suspension, stays
+signal-driven; an exhausted pending attempt is excluded, while the final
+running lease still wakes to publish exhaustion.
+
+An unavailable SQLite writer can make a claim fail without changing that
+deadline. ApplicationKit therefore owns one pure failed-drain wake policy:
+preserve a healthy deadline, but after a failed claim/drain use the later of
+the persisted date and five seconds from the scheduling decision. Both the
+post-capture and audio-import owners apply it. No persisted date creates no
+timer, so this does not add idle polling, change owner/revision fences, or
+reinterpret cancellation. Explicit-timestamp regressions and real temporary
+SQLite contention cover recovery, backoff and successful claim after release.
 
 ## D297 — Never migrate the recordings root over a live capture (Aug 2026)
 
@@ -19866,6 +19885,15 @@ D540 narrows the unattended selector claim: this permission-owned native case
 remains an explicit failing gate, not a hosted-catalog success.
 
 
+**October 13, 2026 clarification:** import admission and the channel-lookup
+catalog are one contract. Library selection and drop offer only
+`MeetingAudioLayout.channelExtensions` through ApplicationKit's
+`AudioImportFormats`, and StorageKit admission rejects any other extension,
+so an import that transcribes is always reachable by playback, Refine and
+export. Compression accepts only lossless channels (CAF, WAV, AIFF, AIF):
+re-encoding imported MP3, AAC or M4B would lose quality, delete the original
+and free little space.
+
 ## D523 — UI fixtures own explicit cross-process scratch, not runner containers
 
 A real seeded launch blocked its main thread while creating synthetic audio.
@@ -21104,3 +21132,767 @@ contract identified that mismatch. Present a window-modal sheet asynchronously
 from the requesting Settings window, preserving explicit modal input ownership
 without a blocking nested event loop or weakening the keyboard guard. Missing
 window admission reports a distinct actionable error and retires chooser state.
+
+## D559 — Keep latest speech SDK changes behind explicit token authority
+
+**Date:** 2026-10-14
+
+**Context.** The native sliding-window decoder can retire the previous window's
+last word, but its legacy public deltas omit that retirement. End-time filters,
+unfiltered passthrough and start-frontier occurrence ownership each failed a
+different declared shape. Stock latest SDK changes alone preserved the repeated
+public-cell scores and the adapter's extra words. Confidence confirmation cannot
+establish an immutable prefix.
+
+**Decision.** Keep the current curated models, engine defaults, live window and
+serial batch policy. Require the immutable FluidAudio fork revision
+`24922d65f33ca70fdc041e36598df7ef51786274`, based on upstream
+`224de0fb3c304b41bbae24e85e1801900865ff3e`. This explicit exception to D516's
+release-only admission retains its review discipline: no floating branch, range
+or unrelated package resolution can move the speech engine. Swift 6.2 dependency
+traits retain Diarizer plus ASR/VAD and exclude unused TTS resources and NeMo
+linkage; they do not raise the macOS 14.4/iOS 17 deployment floors. The newer
+batch seam timing and relevant SDK fixes remain available without selecting any
+new model or changing decoder decisions.
+
+Parakeet loads the exact ModelStore-verified directory through `AsrModels.loadLocal`,
+not the vendor download-capable loader. Missing artifacts fail locally; an optional
+CTC head outside the curated graph is rejected before loading. Synchronous CoreML
+loading explicitly runs off the caller's actor. Models and compute units are unchanged.
+
+
+Use an opt-in throwing raw-token stream with job identity, contiguous ordinal,
+previous/retained/stable counts, sample regions and explicit terminal/failure
+semantics. The producer uses the existing decoder's retirement boundary. Strict
+subscriptions are single-use and cannot reopen through legacy reset or attach
+after audio was accepted. Legacy display text/vocabulary behavior stays separate.
+The consumer validates lineage before mutation, emits each stable token once and
+replaces or clears a transient preview in both dictation and meetings. Invalid
+lineage, producer failure or EOF without terminal cannot promote pending text;
+cancellation cannot publish buffered work. Preserve native confidence diagnostics
+separately and do not count terminal control metadata as another inference.
+
+**Validation boundary.** Producer and real-consumer characterization tests are
+necessary, not model qualification. Require matched public-audio/native-final
+parity, live/batch diarization, latency and process-memory evidence, final strict
+Swift/lint/hygiene, selected native UI and exact-head hosted checks before claiming
+delivery. Retain native ES/mixed errors, silence hallucinations and deployment-
+floor field limits. No aggregate WER improvement certifies replay-free delivery,
+no preview timestamp certifies insertion latency, and no local gate certifies a
+merge/release. Gap T35 owns temporary-fork maintenance and later upstream review.
+
+## Separate UI readiness sampling cadence from acceptance duration
+
+**Context.** Native accessibility attribute reads consume elapsed time as well as
+transport work. Waiting the full requested stability duration between successive
+samples can overshoot that duration even when both frames already match. A source
+ratchet tied the probe cadence to one implementation rather than the acceptance
+proof. That cadence was an optimization, not authority to shorten the requested
+stable interval or ignore a risk owner.
+
+**Decision.** The general stable-frame helper samples at
+`min(originalProbeInterval, max(0.05, stableInterval / 2))`. Its default requested
+stability duration remains 0.25 seconds. The same live hittability guard runs
+before every frame read; absence, occlusion, empty geometry and a changed frame
+reset the candidate as before. Acceptance still compares elapsed duration with
+`stableInterval`, never with the shorter probe interval. The run loop services
+sources until each actual probe boundary, and the original timeout remains in
+force. Source contracts preserve those independent invariants, positive bounded
+cadence, the default duration and the absence of experimental mode overrides.
+
+Related read-only assertions may share one fresh observation and keep their exact
+content and presence/absence oracles. A not-ready observation uses the original
+live fallbacks, with the initial read charged against the original first deadline.
+No observation is reused across an input action or supplies its geometry or
+authority. A resolved target snapshot proves presence and selection atomically;
+an indeterminate target throws before following field input, and the actual
+missing-target path is exercised without dispatching input. More-popover readiness
+belongs to the requested live item's hittability, which already proves its parent
+exists; an ignored parent wait is not a separate risk owner. The immediately
+observed stronger readiness proof may also serve a read-only availability check.
+
+**Consequences.** Some latency boundaries can still require another fresh sample;
+query count alone is not a performance claim. Changed readiness code requires
+fresh strict validation, native safety evidence and complete bilingual runtime
+evidence under the unchanged case catalogue and total, percentile and individual
+limits. Historical receipts and rejected experiments remain historical, and no
+focused gain substitutes for the complete local gate. Production input policy,
+model behavior, privacy grants, cleanup accounting and release authority do not
+change.
+
+## D560 — Read one character on each side of the caret to space dictated text
+
+Dictated output is trimmed, so text dictated after "Hola." landed as "Hola.Mundo",
+and text dictated in front of a word glued to it ("bigworld"). Spacing it
+correctly needs the characters around the selection, which widens the readback
+contract from "only the inserted span". The widening is kept minimal: at most
+two UTF-16 units (one character, surrogate pair or combining sequence)
+immediately before the selection start and two immediately after its end,
+requested only after the field is revalidated as the captured, non-secure
+target, and never retained, logged or stored. A field edge requests nothing on
+that side. A trailing space is added only when a letter or digit follows.
+
+Only a separator is added. Capitalization is deliberately unchanged: lowering
+an initial capital mid-sentence would corrupt proper nouns ("Juan", "Bogotá")
+without a model of names, so it needs its own decision and evidence. Spacing
+applies to Literal and Clean alike because it changes no dictated word. The
+joined output is borrowed, posted and verified as one exact string, so readback
+still compares code units. Applications without a pinnable field have no
+readback and keep the previous unjoined output rather than guessing.
+
+## D561 — Capture dictation audio while its model loads
+
+Dictation awaited runtime acquisition before opening the microphone. Speech
+said while the panel read Preparing was lost, and a push-to-talk release during
+a cold load cancelled the session because no first frame existed yet.
+
+Open the microphone in parallel with acquisition, after permission. The relay
+that already carries PCM to the engine is created before the engine reads it,
+so it doubles as the pre-roll buffer; a second buffer would add a handoff race
+between the detached pump and the main actor without adding capacity. Bound it
+by queued audio time, 30 seconds, computed from the yield's remaining capacity
+and the chunk duration, with a 16,384-chunk backstop sized so 128-frame buffers
+at 48 kHz still reach the time bound first. The previous 128-chunk
+bound meant about 11 seconds on a 48 kHz input and about 33 seconds on a 16 kHz
+headset, too short for a slow cold load on some devices and inconsistent across
+them. Overflow still revokes delivery (D547). The relay is never persisted.
+
+The first admitted PCM now means Listening, replacing D543's rule that a cold
+model is Preparing; the panel says the model is still loading. The minimum
+capture and stop tail keep their first-frame clocks. A session-owned acquisition
+either adopts or finishes its lease on every path, including a lease resolved
+after cancellation, and capture admission stays held until the load returns.
+
+Start/stop sounds and loading the model at launch are opt-in. Audio-first
+capture already prevents loss, so a launch pre-warm only shortens the first
+dictation and would otherwise keep the model resident after every launch for
+people who never dictate. It runs only for the Parakeet route, the Balanced
+profile, without pressure or Low Power Mode, for an installed verified model,
+through governor admission, and it ends its lease at once so idle and pressure
+release still apply. It never pins weights. The start sound plays on the
+accepted trigger, before the microphone opens, so it is never captured; the stop
+sound marks the actual stop and is silent on cancel. A relay that overflows
+while the model still loads reports the slow load, not a capture interruption.
+
+## D562 — Withhold silent dictations only on a complete voice-activity pass
+
+The live engine can propose text for silence and tones (16 of 64 non-speech
+corpus attempts), and the lexical check before paste cannot tell them apart from
+speech. Run the verified Silero adapter as an opt-in speech gate over a copy of
+the PCM the dictation relay admitted, on CPU and off the capture callback, with
+a bounded queue the pump never waits on. The first frame at Silero's reference
+probability of 0.5, or one already triggered, decides that the session had
+speech and stops the analysis.
+
+Withhold the paste only when the pass is complete and error-free and never saw
+speech. Every other state is undetermined and keeps the original delivery: the
+model is missing or failed, a chunk was dropped, the session was cancelled, or
+the verdict did not arrive within 300 ms of entering delivery. A doubtful gate
+must never lose a real dictation. A withheld dictation is not discarded: the
+panel offers its text for Copy, because a false negative on quiet speech would
+otherwise be unrecoverable. It is never pasted later.
+
+The gate is off by default. Enabling it is the consent to download the pinned
+~1 MB bundle; nothing else downloads or loads it, and the disposable test
+composition never downloads it. The 0.5 threshold is deliberately below
+FluidAudio's 0.85 segmentation default, because withholding quiet real speech
+costs more than letting noise through; it is a model probability, not an added
+RMS rule. Meetings, autofinish on silence and the
+default stay unchanged until the corpus and field evidence say otherwise.
+
+## D563 — Turn the dictation speech gate on, downloading it with dictation
+
+The D562 gate ran over all 480 public synthetic cells (Release, threshold 0.5):
+it withheld 31 of 32 non-speech cells, missed none of the 448 speech cells (the
+quietest profile still peaked at 0.93), and cost about 0.8 ms of CPU per second
+of audio. The one non-speech cell it let through, a soft 440 Hz tone, fails
+toward pasting as before. A wrong withhold loses nothing, because the text
+stays offered for Copy.
+
+The gate is now on unless the user turned it off. Its pinned ~1 MB bundle still
+downloads only with consent: turning on "Dictate anywhere" installs it, and a
+user who already had dictation on sees "not installed yet" with a one-click
+Download in Settings. Nothing downloads in the background, and while the
+detector is missing the gate stays undetermined and pastes as before. The
+corpus is synthetic speech, so a real-microphone false-negative rate is still
+unmeasured.
+
+## D564 — Spoken line and paragraph commands belong to Clean mode only
+
+Clean mode turns "new line" or "nueva línea" into a line break, and
+"new paragraph", "nuevo párrafo" or "punto y aparte" into a blank line. This
+runs on the final text after the filler filter and before replacements. Literal stays the escape for
+dictating those words as text, so the commands need no separate toggle. Only
+whole phrases count: the single word "newline" is a real term in technical
+prose and is left alone. A command phrase that contains a user replacement trigger,
+as whole words, stays literal. Commands do not change the live preview, and a dictation that
+is only a command is empty and inserts nothing. Spoken punctuation is out of
+scope because the recognizer already punctuates.
+
+## D565 — Offer Parakeet Ultra for dictation only, with one resident live model
+
+Over the 480-cell public corpus, fed in real time through the same pipeline,
+Ultra cut speech WER from 15.3% to 10.3%. Exact matches rose from 61 to 105 of
+448 cells, and non-speech cells with invented words fell from 8 to 2 of 32.
+Finalization latency matched v3. The gains were largest in mixed English and
+Spanish. It was worse on 35 cells and better on 118. The regressions cluster in
+Spanish Swift identifiers, English literal-cancel phrases, apostrophes and
+Spanish date corrections. Because some families regress, Ultra is an opt-in
+dictation choice and v3 stays the default and the only meeting model.
+
+Only one live-speech runtime is resident, so a dictation never adds a second
+600 MB model. The checkpoint is part of that runtime's identity. Dictation
+borrows a v3 runtime that a meeting is using, and swaps an idle one. A meeting,
+batch pass or recording attach waits for an Ultra dictation to finish, then
+swaps back; recording is audio-first, so the wait loses no audio. Selecting
+Ultra is the consent for its pinned ~613 MB download. Until it is installed,
+dictation uses v3. The corpus is synthetic speech and Ultra's resident memory
+is unmeasured; both need field evidence before Ultra could become a default.
+
+## D566 — Hold Fn or one right-hand modifier to dictate, without owning the key
+
+A held modifier is the fastest push-to-talk on a laptop, but those keys already
+carry shortcuts: Fn with the arrows, and Option with letters for special
+characters. The trigger is opt-in and listens through a pass-through session
+event tap with the Accessibility trust that pasting already needs. It never
+consumes an event, so every shortcut keeps working. It starts only after the
+key has been held alone for 200 ms. Another key or modifier, before then or
+during the hold, means a shortcut: nothing opens, or the session is discarded.
+Release delivers through the mouse trigger's ownership table.
+
+macOS can also act on the Globe key. Portavoz never changes system settings, so
+choosing Fn shows guidance to set "Press 🌐 key to" to "Do Nothing" instead.
+Left-hand modifiers, Control and Caps Lock are not offered because they are too
+busy in everyday typing.
+
+## D567 — Paste the last dictation again from memory only
+
+People often dictate into the wrong field or need the same words twice. The
+last dictated text, whether delivered, withheld or in recovery, is kept in
+memory for 15 minutes so it can be pasted again from the menu bar or an optional
+shortcut. It is cleared when the Mac sleeps or locks and never reaches disk,
+preferences or the clipboard. Dictation still stores no history. The replay
+uses the existing destination capture and recovery path, so it adds no new
+insertion mechanism. The shortcut is a fixed ⌃⌥⌘V, off by default, because ⌥⌘V
+and ⇧⌥⌘V already mean "move" and "paste and match style" in many apps. A
+recorder for a custom shortcut and a persistent, consented history remain
+separate work.
+Words left in recovery are that same text and follow the same lifetime, so
+sleep, lock or 15 minutes end Paste last for them; the recovery panel still
+offers Copy.
+
+## D568 — Let a tap-started dictation stop itself after a pause
+
+Hands-free dictation should end without a second tap. When the user turns it on
+(it is off by default), Silero watches a copy of the admitted PCM continuously.
+After speech, 1.5, 2 or 3 seconds of audio with no speech finish the session
+through the normal stop tail and delivery. It never acts before any speech has
+been heard. It never acts on a session that a held hotkey, mouse button or
+modifier owns, because releasing that trigger already ends it. A dropped chunk,
+a detector failure or a missing model turns it off for that session rather than
+risk cutting the speaker off. Meetings keep the earlier decision not to stop on
+silence. Silence counts only once the speech model is ready, so a cold load
+(D561) never ends the dictation. The detector is the speech gate's pinned 1 MB bundle, so turning this
+on is the same consent; the gate's per-session analysis stays separate,
+because the gate stops at the first speech.
+
+## D569 — Never shrink the published stable token prefix
+
+Live Parakeet v3 ended a whole dictation with an invalid-lineage error on a quiet
+English contraction. Its re-decode retired the previous window's last word and
+emitted a continuation piece, an apostrophe suffix. That piece re-attached the
+trailing word to a token already published as stable, so the stable count moved
+from 12 to 11. Raising only the count would have moved the failure to the next
+window, whose re-decode would cut inside the stable prefix.
+
+The fork, at `16ff239818ddb6787629dab38ae43e8bdd0e7546` on top of D559's
+revision, now keeps the published stable count monotonic for token-stream jobs.
+Each re-decode retires only tokens past that prefix, so tokens published as
+irrevocable are never revised, and the continuation still joins its word.
+Jobs without a token subscriber pass a floor of 0 and behave as before. The pin
+moves only with that reviewed commit; D559's other terms are unchanged.
+
+## D570 — Credit every downloadable model inside the app
+
+Parakeet v3, Parakeet Ultra and the pyannote/WeSpeaker diarization models are CC-BY-4.0, which
+requires attribution where they are used. Until now the licenses lived only in
+descriptors and specs. Settings → Your data now lists each model the app can
+download: the original work, its creator, its license, and the pinned repository
+Portavoz downloads it from. The link is derived from the descriptor's
+`resolveBase`, so it cannot drift from the pinned revision. CLI-only research
+models are not listed, because the app never downloads them. A new
+downloadable model needs a credit in the same change; a unit test enforces this
+for the CC-BY models.
+
+## D571 — A held key controls only the dictation it started
+
+Under D566 a held modifier finished whatever dictation was listening, the way the
+mouse button does. Fn, though, is pressed for everyday shortcuts: holding it for
+more than 200 ms during a tap-started dictation, for Fn+arrow, finished that
+dictation early. The held-modifier trigger now acts only on a dictation it
+started. During a tap-, hotkey- or menu-started session, pressing or releasing it
+does nothing, and the session keeps its own stop. The mouse button keeps D566's
+behavior, because it carries no shortcuts.
+
+## D572 — Let an unverified delivery notice close itself
+
+Under D555 the "Sent — insertion not verified" panel stayed until Discard or the
+next dictation. Editors that expose no accessibility text, such as Zed, make
+every dictation unverified, so the panel covered the screen after each one. The
+notice now closes after 4 seconds and has a × to close it sooner. Nothing is
+lost: Paste last keeps the words in memory for 15 minutes. Using Copy cancels
+the expiry, so a panel someone is working with stays until they close it.
+Escape also closes it, but only during that countdown: the notice claims Escape
+from the destination for at most 4 seconds, an accepted cost for editors that
+use Escape themselves. Copy hands Escape back at once, and a press queued after
+that cannot close the panel. Verification itself, Reinsert's absence and the
+no-history rule are unchanged.
+
+## D573 — Open the dictation strip beside the text caret
+
+The strip used to open bottom-center on the main screen, often far from where
+the words would land. It now opens just under the text caret of the focused
+field, read once at start through public AX geometry
+(`kAXBoundsForRangeParameterizedAttribute` on the selection), with the same
+100 ms per-object timeouts as delivery. Only a rectangle is read, never text,
+and secure fields are skipped. Apps that expose no caret bounds, such as Zed or
+some Electron editors, fall back to the mouse pointer. The user can drag the
+strip during a dictation; the position is not remembered, so the next one opens
+at the caret again. Disposable UI launches keep the bottom-center placement.
+
+## D574 — Stop qualifying macOS 15 Sequoia in hosted CI
+
+The `sequoia-compatibility` lane ran the whole package suite on a macos-15
+runner with a pinned standalone Swift compiler. It took 22 to 30 minutes per
+run, sat at its 30-minute timeout on slow runners, and was a required check on
+every pull request. Hosted CI now qualifies macOS 26 only, and the lane, its
+standalone-compiler installer and the verifier's standalone mode are removed.
+Portavoz 1.1.0 is the last release officially supported on macOS 15 Sequoia
+(and on the 14.4 Sonoma floor). The source still builds for 14.4 and keeps its
+`#available(macOS 26)` fallbacks; removing that support code, raising the
+deployment target and retiring the Sequoia release receipts are separate work
+(GAPS T39).
+
+## D575 — Set up and practice dictation in Portavoz's own field
+
+New users never met dictation: setup skipped it, it starts off, and without
+Accessibility the first attempt fails. Setup now has a dictation step after the
+models. Its switch starts off and continuing past the step registers no global
+shortcut. Accessibility is requested in this step, only from its button and
+only once dictation is on, because only delivery into other apps needs it.
+Continue never waits for it.
+
+Trying dictation should prove the real microphone and model, not a canned demo,
+and should not need Accessibility or the clipboard. So both setup and Settings
+show a practice field. While that field's window is key and Portavoz is active,
+a new session delivers into the field: a real session in every other way
+(strip, Escape, text mode, Paste last) whose destination appends in memory and
+reports verified. The destination is fixed at start, the text is dropped when
+no view shows the field, and a late delivery goes to the normal recovery panel.
+In setup the practice waits for the model preparation, so the microphone never
+opens while a model downloads. Rejected: a pre-recorded demo (it proves nothing
+about the user's microphone), and practising through the regular clipboard paste
+into a text field (it needs Accessibility and borrows the clipboard).
+
+## D576 — Keep an opt-in private dictation history in the library database
+
+Dictated text was gone once Paste last expired, including text that never
+reached its app. Portavoz now offers a history, off until the user turns it on,
+in the same SQLite database and write queue as meetings rather than in a new
+store, so backups, migrations and deletion follow one path. Consent lives in the
+database, not in preferences: a session takes the consent generation when it
+starts and the store compares it inside the write transaction. Turning history
+off or deleting everything advances the generation, so a dictation that was
+still finishing cannot repopulate the history. The history keeps finished
+dictations that were inserted, sent without verification, or not delivered, with
+their application name, mode and duration, for 7, 30 or 90 days (30 by default).
+It never keeps audio, window titles, URLs, surrounding text, secure fields,
+practice, cancelled sessions or silence, and keeps the words before Clean mode
+only when asked. Saving happens after delivery and never delays the paste; a
+failed save is shown on the delivery notice. The list lives in its own sidebar
+destination; search, statistics and MCP access are separate, later decisions.
+Rejected: saving to UserDefaults or a separate database (no transactional
+consent check, second backup and deletion path), and saving every dictation by
+default.
+
+## D577 — Search the dictation history with its own full-text index
+
+The history needed search once it could hold weeks of dictations. Dictations get
+their own FTS5 index rather than a place in the meeting search, so meeting
+results never mix with dictation text and deleting a dictation removes it from
+search in the same transaction. Results stay newest first like the list, with
+every filter (words, application, not delivered) applied before the page limit
+and the same keyset paging, instead of relevance ranking that pages unstably.
+All typed words must appear and the last one matches as a prefix, so results
+narrow while the user types; accents and case are ignored. The query builder
+quotes every word, so FTS5 syntax is searched as text. Measured at 10,000
+dictations, a search takes about a millisecond.
+
+## D578 — Let local agents read the dictation history only with their own consent
+
+The MCP server lets local agents read the meeting library, and the dictation
+history is the natural next source. It gets three read-only tools appended after
+the frozen meeting catalog, so existing consumers see no change. Reading needs
+its own consent, off by default and only available while the history itself is
+on, because handing dictated text to an agent is a different choice from
+keeping it. The consent lives in the database rather than in preferences, since
+the server runs as a separate process, and the store checks it in the same read
+as the rows on every call, so turning it off takes effect on the next request
+without reconnecting. The tools stay listed while access is off and answer one
+line explaining how to turn it on, which keeps the catalog stable for clients.
+Responses carry a content-free header and always state where each dictation
+went and whether it reached its app, so an agent never treats undelivered text
+as something the user sent. Turning the history off withdraws agent access, and
+turning it back on does not restore it.
+
+## D579 — Copy a dictation into a finished meeting's notes, by explicit action
+
+Dictating a thought and finding it later next to the meeting it belongs to is
+the point of keeping dictation inside Portavoz. A saved dictation can now be
+added to a finished meeting's notes from the Dictations page. The note is an
+ordinary copy, placed at the moment it was dictated when that falls inside the
+meeting, so it follows every existing note path: search, sync, exports and Ask.
+The picker says so before anything is added. A local link records which note
+came from which dictation; it is not synced, deleting the dictation keeps the
+note because it now belongs to the meeting, and removing the note frees the
+dictation to be added again. Meetings still recording are left out, because
+their notes belong to the live session. Nothing is linked automatically and no
+meeting is created for a dictation. When the meeting already shows tidied notes,
+which hide raw notes, the app says to tidy again rather than changing them.
+
+## D580 — Ask about saved dictations as a separate, consent-bound source
+
+Asking "what did I tell Ana about the report?" should reach what was dictated,
+not only what was said in meetings. Ask gains **Dictations** as its own source,
+next to Library, Meeting, Notes and Web. It is a typed lane like raw notes: a
+dictation is cited by its own identity, date and app, never as a meeting moment,
+and the answer prompt states that a dictation is the user's words sent to
+another app, not a transcript or what anyone else said. The source is usable
+only while the dictation history is on; the store reads the consent in the same
+transaction as the rows, so a history turned off between the check and the
+question returns nothing. Nothing new is stored: there is no index, embedding
+or cache beyond the history's own FTS table, so deleting a dictation or the
+history removes it from Ask at once. A dictation's date and app are metadata,
+not words in it, so "today's dictations" can never match lexically or by
+meaning. The question is therefore parsed locally and deterministically, in
+English and Spanish, for a period and for a saved app named after a
+preposition ("in Slack"); request words such as "show me" or "dictados" and
+function words are dropped. A named unit ("last week", "la semana pasada", "el
+mes anterior", "anoche") covers that whole unit, while a span counted back
+("hace una semana", "a couple of days ago", "the past few days", "recently")
+reaches from the start of that day until now, so asking on the 22nd about "a
+week ago" includes the 20th and 21st; "since"/"desde" stretches any period
+until now. The two are deliberately different: a span that stopped at a
+calendar boundary would hide the most recent dictations the user expects. What remains is an any-word
+FTS5 search within those filters, then everywhere (a weekday may be the
+topic), and finally the newest dictations within the filters. A listing is
+the answer itself: it is shown at once under a header that names its period
+and app ("Your dictations from yesterday:", "You have no saved dictations in
+Slack from today.") without calling the engine, unless the question asks for
+a summary, which the engine writes above the list. Every dictation an answer
+cites is shown with its own text, because a dictation's words are the
+content. Up to 12 whole dictations fit the note budgets;
+one longer than 4,000 characters is not cited. The prompt carries the local
+time now and each dictation's local time. Semantic search over dictations is
+deliberately not part of this decision: it would store derived vectors and
+needs its own consent, deletion and quality evidence. The answer uses the selected local engine
+under the existing meeting-answer egress class, with no provider fallback.
+Opening a citation shows only that dictation in Dictations until the user
+chooses Show all or changes a filter.
+
+## D581 — Measure dictation search by meaning; ship on-device question rewriting, not embeddings
+
+Lexical dictation search cannot find a dictation phrased differently from the
+question, nor one dictated in the other language. Before building semantic
+search, a public synthetic bilingual corpus (160 short dictations in English,
+Spanish and mixed text, 80 questions: exact, Spanish and English paraphrase,
+cross-lingual, code-switched and unanswerable, with no content word shared
+between a meaning question and its dictation) and `bench-dictation-search`
+compared lanes in one disposable store. The agreed gate: mean recall@5 over the
+four meaning groups at least 0.15 above lexical, no exact hit@1 regression, at
+most 25% of unanswerable questions with a semantic or rewritten hit, and query
+p95 at most 150 ms at 10,000 dictations.
+
+Measured in a Release build on Apple silicon (macOS 26):
+
+- Lexical: exact hit@1 1.00, every meaning group 0.00, no false positives.
+- Apple's contextual Latin embedding (`SentenceEmbedder`, mean pooled): top
+  similarities stay between 0.80 and 0.95 whatever the question, so the hybrid
+  passes only at a 0.90 threshold (meaning recall 0.23, 25% false positives)
+  with 100% false positives one step lower and no recall one step higher.
+  Subtracting the corpus mean moves the cliff to 0.50 without removing it.
+  Cross-lingual recall is 0 in both. A 10,000-dictation scan costs about 11 ms
+  p95.
+- The existing on-device meeting rewrite (`RAGAnswerer.expandQuery`: one
+  English and one Spanish keyword query) added to the word search: cross-lingual
+  recall 0.62, code-switched 0.12, paraphrase 0.06, exact 1.00, no false
+  positives, about 450 ms p50 and 600 ms p95 per question. It passes with no
+  threshold to tune.
+- A dictation-specific synonym rewrite found more paraphrases (0.38 English,
+  0.44 Spanish) but lowered exact hit@1 to 0.94, reached 38% false positives,
+  took about 1 s, and once tripped the model's guardrail.
+- Rewriting only when the word search finds nothing, as meeting Ask does,
+  drops meaning recall to 0.08, because spurious word matches suppress it.
+
+Ask › Dictations therefore rewrites every question that has words to search
+with the on-device model and adds the rewrites' content words to the search,
+within the same period and app filters. A rewrite that fails, is refused or
+takes over two seconds is dropped and the word search runs alone; without
+Apple Intelligence nothing changes. Only the question reaches the local model,
+and nothing derived from a dictation is stored, so no consent beyond the
+history is needed. Embeddings are not adopted: their threshold is calibrated on
+eight questions at the edge of a cliff and they would add stored vectors and a
+consent for no cross-lingual gain. Same-language paraphrase remains weak (GAPS
+T40); the benchmark is kept to measure a stronger multilingual model.
+
+## D582 — Ship the command-line tool inside the app as the same executable
+
+The README promises a local MCP server and Settings lets agents read the
+dictation history, but releases shipped only `Portavoz.app`: reaching the MCP
+server meant building the repository. A separate `portavoz-cli` binary would
+add 86 MB to every download and Sparkle update, because it statically links
+the same frameworks as the app. Instead the command-line sources become the
+`PortavozCLIKit` library, linked by both the thin `portavoz-cli` executable and
+the app. The app's `PortavozLauncher` runs the command-line tool when the
+process was started under the name `portavoz-cli`, and the app otherwise, so
+`Contents/Helpers/portavoz-cli` is only a relative link to
+`Contents/MacOS/portavoz-app`. The bundle grows by the command-line code alone,
+the tool is notarized, signed and updated with the app, and from inside the
+bundle it shares the app's data directory and resources.
+
+Users reach it in two ways. The Homebrew cask declares the link as a `binary`.
+Settings › Integrations offers to create `~/.local/bin/portavoz-cli` after a
+confirmation; it only creates, replaces or removes a symbolic link, never
+overwrites a file and never edits shell configuration, and it shows the Claude
+Code command and an MCP JSON configuration to copy. The release payload gate
+requires the link and an MCP handshake against a throwaway library.
+
+## D583 — Dictation actions in Shortcuts run in the background
+
+Shortcuts, Stream Deck keys and keyboard-triggered Shortcuts could start a
+meeting recording but not dictation. Four dictation App Intents join the
+SDK-only intents source. Dictate and Paste last dictation do exactly what the
+dictation shortcut and Paste last do, and declare `supportedModes =
+[.background]` on macOS 26 without the foreground compatibility property, so
+Portavoz is never brought forward and the app in front stays the destination
+of the text. Their request is answered during the synchronous notification,
+like Stop recording, and is never buffered: a dictation started after a slow
+launch could type into whatever app is in front by then, so a request that
+arrives before the app is ready reports that Portavoz is still opening. Both
+honor the dictation switch, report busy while a dictation is delivering or
+needs recovery, and stay silent on success; failures throw a localized message
+Shortcuts shows. Search dictations returns saved dictation texts, newest first,
+through an `AppDependency` reader that uses the agents read, so it requires the
+same consent as the MCP tools, checked in the same read as the rows; that switch
+is renamed "Let agents and Shortcuts read the history". Open dictations
+foregrounds Portavoz on the Dictations page with an optional search, which the
+page now adopts from the model instead of clearing. D141 still holds: actions,
+no `AppShortcutsProvider`. Whether Shortcuts invoked from Spotlight or Siri
+leaves the intended app in front is field validation (GAPS #10).
+
+## D584 — Dictation statistics are daily counts behind their own consent
+
+Seeing how much one dictates, and roughly how much typing it saves, should not
+require keeping what was said. Statistics are a separate consent, off by
+default and independent of the history: with the history off they still count
+but never store text, and with the history on they stay off until turned on.
+Schema v58 keeps one row per day and app with the number of dictations, words,
+speaking time and deliveries that did not land; the app name is the only
+label, as in the history. A dictation is counted once, when its delivery
+settles, under the same rule as the history (secure fields, empty and
+cancelled deliveries never count). A short ledger of counted dictation
+identities, forgotten after two days, lets a later retry move it from not
+delivered to delivered instead of counting it again. Days older than a year are
+purged when the next dictation is counted. Turning statistics off stops
+counting and keeps the totals until the user deletes them. The Dictations page
+shows the last 7 or 30 days, words per day, the five apps dictated into most,
+and an estimate of time saved at 40 typed words per minute, stated beside it.
+
+
+## D585 — Portavoz requires macOS 26 Tahoe
+
+D574 stopped qualifying Sequoia in hosted CI, so its fallback paths were
+compiled but never run and its release gates asked for receipts from a system
+no longer supported. Releases after 1.2.0 deploy to macOS 26: the package,
+the XcodeGen project, the bundle's `LSMinimumSystemVersion`, the asset catalog
+and the App Intents metadata share that floor, and a tooling test keeps them
+equal. Generated appcasts carry `sparkle:minimumSystemVersion` 26.0, which the
+release verifier now requires, and the Homebrew cask depends on Tahoe, so a
+Mac on Sequoia or Sonoma stays on 1.2.0 instead of downloading an update it
+cannot open. Every release gate drops its Sequoia proof: the reliability
+contract has 25 proofs, assistive validation has two Tahoe cells, production
+sync needs two distinct Macs on macOS 26 or newer, and the exact-path, semantic
+and retrieval-chunk host contracts accept macOS 26 only. The pre-Tahoe
+availability checks and fallbacks are removed separately (GAPS T39); until
+then they are unreachable.
+
+## D586 — Spanish is a unit-tested catalog property, not a UI pass
+
+Every XCUITest journey asserts accessibility identifiers and seed content, so
+a second pass in Spanish repeated the same journeys and could not see a
+missing translation. Across 89 recent hosted runs it never failed where
+English passed, while it cost a macOS runner for about 35 minutes per pull
+request and doubled the local and release UI gates. Spanish parity therefore
+lives in `LocalizationTests`: every key has a translated, non-empty Spanish
+value with matching placeholders, every visible SwiftUI and AppKit literal is
+cataloged (single words included, which surfaced three untranslated labels),
+Spanish may equal English only for an explicit list of terms, and no key is
+stale. XCUITest selects English only in pull requests, hosted CI,
+`make test-ui-release` (which replaces `test-ui-bilingual`) and candidate
+automation, and the physical VoiceOver and Voice Control cells run English
+only. The in-app language toggle journey still renders Spanish inside the
+English run, and `make test-ui-es` stays as a manual pass no gate requires.
+This supersedes the bilingual UI requirements of D117, D379 and D405.
+
+## D587 — Polish is a generative dictation mode that can only fix form
+
+Literal and Clean never rewrite (D558), and users asked for dictated text that
+reads as written. Polish is a third text mode, chosen globally, per
+application or for one session, and off unless chosen: choosing it is the
+consent. It starts from the Clean text and asks the selected summary engine
+(Apple's on-device model, Ollama on loopback, or embedded MLX) for a
+conservative rewrite: grammar, punctuation, fillers and false starts, in the
+same language and word order. In-app BYOK is not a summary engine, so dictated
+text never leaves the Mac, and an unavailable engine is reported instead of
+silently replaced (D385). A deterministic check runs before the paste and keeps
+the Clean text when the rewrite drops or changes a number, URL, email,
+@mention, #tag, dictionary spelling or negation, moves outside 60–140 % of the
+length, switches language or adds a preamble; dictations under three words or
+over 2,000 characters are not sent at all. The engine has five seconds, and
+Escape or the strip's button pastes the Clean text at once. Every fallback says
+why, the history stores the mode that produced the delivered text, and Paste
+last keeps the Clean version beside the polished one for its 15 minutes. The
+rewrite starts only after the dictation's capture claim ends, so a local model
+is never refused for overlapping its own microphone. Ollama calls cross the
+egress gateway as their own loopback-only operation with a receipt in the
+global journal (schema v59).
+
+## D588 — Polish recipes reshape form, never facts
+
+Polish's conservative copy edit cannot turn a dictation into a list, a formal
+email or a shorter note. A recipe is a name and an instruction of at most 500
+characters that Polish sends with the dictation, chosen as Polish's style
+wherever the mode is chosen: the default, an application profile, or the
+strip for one dictation. It is not a separate mode, so the history keeps the
+`polish` mode without a migration, and a recipe that no longer exists falls
+back to the conservative edit. Four built-ins (Formal, Friendly, Bullet list,
+Concise) can be duplicated but not edited; up to 20 custom recipes live in a
+validated preference catalog, and an unreadable catalog offers only the
+built-ins until it is reset. The recipe travels fenced in its own prompt
+section and may change wording, tone, length and structure only; the
+fidelity check therefore drops its length bound and ignores list markers, but
+still refuses a lost or changed number, identifier, dictionary spelling or
+negation, a language switch or a preamble. Recipes are plain text, not
+Skills, and reach only the selected local summary engine.
+
+## D589 — Rewrite a selection only through a preview and the same selection
+
+Polish and its recipes only reshaped new dictation; text already written in
+another app could not be reworked. Rewrite selection starts from the menu bar
+or an opt-in ⌃⌥⌘R shortcut and opens a non-activating panel, so the edited app
+keeps focus. The selection is read through Accessibility (its range and text);
+an app that exposes neither is read with ⌘C on a snapshotted clipboard, which
+is restored only while the copy is still the latest. Secure fields, empty
+selections and more than 2,000 characters are refused. Polish or a recipe
+rewrites it with the same engine routing, fidelity check and a ten-second
+limit, and the panel always previews the result: Return or Replace pastes it
+over the selection through the pinned dictation delivery path only after the
+same application, field and selection are confirmed again; a changed selection
+is never replaced and the rewrite can be copied instead. Escape abandons a
+pending rewrite. Rewrites are not dictations, so they are not saved to the
+history or counted.
+
+## D590 — "Say how" captures a rewrite instruction with an ordinary dictation
+
+A saved recipe cannot cover every one-off request ("shorter, and add a
+greeting"). While the rewrite panel offers its choices, "Say how" or any
+dictation trigger (the shortcut, holding Fn or a modifier, the mouse button,
+the menu) starts an ordinary dictation session whose destination is the
+rewrite itself. That session runs in Clean mode so the instruction is never
+polished, and it is never pasted, saved to the history, counted in the
+statistics, kept for Paste last or announced by a delivery notice; Paste last
+itself never becomes an instruction. The spoken text, trimmed to the recipe
+limit of 500 characters, is that rewrite's one-time recipe, under the same
+prompt fence, fidelity check and preview as a saved one. The dictation strip
+keeps its own Escape while it listens; a session that ends without words
+returns the panel to its choices.
+
+## D591 — Spoken corrections edit only Portavoz's last verified insertion
+
+Fixing a misheard word meant selecting it and typing. With "Correct the last
+dictation by voice" on (off by default), a dictation that starts with a
+command corrects instead of pasting: "change X to Y" / "cambia X por Y",
+"delete X" / "borra X", and "scratch that" / "borra eso". Parsing is
+deterministic and bilingual, and a phrase is a command only when the X it names
+is in Portavoz's last pasted text, so "change of plans to Monday" is still
+dictation. The edit applies only to the last insertion that delivery verified
+through Accessibility, in the same field, while that exact text is still at its
+range, within Paste last's 15 minutes and before sleep or lock. It selects the
+span and sets the selected text through Accessibility, never the clipboard or
+synthesized keys, and reads the result back. An application that exposes no
+verifiable range, a changed field, or an editor that refuses the edit is told
+so and nothing is pasted or changed. A correction is not a dictation: it is not
+saved to the history or counted, and Paste last then holds the corrected text.
+
+## D592 — Dictation translates on device with Apple's installed languages only
+
+Dictating in one language for a reader of the other meant translating by hand.
+"Translate dictation into" (Off by default, English or Spanish) runs after
+Literal, Clean or Polish, globally, per application profile or for one
+dictation from the strip. The source is the configured dictation language or,
+on Auto, a constrained English/Spanish guess that gives up on short or mixed
+text. Translation uses Apple's Translation framework with an installed
+language pair only, bounded to five seconds and skippable with Escape. Dictation
+never downloads a language: a missing pair, an unclear language, a timeout or a
+failure pastes the untranslated text and says why. The one deliberate download
+is the Settings button that asks Apple to prepare English and Spanish. History
+and Paste last keep the translation; "Paste original" replays the text before
+translation.
+
+## D593 — The dictionary learns a spelling only when the user asks, from a verified correction
+
+A word Portavoz kept mishearing had to be fixed by voice every time, or typed
+into Settings by hand. After a verified spoken "change X to Y" (D591), the
+strip offers "Always write “Y”" for six seconds; pressing it adds X → Y to
+the text replacements and the next dictation applies it. Nothing is learned
+from deletions, from edits the user types, from meetings or without that press,
+and nothing is stored to suggest later. A heard form of at most four words with
+two letters, a single-line spelling of at most 80 characters, and a pair the
+dictionary does not already hold are the only ones offered. Aliases are rules
+that share a spelling: Settings groups them under that spelling and adds another
+heard form to it, while storage, import and export stay plain trigger pairs.
+
+## D594 — Match the first dictated word's case to the text before the caret, opt-in
+
+D560 spaced dictated text from the caret but left case alone, because lowering
+a capital mid-sentence corrupts names. Dictating into the middle of a sentence
+still pasted "We test it, Then we ship". With "Match capitalization to the text
+before the cursor" on (off by default), the inserter reads up to 80 UTF-16
+units before the caret instead of two, at the same moment and under the same
+revalidation as D560, and keeps none of it. After the field start, a line
+break or a sentence end, a lowercase first letter is capitalized. After a
+letter, digit, comma or semicolon, a capital is lowered only when the word is
+not "I", has no other capital, is not one of the user's replacement spellings,
+is known in lowercase to the system en or es dictionary, and is not tagged as a
+name by NaturalLanguage in that context. A colon, a quote, an abbreviation or an
+initial changes nothing. Only the first letter of the first word can change;
+history and Paste last keep the dictated text.
+
+## D595 — A meeting transcript is translated on request as an optional, revision-fenced overlay
+
+Reading a Spanish meeting in English, or the reverse, meant exporting it to
+another tool. Meeting Detail's "Translate" asks for English or Spanish and
+enqueues a durable `transcript-translation` job, so the work survives a
+relaunch, can be cancelled, and runs only when asked. It translates the
+corrected reading the transcript shows, row by row, on device with Apple's
+installed languages only: a row already in the target language, or whose
+language is unclear, is left out and reads as the original. The result is
+stored per target language beside the transcript, never over it, and records
+the transcript revision and correction revision it read; publication is
+rejected once either moved, and a stored translation of an older reading is
+shown as out of date until it is translated again. Translation is an optional
+overlay, so its jobs never change the meeting lifecycle: running does not make
+the meeting processing and failing does not make it need attention. Missing
+languages or an unsupported pair end the job with that reason and point to the
+Settings download; a line that times out retries the job once. A translated
+reading is read-only, because corrections edit the original.

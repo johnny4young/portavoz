@@ -8,10 +8,10 @@ final class RecordingInputUITests: PortavozUITestCase {
         let app = fixture.app
         try start(fixture)
         let note = "Confirmar responsable antes de publicar"
-        addNote(note, in: app)
+        try addNote(note, in: app)
         XCTAssertEqual(try fixture.query("SELECT count(*) FROM contextItem WHERE kind = 'note'"), "1")
         let meetingID = try fixture.query("SELECT meetingID FROM contextItem WHERE kind = 'note'")
-        app.openAssistTab("objectives")
+        try app.openAssistTab("objectives")
         let field = app.control(withIdentifier: "recording-objective-field")
         field.click()
         typeText("Check the owner's approval", in: app)
@@ -56,14 +56,14 @@ final class RecordingInputUITests: PortavozUITestCase {
         try start(fixture)
         let app = fixture.app
         try fixture.failWrites()
-        app.openAssistTab("notes")
+        try app.openAssistTab("notes")
         let text = "No enviar hasta revisar"
         let field = app.control(withIdentifier: "recording-note-field")
         field.click()
         typeText(text, in: app)
         app.buttons["recording-note-add"].click()
         XCTAssertTrue(app.control(withIdentifier: "recording-input-save-failure").waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(field.waitForLabelOrValue(text, timeout: 2))
+        XCTAssertTrue(try field.waitForLabelOrValue(text, timeout: 2))
         XCTAssertEqual(try fixture.query("SELECT count(*) FROM contextItem"), "0")
         app.buttons["recording-stop"].click()
         XCTAssertTrue(app.control(withIdentifier: "recording-failure").waitForExistenceFast(timeout: 5))
@@ -95,7 +95,7 @@ final class RecordingInputUITests: PortavozUITestCase {
         try Data().write(to: release, options: .atomic)
         try start(fixture)
         let app = fixture.app
-        addNote("Keep this accepted note", in: app)
+        try addNote("Keep this accepted note", in: app)
         let id = try fixture.query("SELECT id FROM contextItem")
         _ = try fixture.query("""
             CREATE TRIGGER fail_live_remove BEFORE UPDATE ON contextItem BEGIN
@@ -130,7 +130,7 @@ final class RecordingInputUITests: PortavozUITestCase {
         fixture.app.launchEnvironment["PORTAVOZ_UI_TEST_INPUT_CONTINUE_PATH"] = release.path
         try start(fixture)
         let app = fixture.app
-        app.openAssistTab("notes")
+        try app.openAssistTab("notes")
         app.control(withIdentifier: "recording-note-field").click()
         typeText("Keep the write admitted before Stop", in: app)
         app.buttons["recording-note-add"].click()
@@ -161,14 +161,18 @@ final class RecordingInputUITests: PortavozUITestCase {
     private func start(_ fixture: Fixture) throws {
         fixture.app.launchPortavoz()
         let record = fixture.app.buttons["library-new-recording-button"]
-        XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
+        _ = try XCTUnwrap(fixture.app.prepareForInteraction(timeout: 15) ? fixture.app : nil,
+                          "Portavoz must own the native receiver before recording input")
+        _ = try XCTUnwrap(record.waitForStableFrame(timeout: 15) ? record : nil,
+                          "the actual recording target must be hittable and settled before dispatch")
         record.click()
-        XCTAssertTrue(fixture.app.waitForLiveTranscriptFrontier())
+        _ = try XCTUnwrap(fixture.app.waitForLiveTranscriptFrontier() ? fixture.app : nil,
+                          "recording must reach its original live frontier before editing input")
     }
 
     @MainActor
-    private func addNote(_ text: String, in app: XCUIApplication) {
-        app.openAssistTab("notes")
+    private func addNote(_ text: String, in app: XCUIApplication) throws {
+        try app.openAssistTab("notes")
         let field = app.control(withIdentifier: "recording-note-field")
         field.click()
         typeText(text, in: app)

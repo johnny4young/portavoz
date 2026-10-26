@@ -26,6 +26,7 @@ struct MeetingDetailMetadataSuggestionState {
 
     mutating func begin(
         review: MeetingReviewReadModel,
+        content: MeetingTranscriptContent,
         titledChapterStarts: Set<TimeInterval>
     ) -> Attempt? {
         let suggestsMeetingTitle = !didCompleteTitleSuggestion
@@ -36,9 +37,10 @@ struct MeetingDetailMetadataSuggestionState {
             && review.summaryFreshness == .current
             && !review.segments.isEmpty
             && review.summary?.draft.recipeID == Recipe.general.id
-        let generatedSegments = review.transcriptGenerationMaterial().segments
-        let chapterStarts = Set(
-            ChapterExtractor.chapters(from: generatedSegments).map(\.startTime))
+        // Derive only when eligibility is checked, from the already composed
+        // reading. Displayed chapter markers can precede canonical row order.
+        let chapterStarts = Set(ChapterExtractor.chapters(
+            from: content.generationSegments(meetingID: review.meeting.id)).map(\.startTime))
         guard suggestsMeetingTitle
                 || suggestsRecipe
                 || !chapterStarts.isSubset(of: titledChapterStarts)

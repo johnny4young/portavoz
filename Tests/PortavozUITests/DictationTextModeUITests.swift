@@ -11,7 +11,7 @@ final class DictationTextModeUITests: PortavozUITestCase {
         let original = try makeApplication(in: app)
         let originalBytes = try Data(contentsOf: original)
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
         XCTAssertTrue(app.openSettingsCategory("settings-category-audio", revealing: "settings-dictation-text-mode"))
         let global = app.control(withIdentifier: "settings-dictation-text-mode")
         try select(.clean, prefix: "settings-dictation-text-mode", in: app)
@@ -41,6 +41,8 @@ final class DictationTextModeUITests: PortavozUITestCase {
         XCTAssertTrue(renderedText(of: profile).contains(cleanTitle), "A new profile starts with the chosen global mode")
         try select(.literal, prefix: prefix, in: app)
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: profile).contains("Literal") })
+        let translation = app.control(withIdentifier: "settings-dictation-profile-translate-app.portavoz.profile.fixture")
+        XCTAssertTrue(renderedText(of: translation).contains("Default"), "A new profile follows the default translation")
         XCTAssertTrue(renderedText(of: global).contains(cleanTitle), "An application override must not rewrite the default")
         let remove = app.buttons["settings-dictation-profile-remove-app.portavoz.profile.fixture"]
         try revealSettings(remove, in: app)
@@ -55,7 +57,7 @@ final class DictationTextModeUITests: PortavozUITestCase {
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
             #"{"globalDictationEnabled":true,"dictationTextMode":"literal","dictationApplicationTextProfiles":"not json"}"#
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
         XCTAssertTrue(app.openSettingsCategory("settings-category-audio", revealing: "settings-dictation-text-mode"))
         try openProfiles(in: app)
         let warning = app.staticTexts["settings-dictation-profiles-invalid"]
@@ -82,7 +84,7 @@ final class DictationTextModeUITests: PortavozUITestCase {
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
             #"{"globalDictationEnabled":true,"dictationTextMode":"literal"}"#
         app.launchPortavoz()
-        defer { app.terminate() }
+        defer { finishUITestApplication(app) }
         let dictate = app.buttons["menu-bar-dictate"]
         XCTAssertTrue(dictate.waitForHittable(timeout: 5))
         dictate.click()
@@ -115,7 +117,7 @@ final class DictationTextModeUITests: PortavozUITestCase {
     private func revealSettings(_ control: XCUIElement, in app: XCUIApplication) throws {
         let window = app.windows.containing(.any, identifier: "settings-search-field").firstMatch
         let form = window.scrollViews.element(boundBy: 1)
-        _ = try XCTUnwrap(control.revealVertically(in: form, maxScrolls: 3, maximumStep: 240) ? control : nil,
+        _ = try XCTUnwrap(control.revealVertically(in: form, maxScrolls: 6, maximumStep: 240) ? control : nil,
                           "The settings control must be fully visible before interaction")
     }
 

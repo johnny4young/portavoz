@@ -54,6 +54,7 @@ INTERACTION_SOURCE_PATHS = (
     "Sources/portavoz-app/MeetingPlayerBar.swift",
     "Sources/portavoz-app/MeetingRecapSheet.swift",
     "Sources/portavoz-app/MeetingTranscriptSection.swift",
+    "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
     "Sources/portavoz-app/MirrorCard.swift",
     "Sources/portavoz-app/SpeakerPill.swift",
     "Sources/portavoz-app/SummaryClaimFeedbackView.swift",

@@ -3,9 +3,9 @@
 
 The selector is intentionally conservative: known presentation files map to
 feature-level smoke tests, localization and shared composition changes run the
-whole bilingual suite, and an unknown production Swift path falls back to the
-whole English suite. Documentation, governance, CLI, and package-test-only
-changes do not spend a macOS UI runner.
+whole suite, and an unknown production Swift path falls back to the whole
+suite. Every selection runs in English only. Documentation, governance, CLI,
+and package-test-only changes do not spend a macOS UI runner.
 """
 
 from __future__ import annotations
@@ -57,6 +57,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "AutomationUITests",
             "testRecordingAutomationRoutesStartAndStopThroughVisibleApp",
         ),
+        test_id("AutomationUITests", "testOpenDictationsShortcutShowsItsSearch"),
     ),
     "home": (
         test_id("HomeUITests", "testTodayShowsAgendaOpenWorkAndRecentMeetingsAboveTheFold"),
@@ -90,6 +91,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("LibraryUITests", "testRecordingWarnsWhenIncomingAudioClips"),
         test_id("LibraryUITests", "testColdRecordingStartsLiveCaptionsWhenModelBecomesReady"),
         test_id("LibraryUITests", "testLiveTranscriptYieldsFollowWhileReadingHistory"),
+        test_id("LibraryUITests", "testOwnedTokenPreviewRetiresWithoutEnteringCanonicalCaption"),
         test_id("LibraryUITests", "testLiveTranslationUsesADistinctLabeledRail"),
         test_id("LibraryUITests", "testRecordingOffersObjectivesNextQuestionAndTalkBalance"),
         test_id("LibraryUITests", "testLaunchRecoversInterruptedStagingAudio"),
@@ -143,6 +145,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id("LibraryUITests", "testAskConfirmedMemoryLoadsAllTopicJobsAndExactCitations"),
         test_id("LibraryUITests", "testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState"),
+        test_id("DictationHistoryUITests", "testAskAboutDictationsCitesAndOpensTheDictation"),
     ),
     "insights": (
         test_id("InsightsUITests", "testInsightsShowsCompleteLocalDashboard"),
@@ -190,6 +193,8 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     "onboarding": (
         test_id("OnboardingUITests", "testAdvancesFromFirstListenToLocalVoiceEnrollment"),
         test_id("OnboardingUITests", "testModelFailureCanContinueBackAndRetryWithoutDownloading"),
+        test_id("DictationPracticeUITests", "testOnboardingDictationStepPracticesInItsOwnFieldWithoutTheClipboard"),
+        test_id("DictationPracticeUITests", "testOnboardingDictationStepOffersShortcutAndAccessibilityOnceTurnedOn"),
     ),
     "meeting-performance": (
         test_id("MeetingDetailUITests", "testFiveThousandSegmentDetailRendersFromDisposableScaleFixture"),
@@ -302,9 +307,20 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "testSequoiaApuntadorRefreshPreservesStaleAnswers",
         ),
     ),
+    "meeting-translation": (
+        test_id(
+            "MeetingTranscriptTranslationUITests",
+            "testATranscriptIsTranslatedOnRequestAndTheOriginalStaysOneClickAway",
+        ),
+        test_id("MeetingTranscriptTranslationUITests", "testMissingLanguagesPointToTheirDownload"),
+    ),
     "settings-navigation": (
         test_id("SettingsUITests", "testCategoryNavigationRevealsEachPane"),
         test_id("SettingsUITests", "testLanguageToggleSwitchesVisibleTextWithoutRelaunch"),
+    ),
+    "settings-integrations": (
+        test_id("CommandLineToolUITests", "testIntegrationsInstallsAndRemovesTheCommandLineToolLink"),
+        test_id("CommandLineToolUITests", "testABuildWithoutTheToolSaysSo"),
     ),
     "settings-skills": (
         test_id(
@@ -411,6 +427,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("SettingsUITests", "testSyncPaneKeepsOptInAndExistingLibrarySeparate"),
         test_id("SettingsUITests", "testDataPaneExportsARedactedLocalSupportFile"),
         test_id("SettingsUITests", "testDataPaneExportsAReadableWholeLibraryMarkdownBackup"),
+        test_id("SettingsUITests", "testDataPaneCreditsTheOnDeviceModels"),
     ),
     "production-sync": (
         test_id("SettingsUITests", "testSyncPaneKeepsOptInAndExistingLibrarySeparate"),
@@ -425,10 +442,27 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("SettingsUITests", "testIntelligencePaneCreatesACustomStructure"),
     ),
     "dictation": (
+        test_id("DictationPolishUITests", "testPolishIsOfferedAsTheDefaultTextMode"),
+        test_id("SelectionRewriteUITests", "testRewriteSelectionPreviewsBeforeReplacing"),
+        test_id("SelectionRewriteUITests", "testARecipeRewriteIsNeverPastedOverAChangedSelection"),
+        test_id("SelectionRewriteUITests", "testRewritingWithoutASelectionExplainsWhatToDo"),
+        test_id("SelectionRewriteUITests", "testSayingHowRewritesTheSelectionWithTheSpokenInstruction"),
+        test_id("DictationCorrectionUITests", "testASpokenCorrectionChangesTheLastDictationInsteadOfPasting"),
+        test_id("DictationCorrectionUITests", "testTheDictionaryGroupsEveryHeardFormUnderItsSpelling"),
+        test_id("DictationPolishUITests", "testAPolishedDictationCanStillBePastedWithoutPolish"),
+        test_id("DictationPolishUITests", "testPolishingCanBeSkippedToPasteTheCleanText"),
+        test_id("DictationPolishUITests", "testARewriteThatChangesTheMeaningPastesCleanAndSaysWhy"),
+        test_id("DictationPolishUITests", "testARecipeCanBeCreatedAndChosenAsTheDefault"),
+        test_id("DictationPolishUITests", "testARecipeShapesTheDictationAndKeepsItsFacts"),
+        test_id("DictationTranslationUITests", "testATranslatedDictationCanStillBePastedInTheOriginal"),
+        test_id("DictationTranslationUITests", "testMissingLanguagesPasteTheOriginalAndSaySo"),
+        test_id("DictationTranslationUITests", "testTranslatingCanBeSkippedToPasteTheOriginal"),
+        test_id("DictationTranslationUITests", "testTranslationIsChosenInSettingsWithTheLanguageStatus"),
         test_id("DictationTextModeUITests", "testApplicationProfileUsesNativePickerAndKeepsTheOriginal"),
         test_id("DictationTextModeUITests", "testCorruptProfilesShowAnExplicitResetWithoutChangingTheDefault"),
         test_id("DictationTextModeUITests", "testSessionModeOverrideCancelsAndRestartsWithoutChangingDefaults"),
         test_id("DictationUITests", "testDeliveredDictationDistinguishesDispatchFromVerification"),
+        test_id("DictationUITests", "testSilentDictationIsOfferedToCopyInsteadOfPasted"),
         test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),
         test_id("SettingsUITests", "testAppleSpeechInspectionFailureOffersExplicitRetry"),
         test_id("DictationUITests", "testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart"),
@@ -439,11 +473,31 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("DictationUITests", "testMicrophoneDenialRemainsRecoverableWithoutOpeningAudio"),
         test_id("DictationUITests", "testMissingMicrophoneAudioShowsFallbackAndAllowsRestart"),
         test_id("DictationUITests", "testPreparingDictationCanCancelWithoutAListeningClaim"),
+        test_id("DictationUITests", "testLoadingModelLooksDifferentFromDictating"),
+        test_id("DictationUITests", "testCompactIndicatorShowsOnlyTheLevelAndTime"),
+        test_id("DictationUITests", "testCompactIndicatorOpensTheFullPanelForAFailure"),
+        test_id("DictationUITests", "testUnverifiedNoticeClosesWithItsCloseButton"),
+        test_id("DictationUITests", "testCompactIndicatorCanBeDraggedWhileDictating"),
         test_id("DictationUITests", "testUndeliveredTextCanBeCopiedAndExplicitlyRetried"),
         test_id("DictationUITests", "testUndeliveredTextSurvivesAnotherTriggerUntilDiscarded"),
         test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
         test_id("SettingsUITests", "testDictationRecoversShortcutConflictAndRefreshesHelp"),
         test_id("SettingsUITests", "testDictationRepairsCorruptShortcutWithoutLeavingSettings"),
+        test_id("SettingsUITests", "testHeldFnTriggerExplainsTheGlobeKeySetting"),
+        test_id("SettingsUITests", "testParakeetUltraIsAnExplicitDictationOnlyDownload"),
+        test_id("SettingsUITests", "testAnUltraDownloadInFlightCanBeCancelled"),
+        test_id("DictationPracticeUITests", "testOnboardingDictationStepPracticesInItsOwnFieldWithoutTheClipboard"),
+        test_id("DictationPracticeUITests", "testOnboardingDictationStepOffersShortcutAndAccessibilityOnceTurnedOn"),
+        test_id("DictationPracticeUITests", "testSettingsPracticeFieldReceivesDictationWithoutTheClipboard"),
+        test_id("DictationHistoryUITests", "testHistoryStartsOffAndTurnsOnFromTheDictationsPage"),
+        test_id("DictationHistoryUITests", "testSavedDictationsCanBeDeletedOneByOneOrAll"),
+        test_id("DictationHistoryUITests", "testADictationSavedToHistorySaysSoInsteadOfNothingWasSaved"),
+        test_id("DictationHistoryUITests", "testSettingsAskForHistoryConsentWithEverySwitchOff"),
+        test_id("DictationHistoryUITests", "testSearchAndFiltersNarrowTheHistory"),
+        test_id("DictationHistoryUITests", "testADictationCanBeAddedToAMeetingsNotes"),
+        test_id("DictationHistoryUITests", "testAskAboutDictationsCitesAndOpensTheDictation"),
+        test_id("DictationHistoryUITests", "testStatisticsSummarizeTheWeekWithoutTheHistory"),
+        test_id("DictationHistoryUITests", "testStatisticsStartOffAndTurnOnFromSettings"),
     ),
     "settings-audio": (
         test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),
@@ -452,6 +506,9 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
         test_id("SettingsUITests", "testDictationRecoversShortcutConflictAndRefreshesHelp"),
         test_id("SettingsUITests", "testDictationRepairsCorruptShortcutWithoutLeavingSettings"),
+        test_id("SettingsUITests", "testHeldFnTriggerExplainsTheGlobeKeySetting"),
+        test_id("SettingsUITests", "testParakeetUltraIsAnExplicitDictationOnlyDownload"),
+        test_id("SettingsUITests", "testAnUltraDownloadInFlightCanBeCancelled"),
     ),
     "settings-voice": (
         test_id(
@@ -483,13 +540,13 @@ MEETING_FEATURES = frozenset(
 SETTINGS_FEATURES = frozenset(feature for feature in ALL_FEATURES if feature.startswith("settings-"))
 # Copy/localization and shared-harness changes can alter every accessibility
 # query or localized assertion. They are integration changes, so the safe
-# expansion is the complete bilingual catalog rather than a small canary set.
+# expansion is the complete catalog rather than a small canary set.
 HARNESS_TESTS = ALL_TESTS
 
 # Changes to these shared owners can alter what gets built, selected, measured,
-# or accepted as UI evidence. They therefore require one complete bilingual
+# or accepted as UI evidence. They therefore require one complete English
 # run even when they do not change product presentation directly.
-FULL_BILINGUAL_HARNESS_FILES = frozenset({
+FULL_HARNESS_FILES = frozenset({
     "Package.swift",
     "packaging/portavoz-uitests.entitlements",
     ".github/workflows/ui-tests.yml",
@@ -521,7 +578,7 @@ FULL_BILINGUAL_HARNESS_FILES = frozenset({
 
 # The native interruption controls compile and qualify only these owners. A
 # change here, or anywhere in the fixture target, requires the controls; an
-# unrelated full-bilingual fallback such as localization does not.
+# unrelated full-catalog fallback such as localization does not.
 INTERRUPTION_CONTROL_FILES = frozenset({
     ".github/workflows/ui-tests.yml",
     "Makefile",
@@ -546,7 +603,7 @@ def requires_interruption_controls(path: str) -> bool:
 # These owners can change which real Apuntador workloads qualify, but they do
 # not build, select, measure, or accept XCUITest itself. Exercise the exact
 # user-visible owners reached by the leak matrix instead of paying for every
-# unrelated UI journey. Candidate automation remains a full bilingual harness
+# unrelated UI journey. Candidate automation remains a full-catalog harness
 # owner above because it validates the UI receipt itself.
 APUNTADOR_LEAK_EVIDENCE_FILES = frozenset({
     "Sources/portavoz-app/BenchMode.swift",
@@ -616,8 +673,10 @@ FEATURE_SOURCE_SENTINELS: dict[str, str] = {
     "meeting-health": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
     "meeting-audio": "Sources/portavoz-app/MeetingPlayerBar.swift",
     "meeting-correction": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+    "meeting-translation": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
     "settings-navigation": "Sources/portavoz-app/SettingsView.swift",
     "settings-skills": "Sources/portavoz-app/SkillsSettingsSection.swift",
+    "settings-integrations": "Sources/portavoz-app/CommandLineToolSection.swift",
     "settings-standing-skills": "Sources/portavoz-app/StandingSkillRulesSection.swift",
     "settings-data": "Sources/portavoz-app/AppServices+MeetingSync.swift",
     "settings-transfer": "Sources/portavoz-app/SettingsTransferSection.swift",
@@ -657,6 +716,11 @@ NO_UI_FILES = {
 }
 
 
+# Automatic selection never schedules Spanish; `make test-ui-es` stays a
+# manual, non-gating pass and localization parity is a unit-test concern.
+SELECTION_LOCALES = ("en",)
+
+
 @dataclass(frozen=True)
 class Selection:
     tests: tuple[str, ...]
@@ -687,6 +751,8 @@ def tests_for_ui_test_file(path: str) -> set[str]:
 
 def app_features(filename: str) -> set[str]:
     lowered = filename.lower()
+    if "commandlinetool" in lowered:
+        return {"settings-integrations"}
     if "liveassistvalidation" in lowered:
         return {"live-assist"}
     if "backgroundwork" in lowered:
@@ -783,7 +849,10 @@ def app_features(filename: str) -> set[str]:
     # the Settings controls. Keep this ahead of generic presentation buckets.
     if any(
         token in lowered
-        for token in ("dictation", "mousebutton", "mouseptt", "hotkey", "textinserter", "pasteboardsnapshot")
+        for token in (
+            "dictation", "mousebutton", "mouseptt", "hotkey", "textinserter", "pasteboardsnapshot",
+            "selectionrewrite", "selectioncapture",
+        )
     ):
         return {"dictation"}
     if "semanticsearchpreparation" in lowered:
@@ -827,12 +896,14 @@ def app_features(filename: str) -> set[str]:
     if "legacyscrollinteractiontracker" in lowered:
         # This AppKit escape exists only for reader-owned live transcript
         # history on macOS 14. Keep a new focused bridge from silently
-        # expanding one interaction fix to the complete bilingual suite.
+        # expanding one interaction fix to the complete suite.
         return {"recording-recovery"}
     if any(token in lowered for token in (
         "meetingdetailperformancetrace", "scalebenchmark"
     )):
         return {"meeting-performance"}
+    if any(token in lowered for token in ("transcripttranslation", "meetingtranslation")):
+        return {"meeting-translation"}
     if "transcriptsegments" in lowered:
         return {
             "meeting-audio", "meeting-correction", "meeting-evidence", "meeting-performance"
@@ -957,6 +1028,7 @@ def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
     if lowered in {
         "sources/applicationkit/processaudioimports+ownedadapters.swift",
+        "sources/applicationkit/audioimportformats.swift",
         "sources/applicationkit/processaudioimports.swift",
         "sources/platformkit/audioimportfiletransfer.swift",
         "sources/platformkit/localaudioimportfiles+acquisition.swift",
@@ -1149,7 +1221,6 @@ def lower_layer_features(path: str) -> set[str]:
 
 def select_paths(paths: Iterable[str]) -> Selection:
     selected: set[str] = set()
-    locales: set[str] = {"en"}
     reasons: list[str] = []
     interruption_controls = False
 
@@ -1167,14 +1238,12 @@ def select_paths(paths: Iterable[str]) -> Selection:
 
         if path == "Resources/Localization/Portavoz/Localizable.xcstrings":
             selected.update(HARNESS_TESTS)
-            locales.add("es")
-            reasons.append(f"{path}: complete bilingual localization fallback")
+            reasons.append(f"{path}: complete localization fallback")
             continue
 
-        if path in FULL_BILINGUAL_HARNESS_FILES or path.startswith(INTERRUPTION_FIXTURE_PREFIX):
+        if path in FULL_HARNESS_FILES or path.startswith(INTERRUPTION_FIXTURE_PREFIX):
             selected.update(HARNESS_TESTS)
-            locales.add("es")
-            reasons.append(f"{path}: complete bilingual shared-harness fallback")
+            reasons.append(f"{path}: complete shared-harness fallback")
             continue
 
         if path == "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift":
@@ -1186,9 +1255,8 @@ def select_paths(paths: Iterable[str]) -> Selection:
 
         if path in APUNTADOR_LEAK_EVIDENCE_FILES:
             selected.update(feature_tests(APUNTADOR_LEAK_UI_FEATURES))
-            locales.add("es")
             reasons.append(
-                f"{path}: bilingual Apuntador leak-matrix journeys"
+                f"{path}: Apuntador leak-matrix journeys"
             )
             continue
 
@@ -1202,9 +1270,8 @@ def select_paths(paths: Iterable[str]) -> Selection:
                     "testAskConversationAnswersAndSeeksToExactCitation",
                 )
             )
-            locales.add("es")
             reasons.append(
-                f"{path}: bilingual deterministic Web Ask journey"
+                f"{path}: deterministic Web Ask journey"
             )
             continue
 
@@ -1213,9 +1280,8 @@ def select_paths(paths: Iterable[str]) -> Selection:
             "docs/evidence/live-assist-validation-budget.json",
         }:
             selected.update(feature_tests({"live-assist"}))
-            locales.add("es")
             reasons.append(
-                f"{path}: bilingual live-assistance evidence journey"
+                f"{path}: live-assistance evidence journey"
             )
             continue
 
@@ -1245,15 +1311,12 @@ def select_paths(paths: Iterable[str]) -> Selection:
                 "UITestDefaults.swift",
             }:
                 selected.update(HARNESS_TESTS)
-                locales.add("es")
                 reasons.append(
-                    f"{path}: complete bilingual seed-fixture fallback"
+                    f"{path}: complete seed-fixture fallback"
                 )
                 continue
             features = app_features(file_name)
             selected.update(feature_tests(features))
-            if file_name == "PortavozAppIntents.swift":
-                locales.add("es")
             reasons.append(f"{path}: {', '.join(sorted(features))}")
             continue
 
@@ -1278,10 +1341,9 @@ def select_paths(paths: Iterable[str]) -> Selection:
         reasons.append(f"{path}: unknown executable impact (full fallback)")
 
     ordered_tests = tuple(test for test in ALL_TESTS if test in selected)
-    ordered_locales = tuple(locale for locale in ("en", "es") if locale in locales) if ordered_tests else ()
     return Selection(
         ordered_tests,
-        ordered_locales,
+        SELECTION_LOCALES if ordered_tests else (),
         tuple(dict.fromkeys(reasons)),
         interruption_controls=interruption_controls,
     )
@@ -1537,7 +1599,7 @@ def parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Compare --base with the current index, working tree, and untracked files",
     )
-    result.add_argument("--all", action="store_true", help="Select every UI test in both locales")
+    result.add_argument("--all", action="store_true", help="Select every UI test in English")
     result.add_argument("--format", choices=("human", "github", "shell"), default="human")
     result.add_argument("--validate-catalog", action="store_true", help="Fail if a UI test lacks a selector")
     return result
@@ -1554,7 +1616,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if arguments.all:
         selection = Selection(
-            ALL_TESTS, ("en", "es"), ("explicit full-suite request",), interruption_controls=True)
+            ALL_TESTS, SELECTION_LOCALES, ("explicit full-suite request",), interruption_controls=True)
     else:
         paths = arguments.paths
         if arguments.working_tree:

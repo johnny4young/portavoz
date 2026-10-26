@@ -5,7 +5,7 @@ import TranscriptionKit
 import XCTest
 
 @testable import portavoz_app
-@testable import portavoz_cli
+@testable import PortavozCLIKit
 
 @MainActor
 final class DictationControllerModelTests: XCTestCase {

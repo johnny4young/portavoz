@@ -120,9 +120,9 @@ public enum ModelCatalog {
         id: "parakeet-tdt-0.6b-v3-coreml",
         tasks: [.liveTranscription, .finalTranscription],
         displayName: "Parakeet TDT 0.6B v3 (CoreML)",
-        // FluidAudio resolves this exact folder (repo name minus "-coreml");
-        // any other name makes it re-download the repo itself, UNVERIFIED,
-        // into a sibling directory. Verified on disk 2026-07-06.
+        // Preserve the established installed layout (repo minus "-coreml").
+        // ParakeetEngine uses loadLocal on this exact verified directory;
+        // only ModelStore may download the curated artifacts.
         folderName: "parakeet-tdt-0.6b-v3",
         resolveBase: URL(
             string:

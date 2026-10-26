@@ -13,10 +13,12 @@ final class MeetingDetailModel {
     struct State {
         fileprivate(set) var phase: LoadPhase = .idle
         fileprivate(set) var readModel: MeetingReviewReadModel?
+        fileprivate(set) var transcriptPresentationState = MeetingDetailTranscriptPresentationState()
+        var transcriptPresentation: MeetingDetailTranscriptPresentation? { transcriptPresentationState.presentation }
         fileprivate(set) var nameSuggestions: [MeetingNameSuggestion] = []
         fileprivate(set) var isSuggestingNames = false
         fileprivate(set) var voiceSuggestions: [MeetingVoiceSuggestion] = []
-        fileprivate(set) var chapterTitles: [TimeInterval: String] = [:]
+        var chapterTitles: [TimeInterval: String] { transcriptPresentationState.chapterTitles }
         fileprivate(set) var suggestedTitle: String?
         fileprivate(set) var suggestedRecipe: Recipe?
         fileprivate(set) var dismissedThinSummaryVersion: Int?
@@ -41,6 +43,7 @@ final class MeetingDetailModel {
     private var metadataSuggestionState = MeetingDetailMetadataSuggestionState()
     private var didLoadVoiceSuggestions = false
     private var playbackDirectoryAttempt: String?
+    private let audioCompressionAdmission = MeetingDetailAudioCompressionState()
 
     init(
         meetingID: MeetingID,
@@ -78,6 +81,7 @@ final class MeetingDetailModel {
     /// invalidates the application playback facade and allows a clean reload
     /// if this route instance appears again.
     func invalidatePlayback() {
+        audioCompressionAdmission.invalidate()
         state.playback?.session.invalidate()
         state.playback = nil
         playbackDirectoryAttempt = nil
@@ -92,6 +96,7 @@ final class MeetingDetailModel {
                 reviewAccumulator.accepts(observationID: currentID)
             else { return }
             publish(update)
+            if MeetingDetailAudioCompressionState.requiresRefresh(update) { await refreshAudioCompressionAdmission() }
         }
     }
 
@@ -229,6 +234,10 @@ final class MeetingDetailModel {
         switch action {
         case .loadPlayback:
             await loadPlayback()
+            return nil
+        case .refreshCompressionPermission:
+            guard !Task.isCancelled else { return nil }
+            await refreshAudioCompressionAdmission()
             return nil
         case .compressAudio:
             return await compressAudio()
@@ -622,11 +631,10 @@ private extension MeetingDetailModel {
     }
 
     func loadMetadataSuggestions() async {
-        let titledStarts = Set(state.chapterTitles.keys)
-        guard let detail = state.readModel,
+        guard let detail = state.readModel, let presentation = state.transcriptPresentation,
             let attempt = metadataSuggestionState.begin(
-                review: detail,
-                titledChapterStarts: titledStarts)
+                review: detail, content: presentation.current,
+                titledChapterStarts: Set(state.chapterTitles.keys))
         else { return }
 
         do {
@@ -642,7 +650,11 @@ private extension MeetingDetailModel {
             if attempt.suggestsRecipe {
                 state.suggestedRecipe = suggestions.recipe
             }
-            state.chapterTitles.merge(suggestions.chapterTitles) { _, new in new }
+            var next = state
+            if next.transcriptPresentationState.mergeChapterTitles(
+                suggestions.chapterTitles, detail: state.readModel) {
+                state = next
+            }
         } catch is CancellationError {
             // A newer read revision retries every still-eligible suggestion.
         } catch {
@@ -673,6 +685,8 @@ private extension MeetingDetailModel {
                 return
             }
             state.playback = prepared
+            // The route delivers its pending seek before the optional
+            // permission refresh can suspend this playback task.
         } catch is CancellationError {
             playbackDirectoryAttempt = nil
         } catch {
@@ -681,35 +695,35 @@ private extension MeetingDetailModel {
         }
     }
 
+    func refreshAudioCompressionAdmission() async {
+        guard let refreshed = await audioCompressionAdmission.refresh(state: state, client: client),
+              MeetingDetailAudioCompressionState.isCurrent(refreshed, state: state) else { return }
+        if state.playback?.canCompressAudio != refreshed.playback.canCompressAudio {
+            state.playback = refreshed.playback
+        }
+    }
+
     func compressAudio() async -> Effect? {
-        guard !state.isCompressingAudio,
-            state.playback?.canCompressAudio == true,
-            let relative = state.readModel?.meeting.audioDirectory
-        else { return nil }
+        guard let request = MeetingDetailAudioCompressionState.compressionRequest(for: state) else { return nil }
         state.isCompressingAudio = true
         state.audioCompressionMessage = nil
         defer { state.isCompressingAudio = false }
 
         do {
-            let result = try await client.compressMeetingDetailAudio(
-                CompressMeetingAudioRequest(relativeAudioDirectory: relative))
+            let result = try await client.compressMeetingDetailAudio(request)
             let previous = state.playback
             state.playback = nil
             playbackDirectoryAttempt = nil
             previous?.session.invalidate()
             await loadPlayback()
-            let freed = ByteCountFormatter.string(
-                fromByteCount: result.bytesFreed,
-                countStyle: .file)
-            state.audioCompressionMessage = L10n.format(
-                "Audio compressed — %@ freed.",
-                freed)
+            state.audioCompressionMessage = MeetingDetailAudioCompressionState.message(bytesFreed: result.bytesFreed)
             return .audioCompressed(result.bytesFreed)
         } catch is CancellationError {
             return nil
         } catch {
-            state.audioCompressionMessage = error.localizedDescription
-            return .operationFailed(error.localizedDescription)
+            let message = UseCaseErrorMessages.describe(error)
+            state.audioCompressionMessage = message
+            return .operationFailed(message)
         }
     }
 
@@ -754,37 +768,29 @@ private extension MeetingDetailModel {
     }
 }
 
-extension MeetingDetailModel {
-    /// The exact artifact one offer would produce — read-only, computed for
-    /// the confirmation sheet before anything durable exists.
-    func skillPreview(_ offer: MeetingSkillOffer, destination: String?) async -> MeetingSkillPreview? {
-        do {
-            return try await client.meetingDetailSkillPreview(
-                offer,
-                destination: destination)
-        } catch {
-            state.lastActionError = L10n.text(
-                "Could not build this action's preview.")
-            return nil
-        }
-    }
-}
-
 private extension MeetingDetailModel {
     func publish(_ update: MeetingReviewUpdate) {
         // Reject optional intelligence generated from an older projection.
         let transition = reviewAccumulator.apply(update)
         metadataSuggestionState.invalidate(correctionRevisionChanged: transition.correctionRevisionChanged)
         if transition.correctionRevisionChanged {
-            state.chapterTitles = [:]
             state.suggestedTitle = nil
             state.suggestedRecipe = nil
         }
         if transition.shouldInvalidatePlayback {
             invalidatePlayback()
         }
-        state.readModel = transition.readModel
-        state.phase = transition.phase
-        state.revision += 1
+        var next = state
+        next.readModel = transition.readModel
+        if case .core = update {
+            // Every delivered core is authoritative, even if its revision ID
+            // matches: refinement, rows or speakers may still have changed.
+            next.transcriptPresentationState.receiveCore(
+                transition.readModel, resetChapterTitles: transition.correctionRevisionChanged)
+        }
+        next.phase = transition.phase
+        next.revision += 1
+        // Publish the matching read model and derived reading together.
+        state = next
     }
 }

@@ -46,10 +46,7 @@ CROSS_HOST_PROFILE_SPECS = (
         "maximumPhysicalMemoryBytes": None,
     },
 )
-CROSS_HOST_OPERATING_SYSTEMS = (
-    {"family": "sequoia", "majorVersion": 15},
-    {"family": "tahoe", "majorVersion": 26},
-)
+CROSS_HOST_OPERATING_SYSTEMS = ({"family": "tahoe", "majorVersion": 26},)
 CANONICAL_CONFIGURATION = {
     "measurementRuns": 20,
     "warmupRuns": 2,

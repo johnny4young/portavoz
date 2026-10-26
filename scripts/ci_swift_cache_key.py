@@ -13,7 +13,7 @@ import subprocess
 
 
 ROOT = Path(__file__).resolve().parents[1]
-LANES = ("build-and-test", "sequoia-compatibility")
+LANES = ("build-and-test",)
 # These owners define the dependency graph, compiler arguments and cache policy.
 INPUTS = (
     "Package.swift",

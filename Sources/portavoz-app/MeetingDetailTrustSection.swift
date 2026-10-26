@@ -29,14 +29,16 @@ struct MeetingDetailTrustValues {
     /// The section renders only while processing needs attention or is
     /// still running; privacy and action history live in the activity line.
     static func make(detail: MeetingReviewReadModel) -> MeetingDetailTrustValues? {
+        // Translation reports its own state in the transcript header.
+        let jobs = detail.processingJobs.filter { $0.kind != .transcriptTranslation }
         let hasProcessingState = detail.meeting.lifecycleState == .needsAttention
-            || detail.processingJobs.contains {
+            || jobs.contains {
                 $0.state == .pending || $0.state == .running || $0.state == .failed
             }
         guard hasProcessingState else { return nil }
         return MeetingDetailTrustValues(
             lifecycleState: detail.meeting.lifecycleState,
-            processingJobs: detail.processingJobs,
+            processingJobs: jobs,
             hasSavedAudio: detail.meeting.audioDirectory != nil,
             lastProcessingError: detail.meeting.lastProcessingError)
     }

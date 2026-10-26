@@ -37,6 +37,10 @@ The onboarding view uses a bounded observable preparation state with closed,
 localized failure categories and explicit retry/continue actions. The view
 never owns model leases or cancels process-shared loads; existing AppServices
 readiness and audio-first capture remain the authority.
+`ModelStore` reports a full disk or quota as `ModelStoreError.outOfSpace(path:)`,
+whether URLSession could not write its temporary download or a local stage or
+publish write failed, so onboarding offers storage recovery. Other transfer
+failures keep their existing download-error contract.
 
 Feature parity is a permanent constraint: audio and user-owned data remain
 discoverable when transcription, diarization, generation, indexing, sync, or an
@@ -62,7 +66,11 @@ copies are never treated as transaction-owned cleanup. The app adapter owns prog
 
 `portavoz-app` and `portavoz-cli` are the current composition roots. They link
 the concrete capability modules needed to construct production adapters and
-also enter characterized workflows through `ApplicationKit`.
+also enter characterized workflows through `ApplicationKit`. The command-line
+sources compile as the `PortavozCLIKit` library: the `portavoz-cli` executable
+only calls it, and the app's `PortavozLauncher` calls it instead of starting
+the app when the process was launched as `portavoz-cli`, the name of the link
+the bundle ships in `Contents/Helpers`.
 
 ```mermaid
 flowchart TB
@@ -134,7 +142,10 @@ self-contained over system frameworks and carries no module dependency.
 The app composition shares microphone permission and preferred-input selection
 between meeting capture and global dictation. Dictation's session-scoped
 `DictationMicrophoneReadiness` owns first-frame admission and the bounded input
-startup wait, not model residency or native teardown. The controller retains
+startup wait, not model residency or native teardown. A session-owned
+`DictationRuntimeAcquisition` loads the model while the microphone is already
+open; the relay holds earlier speech, bounded by `DictationRelayPolicy`.
+The controller retains
 the runtime lease through cleanup and fences late callbacks by session identity;
 SwiftUI only renders preparation, fallback and failure states. Composition
 accepts the process-scoped controller as an initializer dependency so tests can
@@ -161,16 +172,58 @@ remote replacement cannot silently undo a dismissal or deferral.
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access, microphone authorization, and regular persistent file bookmarks while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
 | `AudioCaptureKit` | Call-safe raw microphone capture, explicit nondefault voice processing for bounded nonmeeting tools, macOS process taps, checked PCM geometry and native buffer views, single-owner failed-source retirement, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
-| `TranscriptionKit` | Live Parakeet, quality Whisper, and an optional macOS 26 SpeechAnalyzer live adapter for fixed installed locales; a CLI-only non-serving Nemotron challenger; a verified non-serving Silero voice-activity adapter; transcript scheduling; language-aware operation fingerprints; model preparation tokens; segment mapping; structured SpeechAnalyzer input ownership; and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
+| `TranscriptionKit` | Live Parakeet, quality Whisper, and an optional macOS 26 SpeechAnalyzer live adapter for fixed installed locales; a CLI-only non-serving Nemotron challenger; a verified Silero voice-activity adapter serving only the default-on dictation speech gate; transcript scheduling; language-aware operation fingerprints; model preparation tokens; segment mapping; structured SpeechAnalyzer input ownership; and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, session-clock-anchored live windowing, and encrypted local voice-gallery support. |
 | `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Apuntador plus pure bounded proactive meeting-assist admission; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
 | `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, immutable transcript-correction history with atomic multi-lane appends and sparse correction-search lineage, explicit topic and decision continuity with immutable evidence and append-only relationship history, explicitly confirmed decision-topic authority, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and correction-fenced Spotlight projections. |
 | `AudioPlaybackKit` | Synchronized channel playback, reversible role-aware clear mixing validated on the timescale it is delivered on, stateless task-cancellable Accelerate waveform generation, silence skipping, voice-only playback, clip export, and AAC compression. |
 | `IntegrationsKit` | Canonical Markdown/PDF, identity-preserving diarized SRT/WebVTT, and issue exports; meeting bundles; EventKit mapping; MCP protocol handling; policy-checked HTTP transport and direct public-page Web retrieval; deterministic sync envelopes; protected CloudKit record/state adapters; and sync lifecycle policy. The current signed-entitlement capability probe is a macOS composition and fails closed on iOS until a signed iOS app adapter exists. |
 | `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners including recording-scoped proactive-assist state, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
-| `portavoz-cli` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface. |
+| `portavoz-cli` / `PortavozCLIKit` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface, in a library the app executable also runs when started as `portavoz-cli`. |
 
 ### Audio export compatibility boundary
+
+`StorageKit.MeetingAudioLayout.channelExtensions` is the shared closed catalog
+for channel lookup and ApplicationKit meeting-bundle attachments: m4a, caf,
+wav, mp3, aac, aiff, aif and m4b. Existing compressed/captured precedence stays
+first; selected external audio retains its original bytes and extension.
+Playback, Refine, clips and with-audio bundles therefore resolve those imports
+through the same channel contract. Partial staging names remain invisible,
+and attachment metadata still rejects unsupported extensions and path shapes.
+ApplicationKit's `AudioImportFormats` exposes the same catalog to Library
+selection and drop, and StorageKit import admission rejects any other
+extension, so every admitted import remains resolvable. Library reserves one
+native chooser before dispatching its application-modal presentation to the next
+main-queue turn, outside menu tracking. Only an accepted response admits selected
+URLs; cancellation and aborted presentation release the reservation without an
+import. The panel remains app-modal rather than becoming a modeless window.
+Compression accepts
+only lossless channels (caf, wav, aiff, aif); imported mp3, aac and m4b are
+never re-encoded.
+
+Audio compression has an explicit ApplicationKit admission port. StorageKit
+admits only one live canonical directory owner; an import requires matching,
+validated input/job authority and immutable job success before destructive
+replacement. Missing or inconsistent import authority fails closed. Playback
+stays available when compression is denied. Meeting Detail refreshes this
+permission from core/job observations while retaining its current player and
+waveform; the compression workflow rechecks authority before invoking the codec.
+The directory-owner lookup uses a nonunique index while retaining the two-owner
+refusal. Permission reads remain awaited within the review observation consumer;
+they do not write storage or recreate the player.
+
+Playback preparation returns when its session and waveform are published. The
+route's existing directory-keyed SwiftUI task delivers pending citation seeks
+before awaiting a separate optional compression-permission action through the
+coordinator. That refresh retains the model's cancellation, generation,
+directory and session fences; it adds no task owner and cannot replace a healthy
+player. The initial application admission read and the backend's destructive
+compression check retain their existing authority boundaries.
+
+The model's focused skill-preview extension retains the existing read-only
+client request and routes preview failure through its explicit error mutation.
+This keeps the root model within its existing source-size limit without
+broadening state setters or changing skill confirmation ownership.
 
 `AudioPlaybackKit.AudioExportSession` owns the shared AAC export bridge used by
 both clip-export paths and compression. Composition, requested ranges, clear
@@ -191,6 +244,38 @@ and cleanup. No vendor type or preparation hook crosses the module's public
 boundary. Tests can enter the real engine methods without loading model assets
 and observe configuration requests and preparation failures. That evidence does
 not replace real-model quality, latency, or cancellation measurements.
+
+### Live token ownership
+
+Each Parakeet job owns one native manager and one `RevisionStream`, bound to its
+meeting and audio channel. The producer exposes raw token edits with a job ID,
+contiguous ordinal, previous/retained/stable prefix counts and absolute 16 kHz
+window/center sample bounds. Only the producer's stable prefix is irrevocable;
+confidence confirmation and synthesized token ends do not establish ownership.
+`ParakeetTokenRevisionReducer` validates lineage before mutation, commits each
+newly stable token once and retains the replaceable suffix. Timestamp/text
+similarity, epsilon windows and occurrence guessing do not decide ownership.
+The previous start-frontier mapper remains only a rejected-path characterization.
+
+Stable deltas carry transient word-boundary/continuation semantics through the
+shared caption coalescer. Literal repetition and equal-time subwords survive.
+`tokenPreview` snapshots are excluded from canonical captions and portable
+coding; both consumers replace or explicitly clear them, including empty
+retirement. Preview joining preserves the producer's leading boundary rather
+than trimming textual overlap. Apple range previews and unmarked engines retain
+their independent contracts. Recording microphone noise/admission policy stays
+in place; token authority is not proof of speech.
+
+An empty job validates terminal lineage without publishing a channel-scoped
+clear; no admitted PCM means no capture-channel authority.
+Successful drain requires an explicit terminal revision and commits the remaining
+suffix once. EOF without terminal, invalid lineage and producer failure cannot
+promote pending text. Non-cancel failure clears the preview and surfaces while
+capture is still feeding. Cancellation publishes no buffered text, cancels and
+joins the consumer before native cleanup. Strict native subscriptions are
+single-use; reset, late subscription or an already closed job cannot reopen
+lineage across suspended inference. Output termination still requests asynchronous
+job cancellation, not awaitable backend/accelerator-memory quiescence.
 
 ### First-listen speech lifetime
 
@@ -244,11 +329,18 @@ composition extension. Production composition acquires the shared live-speech
 token through a type-erased live-engine handle that ends it on completion.
 Recording and dictation share that boundary; batch callers retain the concrete
 Parakeet lease. App composition selects Parakeet by default or an explicitly
-chosen, installed Apple Speech locale on macOS 26. Core contains only the
-transient range-revision marker, not AppKit or Apple Speech types.
+chosen, installed Apple Speech locale on macOS 26. Dictation may also select
+the verified Parakeet Ultra checkpoint (`ParakeetCheckpoint.ultra`). One
+live-speech runtime stays resident and its checkpoint is part of its identity:
+`LiveSpeechCheckpointPlan` lets dictation borrow a v3 runtime a meeting is
+using, swaps an idle runtime, and makes every v3 caller wait for an Ultra
+dictation to finish. Meetings, batch passes and the synchronous recording
+attach never run Ultra. Core carries only transient
+live-update semantics (range revision, token preview, owned delta or word
+continuation), not AppKit or speech-provider types. It also keeps the last dictated text in memory only (`DictationLastText`, 15 minutes, cleared on sleep or lock) for an explicit paste-again action.
 
-Temporary meeting-store composition never registers Carbon hotkeys or mouse
-event taps. The explicit dictation fixture supplies synthetic PCM and a bounded
+Temporary meeting-store composition never registers Carbon hotkeys, mouse
+or held-modifier event taps. The explicit dictation fixture supplies synthetic PCM and a bounded
 caption producer; without that fixture it refuses dictation without requesting
 permissions, downloading models or opening a microphone. Fixture selection lives
 in `AppServices+DictationUITestFixture.swift`, not in the controller's pipeline.
@@ -465,7 +557,7 @@ Any provider, transport, decode, settlement, or interruption failure after the
 attempt begins is terminal outcome unknown and cannot trigger an automatic
 retry. Disposable UI automation exercises the same draft, codec, metadata,
 receipt, and settlement paths through a no-network provider-shaped response;
-real Keychain, GitHub, network, and physical Sequoia/Tahoe behavior remain
+real Keychain, GitHub, network, and physical Mac behavior remain
 field evidence.
 
 The resident pre-meeting brief uses the same execution authority without
@@ -1025,6 +1117,20 @@ per-note and aggregate budgets, an eight-second timeout, cancellation, and
 exact per-sentence numbered-citation admission keep evidence usable when
 generation abstains, is unavailable, fails, or times out.
 
+Dictation Ask is a second typed lane (`AskDictations`) with the same
+admission rules, shared through `AskTypedSource`. `LocalAskDictationRetrieval`
+reads the dictation history's FTS table through
+`MeetingStore.dictationRecordsForAsk`, which checks the history consent in the
+same read and returns nothing while it is off. `AskDictationQuestion` parses a
+period, a saved app and the remaining words from the question deterministically,
+so date and app questions filter instead of searching for words the dictations
+never contain. A question with words is also rewritten by the injected
+`AskQueryExpanding` (the on-device model in production, a no-op in tests and
+disposable launches), and the rewrites' content words join the search, which
+finds dictations in the other language without storing anything. Citations carry the dictation's identity, date, app and delivery, and the engine receives
+`RAGDictationPassage` values under a dictation-specific prompt; no derivative of
+a dictation is stored.
+
 Live interview assistance is a separate pull-based ApplicationKit workflow,
 not automatic Companion publication. Its pure policy examines at most 24 live
 caption callbacks, chooses the chronologically current final system/room question,
@@ -1173,7 +1279,43 @@ the Accessibility permission flow. Invalid persisted button numbers normalize
 to disabled; CGEvent indices 0/1 (left/right) are never eligible.
 TranscriptionKit owns only the post-ASR text policy: optional bilingual filler
 removal followed by one non-cascading, longest-trigger-first replacement pass.
-The app resolves explicit Literal/Clean mode by session choice, captured bundle-ID
+Polish is the one generative mode. `PolishDictation` (ApplicationKit) sends the
+Clean text, from three words to 2,000 characters, to the `DictationTextPolishing`
+port for at most five seconds, and pastes the reply only when the deterministic
+`DictationPolishFidelity` (TranscriptionKit) finds no lost or changed number,
+identifier, dictionary spelling or negation, no length, language or preamble
+drift. The app router resolves the selected summary engine on every call (Apple
+on-device, Ollama on loopback through the egress gateway, or embedded MLX through
+its lease) and never falls through to another engine. The controller polishes
+inside `.delivering` after ending its capture claim; Escape or the strip pastes
+Clean at once, and every fallback carries a visible reason. A Polish recipe, a
+bounded user instruction chosen with the mode, travels fenced beside the text;
+it frees length and list structure from the fidelity check but nothing else.
+`SelectionRewriteController` applies the same rewrite to text already selected in
+another app: `TextInserter.captureSelection` reads it through Accessibility or a
+restored-clipboard copy, the panel previews the result, and the pinned delivery
+path replaces it only after revalidating the same application, field and selection.
+While it offers its choices, the next dictation session is redirected to it as a
+spoken one-time recipe: Clean mode, an internal destination, and no history,
+statistics, Paste last or delivery notice.
+A verified delivery also records its exact span (`DictationInsertion`). With spoken
+corrections on, a dictation that parses as a bilingual command naming text in that
+span edits it in place through Accessibility instead of pasting, after confirming
+the same field still holds it.
+An optional translation target (English or Spanish) runs after the text mode through
+`TranslateDictation` and the on-device Translation framework with installed languages
+only; any failure pastes the untranslated text with a notice.
+A verified "change X to Y" can add X → Y to the text replacements, only from the
+strip's explicit "Always write" button; Settings groups replacements that share a
+spelling as aliases of one term.
+With caret capitalization on, the inserter's readback reads up to 80 units before
+the caret and `DictationCaretCase` adapts only the first word's case before the
+caret spacing join.
+A meeting transcript can be translated on request: a durable
+`transcript-translation` job, claimed by the post-capture runner only when a
+translator is composed, stores a per-language overlay fenced to the transcript and
+correction revision, and never changes the meeting lifecycle.
+The app resolves explicit Literal/Clean/Polish mode by session choice, captured bundle-ID
 profile, then global preference. The existing destination capture supplies identity;
 no profile recaptures focus or grants insertion authority. Missing preferences
 initialize before the first UI enable action: prior configured choices retain
@@ -1192,6 +1334,18 @@ adapter retains the original `NSRunningApplication` and focused AX element:
 application equality, termination state and `CFEqual` on the focused element
 must still match. Names and bundle identifiers are never authority. Core and
 capability targets receive no AppKit or Accessibility dependency.
+Dictation history is a separate domain in the same database: a single consent
+row and saved dictations behind `MeetingStore`, reached through ApplicationKit
+use cases. A session reads the consent generation when it starts and the store
+revalidates it inside the write transaction, so turning history off or
+deleting everything wins over a dictation still finishing. Saving runs after
+delivery and never delays the paste. Sync, exports, Spotlight and MCP do not
+read these tables.
+The one in-process destination is the practice field shown in onboarding and
+Settings: composition swaps in its destination only while that field's window
+is key and the app is active, so practice never borrows the clipboard, posts a
+paste or needs Accessibility, and every other session keeps the captured
+external destination.
 
 The last-mile `TextInserter` returns a typed result. It waits for physical
 modifiers, revalidates the captured destination before borrowing the clipboard
@@ -1206,7 +1360,8 @@ the board. A clipboard owner change during final inspection prevents dispatch.
 `DictationDeliveryOutcome` in Core separates verified observation, unverified
 dispatch and typed refusal without importing platform types. The app's narrow
 readback adapter observes only the expected inserted span and selection/count
-metadata, with per-object AX timeouts and a bounded polling window. Neither a
+metadata, plus at most two units on each side of the selection to space the insertion,
+with per-object AX timeouts and a bounded polling window. Neither a
 whole external document nor an old selection enters the domain or storage.
 Unsupported or ambiguous readback remains dispatched and cannot authorize a
 retry. The controller expires only verified feedback through a separately owned
@@ -1531,7 +1686,7 @@ and malformed audio/model output, and is reachable only through the explicit
 `bench-live --engine nemotron-latin-1120` CLI path. It is absent from the app
 composition and `ModelCatalog.recommended`; Parakeet remains the default live authority.
 The descriptor and adapter are executable benchmark plumbing, not accepted
-quality, memory, thermal, license-distribution, Sequoia, or Tahoe evidence.
+quality, memory, thermal, license-distribution, or physical Tahoe evidence.
 
 ## Persistence and aggregate integrity
 
@@ -1540,7 +1695,9 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 52. Its skill-identity write constraints preserve
+The current schema version is 60. A nonunique meeting-directory index serves
+compression admission without rejecting historical duplicate owners. Its
+skill-identity write constraints preserve
 historical denials rather than rejecting a populated library during upgrade.
 It includes:
 
@@ -1595,6 +1752,11 @@ It includes:
   device-local enabled state, plus append-once exact-occurrence authority and
   one bounded digest-verified local artifact per successful standing run;
 - immutable generation-run provenance;
+- one opt-in dictation-history consent row with a generation, and saved
+  dictations keyed by session with bounded text and closed outcome values,
+  searchable through their own full-text index, and readable by local agents
+  only under a separate consent checked in the same read, and copyable into a
+  finished meeting's notes through a local provenance link;
 - one regenerable enhanced-notes document per meeting (raw notes stay
   untouched; provenance commits atomically with the artifact);
 - content-free meeting egress attempts and receipt coverage;
@@ -1707,8 +1869,8 @@ schema-2 Release matrix seals clean source, binary, Apple toolchain, host,
 profile, synthetic fixture/query pack, configuration, stages, and scales.
 Three stable same-host matrices become one aggregate current-control receipt.
 The cross-host comparator then requires one such canonical receipt for each of
-the shared 8 GiB, 16 GiB, and reference memory profiles, with Sequoia and Tahoe
-both represented. Source, Swift/Xcode versions, semantic profile, fixture, and
+the shared 8 GiB, 16 GiB, and reference memory profiles, all on macOS 26
+Tahoe. Source, Swift/Xcode versions, semantic profile, fixture, and
 configuration must remain exact. The host-derived Swift target and Release
 binary remain sealed per receipt and may differ only with a coherent supported
 Apple-Silicon host.
@@ -1975,13 +2137,25 @@ worker death or exhaust the retry budget; only an actually expired running
 lease enters launch recovery.
 
 StorageKit isolates durable processing scheduling from job mutation. Its
-scheduling owner chooses one future wake by taking the minimum across pending
+scheduling owner chooses one wake by taking the minimum across pending
 `notBefore` retry dates and running `leaseExpiresAt` deadlines, limited to the
-worker's supported kinds and live meetings. The same owner performs repeat-safe
+worker's supported kinds and live meetings. A deadline that became due after
+the final claim is clamped to the scheduling timestamp, so it still requests
+recovery. Pending work with no retry date remains signal-driven, including
+intentional suspension; exhausted pending attempts cannot wake the worker,
+while a final running lease still wakes to publish exhaustion. The same owner
+performs repeat-safe
 expired-lease recovery, while the claim transaction invokes that recovery
 inline before selecting due work. The supervisor can therefore sleep without
 polling and still reclaim a dead worker even when launch recovery ran before
 the lease expired.
+
+ApplicationKit's pure `ProcessingWakeSchedule` preserves that durable deadline
+after a successful drain. If a claim/drain fails while a deadline still exists,
+the post-capture and audio-import owners defer the next wake by at least five
+seconds, retaining any later persisted deadline. A failed drain with no durable
+deadline still yields no timer. This avoids immediate retry loops during SQLite
+writer contention without introducing idle polling or changing lease ownership.
 
 The private macOS filesystem adapter
 revalidates staged/final files and reconciles them with persisted lifecycle
@@ -2817,7 +2991,7 @@ abstained, cancelled, or failed. Only a random process-local correlation token
 and those closed enums cross the port: person/topic/meeting/commitment IDs,
 text, evidence, result counts, abstention reasons, and errors are structurally
 absent. The spans are neither persisted nor sent over a network and establish
-no performance baseline by themselves; accepted Sequoia/Tahoe receipts remain
+no performance baseline by themselves; accepted Tahoe receipts remain
 external evidence.
 
 Content-free graph query product timing receipts are collected only by a
@@ -3112,6 +3286,24 @@ Meeting Detail precomputes one immutable structural-editor projection per
 accepted/composed snapshot pair, so row rendering performs constant-time
 context lookups instead of repeatedly scanning transcript and correction
 history while the user scrolls.
+
+The route model owns that immutable transcript presentation together with its
+current composed reading. Every authoritative core delivery rebuilds the pair,
+even when revision identifiers match; changed chapter titles rebuild it too.
+Summary, privacy, notes, playback, and other optional updates reuse the pair.
+A missing core clears it, while a failed core read retains the last healthy
+pair. The read model and derived pair publish together without suspension.
+SwiftUI rendering and evidence/playback navigation consume that same reading
+instead of recomposing it. The existing composer, accepted fallback, distinct
+lineages, and source maps are unchanged; there is no global or persisted cache.
+Metadata eligibility also consumes this already composed current reading.
+Only an actual eligibility check maps canonical rows through ApplicationKit's
+shared generation-segment mapping and extracts untitled chapter starts; a core
+or chapter-title rebuild adds no eager generation work. Displayed chapter
+markers are not substituted: accepted fallback and overlapping structural rows
+can have different pre-canonical extraction order. Suggestion requests still
+carry the current review and retain their original freshness, one-shot and
+cancellation fences.
 
 StorageKit keeps correction append, tombstone, validation, and canonicalization
 on the write side while a separate read owner fetches child rows, decodes typed
@@ -4506,7 +4698,7 @@ product authority.
 Host acceptance is a separate tooling-only boundary. The tracked
 `exact-path-shadow-matrix.json` contract requires one Release build, the fixed
 fixture and measurement policies, five runs per query, three observations at
-each canonical scale, Apple Silicon, supported Sequoia/Tahoe majors, and one
+each canonical scale, Apple Silicon, macOS 26 Tahoe, and one
 of the existing 8 GB, 16 GB, or reference-memory profiles.
 `exact_path_matrix.py` rejects duplicate JSON keys, extra fields, non-finite or
 inconsistent measurements, mixed hosts, noncanonical engine order, incomplete
@@ -4543,8 +4735,8 @@ cross-host scorecard; that scale is explicitly not comparable.
 
 Cross-host acceptance is another tooling-only boundary. The tracked
 `exact-path-cross-host-matrix.json` contract requires exactly one valid host
-receipt for each 8 GB, 16 GB, and reference-memory profile, with Sequoia and
-Tahoe each represented at least once. `exact_path_cross_host.py` rejects
+receipt for each 8 GB, 16 GB, and reference-memory profile, all on macOS 26
+Tahoe. `exact_path_cross_host.py` rejects
 malformed, payload-bearing, duplicate, or repeated-profile receipts and emits
 one `exact-path-shadow-cross-host-scorecard` to stdout. Missing profile or OS
 coverage, a blocked host receipt, or different source commits or Swift
@@ -4616,7 +4808,7 @@ remain later SEARCH-5 boundaries.
 The next evidence boundary is deliberately threshold-free. The versioned
 `exact-path-mutation-matrix.json` contract requires three complete mutation
 benchmark observations at every canonical scale from one clean Release checkout
-and one declared 8 GB, 16 GB, or reference host on supported Sequoia/Tahoe. The
+and one declared 8 GB, 16 GB, or reference host on macOS 26 Tahoe. The
 `exact_path_mutation_matrix.py` validator rejects unknown fields, duplicate
 JSON keys or observations, mixed hosts, invalid lifecycle labels, incomplete
 batch/engine order, non-finite or non-monotonic distributions, and malformed
@@ -5001,14 +5193,14 @@ authority.
 
 Release admission consumes this evidence through a separate, fail-closed
 ledger. `docs/evidence/reliability-gates.json` declares every required proof
-and its schema-2 Portavoz 1.0 contract classifies 29 proofs as deterministic
+and its schema-2 Portavoz 1.0 contract classifies 25 proofs as deterministic
 automation, candidate automation, reviewed source integration, signed-build
 verification, production-sync admission, real-hardware validation, physical
 assistive-technology validation, or user-field validation. Deterministic gates
 write one receipt bound to the exact version, build, and Git commit. Strict
 qualification receipts use one closed scope vocabulary for the eight complete
 candidate gates, reviewed integration plus hosted CI, production sync, and
-physical VoiceOver/Voice Control on Sequoia and Tahoe. Protocol-2 field
+physical VoiceOver/Voice Control on Tahoe or newer. Protocol-2 field
 packages remain the only source for the eight real-device/conversation cells.
 Source-integration, production-sync, and assistive-technology receipts
 additionally carry the canonical digest of their owner-specific
@@ -5034,7 +5226,7 @@ dismissed approvals do not count.
 
 The same exact commit must have one first-attempt successful `push` run of the
 tracked `CI` workflow on `main`; multiple unchanged-commit runs, a rerun, a
-failed/cancelled job, a missing Sequoia/build/lint/hygiene job, or metadata
+failed/cancelled job, a missing build/lint/hygiene job, or metadata
 drift blocks. The producer also queries its own exact commit-titled dispatch
 and requires the in-progress run to be the only matching first attempt; a
 second dispatch or workflow rerun cannot mint a replacement receipt. Only
@@ -5115,8 +5307,8 @@ digest. The host hash is derived from IOPlatformUUID plus the random run nonce;
 the raw identifier is never written. Finalization requires 27 exact receipts,
 two distinct IOPlatformUUID-derived host scopes, one original account shared by
 both roles, a genuinely different switched account followed by restoration,
-one consistent OS identity per role, a cross-version pair containing one
-Sequoia Mac and one Tahoe-or-newer Mac, and no extra files. It atomically
+one consistent OS identity per role, macOS 26 or newer on both Macs, and no
+extra files. It atomically
 publishes the authority and generic admission receipt as a pair; the receipt
 binds the canonical authority digest and release evaluation requires the
 unchanged sibling. Host-scope inequality is not hardware attestation: the
@@ -5126,9 +5318,9 @@ unit, packaging, and XCUITest evidence do not mint its receipt.
 
 ### Physical assistive-technology qualification
 
-`docs/evidence/assistive-technology-qualification.json` freezes four cells:
-VoiceOver and Voice Control on Sequoia and Tahoe-or-newer, each executed in
-English then Spanish. Every locale launches the unchanged Developer-ID-signed
+`docs/evidence/assistive-technology-qualification.json` freezes two cells:
+VoiceOver and Voice Control on Tahoe or newer, each executed in
+English. Every run launches the unchanged Developer-ID-signed
 `app.portavoz.mac.dev` executable directly against isolated paths with the
 public demo, duplicate-Skill, waiting-receipt, and synthetic Interview Assist
 fixtures. The exact launch vector is closed; inherited Portavoz, test-runner,
@@ -5165,10 +5357,9 @@ state only after confirmed exit, blocks the entire cell, and requires a new run
 rather than an overwrite or retry-to-green. A graceful-cleanup timeout preserves
 scratch state and surfaces its own failure instead of hiding a possible orphan.
 
-Finalization admits all and only the four complete cells and their two locale
+Finalization admits all and only the two complete cells and their two locale
 chains, requires VoiceOver and Voice Control to share one host scope and exact
-OS build within each platform, requires distinct Sequoia/Tahoe host scopes,
-rejects reused process/cell nonces and every extra, symbolic-link, special, or
+OS build, rejects reused process/cell nonces and every extra, symbolic-link, special, or
 mode-drifted entry, then atomically publishes a new owner-only
 `authority.json`/`qualification.json` pair. JSON publication uses a no-clobber
 hard-link boundary and never changes a pre-existing shared parent directory's
@@ -5181,7 +5372,8 @@ assistive release gate remains open.
 Candidate automation has one executable owner rather than a generic receipt
 recorder. `docs/evidence/candidate-automation.json` schema 9 freezes the eight
 proof order, six installed-model classes, seven upgrade/recovery classes, nine
-resource scenarios, four real-app memory-leak scenarios, two UI locales, and
+resource scenarios, four real-app memory-leak scenarios, the English UI locale,
+and
 the performance-ledger partition.
 `scripts/candidate_automation.py` requires a completely clean checkout, fixes
 one full source commit, and rechecks that identity around every sequential
@@ -5226,12 +5418,12 @@ collection can create competing work. It then directly runs the deterministic
 release suite, public bilingual Apuntador corpus, installed-model classes, a
 content-free real-app leak pass, current-host Release resource baseline,
 canonical synthetic three-hour capture, upgrade/recovery classes, and complete
-bilingual real-app XCUITest.
+English real-app XCUITest.
 Specialized validators then require the deterministic receipt's exact release
 identity, an authoritative performance inventory, three passing resource
 samples for every scenario plus the Ask timing pipeline, zero-drift bounded
 long capture, zero detected leaks or leaked bytes in all four exact Apuntador
-paths, and the exact current EN/ES UI catalog with one reused build and passing
+paths, and the exact current English UI catalog with one build and passing
 runtime budgets. Only that in-process sequence can write the
 owner-only `candidate-automation` qualification receipt; there is no CLI for
 caller-supplied proof state.
@@ -5264,9 +5456,9 @@ answer/citation evidence, while `BenchMode+ResourceIndexing.swift` owns the ten
 isolated file-backed stores and real publication passes; `BenchMode.swift` keeps
 only the shared benchmark composition and fixture surface.
 The leak parser, runner, contract, and benchmark workload owners map to the
-exact bilingual Ask, background-work, and Live Assist UI scopes (12 unique
-journeys per locale), not the shared-harness fallback. Candidate automation
-remains a full bilingual harness owner because it validates the final UI
+exact Ask, background-work, and Live Assist UI scopes (12 unique journeys),
+not the shared-harness fallback. Candidate automation remains a full
+shared-harness owner because it validates the final UI
 receipt itself. Selector or other shared-harness changes still run the complete
 catalogue.
 
@@ -5336,7 +5528,7 @@ remain explicitly `not-measured` in this runner—neither absent nor silently
 green—and continue to be owned by their specialized or physical evidence
 lanes. Likewise, the resource proof describes the one actual Mac that ran the
 candidate; it does not stand in for the 8 GB/16 GB/reference matrix,
-Sequoia/Tahoe hardware, assistive technology, signed distribution, production
+Tahoe hardware, assistive technology, signed distribution, production
 CloudKit, hosted CI, or user-field evidence.
 
 The deterministic package gate keeps failure diagnosis private without making
@@ -5481,7 +5673,7 @@ thermal or battery behavior, physical devices, or two-device convergence.
 - Compiler-dense deterministic collections, including operation fingerprints
   and high-cardinality characterization fixtures, are assembled in explicitly
   typed steps. This preserves order and coverage while keeping the supported
-  Sequoia Swift 6.2 compiler path bounded.
+  Sequoia compiler path bounded.
 - Cancellation is explicit and cannot convert partial success into false
   completion.
 - StorageKit adapts GRDB observations as pull-through structured streams. The
@@ -5498,16 +5690,19 @@ thermal or battery behavior, physical devices, or two-device convergence.
 
 ## Packaging and platform operation
 
-The package minimum is macOS 14.4 because system-audio process taps require it.
-Newer OS capabilities degrade through explicit availability checks. The app is
+The package minimum is macOS 26 Tahoe. The bundle's
+`LSMinimumSystemVersion`, the signed appcast's `sparkle:minimumSystemVersion`
+and the Homebrew cask carry the same floor, so neither Sparkle nor Homebrew
+offers a newer release to an older Mac. Pre-Tahoe availability fallbacks remain
+in the source as unreachable code until their removal (GAPS T39). The app is
 built from SwiftPM and wrapped by `scripts/make-app.sh`; `project.yml` exists for
 XCUITest generation. Generated projects, result bundles, local screenshots,
 agent state, scratch plans, and local work-item files remain outside version control;
 `scripts/check-repository-hygiene.sh` rejects both tracked local state and
 private work-item identifier leakage in implementation files. SwiftUI APIs with SDK-
 overloaded defaults and presentation math that crosses `CGFloat`/`Double`
-boundaries use explicit signatures and types so both the Sequoia and latest
-compiler lanes resolve the same behavior. The focused transcript measures rows
+boundaries use explicit signatures and types so the current and next compilers
+resolve the same behavior. The focused transcript measures rows
 in SwiftUI's built-in vertical scroll-view coordinate space instead of sharing
 a generic named coordinate key with a concurrent visual-effect closure.
 Current dependency APIs are used without deprecated compatibility shims. The
@@ -5521,10 +5716,17 @@ sources compile warning-free under Xcode 27 (Swift 6.4): the FoundationModels
 helper in IntelligenceKit, and closures that hand model-download progress to
 the main actor capture `self` weakly at their outermost boundary. Hosted
 CI uses the
-explicit macos-26/Xcode 26.6 pair for that lane and macos-15/Xcode 26.3 for the
-oldest supported runtime lane; `DEVELOPER_DIR` is verified instead of selecting
-the newest installed Xcode. Each lane owns one complete test invocation so its
-compiler flags cannot trigger a second differently configured package build.
+explicit macos-26/Xcode 26.6 pair for every macOS lane; `DEVELOPER_DIR` is
+verified instead of selecting the newest installed Xcode, and `xcrun` must
+resolve Swift inside that Xcode. Hosted CI qualifies macOS 26 only, which is
+also the deployment floor; 1.2.0 is the last release that installs on macOS 15
+Sequoia or 14 Sonoma.
+CI runs on pull requests and pushes to main and can also be dispatched by hand,
+so a push whose event GitHub dropped can still be qualified on main; a
+dispatched run follows the push cache policy.
+Each lane
+owns one complete test invocation so its compiler flags cannot trigger a second
+differently configured package build.
 SwiftLint 0.65.0 and XcodeGen 2.46.0 come from official release archives with
 fixed SHA-256 digests instead of floating Homebrew state.
 Third-party GitHub Actions are pinned to immutable full commit SHAs with their
@@ -5547,8 +5749,11 @@ invalidation checks; a hit alone is not evidence of a faster or passing build.
 Pull-request UI evidence is selected deterministically from changed paths.
 Known presentation and application files map to feature-level XCUITest
 selectors; localization and shared-harness changes expand to the complete
-bilingual catalogue; unknown production Swift paths fall back to the complete
-English suite. A pull-request update compares the new head with the newest
+English catalogue, as do unknown production Swift paths. XCUITest runs in
+English only: Spanish parity is a unit-test property of the string catalogs
+(every key translated, matching placeholders, every visible literal
+cataloged, Spanish equal to English only for an explicit list of terms), and
+`make test-ui-es` remains a manual, non-gating pass. A pull-request update compares the new head with the newest
 successful first-attempt ancestor that published one exact-SHA, content-free
 verification artifact after complete selected functional evidence (or a
 verified no-UI selection). The resolver rejects retries, failed runs,
@@ -5611,7 +5816,7 @@ remains available, and no adjustment changes a functional result, selector,
 assertion, timeout, locale, budget, or retry policy.
 
 The changed-file classifier treats every shared UI evidence owner as a complete
-bilingual integration change. This includes the workflow, build/runner,
+integration change. This includes the workflow, build/runner,
 preflight, selection, execution/runtime classification, verified-base and
 anchor owners, candidate receipt validator, and the versioned runtime budget.
 Those files cannot fall through the general `scripts/`, `.github/`, or `docs/`
@@ -5630,7 +5835,27 @@ The UI bundle uses one main-actor, run-loop-driven bounded predicate helper for
 accessibility state instead of XCTest's one-second first-poll floor or fixed
 sleeps. Negative and inequality waits require element existence so absence
 cannot become a false pass. Localized moving controls stabilize their hit frame
-before activation. The stability interval begins with the first valid,
+before activation. A virtualized history row first proves presence before a
+hit-point query, avoiding XCTest's internal missing-element resolution retries;
+its bounded scroll count, direction and final live hittability proof are unchanged.
+Settings startup uses the owned production command and its stable General
+anchor rather than checking the geometry of an unrelated record button.
+Inactive search editors receive no event or value read; active editors retain
+an exact-value readback and recheck focus immediately before guarded Tab.
+Known Settings-category and recording-assist actions use their declared Button
+role with framework identifier matching; generic field and absence queries retain
+their original alias behavior. Read-only General position checks share one fresh
+frame, never reused for input. Scale-fixture transcript-title probes use the
+Text node's declared StaticText role. Static assertion groups may co-observe one
+immutable hierarchy, discarded before any input; unavailable or aliased category
+geometry uses the live framework-identifier lookup.
+The runner classifies each owned journey as user-initiated work, allowing idle
+system sleep, from scratch admission through cleanup and tear-down. A function-wide
+defer releases its process activity even when cleanup throws. This classification
+never establishes native receiver ownership, authorizes input, disables display or
+system sleep, or changes a runtime ceiling. OS preferences may override it; it is
+not evidence that energy management caused any measured slowdown.
+The stability interval begins with the first valid,
 nonempty hittable frame and resets on every movement or loss of hittability;
 it does not require an extra identical sample before starting the unchanged
 interval. The contained-frame path uses that same declared interval as its
@@ -5753,14 +5978,14 @@ locales. English measures 853.399 summed XCTest seconds, 879 seconds wall, p50
 seconds, 888 seconds wall, p50 6.554, p95 18.181, and maximum 36.890. Both pass
 the unchanged 1,300-second aggregate, 30-second p95, and independent per-
 journey ceilings without retry or runtime adjustment. These are one-host
-measurements, not physical Sequoia or separate-hardware Tahoe evidence.
+measurements, not separate-hardware evidence.
 
 The published predecessor `19084e4e` passed its four CI jobs and all 103
 English plus 103 Spanish real-app journeys on their first attempts. Earlier red
 receipts remain diagnosis for genuine assertion failures and hosted runtime
 variance rather than being erased by reruns. Changes after that published head
 still require fresh hosted evidence. These are hosted functional observations,
-not physical Sequoia or separate-hardware Tahoe evidence.
+not separate-hardware evidence.
 
 Autonomous assistant validation has a separate, non-serving public authority.
 `Fixtures/ApuntadorValidation/public-bilingual-v1.json` freezes six synthetic
@@ -5943,6 +6168,83 @@ to this dedicated fixture base while retaining its sandbox. Neither production
 entitlements nor system privacy grants change. The same test-only allocator
 source is compiled into package tests and XCUITest, not a product target.
 
+Healthy final disposal can ask the captured disposable Debug UI host to end
+itself through AppKit. This seam requires the exact UI-host bundle identifier,
+temporary-store mode, an explicit launch argument and a fresh launch UUID. A
+mode-0700 owner directory carries a mode-0600, non-symlink, single-link request
+whose exact payload includes that UUID and the process ID. A modal refusal is
+acknowledged without dismissing it. The runner retains the native launch object,
+revalidates its identity before official fallback, and waits for process exit
+before deleting scratch. Failed/interrupted journeys and deliberate recovery
+termination retain the official XCTest API; release and ordinary Debug apps
+cannot enable the seam. A runner-only diagnostic mode selects official disposal
+for same-built-product comparisons; unknown modes fail closed to that path.
+The storage journey asserts the actual selected outcome and fresh launch identity
+on relaunch. Cleanup remains part of the measured test duration.
+
+The recap Skill's two real-app clipboard journeys allocate independent UUID-named
+native pasteboards, then terminate the app before releasing their board. Only
+temporary-store composition with an explicit fixture flag and validated
+`app.portavoz.recap-test.<UUID>` name can select that destination. Normal
+composition retains the general pasteboard. The first-failure adapter and its
+retry share the same real writer; exact approved text, original proposal,
+receipt and offer assertions remain unchanged. This isolates the user's shared
+clipboard from test effects and external writers without substituting a mock.
+Healthy final cleanup may poll the same public XCTest `notRunning` state under
+its original ten-second absolute deadline only after the exact captured native
+launch is terminated. Late state observations refuse scratch removal; the
+bundle-wide native exit fence remains mandatory. Failed, unrecorded and still-
+live captured launches retain the original SDK wait and official termination.
+This changes neither intentional abrupt recovery nor explicit native-state
+assertions in the storage journey.
+Recording-entry journeys prove the actual record button's hittability and
+stable frame before clicking. The deferred-work journey also reasserts the native
+receiver and rechecks it after target stability within its original fifteen-second
+admission deadline. These are point-in-time observations; the interruption guard
+still refuses a receiver change after admission. The recording-input fixture
+requires its original live frontier before attempting text input; a failed start
+cannot cascade into unrelated field actions.
+The deferred-work journey closes the unique Settings window containing the
+expected data category through its standard native close button. Readable status
+rows do not prove that Settings is the key window, so an application-wide close
+shortcut cannot supply that intent. Native ownership, target stability and the
+return to recording share the original ten-second preparation deadline; a missing
+Stop target throws before further input.
+Foreground preparation observes both XCTest's state and the declared native
+receiver within its original deadline, rather than treating an activation
+request alone as acknowledgement. The synthetic interruption fixture also
+requires that acknowledgement and a hittable arm control before creating its
+owned overlay. The second synthetic receiver must also acknowledge activation
+and expose its original window within the existing readiness deadline; a ready
+file alone is not proof of native foreground ownership. Preparation failure
+remains an unqualified control, not an
+expected negative outcome. Keyboard dispatch retains its separate modal guard.
+The Background Work Settings deep-link journey additionally proves its exact
+route, native receiver and canonical search-editor handoff before outside
+scrolling. These observations share the original ten-second entry deadline;
+late or unavailable readiness throws before the wheel helper. Only the known
+editor receives guarded traversal, with its exact value preserved; an unknown
+interruption is never dismissed or identified from geometry.
+Assist-tab traversal similarly requires a stable native target and acknowledged
+selection before callers may address its fields; failures throw instead of
+continuing into a missing control. A fresh target snapshot proves resolution
+and selection in one observation; the missing-target error path is exercised
+without input. Text readiness preserves the asynchronous absence check, then
+reads label and value from one fresh fallible target snapshot; resolution errors
+propagate. Native tests cover absent targets, localized labels and empty values
+without introducing a polling delay for already-present state. Stability sampling accounts for native attribute round trips
+without changing the requested elapsed-duration floor, hittability checks or
+frame-identity resets. Consecutive read-only recording assertions may share a
+fresh app observation, with their original live fallbacks and first deadlines;
+no observation supplies geometry or authority for a later action. The More
+popover waits for the actual requested target's hittability, which already
+proves container presence, rather than spending a second ignored readiness
+wait on its parent. An immediately consumed target-readiness proof can also
+serve a read-only availability assertion, while clicks still resolve the live
+element. Dynamic Skill-menu journeys explicitly close
+only an observed owned menu before reopening it after a dismissal, retaining
+all exact remaining-offer and final-retirement assertions.
+
 Visual-only screenshot
 assertions use visible-frame intersection rather than conflating visibility
 with a control's temporary enabled or hittable state, and their bounded scroll
@@ -5963,7 +6265,7 @@ construction rather than by control truncation. Three controls stay visible
 with their state shown as switches. Its wide layout is one row; at the 900 pt minimum window,
 `ViewThatFits` moves secondary actions to an icon-only second row while
 keeping the elapsed clock horizontal and Stop visible beside it. The focused external-recording XCUITest enforces those
-geometric invariants in both locales.
+geometric invariants.
 
 The live transcript has reader-owned scroll state independent from the
 playback lyrics treatment. Direct interaction pauses following indefinitely,
@@ -5990,9 +6292,11 @@ only after that contract passes; signer exit status or a merely present XML
 file is not release evidence.
 The script-built app also carries native App Intents metadata extracted
 separately from one SDK-only source under the shipping module name. Packaging
-fails unless metadata declares exactly five actions — Start/Stop recording and
-open meeting/person commitments/confirmed commitment — plus the three entity
-types and their three string queries. On macOS 26+, Start and Stop declare
+fails unless metadata declares exactly nine actions — Start/Stop recording,
+open meeting/person commitments/confirmed commitment, and Dictate, Paste last
+dictation, Search dictations and Open dictations — plus the three entity types
+and their three string queries. The dictation actions that act on the app in
+front run in the background and are answered synchronously, never replayed. On macOS 26+, Start and Stop declare
 `supportedModes = [.foreground(.immediate)]`; the SDK-documented deprecated
 compatibility property preserves the same foreground behavior on the macOS
 14.4/15 deployment range. `perform()` uses a buffered process-local handoff
@@ -6042,11 +6346,11 @@ deliberately omits `AppShortcutsProvider`, because automatic App Shortcuts are
 not a supported macOS product surface and otherwise duplicate identically
 titled actions. Spotlight and Siri use a user-created Shortcut containing a
 Portavoz-icon action. The XcodeGen-only test app registers the public
-`portavoz://record` adapter, and one bilingual focused XCUITest directs that URL
+`portavoz://record` adapter, and one focused XCUITest directs that URL
 to the exact disposable app, proves Start enters a visible recording, then
 executes the native Stop handoff after `.recording` and requires the existing
-typed no-audio recovery. App Intent source changes select this boundary in both
-locales; shared harness changes retain three bilingual canaries. `make-app.sh`
+typed no-audio recovery. App Intent source changes select this boundary; shared harness changes
+retain three canaries. `make-app.sh`
 also verifies the complete nested signature before it reports a successful
 package, so a malformed Sparkle component or application seal fails at the
 packaging boundary rather than during installation.
@@ -6119,16 +6423,24 @@ or rewrite the host's persistent Apuntador opt-in.
 
 ## Reviewed speech-engine dependency
 
-The Swift package requires one exact, reviewed FluidAudio release at a pinned
-revision. The decision ledger owns the version, the review policy and each
-admitted upgrade;
-`docs/GAPS.md` tracks rejected or future upstream releases rather than silently
-widening the requirement. Vendor types enter
+Parakeet loads the exact ModelStore-verified directory through `AsrModels.loadLocal`,
+not the vendor download-capable loader. Missing artifacts fail locally; an optional
+CTC head outside the curated graph is rejected before loading. Synchronous CoreML
+loading explicitly runs off the caller's actor. Models and compute units are unchanged.
+
+The Swift package requires the reviewed FluidAudio fork revision
+`16ff239818ddb6787629dab38ae43e8bdd0e7546`, based on upstream
+`224de0fb3c304b41bbae24e85e1801900865ff3e`. Swift 6.2 dependency traits
+retain ASR/VAD and Diarizer while excluding unused TTS resources and NeMo linkage;
+the macOS 14.4/iOS 17 deployment floors and curated model artifacts are unchanged.
+The decision ledger owns every immutable dependency admission; `docs/GAPS.md`
+tracks temporary-fork maintenance and unqualified upstream behavior. No floating
+branch or unrelated package refresh can admit another SDK. Vendor types enter
 production only through the reviewed transcription and diarization adapters:
 `ParakeetEngine`, `ParakeetSegmentMapper`,
 `NemotronLatin1120Engine`, `SileroVoiceActivityDetector`, `PyannoteDiarizer`
-and `DiarizationEvaluation`. The Silero adapter is implemented but has no app
-capture consumer yet. Core,
+and `DiarizationEvaluation`. The Silero adapter serves only the default-on
+dictation speech gate, over a copy of admitted PCM; meetings do not use it. Core,
 ApplicationKit and executable presentation consume Portavoz contracts instead. In
 the test tree the vendor import is confined to engine-specific suites
 `TranscriptionTests`, `ParakeetLanguageConfigurationTests`,
@@ -6306,20 +6618,14 @@ reliability evidence retained from 9 Aug, is:
 - the deterministic tooling suites and the 223-case architecture subset pass;
 - the Meeting Detail interaction contract contains 431 signals, 15 feature
   owners, and 30 explicitly owned UI journeys;
-- 103 XCUITest cases per locale define the 206-case bilingual release gate;
-- the latest controlled run reused one 18-second build and passed all 103
-  English cases in 847.719 summed seconds (p95 17.851) and all 103 Spanish
-  cases in 854.580 seconds (p95 17.901), with every unchanged budget green,
-  no retry, and no runtime adjustment;
+- the complete English XCUITest catalogue is the release UI gate;
 - pull requests run only their minimum-safe selected feature evidence; shared
-  localization/harness changes and release closure expand to the complete
-  bilingual gate, while unknown production paths fail safe to complete English;
-- hosted pull-request UI runs compile once, execute every selected locale as an
-  independent first attempt, preserve all result bundles, and then apply one
-  fail-closed functional/receipt classifier; one locale cannot prevent the next
-  selected locale from producing evidence. The enclosing job has a 90-minute
-  orchestration ceiling so the complete 105-case bilingual catalogue can retain
-  both locale receipts under observed hosted variance; this does not alter any
+  localization/harness changes, release closure and unknown production paths
+  expand to the complete English catalogue;
+- hosted pull-request UI runs compile once, execute the English selection as a
+  first attempt, preserve its result bundle, and then apply one fail-closed
+  functional/receipt classifier. The enclosing job keeps a 90-minute
+  orchestration ceiling under observed hosted variance; this does not alter any
   per-journey wait, assertion, runtime budget, selector, or retry policy;
 - every UI run emits content-free runtime and execution receipts. Controlled
   local/stable-Mac integration and release runs enforce the unchanged per-journey, exact-
@@ -6358,7 +6664,7 @@ make test-recording-stress
 swiftlint lint --strict --no-cache
 scripts/check-repository-hygiene.sh
 make test-ui-changed UI_BASE=origin/main
-make test-ui-bilingual # explicit release/architecture closure
+make test-ui-release # explicit release/architecture closure
 make release-reliability-deterministic # exact version/build required
 make release-reliability # missing field or distribution evidence blocks
 make install

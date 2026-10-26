@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Apuntador-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D86 (explicit canonical people and aliases), D87 (typed summary evidence), D88 (current claim feedback), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D92 (content-free generation-fenced meeting change journal), D93 (exact portable aggregate projection and replay), D99 (read-consistent whole-library Markdown backup), D103 (coherent terminal product workflows), D104 (ApplicationKit durable-workflow ownership), D115 (durable private-iCloud receipt disclosure), D122 (accepted Refine lexical integrity), D123 (content-free capture-shape diagnostics), D127 (audio-priority Stop and same-pass shell recovery), D179 (bounded idempotent existing-library sync checkpoints), D180 (capture-safe whole-library backup admission), D181 (staged whole-library backup checkpoints), D182 (crash-safe backup-stage ownership), D183 (process-local destination identity), D184 (durable publication evidence), D185 (strict staged-source adoption), D186 (durable source checkpoints), D187 (pending-publication reconciliation), D188 (durable typed failure outcomes), D189 (launch recovery stage preservation), D230 (typed immutable transcript-correction history), D231 (atomic focused correction batches), D232 (append-only structural correction commands), D233 (correction-aware derived-artifact invalidation and publication fences), D234 (correction replica convergence and conflict fencing), D237 (confirmed-only commitment continuity), D238 (source-bound commitment review feedback), D240 (typed commitment ownership), D241 (bounded commitment Radar read model), D242 (content-free Radar scale gate), D256 (append-only Radar lifecycle actions), D257 (durable local reminder delivery history), D258 (bounded reminder reconciliation and atomic schedule replacement), D265 (bounded generated-work review queue), D268 (immutable content-free commitment presentation evidence), D271 (explicit topic identity), D272 (explicit decision continuity), D273 (lease-fenced typed memory-graph projection), D274 (snapshot-consistent authoritative memory-timeline hydration), D275 (immutable commitment-event evidence), D276 (explicit topic-scoped question continuity), D277 (explicit decision-to-commitment blocker continuity), D278 (bounded source-backed blocker facts), D279 (canonical blocker product conformance), D280 (authoritative first-discussion serving and conformance), D281 (exact source-backed person commitments), D282 (alias ambiguity rejected before exact storage serving), D283 (Ask graph lane preserves exact storage queries), D284 (exact graph-query filter pushdown), D319 (read-only database-open recovery), D331 (correction-aware Apuntador publication), D362 (bounded confirmed-topic catalog), D373 (query-level exact-Skill receipt filtering), D374 (query-level rolling update-time filtering), D375 (bounded one-row continuation sentinel), D385 (global content-free local-Ask receipts), D386 (meeting-scoped three-lane FTS), D387 (content-free direct-Web receipts in schema v44), D389 (raw-note FTS in schema v45), D435 (closed standing-rule authority in schema v46), D436 (standing occurrence authority and local artifacts in schema v47), D455 (indexed live Meeting Detail ordering in schema v49).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Apuntador-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D86 (explicit canonical people and aliases), D87 (typed summary evidence), D88 (current claim feedback), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D92 (content-free generation-fenced meeting change journal), D93 (exact portable aggregate projection and replay), D99 (read-consistent whole-library Markdown backup), D103 (coherent terminal product workflows), D104 (ApplicationKit durable-workflow ownership), D115 (durable private-iCloud receipt disclosure), D122 (accepted Refine lexical integrity), D123 (content-free capture-shape diagnostics), D127 (audio-priority Stop and same-pass shell recovery), D179 (bounded idempotent existing-library sync checkpoints), D180 (capture-safe whole-library backup admission), D181 (staged whole-library backup checkpoints), D182 (crash-safe backup-stage ownership), D183 (process-local destination identity), D184 (durable publication evidence), D185 (strict staged-source adoption), D186 (durable source checkpoints), D187 (pending-publication reconciliation), D188 (durable typed failure outcomes), D189 (launch recovery stage preservation), D230 (typed immutable transcript-correction history), D231 (atomic focused correction batches), D232 (append-only structural correction commands), D233 (correction-aware derived-artifact invalidation and publication fences), D234 (correction replica convergence and conflict fencing), D237 (confirmed-only commitment continuity), D238 (source-bound commitment review feedback), D240 (typed commitment ownership), D241 (bounded commitment Radar read model), D242 (content-free Radar scale gate), D256 (append-only Radar lifecycle actions), D257 (durable local reminder delivery history), D258 (bounded reminder reconciliation and atomic schedule replacement), D265 (bounded generated-work review queue), D268 (immutable content-free commitment presentation evidence), D271 (explicit topic identity), D272 (explicit decision continuity), D273 (lease-fenced typed memory-graph projection), D274 (snapshot-consistent authoritative memory-timeline hydration), D275 (immutable commitment-event evidence), D276 (explicit topic-scoped question continuity), D277 (explicit decision-to-commitment blocker continuity), D278 (bounded source-backed blocker facts), D279 (canonical blocker product conformance), D280 (authoritative first-discussion serving and conformance), D281 (exact source-backed person commitments), D282 (alias ambiguity rejected before exact storage serving), D283 (Ask graph lane preserves exact storage queries), D284 (exact graph-query filter pushdown), D319 (read-only database-open recovery), D331 (correction-aware Apuntador publication), D362 (bounded confirmed-topic catalog), D373 (query-level exact-Skill receipt filtering), D374 (query-level rolling update-time filtering), D375 (bounded one-row continuation sentinel), D385 (global content-free local-Ask receipts), D386 (meeting-scoped three-lane FTS), D387 (content-free direct-Web receipts in schema v44), D389 (raw-note FTS in schema v45), D435 (closed standing-rule authority in schema v46), D436 (standing occurrence authority and local artifacts in schema v47), D455 (indexed live Meeting Detail ordering in schema v49), D580 (consent-bound dictation reads for Ask).
 
 D437 adds millisecond-canonical standing identity in schema v48.
 D455 adds the canonical live Meeting Detail ordering index in schema v49.
@@ -204,13 +204,17 @@ hidden stage. A main-file or WAL size/modification change across the private
 copy also fails closed rather than publishing a mixed point in time. The source is never opened through `MeetingStore`, so no
 migration/configuration write can occur, and it is never renamed or deleted.
 
-### Schema (`v1`–`v52` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v57` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
 | Table | Key columns |
 |---|---|
 | `meeting` | id (UUID TEXT PK), title, startedAt, endedAt, language, audioDirectory (RELATIVE), retention, visibility (reserved), **lifecycleState**, **transcriptRevision**, **lastProcessingError** (v6), createdAt/updatedAt/deletedAt |
+| `dictationMeetingNote` (v57) | local link (dictationID → dictationRecord, meetingID → meeting, unique contextItemID → contextItem, all ON DELETE CASCADE; primary key dictation + meeting) recording which meeting note was copied from which dictation; see Dictation history |
+| `dictationRecordSearch` (v55) | FTS5 external content over `dictationRecord.text` and `originalText`, `unicode61` tokenizer, kept in sync by GRDB triggers; see Dictation history |
+| `dictationHistoryPolicy` / `dictationRecord` (v54, v56) | one consent row (isEnabled, keepsOriginal, retentionDays 7/30/90, generation, and since v56 exposesToAgents) and saved dictations keyed by session UUID with `(createdAt, id)` index; see Dictation history |
+| `meeting_on_audioDirectory` (v53) | nonunique `(audioDirectory)` index for exact compression-directory ownership; duplicate rows remain valid evidence, and admission reads at most two matching owners before refusing ambiguity |
 | `speaker` | id, meetingID (FK CASCADE), label (S1/Me…), displayName, isMe, personID? (v8, FK SET NULL), tombstone |
 | `segment` | id, meetingID, speakerID?, channel, text, language?, startTime/endTime, confidence?, isFinal, **embedding BLOB** (v2), **embeddingFingerprint** (v17), generationRunID? (v6), tombstone |
 | `summary` | id, meetingID, recipeID, language, markdown, **version** (UNIQUE meetingID+recipeID+version — immutable snapshots), **fingerprint** (v4, D25 — language-independent material identity; NULL in old snapshots = never match), generationRunID? (v6) |
@@ -1139,10 +1143,14 @@ The first 1D-b2b control-plane unit adds owner-leased cancellation and scheduled
 wake discovery. Cancellation records a terminal reason without claiming an
 artifact exists; because it represents intentionally degradable or superseded
 work, it does not make the aggregate fail. `nextScheduledProcessingDate`
-returns the earliest future wake across pending `notBefore` retry dates and
-running `leaseExpiresAt` deadlines for explicit worker capabilities. It
-excludes deleted meetings and exhausted pending attempts, allowing workers to
-sleep without polling. The focused scheduling owner also performs repeat-safe
+returns the earliest wake across pending `notBefore` retry dates and running
+`leaseExpiresAt` deadlines for explicit worker capabilities. A deadline equal
+to or earlier than the scheduling timestamp returns that timestamp, closing
+the gap when work becomes due after the final empty claim. It excludes deleted
+meetings, exhausted pending attempts, and pending work with no retry date;
+intentional suspension therefore waits for a new signal instead of looping on
+an immediate wake. A running final attempt remains eligible so expiration can
+publish exhaustion. The focused scheduling owner also performs repeat-safe
 expired-lease recovery; claim invokes that recovery in its own write before
 selecting due work, so a lease that expired after launch is still reclaimed.
 
@@ -1566,7 +1574,12 @@ latest-summary-only `openActionItems(limit:)` query.
 
 ## `.portavoz` bundle (M15 L0)
 
-`MeetingBundle` preserves `formatVersion = 1` and evolves only with optional/additive fields. It exports the transcript, cast, latest summary, typed overview/decision/action-item evidence and current overview feedback, notes, Apuntador cards with optional role-separated evidence, and, if the user requests it, audio. Import remaps meeting, speaker, segment, claim, decision, action-item, action-evidence, note, card, and card-evidence IDs so that two imports are independent; evidence follows fresh segments and its typed task/card identity, feedback follows its fresh overview claim, foreign source revisions are cleared, and Storage stamps the imported meeting revision. Malformed Apuntador evidence is dropped without legitimizing a foreign card target or losing the card. An older v1 bundle without claims, decisions, action evidence, feedback, Apuntador evidence, `companionCards`, or v6 meeting lifecycle fields still decodes; absent lifecycle data means `ready` at revision zero. Local paths and canonical person IDs never travel. The imported remapped aggregate crosses ApplicationKit only after attachment metadata is reduced to unique canonical system/microphone channels with m4a/caf/wav extensions; StorageKit then publishes all relational content together (D51/D87/D88/D89/D90/D91). Export crosses the symmetric ApplicationKit boundary from one `meetingExportSnapshot`, clears the local directory before encoding, and preserves the newest summary across recipes with its evidence/feedback/notes/cards from the same database moment (D52).
+`MeetingBundle` preserves `formatVersion = 1` and evolves only with optional/additive fields. It exports the transcript, cast, latest summary, typed overview/decision/action-item evidence and current overview feedback, notes, Apuntador cards with optional role-separated evidence, and, if the user requests it, audio. Import remaps meeting, speaker, segment, claim, decision, action-item, action-evidence, note, card, and card-evidence IDs so that two imports are independent; evidence follows fresh segments and its typed task/card identity, feedback follows its fresh overview claim, foreign source revisions are cleared, and Storage stamps the imported meeting revision. Malformed Apuntador evidence is dropped without legitimizing a foreign card target or losing the card. An older v1 bundle without claims, decisions, action evidence, feedback, Apuntador evidence, `companionCards`, or v6 meeting lifecycle fields still decodes; absent lifecycle data means `ready` at revision zero. Local paths and canonical person IDs never travel. The imported remapped aggregate crosses ApplicationKit only after attachment metadata is reduced to unique canonical system/microphone channels with the closed extensions in `MeetingAudioLayout.channelExtensions`; StorageKit then publishes all relational content together (D51/D87/D88/D89/D90/D91). Export crosses the symmetric ApplicationKit boundary from one `meetingExportSnapshot`, clears the local directory before encoding, and preserves the newest summary across recipes with its evidence/feedback/notes/cards from the same database moment (D52).
+
+Existing m4a/caf/wav bundles retain their format-v1 compatibility. Older app
+versions whose attachment allowlist accepts only those three extensions can
+reject a bundle carrying newly preserved mp3/aac/aiff/aif/m4b attachments;
+format-v1 framing alone does not establish decoder or reader compatibility.
 
 ## Recordings folder — `RecordingsLocation`
 
@@ -1589,7 +1602,7 @@ caught-error compensation and require field qualification.
 
 ## Audio layout — `MeetingAudioLayout`
 
-`channelFile(named:in:)` locates audio by channel inside `Audio/<uuid>/`: prefers `.m4a` after user-requested compression, then `.caf` (current capture, crash-safe), then `.wav` (pre-Jul-2026 meetings). Staging `.partial.caf` files are intentionally invisible. All readers (refine CLI and app) pass through this layout.
+`channelFile(named:in:)` locates audio by channel inside `Audio/<uuid>/`: prefers `.m4a` after user-requested compression, then `.caf` (current capture, crash-safe), then `.wav` (pre-Jul-2026 meetings), followed by the preserved external formats `.mp3`, `.aac`, `.aiff`, `.aif` and `.m4b`. The closed `channelExtensions` catalog also validates both meeting-bundle attachment directions, so these imports keep their original audio through export/reimport. Staging names such as `system.partial.caf` or `system.partial.mp3` remain invisible. All readers (playback, Refine, clips, voice memory, bundles and CLI) pass through this layout.
 
 ## Secrets — Core port and PlatformKit adapter
 
@@ -1982,7 +1995,8 @@ databases remain compatible. This does not certify private-library upgrades.
 `enqueueAudioImports` atomically admits distinct selected-file identities, their
 incomplete meeting rows and existing owner-leased `audio-import` jobs. It refuses
 changed input under an existing identity and rolls back a batch if a later file
-conflicts. `audioImportInput` requires the current lease; `cancelAudioImport`
+conflicts. A file extension outside `MeetingAudioLayout.channelExtensions`
+rejects the whole batch, because playback could not locate its copy. `audioImportInput` requires the current lease; `cancelAudioImport`
 retires queued or running ownership without making an incomplete import ready.
 The additive input table binds job and meeting together through a composite
 foreign key. Input is private and bounded to 1 MiB per file and 16 MiB per
@@ -2017,6 +2031,22 @@ success. Expired work uses the existing processing-job recovery policy. Because
 the lease ignores tombstones, the worker re-reads the live job after each
 heartbeat and suspends (refunds) an attempt whose meeting was trashed instead of
 finishing model work that publication must reject.
+
+Destructive audio compression reads `canCompressMeetingAudio` from one database
+snapshot. The request must name one live canonical meeting directory. Import
+directories require matching, validated input and job identities, a published
+copy and successful job completion; pending, running, failed, cancelled,
+tombstoned or inconsistent imports remain protected. Missing authority inside
+the reserved Imports namespace cannot become ordinary-recording permission.
+Existing non-import recordings and completed imports keep compression behavior
+for lossless channels (`MeetingAudioLayout.losslessChannelExtensions`: CAF, WAV,
+AIFF, AIF); imported MP3, AAC and M4B are never re-encoded. Compression never
+rewrites input authority or substitutes a lossy Retry source.
+Schema v53 adds the nonunique `meeting_on_audioDirectory` index to this exact
+owner lookup. The upgrade accepts existing duplicate paths; the same two-row
+admission query still rejects them. Query-plan regression uses the production
+request and requires indexed search rather than a full Library scan. This is
+access-path evidence, not a measured UI latency claim.
 
 The external bookmark does not outlive an import that can no longer use it.
 `cancelAudioImport` retires it in the cancelling transaction when no owned copy
@@ -2064,3 +2094,138 @@ through commit or rollback; recording start checks it before publishing
 `preparing`, with no suspension between those steps. If capture wins admission
 first, the existing migration activity gate rejects its preparing/recording/
 processing phase. This is a process-local fence, not an interprocess file lock.
+
+## Dictation history (schema v54, D576)
+
+Dictation is a second domain on the same `DatabaseQueue`, written only through
+`MeetingStore+DictationHistory`. `dictationHistoryPolicy` holds a single row that
+starts off (`isEnabled = 0`, `keepsOriginal = 0`, 30 days, generation 0).
+`setDictationHistoryPolicy` accepts only 7, 30 or 90 days, advances `generation`
+when saving turns off, and purges rows older than the new retention in the same
+transaction. `deleteAllDictationRecords` deletes every row and advances the
+generation too.
+
+`recordDictation(_:admittedGeneration:at:)` revalidates consent inside its write
+transaction: it returns `refused` unless history is on and the generation still
+equals the one read when the dictation started, so turning history off or
+deleting everything while a dictation finishes keeps it out. The row ID is the
+session UUID; a second write for the same session (a recovery retry) updates only
+`delivery`. `originalText` is stored only when `keepsOriginal` is on and it
+differs from the final text. Every write also purges expired rows, and the app
+purges once at launch. CHECK constraints bound text to 20,000 and labels to 256
+Unicode scalars and close `mode`, `language` and `delivery` to their known values.
+
+`dictationRecords(before:limit:)` pages newest first with a `(createdAt, id)`
+keyset cursor and a 1–100 limit. No audio, window title, URL or surrounding text
+is stored; the destination is the application name and bundle ID.
+
+Isolation: sync aggregates, per-meeting export/import, Spotlight, MCP/CLI,
+support diagnostics and settings transfer name their tables, so none reads
+dictation rows. Two paths copy the whole database file and therefore include
+them: the Markdown backup stage (a 0600 temporary file excluded from backup that
+renders only meetings) and the launch recovery copy the user requests when the
+database cannot open. Like meetings, the main database is part of Time Machine
+backups; deletion is a SQLite `DELETE`, not forensic erasure.
+
+### Dictation search (schema v55, D577)
+
+`dictationRecordSearch` is an FTS5 external-content index over the final and the
+kept original text, built with `unicode61` (diacritics and case removed, so
+"accion" finds "acción") and backfilled with `rebuild` for rows saved under v54.
+GRDB's insert, update and delete triggers keep it in step, so a deleted, purged
+or cleared dictation leaves the index in the same transaction.
+
+`dictationRecords(matching:before:limit:)` takes a `DictationRecordFilter`:
+query, application name and "only not delivered". Every condition sits in the
+`WHERE` clause before `LIMIT`, and paging keeps the `(createdAt, id)` keyset, so a
+filtered list pages without gaps or repeats. `dictationSearchQuery` keeps at most
+200 characters and 16 words that contain a letter or digit, quotes each word with
+doubled inner quotes, requires every word and lets only the last one match as a
+prefix. FTS5 operators, column filters and `NEAR` typed by the user are matched
+as text; a query with no usable word returns nothing. `dictationApplications()`
+lists distinct application names for the filter menu.
+
+Measured once with 10,000 dictations (release build, M-series Mac): newest page
+p95 0.2 ms, single-word, prefix and application-plus-word searches p95 about
+1.2 ms, database 6.6 MB. No timing assertion guards it.
+
+### Agent access to dictations (schema v56, D578)
+
+v56 adds `exposesToAgents` (default 0) to `dictationHistoryPolicy`. The setter
+stores it only together with `isEnabled`, so turning history off withdraws
+agent access and turning it back on does not restore it. `agentsCanRead`
+requires both. `dictationRecordsForAgents(matching:offset:limit:)` and
+`dictationRecordForAgents(_:)` read the policy and the rows in one read
+transaction and return `.notAllowed` without touching any row when access is
+off. Agent pages reuse the history filter (`dictationFilterConditions`), count
+the filtered total, and use newest-first offset paging with the offset clamped
+at 0 and the limit to 1–100.
+
+### Dictation statistics (schema v58, D584)
+
+v58 adds `dictationStatsPolicy` (one row, `isEnabled` 0 by default),
+`dictationStatsDay` (primary key `day` `yyyy-MM-dd` plus `applicationName`,
+`''` when unknown; `dictations`, `words`, `spokenMs`, `notDelivered`, all
+non-negative) and `dictationStatsCounted` (`dictationID` primary key, its `day`,
+`applicationName`, `delivered`, `countedAt`). `recordDictationStats(_:at:calendar:)`
+validates the sample, then in one write transaction returns false while the
+consent is off, purges days older than 365 days and counted identities older
+than two days, and either flips `notDelivered` for an already counted identity
+whose delivery changed or inserts the identity and upserts the day row.
+`dictationStatsSummary(days:)` sums each requested day across apps (empty days
+included) and ranks at most five named apps by dictations, then words, then
+name. `deleteDictationStats()` clears both data tables and keeps the consent.
+`setDictationStatsEnabled(_:)` only changes the consent.
+
+### Dictations added to meeting notes (schema v57, D579)
+
+`addDictationToMeeting(_:meetingID:at:)` is the only path that writes a raw
+note to a meeting outside a live recording. In one write transaction it
+requires the dictation, a live meeting with `endedAt` set and a lifecycle other
+than `recording`, and no live note already copied from that dictation into that
+meeting (a tombstoned copy is cleared so it can be added again). It inserts an
+ordinary `contextItem` of kind `note` with the dictation's text, at the
+dictation's offset into the meeting when it falls inside it, otherwise clamped
+to 0 or to the meeting's duration, plus one `dictationMeetingNote` row. The note
+therefore follows every existing note path: FTS, meeting sync triggers, export
+and Ask. The link table has no sync triggers and stays on this Mac. Deleting the
+dictation cascades only the link; deleting the meeting or purging the note
+cascades the link too. The outcome reports whether the meeting already shows
+tidied (enhanced) notes, which hide raw notes until the user tidies again.
+`meetingsForDictation(createdAt:limit:)` lists live finished meetings, the one
+whose recording contains the dictation first, then newest; `dictationMeetingLinks`
+returns only links whose note and meeting are still live.
+
+### Dictations in Ask (D580)
+
+`dictationRecordsForAsk(matchingAny:period:applicationName:limit:)` reads
+`dictationHistoryPolicy` and the rows in one read transaction and returns nil
+while the history is off. `dictationAskQuery` joins every distinct word that
+has a letter or digit, from all query variants, as quoted FTS5 terms with `OR`
+(at most 48), so any word may match and FTS5 syntax in a question is matched as
+text. The optional period (`createdAt` half-open interval) and exact app name
+filter before the limit. With a usable word, rows are ordered by `rank`, then
+newest; without one, the newest rows are listed. The limit is clamped to
+1–100. `dictationApplicationsForAsk()` returns distinct app names under the
+same consent check. `DictationRecordFilter`
+gains `recordID`, which narrows the history list to one dictation when an Ask
+citation opens it. No schema change.
+
+
+### Transcript translation (schema v60, D595)
+
+v60 adds `transcriptTranslation` (primary key `meetingID` + `targetLanguage` in
+`en`/`es`, `sourceTranscriptRevision`, `sourceCorrectionRevision` of `accepted`
+or a 64-character digest, `createdAt`; cascades from `meeting`) and
+`transcriptTranslationLine` (`rowID` of the transcript row, non-empty `text` up to
+20,000 characters; cascades from its translation). Only translated rows are stored.
+`requestTranscriptTranslation` enqueues the `transcript-translation` job for one
+reading fingerprint without reconciling the meeting lifecycle, returns an active
+job as is and resets a settled one; `cancelTranscriptTranslation` cancels pending
+and running ones, so a running worker loses its lease.
+`completeTranscriptTranslationJob` requires the owned lease, the job's kind,
+meeting and fingerprint, the current `transcriptRevision`, and the current
+correction revision, then replaces that language's translation and succeeds the
+job in one transaction. `reconcileProcessingLifecycle` ignores translation jobs.
+`observeTranscriptTranslations` feeds Meeting Detail; a tombstoned meeting exposes
+none.

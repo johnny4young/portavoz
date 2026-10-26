@@ -30,12 +30,13 @@ extension AppServices {
         priority: IntelligenceScheduler.Priority = .interactive,
         workloadClass: ResourceWorkloadClass = .userInitiated
     ) -> MLXSummaryProvider {
-        let client = AppMLXSummaryRuntimeClient { [weak self] system, user, directory in
+        let client = AppMLXSummaryRuntimeClient { [weak self] system, user, directory, maximumTokens in
             guard let self else { throw MLXRuntimeError.servicesUnavailable }
             return try await self.respondWithMLXRuntime(
                 system: system,
                 user: user,
                 directory: directory,
+                maximumResponseTokens: maximumTokens,
                 workloadClass: workloadClass)
         }
         return MLXSummaryProvider(
@@ -52,12 +53,13 @@ extension AppServices {
         priority: IntelligenceScheduler.Priority = .interactive,
         workloadClass: ResourceWorkloadClass = .userInitiated
     ) -> MLXRAGAnswerer {
-        let client = AppMLXSummaryRuntimeClient { [weak self] system, user, directory in
+        let client = AppMLXSummaryRuntimeClient { [weak self] system, user, directory, maximumTokens in
             guard let self else { throw MLXRuntimeError.servicesUnavailable }
             return try await self.respondWithMLXRuntime(
                 system: system,
                 user: user,
                 directory: directory,
+                maximumResponseTokens: maximumTokens,
                 workloadClass: workloadClass)
         }
         return MLXRAGAnswerer(
@@ -66,12 +68,27 @@ extension AppServices {
             runtime: client)
     }
 
+    /// Dictation polish shares the one runtime, ledger and admission path.
+    func makeMLXDictationPolisher(modelDirectory: URL) -> MLXDictationPolisher {
+        let client = AppMLXSummaryRuntimeClient { [weak self] system, user, directory, maximumTokens in
+            guard let self else { throw MLXRuntimeError.servicesUnavailable }
+            return try await self.respondWithMLXRuntime(
+                system: system,
+                user: user,
+                directory: directory,
+                maximumResponseTokens: maximumTokens,
+                workloadClass: .userInitiated)
+        }
+        return MLXDictationPolisher(modelDirectory: modelDirectory, runtime: client)
+    }
+
     /// Acquires the exact runtime, generates while its active-use token is
     /// held, and arms the existing idle policy on every terminal outcome.
     private func respondWithMLXRuntime(
         system: String,
         user: String,
         directory: URL,
+        maximumResponseTokens: Int,
         workloadClass: ResourceWorkloadClass
     ) async throws -> String {
         let lease = try await acquireMLXRuntime(
@@ -82,7 +99,8 @@ extension AppServices {
             let response = try await mlxSummaryRuntime.respondPrepared(
                 system: system,
                 user: user,
-                directory: directory)
+                directory: directory,
+                maximumResponseTokens: maximumResponseTokens)
             finishMLXRuntime(lease)
             scheduleMLXRelease()
             return response
@@ -255,14 +273,16 @@ private struct AppMLXSummaryRuntimeClient: MLXSummaryRuntimeClient {
     let operation: @Sendable (
         _ system: String,
         _ user: String,
-        _ directory: URL
+        _ directory: URL,
+        _ maximumResponseTokens: Int
     ) async throws -> String
 
     init(
         operation: @escaping @Sendable (
             _ system: String,
             _ user: String,
-            _ directory: URL
+            _ directory: URL,
+            _ maximumResponseTokens: Int
         ) async throws -> String
     ) {
         self.operation = operation
@@ -273,6 +293,15 @@ private struct AppMLXSummaryRuntimeClient: MLXSummaryRuntimeClient {
         user: String,
         directory: URL
     ) async throws -> String {
-        try await operation(system, user, directory)
+        try await operation(system, user, directory, MLXSummaryRuntime.maximumResponseTokens)
+    }
+
+    func respond(
+        system: String,
+        user: String,
+        directory: URL,
+        maximumResponseTokens: Int
+    ) async throws -> String {
+        try await operation(system, user, directory, maximumResponseTokens)
     }
 }

@@ -522,13 +522,16 @@ private struct AppDisposableGistEgressGateway: DataEgressGateway {
 extension AppServices {
     static func makeRecapSkillDelivery(
         arguments: [String],
-        usesTemporaryStore: Bool
+        usesTemporaryStore: Bool,
+        environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> any RecapDraftDelivering {
+        let system = SystemRecapPasteboard(name: SystemRecapPasteboard.disposableName(
+            arguments: arguments, environment: environment, usesTemporaryStore: usesTemporaryStore))
         guard usesTemporaryStore,
               arguments.contains("-simulate-skill-effect-failure-once")
-        else { return AppRecapPasteboardDelivery() }
+        else { return AppRecapPasteboardDelivery(pasteboard: system) }
         return AppRecapPasteboardDelivery(
-            pasteboard: AppFailingOnceRecapPasteboard())
+            pasteboard: AppFailingOnceRecapPasteboard(system: system))
     }
 
     static func makeEmailRecapDraftDelivery(
@@ -635,10 +638,26 @@ protocol RecapPasteboardWriting: Sendable {
 }
 
 struct SystemRecapPasteboard: RecapPasteboardWriting {
+    let name: String?
+
+    init(name: String? = nil) { self.name = name }
+
+    static func disposableName(
+        arguments: [String], environment: [String: String], usesTemporaryStore: Bool
+    ) -> String? {
+        let prefix = "app.portavoz.recap-test."
+        guard usesTemporaryStore, arguments.contains("-uitest-recap-pasteboard"),
+              let name = environment["PORTAVOZ_UI_TEST_RECAP_PASTEBOARD"],
+              name.hasPrefix(prefix),
+              UUID(uuidString: String(name.dropFirst(prefix.count))) != nil else { return nil }
+        return name
+    }
+
     func replaceString(_ string: String) async -> Bool {
         await MainActor.run {
-            NSPasteboard.general.clearContents()
-            return NSPasteboard.general.setString(string, forType: .string)
+            let pasteboard = name.map { NSPasteboard(name: .init($0)) } ?? .general
+            pasteboard.clearContents()
+            return pasteboard.setString(string, forType: .string)
         }
     }
 }
@@ -647,7 +666,9 @@ struct SystemRecapPasteboard: RecapPasteboardWriting {
 /// retry uses the real pasteboard. Production construction cannot select it.
 actor AppFailingOnceRecapPasteboard: RecapPasteboardWriting {
     private var hasRejected = false
-    private let system = SystemRecapPasteboard()
+    private let system: SystemRecapPasteboard
+
+    init(system: SystemRecapPasteboard = .init()) { self.system = system }
 
     func replaceString(_ string: String) async -> Bool {
         guard hasRejected else {

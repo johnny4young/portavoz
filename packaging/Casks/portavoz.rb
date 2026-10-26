@@ -23,9 +23,11 @@ cask "portavoz" do
   # Portavoz keeps itself current in place via Sparkle (direct-download
   # channel), so Homebrew should not flag user-updated copies as outdated.
   auto_updates true
-  depends_on macos: :sonoma
+  depends_on macos: :tahoe
 
   app "Portavoz.app"
+  # The command-line tool and MCP server ship inside the app (D582).
+  binary "#{appdir}/Portavoz.app/Contents/Helpers/portavoz-cli"
 
   zap trash: [
     "~/Library/Application Support/Portavoz",

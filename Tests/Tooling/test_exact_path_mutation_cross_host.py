@@ -51,7 +51,7 @@ class ExactPathMutationCrossHostTests(unittest.TestCase):
         )
         self.assertEqual(
             scorecard["coverage"]["presentOperatingSystemMajors"],
-            [15, 26],
+            [26],
         )
         self.assertTrue(scorecard["comparability"]["sameSourceCommit"])
         self.assertTrue(scorecard["comparability"]["sameToolchain"])
@@ -86,17 +86,25 @@ class ExactPathMutationCrossHostTests(unittest.TestCase):
             scorecard,
         )
 
-    def test_missing_profile_or_os_coverage_is_blocked(self):
+    def test_missing_profile_coverage_is_blocked(self):
         scorecard = self.scorecard(self.receipts()[:-1])
         self.assertEqual(scorecard["outcome"], "blocked")
         self.assertEqual(scorecard["coverage"]["missingHostProfiles"], ["reference"])
         self.assertEqual(scorecard["profiles"][-1]["state"], "missing")
+        self.assertEqual(scorecard["coverage"]["missingOperatingSystemMajors"], [])
+
+    def test_sequoia_host_receipt_is_rejected(self):
+        with self.assertRaisesRegex(
+            cross_host.host_matrix.MatrixError, "not a supported Tahoe host"
+        ):
+            self.receipt("memory-8gb", 8, 15, 8)
 
         receipts = self.receipts()
-        receipts[0] = self.receipt("memory-8gb", 8, 26, 8)
-        scorecard = self.scorecard(receipts)
-        self.assertEqual(scorecard["outcome"], "blocked")
-        self.assertEqual(scorecard["coverage"]["missingOperatingSystemMajors"], [15])
+        receipts[0]["host"]["operatingSystem"] = "Version 15.7 (Build 24G222)"
+        with self.assertRaisesRegex(
+            cross_host.CrossHostMutationError, "supported Tahoe host"
+        ):
+            self.scorecard(receipts)
 
     def test_source_or_toolchain_mismatch_is_visible_and_blocked(self):
         receipts = self.receipts()
@@ -147,7 +155,7 @@ class ExactPathMutationCrossHostTests(unittest.TestCase):
         ):
             self.scorecard([*receipts, copy.deepcopy(receipts[0])])
 
-        duplicate_profile = self.receipt("memory-8gb", 8, 15, 8)
+        duplicate_profile = self.receipt("memory-8gb", 8, 26, 8)
         duplicate_profile["generatedAt"] = "2026-08-01T13:00:00Z"
         with self.assertRaisesRegex(
             cross_host.CrossHostMutationError,
@@ -265,7 +273,7 @@ class ExactPathMutationCrossHostTests(unittest.TestCase):
 
     def receipts(self):
         return [
-            self.receipt("memory-8gb", 8, 15, 8),
+            self.receipt("memory-8gb", 8, 26, 8),
             self.receipt("memory-16gb", 16, 26, 10),
             self.receipt("reference", 64, 26, 12),
         ]

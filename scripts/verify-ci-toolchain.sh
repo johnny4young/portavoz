@@ -10,7 +10,7 @@ expected_os_major="$1"
 expected_xcode="$2"
 
 case "$expected_os_major" in
-  15|26) ;;
+  26) ;;
   *) echo "Unsupported CI macOS major: $expected_os_major" >&2; exit 64 ;;
 esac
 if [[ ! "$expected_xcode" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then

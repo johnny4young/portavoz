@@ -43,10 +43,26 @@ final class OnboardingModelPreparationTests: XCTestCase {
                 underlying: String(describing: URLError(.notConnectedToInternet))), .network),
             (ModelStore.ModelStoreError.checksumMismatch(
                 path: "private/model.bin", expected: "a", actual: "b"), .unavailable),
+            (ModelStore.ModelStoreError.outOfSpace(path: "Encoder.mlmodelc/weights/weight.bin"), .storage),
             (NSError(domain: NSCocoaErrorDomain, code: NSFileWriteOutOfSpaceError), .storage),
             (NSError(domain: NSPOSIXErrorDomain, code: Int(ENOSPC)), .storage),
             (NSError(domain: NSCocoaErrorDomain, code: NSFileWriteUnknownError, userInfo: [
                 NSUnderlyingErrorKey: NSError(domain: NSPOSIXErrorDomain, code: Int(ENOSPC))
+            ]), .storage),
+            (NSError(domain: NSURLErrorDomain, code: URLError.cannotWriteToFile.rawValue, userInfo: [
+                NSUnderlyingErrorKey: NSError(domain: NSPOSIXErrorDomain, code: Int(ENOSPC))
+            ]), .storage),
+            (NSError(domain: NSURLErrorDomain, code: URLError.cannotCreateFile.rawValue, userInfo: [
+                NSUnderlyingErrorKey: NSError(domain: NSPOSIXErrorDomain, code: Int(EDQUOT))
+            ]), .storage),
+            (NSError(domain: NSURLErrorDomain, code: URLError.cannotWriteToFile.rawValue, userInfo: [
+                NSUnderlyingErrorKey: NSError(domain: NSCocoaErrorDomain, code: NSFileWriteOutOfSpaceError)
+            ]), .storage),
+            (NSError(domain: NSURLErrorDomain, code: URLError.cannotWriteToFile.rawValue, userInfo: [
+                NSMultipleUnderlyingErrorsKey: [
+                    NSError(domain: NSURLErrorDomain, code: URLError.unknown.rawValue),
+                    NSError(domain: NSPOSIXErrorDomain, code: Int(ENOSPC))
+                ]
             ]), .storage),
             (NSError(domain: "private.invalid", code: 7, userInfo: [
                 NSLocalizedDescriptionKey: "secret-token /private/model/path https://private.invalid"

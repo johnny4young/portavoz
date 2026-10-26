@@ -167,7 +167,7 @@ def load_contract(path: Path) -> dict[str, Any]:
     if (
         not isinstance(majors, list)
         or any(isinstance(value, bool) or not isinstance(value, int) for value in majors)
-        or majors != [15, 26]
+        or majors != [26]
     ):
         raise MatrixError("contract operating-system matrix is not supported")
     return raw

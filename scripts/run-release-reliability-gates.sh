@@ -79,7 +79,7 @@ PORTAVOZ_CORRECTION_COMPOSITION_RUNS=20 \
 swiftlint lint --strict --no-cache
 PORTAVOZ_STRESS_MINIMUM_TESTS=108 make test-recording-stress
 swift test --filter "$LANGUAGE_FILTER"
-make test-ui-scoped UI_TESTS="$UI_TESTS" UI_TEST_LOCALES="en es"
+make test-ui-scoped UI_TESTS="$UI_TESTS" UI_TEST_LOCALES="en"
 
 python3 scripts/release_reliability.py record-deterministic \
   --version "$VERSION" \

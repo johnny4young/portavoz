@@ -331,7 +331,7 @@ def load_contract(path: Path) -> dict[str, Any]:
             isinstance(value, bool) or not isinstance(value, int)
             for value in majors
         )
-        or majors != [15, 26]
+        or majors != [26]
     ):
         raise MatrixError("contract operating-system matrix is not supported")
     return raw
@@ -361,7 +361,7 @@ def validate_host(
     operating_system = bounded_string(host["operatingSystem"], f"{label}.operatingSystem")
     match = OPERATING_SYSTEM.fullmatch(operating_system)
     if match is None or int(match.group(1)) not in contract["supportedOperatingSystemMajors"]:
-        raise MatrixError(f"{label} is not a supported Sequoia/Tahoe host")
+        raise MatrixError(f"{label} is not a supported Tahoe host")
     if host["architecture"] != "arm64":
         raise MatrixError(f"{label}.architecture must be arm64")
     integer(host["processorCount"], f"{label}.processorCount", 1)

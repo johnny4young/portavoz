@@ -3,9 +3,9 @@ import GRDB
 import PortavozCore
 
 extension MeetingStore {
-    /// Earliest durable wake-up for the worker's supported kinds. Immediately
-    /// due jobs are claimed before this query; only future retry dates and
-    /// lease expirations are returned, so an idle process does not poll SQLite.
+    /// Earliest durable wake-up for the worker's supported kinds. Deadlines
+    /// that became due after the last claim request an immediate wake.
+    /// Unscheduled pending work stays signal-driven, including suspension.
     public func nextScheduledProcessingDate(
         kinds: Set<ProcessingJobKind>,
         after timestamp: Date = Date()
@@ -29,13 +29,12 @@ extension MeetingStore {
             return try Date.fetchOne(
                 db,
                 sql: """
-                    SELECT MIN(wakeAt) FROM (
+                    SELECT MAX(MIN(wakeAt), ?) FROM (
                         SELECT notBefore AS wakeAt
                         FROM processingJob
                         WHERE state = 'pending'
                           AND kind IN (\(placeholders))
                           AND notBefore IS NOT NULL
-                          AND notBefore > ?
                           AND attempt < maxAttempts
                           AND \(liveMeeting)
                         UNION ALL
@@ -44,11 +43,10 @@ extension MeetingStore {
                         WHERE state = 'running'
                           AND kind IN (\(placeholders))
                           AND leaseExpiresAt IS NOT NULL
-                          AND leaseExpiresAt > ?
                           AND \(liveMeeting)
                     )
                     """,
-                arguments: StatementArguments(rawKinds + [timestamp] + rawKinds + [timestamp]))
+                arguments: StatementArguments([timestamp] + rawKinds + rawKinds))
         }
     }
 

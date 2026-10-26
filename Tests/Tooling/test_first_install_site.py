@@ -31,15 +31,17 @@ class FirstInstallSiteTests(unittest.TestCase):
 
     def test_both_languages_state_distributed_release_floor(self):
         html = (ROOT / "site/index.html").read_text()
-        self.assertEqual(html.count("macOS Sequoia (15)+ · Apple Silicon"), 2)
+        self.assertEqual(html.count("macOS Tahoe (26)+ · Apple Silicon"), 2)
+        self.assertNotIn("macOS Sequoia (15)+", html)
         self.assertNotIn("macOS 14.4+ · Apple Silicon", html)
         self.assertIn("Open the DMG and drag Portavoz to Applications.", html)
         self.assertIn("Abre el DMG y arrastra Portavoz a Aplicaciones.", html)
 
-    def test_source_floor_is_not_presented_as_release_qualification(self):
+    def test_readme_states_the_macos_26_floor(self):
         readme = (ROOT / "README.md").read_text()
-        self.assertIn("source-build deployment target is macOS 14.4", readme)
-        self.assertIn("does not establish validation of the published app on Sonoma", readme)
+        self.assertIn("Releases after 1.2.0 require macOS 26 Tahoe", readme)
+        self.assertIn("Swift 6.2 on macOS 26+", readme)
+        self.assertNotIn("macOS 14.4+**", readme)
 
 
 if __name__ == "__main__":

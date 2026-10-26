@@ -16,7 +16,8 @@ from typing import Sequence
 
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 SELECTOR_PATTERN = re.compile(r"^PortavozUITests/[A-Za-z0-9_]+UITests/test[A-Za-z0-9_]+$")
-SUPPORTED_LOCALES = frozenset({"en", "es"})
+# Hosted anchors certify English evidence only.
+SUPPORTED_LOCALES = frozenset({"en"})
 
 
 class AnchorError(ValueError):

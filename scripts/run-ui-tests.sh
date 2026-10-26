@@ -108,8 +108,8 @@ esac
 
 build_duration=""
 if [[ "$phase" != test-only ]]; then
-  # Compile the app and UI bundle once. English and Spanish then reuse the same
-  # products through test-without-building instead of paying the build cost twice.
+  # Compile the app and UI bundle once. Every requested locale then reuses the
+  # same products through test-without-building instead of rebuilding.
   rm -f "$build_duration_receipt"
   build_args=("${common[@]}")
   if [[ -n "$products_path" ]]; then

@@ -6,16 +6,32 @@ struct DictationUnverifiedDeliveryView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Sent — insertion not verified", systemImage: "paperplane.circle")
-                .font(.headline)
-                .foregroundStyle(.orange)
-                .accessibilityAddTraits(.isHeader)
-                .accessibilityIdentifier("dictation-panel-delivery-status")
-            Text("Check the destination before pasting again. Nothing was saved in Portavoz.")
+            HStack(alignment: .firstTextBaseline) {
+                Label("Sent — insertion not verified", systemImage: "paperplane.circle")
+                    .font(.headline)
+                    .foregroundStyle(.orange)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityIdentifier("dictation-panel-delivery-status")
+                Spacer()
+                Button(action: controller.dismissFeedback) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L10n.text("Close"))
+                .accessibilityIdentifier("dictation-unverified-close")
+            }
+            Text(L10n.text("Check the destination before pasting again.") + " " + controller.deliveryPrivacyLine)
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("dictation-panel-delivery-detail")
+            if let notice = controller.polishNotice {
+                Text(notice)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("dictation-panel-polish-notice")
+            }
             // Like recovery, the complete output stays reachable when Copy
             // fails: it scrolls inside the bounded panel and can be selected.
             ScrollView {

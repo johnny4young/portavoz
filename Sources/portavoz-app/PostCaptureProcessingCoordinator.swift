@@ -68,8 +68,12 @@ final class PostCaptureProcessingSupervisor {
 
         let generation = kickGeneration
         do {
-            let next = try await services.processPostCaptureJobs.nextScheduledDate()
+            let scheduled = try await services.processPostCaptureJobs.nextScheduledDate()
             guard generation == kickGeneration, drainTask == nil else { return }
+            let next = ProcessingWakeSchedule.nextDate(
+                scheduled: scheduled,
+                afterDrainFailure: result.issues.contains { $0.stage == .claim },
+                at: Date())
             backgroundWork?.finishProcessingDrain(
                 token,
                 result: result,
@@ -232,7 +236,15 @@ extension AppServices {
     var processPostCaptureJobs: ProcessPostCaptureJobs {
         ProcessPostCaptureJobs(
             store: store,
-            capabilities: AppPostCaptureProcessingCapabilities(services: self))
+            capabilities: AppPostCaptureProcessingCapabilities(services: self),
+            translation: TranscriptTranslationWorker(store: store, translator: meetingTranslator))
+    }
+
+    /// Disposable launches never reach Apple's translator.
+    private var meetingTranslator: any DictationTextTranslating {
+        guard usesTemporaryMeetingStore else { return AppleDictationTranslator() }
+        return MeetingTranslationFixture(
+            isMissing: ProcessInfo.processInfo.arguments.contains("-seed-meeting-translation-missing"))
     }
 
     func kickPostCaptureProcessing() {

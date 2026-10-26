@@ -9,7 +9,6 @@
     "reference"
   ],
   "requiredOperatingSystemMajors": [
-    15,
     26
   ],
   "schemaVersion": 1,

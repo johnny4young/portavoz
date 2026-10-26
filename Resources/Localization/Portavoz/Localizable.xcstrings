@@ -201,6 +201,16 @@
         }
       }
     },
+    "%d of %d characters": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d de %d caracteres"
+          }
+        }
+      }
+    },
     "%d of %d confirmations": {
       "localizations": {
         "es": {
@@ -481,6 +491,16 @@
         }
       }
     },
+    "A recipe tells Polish how to reshape what you dictate. It never changes facts, names or numbers.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una receta le dice a Pulir cómo dar otra forma a lo que dictas. Nunca cambia datos, nombres ni números."
+          }
+        }
+      }
+    },
     "A recurring topic across your recent meetings.": {
       "localizations": {
         "es": {
@@ -527,6 +547,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hay un token guardado en el Llavero de este dispositivo. Solo se usa después de que confirmes un Gist o un issue."
+          }
+        }
+      }
+    },
+    "Add another way “%@” is heard": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agregar otra forma en que se oye “%@”"
+          }
+        }
+      }
+    },
+    "Adds “%@” → “%@” to your text replacements.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agrega “%@” → “%@” a tus reemplazos de texto."
+          }
+        }
+      }
+    },
+    "Always write “%@”": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escribir siempre “%@”"
+          }
+        }
+      }
+    },
+    "Another app already uses ⌃⌥⌘R. Rewrite the selection from the menu bar instead.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otra app ya usa ⌃⌥⌘R. Reescribe la selección desde la barra de menús."
           }
         }
       }
@@ -1731,6 +1791,166 @@
         }
       }
     },
+    "Bullet list": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lista de viñetas"
+          }
+        }
+      }
+    },
+    "Cancel rewrite": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar reescritura"
+          }
+        }
+      }
+    },
+    "Changed “%@” to “%@”.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiado “%@” por “%@”."
+          }
+        }
+      }
+    },
+    "Checking Apple's translation languages…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisando los idiomas de traducción de Apple…"
+          }
+        }
+      }
+    },
+    "Choose another": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegir otra"
+          }
+        }
+      }
+    },
+    "Complete the audio import before compressing it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Completa la importación de audio antes de comprimirlo."
+          }
+        }
+      }
+    },
+    "Concise": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conciso"
+          }
+        }
+      }
+    },
+    "Correct the last dictation by voice": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corregir el último dictado con la voz"
+          }
+        }
+      }
+    },
+    "Default": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Predeterminado"
+          }
+        }
+      }
+    },
+    "Deleted the last dictation.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrado el último dictado."
+          }
+        }
+      }
+    },
+    "Deleted “%@”.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrado “%@”."
+          }
+        }
+      }
+    },
+    "Download English and Spanish": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar inglés y español"
+          }
+        }
+      }
+    },
+    "Download languages": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar idiomas"
+          }
+        }
+      }
+    },
+    "Duplicate": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duplicar"
+          }
+        }
+      }
+    },
+    "Edit": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar"
+          }
+        }
+      }
+    },
+    "English and Spanish are not downloaded yet, so dictation is pasted untranslated.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El inglés y el español aún no están descargados, así que el dictado se pega sin traducir."
+          }
+        }
+      }
+    },
     "Filler filtering and replacements apply only in Clean mode.": {
       "localizations": {
         "es": {
@@ -2417,16 +2637,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Buscar actualizaciones…"
-          }
-        }
-      }
-    },
-    "Check the destination before pasting again. Nothing was saved in Portavoz.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Revisa el destino antes de volver a pegar. No se guardó nada en Portavoz."
           }
         }
       }
@@ -4493,16 +4703,6 @@
         }
       }
     },
-    "Dictation stays on this Mac and is not stored. Inserting text requires Accessibility permission.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El dictado permanece en esta Mac y no se guarda. Insertar texto requiere el permiso de Accesibilidad."
-          }
-        }
-      }
-    },
     "Discard": {
       "localizations": {
         "es": {
@@ -5809,6 +6009,16 @@
         }
       }
     },
+    "Formal": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formal"
+          }
+        }
+      }
+    },
     "Free disk used by the variant you do not use": {
       "localizations": {
         "es": {
@@ -5845,6 +6055,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "El viernes, después de la revisión — dicho a las 12:40."
+          }
+        }
+      }
+    },
+    "Friendly": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cercano"
+          }
+        }
+      }
+    },
+    "From now on, “%@” is written “%@”.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desde ahora, “%@” se escribe “%@”."
           }
         }
       }
@@ -6085,6 +6315,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Agrupar por"
+          }
+        }
+      }
+    },
+    "Hangout": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Charla"
+          }
+        }
+      }
+    },
+    "How should Polish reshape your dictation?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Cómo debe Pulir dar forma a tu dictado?"
           }
         }
       }
@@ -6385,6 +6635,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Modelo de mejora (Whisper large-v3)"
+          }
+        }
+      }
+    },
+    "In Clean mode, say “new line” or “new paragraph” to start one.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En modo Limpio, di «nueva línea» o «nuevo párrafo» para empezar una."
           }
         }
       }
@@ -6969,12 +7229,12 @@
         }
       }
     },
-    "Literal keeps recognized words. Clean uses your filler filter and replacements. Neither rewrites.": {
+    "Literal keeps recognized words. Clean uses your filler filter and replacements. Polish starts from Clean, then your summary engine fixes grammar and punctuation on this Mac; if it would change a fact, Clean is pasted.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Literal conserva las palabras reconocidas. Limpio usa tu filtro de muletillas y reemplazos. Ninguno reescribe."
+            "value": "Literal conserva las palabras reconocidas. Limpio usa tu filtro de muletillas y tus reemplazos. Pulir parte de Limpio y luego tu motor de resúmenes corrige la gramática y la puntuación en este Mac; si fuera a cambiar un dato, se pega Limpio."
           }
         }
       }
@@ -7305,6 +7565,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Marcado como no sustentado"
+          }
+        }
+      }
+    },
+    "Match capitalization to the text before the cursor": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustar mayúsculas al texto antes del cursor"
           }
         }
       }
@@ -7955,6 +8225,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nueva después de la reunión"
+          }
+        }
+      }
+    },
+    "New recipe…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nueva receta…"
           }
         }
       }
@@ -8739,6 +9019,26 @@
         }
       }
     },
+    "Nothing was heard. Say how again, or choose a recipe.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se oyó nada. Vuelve a decir cómo o elige una receta."
+          }
+        }
+      }
+    },
+    "Nothing was replaced. Copy the rewrite instead.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se reemplazó nada. Copia la reescritura."
+          }
+        }
+      }
+    },
     "Nothing was saved in Portavoz.": {
       "localizations": {
         "es": {
@@ -9259,6 +9559,16 @@
         }
       }
     },
+    "Or hold your dictation shortcut and say how to rewrite it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O mantén tu atajo de dictado y di cómo reescribirlo."
+          }
+        }
+      }
+    },
     "Or skip — they download on your first recording.": {
       "localizations": {
         "es": {
@@ -9389,6 +9699,16 @@
         }
       }
     },
+    "Password fields cannot be rewritten.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los campos de contraseña no se pueden reescribir."
+          }
+        }
+      }
+    },
     "Past 24 hours": {
       "localizations": {
         "es": {
@@ -9425,6 +9745,146 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pega una página pública. Portavoz obtendrá solo esa dirección."
+          }
+        }
+      }
+    },
+    "Paste original": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegar original"
+          }
+        }
+      }
+    },
+    "Paste untranslated": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegar sin traducir"
+          }
+        }
+      }
+    },
+    "Paste without polish": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegar sin pulir"
+          }
+        }
+      }
+    },
+    "Pasted without polish.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegado sin pulir."
+          }
+        }
+      }
+    },
+    "Pasted without polish: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegado sin pulir: %@"
+          }
+        }
+      }
+    },
+    "Pasted without polish: the dictation is too long to polish.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegado sin pulir: el dictado es demasiado largo para pulirlo."
+          }
+        }
+      }
+    },
+    "Pasted without polish: the rewrite changed a fact, name or number.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegado sin pulir: la reescritura cambiaba un dato, un nombre o un número."
+          }
+        }
+      }
+    },
+    "Pasted without polish: the summary engine could not rewrite it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegado sin pulir: el motor de resúmenes no pudo reescribirlo."
+          }
+        }
+      }
+    },
+    "Pasted without polish: the summary engine took too long.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegado sin pulir: el motor de resúmenes tardó demasiado."
+          }
+        }
+      }
+    },
+    "Pasted without translation.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegado sin traducir."
+          }
+        }
+      }
+    },
+    "Pasted without translation: download the languages in Settings › Audio & dictation first.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegado sin traducir: primero descarga los idiomas en Ajustes › Audio y dictado."
+          }
+        }
+      }
+    },
+    "Pasted without translation: the dictation's language was not clear.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegado sin traducir: no estaba claro el idioma del dictado."
+          }
+        }
+      }
+    },
+    "Pasted without translation: the translator could not finish.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegado sin traducir: el traductor no pudo terminar."
+          }
+        }
+      }
+    },
+    "Pasted without translation: this language pair is not available on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegado sin traducir: este par de idiomas no está disponible en este Mac."
           }
         }
       }
@@ -9579,6 +10039,56 @@
         }
       }
     },
+    "Polish": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pulir"
+          }
+        }
+      }
+    },
+    "Polish recipe": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Receta de Pulir"
+          }
+        }
+      }
+    },
+    "Polish recipes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recetas de Pulir"
+          }
+        }
+      }
+    },
+    "Polish: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pulir: %@"
+          }
+        }
+      }
+    },
+    "Polishing…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puliendo…"
+          }
+        }
+      }
+    },
     "Portable preferences": {
       "localizations": {
         "es": {
@@ -9595,6 +10105,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Portavoz"
+          }
+        }
+      }
+    },
+    "Portavoz can correct only its last insertion while it is unchanged in a field it can read.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz solo puede corregir lo último que pegó mientras siga igual, en un campo que pueda leer."
           }
         }
       }
@@ -10699,6 +11219,16 @@
         }
       }
     },
+    "Reading the selection…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leyendo la selección…"
+          }
+        }
+      }
+    },
     "Ready to review": {
       "localizations": {
         "es": {
@@ -10775,6 +11305,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Eliminadas recientemente"
+          }
+        }
+      }
+    },
+    "Recipe": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Receta"
           }
         }
       }
@@ -11025,6 +11565,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reduce el eco del altavoz bajando el micrófono fuera de tus turnos"
+          }
+        }
+      }
+    },
+    "Refresh": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualizar"
           }
         }
       }
@@ -11589,6 +12139,16 @@
         }
       }
     },
+    "Remove “%@”": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar “%@”"
+          }
+        }
+      }
+    },
     "Rename meeting": {
       "localizations": {
         "es": {
@@ -11639,12 +12199,52 @@
         }
       }
     },
+    "Replace": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reemplazar"
+          }
+        }
+      }
+    },
     "Replaced": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Reemplazada"
+          }
+        }
+      }
+    },
+    "Replaced in %@.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reemplazado en %@."
+          }
+        }
+      }
+    },
+    "Replaced.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reemplazado."
+          }
+        }
+      }
+    },
+    "Replacing…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reemplazando…"
           }
         }
       }
@@ -11685,6 +12285,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Restablecer perfiles de aplicaciones"
+          }
+        }
+      }
+    },
+    "Reset recipes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restablecer recetas"
           }
         }
       }
@@ -11861,6 +12471,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reintentar atajo"
+          }
+        }
+      }
+    },
+    "Return replaces the selection. Escape closes without changing it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retorno reemplaza la selección. Escape cierra sin cambiarla."
           }
         }
       }
@@ -12195,6 +12815,76 @@
         }
       }
     },
+    "Rewrite instruction": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instrucción de reescritura"
+          }
+        }
+      }
+    },
+    "Rewrite selection": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reescribir selección"
+          }
+        }
+      }
+    },
+    "Rewrite the selected text with ⌃⌥⌘R": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reescribir el texto seleccionado con ⌃⌥⌘R"
+          }
+        }
+      }
+    },
+    "Rewrite your selection": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reescribir tu selección"
+          }
+        }
+      }
+    },
+    "Rewrite your selection in %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reescribir tu selección en %@"
+          }
+        }
+      }
+    },
+    "Rewriting needs the Accessibility permission. Grant it in System Settings and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reescribir necesita el permiso de Accesibilidad. Concédelo en Ajustes del Sistema y vuelve a intentarlo."
+          }
+        }
+      }
+    },
+    "Rewriting…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reescribiendo…"
+          }
+        }
+      }
+    },
     "Risks": {
       "localizations": {
         "es": {
@@ -12351,12 +13041,42 @@
         }
       }
     },
+    "Saving…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardando…"
+          }
+        }
+      }
+    },
     "Say a sentence, anything about your day. Portavoz transcribes it live.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Di una frase, lo que sea sobre tu día. Portavoz la transcribe en vivo."
+          }
+        }
+      }
+    },
+    "Say how": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Decir cómo"
+          }
+        }
+      }
+    },
+    "Say how to rewrite it, then press Done or your dictation shortcut.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Di cómo reescribirlo y luego pulsa Listo o tu atajo de dictado."
           }
         }
       }
@@ -12651,6 +13371,26 @@
         }
       }
     },
+    "Select at least three words to rewrite.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecciona al menos tres palabras para reescribir."
+          }
+        }
+      }
+    },
+    "Select at most 2,000 characters to rewrite.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecciona como máximo 2.000 caracteres para reescribir."
+          }
+        }
+      }
+    },
     "Select meeting %lld: %@, ended %@": {
       "localizations": {
         "es": {
@@ -12667,6 +13407,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Seleccionar la reunión %lld: %@, comenzó %@"
+          }
+        }
+      }
+    },
+    "Select some text first, then try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Primero selecciona un texto y vuelve a intentarlo."
+          }
+        }
+      }
+    },
+    "Select text in any app, choose Polish or a recipe, check the preview and press Return to replace it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecciona texto en cualquier app, elige Pulir o una receta, revisa la vista previa y pulsa Retorno para reemplazarlo."
           }
         }
       }
@@ -13511,6 +14271,16 @@
         }
       }
     },
+    "Start a dictation with “change Friday to Monday”, “delete Friday” or “scratch that” to fix only what Portavoz just pasted, while it is unchanged. Apps that do not expose their text cannot be corrected.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza un dictado con “cambia viernes por lunes”, “borra viernes” o “borra eso” para corregir solo lo que Portavoz acaba de pegar, mientras siga igual. Las apps que no exponen su texto no se pueden corregir."
+          }
+        }
+      }
+    },
     "Start a new recording": {
       "localizations": {
         "es": {
@@ -13571,12 +14341,32 @@
         }
       }
     },
+    "Starts a sentence with a capital and continues one in lowercase. Names, acronyms and your replacements keep their capitals. Reads up to 80 characters before the cursor at paste time, only in fields Portavoz can read, and keeps none of it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza una oración con mayúscula y continúa una en minúscula. Los nombres, las siglas y tus reemplazos conservan sus mayúsculas. Lee hasta 80 caracteres antes del cursor al pegar, solo en campos que Portavoz puede leer, y no guarda nada."
+          }
+        }
+      }
+    },
     "Starts recording linked to this event: the meeting gets its real title": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Inicia la grabación vinculada a este evento: la reunión nace con su título real"
+          }
+        }
+      }
+    },
+    "Status update": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualización de estado"
           }
         }
       }
@@ -14481,6 +15271,16 @@
         }
       }
     },
+    "The languages were not downloaded. Try again when you are online.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se descargaron los idiomas. Inténtalo de nuevo cuando tengas conexión."
+          }
+        }
+      }
+    },
     "The last change could not be verified. Reload controls before trying again.": {
       "localizations": {
         "es": {
@@ -14507,6 +15307,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "La última sincronización no terminó. Tus datos locales están seguros."
+          }
+        }
+      }
+    },
+    "The last translation failed. Try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La última traducción falló. Inténtalo de nuevo."
           }
         }
       }
@@ -14761,6 +15571,16 @@
         }
       }
     },
+    "The rewrite changed a fact, name or number, so it is not offered. Try another recipe.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La reescritura cambiaba un dato, un nombre o un número, así que no se ofrece. Prueba otra receta."
+          }
+        }
+      }
+    },
     "The saved shortcut is invalid. Using %@ instead.": {
       "localizations": {
         "es": {
@@ -14801,6 +15621,16 @@
         }
       }
     },
+    "The selection changed, so nothing was replaced. Copy the rewrite instead.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La selección cambió, así que no se reemplazó nada. Copia la reescritura."
+          }
+        }
+      }
+    },
     "The sources do not support an answer. Exact matches are still shown.": {
       "localizations": {
         "es": {
@@ -14817,6 +15647,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "La sugerencia sigue segura en este Mac. Inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "The summary engine could not rewrite it. Try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El motor de resúmenes no pudo reescribirlo. Vuelve a intentarlo."
+          }
+        }
+      }
+    },
+    "The summary engine took too long. Try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El motor de resúmenes tardó demasiado. Vuelve a intentarlo."
+          }
+        }
+      }
+    },
+    "The transcript changed after this translation. Translate again to update it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La transcripción cambió después de esta traducción. Tradúcela otra vez para actualizarla."
           }
         }
       }
@@ -14987,6 +15847,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pensando una buena pregunta…"
+          }
+        }
+      }
+    },
+    "This app does not let Portavoz read its selection.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta app no deja que Portavoz lea su selección."
+          }
+        }
+      }
+    },
+    "This field did not accept the correction. Nothing changed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este campo no aceptó la corrección. No cambió nada."
           }
         }
       }
@@ -15321,6 +16201,16 @@
         }
       }
     },
+    "This recipe could not be saved.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo guardar esta receta."
+          }
+        }
+      }
+    },
     "This recording supports up to %d objectives.": {
       "localizations": {
         "es": {
@@ -15651,6 +16541,16 @@
         }
       }
     },
+    "Transcript language": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma de la transcripción"
+          }
+        }
+      }
+    },
     "Transcript recovery stopped after repeated attempts. Your audio and current transcript are still saved.": {
       "localizations": {
         "es": {
@@ -15691,12 +16591,92 @@
         }
       }
     },
+    "Translate dictation into": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducir el dictado a"
+          }
+        }
+      }
+    },
+    "Translate into": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducir a"
+          }
+        }
+      }
+    },
+    "Translating a transcript": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduciendo una transcripción"
+          }
+        }
+      }
+    },
+    "Translating…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduciendo…"
+          }
+        }
+      }
+    },
     "Translation": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Traducción"
+          }
+        }
+      }
+    },
+    "Translation failed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traducción falló"
+          }
+        }
+      }
+    },
+    "Translation needs Apple's English and Spanish languages on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traducción necesita los idiomas inglés y español de Apple en este Mac."
+          }
+        }
+      }
+    },
+    "Translation out of date": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducción desactualizada"
+          }
+        }
+      }
+    },
+    "Translation runs on this Mac with Apple's English and Spanish languages.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traducción se hace en este Mac con los idiomas inglés y español de Apple."
           }
         }
       }
@@ -16701,6 +17681,16 @@
         }
       }
     },
+    "Your recipes could not be read. Polish uses the built-in ones until you reset them.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron leer tus recetas. Pulir usa las incluidas hasta que las restablezcas."
+          }
+        }
+      }
+    },
     "Your recording has stopped. Save or discard the unsaved change to continue.": {
       "localizations": {
         "en": {
@@ -16823,6 +17813,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tu voz suena baja — acércate o usa audífonos con micrófono"
+          }
+        }
+      }
+    },
+    "Your words are being translated on this Mac. Esc pastes them untranslated.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus palabras se están traduciendo en este Mac. Esc las pega sin traducir."
           }
         }
       }
@@ -16987,12 +17987,12 @@
         }
       }
     },
-    "export markdown backup folder recordings trash privacy local": {
+    "export markdown backup folder recordings trash privacy local model credits licenses attribution": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "exportar markdown backup carpeta grabaciones papelera privacidad local"
+            "value": "exportar markdown backup carpeta grabaciones papelera privacidad local créditos de modelos licencias atribución"
           }
         }
       }
@@ -17447,6 +18447,16 @@
         }
       }
     },
+    "Your words are being polished. Esc pastes them without polish.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estamos puliendo tus palabras. Esc las pega sin pulir."
+          }
+        }
+      }
+    },
     "→ English": {
       "localizations": {
         "es": {
@@ -17613,6 +18623,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Elige entre 1 y 1.000 archivos de audio para importar."
+          }
+        }
+      }
+    },
+    "Choose M4A, CAF, WAV, MP3, AAC, AIFF or M4B audio files to import.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige archivos de audio M4A, CAF, WAV, MP3, AAC, AIFF o M4B para importar."
           }
         }
       }
@@ -17813,6 +18833,1886 @@
           "stringUnit": {
             "state": "translated",
             "value": "Puedes seguir grabando audio. La transcripción estará disponible cuando los modelos estén listos."
+          }
+        }
+      }
+    },
+    "Inserting…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Insertando…"
+          }
+        }
+      }
+    },
+    "Delivery didn't complete. Copy your text to keep it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La entrega no se completó. Copia el texto para conservarlo."
+          }
+        }
+      }
+    },
+    "Play start and stop sounds": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducir un sonido al empezar y al terminar"
+          }
+        }
+      }
+    },
+    "Load the dictation model at launch": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargar el modelo de dictado al abrir la app"
+          }
+        }
+      }
+    },
+    "Not available with Lightweight model memory.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No disponible con la memoria ligera para modelos."
+          }
+        }
+      }
+    },
+    "The first dictation starts faster. The model still unloads after a few idle minutes.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El primer dictado arranca más rápido. El modelo igual se libera de la memoria tras unos minutos sin uso."
+          }
+        }
+      }
+    },
+    "The speech model took too long to load. Nothing was inserted. Try again in a moment.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El modelo de voz tardó demasiado en cargar. No se insertó nada. Inténtalo de nuevo en un momento."
+          }
+        }
+      }
+    },
+    "No speech detected — nothing was inserted": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se detectó voz: no se insertó nada"
+          }
+        }
+      }
+    },
+    "If you did speak, copy the text below. Nothing was saved in Portavoz.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si sí hablaste, copia el texto de abajo. No se guardó nada en Portavoz."
+          }
+        }
+      }
+    },
+    "Skip dictations without speech": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Omitir dictados sin voz"
+          }
+        }
+      }
+    },
+    "Downloading the voice detector (1 MB)… %d%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargando el detector de voz (1 MB)… %d%%"
+          }
+        }
+      }
+    },
+    "The voice detector couldn't be downloaded. Until it is, dictations are pasted as before.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo descargar el detector de voz. Mientras tanto, los dictados se pegan como antes."
+          }
+        }
+      }
+    },
+    "The voice detector isn't installed yet. Until it is, dictations are pasted as before.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El detector de voz todavía no está instalado. Mientras tanto, los dictados se pegan como antes."
+          }
+        }
+      }
+    },
+    "Silence and background noise are offered to copy instead of being pasted. Uses a 1 MB voice detector on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El silencio y el ruido de fondo se ofrecen para copiar en vez de pegarse. Usa un detector de voz de 1 MB en esta Mac."
+          }
+        }
+      }
+    },
+    "Model credits": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Créditos de modelos"
+          }
+        }
+      }
+    },
+    "Portavoz downloads these models only when a feature needs them, and they run on this Mac. Each keeps its own license.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz descarga estos modelos solo cuando una función los necesita, y se ejecutan en esta Mac. Cada uno conserva su propia licencia."
+          }
+        }
+      }
+    },
+    "Stop after a pause": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detener tras una pausa"
+          }
+        }
+      }
+    },
+    "Pause length": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duración de la pausa"
+          }
+        }
+      }
+    },
+    "%.1f seconds": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%.1f segundos"
+          }
+        }
+      }
+    },
+    "Needs the voice detector above. Until it is installed, dictation stops only when you do.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Necesita el detector de voz de arriba. Hasta que esté instalado, el dictado solo se detiene cuando tú lo detienes."
+          }
+        }
+      }
+    },
+    "Only when you tap to start. Holding a key or button still stops when you let go.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo cuando empiezas con un toque. Si mantienes una tecla o un botón, se detiene al soltarlo."
+          }
+        }
+      }
+    },
+    "Paste last": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegar el último"
+          }
+        }
+      }
+    },
+    "Paste the last dictation with ⌃⌥⌘V": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegar el último dictado con ⌃⌥⌘V"
+          }
+        }
+      }
+    },
+    "Another app already uses ⌃⌥⌘V. Paste the last dictation from the menu bar instead.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otra app ya usa ⌃⌥⌘V. Pega el último dictado desde la barra de menús."
+          }
+        }
+      }
+    },
+    "The last dictation stays in memory for 15 minutes and is never saved. It is also in the menu bar.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El último dictado se guarda en memoria durante 15 minutos y nunca en disco. También está en la barra de menús."
+          }
+        }
+      }
+    },
+    "Hold a key to dictate": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantener una tecla para dictar"
+          }
+        }
+      }
+    },
+    "Fn (🌐)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fn (🌐)"
+          }
+        }
+      }
+    },
+    "Right Option": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opción derecha"
+          }
+        }
+      }
+    },
+    "Right Command": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comando derecho"
+          }
+        }
+      }
+    },
+    "Hold the key while you speak and release it to paste. Shortcuts that use the key keep working.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén la tecla mientras hablas y suéltala para pegar. Los atajos que usan esa tecla siguen funcionando."
+          }
+        }
+      }
+    },
+    "So macOS doesn't also react, set “Press 🌐 key to” to “Do Nothing” in System Settings › Keyboard.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para que macOS no reaccione también, en Ajustes del Sistema › Teclado pon «Pulsar la tecla 🌐 para» en «No hacer nada»."
+          }
+        }
+      }
+    },
+    "Holding a key needs Accessibility permission for Portavoz in System Settings › Privacy & Security.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantener una tecla necesita el permiso de Accesibilidad para Portavoz en Ajustes del Sistema › Privacidad y seguridad."
+          }
+        }
+      }
+    },
+    "Parakeet Ultra (more accurate, 613 MB)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parakeet Ultra (más preciso, 613 MB)"
+          }
+        }
+      }
+    },
+    "Downloading Parakeet Ultra (613 MB)… %d%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargando Parakeet Ultra (613 MB)… %d%%"
+          }
+        }
+      }
+    },
+    "Ultra is ready for dictation. Meetings, and dictation during a recording, use Parakeet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ultra está listo para dictar. Las reuniones, y los dictados durante una grabación, usan Parakeet."
+          }
+        }
+      }
+    },
+    "Parakeet Ultra couldn't be downloaded. Until it is, dictation uses Parakeet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo descargar Parakeet Ultra. Mientras tanto, el dictado usa Parakeet."
+          }
+        }
+      }
+    },
+    "Parakeet Ultra isn't downloaded yet. Until it is, dictation uses Parakeet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parakeet Ultra todavía no está descargado. Mientras tanto, el dictado usa Parakeet."
+          }
+        }
+      }
+    },
+    "Checking Parakeet Ultra…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando Parakeet Ultra…"
+          }
+        }
+      }
+    },
+    "Loading the speech model": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando el modelo de voz"
+          }
+        }
+      }
+    },
+    "Loading speech model…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando el modelo de voz…"
+          }
+        }
+      }
+    },
+    "Keep talking. Your words appear once the model is ready.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sigue hablando. Tus palabras aparecen cuando el modelo esté listo."
+          }
+        }
+      }
+    },
+    "Show only a small indicator": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar solo un indicador pequeño"
+          }
+        }
+      }
+    },
+    "While you dictate, see just the audio level and the time, without the live text or buttons.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mientras dictas, ve solo el nivel de audio y el tiempo, sin el texto en vivo ni botones."
+          }
+        }
+      }
+    },
+    "Audio level": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nivel de audio"
+          }
+        }
+      }
+    },
+    "Sent, not verified": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviado, sin verificar"
+          }
+        }
+      }
+    },
+    "the practice field": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "el campo de práctica"
+          }
+        }
+      }
+    },
+    "Try it here": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pruébalo aquí"
+          }
+        }
+      }
+    },
+    "Uses your microphone and the on-device model. The words stay in this field and are not saved.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa tu micrófono y el modelo de este Mac. Las palabras se quedan en este campo y no se guardan."
+          }
+        }
+      }
+    },
+    "You can also press %@ while this window is in front.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "También puedes pulsar %@ mientras esta ventana esté al frente."
+          }
+        }
+      }
+    },
+    "Your words appear here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus palabras aparecen aquí."
+          }
+        }
+      }
+    },
+    "Finish": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminar"
+          }
+        }
+      }
+    },
+    "Dictate here": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dictar aquí"
+          }
+        }
+      }
+    },
+    "Prepare the speech model": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparar el modelo de voz"
+          }
+        }
+      }
+    },
+    "The microphone stays off until the model is ready.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El micrófono sigue apagado hasta que el modelo esté listo."
+          }
+        }
+      }
+    },
+    "Preparing the speech model…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparando el modelo de voz…"
+          }
+        }
+      }
+    },
+    "Press %@ in any app, speak, and press it again. Your words appear where your cursor is.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pulsa %@ en cualquier app, habla y vuelve a pulsarlo. Tus palabras aparecen donde está el cursor."
+          }
+        }
+      }
+    },
+    "Turn on dictation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activar el dictado"
+          }
+        }
+      }
+    },
+    "Accessibility": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accesibilidad"
+          }
+        }
+      }
+    },
+    "Allowed. Dictation can type into other apps.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitido. El dictado puede escribir en otras apps."
+          }
+        }
+      }
+    },
+    "Lets dictation type into other apps. You can try it here without it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permite que el dictado escriba en otras apps. Puedes probarlo aquí sin este permiso."
+          }
+        }
+      }
+    },
+    "Allowed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitido"
+          }
+        }
+      }
+    },
+    "Dictations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dictados"
+          }
+        }
+      }
+    },
+    "Find what you dictated, when you keep a history": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Encuentra lo que dictaste, si guardas un historial"
+          }
+        }
+      }
+    },
+    "Dictation history could not be loaded.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo cargar el historial de dictado."
+          }
+        }
+      }
+    },
+    "The history setting could not be saved.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo guardar el ajuste del historial."
+          }
+        }
+      }
+    },
+    "The dictation could not be deleted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo eliminar el dictado."
+          }
+        }
+      }
+    },
+    "The dictations could not be deleted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron eliminar los dictados."
+          }
+        }
+      }
+    },
+    "Saving to your dictation history…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardando en tu historial de dictado…"
+          }
+        }
+      }
+    },
+    "Saved to your dictation history.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardado en tu historial de dictado."
+          }
+        }
+      }
+    },
+    "Not saved to your dictation history.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se guardó en tu historial de dictado."
+          }
+        }
+      }
+    },
+    "Check the destination before pasting again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa el destino antes de volver a pegar."
+          }
+        }
+      }
+    },
+    "Delete every saved dictation?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Eliminar todos los dictados guardados?"
+          }
+        }
+      }
+    },
+    "Delete all": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar todo"
+          }
+        }
+      }
+    },
+    "This removes them from this Mac. Copies you pasted elsewhere are not affected.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se eliminan de este Mac. Lo que ya pegaste en otras apps no cambia."
+          }
+        }
+      }
+    },
+    "Kept on this Mac for %d days.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se guardan en este Mac durante %d días."
+          }
+        }
+      }
+    },
+    "History is off. New dictations are not saved.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El historial está apagado. Los dictados nuevos no se guardan."
+          }
+        }
+      }
+    },
+    "Your dictations will appear here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus dictados aparecerán aquí."
+          }
+        }
+      }
+    },
+    "Show older dictations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver dictados anteriores"
+          }
+        }
+      }
+    },
+    "Keep a private history": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guarda un historial privado"
+          }
+        }
+      }
+    },
+    "Find what you dictated later, including text that didn't reach its app. It stays on this Mac, passwords and practice are never kept, and nothing is saved until you turn it on.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Encuentra después lo que dictaste, incluso el texto que no llegó a su app. Se queda en este Mac, nunca guarda contraseñas ni prácticas, y no se guarda nada hasta que lo actives."
+          }
+        }
+      }
+    },
+    "Turn on history": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activar el historial"
+          }
+        }
+      }
+    },
+    "Original": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Original"
+          }
+        }
+      }
+    },
+    "Copied": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiado"
+          }
+        }
+      }
+    },
+    "Inserted": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Insertado"
+          }
+        }
+      }
+    },
+    "Not delivered": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No entregado"
+          }
+        }
+      }
+    },
+    "Dictation history": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Historial de dictado"
+          }
+        }
+      }
+    },
+    "Save dictation history": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar historial de dictado"
+          }
+        }
+      }
+    },
+    "Keep dictations for": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar dictados durante"
+          }
+        }
+      }
+    },
+    "%d days": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d días"
+          }
+        }
+      }
+    },
+    "Also keep the words before Clean mode": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar también las palabras antes del modo Limpio"
+          }
+        }
+      }
+    },
+    "History stays on this Mac. Passwords, practice and silence are never saved.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El historial se queda en este Mac. Nunca se guardan contraseñas, prácticas ni silencios."
+          }
+        }
+      }
+    },
+    "Dictation stays on this Mac and is saved only if you turn on its history. Inserting text requires Accessibility permission.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El dictado se queda en este Mac y solo se guarda si activas su historial. Para insertar texto se necesita el permiso de Accesibilidad."
+          }
+        }
+      }
+    },
+    "Search dictations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar dictados"
+          }
+        }
+      }
+    },
+    "Clear search": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrar búsqueda"
+          }
+        }
+      }
+    },
+    "App": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App"
+          }
+        }
+      }
+    },
+    "All apps": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todas las apps"
+          }
+        }
+      }
+    },
+    "Only not delivered": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo no entregados"
+          }
+        }
+      }
+    },
+    "No dictations match.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ningún dictado coincide."
+          }
+        }
+      }
+    },
+    "Meetings could not be loaded.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron cargar las reuniones."
+          }
+        }
+      }
+    },
+    "The dictation could not be added to the meeting.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo añadir el dictado a la reunión."
+          }
+        }
+      }
+    },
+    "Add to a meeting's notes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir a las notas de una reunión"
+          }
+        }
+      }
+    },
+    "The text becomes a note of that meeting and goes wherever its notes go: sync, exports and Ask.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El texto pasa a ser una nota de esa reunión y va a donde van sus notas: sincronización, exportaciones y Preguntar."
+          }
+        }
+      }
+    },
+    "No finished meetings yet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todavía no hay reuniones terminadas."
+          }
+        }
+      }
+    },
+    "%@ · recorded while you dictated": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · grabada mientras dictabas"
+          }
+        }
+      }
+    },
+    "Add to a meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir a una reunión"
+          }
+        }
+      }
+    },
+    "Added to %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadido a %@"
+          }
+        }
+      }
+    },
+    "That meeting shows tidied notes. Tidy up again to include this one.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esa reunión muestra notas ordenadas. Vuelve a ordenar para incluir esta."
+          }
+        }
+      }
+    },
+    "Dictation history is off, so nothing was searched.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El historial de dictado está apagado, así que no se buscó nada."
+          }
+        }
+      }
+    },
+    "Closest dictations:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dictados más cercanos:"
+          }
+        }
+      }
+    },
+    "From your dictations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De tus dictados"
+          }
+        }
+      }
+    },
+    "Checking dictation history…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisando el historial de dictado…"
+          }
+        }
+      }
+    },
+    "Only your saved dictations on this Mac will be searched.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo se buscará en tus dictados guardados en este Mac."
+          }
+        }
+      }
+    },
+    "Dictation history is off. Turn it on in Dictations to ask about what you dictate.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El historial de dictado está apagado. Actívalo en Dictados para preguntar por lo que dictas."
+          }
+        }
+      }
+    },
+    "Dictation history unavailable.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El historial de dictado no está disponible."
+          }
+        }
+      }
+    },
+    "Source: Dictations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuente: Dictados"
+          }
+        }
+      }
+    },
+    "Showing the dictation cited in Ask.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrando el dictado citado en Preguntar."
+          }
+        }
+      }
+    },
+    "Show all dictations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar todos los dictados"
+          }
+        }
+      }
+    },
+    "You have no saved dictations %@.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No tienes dictados guardados %@."
+          }
+        }
+      }
+    },
+    "You have no saved dictations yet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no tienes dictados guardados."
+          }
+        }
+      }
+    },
+    "Your dictations %@:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus dictados %@:"
+          }
+        }
+      }
+    },
+    "Your most recent dictations:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus dictados más recientes:"
+          }
+        }
+      }
+    },
+    "No saved dictation mentions that.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ningún dictado guardado menciona eso."
+          }
+        }
+      }
+    },
+    "in %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "en %@"
+          }
+        }
+      }
+    },
+    "since %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "desde el %@"
+          }
+        }
+      }
+    },
+    "between %@ and %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "entre el %@ y el %@"
+          }
+        }
+      }
+    },
+    "from today": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "de hoy"
+          }
+        }
+      }
+    },
+    "from yesterday": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "de ayer"
+          }
+        }
+      }
+    },
+    "from %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "del %@"
+          }
+        }
+      }
+    },
+    "Ask about your dictations…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pregunta por tus dictados…"
+          }
+        }
+      }
+    },
+    "Open in Dictations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir en Dictados"
+          }
+        }
+      }
+    },
+    "Command-line tool & MCP": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Herramienta de línea de comandos y MCP"
+          }
+        }
+      }
+    },
+    "Local AI tools such as Claude Code can read your meetings through Portavoz's MCP server. It runs only on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las herramientas de IA locales, como Claude Code, pueden leer tus reuniones a través del servidor MCP de Portavoz. Solo funciona en este Mac."
+          }
+        }
+      }
+    },
+    "This build doesn't include the command-line tool.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta versión no incluye la herramienta de línea de comandos."
+          }
+        }
+      }
+    },
+    "Install the command-line tool?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Instalar la herramienta de línea de comandos?"
+          }
+        }
+      }
+    },
+    "Install": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instalar"
+          }
+        }
+      }
+    },
+    "Portavoz will create a link at ~/.local/bin/portavoz-cli to the tool inside this app. Your shell settings aren't changed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz creará un enlace en ~/.local/bin/portavoz-cli a la herramienta dentro de esta app. No se cambia la configuración de tu shell."
+          }
+        }
+      }
+    },
+    "Install…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instalar…"
+          }
+        }
+      }
+    },
+    "Replace link…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reemplazar enlace…"
+          }
+        }
+      }
+    },
+    "If your terminal can't find portavoz-cli, add ~/.local/bin to your PATH.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si tu terminal no encuentra portavoz-cli, agrega ~/.local/bin a tu PATH."
+          }
+        }
+      }
+    },
+    "Connect Claude Code": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conectar Claude Code"
+          }
+        }
+      }
+    },
+    "Other MCP clients (JSON)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otros clientes MCP (JSON)"
+          }
+        }
+      }
+    },
+    "Installed at ~/.local/bin/portavoz-cli.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instalada en ~/.local/bin/portavoz-cli."
+          }
+        }
+      }
+    },
+    "Not on your shell path yet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no está en el PATH de tu shell."
+          }
+        }
+      }
+    },
+    "~/.local/bin/portavoz-cli points to another copy.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "~/.local/bin/portavoz-cli apunta a otra copia."
+          }
+        }
+      }
+    },
+    "A file Portavoz didn't create is already at ~/.local/bin/portavoz-cli.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ya hay en ~/.local/bin/portavoz-cli un archivo que Portavoz no creó."
+          }
+        }
+      }
+    },
+    "The command-line tool could not be installed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo instalar la herramienta de línea de comandos."
+          }
+        }
+      }
+    },
+    "Let agents and Shortcuts read the history": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dejar que los agentes y Shortcuts lean el historial"
+          }
+        }
+      }
+    },
+    "Local AI tools connected to Portavoz's MCP server, and your Shortcuts, can list, search and read your saved dictations. Every request checks this switch.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las herramientas de IA locales conectadas al servidor MCP de Portavoz, y tus atajos de Shortcuts, pueden listar, buscar y leer tus dictados guardados. Cada solicitud revisa este interruptor."
+          }
+        }
+      }
+    },
+    "Paste last dictation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegar el último dictado"
+          }
+        }
+      }
+    },
+    "Open dictations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir dictados"
+          }
+        }
+      }
+    },
+    "Starts dictation into the app in front, or finishes the one in progress, without bringing Portavoz forward.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza a dictar en la app que está al frente, o termina el dictado en curso, sin traer Portavoz al frente."
+          }
+        }
+      }
+    },
+    "Pastes your last dictation into the app in front, while Portavoz still remembers it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pega tu último dictado en la app que está al frente, mientras Portavoz aún lo recuerda."
+          }
+        }
+      }
+    },
+    "Finds your saved dictations that contain these words, newest first. Works only while Portavoz lets agents and Shortcuts read the history.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Busca tus dictados guardados que contienen estas palabras, del más reciente al más antiguo. Solo funciona mientras Portavoz deje que los agentes y Shortcuts lean el historial."
+          }
+        }
+      }
+    },
+    "Opens your saved dictations in Portavoz, optionally searching for words.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre tus dictados guardados en Portavoz y, si quieres, busca palabras."
+          }
+        }
+      }
+    },
+    "Words": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Palabras"
+          }
+        }
+      }
+    },
+    "Limit": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Límite"
+          }
+        }
+      }
+    },
+    "Search": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar"
+          }
+        }
+      }
+    },
+    "Portavoz is still opening. Run the action again in a moment.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz todavía se está abriendo. Vuelve a ejecutar la acción en un momento."
+          }
+        }
+      }
+    },
+    "Dictation is off. Turn it on in Portavoz Settings › Audio & dictation.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El dictado está apagado. Actívalo en Ajustes de Portavoz › Audio y dictado."
+          }
+        }
+      }
+    },
+    "Portavoz is finishing the current dictation. Run the action again when it's done.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz está terminando el dictado actual. Vuelve a ejecutar la acción cuando termine."
+          }
+        }
+      }
+    },
+    "There's no recent dictation to paste.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay un dictado reciente para pegar."
+          }
+        }
+      }
+    },
+    "Turn on “Let agents and Shortcuts read the history” in Portavoz Settings › Audio & dictation.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activa «Dejar que los agentes y Shortcuts lean el historial» en Ajustes de Portavoz › Audio y dictado."
+          }
+        }
+      }
+    },
+    "Dictation statistics": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estadísticas de dictado"
+          }
+        }
+      }
+    },
+    "Keep dictation statistics": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar estadísticas de dictado"
+          }
+        }
+      }
+    },
+    "Counts dictations, words and speaking time per day and app, never what you said. Kept for one year on this Mac, separate from the history.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuenta dictados, palabras y tiempo hablando por día y por app, nunca lo que dijiste. Se guardan un año en este Mac, aparte del historial."
+          }
+        }
+      }
+    },
+    "Delete statistics": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrar estadísticas"
+          }
+        }
+      }
+    },
+    "Delete your dictation statistics?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Borrar tus estadísticas de dictado?"
+          }
+        }
+      }
+    },
+    "Your dictation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu dictado"
+          }
+        }
+      }
+    },
+    "Period": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Periodo"
+          }
+        }
+      }
+    },
+    "7 days": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "7 días"
+          }
+        }
+      }
+    },
+    "30 days": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "30 días"
+          }
+        }
+      }
+    },
+    "No dictations counted in this period yet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay dictados contados en este periodo."
+          }
+        }
+      }
+    },
+    "Time saved assumes typing at 40 words per minute.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El tiempo ahorrado supone escribir a 40 palabras por minuto."
+          }
+        }
+      }
+    },
+    "Speaking": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hablando"
+          }
+        }
+      }
+    },
+    "Time saved": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiempo ahorrado"
+          }
+        }
+      }
+    },
+    "Where you dictate most": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dónde más dictas"
+          }
+        }
+      }
+    },
+    "%@: %d words": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: %d palabras"
+          }
+        }
+      }
+    },
+    "Dictation statistics could not be loaded.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron cargar las estadísticas de dictado."
+          }
+        }
+      }
+    },
+    "The statistics setting could not be saved.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo guardar el ajuste de estadísticas."
+          }
+        }
+      }
+    },
+    "The statistics could not be deleted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron borrar las estadísticas."
+          }
+        }
+      }
+    },
+    "Polish is unavailable right now.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pulir no está disponible en este momento."
+          }
+        }
+      }
+    },
+    "Choose an Ollama model in Intelligence Settings to polish dictations.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige un modelo de Ollama en Ajustes de Inteligencia para pulir los dictados."
+          }
+        }
+      }
+    },
+    "Polish only uses Ollama on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pulir solo usa Ollama en este Mac."
+          }
+        }
+      }
+    },
+    "Download the built-in model in Intelligence Settings to polish dictations.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descarga el modelo integrado en Ajustes de Inteligencia para pulir los dictados."
+          }
+        }
+      }
+    },
+    "Polish needs Apple Intelligence on macOS 26.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pulir necesita Apple Intelligence en macOS 26."
+          }
+        }
+      }
+    },
+    "Apple Intelligence is unavailable: %@.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Intelligence no está disponible: %@."
+          }
+        }
+      }
+    },
+    "The built-in model is busy. Try again in a moment.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El modelo integrado está ocupado. Inténtalo de nuevo en un momento."
+          }
+        }
+      }
+    },
+    "Dictation polish text": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Texto de dictado para pulir"
           }
         }
       }

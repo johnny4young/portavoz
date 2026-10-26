@@ -70,6 +70,7 @@ extension MeetingDetailModel {
 
     enum AudioAction {
         case loadPlayback
+        case refreshCompressionPermission
         case compressAudio
         case exportAudioClip(ClosedRange<TimeInterval>, to: URL)
         case checkVoiceMemoryOffer(name: String)
@@ -247,6 +248,7 @@ extension MeetingDetailModel {
             .review(.preparation(.loadMetadataSuggestions))
         }
         static var loadPlayback: Self { .review(.audio(.loadPlayback)) }
+        static var refreshAudioCompressionPermission: Self { .review(.audio(.refreshCompressionPermission)) }
         static var compressAudio: Self { .review(.audio(.compressAudio)) }
 
         static func exportAudioClip(

@@ -1,6 +1,6 @@
 import AudioCaptureKit
 import XCTest
-@testable import portavoz_cli
+@testable import PortavozCLIKit
 
 final class LongCaptureBenchmarkTests: XCTestCase {
     func testOptionsDefaultToCanonicalThreeHourRun() throws {

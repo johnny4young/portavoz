@@ -1,5 +1,6 @@
 import ApplicationKit
 import Foundation
+import GRDB
 import PortavozCore
 import XCTest
 @testable import portavoz_app
@@ -191,6 +192,34 @@ final class AudioImportQueueModelTests: XCTestCase {
         XCTAssertEqual(page.entries.map(\.job.state), [.succeeded])
         XCTAssertEqual(client.workerStarts, 2)
         XCTAssertNil(model.error)
+    }
+
+    func testFailedClaimBacksOffAnOverdueWakeInsteadOfRestartingImmediately() async throws {
+        let fixture = try ImportQueueFixture()
+        defer { fixture.remove() }
+        _ = try await fixture.admit()
+        var configuration = Configuration()
+        configuration.readonly = true
+        configuration.allowsUnsafeTransactions = true
+        let reader = try DatabaseQueue(path: fixture.databaseURL.path, configuration: configuration)
+        try await reader.unsafeRead { database in
+            try database.execute(sql: "BEGIN")
+            _ = try Int.fetchOne(database, sql: "SELECT count(*) FROM processingJob")
+        }
+        let finished = expectation(description: "failed drain finished")
+        finished.assertForOverFulfill = false
+        let client = ImportQueueModelClient(fixture: fixture, onFinish: { finished.fulfill() })
+        client.nextWake = { Date() }
+        let model = AudioImportQueueModel(client: client)
+        model.start()
+        await fulfillment(of: [finished], timeout: 10)
+        client.onFinish = {}
+        try await Task.sleep(for: .seconds(1))
+
+        XCTAssertNotNil(model.error)
+        XCTAssertEqual(client.workerStarts, 1, "A busy claim must not re-kick an overdue wake at once")
+        await model.suspend()
+        try await reader.unsafeRead { try $0.execute(sql: "ROLLBACK") }
     }
 
     func testStorageMoveExcludesAdmissionAndDoesNotInventSuccess() async throws {
