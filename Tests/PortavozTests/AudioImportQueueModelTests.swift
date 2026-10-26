@@ -223,14 +223,19 @@ final class AudioImportQueueModelTests: XCTestCase {
         let failed = expectation(description: "failed drain finished")
         failed.assertForOverFulfill = false
         let client = ImportQueueModelClient(fixture: fixture, onFinish: { failed.fulfill() })
-        let model = AudioImportQueueModel(client: client)
+        var wakeReads = 0
+        client.nextWake = { wakeReads += 1; return nil }
+        let model = AudioImportQueueModel(client: client, failureBackoff: 0.2)
         model.start()
         await fulfillment(of: [failed], timeout: 10)
         client.onFinish = {}
+        XCTAssertNotNil(model.error)
+        XCTAssertEqual(wakeReads, 0, "A failed drain retries without consulting the persisted deadline")
         try await reader.unsafeRead { try $0.execute(sql: "ROLLBACK") }
 
-        try await waitForState { model.page.entries.first?.job.state == .succeeded }
-        XCTAssertEqual(client.workerStarts, 2, "Admitted work without a retry date must not wait for another signal")
+        try await waitForState { model.page.entries.first?.job.state == .succeeded && model.error == nil }
+        XCTAssertGreaterThanOrEqual(
+            client.workerStarts, 2, "Admitted work without a retry date must not wait for another signal")
         await model.suspend()
     }
 

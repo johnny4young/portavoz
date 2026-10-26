@@ -10,10 +10,10 @@ The existing persistence suite also admits an already-due retry in its
 capability-filtered scheduling test. These regressions establish storage
 behavior, not application-timer, process-kill or hardware performance evidence.
 
-`ProcessingWakeScheduleTests` checks the shared drain-failure backoff against
-explicit timestamps. Healthy deadlines retain their identity; after a failed
-drain an overdue, near-future, later or missing deadline all retry after the
-five-second backoff. A successful drain without a deadline creates no timer.
+`ProcessingWakeScheduleTests` checks the shared drain-failure retry against
+explicit timestamps: five seconds, doubling per consecutive failure up to one
+minute. `AudioImportQueueModelTests` proves a failed drain retries without
+reading the persisted deadline and clears its storage error after recovery.
 
 `test_site_interactions` executes the shipped website inline JavaScript with
 Node.js built-ins and explicit DOM, storage, clipboard and timer doubles. It
@@ -957,7 +957,7 @@ word loss and replay protection as a joint unresolved contract (D518).
 | VocabularyMinerTests | 6 cases: domain forms, recurrence threshold, existing-vocabulary/stoplist exclusion, form heuristics |
 | MeetingTypeDetectorTests | Recipes catalog + capped excerpt; gated: classifies standup/planning/interview and leaves general alone (M13b criterion) |
 | StorageTests / StorageSchemaV6Tests / RecordingPersistenceTests / ProcessingJobPersistenceTests / ProcessingJobSchedulingTests / VoiceMixTests | Complete D4/D36–D43/D63–D66/D70/D75 contract: strict persistence, tombstones, hostile FTS, hidden-rank/BM25 top-k equivalence, complete-text plus highlighted-snippet search hits, retention, paths, migration, lifecycle/idempotency constraints, atomic recording/artifact handoffs, owner-leased durable work, deadline recovery, provenance linkage, revision fences, and injected rollback |
-| ProcessingWakeScheduleTests | Shared application policy for failed-drain backoff with a durable deadline, preserving healthy wakes, retrying after five seconds whatever the persisted deadline after a failed drain, and creating no timer after a healthy empty drain |
+| ProcessingWakeScheduleTests | Shared failed-drain retry policy: five seconds doubling per consecutive failure up to one minute, a scalable base, and a real busy claim that keeps its readable deadline |
 | PostCaptureSummaryGenerationAttemptTests | Content-free durable provider/model/job/revision/config metadata, aggregate-only success metrics, and distinct failed/cancelled terminal attempts without invented output metrics |
 | ProcessPostCaptureJobsUseCaseTests | Mixed-language first-pass cleanup/attribution and follow-up admission; real-Store diarization-to-summary publication; provider retry; optional-summary exhaustion; supersession; lease loss; typed diagnostics; and injected-clock no-poll scheduling |
 | RecordingAssistLayoutTests / CompanionCardWindowTests | The live assist area's pure policy (D504): the split grows both zones with the window and honors both floors, a too-short window shrinks both zones together rather than starving one, the divider drag clamps at its bounds, optional tabs appear only once they can show something and a vanished tab's selection falls back, the focus slot ranks catch-up and the suggested question, which have no other home, over a directed card, which is also reachable in the Companion tab, the recency window keeps the newest three open and folds the rest without dropping any, a hand-opened card folds the oldest recency-open one, only an answer too long to clamp offers to open fully, and the tab badge never goes negative when cards are dismissed |
