@@ -286,6 +286,7 @@ struct SelectionRewriteSayHowTests {
         first.controller.toggle(using: initial)
         try await eventually { !first.controller.isActive }
         #expect(receiver.text == "ship it on friday")
+        try #require(first.controller.lastText.current == "ship it on friday")
 
         let recorder = Recorder()
         let rewrite = SelectionRewriteController(presentsPanel: false)
@@ -296,6 +297,7 @@ struct SelectionRewriteSayHowTests {
         let command = DictationControllerHarness(text: "change friday to monday", controller: first.controller)
         command.defaults.setVolatileDomain(commandArguments, forName: UserDefaults.argumentDomain)
         command.defaults.set(true, forKey: DictationCorrections.defaultsKey)
+        try #require(DictationCorrections.isEnabled(in: command.defaults))
         let session = rewrite.instructionDependencies(command.dependencies)
         recorder.dictating = true
         defer { recorder.dictating = false }
