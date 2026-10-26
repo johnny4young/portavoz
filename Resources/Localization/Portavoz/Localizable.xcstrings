@@ -551,6 +551,36 @@
         }
       }
     },
+    "Add another way “%@” is heard": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agregar otra forma en que se oye “%@”"
+          }
+        }
+      }
+    },
+    "Adds “%@” → “%@” to your text replacements.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agrega “%@” → “%@” a tus reemplazos de texto."
+          }
+        }
+      }
+    },
+    "Always write “%@”": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escribir siempre “%@”"
+          }
+        }
+      }
+    },
     "Another app already uses ⌃⌥⌘R. Rewrite the selection from the menu bar instead.": {
       "localizations": {
         "es": {
@@ -6025,6 +6055,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cercano"
+          }
+        }
+      }
+    },
+    "From now on, “%@” is written “%@”.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desde ahora, “%@” se escribe “%@”."
           }
         }
       }
@@ -12075,6 +12115,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Quitar el tema “%@”"
+          }
+        }
+      }
+    },
+    "Remove “%@”": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar “%@”"
           }
         }
       }

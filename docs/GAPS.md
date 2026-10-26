@@ -202,6 +202,12 @@ range (native text views, browsers, Electron, terminals), how a rich-text
 replacement keeps formatting, and how a global Return registration behaves in
 apps that bind it remain field validation.
 
+### Learned spellings from spoken corrections
+
+D593 learns only what the user confirms. Whether six seconds is enough to
+choose, and how often a confirmed content change (rather than a mishearing)
+later rewrites text the user meant, remain field validation.
+
 ### Dictation translation quality and language packs
 
 D592 translates through Apple's installed English and Spanish languages. The

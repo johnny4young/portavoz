@@ -65,6 +65,7 @@ final class DictationController {
     private(set) var polishNotice: String?
     /// What a spoken correction changed, shown instead of the inserted-words line.
     private(set) var correctionSummary: String?
+    private(set) var learnableCorrection: DictationLearnableCorrection?
     @ObservationIgnored private var lastInsertion: DictationInsertion?
     /// Observed: the strip shows "Polishing…" while a rewrite is pending.
     private var polishRun = DictationPolishRun()
@@ -259,6 +260,7 @@ final class DictationController {
         microphoneNotice = nil
         polishNotice = nil
         correctionSummary = nil
+        learnableCorrection = nil
         retireMicrophoneReadiness()
         stopTask?.cancel()
         stopTask = nil
@@ -845,11 +847,16 @@ private extension DictationController {
         lastInsertion = updated
         lastText.remember(updated.text)
         correctionSummary = Self.correctionSummary(for: command, edit: edit, in: reference)
+        learnableCorrection = DictationLearnableCorrection(
+            command, edit: edit, in: reference, dependencies: dependencies)
         completeSession(id: sessionID)
         destination = nil
         phase = .verified(0)
         showPanel()
-        scheduleFeedbackDismiss(after: .milliseconds(1600), wait: dependencies.waitForFeedbackDismissal)
+        // Long enough to choose "Always write"; nothing is learned unless it is pressed.
+        scheduleFeedbackDismiss(
+            after: learnableCorrection == nil ? .milliseconds(1600) : .seconds(6),
+            wait: dependencies.waitForFeedbackDismissal)
         return true
     }
 
@@ -1133,6 +1140,7 @@ private extension DictationController {
         cancelFeedbackDismissal()
         polishNotice = nil
         correctionSummary = nil
+        learnableCorrection = nil
         deliveryID = nil
         destination = nil
         dependencies = nil
@@ -1175,4 +1183,49 @@ struct DictationDeliveryText: Equatable {
     var alternate: String?
     /// True when the alternate is the untranslated original, not just the unpolished text.
     var alternateIsOriginal = false
+}
+
+/// A verified "change X to Y" the dictionary does not know yet, offered once in the strip.
+struct DictationLearnableCorrection {
+    let rule: DictationReplacement
+    let defaults: UserDefaults
+    let temporary: Bool
+    let wait: @MainActor (Duration) async throws -> Void
+
+    @MainActor
+    init?(
+        _ command: DictationCorrectionCommand, edit: DictationCorrectionCommand.Edit, in text: String,
+        dependencies: DictationSessionDependencies
+    ) {
+        guard case .replace = command else { return nil }
+        let heard = (text as NSString).substring(with: edit.range).trimmingCharacters(in: .whitespaces)
+        let rules = Self.rules(in: dependencies.defaults)
+        guard DictationTextRules.learning(heard, as: edit.replacement, into: rules) != nil else { return nil }
+        rule = DictationReplacement(trigger: heard, replacement: edit.replacement)
+        defaults = dependencies.defaults
+        temporary = dependencies.storesPreferencesTemporarily
+        wait = dependencies.waitForFeedbackDismissal
+    }
+
+    @MainActor
+    static func rules(in defaults: UserDefaults) -> [DictationReplacement] {
+        DictationTextRules.decode(replacements: defaults.string(forKey: DictationController.replacementsKey) ?? "")
+    }
+}
+
+extension DictationController {
+    /// Adds the offered correction to the text replacements; the next dictation applies it.
+    func learnCorrection() {
+        guard let learnable = learnableCorrection else { return }
+        learnableCorrection = nil
+        let rule = learnable.rule
+        guard let learned = DictationTextRules.learning(
+            rule.trigger, as: rule.replacement, into: DictationLearnableCorrection.rules(in: learnable.defaults))
+        else { return }
+        DictationTextPreferences.store(
+            DictationTextRules.encode(learned), forKey: Self.replacementsKey,
+            in: learnable.defaults, temporary: learnable.temporary)
+        correctionSummary = L10n.format("From now on, “%@” is written “%@”.", rule.trigger, rule.replacement)
+        scheduleFeedbackDismiss(after: .milliseconds(1600), wait: learnable.wait)
+    }
 }

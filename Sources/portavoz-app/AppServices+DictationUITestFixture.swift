@@ -19,6 +19,7 @@ extension AppServices {
             dependencies = DictationUITestFixture.dependencies(
                 fixture: dictationUITestFixture, beginCapture: beginCapture)
             dependencies.waitForFeedbackDismissal = DictationUITestFixture.waitHoldingUnverifiedNotices
+            dependencies.storesPreferencesTemporarily = true
             dependencies.polishDictation = DictationUITestFixture.polishing(dictationUITestFixture)
             dependencies.translateDictation = DictationUITestFixture.translating(dictationUITestFixture)
             if let fixture = dictationUITestFixture, fixture.correctsByVoice {
