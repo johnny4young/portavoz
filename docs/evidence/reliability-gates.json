@@ -149,30 +149,12 @@
       }
     },
     {
-      "id": "hardware.built-in.sequoia",
-      "class": "real-hardware",
-      "source": {
-        "kind": "field-fixture",
-        "fixture": "built-in-speaker-mic",
-        "macOSMajor": 15
-      }
-    },
-    {
       "id": "hardware.built-in.tahoe",
       "class": "real-hardware",
       "source": {
         "kind": "field-fixture",
         "fixture": "built-in-speaker-mic",
         "macOSMajor": 26
-      }
-    },
-    {
-      "id": "hardware.airpods.sequoia",
-      "class": "real-hardware",
-      "source": {
-        "kind": "field-fixture",
-        "fixture": "airpods",
-        "macOSMajor": 15
       }
     },
     {
@@ -209,30 +191,12 @@
       }
     },
     {
-      "id": "assistive.voiceover.sequoia",
-      "class": "assistive-technology",
-      "source": {
-        "kind": "qualification-receipt",
-        "scope": "assistive-technology",
-        "proof": "voiceover-sequoia"
-      }
-    },
-    {
       "id": "assistive.voiceover.tahoe",
       "class": "assistive-technology",
       "source": {
         "kind": "qualification-receipt",
         "scope": "assistive-technology",
         "proof": "voiceover-tahoe"
-      }
-    },
-    {
-      "id": "assistive.voice-control.sequoia",
-      "class": "assistive-technology",
-      "source": {
-        "kind": "qualification-receipt",
-        "scope": "assistive-technology",
-        "proof": "voice-control-sequoia"
       }
     },
     {

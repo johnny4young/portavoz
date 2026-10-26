@@ -3,8 +3,8 @@ import PortavozCore
 import SwiftUI
 
 /// First-run guided setup (GAPS #6): why-local welcome, guided permissions,
-/// model download with the hardware recommendation, and optional voice
-/// enrollment. Shows once (`hasOnboarded`); existing libraries skip it
+/// model download with the hardware recommendation, dictation, and optional
+/// voice enrollment. Shows once (`hasOnboarded`); existing libraries skip it
 /// silently — their user already knows the app.
 struct OnboardingView: View {
     @Environment(AppServices.self) private var services
@@ -20,7 +20,7 @@ struct OnboardingView: View {
     @State private var enrollMessage: String?
     @State private var listen = FirstListenController()
 
-    private let lastStep = 4
+    private let lastStep = 5
 
     var body: some View {
         VStack(spacing: 0) {
@@ -48,6 +48,7 @@ struct OnboardingView: View {
         case 1: duringMeeting
         case 2: permissions
         case 3: models
+        case 4: OnboardingDictationStep(modelPhase: modelPreparation.phase, prepareModels: downloadModels)
         default: voice
         }
     }

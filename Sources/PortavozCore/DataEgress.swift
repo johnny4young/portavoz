@@ -48,6 +48,7 @@ public enum DataEgressOperation: String, Codable, Sendable {
     case publishGitHubGist = "publish-github-gist"
     case createGitHubIssue = "create-github-issue"
     case createLinearIssue = "create-linear-issue"
+    case dictationPolish = "dictation-polish"
 }
 
 public enum DataEgressClassification: String, Codable, Sendable {
@@ -69,6 +70,8 @@ public enum DataEgressClassification: String, Codable, Sendable {
     case meetingExportDocument = "meeting-export-document"
     /// One meeting-derived action item plus its attribution context.
     case meetingActionItem = "meeting-action-item"
+    /// One clean dictated text, with no meeting, app, or history identity.
+    case dictationText = "dictation-text"
 }
 
 public enum DataEgressConsentSource: String, Codable, Sendable {
@@ -88,6 +91,8 @@ public enum DataEgressConsentSource: String, Codable, Sendable {
     case explicitGitHubIssuePublish = "explicit-github-issue-publish"
     /// The user explicitly invoked Linear Issue publication.
     case explicitLinearIssuePublish = "explicit-linear-issue-publish"
+    /// The user chose the Polish dictation mode, which names the summary engine.
+    case dictationPolishMode = "dictation-polish-mode"
 }
 
 public struct DataEgressProviderDisclosure: Equatable, Sendable {

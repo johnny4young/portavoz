@@ -12,6 +12,7 @@ struct MeetingTranscriptValues {
     let player: MeetingPlaybackSession?
     let focusedRowID: UUID?
     let performanceScrollEnabled: Bool
+    let translation: MeetingTranscriptTranslationState
 }
 
 struct MeetingTranscriptActions {
@@ -21,6 +22,9 @@ struct MeetingTranscriptActions {
     let restructure: @MainActor (
         TranscriptStructuralCorrectionOperation
     ) async -> String?
+    let translate: @MainActor (String) -> Void
+    let cancelTranslation: @MainActor () -> Void
+    let openTranslationSettings: @MainActor () -> Void
 }
 
 /// The synchronized transcript reading surface. It consumes a neutral reading
@@ -30,6 +34,9 @@ struct MeetingTranscriptSection: View {
     let values: MeetingTranscriptValues
     let actions: MeetingTranscriptActions
     @State private var showingHiddenLines = false
+    /// Nil shows the original; a language shows its stored translation.
+    @State private var language: String?
+    @State private var requestedLanguage: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -40,6 +47,12 @@ struct MeetingTranscriptSection: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-transcript-section")
+        .onChange(of: values.translation.translations) {
+            // A requested translation opens once it is current.
+            guard let requested = requestedLanguage, values.translation.isCurrent(requested) else { return }
+            language = requested
+            requestedLanguage = nil
+        }
         .sheet(isPresented: $showingHiddenLines) {
             SuppressedTranscriptCorrectionsSheet(
                 contexts: values.structureProjection.suppressedContexts,
@@ -67,6 +80,13 @@ struct MeetingTranscriptSection: View {
                 .accessibilityIdentifier("transcript-hidden-lines")
                 .help("Review hidden lines")
             }
+            MeetingTranscriptTranslationControls(
+                state: values.translation, language: $language,
+                translate: { target in
+                    requestedLanguage = target
+                    actions.translate(target)
+                },
+                cancel: actions.cancelTranslation, openSettings: actions.openTranslationSettings)
             if values.player != nil {
                 Text("Click a line to jump there")
                     .font(.caption2)
@@ -88,16 +108,18 @@ struct MeetingTranscriptSection: View {
 
     private func transcriptViewport(carouselHeight: CGFloat) -> some View {
         TranscriptSegmentsView(
-            content: values.content,
+            content: MeetingTranscriptTranslationState.display(
+                values.content, translation: values.translation.translation(language)),
             speakers: values.speakers,
             player: values.player,
             focusedRowID: values.focusedRowID,
             performanceScrollEnabled: values.performanceScrollEnabled,
             onSeek: actions.seekAndPlay,
             onRenameTap: actions.renameSpeaker,
+            // Corrections edit the original, so a translated reading is read-only.
             canCorrect: {
-                values.correctionContext($0) != nil
-                    || values.structureProjection.context(for: $0) != nil
+                language == nil && (values.correctionContext($0) != nil
+                    || values.structureProjection.context(for: $0) != nil)
             },
             onCorrect: actions.presentCorrection,
             carouselHeight: carouselHeight)

@@ -183,7 +183,7 @@ extension ArchitectureDependencyTests {
             of: "Classify functional evidence and hosted runtime drift"))
         XCTAssertLessThan(artifact.lowerBound, classifier.lowerBound)
         XCTAssertTrue(workflow.contains("--english-outcome \"$(outcome en)\""))
-        XCTAssertTrue(workflow.contains("--spanish-outcome \"$(outcome es)\""))
+        XCTAssertFalse(workflow.contains("--spanish-outcome"))
         XCTAssertFalse(workflow.contains("run: make test-ui-scoped"))
         XCTAssertTrue(workflow.contains("scripts/ui_test_verified_base.py"))
         XCTAssertTrue(workflow.contains("ui-verification-${{"))
@@ -255,7 +255,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(candidate.contains("UI_RECEIPT_SCHEMA_VERSION = 3"))
         XCTAssertTrue(candidate.contains(
             "UI_HARNESS_NOISE_THRESHOLD_SECONDS = 1.0"))
-        XCTAssertTrue(scope.contains("FULL_BILINGUAL_HARNESS_FILES"))
+        XCTAssertTrue(scope.contains("FULL_HARNESS_FILES"))
         XCTAssertTrue(scope.contains("scripts/ui_test_runtime.py"))
         XCTAssertTrue(scope.contains("scripts/ui_test_ci_gate.py"))
         XCTAssertTrue(scope.contains("scripts/candidate_automation.py"))
@@ -317,7 +317,22 @@ extension ArchitectureDependencyTests {
         XCTAssertFalse(stableFrameBody.contains(
             "guard !currentFrame.isEmpty, self.isHittable"))
         XCTAssertTrue(stableFrameBody.contains(
-            "let stableProbeInterval = stableInterval > 0 ? stableInterval : 0.05"))
+            "stableFor stableInterval: TimeInterval = 0.25"))
+        XCTAssertTrue(stableFrameBody.contains(
+            "let originalProbeInterval = stableInterval > 0 ? stableInterval : 0.05"))
+        XCTAssertTrue(stableFrameBody.contains(
+            "let stableProbeInterval = min(originalProbeInterval, max(0.05, stableInterval / 2))"))
+        for (duration, expected) in [(0.0, 0.05), (0.025, 0.025), (0.05, 0.05), (0.1, 0.05), (0.25, 0.125)] {
+            let original = duration > 0 ? duration : 0.05
+            let probe = min(original, max(0.05, duration / 2))
+            XCTAssertEqual(probe, expected)
+            XCTAssertGreaterThan(probe, 0)
+            XCTAssertLessThanOrEqual(probe, original)
+        }
+        XCTAssertFalse(stableFrameBody.contains(
+            "Date().timeIntervalSince(candidateStableSince) >= stableProbeInterval"))
+        XCTAssertFalse(stableFrameBody.contains("PORTAVOZ_UI_TEST_STABILITY_POLL_MODE"))
+        XCTAssertFalse(stableFrameBody.contains("STABILITY_POLL"))
         XCTAssertTrue(stableFrameBody.contains(
             "pollInterval: stableProbeInterval"))
         XCTAssertFalse(stableFrameBody.contains(
@@ -336,6 +351,51 @@ extension ArchitectureDependencyTests {
         XCTAssertLessThan(candidateTransition.lowerBound, stableInterval.lowerBound)
         XCTAssertTrue(stableFrameBody.contains(
             "candidateFrame = nil\n                stableSince = nil"))
+
+        let backgroundUI = try Self.contents(of: "Tests/PortavozUITests/BackgroundWorkUITests.swift")
+        let backgroundStart = try XCTUnwrap(backgroundUI.range(
+            of: "func testBackgroundWorkCenterShowsAllOwnersAndRecoversExactFailures"))
+        let backgroundEnd = try XCTUnwrap(backgroundUI.range(
+            of: "func testRecordingDefersDerivedWorkAndStopResumesIt",
+            range: backgroundStart.upperBound..<backgroundUI.endIndex))
+        let backgroundEntry = backgroundUI[backgroundStart.lowerBound..<backgroundEnd.lowerBound]
+        for required in [
+            "let settingsEntryDeadline = Date().addingTimeInterval(10)",
+            "settingsCategoryReady && backgroundPaneReady && Date() <= settingsEntryDeadline",
+            "nativeReady && Date() <= settingsEntryDeadline",
+            "identifier: \"settings-search-field\"",
+            "editingHandoff.succeeded && Date() <= settingsEntryDeadline",
+            "timeout: min(5, max(0, settingsEntryDeadline.timeIntervalSinceNow))",
+            "maximumStep: settingsForm.frame.height"
+        ] {
+            XCTAssertTrue(backgroundEntry.contains(required))
+        }
+        let backgroundOwner = try XCTUnwrap(backgroundEntry.range(of: "app.prepareForInteraction("))
+        let backgroundEditor = try XCTUnwrap(backgroundEntry.range(of: "app.handOffTextFieldEditing("))
+        let backgroundAdmission = try XCTUnwrap(backgroundEntry.range(of: "editingHandoff.succeeded"))
+        let backgroundWheel = try XCTUnwrap(backgroundEntry.range(of: "processingRetry.revealVertically("))
+        XCTAssertLessThan(backgroundOwner.lowerBound, backgroundEditor.lowerBound)
+        XCTAssertLessThan(backgroundEditor.lowerBound, backgroundAdmission.lowerBound)
+        XCTAssertLessThan(backgroundAdmission.lowerBound, backgroundWheel.lowerBound)
+        XCTAssertFalse(backgroundEntry.contains("BACKGROUND_EDITOR_HANDOFF"))
+        XCTAssertFalse(backgroundEntry.contains("BACKGROUND_ENTRY_PROBE"))
+        let backgroundRecording = backgroundUI[backgroundEnd.lowerBound..<backgroundUI.endIndex]
+        for required in [
+            "let recordEntryDeadline = Date().addingTimeInterval(15)",
+            "nativeRecordOwner && Date() <= recordEntryDeadline",
+            "record.waitForStableFrame(timeout: max(0, recordEntryDeadline.timeIntervalSinceNow))",
+            "app.hasObservedNativeReceiver(bundleIdentifier: keyboardReceiverBundleIdentifier)",
+            "&& Date() <= recordEntryDeadline ? record : nil"
+        ] {
+            XCTAssertTrue(backgroundRecording.contains(required))
+        }
+        let recordOwner = try XCTUnwrap(backgroundRecording.range(of: "app.prepareForInteraction("))
+        let recordStable = try XCTUnwrap(backgroundRecording.range(of: "record.waitForStableFrame("))
+        let recordReceiver = try XCTUnwrap(backgroundRecording.range(of: "app.hasObservedNativeReceiver("))
+        let recordClick = try XCTUnwrap(backgroundRecording.range(of: "record.click()"))
+        XCTAssertLessThan(recordOwner.lowerBound, recordStable.lowerBound)
+        XCTAssertLessThan(recordStable.lowerBound, recordReceiver.lowerBound)
+        XCTAssertLessThan(recordReceiver.lowerBound, recordClick.lowerBound)
 
         let launchStart = try XCTUnwrap(support.range(
             of: "func launchPortavoz()"))
@@ -649,6 +709,82 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(decisions.contains("## D424"))
     }
 
+    func testXCUITestTextObservationsAndSettingsClosureStayFailClosed() throws {
+        let support = try Self.contents(of: "Tests/PortavozUITests/UITestSupport.swift")
+        let textStart = try XCTUnwrap(support.range(of: "func waitForLabelOrValue("))
+        let textEnd = try XCTUnwrap(support.range(
+            of: "/// Localized and asynchronously populated", range: textStart.upperBound..<support.endIndex))
+        let text = support[textStart.lowerBound..<textEnd.lowerBound]
+        XCTAssertTrue(text.contains("throws -> Bool"))
+        let presence = try XCTUnwrap(text.range(of: "guard self.exists else { return false }"))
+        let snapshot = try XCTUnwrap(text.range(of: "let observation = try self.snapshot()"))
+        XCTAssertLessThan(presence.lowerBound, snapshot.lowerBound)
+        XCTAssertTrue(text.contains("return observation.label == text || observation.value as? String == text"))
+        for forbidden in ["try?", "catch", "self.label", "self.value", "ProcessInfo", "print("] {
+            XCTAssertFalse(text.contains(forbidden))
+        }
+        let storage = try Self.contents(of: "Tests/PortavozUITests/UITestStorageUITests.swift")
+        XCTAssertTrue(storage.contains("portavoz-missing-text-proof"))
+        XCTAssertTrue(storage.contains(".waitForLabelOrValue(recordLabel, timeout: 0)"))
+        XCTAssertTrue(storage.contains("search.waitForLabelOrValue(\"\", timeout: 0)"))
+        XCTAssertTrue(storage.contains("XCTAssertEqual(try search.snapshot().value as? String, \"\""))
+
+        let background = try Self.contents(of: "Tests/PortavozUITests/BackgroundWorkUITests.swift")
+        let closeStart = try XCTUnwrap(background.range(of: "let closeDeadline = Date().addingTimeInterval(10)"))
+        let stopClick = try XCTUnwrap(background.range(of: "stop.click()", range: closeStart.upperBound..<background.endIndex))
+        let close = background[closeStart.lowerBound..<stopClick.upperBound]
+        XCTAssertTrue(close.contains("app.windows.containing(.button, identifier: \"settings-category-data\").element"))
+        XCTAssertTrue(close.contains("settings.buttons[\"_XCUI:CloseWindow\"]"))
+        let stable = try XCTUnwrap(close.range(of: "closeSettings.waitForStableFrame("))
+        let native = try XCTUnwrap(close.range(of: "app.hasObservedNativeReceiver("))
+        let deadline = try XCTUnwrap(close.range(of: "Date() <= closeDeadline ? closeSettings : nil"))
+        let click = try XCTUnwrap(close.range(of: "closeSettings.click()"))
+        XCTAssertLessThan(stable.lowerBound, native.lowerBound)
+        XCTAssertLessThan(native.lowerBound, deadline.lowerBound)
+        XCTAssertLessThan(deadline.lowerBound, click.lowerBound)
+        XCTAssertTrue(close.contains("returnedToRecording && Date() <= closeDeadline ? app : nil"))
+        XCTAssertTrue(close.contains("XCTAssertTrue(stopReady)"))
+        XCTAssertTrue(close.contains("try XCTUnwrap(stopReady ? stop : nil"))
+        for forbidden in ["typeKey(", ".firstMatch", ".coordinate(", ".tap(", ".press(", "try?"] {
+            XCTAssertFalse(close.contains(forbidden))
+        }
+    }
+
+    func testHealthyFinalCleanupRetainsBoundedPublicStateAndNativeExitProofs() throws {
+        let support = try Self.contents(of: "Tests/PortavozUITests/UITestStorageSupport.swift")
+        let start = try XCTUnwrap(support.range(of: "static func end(ownerID:"))
+        let end = support[start.lowerBound..<support.endIndex]
+        let finish = try XCTUnwrap(end.range(of: "guard finish(application, allowOwnedExit: allowOwnedExit) != .identityLost"))
+        let captured = try XCTUnwrap(end.range(of: "owned.launches[ObjectIdentifier(application)]?.process.isTerminated == true"))
+        let admission = try XCTUnwrap(end.range(of: "if allowOwnedExit, capturedEnded"))
+        let deadline = try XCTUnwrap(end.range(of: "let exitDeadline = Date().addingTimeInterval(10)"))
+        let state = try XCTUnwrap(end.range(of: "application.state == .notRunning"))
+        let timely = try XCTUnwrap(end.range(of: "&& Date() <= exitDeadline"))
+        let native = try XCTUnwrap(end.range(of: "guard exitObserved, application.waitForPortavozProcessExit()"))
+        let removal = try XCTUnwrap(end.range(of: "try owned.scratch.remove()"))
+        XCTAssertLessThan(finish.lowerBound, captured.lowerBound)
+        XCTAssertLessThan(captured.lowerBound, admission.lowerBound)
+        XCTAssertLessThan(admission.lowerBound, deadline.lowerBound)
+        XCTAssertLessThan(deadline.lowerBound, state.lowerBound)
+        XCTAssertLessThan(state.lowerBound, timely.lowerBound)
+        XCTAssertLessThan(timely.lowerBound, native.lowerBound)
+        XCTAssertLessThan(native.lowerBound, removal.lowerBound)
+        XCTAssertTrue(end.contains("exitObserved = waitForUITestCondition(timeout: 10)"))
+        XCTAssertTrue(end.contains("exitObserved = application.wait(for: .notRunning, timeout: 10)"))
+        XCTAssertTrue(end.contains("throw Failure.applicationStillRunning"))
+        for forbidden in ["FINAL_STATE", "ProcessInfo", "print(", "pollInterval:"] {
+            XCTAssertFalse(end.contains(forbidden))
+        }
+        let storage = try Self.contents(of: "Tests/PortavozUITests/UITestStorageUITests.swift")
+        XCTAssertTrue(storage.contains("XCTAssertNotEqual(app.state, .notRunning"))
+        XCTAssertEqual(storage.components(separatedBy: "XCTAssertEqual(app.state, .notRunning").count - 1, 2)
+        XCTAssertEqual(storage.components(separatedBy: "app.wait(for: .notRunning, timeout: 10)").count - 1, 2)
+        let acknowledgedState = "XCTAssertTrue(app.wait(for: .notRunning, timeout: 10))\n        XCTAssertEqual(app.state, .notRunning"
+        XCTAssertEqual(storage.components(separatedBy: acknowledgedState).count - 1, 2,
+                       "the SDK may acknowledge native exit asynchronously; do not assert an immediate state change")
+        XCTAssertTrue(storage.contains("XCTAssertNotEqual(app.launchEnvironment[\"PORTAVOZ_UI_TEST_EXIT_NONCE\"], firstNonce)"))
+    }
+
     func testDistributionNotarizesTheExtractedAppBeforeTheDMG() throws {
         let builder = try Self.contents(of: "scripts/make-dmg.sh")
         let verifier = try Self.contents(of: "scripts/verify-distribution.sh")
@@ -684,7 +820,7 @@ extension ArchitectureDependencyTests {
             at: "docs/evidence/reliability-gates.json")
         let proofs = try XCTUnwrap(contract["proofs"] as? [[String: Any]])
         XCTAssertEqual(contract["schemaVersion"] as? Int, 2)
-        XCTAssertEqual(proofs.count, 29)
+        XCTAssertEqual(proofs.count, 25)
         XCTAssertEqual(
             Set(proofs.compactMap { $0["class"] as? String }),
             Set([
@@ -997,7 +1133,7 @@ extension ArchitectureDependencyTests {
             "scripts/run-resource-baseline.sh",
             "scripts/run-apuntador-leak-baseline.sh",
             "scripts/run-long-capture-baseline.sh",
-            "make\", \"test-ui-bilingual",
+            "make\", \"test-ui-release",
             "validate_performance_ledger",
             "validate_resource_receipt",
             "validate_memory_leak_receipt",
@@ -1422,8 +1558,7 @@ extension ArchitectureDependencyTests {
             "failed candidate launch did not exit after graceful cleanup"))
         XCTAssertTrue(owner.contains(
             "a failed observation makes the cell immutable"))
-        XCTAssertTrue(owner.contains(
-            "Sequoia and Tahoe must use distinct Mac host scopes"))
+        XCTAssertFalse(owner.lowercased().contains("sequoia"))
         XCTAssertTrue(owner.contains(
             "cryptographically attest physical hardware."))
         XCTAssertTrue(owner.contains("canonical_document_sha256(authority)"))
@@ -1526,8 +1661,13 @@ extension ArchitectureDependencyTests {
         }
         XCTAssertTrue(settingsCapture.contains(
             "UITestWindowPlacement.positionSettingsWindow"))
-        XCTAssertTrue(uiTestSupport.contains(
-            #"general.frame.minX,"#))
+        XCTAssertEqual(uiTestSupport.components(separatedBy:
+            "let generalFrame = general.frame").count - 1, 1,
+            "read-only coordinates must share one fresh frame, never an input cache")
+        for coordinate in ["minX", "minY"] {
+            XCTAssertTrue(uiTestSupport.contains(
+                "XCTAssertGreaterThanOrEqual(\n                generalFrame.\(coordinate),\n                0,"))
+        }
         XCTAssertTrue(uiTestSupport.contains(
             #"temporary Settings must stay on AppKit's zero screen"#))
         XCTAssertTrue(uiTestSupport.contains(

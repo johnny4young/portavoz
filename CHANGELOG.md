@@ -4,6 +4,20 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## 1.2.0 — October 20, 2026
+
+**Dictation that keeps up with you.**
+
+- **🎯 Parakeet Ultra for dictation** — an optional, more accurate dictation model (a 613 MB download you can cancel) with a third fewer word errors and much better mixed English and Spanish; meetings keep using Parakeet.
+- **🎙️ It hears your first word** — the microphone opens the moment you press the shortcut, even while the model loads, and an hourglass tells you to keep talking; optionally load the model at launch and add start/stop sounds.
+- **🌐 Hold Fn to dictate** — hold Fn, Right Option or Right Command while you speak and let go to paste; shortcuts with those keys keep working, and Fn never ends a dictation you started another way.
+- **⏸️ It stops when you do, and never pastes silence** — turn on "Stop after a pause" to finish hands-free, while a tiny on-device voice detector keeps silence and background noise out of your text.
+- **↩️ Paste last** — dictated into the wrong place, or the text couldn't be sent? Paste it again within 15 minutes from the menu bar or ⌃⌥⌘V; it lives only in memory and is forgotten when your Mac sleeps or locks.
+- **📍 A dictation strip that stays out of the way** — it opens under your text cursor, drags anywhere, can shrink to a floating sound wave and timer, and "not verified" notices close by themselves.
+- **📥 Also** — an audio import queue for several files at once, "new line" and "new paragraph" by voice, credits for every on-device model, and clearer recovery when a download needs more disk space.
+
+1.2.0 is qualified on macOS 26 Tahoe. Portavoz 1.1.0 is the last release officially supported on macOS 15 Sequoia.
+
 ## 1.1.0 — September 17, 2026
 
 **Less noise, one place for everything.**
@@ -14,6 +28,110 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **🌅 Today leads with your next meeting** — the next call is the hero with its countdown, brief and record button; Ask is a field with three ready questions; Ask, Radar and the library lost their clutter.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
+
+## October 26, 2026
+
+- **🌍 Read a meeting in the other language** — choose Translate in a meeting's transcript to read it in English or Spanish, translated on your Mac; lines already in that language stay as they are, and Original is one click away.
+
+## October 25, 2026
+
+- **🔠 Capitals that fit the sentence** — turn on “Match capitalization to the text before the cursor” and dictating mid-sentence continues in lowercase while a new sentence starts with a capital; names, acronyms and your own spellings keep theirs.
+- **📚 It learns your words** — after you fix a word by voice, press “Always write” and Portavoz spells it your way from then on; Settings groups every way a word is heard under its spelling.
+- **🌐 Dictate in one language, paste in the other** — set “Translate dictation into” to English or Spanish, for every app, one app or just this dictation: Portavoz translates on your Mac with Apple's languages, and Paste original is one click away.
+- **✏️ Fix it by voice** — turn on spoken corrections and start your next dictation with “change Friday to Monday”, “delete Friday” or “scratch that”: Portavoz fixes only what it just pasted, while it is unchanged, instead of typing the command.
+- **🗣️ Say how to rewrite it** — while rewriting a selection, press Say how or your dictation shortcut and just say what you want ("shorter, with a greeting"); Portavoz rewrites it that way, previews it and still keeps every fact.
+- **🪄 Rewrite any selection** — select text in any app, choose Polish or a recipe from the menu bar or with ⌃⌥⌘R, check the preview and press Return to replace it; facts, names and numbers stay as you wrote them.
+- **🧑‍🍳 Polish recipes** — tell Polish how to shape what you dictate: Formal, Friendly, Bullet list, Concise or your own recipe, as the default, per app or for one dictation, and it still never changes a fact, name or number.
+- **✨ Polish your dictation** — a new Polish text mode fixes grammar, punctuation and false starts with your summary engine on this Mac before pasting, never changes a fact, name or number, and you can always paste the version without polish.
+
+## October 24, 2026
+
+- **🌎 Spanish all the way** — the last labels that still showed in English with Portavoz in Spanish, such as "Saving…" when you stop a recording, are now translated.
+- **🍏 Made for macOS 26 Tahoe** — the next Portavoz requires macOS 26; Macs on Sequoia or earlier keep 1.2.0, and updates and Homebrew won't offer them a version they can't open.
+
+## October 23, 2026
+
+- **📊 See how much you dictate** — turn on dictation statistics to see dictations, words, speaking time and an estimate of the typing you saved over the last week or month, plus the apps you dictate into most; only counts are kept, never what you said.
+- **⌨️ Dictate from Shortcuts** — new Shortcuts actions start or finish dictation, paste your last dictation, search your saved dictations or open them in Portavoz; dictating from a Shortcut keeps your app in front.
+- **🔌 Connect your AI tools in one click** — Portavoz now includes its command-line tool and MCP server: install it from Settings › Integrations (or get it with Homebrew) and copy the ready-made command for Claude Code or any MCP client.
+
+## October 22, 2026
+
+- **🌎 Ask about dictations in either language** — ask in English about something you dictated in Spanish, or the other way around; Portavoz rewrites your question with the on-device model and stores nothing about your dictations.
+
+## October 21, 2026
+
+- **💬 Ask about your dictations** — pick Dictations in Ask to ask what you dictated, or just "today's dictations" or "what I wrote in Slack this week", with each answer citing the app and time; it works only while your history is on, and a citation opens that dictation.
+- **📎 Add a dictation to a meeting's notes** — from Dictations, send what you said to any finished meeting; it lands next to the moment you dictated it and travels with that meeting's notes.
+- **🤖 Let your AI tools read your dictations** — turn on "Let agents read the history" and local agents connected to Portavoz's MCP server can list, search and read what you dictated; off by default, and checked on every request.
+- **🔎 Search your dictations** — type a few letters in Dictations to find what you said, even without the accents, and narrow it to one app or to text that didn't reach its app.
+
+## October 20, 2026
+
+- **🗂️ A private dictation history, if you want one** — turn it on to find what you dictated in the new Dictations page, including text that never reached its app; it stays on this Mac for 7, 30 or 90 days, and you can delete one or all.
+- **🎙️ Try dictation before you rely on it** — setup now has a dictation step: turn it on, check the shortcut and Accessibility, and dictate into a practice field with your real microphone; the same field lives in Settings › Audio & dictation.
+- **🔒 Paste last forgets when your Mac sleeps** — text that wasn't sent can no longer be pasted after your Mac sleeps or locks; the notice still lets you copy it.
+
+## October 19, 2026
+
+- **📍 Dictation opens where you type** — the strip appears right under your text cursor (or beside the pointer when an app hides it), and you can drag it away while you speak.
+- **🫥 "Not verified" notices step aside** — after pasting into apps like Zed, the notice closes by itself after a few seconds, or right away with its × or Escape; Paste last still has your words.
+- **🤏 A tiny dictation indicator** — turn on "Show only a small indicator" to see just a floating sound wave and the time while you dictate, without the live text.
+- **🌊 A sound wave that follows your voice** — the dictation strip now shows moving sine waves instead of a level bar.
+- **⌛ See when the speech model is still loading** — the dictation strip shows an hourglass and "Loading speech model…" until words can appear, so you know to keep talking.
+- **📋 Paste last rescues text that wasn't sent** — if a dictation couldn't land because you switched apps, click into the new field and choose Paste last (or ⌃⌥⌘V) to drop it there.
+- **⏳ Pauses count only once the model is ready** — "Stop after a pause" no longer ends a dictation while the speech model is still loading.
+
+## October 18, 2026
+
+- **🌐 Fn shortcuts never end your dictation** — holding Fn for a shortcut while you dictate no longer stops a dictation you started with a tap or the hotkey.
+- **⏹️ Cancel the Parakeet Ultra download** — changed your mind about the 613 MB download? Cancel it from Settings, or switch back to Parakeet.
+
+## October 17, 2026
+
+- **🙏 Credits for the models on your Mac** — Settings → Your data now names who made each speech and language model, its license, and where it comes from.
+- **⏸️ Dictation that stops when you do** — turn on "Stop after a pause" and a tap-started dictation pastes on its own after 1.5–3 seconds of quiet.
+- **↩️ Paste your last dictation again** — dictated into the wrong field? Pick "Paste last" in the menu bar (or turn on ⌃⌥⌘V) within 15 minutes; it lives only in memory and is gone when your Mac sleeps.
+- **🌐 Hold Fn to dictate** — hold Fn, Right Option or Right Command while you speak and let go to paste; shortcuts with those keys keep working.
+- **🎯 Parakeet Ultra for dictation** — pick a more accurate dictation model in Settings (a 613 MB download), with a third fewer word errors and much better mixed English and Spanish; meetings keep using Parakeet.
+- **↩️ Say "new line" to break lines** — in Clean mode, "new line" / "nueva línea" starts a new line and "new paragraph" / "nuevo párrafo" a new paragraph, without stray commas.
+- **🩹 Soft contractions no longer stop dictation** — a quietly spoken word like "it's" can no longer end a dictation with an error halfway through.
+
+## October 16, 2026
+
+- **🤫 Silence no longer gets pasted** — dictations with no speech are now held back by default and offered to copy, with a tiny 1 MB voice detector that downloads when you turn on dictation (already dictating? tap Download in Settings → Audio).
+- **⏱️ Quick phrases aren't mistaken for taps** — a brief hiccup while the microphone opens no longer makes a short dictation look like an accidental key press and throw it away.
+- **🤫 Silence stays out of your text** — turn on "Skip dictations without speech" and a tiny on-device voice detector keeps silence and background noise from being pasted; the text is still there to copy if it got it wrong.
+
+## October 15, 2026
+
+- **🎙️ Dictation hears your first word** — the microphone starts the moment you press the shortcut, even while the speech model is still loading, so nothing you say is lost and letting go of push-to-talk early no longer cancels.
+
+- **🔔 Optional dictation sounds** — turn on a short sound when you start dictating and another when the microphone closes.
+
+- **⚡ Dictation ready at launch** — optionally load the dictation model when Portavoz opens so the first dictation starts faster; it still unloads when idle.
+
+- **✨ Smoother dictation** — dictated words join your text with the right spacing, Esc cancels while you speak, the strip keeps your newest words in view, and a quick second press can no longer interrupt an insertion.
+
+- **⚡ Lighter chapter preparation** — reuses corrected rows instead of rebuilding the transcript for each review update.
+
+- **⚡ Smoother meeting review** — keeps transcript corrections ready while summaries, notes and playback update.
+
+- **📂 Quicker audio import** — opens the native file chooser without holding up the menu, and lets you cancel and try again safely.
+
+## October 14, 2026
+
+- **🗣️ Steadier live text** — keeps opening words and deliberate repetitions while replacing unfinished words cleanly in dictation and meeting captions.
+
+## October 13, 2026
+
+- **💾 Clear disk-space recovery** — model setup now tells you when a download needs more disk space.
+
+- **🎯 Ready-to-play citations** — jump to a cited moment as soon as its audio is ready while optional compression checks finish.
+
+- **🎧 Keep imported audio within reach** — replay, refine and share imported MP3, AAC, AIFF and M4B recordings; retry copies stay protected until importing finishes, already-compressed audio is never re-encoded, and import only offers formats Portavoz can play.
+
+- **🔄 Processing recovery** — meetings no longer stay stuck when a retry becomes ready or an interrupted worker's wait ends.
 
 ## October 9, 2026
 

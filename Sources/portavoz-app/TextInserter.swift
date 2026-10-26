@@ -108,7 +108,8 @@ enum TextInserter {
     @MainActor
     static func insert(
         _ text: String, into target: Target, pasteboard: NSPasteboard = .general,
-        effects: Effects = .live, clipboard: DictationClipboard = .shared
+        effects: Effects = .live, clipboard: DictationClipboard = .shared,
+        onVerified: ((_ span: NSRange, _ output: String) -> Void)? = nil
     ) async -> DictationDeliveryOutcome {
         guard !text.isEmpty else { return .refused(.emptyText) }
         guard target.processID > 0, effects.isProcessLive(target.processID) else {
@@ -119,13 +120,15 @@ enum TextInserter {
         guard await clipboard.waitForRestoration(on: pasteboard) else { return .refused(.cancelled) }
         if let failure = await failureAfterModifiers(to: target, effects: effects) { return .refused(failure) }
 
-        let baseline = target.readback?.baseline(for: text)
+        let prepared = target.readback?.prepare(text) { target.validate() == nil } ?? (text: text, baseline: nil)
+        let output = prepared.text
+        let baseline = prepared.baseline
         guard !Task.isCancelled else { return .refused(.cancelled) }
         // AX can service a new clipboard owner. Borrow after that inspection,
         // so refusing this attempt restores the latest owner. A clipboard that
         // cannot be captured completely is never replaced: the refusal keeps
         // the output in recovery and leaves the clipboard untouched.
-        guard let loan = clipboard.borrow(text, on: pasteboard) else {
+        guard let loan = clipboard.borrow(output, on: pasteboard) else {
             return .refused(Task.isCancelled ? .cancelled : .clipboardUnavailable)
         }
 
@@ -153,7 +156,9 @@ enum TextInserter {
         clipboard.restoreLater(loan, on: pasteboard, after: restoreDelay)
         // Beyond post, no observation failure can make retry safe.
         guard let baseline, let readback = target.readback else { return .dispatched }
-        return await readback.verify(text, from: baseline, target: target) ? .verified : .dispatched
+        guard await readback.verify(output, from: baseline, target: target) else { return .dispatched }
+        onVerified?(NSRange(location: baseline.selection.location, length: output.utf16.count), output)
+        return .verified
     }
 
     @MainActor
@@ -215,7 +220,7 @@ enum TextInserter {
     /// paste can fire milliseconds after the keypress, while the chord is
     /// still down. The bound keeps a stuck key from blocking delivery.
     @MainActor
-    private static func waitForModifierRelease() async -> Bool {
+    static func waitForModifierRelease() async -> Bool {
         for _ in 0..<50 {
             guard !Task.isCancelled else { return false }
             let flags = CGEventSource.flagsState(.combinedSessionState)
@@ -248,9 +253,22 @@ enum TextInserter {
         return true
     }
 
+    /// Copies the target's selection; the caller owns the clipboard around it.
+    static func postCommandC(to processID: pid_t) -> Bool {
+        let qwertyC = CGKeyCode(kVK_ANSI_C)
+        let keyCode = currentLayoutUsesQwertyCommandPositions() ? qwertyC : (keyCode(for: "c") ?? qwertyC)
+        guard let (keyDown, keyUp) = commandEvents(keyCode: keyCode) else { return false }
+        keyDown.postToPid(processID)
+        keyUp.postToPid(processID)
+        return true
+    }
+
     private static func commandVEvents() -> (CGEvent, CGEvent)? {
+        commandEvents(keyCode: pasteKeyCode())
+    }
+
+    private static func commandEvents(keyCode: CGKeyCode) -> (CGEvent, CGEvent)? {
         let source = CGEventSource(stateID: .combinedSessionState)
-        let keyCode = pasteKeyCode()
         guard
             let keyDown = CGEvent(
                 keyboardEventSource: source, virtualKey: keyCode, keyDown: true),

@@ -162,7 +162,7 @@ release. The collector reads the inspected developer bundle and embeds its
 actual identity in every protocol-2 manifest.
 
 The tracked contract requires separate built-in and AirPods fixtures on macOS
-15 Sequoia and macOS 26 Tahoe. Callback recovery, long-call, and model-cold
+26 Tahoe. Callback recovery, long-call, and model-cold
 fixtures provide real-hardware proof; mixed-language provides user-field
 proof. Supply each package explicitly:
 
@@ -171,9 +171,7 @@ make release-reliability \
   PORTAVOZ_RELEASE_VERSION="$PORTAVOZ_RELEASE_VERSION" \
   PORTAVOZ_RELEASE_BUILD="$PORTAVOZ_RELEASE_BUILD" \
   PORTAVOZ_FIELD_EVIDENCE_ARGS='
-    --field-evidence /path/to/built-in-sequoia
     --field-evidence /path/to/built-in-tahoe
-    --field-evidence /path/to/airpods-sequoia
     --field-evidence /path/to/airpods-tahoe
     --field-evidence /path/to/callback-recovery
     --field-evidence /path/to/long-call

@@ -110,6 +110,17 @@ class MakeReleaseTests(unittest.TestCase):
             self.assertIn("enclosure length does not match", result.stderr)
             self.assertNotIn("Release 1.0.0 ready", result.stdout)
 
+    def test_appcast_offering_older_macos_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = self.make_repository(Path(directory))
+            signer = self.make_signer(repository, minimum_system="14.4")
+
+            result = self.run_release(repository, signer)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("must require macOS 26.0 or newer", result.stderr)
+            self.assertNotIn("Release 1.0.0 ready", result.stdout)
+
     def test_exact_signed_appcast_allows_release_completion(self):
         with tempfile.TemporaryDirectory() as directory:
             repository = self.make_repository(Path(directory))
@@ -179,6 +190,7 @@ printf 'dmg' > 'dist/Portavoz-{self.version}.dmg'
         signature: str | None = None,
         url: str | None = None,
         length: int = 3,
+        minimum_system: str = "26.0",
         symlink_appcast: bool = False,
     ) -> Path:
         signer = repository / "tools" / "generate_appcast"
@@ -215,6 +227,7 @@ cat > {appcast_destination} <<'XML'
     <item>
       <sparkle:version>{resolved_build}</sparkle:version>
       <sparkle:shortVersionString>{resolved_version}</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>{minimum_system}</sparkle:minimumSystemVersion>
       <enclosure url="{resolved_url}" length="{length}" type="application/octet-stream" sparkle:edSignature="{resolved_signature}"/>
     </item>
   </channel>

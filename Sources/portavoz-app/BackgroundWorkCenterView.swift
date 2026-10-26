@@ -160,6 +160,7 @@ private struct BackgroundWorkRow: View {
             if kind == .diarization { return L10n.text("Identifying speakers") }
             if kind == .summary { return L10n.text("Creating summary") }
             if kind == .index { return L10n.text("Updating search") }
+            if kind == .transcriptTranslation { return L10n.text("Translating a transcript") }
             return L10n.text("Processing meetings")
         case .spotlightScheduled:
             return L10n.text("Scheduled")

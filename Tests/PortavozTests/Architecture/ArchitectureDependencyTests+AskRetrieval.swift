@@ -1734,7 +1734,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(presentationTests.contains("swiftlang/swift#87316"))
         XCTAssertEqual(
             ci.components(separatedBy: "scripts/run-swift-tests.sh").count,
-            3)
+            2)
         XCTAssertTrue(uiTest.contains("ask-consented-cited-web-answer"))
         XCTAssertTrue(uiTest.contains("one-request Web consent must be consumed"))
 
@@ -1755,6 +1755,7 @@ extension ArchitectureDependencyTests {
             of: "Sources/ApplicationKit/AskRetrievalContracts.swift")
         let workflow = try Self.contents(
             of: "Sources/ApplicationKit/AskNotes.swift")
+            + (try Self.contents(of: "Sources/ApplicationKit/AskTypedSource.swift"))
         let retrieval = try Self.contents(
             of: "Sources/ApplicationKit/LocalAskNoteRetrieval.swift")
         let search = try Self.contents(
@@ -1816,6 +1817,42 @@ extension ArchitectureDependencyTests {
             "docs/specs/08-quality.md",
         ] {
             XCTAssertTrue(try Self.contents(of: path).contains("D389"), path)
+        }
+    }
+
+    func testDictationAskReadsOnlyWhileTheHistoryIsOnAndStaysTyped() throws {
+        let contracts = try Self.contents(of: "Sources/ApplicationKit/AskRetrievalContracts.swift")
+        let workflow = try Self.contents(of: "Sources/ApplicationKit/AskDictations.swift")
+        let retrieval = try Self.contents(of: "Sources/ApplicationKit/LocalAskDictationRetrieval.swift")
+        let store = try Self.contents(of: "Sources/StorageKit/MeetingStore+DictationAsk.swift")
+        let prompt = try Self.contents(of: "Sources/IntelligenceKit/RAGTextAnswering.swift")
+        let model = try Self.contents(of: "Sources/portavoz-app/AskModel.swift")
+        let view = try Self.contents(of: "Sources/portavoz-app/AskView.swift")
+        let uiTest = try Self.contents(of: "Tests/PortavozUITests/DictationHistoryUITests.swift")
+
+        XCTAssertTrue(contracts.contains("case dictations"))
+        XCTAssertTrue(contracts.contains("throw AskSourcePolicyError.dictationsRequireTypedAdapter"))
+        XCTAssertTrue(store.contains("guard try Self.dictationHistoryPolicy(in: database).isEnabled else { return nil }"))
+        XCTAssertTrue(retrieval.contains("else { return .historyOff }"))
+        XCTAssertTrue(workflow.contains("AskTypedSource.admitAnswer"))
+        XCTAssertFalse(workflow.contains("RAGPassage"))
+        XCTAssertFalse(workflow.contains("AskCitation("))
+        XCTAssertTrue(prompt.contains("struct RAGDictationPassage"))
+        XCTAssertTrue(prompt.contains("It is not a meeting transcript"))
+        XCTAssertTrue(model.contains("guard state.dictationSourceState == .available else { return }"))
+        for identifier in [
+            "ask-source-dictations", "ask-source-status-dictations", "ask-source-status-dictations-off",
+            "ask-pending-dictation-citation", "ask-dictation-citation"
+        ] {
+            XCTAssertTrue(view.contains(identifier), "missing \(identifier)")
+        }
+        XCTAssertTrue(uiTest.contains("ask-exchange-source-dictations"))
+        XCTAssertTrue(uiTest.contains("dictation-history-focus-clear"))
+        for path in [
+            "docs/DECISIONS.md", "docs/specs/04-intelligence.md",
+            "docs/specs/05-storage.md", "docs/specs/06-app-macos.md"
+        ] {
+            XCTAssertTrue(try Self.contents(of: path).contains("D580"), path)
         }
     }
 }

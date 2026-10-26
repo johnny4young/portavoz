@@ -1,26 +1,49 @@
 import AppKit
+import ApplicationKit
 import AudioCaptureKit
 import Foundation
+import IntelligenceKit
 import PortavozCore
 import TranscriptionKit
 
 extension AppServices {
-    func makeDictationSessionDependencies() -> DictationSessionDependencies {
+    /// Paste last passes false: a replay is never a rewrite instruction.
+    func makeDictationSessionDependencies(capturesInstruction: Bool = true) -> DictationSessionDependencies {
         let beginCapture: () -> () -> Void = { [weak self] in
             self?.beginDictationCapture() ?? {}
         }
         // Temporary composition must never open real audio or prompt for
         // Accessibility just because a test clicked the production menu item.
-        return usesTemporaryMeetingStore
-            ? DictationUITestFixture.dependencies(
+        var dependencies: DictationSessionDependencies
+        if usesTemporaryMeetingStore {
+            dependencies = DictationUITestFixture.dependencies(
                 fixture: dictationUITestFixture, beginCapture: beginCapture)
-            : .live(services: self, beginCapture: beginCapture)
+            dependencies.waitForFeedbackDismissal = DictationUITestFixture.waitHoldingUnverifiedNotices
+            dependencies.storesPreferencesTemporarily = true
+            dependencies.polishDictation = DictationUITestFixture.polishing(dictationUITestFixture)
+            dependencies.translateDictation = DictationUITestFixture.translating(dictationUITestFixture)
+            if let fixture = dictationUITestFixture, fixture.correctsByVoice {
+                dependencies.captureDestination = { DictationUITestFixture.correctionDestination(fixture) }
+            }
+        } else {
+            dependencies = .live(services: self, beginCapture: beginCapture)
+        }
+        dependencies.beginHistory = { [weak self] in self?.dictationHistory.admit() }
+        dependencies.recordStats = { [weak self] sample in self?.dictationStats.record(sample) }
+        let routed = dictationPractice.route(dependencies, appIsActive: NSApplication.shared.isActive)
+        // A rewrite waiting for "Say how" takes the next session's words as its instruction.
+        return capturesInstruction && selectionRewrite.capturesInstruction
+            ? selectionRewrite.instructionDependencies(routed) : routed
     }
 }
 
 @MainActor
 final class DictationUITestFixture {
     let text: String
+    /// The second dictation is a spoken correction of the first, into an in-memory receiver.
+    let correctsByVoice: Bool
+    let receiver = DictationFixtureReceiver()
+    private var sessions = 0
     let recoversDestination: Bool
     let deliveryOutcome: DictationDeliveryOutcome?
     /// Real clipboard borrowing on a named board, with inert native effects.
@@ -30,7 +53,17 @@ final class DictationUITestFixture {
     let deniesMicrophoneOnce: Bool
     let missesAudioOnce: Bool
     let holdsPermission: Bool
+    /// Listening starts but the model never arrives, so the strip stays in its loading state.
+    let holdsModel: Bool
     let captureFailure: Bool
+    /// A deterministic voice detector that never hears speech; no model is loaded.
+    let simulatesNoSpeech: Bool
+    /// The polish rewrite: a punctuation-only change, one that never answers, or one that drops the negation.
+    enum PolishBehavior { case polishes, holds, changesMeaning }
+    let polish: PolishBehavior
+    /// Translation swaps the two seed sentences, never answers, or reports Apple's languages as not downloaded.
+    let translationIsMissing: Bool
+    let translationHolds: Bool
     private var finishesNextCapture: Bool
     private var permissionRequests = 0
     private var sourceCreations = 0
@@ -46,11 +79,36 @@ final class DictationUITestFixture {
         deniesMicrophoneOnce = arguments.contains("-seed-dictation-microphone-denied")
         missesAudioOnce = arguments.contains("-seed-dictation-microphone-no-audio")
         holdsPermission = arguments.contains("-seed-dictation-preparation-held")
+        holdsModel = arguments.contains("-seed-dictation-model-loading")
         captureFailure = arguments.contains("-seed-dictation-capture-failure")
         exerciseClipboard = arguments.contains("-seed-dictation-clipboard")
+        simulatesNoSpeech = arguments.contains("-seed-dictation-no-speech")
+        polish = arguments.contains("-seed-dictation-polish-held") ? .holds
+            : arguments.contains("-seed-dictation-polish-unfaithful") ? .changesMeaning : .polishes
+        translationIsMissing = arguments.contains("-seed-dictation-translate-missing")
+        translationHolds = arguments.contains("-seed-dictation-translate-held")
         text = arguments.contains("-seed-dictation-english")
             ? "Don't delete these notes."
             : "No borres estas notas."
+        correctsByVoice = arguments.contains("-seed-dictation-correction")
+    }
+
+    func nextSessionText() -> String {
+        sessions += 1
+        guard correctsByVoice, sessions > 1 else { return text }
+        return text.hasPrefix("Don't") ? "change notes to files" : "cambia notas por archivos"
+    }
+
+    /// UI journeys inspect unverified notices; unit tests own their expiry.
+    static func waitHoldingUnverifiedNotices(_ delay: Duration) async throws {
+        try await Task.sleep(for: delay == DictationController.unverifiedFeedbackDuration ? .seconds(3_600) : delay)
+    }
+
+    /// False once a held load is cancelled.
+    func modelArrives() async -> Bool {
+        guard holdsModel else { return true }
+        do { try await Task.sleep(for: .seconds(3_600)) } catch { return false }
+        return true
     }
 
     @MainActor
@@ -85,10 +143,10 @@ final class DictationUITestFixture {
                     usesSystemFallback: fixture?.missesAudioOnce == true)
             },
             acquireRuntime: {
-                guard let fixture else { throw CancellationError() }
+                guard let fixture, await fixture.modelArrives() else { throw CancellationError() }
                 return LiveTranscriptionRuntime(
                     engine: DictationFixtureEngine(
-                        text: fixture.text,
+                        text: fixture.nextSessionText(),
                         streamsDeltas: fixture.streamsDeltas,
                         onFirstCaption: { await fixture.triggerCaptureFailure() }),
                     completion: {})
@@ -119,7 +177,68 @@ final class DictationUITestFixture {
             },
             defaults: .standard,
             now: fixtureClock(fixture),
-            beginCapture: beginCapture)
+            beginCapture: beginCapture, makeSpeechGate: { noSpeechGate(fixture) })
+    }
+
+    static func polishing(
+        _ fixture: DictationUITestFixture?
+    ) -> (String, [String], String?) async -> DictationPolishOutcome {
+        { text, terms, recipe in
+            await PolishDictation(polisher: FixturePolisher(behavior: fixture?.polish ?? .polishes))(
+                text, protectedTerms: terms, recipe: recipe)
+        }
+    }
+
+    /// No engine: the fixture edits punctuation, holds, or drops the first word.
+    private struct FixturePolisher: DictationTextPolishing {
+        let behavior: PolishBehavior
+
+        func polish(_ text: String, recipe: String?) async throws -> String {
+            switch behavior {
+            case .polishes:
+                // A recipe turns the sentence into a one-item list.
+                return (recipe == nil ? "" : "- ") + text.trimmingCharacters(in: .punctuationCharacters) + "!"
+            case .holds:
+                try await Task.sleep(for: .seconds(3_600))
+                return text
+            case .changesMeaning:
+                return text.split(separator: " ").dropFirst().joined(separator: " ")
+            }
+        }
+    }
+
+    static func translating(
+        _ fixture: DictationUITestFixture?
+    ) -> (String, String?, String) async -> DictationTranslationOutcome {
+        let translator = FixtureTranslator(
+            isMissing: fixture?.translationIsMissing ?? false, holds: fixture?.translationHolds ?? false)
+        let translate = TranslateDictation(translator: translator)
+        return { text, source, target in await translate(text, source: source, target: target) }
+    }
+
+    /// No Apple languages: the two seed sentences translate into each other.
+    private struct FixtureTranslator: DictationTextTranslating {
+        let isMissing: Bool
+        let holds: Bool
+
+        func translate(_ text: String, from source: String, to target: String) async throws -> String {
+            guard !isMissing else { throw DictationTranslationUnavailable(.notInstalled) }
+            if holds { try await Task.sleep(for: .seconds(3_600)) }
+            let pairs = ["No borres estas notas.": "Don't delete these notes."]
+            return pairs[text] ?? pairs.first { $0.value == text }?.key ?? "[\(target)] \(text)"
+        }
+    }
+
+    static func correctionDestination(_ fixture: DictationUITestFixture) -> CapturedDictationDestination {
+        var destination = CapturedDictationDestination(name: "Dictation test receiver", canRetry: true) {
+            fixture.receiver.insert($0)
+        }
+        destination.lastInsertion = { fixture.receiver.last }
+        return destination
+    }
+
+    private static func noSpeechGate(_ fixture: DictationUITestFixture?) -> DictationSpeechGate? {
+        fixture?.simulatesNoSpeech == true ? DictationSpeechGate { { _ in false } } : nil
     }
 
     /// Recovery and delivery journeys use a deterministic clock; others use real time.
@@ -221,5 +340,37 @@ private struct DictationFixtureEngine: TranscriptionEngine {
         }
         continuation.onTermination = { _ in task.cancel() }
         return stream
+    }
+}
+
+/// An in-memory field that verifies every paste, so a spoken correction can edit it.
+@MainActor
+final class DictationFixtureReceiver {
+    private(set) var text = ""
+    private(set) var last: DictationInsertion?
+
+    func insert(_ value: String) -> DictationDeliveryOutcome {
+        let range = NSRange(location: text.utf16.count, length: value.utf16.count)
+        text += value
+        last = insertion(at: range, value)
+        return .verified
+    }
+
+    private func insertion(at range: NSRange, _ value: String) -> DictationInsertion {
+        DictationInsertion(
+            text: value, insertedAt: Date(),
+            isIntact: { [weak self] in
+                guard let self, NSMaxRange(range) <= self.text.utf16.count else { return false }
+                return (self.text as NSString).substring(with: range) == value
+            },
+            edit: { [weak self] subrange, replacement in
+                guard let self else { return nil }
+                let absolute = NSRange(location: range.location + subrange.location, length: subrange.length)
+                self.text = (self.text as NSString).replacingCharacters(in: absolute, with: replacement)
+                let edited = (value as NSString).replacingCharacters(in: subrange, with: replacement)
+                let updated = self.insertion(at: NSRange(location: range.location, length: edited.utf16.count), edited)
+                self.last = updated
+                return updated
+            })
     }
 }

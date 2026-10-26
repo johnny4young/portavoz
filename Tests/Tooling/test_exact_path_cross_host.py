@@ -38,12 +38,12 @@ class ExactPathCrossHostTests(unittest.TestCase):
             self.host_contract,
         )
 
-    def test_complete_comparable_three_profile_two_os_matrix_passes(self):
+    def test_complete_comparable_three_profile_tahoe_matrix_passes(self):
         scorecard = self.scorecard(self.receipts())
 
         self.assertEqual(scorecard["outcome"], "pass")
         self.assertEqual(scorecard["coverage"]["missingHostProfiles"], [])
-        self.assertEqual(scorecard["coverage"]["presentOperatingSystemMajors"], [15, 26])
+        self.assertEqual(scorecard["coverage"]["presentOperatingSystemMajors"], [26])
         self.assertTrue(scorecard["comparability"]["sameSourceCommit"])
         self.assertTrue(scorecard["comparability"]["sameToolchain"])
         self.assertEqual(
@@ -69,17 +69,24 @@ class ExactPathCrossHostTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, encoded)
 
-    def test_missing_profile_or_os_coverage_produces_blocked_scorecard(self):
+    def test_missing_profile_coverage_produces_blocked_scorecard(self):
         receipts = self.receipts()
         missing_profile = self.scorecard(receipts[:-1])
         self.assertEqual(missing_profile["outcome"], "blocked")
         self.assertEqual(missing_profile["coverage"]["missingHostProfiles"], ["reference"])
         self.assertEqual(missing_profile["profiles"][-1]["state"], "missing")
+        self.assertEqual(missing_profile["coverage"]["missingOperatingSystemMajors"], [])
 
-        tahoe_only = self.receipts(os_majors=(26, 26, 26))
-        missing_os = self.scorecard(tahoe_only)
-        self.assertEqual(missing_os["outcome"], "blocked")
-        self.assertEqual(missing_os["coverage"]["missingOperatingSystemMajors"], [15])
+    def test_sequoia_host_receipt_is_rejected(self):
+        with self.assertRaisesRegex(
+            cross_host.host_matrix.MatrixError, "not a supported Tahoe host"
+        ):
+            self.receipt("memory-8gb", 15)
+
+        receipts = self.receipts()
+        receipts[0]["host"]["operatingSystem"] = "Version 15.7 (Build 24G222)"
+        with self.assertRaisesRegex(cross_host.CrossHostError, "supported Tahoe host"):
+            self.scorecard(receipts)
 
     def test_source_or_toolchain_mismatch_is_visible_and_blocks_comparison(self):
         receipts = self.receipts()
@@ -115,7 +122,7 @@ class ExactPathCrossHostTests(unittest.TestCase):
 
     def test_zero_control_timing_is_not_reported_as_equal_performance(self):
         receipts = self.receipts()
-        receipts[0] = self.receipt("memory-8gb", 15, zero_control_timing=True)
+        receipts[0] = self.receipt("memory-8gb", 26, zero_control_timing=True)
 
         scorecard = self.scorecard(receipts)
 
@@ -165,7 +172,8 @@ class ExactPathCrossHostTests(unittest.TestCase):
             self.scorecard(receipts)
 
         receipts = self.receipts()
-        receipts[-1] = self.receipt("memory-16gb", 15)
+        receipts[-1] = self.receipt("memory-16gb", 26)
+        receipts[-1]["generatedAt"] = "2026-08-01T12:30:00Z"
         with self.assertRaisesRegex(cross_host.CrossHostError, "repeats profile"):
             self.scorecard(receipts)
 
@@ -177,7 +185,7 @@ class ExactPathCrossHostTests(unittest.TestCase):
             scorecard["coverage"]["missingHostProfiles"],
             ["memory-8gb", "memory-16gb", "reference"],
         )
-        self.assertEqual(scorecard["coverage"]["missingOperatingSystemMajors"], [15, 26])
+        self.assertEqual(scorecard["coverage"]["missingOperatingSystemMajors"], [26])
 
     def test_contract_coverage_and_comparison_policy_cannot_be_weakened(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -221,7 +229,7 @@ class ExactPathCrossHostTests(unittest.TestCase):
             scorecard,
         )
 
-        scorecard["coverage"]["presentOperatingSystemMajors"][0] = 15.0
+        scorecard["coverage"]["presentOperatingSystemMajors"][0] = 26.0
         with self.assertRaisesRegex(cross_host.CrossHostError, "does not exactly match"):
             cross_host.validate_scorecard_against_receipts(
                 scorecard,
@@ -268,7 +276,7 @@ class ExactPathCrossHostTests(unittest.TestCase):
             self.assertEqual(malformed.stdout, "")
             self.assertIn("duplicate JSON key", malformed.stderr)
 
-    def receipts(self, os_majors=(15, 26, 26)):
+    def receipts(self, os_majors=(26, 26, 26)):
         return [
             self.receipt("memory-8gb", os_majors[0]),
             self.receipt("memory-16gb", os_majors[1]),

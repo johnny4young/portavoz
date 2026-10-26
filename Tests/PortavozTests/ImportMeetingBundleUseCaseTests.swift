@@ -20,7 +20,7 @@ final class ImportMeetingBundleUseCaseTests: XCTestCase {
             }
         }
 
-        for invalidExtension in ["mp3", "../m4a", "m4a/backup"] {
+        for invalidExtension in ["zip", "../m4a", "m4a/backup"] {
             XCTAssertThrowsError(
                 try ImportedMeetingBundleAttachment(
                     name: "system",

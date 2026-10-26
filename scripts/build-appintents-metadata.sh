@@ -20,7 +20,7 @@ cd "$ROOT"
 
 RESOURCES_DIR="${1:?usage: build-appintents-metadata.sh <resources-dir> [config]}"
 INTENTS_SOURCE="Sources/portavoz-app/PortavozAppIntents.swift"
-DEPLOYMENT_TARGET="14.4"
+DEPLOYMENT_TARGET="26.0"
 
 # Follow the active toolchain (DEVELOPER_DIR, else xcode-select) so the
 # script works with Xcode-beta or nonstandard installs; the existence check
@@ -84,8 +84,12 @@ import json, sys
 metadata = json.load(open(sys.argv[1]))
 actions = metadata.get("actions") or {}
 expected_actions = {
+    "DictateIntent",
     "OpenCommitmentIntent",
+    "OpenDictationsIntent",
     "OpenMeetingIntent",
+    "PasteLastDictationIntent",
+    "SearchDictationsIntent",
     "ShowPersonCommitmentsIntent",
     "StartRecordingIntent",
     "StopRecordingIntent",

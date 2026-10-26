@@ -1,7 +1,7 @@
 import Foundation
 import XCTest
 
-@testable import portavoz_cli
+@testable import PortavozCLIKit
 
 final class CLIArgumentValueTests: XCTestCase {
     func testStringValueRejectsMissingEmptyAndAnotherOption() throws {

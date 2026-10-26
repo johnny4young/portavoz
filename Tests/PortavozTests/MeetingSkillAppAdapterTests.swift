@@ -1,3 +1,4 @@
+import AppKit
 import ApplicationKit
 import Foundation
 import IntegrationsKit
@@ -7,6 +8,42 @@ import XCTest
 @testable import portavoz_app
 
 final class MeetingSkillAppAdapterTests: XCTestCase {
+    func testRecapNamedPasteboardRequiresExplicitDisposableAuthority() {
+        let name = "app.portavoz.recap-test.\(UUID().uuidString)"
+        let arguments = ["-uitest-recap-pasteboard"]
+        let environment = ["PORTAVOZ_UI_TEST_RECAP_PASTEBOARD": name]
+        XCTAssertEqual(SystemRecapPasteboard.disposableName(
+            arguments: arguments, environment: environment, usesTemporaryStore: true), name)
+        XCTAssertNil(SystemRecapPasteboard.disposableName(
+            arguments: arguments, environment: environment, usesTemporaryStore: false))
+        XCTAssertNil(SystemRecapPasteboard.disposableName(
+            arguments: [], environment: environment, usesTemporaryStore: true))
+        for value in ["", "com.apple.pasteboard.general", "app.portavoz.recap-test.not-a-uuid", name + "suffix"] {
+            XCTAssertNil(SystemRecapPasteboard.disposableName(
+                arguments: arguments, environment: ["PORTAVOZ_UI_TEST_RECAP_PASTEBOARD": value],
+                usesTemporaryStore: true))
+        }
+        XCTAssertNil(SystemRecapPasteboard.disposableName(
+            arguments: arguments, environment: [:], usesTemporaryStore: true))
+        XCTAssertNil(SystemRecapPasteboard().name, "ordinary composition keeps the system pasteboard")
+    }
+
+    @MainActor
+    func testFailOnceRecapRetryWritesExactTextToTheOwnedNativePasteboard() async {
+        let name = "app.portavoz.recap-test.\(UUID().uuidString)"
+        let board = NSPasteboard(name: .init(name))
+        defer { board.releaseGlobally() }
+        board.clearContents()
+        let adapter = AppFailingOnceRecapPasteboard(system: SystemRecapPasteboard(name: name))
+        let text = "Resumen aprobado\n\nCafé — Don’t, C++."
+        let rejected = await adapter.replaceString(text)
+        XCTAssertFalse(rejected)
+        XCTAssertNil(board.string(forType: .string))
+        let retried = await adapter.replaceString(text)
+        XCTAssertTrue(retried)
+        XCTAssertEqual(board.string(forType: .string), text)
+    }
+
     func testGitHubIssueTransportIsEphemeralAndBounded() {
         let configuration = AppGitHubIssueNetworkPolicy.makeSession().configuration
 

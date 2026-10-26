@@ -38,6 +38,10 @@ struct MeetingDetailCoordinator {
         await model.send(.loadPlayback)
     }
 
+    func refreshAudioCompressionPermission() async {
+        await model.send(.refreshAudioCompressionPermission)
+    }
+
     func exportClip(
         _ range: ClosedRange<TimeInterval>,
         to destination: URL

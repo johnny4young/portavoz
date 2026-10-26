@@ -18,7 +18,6 @@
   "schemaVersion": 1,
   "stabilityPolicyVersion": "nearest-rank-p95-p50-v1",
   "supportedOperatingSystemMajors": [
-    15,
     26
   ]
 }

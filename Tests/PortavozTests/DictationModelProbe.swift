@@ -63,8 +63,12 @@ enum DictationModelProbe {
                 guard updates <= 10_000, emittedBytes <= 1_000_000 else {
                     throw Failure.outputOverflow
                 }
-                if firstUpdate == nil { firstUpdate = seconds(started.duration(to: .now)) }
-                mappedTexts.append(segment.text)
+                // A protocol-only preview clear is not first recognized text.
+                // Replaceable preview snapshots are not canonical token deltas.
+                if firstUpdate == nil, segment.liveUpdateMode != .tokenPreview || !segment.text.isEmpty {
+                    firstUpdate = seconds(started.duration(to: .now))
+                }
+                if segment.liveUpdateMode != .tokenPreview { mappedTexts.append(segment.text) }
                 coalescer.apply(segment, to: &captions)
             }
             try Task.checkCancellation()

@@ -6,25 +6,23 @@ candidate with VoiceOver and Voice Control on physical Apple-silicon Macs. It
 uses only the public bilingual demo corpus and disposable storage; it never
 opens the user's library or `/Applications/Portavoz.app`.
 
-The producer is intentionally finite. It requires these four cells:
+The producer is intentionally finite. It requires these two cells:
 
 | Cell | Host family | Locales |
 |---|---|---|
-| `voiceover-sequoia` | macOS 15 only | English, then Spanish |
-| `voiceover-tahoe` | macOS 26 or newer | English, then Spanish |
-| `voice-control-sequoia` | macOS 15 only | English, then Spanish |
-| `voice-control-tahoe` | macOS 26 or newer | English, then Spanish |
+| `voiceover-tahoe` | macOS 26 or newer | English |
+| `voice-control-tahoe` | macOS 26 or newer | English |
 
-VoiceOver and Voice Control must run on the same host and exact macOS build
-within each OS family. The Sequoia and Tahoe families must expose different
-run-scoped host values. Those values are salted hashes of `IOPlatformUUID`;
+VoiceOver and Voice Control must run on the same host and exact macOS build.
+The run-scoped host value and the macOS build are recorded in each cell. Host values are salted hashes of `IOPlatformUUID`;
 they do **not** cryptographically attest physical hardware. The trusted
 operator and retained release record remain part of the authority.
 
 ## What this proves
 
 - The exact signed candidate can complete the fixed public-seed journey with
-  VoiceOver and Voice Control, in English and Spanish, on the stated hosts.
+  VoiceOver and Voice Control, in English, on the stated host. Spanish labels
+  are covered by the catalog parity unit tests, not by this protocol.
 - Every observation is ordered, content-free, immutable, digest-chained, and
   bound to the candidate receipt, source commit, app seals, signing-team scope,
   host scope, macOS build, assistive technology, locale, and app process.
@@ -36,8 +34,8 @@ operator and retained release record remain part of the authority.
 It does not prove notarization, distribution, CloudKit, an external account,
 real audio hardware, long meetings, field quality, or future macOS behavior.
 XCUITest remains the deterministic regression oracle; this protocol adds the
-irreducible human interaction observation and does not replace full bilingual
-release automation.
+irreducible human interaction observation and does not replace the complete
+English release automation.
 
 ## Authority and privacy boundary
 
@@ -79,9 +77,9 @@ Apple's operating references are:
 3. Check out that exact commit, with no tracked or untracked files, on every
    participating Mac. The Python owner and this repository must remain
    unchanged throughout collection and finalization.
-4. Use physical Apple-silicon Macs: one exact macOS 15 build and one exact
-   macOS 26-or-newer build. Record which trusted operator owns each host in the
-   private release log, not in the machine-readable evidence.
+4. Use one physical Apple-silicon Mac on an exact macOS 26-or-newer build.
+   Record which trusted operator owns the host in the private release log, not
+   in the machine-readable evidence.
 5. Copy the exact app bundle without re-signing it. Re-run
    `codesign --verify --deep --strict --verbose=2` after every copy.
 6. Keep every evidence root and transfer directory mode `0700`; keep every JSON
@@ -172,8 +170,7 @@ record `fail`.
 5. **`interview-assist-navigation`**
    - Start New recording and enable Interview Assist.
    - Verify the current public synthetic question. Add the public objective
-     `Evaluate incident-response judgment` in English or
-     `Evaluar criterio de respuesta a incidentes` in Spanish.
+     `Evaluate incident-response judgment`.
    - Request the answer and reach its exact cited evidence. No installed model,
      microphone, or private interview is used.
 6. **`recording-stop-recovery`**
@@ -198,7 +195,7 @@ rename, or replace a receipt. After all six pass:
 make assistive-qualification-finish
 ```
 
-Run English then Spanish for the same technology. Then run the other
+Run English for one technology. Then run the other
 technology on that same host and exact macOS build. If any checkpoint fails,
 retain the failed run, do not call `finish`, and initialize a wholly new run
 for another attempt. A process-cleanup error is also a failed run; quit only
@@ -206,9 +203,8 @@ the exact Portavoz Dev copy if it remains visible.
 
 ## Assemble and finalize
 
-Bring the two completed cell directories from the Sequoia host and the two
-from the Tahoe host back under the original run's `cells/` directory, preserving
-file modes and bytes. Do not merge partial cells or copy runtime directories.
+Bring the two completed cell directories back under the original run's
+`cells/` directory, preserving file modes and bytes. Do not merge partial cells or copy runtime directories.
 The finalizer rejects missing, extra, symbolic-link, special, mode-drifted,
 reordered, failed, copied-process, mixed-host, mixed-build, candidate-drifted,
 or digest-broken evidence.

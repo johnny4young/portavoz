@@ -144,6 +144,7 @@ final class AudioImportQueueModel {
         rerun = false
         isDraining = true
         drain = Task { [weak self] in
+            var failed = false
             do {
                 _ = try await worker.execute(.init(started: { [weak self] id in
                     await self?.started(id, revision: revision)
@@ -154,10 +155,11 @@ final class AudioImportQueueModel {
                 }))
             } catch {
                 if !(error is CancellationError), !Task.isCancelled {
+                    failed = true
                     self?.error = AudioImportQueueError.storage.localizedDescription
                 }
             }
-            await self?.finished(revision: revision)
+            await self?.finished(revision: revision, afterDrainFailure: failed)
         }
     }
 
@@ -177,7 +179,7 @@ final class AudioImportQueueModel {
         client?.audioImportCompleted(id)
     }
 
-    private func finished(revision: Int) async {
+    private func finished(revision: Int, afterDrainFailure: Bool) async {
         guard generation == revision else { return }
         isDraining = false
         currentID = nil
@@ -189,7 +191,10 @@ final class AudioImportQueueModel {
         // rather than abandoning the read while another drain starts.
         let next: Date?
         do {
-            next = try await client?.nextAudioImportWake()
+            next = ProcessingWakeSchedule.nextDate(
+                scheduled: try await client?.nextAudioImportWake(),
+                afterDrainFailure: afterDrainFailure,
+                at: Date())
         } catch {
             guard generation == revision, !Task.isCancelled else { return }
             self.error = AudioImportQueueError.storage.localizedDescription
@@ -210,7 +215,7 @@ final class AudioImportQueueModel {
 }
 
 enum AudioImportQueueError: Error, LocalizedError {
-    case busy, storage, partialRemoval, selectionLimit, mixedBundles
+    case busy, storage, partialRemoval, selectionLimit, mixedBundles, unsupportedFormat
 
     var errorDescription: String? {
         switch self {
@@ -219,6 +224,7 @@ enum AudioImportQueueError: Error, LocalizedError {
         case .partialRemoval: L10n.text("The meeting was deleted, but some audio files could not be removed.")
         case .mixedBundles: L10n.text("Import a meeting bundle on its own, or choose multiple audio files.")
         case .selectionLimit: L10n.text("Choose between 1 and 1,000 audio files to import.")
+        case .unsupportedFormat: L10n.text("Choose M4A, CAF, WAV, MP3, AAC, AIFF or M4B audio files to import.")
         }
     }
 }

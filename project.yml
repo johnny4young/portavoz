@@ -11,7 +11,7 @@ name: Portavoz
 options:
   bundleIdPrefix: app.portavoz
   deploymentTarget:
-    macOS: "14.4"
+    macOS: "26.0"
   createIntermediateGroups: true
   groupSortPosition: top
   developmentLanguage: en
@@ -44,7 +44,7 @@ targets:
   Portavoz:
     type: application
     platform: macOS
-    deploymentTarget: "14.4"
+    deploymentTarget: "26.0"
     sources:
       - path: Sources/portavoz-app
       - path: Resources/Localization/Portavoz/Localizable.xcstrings
@@ -96,12 +96,13 @@ targets:
           - StorageKit
           - IntegrationsKit
           - AudioPlaybackKit
+          - PortavozCLIKit
       - package: Sparkle
 
   PortavozDictationReceiver:
     type: application
     platform: macOS
-    deploymentTarget: "14.4"
+    deploymentTarget: "26.0"
     sources:
       - path: Tests/PortavozDictationReceiver
     settings:
@@ -114,7 +115,7 @@ targets:
   PortavozUITests:
     type: bundle.ui-testing
     platform: macOS
-    deploymentTarget: "14.4"
+    deploymentTarget: "26.0"
     settings:
       base:
         # A UI-test bundle isn't MainActor-isolated like the app.

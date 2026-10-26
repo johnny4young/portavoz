@@ -75,7 +75,8 @@ EXPECTED_RESOURCE_SCENARIOS = (
     "stop",
     "summary",
 )
-EXPECTED_UI_LOCALES = ("en", "es")
+# Spanish UI runs are manual and never qualify a candidate.
+EXPECTED_UI_LOCALES = ("en",)
 EXPECTED_LEAK_SCENARIOS = apuntador_leak_baseline.EXPECTED_SCENARIOS
 EXPECTED_CONVERSATION_VOICES = ("Daniel", "Paulina")
 EXPECTED_CONVERSATION_SEQUENCE = ("Daniel", "Paulina", "Daniel", "Paulina")
@@ -628,7 +629,7 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
     )
     locales = string_list(ui["locales"], "candidate contract.ui.locales")
     if locales != EXPECTED_UI_LOCALES:
-        raise CandidateAutomationError("candidate UI locales must be exactly en and es")
+        raise CandidateAutomationError("candidate UI locales must be exactly en")
 
     return {
         "proofs": expected_proofs,
@@ -1214,9 +1215,11 @@ def validate_ui_receipts(results_root: Path, contract: dict[str, Any]) -> None:
                     f"{locale} UI runtime adjustment values differ"
                 )
             adjusted_identifiers.add(identifier)
+    # Fails closed when no receipt was validated or receipts disagree on the
+    # shared build they claim to reuse.
     if len(set(build_durations)) != 1:
         raise CandidateAutomationError(
-            "bilingual UI receipts do not share one build duration"
+            "UI receipts do not record exactly one shared build duration"
         )
 
 
@@ -2519,8 +2522,8 @@ def _run_candidate(
     run_command(
         root,
         commit,
-        "Complete bilingual real-app XCUITest",
-        ["make", "test-ui-bilingual"],
+        "Complete real-app XCUITest",
+        ["make", "test-ui-release"],
         environment={
             "UI_TEST_RESULTS_DIR": str(ui_root),
             **private_fixture_environment,

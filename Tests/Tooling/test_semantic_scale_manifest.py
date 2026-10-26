@@ -707,7 +707,6 @@ class SemanticScaleManifestTests(unittest.TestCase):
             [
                 "missing-profile:memory-8gb",
                 "missing-profile:memory-16gb",
-                "missing-operating-system:sequoia",
             ],
         )
         self.assertEqual(matrix["authority"]["crossHostBudget"], "none")
@@ -729,9 +728,13 @@ class SemanticScaleManifestTests(unittest.TestCase):
             resource["profiles"],
         )
 
-    def test_cross_host_matrix_requires_three_profiles_and_both_os_families(self):
+    def test_cross_host_matrix_requires_three_tahoe_profiles(self):
+        self.assertEqual(
+            manifest.cross_host_policy()["requiredOperatingSystems"],
+            [{"family": "tahoe", "majorVersion": 26}],
+        )
         receipts = [
-            current_control_receipt("memory-8gb", 15),
+            current_control_receipt("memory-8gb", 26),
             current_control_receipt("memory-16gb", 26),
             current_control_receipt("reference", 26),
         ]
@@ -750,7 +753,7 @@ class SemanticScaleManifestTests(unittest.TestCase):
                 for receipt in matrix["receipts"]
             ],
             [
-                "arm64-apple-macosx15.0",
+                "arm64-apple-macosx26.0",
                 "arm64-apple-macosx26.0",
                 "arm64-apple-macosx26.0",
             ],
@@ -771,7 +774,7 @@ class SemanticScaleManifestTests(unittest.TestCase):
 
     def test_cross_host_complete_budget_miss_is_a_fail_not_a_pass(self):
         receipts = [
-            current_control_receipt("memory-8gb", 15),
+            current_control_receipt("memory-8gb", 26),
             current_control_receipt("memory-16gb", 26, budget_pass=False),
             current_control_receipt("reference", 26),
         ]
@@ -791,13 +794,15 @@ class SemanticScaleManifestTests(unittest.TestCase):
         )
 
     def test_cross_host_rejects_duplicate_profile_diagnostic_and_drift(self):
-        first = current_control_receipt("memory-8gb", 15)
+        first = current_control_receipt("memory-8gb", 26)
         with self.assertRaisesRegex(manifest.ManifestError, "repeats a control receipt"):
             manifest.build_cross_host_matrix(
                 [first, copy.deepcopy(first)], "2026-08-19T00:00:00Z"
             )
 
-        duplicate_profile = current_control_receipt("memory-8gb", 26)
+        duplicate_profile = current_control_receipt(
+            "memory-8gb", 26, generated_at="2026-08-13T09:30:00Z"
+        )
         with self.assertRaisesRegex(manifest.ManifestError, "repeats profile"):
             manifest.build_cross_host_matrix(
                 [first, duplicate_profile], "2026-08-19T00:00:00Z"
@@ -825,7 +830,15 @@ class SemanticScaleManifestTests(unittest.TestCase):
             )
 
     def test_cross_host_rejects_unsupported_host_and_incoherent_target(self):
-        receipt = current_control_receipt("memory-8gb", 15)
+        with self.assertRaisesRegex(
+            manifest.ManifestError, "operating-system major is unsupported"
+        ):
+            manifest.build_cross_host_matrix(
+                [current_control_receipt("memory-8gb", 15)],
+                "2026-08-19T00:00:00Z",
+            )
+
+        receipt = current_control_receipt("memory-8gb", 26)
         for label, mutate, message in (
             (
                 "memory",
@@ -845,7 +858,7 @@ class SemanticScaleManifestTests(unittest.TestCase):
             (
                 "target",
                 lambda item: item["identity"]["payload"]["toolchain"].update(
-                    target="arm64-apple-macosx26.0"
+                    target="arm64-apple-macosx15.0"
                 ),
                 "Swift target does not match",
             ),
@@ -856,7 +869,7 @@ class SemanticScaleManifestTests(unittest.TestCase):
                         architecture="x86_64"
                     ),
                     item["identity"]["payload"]["toolchain"].update(
-                        target="x86_64-apple-macosx15.0"
+                        target="x86_64-apple-macosx26.0"
                     ),
                 ),
                 "not an Apple-Silicon host",

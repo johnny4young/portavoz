@@ -10,6 +10,7 @@ struct LibraryView: View {
     let model: LibraryModel
     let imports: AudioImportQueueModel
     @State private var showsImportQueue = false
+    @State private var isChoosingAudio = false
     @Binding var route: Route?
     let recordingActive: Bool
     let onReturnToRecording: () -> Void
@@ -25,7 +26,8 @@ struct LibraryView: View {
     private let briefTimer = Timer.publish(every: 300, on: .main, in: .common).autoconnect()
 
     /// Audio the importer accepts (drag-drop or the Import button).
-    private static let importTypes: [UTType] = [.audio, .mpeg4Audio, .wav, .mp3, .meetingBundle]
+    private static let importTypes: [UTType] =
+        AudioImportFormats.fileExtensions.compactMap { UTType(filenameExtension: $0) } + [.meetingBundle]
 
     private var state: LibraryModel.State { model.state }
 
@@ -283,11 +285,12 @@ struct LibraryView: View {
     }
 
     private func isAudio(_ url: URL) -> Bool {
-        ["m4a", "wav", "mp3", "aac", "aiff", "aif", "caf", "m4b"]
-            .contains(url.pathExtension.lowercased())
+        AudioImportFormats.admits(url.pathExtension)
     }
 
     private func chooseAudioToImport() {
+        guard !isChoosingAudio, state.importStatus == nil else { return }
+        isChoosingAudio = true
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
@@ -296,8 +299,14 @@ struct LibraryView: View {
         panel.prompt = L10n.text("Import")
         panel.message = L10n.text("Choose audio files to transcribe, or one .portavoz meeting file")
         AudioImportUITestFixture.configurePicker(panel)
-        guard panel.runModal() == .OK else { return }
-        importAudio(from: panel.urls)
+        // Return from native menu tracking before entering the same app-modal
+        // chooser. A nested modal loop inside the menu action delays its AX
+        // acknowledgement; deferral keeps selection and cancellation unchanged.
+        DispatchQueue.main.async {
+            defer { isChoosingAudio = false }
+            guard panel.runModal() == .OK else { return }
+            importAudio(from: panel.urls)
+        }
     }
 
     private func importAudio(from urls: [URL]) {
@@ -399,7 +408,7 @@ extension LibraryView {
                 } label: {
                     Label("Import audio…", systemImage: "square.and.arrow.down")
                 }
-                .disabled(state.importStatus != nil)
+                .disabled(state.importStatus != nil || isChoosingAudio)
                 .accessibilityIdentifier("library-import-audio-button")
             } label: {
                 Image(systemName: "chevron.down")

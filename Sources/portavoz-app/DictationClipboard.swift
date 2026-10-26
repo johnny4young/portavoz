@@ -66,6 +66,29 @@ final class DictationClipboard {
         return loan
     }
 
+    /// Reads a selection through the editor's own copy: the board is snapshotted first
+    /// and restored only while the copied contents are still the latest, never over a
+    /// later owner. Nil when another loan is open, the post fails or nothing arrives.
+    func copySelection(
+        on pasteboard: NSPasteboard, timeout: Duration = .milliseconds(500), post: () -> Bool
+    ) async -> String? {
+        guard !isMutating, states[pasteboard.name] == nil,
+              let original = PasteboardSnapshot(of: pasteboard) else { return nil }
+        let before = pasteboard.changeCount
+        guard post() else { return nil }
+        let deadline = ContinuousClock.now.advanced(by: timeout)
+        while pasteboard.changeCount == before, ContinuousClock.now < deadline {
+            do { try await Task.sleep(for: .milliseconds(20)) } catch { return nil }
+        }
+        let copied = pasteboard.changeCount
+        guard copied != before else { return nil }
+        let text = pasteboard.string(forType: .string)
+        if !original.restore(to: pasteboard, expectedChangeCount: copied) {
+            Self.logger.error("The copied selection was not replaced by the original clipboard.")
+        }
+        return text
+    }
+
     func isCurrent(_ loan: Loan, on pasteboard: NSPasteboard) -> Bool {
         loan.name == pasteboard.name && states[loan.name]?.loan == loan
             && pasteboard.changeCount == loan.changeCount

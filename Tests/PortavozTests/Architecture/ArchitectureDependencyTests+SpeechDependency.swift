@@ -2,37 +2,38 @@ import Foundation
 import XCTest
 
 extension ArchitectureDependencyTests {
-    /// D516/D539: the manifest requirement is the single source of truth for the
-    /// reviewed engine version, so the version is read out of it rather than
-    /// repeated here. An approved upgrade then edits the manifest, the resolved
-    /// revision below, and the docs — never a version literal hidden in a regex.
-    static func requiredFluidAudioVersion() throws -> String {
+    /// D516/D559: immutable reviewed source plus exact subsystem selection.
+    /// Parsing the manifest cannot itself qualify models, UI or resource usage.
+    static func requiredFluidAudioRevision() throws -> String {
         let manifest = try contents(of: "Package.swift")
+        XCTAssertTrue(manifest.hasPrefix("// swift-tools-version:6.2\n"),
+            "Swift 6.2 traits are required to exclude unused TTS resources and NeMo")
         let requirement = try NSRegularExpression(pattern:
-            #"\.package\(\s*url:\s*"https://github\.com/FluidInference/FluidAudio\.git",\s*exact:\s*"([0-9]+\.[0-9]+\.[0-9]+)"\s*\)"#)
+            #"\.package\(\s*url:\s*"https://github\.com/johnny4young/FluidAudio\.git",\s*revision:\s*"([0-9a-f]{40})",\s*traits:\s*\["Diarizer"\]\s*\)"#)
         let matches = requirement.matches(
             in: manifest, range: NSRange(manifest.startIndex..., in: manifest))
         XCTAssertEqual(matches.count, 1,
-            "The speech engine must require an explicitly reviewed exact release, not a patch range")
+            "Require exactly the reviewed immutable fork and Diarizer-only traits, never a rolling branch/default TTS")
         let match = try XCTUnwrap(matches.first)
         return String(manifest[try XCTUnwrap(Range(match.range(at: 1), in: manifest))])
     }
 
     func testFluidAudioRequirementAndResolutionStayAtReviewedVersion() throws {
-        let requiredVersion = try Self.requiredFluidAudioVersion()
-
+        let requiredRevision = try Self.requiredFluidAudioRevision()
+        XCTAssertEqual(requiredRevision, "16ff239818ddb6787629dab38ae43e8bdd0e7546",
+            "A new speech SDK source requires explicit review rather than only changing the manifest")
         let resolved = try Self.jsonObject(at: "Package.resolved")
         let pins = try XCTUnwrap(resolved["pins"] as? [[String: Any]])
         let fluidPins = pins.filter { ($0["identity"] as? String) == "fluidaudio" }
         XCTAssertEqual(fluidPins.count, 1)
         let pin = try XCTUnwrap(fluidPins.first)
         XCTAssertEqual(pin["kind"] as? String, "remoteSourceControl")
-        XCTAssertEqual(pin["location"] as? String, "https://github.com/FluidInference/FluidAudio.git")
+        XCTAssertEqual(pin["location"] as? String, "https://github.com/johnny4young/FluidAudio.git")
         let state = try XCTUnwrap(pin["state"] as? [String: Any])
-        XCTAssertEqual(state["version"] as? String, requiredVersion,
-            "Package.resolved must sit on the version the manifest requires")
-        XCTAssertEqual(state["revision"] as? String, "87a39dfe4068fef0f1c69bfe704b2b3ef4fbc5bc",
-            "The reviewed commit is pinned as well, so a moved upstream tag cannot pass unnoticed")
+        XCTAssertNil(state["version"])
+        XCTAssertNil(state["branch"])
+        XCTAssertEqual(state["revision"] as? String, requiredRevision,
+            "The resolved dependency must equal the full reviewed SHA")
     }
 
     /// Statement-anchored: attributes and access modifiers may precede `import`,

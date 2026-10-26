@@ -105,6 +105,7 @@ protocol MeetingDetailModelClient: AnyObject {
     func prepareMeetingDetailPlayback(
         _ request: PrepareMeetingPlaybackRequest
     ) async throws -> PreparedMeetingPlayback?
+    func canCompressMeetingDetailAudio(relativeAudioDirectory: String) async throws -> Bool
     func compressMeetingDetailAudio(
         _ request: CompressMeetingAudioRequest
     ) async throws -> MeetingAudioCompressionResult

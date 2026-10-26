@@ -1,0 +1,1978 @@
+{
+  "contentSource": "public-synthetic-only",
+  "dictations": [
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-01T08:00:00Z",
+      "id": "E3D70067-CBAE-5FAE-AEC9-1EA363FE9D16",
+      "language": "es",
+      "text": "Mañana a las nueve reviso la cotización con el proveedor de pintura."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-01T10:00:00Z",
+      "id": "2DBD3BC9-8963-5A04-AE24-1BD9DAD5EEAF",
+      "language": "es",
+      "text": "La pintura del baño quedó perfecta, no hace falta otra mano."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-01T12:00:00Z",
+      "id": "1CE3A0B7-3981-529D-B822-66AB0D87B646",
+      "language": "es",
+      "text": "Envíale a Lucía el contrato firmado antes del viernes."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-01T14:00:00Z",
+      "id": "9E09718D-8C91-5944-A5DF-B8B7F9E41473",
+      "language": "es",
+      "text": "El contrato de arriendo del local vence en diciembre."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-01T16:00:00Z",
+      "id": "FF7C10AC-B712-52F8-B542-4E2C8AD28E2A",
+      "language": "es",
+      "text": "Comprar leche deslactosada, pan integral y bananos para la semana."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-01T18:00:00Z",
+      "id": "B9E7CD4D-0121-5B8B-8E20-EE339B253E0A",
+      "language": "es",
+      "text": "Se acabó el pan en la oficina, avisar a recepción."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-01T20:00:00Z",
+      "id": "1E1F2D7A-22E3-53B8-947D-ED5CAA4683A0",
+      "language": "es",
+      "text": "El despliegue a producción quedó bloqueado por la migración de la base de datos."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-01T22:00:00Z",
+      "id": "646A3304-E59E-5DD4-B8CA-65FCD2B52C85",
+      "language": "es",
+      "text": "La migración de aves al sur empieza en octubre según el documental."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-02T00:00:00Z",
+      "id": "2B7B2A86-0F92-5359-86BA-DFC46FEA32CE",
+      "language": "es",
+      "text": "Recoger a Sofía en el colegio a las cuatro y media."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-02T02:00:00Z",
+      "id": "6E566551-666A-588C-8B2A-854D71C8EBF2",
+      "language": "es",
+      "text": "El colegio envió la circular de la excursión de noviembre."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-02T04:00:00Z",
+      "id": "9591D831-4254-5B74-8670-724AF1584D03",
+      "language": "es",
+      "text": "La reunión de planeación se pasa al jueves por la tarde."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-02T06:00:00Z",
+      "id": "A6C08A7C-8883-521D-9914-418201211F0F",
+      "language": "es",
+      "text": "La planeación del viaje quedó lista desde el jueves."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-02T08:00:00Z",
+      "id": "D8260E87-89E8-51BF-8BD1-048A66E07B7F",
+      "language": "es",
+      "text": "Pedir reembolso del pasaje de avión cancelado por la aerolínea."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-02T10:00:00Z",
+      "id": "4351179E-444A-5CC1-AFC5-4271B299D301",
+      "language": "es",
+      "text": "La aerolínea cambió la puerta de embarque a la doce."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-02T12:00:00Z",
+      "id": "80F6EEF8-40C3-58B1-A13E-035289EDD5DC",
+      "language": "es",
+      "text": "Llamar al plomero porque la llave del lavaplatos sigue goteando."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-02T14:00:00Z",
+      "id": "7A851B55-9DD3-57EA-A584-B1A9A0D22BCE",
+      "language": "es",
+      "text": "La llave del carro quedó en el cajón de la entrada."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-02T16:00:00Z",
+      "id": "A9154D61-86F9-5190-93E7-09698AA8319E",
+      "language": "es",
+      "text": "Hay que subir el precio del plan anual un ocho por ciento en enero."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-02T18:00:00Z",
+      "id": "02F6E8BD-9013-58B4-A390-2B6E4C23CF83",
+      "language": "es",
+      "text": "El plan de vacaciones de enero todavía no está claro."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-02T20:00:00Z",
+      "id": "8015F3F4-F894-57F4-A1AB-2F0EA10F8464",
+      "language": "es",
+      "text": "Idea para el blog: escribir sobre cómo organizamos el inventario con códigos QR."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-02T22:00:00Z",
+      "id": "6A5BD123-6742-536B-B9E0-EADE90E7C13A",
+      "language": "es",
+      "text": "Los códigos de descuento del blog expiran mañana."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-03T00:00:00Z",
+      "id": "911B8E77-DE94-5BC5-9B07-158AD4813C1E",
+      "language": "es",
+      "text": "Agradecerle a Martín por cubrir mi turno del sábado."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-03T02:00:00Z",
+      "id": "B9895758-38AC-5D7C-AE62-EC1CA1985461",
+      "language": "es",
+      "text": "Martín pidió cambiar su turno de la noche."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-03T04:00:00Z",
+      "id": "8B4A4F02-B409-5499-BE23-9B7D1BA92EFC",
+      "language": "es",
+      "text": "El médico dijo que tome el antibiótico cada ocho horas por siete días."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-03T06:00:00Z",
+      "id": "6409903B-5DCF-5625-90C0-D7B878CA01B0",
+      "language": "es",
+      "text": "El médico de la empresa atiende los martes."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-03T08:00:00Z",
+      "id": "2C74697B-705F-566F-AF9B-1C99C02AF143",
+      "language": "es",
+      "text": "Revisar los permisos de acceso de los practicantes al repositorio."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-03T10:00:00Z",
+      "id": "7890113D-F542-5EA7-9369-095B581FB6E0",
+      "language": "es",
+      "text": "Los practicantes llegan con la nueva cohorte de marzo."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-03T12:00:00Z",
+      "id": "09043C59-9C27-5351-AEE8-D72B270B59D7",
+      "language": "es",
+      "text": "El cliente de Monterrey quiere la demo en inglés y con datos reales."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-03T14:00:00Z",
+      "id": "54DB7536-BCD4-59CC-AB20-AAF6C96FD105",
+      "language": "es",
+      "text": "Monterrey tiene pronóstico de lluvia toda la semana."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-03T16:00:00Z",
+      "id": "DA157B91-7557-5710-B59F-EE37EB81EEF9",
+      "language": "es",
+      "text": "Renovar el seguro del carro antes de que venza la póliza."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-03T18:00:00Z",
+      "id": "23DA3298-3C64-527A-B1E3-38A5ECCE1737",
+      "language": "es",
+      "text": "El carro nuevo de Andrés es eléctrico."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-03T20:00:00Z",
+      "id": "457D5052-FFCC-5AE8-9268-004420DF16CA",
+      "language": "es",
+      "text": "Practicar la presentación tres veces en voz alta antes de la conferencia."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-03T22:00:00Z",
+      "id": "05F94C49-52BA-595F-B5B2-9F654111FB24",
+      "language": "es",
+      "text": "La conferencia de prensa empieza a las diez."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-04T00:00:00Z",
+      "id": "5E050569-A250-5C3C-A499-B5DD608615DA",
+      "language": "en",
+      "text": "Ask Priya to review the onboarding checklist before Thursday's launch."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-04T02:00:00Z",
+      "id": "CC6C7ADF-5CBF-50B3-9000-8F9D11EBC13F",
+      "language": "en",
+      "text": "The launch party moved to the rooftop."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-04T04:00:00Z",
+      "id": "A7223460-7DC2-5B51-A06D-94BA375E4C78",
+      "language": "en",
+      "text": "Send the invoice for the March consulting hours to accounting."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-04T06:00:00Z",
+      "id": "6A7852AD-ADEA-5543-8330-190D44E74A01",
+      "language": "en",
+      "text": "Accounting hours change during the holidays."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-04T08:00:00Z",
+      "id": "9617E990-3486-5CDE-B239-06FC3676E8F6",
+      "language": "en",
+      "text": "Buy batteries, a lightbulb and duct tape for the garage."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-04T10:00:00Z",
+      "id": "7B8CB0CD-07AD-57D9-9F5F-E63029E6A90A",
+      "language": "en",
+      "text": "The garage door opener needs a new code."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-04T12:00:00Z",
+      "id": "F4D85EC0-A096-5164-97FF-5B36B4D572ED",
+      "language": "en",
+      "text": "The checkout page crashes when the coupon field is empty."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-04T14:00:00Z",
+      "id": "89080439-CF10-5788-8EDE-4678B8584C58",
+      "language": "en",
+      "text": "Coupon season starts with the newsletter."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-04T16:00:00Z",
+      "id": "93F64B0E-EB76-5D4D-8272-C1CE4A078361",
+      "language": "en",
+      "text": "Pick up Leo from soccer practice at six."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-04T18:00:00Z",
+      "id": "F3EB8E7B-608B-5DD3-A693-01BA11290DD9",
+      "language": "en",
+      "text": "Soccer tickets for the final sold out."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-04T20:00:00Z",
+      "id": "2EEEEC98-875C-5EA9-9D3C-1F4E1C609313",
+      "language": "en",
+      "text": "Move the quarterly review to the first week of next month."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-04T22:00:00Z",
+      "id": "E9D746A0-BE38-5CD4-962A-6433F09451D0",
+      "language": "en",
+      "text": "My review of the new phone is almost done."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-05T00:00:00Z",
+      "id": "6237AB04-3860-5ACA-879A-F9212736AF11",
+      "language": "en",
+      "text": "Cancel the gym membership before they charge the annual fee."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-05T02:00:00Z",
+      "id": "1A074A88-8080-5E3A-A6EE-1F6B3FD60912",
+      "language": "en",
+      "text": "The gym is closed for cleaning on Sunday."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-05T04:00:00Z",
+      "id": "7DE8A783-76A7-512C-90B9-80B024BF2EA4",
+      "language": "en",
+      "text": "Book a table for four at the Italian place on Friday night."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-05T06:00:00Z",
+      "id": "15722C15-A293-51F2-9E94-48A6CEE05DFB",
+      "language": "en",
+      "text": "Friday night traffic downtown is terrible."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-05T08:00:00Z",
+      "id": "992AA047-623F-56D3-8BDC-A59A109611CC",
+      "language": "en",
+      "text": "Our churn went up to five percent after the price change."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-05T10:00:00Z",
+      "id": "2D46441E-69E2-5C0A-B63A-152CCA83419E",
+      "language": "en",
+      "text": "The price change email goes out tomorrow."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-05T12:00:00Z",
+      "id": "850F003D-45D7-5B97-8E79-C8943D52BABC",
+      "language": "en",
+      "text": "Podcast idea: interview a farmer who switched to solar irrigation."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-05T14:00:00Z",
+      "id": "EEEE8ACE-4735-5069-96B8-DD53EF895CFD",
+      "language": "en",
+      "text": "The farmer's market moved to the parking lot."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-05T16:00:00Z",
+      "id": "42F5CB7A-2A3D-5590-A196-42919D3EE810",
+      "language": "en",
+      "text": "Remind Daniel that the support rota changes in November."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-05T18:00:00Z",
+      "id": "2BF936C3-624A-5F3E-9294-677E2CD3DB60",
+      "language": "en",
+      "text": "Daniel's vacation photos are on the shared drive."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-05T20:00:00Z",
+      "id": "8187DE8D-BE50-5EF4-B728-981423645890",
+      "language": "en",
+      "text": "The vet said Max needs his rabies shot renewed this year."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-05T22:00:00Z",
+      "id": "2B1BF3D1-4F59-59EB-9393-6E3BFDF86E83",
+      "language": "en",
+      "text": "Max scored the winning goal yesterday."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-06T00:00:00Z",
+      "id": "97AE18F1-2943-53FC-BACB-4FADDD8EA310",
+      "language": "en",
+      "text": "Rotate the API keys for the staging environment."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-06T02:00:00Z",
+      "id": "DB0F2060-9C6D-5649-B5E7-8917458AA45A",
+      "language": "en",
+      "text": "Staging the play requires three rehearsals."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-06T04:00:00Z",
+      "id": "FED31DB4-E07D-5975-A1E7-B316F38E0969",
+      "language": "en",
+      "text": "The Berlin partner wants the contract in German before signing."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-06T06:00:00Z",
+      "id": "4F3DABF7-C601-5888-80D7-9471889E1191",
+      "language": "en",
+      "text": "Berlin weather is cold this week."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-06T08:00:00Z",
+      "id": "D7D8C6B7-7D56-5F05-9584-1BE1ADED938E",
+      "language": "en",
+      "text": "Renew my passport, it expires in three months."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-06T10:00:00Z",
+      "id": "A0D78515-A8BD-52B6-8DF5-F5555B4FA26F",
+      "language": "en",
+      "text": "The passport office has a new address."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-06T12:00:00Z",
+      "id": "7811A7CA-2F5A-5570-9CC3-CBB2AEB7AC12",
+      "language": "en",
+      "text": "Water the tomato plants every morning while the neighbors are away."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-06T14:00:00Z",
+      "id": "5F423FEF-849F-5F11-9EC7-66D5401C2915",
+      "language": "en",
+      "text": "The neighbors are throwing a party this morning."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-06T16:00:00Z",
+      "id": "CB9A12B5-6427-5B5C-8D87-B15FE4C63B66",
+      "language": "mixed",
+      "text": "Mañana tengo el standup a las diez, después el one on one con Carla."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-06T18:00:00Z",
+      "id": "B7608E34-7A34-55F1-9E15-4FDB492191CB",
+      "language": "mixed",
+      "text": "El standup de hoy se canceló por el offsite."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-06T20:00:00Z",
+      "id": "FEE9022B-7CE9-559F-9BC0-8A99924F3F7A",
+      "language": "mixed",
+      "text": "Necesito update el deck con los numbers del Q3 antes del board meeting."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-06T22:00:00Z",
+      "id": "A0FF1906-79B7-5EBB-99CD-8BBFFAF7CCE1",
+      "language": "mixed",
+      "text": "The board game night es el sábado."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-07T00:00:00Z",
+      "id": "AC178EF4-AD36-5366-8878-5B7965535DD6",
+      "language": "mixed",
+      "text": "Ya hice el transfer de la renta, falta el receipt del landlord."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-07T02:00:00Z",
+      "id": "A19D71F0-57FA-525E-9F61-C2B2D32B9C82",
+      "language": "mixed",
+      "text": "La renta del apartamento de playa sube en verano."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-07T04:00:00Z",
+      "id": "61D01319-446F-592D-8A99-17B0C9ABC34B",
+      "language": "mixed",
+      "text": "El bug del login en Android ya está fixed, pero falta el release."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-07T06:00:00Z",
+      "id": "431CC735-0F4F-537C-B53D-5BCFB456C843",
+      "language": "mixed",
+      "text": "Android Studio se actualizó solo anoche."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-07T08:00:00Z",
+      "id": "0D9A98B6-EE92-5CE5-9629-41A3033D5965",
+      "language": "mixed",
+      "text": "Mándale el feedback a Jorge sobre su pitch, estuvo muy bueno."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-07T10:00:00Z",
+      "id": "6B748768-8B00-5296-BDED-924144635819",
+      "language": "mixed",
+      "text": "Jorge mandó fotos del pitch de su hermana."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-07T12:00:00Z",
+      "id": "BBFA2931-5993-579D-A811-AA479766C0EE",
+      "language": "mixed",
+      "text": "Pending: comprar el charger del laptop y un mouse inalámbrico."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-07T14:00:00Z",
+      "id": "FBA7C48C-F3D1-540E-BEB7-CDF507BF3048",
+      "language": "mixed",
+      "text": "El mouse del gato está debajo del sofá."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-07T16:00:00Z",
+      "id": "59C1DC92-0671-529C-B1A9-99B502EBE1BB",
+      "language": "mixed",
+      "text": "La sprint review se mueve al viernes por el holiday del lunes."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-07T18:00:00Z",
+      "id": "98A31469-F0FE-5EE5-9037-AFA8970C6207",
+      "language": "mixed",
+      "text": "El holiday party será en el rooftop."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-07T20:00:00Z",
+      "id": "4CB93C4F-8435-5517-91D2-46F334DC35A8",
+      "language": "mixed",
+      "text": "Dile a mamá que llego late, el tráfico está horrible."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-07T22:00:00Z",
+      "id": "09FE5E5A-777F-585D-B3B0-AB4C109B6E0A",
+      "language": "mixed",
+      "text": "Mamá cocinó arroz con pollo."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-08T00:00:00Z",
+      "id": "BBC2EEEE-207C-5FC6-9769-4640B612B4E9",
+      "language": "es",
+      "text": "Recordar regar las plantas del balcón."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-08T02:00:00Z",
+      "id": "F7EBF32E-2A3A-5992-BA3D-86F98B2C6094",
+      "language": "es",
+      "text": "Recordar cambiar el filtro del aire acondicionado."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-08T04:00:00Z",
+      "id": "F890EE7D-629D-5460-9947-C8E078AD6DE4",
+      "language": "es",
+      "text": "Recordar devolver el libro a la biblioteca."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-08T06:00:00Z",
+      "id": "3D3A228F-7608-57B6-9331-CB5653EF016F",
+      "language": "es",
+      "text": "Recordar sacar copia de las llaves."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-08T08:00:00Z",
+      "id": "568156DF-EC71-5B06-B110-1F3EB2FECE59",
+      "language": "es",
+      "text": "Recordar comprar regalo para el cumpleaños de la abuela."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-08T10:00:00Z",
+      "id": "57A82BC6-D9A8-5898-8915-6B4D3AC34E26",
+      "language": "es",
+      "text": "Recordar revisar la presión de las llantas."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-08T12:00:00Z",
+      "id": "DFDE6F86-8583-5C9E-A95F-AF240E84C141",
+      "language": "es",
+      "text": "Recordar pagar el recibo de la luz."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-08T14:00:00Z",
+      "id": "8EBCEF3A-AC79-599C-BB45-845D15416F96",
+      "language": "es",
+      "text": "Recordar reservar cancha de tenis."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-08T16:00:00Z",
+      "id": "72701008-D670-56A8-A8F0-3A31AD97A327",
+      "language": "es",
+      "text": "Recordar lavar el tapete de la sala."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-08T18:00:00Z",
+      "id": "EDA8DBF4-75AD-52AC-9E36-A3B3DC221FC6",
+      "language": "es",
+      "text": "Recordar imprimir los boletos del concierto."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-08T20:00:00Z",
+      "id": "890D765C-E3BD-595B-89F8-758C52DBDC06",
+      "language": "es",
+      "text": "Anotar que hay que regar las plantas del balcón."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-08T22:00:00Z",
+      "id": "230B0329-9EBA-52EF-9386-92C1F1E1C696",
+      "language": "es",
+      "text": "Anotar que hay que cambiar el filtro del aire acondicionado."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-09T00:00:00Z",
+      "id": "25686812-EA89-565A-AFD1-653767B17A6D",
+      "language": "es",
+      "text": "Anotar que hay que devolver el libro a la biblioteca."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-09T02:00:00Z",
+      "id": "2287A800-627A-56AE-88F6-82BEAB31CF66",
+      "language": "es",
+      "text": "Anotar que hay que sacar copia de las llaves."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-09T04:00:00Z",
+      "id": "24258083-CAFE-53F5-B223-CA776C7E9BCC",
+      "language": "es",
+      "text": "Anotar que hay que comprar regalo para el cumpleaños de la abuela."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-09T06:00:00Z",
+      "id": "20D4D7E0-469B-5D4A-9481-8E7B6AED369A",
+      "language": "es",
+      "text": "Anotar que hay que revisar la presión de las llantas."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-09T08:00:00Z",
+      "id": "A00D4CCE-66AD-519D-BE65-D873DF02D012",
+      "language": "es",
+      "text": "Anotar que hay que pagar el recibo de la luz."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-09T10:00:00Z",
+      "id": "B12039AF-FEB9-5BA8-A801-6B0E72C8DA1F",
+      "language": "es",
+      "text": "Anotar que hay que reservar cancha de tenis."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-09T12:00:00Z",
+      "id": "8A6CF933-4A58-5263-A300-F6DF8998C2B9",
+      "language": "es",
+      "text": "Anotar que hay que lavar el tapete de la sala."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-09T14:00:00Z",
+      "id": "DF196915-6606-5C7A-9624-5683D7DCCB4D",
+      "language": "es",
+      "text": "Anotar que hay que imprimir los boletos del concierto."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-09T16:00:00Z",
+      "id": "8E9CD286-ADD1-55C3-B9E9-2C6574572DF6",
+      "language": "es",
+      "text": "Pendiente: regar las plantas del balcón."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-09T18:00:00Z",
+      "id": "5484E813-D6EA-594F-A5D4-088EDE4DA25D",
+      "language": "es",
+      "text": "Pendiente: cambiar el filtro del aire acondicionado."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-09T20:00:00Z",
+      "id": "09EA0F6F-8CCE-5E9D-A811-C7E90A534EDF",
+      "language": "es",
+      "text": "Pendiente: devolver el libro a la biblioteca."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-09T22:00:00Z",
+      "id": "643CA774-1DFC-54B1-99D8-33BCB6886D6B",
+      "language": "es",
+      "text": "Pendiente: sacar copia de las llaves."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-10T00:00:00Z",
+      "id": "5C1E2816-4322-59A3-872A-FA9C15C540E0",
+      "language": "es",
+      "text": "Pendiente: comprar regalo para el cumpleaños de la abuela."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-10T02:00:00Z",
+      "id": "FBA742C6-884D-5254-8F2E-8725EBB3D4F9",
+      "language": "es",
+      "text": "Pendiente: revisar la presión de las llantas."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-10T04:00:00Z",
+      "id": "CE6D03A7-D7C6-565B-B3A4-1B70958CEA83",
+      "language": "es",
+      "text": "Pendiente: pagar el recibo de la luz."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-10T06:00:00Z",
+      "id": "713CCC97-CAE2-5BE4-A2C0-D2F966AA92D9",
+      "language": "es",
+      "text": "Pendiente: reservar cancha de tenis."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-10T08:00:00Z",
+      "id": "EC2CD59E-BA20-5C4E-948E-C6704CD12D57",
+      "language": "es",
+      "text": "Pendiente: lavar el tapete de la sala."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-10T10:00:00Z",
+      "id": "0F49D91D-2113-52B8-A030-15CFF6643018",
+      "language": "es",
+      "text": "Pendiente: imprimir los boletos del concierto."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-10T12:00:00Z",
+      "id": "A319B378-916A-5ED6-9436-78A6C549844C",
+      "language": "es",
+      "text": "No olvidar regar las plantas del balcón."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-10T14:00:00Z",
+      "id": "AE4EBF93-9FE1-561E-A219-C6177ACAFC00",
+      "language": "es",
+      "text": "No olvidar cambiar el filtro del aire acondicionado."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-10T16:00:00Z",
+      "id": "11E3FA58-DF18-523D-8B12-3C9DE7A7827F",
+      "language": "es",
+      "text": "No olvidar devolver el libro a la biblioteca."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-10T18:00:00Z",
+      "id": "A1A53CCE-1064-5CA1-A35A-621626BCF611",
+      "language": "es",
+      "text": "No olvidar sacar copia de las llaves."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-10T20:00:00Z",
+      "id": "2A325119-CFE6-5A7C-AAAD-63FE629AE807",
+      "language": "es",
+      "text": "No olvidar comprar regalo para el cumpleaños de la abuela."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-10T22:00:00Z",
+      "id": "DE99299D-65FE-5D70-97F6-C9354B229A69",
+      "language": "es",
+      "text": "No olvidar revisar la presión de las llantas."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-11T00:00:00Z",
+      "id": "67A634FC-9FFB-5BEB-B102-F037E01B1DE2",
+      "language": "es",
+      "text": "No olvidar pagar el recibo de la luz."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-11T02:00:00Z",
+      "id": "1D873B2B-D860-5D06-B645-10F0B8764C3C",
+      "language": "es",
+      "text": "No olvidar reservar cancha de tenis."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-11T04:00:00Z",
+      "id": "B0DB60DC-9746-568B-A861-AF5B81FA8D5D",
+      "language": "es",
+      "text": "No olvidar lavar el tapete de la sala."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-11T06:00:00Z",
+      "id": "F54EE615-67E0-56F7-827A-6922DF58F38C",
+      "language": "es",
+      "text": "No olvidar imprimir los boletos del concierto."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-11T08:00:00Z",
+      "id": "35A57036-F5B2-5D53-82E8-7A37515CB1A4",
+      "language": "en",
+      "text": "Remember to water the balcony ferns."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-11T10:00:00Z",
+      "id": "7EA66D33-F3C1-58B3-85BA-48006EF1C447",
+      "language": "en",
+      "text": "Remember to swap the air filter."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-11T12:00:00Z",
+      "id": "9865E316-ED59-59ED-9862-6ADC8ECB2A51",
+      "language": "en",
+      "text": "Remember to return the library book."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-11T14:00:00Z",
+      "id": "777029D7-D0A8-5AAA-90A9-5ACC801515A6",
+      "language": "en",
+      "text": "Remember to copy the house keys."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-11T16:00:00Z",
+      "id": "7F3B7093-D26D-55A4-8C16-5AB010CE7F55",
+      "language": "en",
+      "text": "Remember to wrap grandma's birthday present."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-11T18:00:00Z",
+      "id": "6310C075-23CE-57D6-B78B-7F08DC94A864",
+      "language": "en",
+      "text": "Remember to check the tire pressure."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-11T20:00:00Z",
+      "id": "9EDF7ACA-F2D5-5384-9035-9F02AF0C53FF",
+      "language": "en",
+      "text": "Remember to pay the electric bill."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-11T22:00:00Z",
+      "id": "E9E2C7D7-A571-5635-AD17-2707790C4608",
+      "language": "en",
+      "text": "Remember to book a tennis court."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-12T00:00:00Z",
+      "id": "2FB05C55-B20A-56A6-9998-CCFCC07D8A3B",
+      "language": "en",
+      "text": "Remember to clean the living room rug."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-12T02:00:00Z",
+      "id": "150E3956-1412-56C6-82D4-24CD70D936F1",
+      "language": "en",
+      "text": "Remember to print the concert tickets."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-12T04:00:00Z",
+      "id": "AF5C100B-A3FA-5A59-ABCE-43E05AE6FAEA",
+      "language": "en",
+      "text": "Note: water the balcony ferns."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-12T06:00:00Z",
+      "id": "1CF83CDA-80E3-5992-B3B4-8A9A45F37469",
+      "language": "en",
+      "text": "Note: swap the air filter."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-12T08:00:00Z",
+      "id": "FB9576A6-A6CF-5377-8019-711E87276ACF",
+      "language": "en",
+      "text": "Note: return the library book."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-12T10:00:00Z",
+      "id": "7E8947BD-381A-5DA8-B7B1-353309900A88",
+      "language": "en",
+      "text": "Note: copy the house keys."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-12T12:00:00Z",
+      "id": "86B92EB8-6A86-56DF-8415-6C80CB7284D4",
+      "language": "en",
+      "text": "Note: wrap grandma's birthday present."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-12T14:00:00Z",
+      "id": "24F29863-B05A-56D9-9384-484B53972BE5",
+      "language": "en",
+      "text": "Note: check the tire pressure."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-12T16:00:00Z",
+      "id": "387C50B5-D11A-5D94-B8AF-96DE0C731C41",
+      "language": "en",
+      "text": "Note: pay the electric bill."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-12T18:00:00Z",
+      "id": "F59F4DB8-A6A2-5C9A-A92A-C67B6BCDE95F",
+      "language": "en",
+      "text": "Note: book a tennis court."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-12T20:00:00Z",
+      "id": "07C2F58F-F170-556D-BF69-2600264E0E37",
+      "language": "en",
+      "text": "Note: clean the living room rug."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-12T22:00:00Z",
+      "id": "ADC9096B-BC72-58F6-BE1C-932C0F26CA64",
+      "language": "en",
+      "text": "Note: print the concert tickets."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-13T00:00:00Z",
+      "id": "9FC1D529-C8C4-5B00-9A49-267816508219",
+      "language": "en",
+      "text": "Todo: water the balcony ferns."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-13T02:00:00Z",
+      "id": "27FD57FF-D49F-5DE0-9F1D-ECD2EBDB255E",
+      "language": "en",
+      "text": "Todo: swap the air filter."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-13T04:00:00Z",
+      "id": "CA7D78A6-FEE0-53E4-B998-1FA872FB37D8",
+      "language": "en",
+      "text": "Todo: return the library book."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-13T06:00:00Z",
+      "id": "71CE4870-71B8-5FF3-B4A4-43AB44497A21",
+      "language": "en",
+      "text": "Todo: copy the house keys."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-13T08:00:00Z",
+      "id": "6AE6158C-41AA-5389-A241-DC157A8654D9",
+      "language": "en",
+      "text": "Todo: wrap grandma's birthday present."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-13T10:00:00Z",
+      "id": "BB0A461E-711C-5723-A26F-2CF300E57AD8",
+      "language": "en",
+      "text": "Todo: check the tire pressure."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-13T12:00:00Z",
+      "id": "29F9D796-FDD8-5877-834E-CF985F21F35A",
+      "language": "en",
+      "text": "Todo: pay the electric bill."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-13T14:00:00Z",
+      "id": "779021F4-C524-5E32-8601-66F2896B8994",
+      "language": "en",
+      "text": "Todo: book a tennis court."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-13T16:00:00Z",
+      "id": "A78E6141-06FA-51B6-962B-75E8260B0696",
+      "language": "en",
+      "text": "Todo: clean the living room rug."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-13T18:00:00Z",
+      "id": "F6913078-5A67-5B39-B7F8-647205E51DA5",
+      "language": "en",
+      "text": "Todo: print the concert tickets."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-13T20:00:00Z",
+      "id": "C2A5A150-7C17-51CB-80A0-DBC03E234E02",
+      "language": "en",
+      "text": "Don't forget to water the balcony ferns."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-13T22:00:00Z",
+      "id": "10460F1C-32D6-55F8-9915-E2FDEDC5E310",
+      "language": "en",
+      "text": "Don't forget to swap the air filter."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-14T00:00:00Z",
+      "id": "1EDF38D8-77AA-525A-9775-DB76C35BE0BD",
+      "language": "en",
+      "text": "Don't forget to return the library book."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-14T02:00:00Z",
+      "id": "9014DEC2-1E3C-52DE-811C-8048DC42BCC8",
+      "language": "en",
+      "text": "Don't forget to copy the house keys."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-14T04:00:00Z",
+      "id": "7CB6E156-389C-5EE6-97F5-475DC40B67B0",
+      "language": "en",
+      "text": "Don't forget to wrap grandma's birthday present."
+    },
+    {
+      "applicationName": "Mail",
+      "createdAt": "2026-09-14T06:00:00Z",
+      "id": "7CBB0E05-D2D8-59C6-988D-CED06A5293B6",
+      "language": "en",
+      "text": "Don't forget to check the tire pressure."
+    },
+    {
+      "applicationName": "Notion",
+      "createdAt": "2026-09-14T08:00:00Z",
+      "id": "79FD3AF2-F02F-5901-BED1-6BB4EC40ED79",
+      "language": "en",
+      "text": "Don't forget to pay the electric bill."
+    },
+    {
+      "applicationName": "Notes",
+      "createdAt": "2026-09-14T10:00:00Z",
+      "id": "F360EADD-5C43-53AB-AF53-E7FD5B022C58",
+      "language": "en",
+      "text": "Don't forget to book a tennis court."
+    },
+    {
+      "applicationName": "Messages",
+      "createdAt": "2026-09-14T12:00:00Z",
+      "id": "7F39039B-0D57-5952-9A42-10C4E4C7613D",
+      "language": "en",
+      "text": "Don't forget to clean the living room rug."
+    },
+    {
+      "applicationName": "Slack",
+      "createdAt": "2026-09-14T14:00:00Z",
+      "id": "1897DC22-73A5-55C2-AFD0-856A0573747B",
+      "language": "en",
+      "text": "Don't forget to print the concert tickets."
+    }
+  ],
+  "generation": "public-synthetic-v1",
+  "kind": "dictation-search-fixture",
+  "queries": [
+    {
+      "hardNegativeIDs": [
+        "2DBD3BC9-8963-5A04-AE24-1BD9DAD5EEAF"
+      ],
+      "id": "67711AFA-A999-5D77-9B80-E3AC774B4C91",
+      "relationship": "exact",
+      "relevant": [
+        "E3D70067-CBAE-5FAE-AEC9-1EA363FE9D16"
+      ],
+      "text": "cotización del proveedor de pintura"
+    },
+    {
+      "hardNegativeIDs": [
+        "2DBD3BC9-8963-5A04-AE24-1BD9DAD5EEAF"
+      ],
+      "id": "82FCC0D6-9EA5-5705-8155-DEB2AB7D29C8",
+      "relationship": "paraphraseSpanish",
+      "relevant": [
+        "E3D70067-CBAE-5FAE-AEC9-1EA363FE9D16"
+      ],
+      "text": "¿Qué día miro el presupuesto del distribuidor de esmalte?"
+    },
+    {
+      "hardNegativeIDs": [
+        "9E09718D-8C91-5944-A5DF-B8B7F9E41473"
+      ],
+      "id": "A21AF027-7160-58DB-9985-8AEFB638687D",
+      "relationship": "exact",
+      "relevant": [
+        "1CE3A0B7-3981-529D-B822-66AB0D87B646"
+      ],
+      "text": "contrato firmado Lucía"
+    },
+    {
+      "hardNegativeIDs": [
+        "9E09718D-8C91-5944-A5DF-B8B7F9E41473"
+      ],
+      "id": "C3113BAE-0E03-512A-90E5-793867833155",
+      "relationship": "paraphraseSpanish",
+      "relevant": [
+        "1CE3A0B7-3981-529D-B822-66AB0D87B646"
+      ],
+      "text": "¿A quién tenía que mandarle el acuerdo con las firmas?"
+    },
+    {
+      "hardNegativeIDs": [
+        "B9E7CD4D-0121-5B8B-8E20-EE339B253E0A"
+      ],
+      "id": "940BE830-B8F4-5A05-8AB6-81104CBDD9CA",
+      "relationship": "exact",
+      "relevant": [
+        "FF7C10AC-B712-52F8-B542-4E2C8AD28E2A"
+      ],
+      "text": "leche deslactosada pan integral"
+    },
+    {
+      "hardNegativeIDs": [
+        "B9E7CD4D-0121-5B8B-8E20-EE339B253E0A"
+      ],
+      "id": "AACA87BA-ACED-5EEC-B34C-B7DBB237341F",
+      "relationship": "paraphraseSpanish",
+      "relevant": [
+        "FF7C10AC-B712-52F8-B542-4E2C8AD28E2A"
+      ],
+      "text": "¿Qué productos del mercado anoté para el desayuno?"
+    },
+    {
+      "hardNegativeIDs": [
+        "646A3304-E59E-5DD4-B8CA-65FCD2B52C85"
+      ],
+      "id": "04EC3A17-1456-5D10-BDE2-0D6D74D1690F",
+      "relationship": "exact",
+      "relevant": [
+        "1E1F2D7A-22E3-53B8-947D-ED5CAA4683A0"
+      ],
+      "text": "despliegue bloqueado migración"
+    },
+    {
+      "hardNegativeIDs": [
+        "646A3304-E59E-5DD4-B8CA-65FCD2B52C85"
+      ],
+      "id": "B3E2C78C-CBF7-50D2-A57F-20E1849837B8",
+      "relationship": "paraphraseSpanish",
+      "relevant": [
+        "1E1F2D7A-22E3-53B8-947D-ED5CAA4683A0"
+      ],
+      "text": "¿Por qué no pudimos subir la versión nueva al servidor?"
+    },
+    {
+      "hardNegativeIDs": [
+        "6E566551-666A-588C-8B2A-854D71C8EBF2"
+      ],
+      "id": "B0679B33-B150-515D-9C59-33F58FEB4AA8",
+      "relationship": "exact",
+      "relevant": [
+        "2B7B2A86-0F92-5359-86BA-DFC46FEA32CE"
+      ],
+      "text": "recoger a Sofía colegio"
+    },
+    {
+      "hardNegativeIDs": [
+        "6E566551-666A-588C-8B2A-854D71C8EBF2"
+      ],
+      "id": "13E4867B-7E3D-5125-81E0-910EA0E58A81",
+      "relationship": "paraphraseSpanish",
+      "relevant": [
+        "2B7B2A86-0F92-5359-86BA-DFC46FEA32CE"
+      ],
+      "text": "¿A qué hora busco a la niña en la escuela?"
+    },
+    {
+      "hardNegativeIDs": [
+        "A6C08A7C-8883-521D-9914-418201211F0F"
+      ],
+      "id": "D900A94B-64CD-5434-B295-C0ADF3F69E45",
+      "relationship": "exact",
+      "relevant": [
+        "9591D831-4254-5B74-8670-724AF1584D03"
+      ],
+      "text": "reunión de planeación"
+    },
+    {
+      "hardNegativeIDs": [
+        "A6C08A7C-8883-521D-9914-418201211F0F"
+      ],
+      "id": "AD0085FF-C7DE-546B-9D85-6F7D82464EEC",
+      "relationship": "paraphraseSpanish",
+      "relevant": [
+        "9591D831-4254-5B74-8670-724AF1584D03"
+      ],
+      "text": "¿Cuándo quedó movida la sesión para organizar el trimestre?"
+    },
+    {
+      "hardNegativeIDs": [
+        "4351179E-444A-5CC1-AFC5-4271B299D301"
+      ],
+      "id": "A137C8AA-A794-5CF2-B93C-F5629662D9A4",
+      "relationship": "exact",
+      "relevant": [
+        "D8260E87-89E8-51BF-8BD1-048A66E07B7F"
+      ],
+      "text": "reembolso pasaje cancelado"
+    },
+    {
+      "hardNegativeIDs": [
+        "4351179E-444A-5CC1-AFC5-4271B299D301"
+      ],
+      "id": "255BBB74-941E-5B24-BAA2-50F0015E15A8",
+      "relationship": "paraphraseSpanish",
+      "relevant": [
+        "D8260E87-89E8-51BF-8BD1-048A66E07B7F"
+      ],
+      "text": "¿Qué dije de recuperar el dinero del vuelo que suspendieron?"
+    },
+    {
+      "hardNegativeIDs": [
+        "7A851B55-9DD3-57EA-A584-B1A9A0D22BCE"
+      ],
+      "id": "5D03D391-B207-5F67-9EE4-7A310419429C",
+      "relationship": "exact",
+      "relevant": [
+        "80F6EEF8-40C3-58B1-A13E-035289EDD5DC"
+      ],
+      "text": "plomero lavaplatos goteando"
+    },
+    {
+      "hardNegativeIDs": [
+        "7A851B55-9DD3-57EA-A584-B1A9A0D22BCE"
+      ],
+      "id": "43C159CA-610D-578C-8614-2749B2D69F4B",
+      "relationship": "paraphraseSpanish",
+      "relevant": [
+        "80F6EEF8-40C3-58B1-A13E-035289EDD5DC"
+      ],
+      "text": "¿Qué arreglo de la cocina tengo pendiente con el fontanero?"
+    },
+    {
+      "hardNegativeIDs": [
+        "02F6E8BD-9013-58B4-A390-2B6E4C23CF83"
+      ],
+      "id": "C4501472-0075-5F09-AF52-01AF9031DF08",
+      "relationship": "paraphraseSpanish",
+      "relevant": [
+        "A9154D61-86F9-5190-93E7-09698AA8319E"
+      ],
+      "text": "¿Cuánto vamos a aumentar la suscripción de doce meses?"
+    },
+    {
+      "hardNegativeIDs": [
+        "02F6E8BD-9013-58B4-A390-2B6E4C23CF83"
+      ],
+      "id": "8DFE3736-863A-5557-A7F3-E67D62C1DD2E",
+      "relationship": "crossLingual",
+      "relevant": [
+        "A9154D61-86F9-5190-93E7-09698AA8319E"
+      ],
+      "text": "How much will the yearly subscription go up?"
+    },
+    {
+      "hardNegativeIDs": [
+        "6A5BD123-6742-536B-B9E0-EADE90E7C13A"
+      ],
+      "id": "10BA52A2-4365-5D89-9805-2481F5BA9CDE",
+      "relationship": "paraphraseSpanish",
+      "relevant": [
+        "8015F3F4-F894-57F4-A1AB-2F0EA10F8464"
+      ],
+      "text": "¿Qué tema se me ocurrió para publicar acerca del control de existencias?"
+    },
+    {
+      "hardNegativeIDs": [
+        "6A5BD123-6742-536B-B9E0-EADE90E7C13A"
+      ],
+      "id": "0539A575-F4E2-5A2B-9C15-DDD77235F0C6",
+      "relationship": "crossLingual",
+      "relevant": [
+        "8015F3F4-F894-57F4-A1AB-2F0EA10F8464"
+      ],
+      "text": "What post did I want to write about tracking stock with scannable labels?"
+    },
+    {
+      "hardNegativeIDs": [
+        "B9895758-38AC-5D7C-AE62-EC1CA1985461"
+      ],
+      "id": "968C82A1-BB2F-5215-84D3-B72FD5B2E2B7",
+      "relationship": "paraphraseSpanish",
+      "relevant": [
+        "911B8E77-DE94-5BC5-9B07-158AD4813C1E"
+      ],
+      "text": "¿A quién debía decirle gracias por reemplazarme en la jornada?"
+    },
+    {
+      "hardNegativeIDs": [
+        "B9895758-38AC-5D7C-AE62-EC1CA1985461"
+      ],
+      "id": "FB8914FC-2813-5D95-B1CF-8C158E0DF364",
+      "relationship": "crossLingual",
+      "relevant": [
+        "911B8E77-DE94-5BC5-9B07-158AD4813C1E"
+      ],
+      "text": "Who did I need to thank for taking my shift?"
+    },
+    {
+      "hardNegativeIDs": [
+        "6409903B-5DCF-5625-90C0-D7B878CA01B0"
+      ],
+      "id": "AF710C16-CF44-5C42-A9D7-7C8E71699117",
+      "relationship": "paraphraseSpanish",
+      "relevant": [
+        "8B4A4F02-B409-5499-BE23-9B7D1BA92EFC"
+      ],
+      "text": "¿Con qué frecuencia me toca la medicina que recetaron?"
+    },
+    {
+      "hardNegativeIDs": [
+        "6409903B-5DCF-5625-90C0-D7B878CA01B0"
+      ],
+      "id": "94648F49-92DF-5ECE-99F7-623FF7AACB5A",
+      "relationship": "crossLingual",
+      "relevant": [
+        "8B4A4F02-B409-5499-BE23-9B7D1BA92EFC"
+      ],
+      "text": "How often do I take the medicine the doctor prescribed?"
+    },
+    {
+      "hardNegativeIDs": [
+        "7890113D-F542-5EA7-9369-095B581FB6E0"
+      ],
+      "id": "03C44133-C369-55C8-AF9D-E97410168CB4",
+      "relationship": "paraphraseSpanish",
+      "relevant": [
+        "2C74697B-705F-566F-AF9B-1C99C02AF143"
+      ],
+      "text": "¿Qué tenía que verificar sobre lo que pueden ver los estudiantes en el código?"
+    },
+    {
+      "hardNegativeIDs": [
+        "7890113D-F542-5EA7-9369-095B581FB6E0"
+      ],
+      "id": "61D53976-825C-594D-A9F5-FAFC35C0E496",
+      "relationship": "crossLingual",
+      "relevant": [
+        "2C74697B-705F-566F-AF9B-1C99C02AF143"
+      ],
+      "text": "What did I need to check about the interns' access to the codebase?"
+    },
+    {
+      "hardNegativeIDs": [
+        "54DB7536-BCD4-59CC-AB20-AAF6C96FD105"
+      ],
+      "id": "6BC142AB-1F49-558B-ACF3-B3ED02ACF6E7",
+      "relationship": "paraphraseSpanish",
+      "relevant": [
+        "09043C59-9C27-5351-AEE8-D72B270B59D7"
+      ],
+      "text": "¿Cómo pidió la presentación la empresa del norte?"
+    },
+    {
+      "hardNegativeIDs": [
+        "54DB7536-BCD4-59CC-AB20-AAF6C96FD105"
+      ],
+      "id": "E913E640-9FE0-52AF-80C9-5FFB70C7C6D9",
+      "relationship": "crossLingual",
+      "relevant": [
+        "09043C59-9C27-5351-AEE8-D72B270B59D7"
+      ],
+      "text": "How did the client up north want the product walkthrough?"
+    },
+    {
+      "hardNegativeIDs": [
+        "23DA3298-3C64-527A-B1E3-38A5ECCE1737"
+      ],
+      "id": "DC7027E8-5597-5247-A4D7-FA765E1BC706",
+      "relationship": "paraphraseSpanish",
+      "relevant": [
+        "DA157B91-7557-5710-B59F-EE37EB81EEF9"
+      ],
+      "text": "¿Qué trámite del vehículo tengo que hacer con la aseguradora?"
+    },
+    {
+      "hardNegativeIDs": [
+        "23DA3298-3C64-527A-B1E3-38A5ECCE1737"
+      ],
+      "id": "C8870E34-E99D-5A84-AAE8-AFCA5167C407",
+      "relationship": "crossLingual",
+      "relevant": [
+        "DA157B91-7557-5710-B59F-EE37EB81EEF9"
+      ],
+      "text": "What do I have to do about the car insurance before it expires?"
+    },
+    {
+      "hardNegativeIDs": [
+        "05F94C49-52BA-595F-B5B2-9F654111FB24"
+      ],
+      "id": "8253A625-64EC-5936-ABCA-0253BFF87A9F",
+      "relationship": "paraphraseSpanish",
+      "relevant": [
+        "457D5052-FFCC-5AE8-9268-004420DF16CA"
+      ],
+      "text": "¿Cómo me iba a preparar para la charla del congreso?"
+    },
+    {
+      "hardNegativeIDs": [
+        "05F94C49-52BA-595F-B5B2-9F654111FB24"
+      ],
+      "id": "C7632E66-AE04-50AA-9876-7B8CCDCA87AF",
+      "relationship": "crossLingual",
+      "relevant": [
+        "457D5052-FFCC-5AE8-9268-004420DF16CA"
+      ],
+      "text": "How was I going to rehearse for the talk at the convention?"
+    },
+    {
+      "hardNegativeIDs": [
+        "CC6C7ADF-5CBF-50B3-9000-8F9D11EBC13F"
+      ],
+      "id": "B1B5836D-F8AE-5756-9629-A86236EA4ECC",
+      "relationship": "exact",
+      "relevant": [
+        "5E050569-A250-5C3C-A499-B5DD608615DA"
+      ],
+      "text": "Priya onboarding checklist"
+    },
+    {
+      "hardNegativeIDs": [
+        "CC6C7ADF-5CBF-50B3-9000-8F9D11EBC13F"
+      ],
+      "id": "8335A905-DEEE-5828-BB7F-52EF935E40BC",
+      "relationship": "paraphraseEnglish",
+      "relevant": [
+        "5E050569-A250-5C3C-A499-B5DD608615DA"
+      ],
+      "text": "Who should look over the new hire steps?"
+    },
+    {
+      "hardNegativeIDs": [
+        "6A7852AD-ADEA-5543-8330-190D44E74A01"
+      ],
+      "id": "404E4A3B-8189-5607-B4E6-A5A6A7F496BC",
+      "relationship": "exact",
+      "relevant": [
+        "A7223460-7DC2-5B51-A06D-94BA375E4C78"
+      ],
+      "text": "invoice consulting hours"
+    },
+    {
+      "hardNegativeIDs": [
+        "6A7852AD-ADEA-5543-8330-190D44E74A01"
+      ],
+      "id": "35757CC1-D820-5FF3-8C14-6866273ED313",
+      "relationship": "paraphraseEnglish",
+      "relevant": [
+        "A7223460-7DC2-5B51-A06D-94BA375E4C78"
+      ],
+      "text": "Which bill do I owe the finance team?"
+    },
+    {
+      "hardNegativeIDs": [
+        "7B8CB0CD-07AD-57D9-9F5F-E63029E6A90A"
+      ],
+      "id": "EBDFF13B-6900-5574-8ECF-33F2C16A04D6",
+      "relationship": "exact",
+      "relevant": [
+        "9617E990-3486-5CDE-B239-06FC3676E8F6"
+      ],
+      "text": "batteries lightbulb duct tape"
+    },
+    {
+      "hardNegativeIDs": [
+        "7B8CB0CD-07AD-57D9-9F5F-E63029E6A90A"
+      ],
+      "id": "DC4B4CD8-1893-5C39-84F7-ADB130F806AC",
+      "relationship": "paraphraseEnglish",
+      "relevant": [
+        "9617E990-3486-5CDE-B239-06FC3676E8F6"
+      ],
+      "text": "What hardware store items did I list?"
+    },
+    {
+      "hardNegativeIDs": [
+        "89080439-CF10-5788-8EDE-4678B8584C58"
+      ],
+      "id": "925C7EDB-841A-51BE-8BE6-3815880562AA",
+      "relationship": "exact",
+      "relevant": [
+        "F4D85EC0-A096-5164-97FF-5B36B4D572ED"
+      ],
+      "text": "checkout crashes coupon"
+    },
+    {
+      "hardNegativeIDs": [
+        "89080439-CF10-5788-8EDE-4678B8584C58"
+      ],
+      "id": "336CE97D-967C-5D38-AB68-267A1BB26E01",
+      "relationship": "paraphraseEnglish",
+      "relevant": [
+        "F4D85EC0-A096-5164-97FF-5B36B4D572ED"
+      ],
+      "text": "What bug happens when people pay without a promo code?"
+    },
+    {
+      "hardNegativeIDs": [
+        "F3EB8E7B-608B-5DD3-A693-01BA11290DD9"
+      ],
+      "id": "E1E838A9-1A95-5916-8299-104FE59B9AC8",
+      "relationship": "exact",
+      "relevant": [
+        "93F64B0E-EB76-5D4D-8272-C1CE4A078361"
+      ],
+      "text": "pick up Leo soccer practice"
+    },
+    {
+      "hardNegativeIDs": [
+        "F3EB8E7B-608B-5DD3-A693-01BA11290DD9"
+      ],
+      "id": "D8B1A866-27DD-5B13-917A-4A25C34C6250",
+      "relationship": "paraphraseEnglish",
+      "relevant": [
+        "93F64B0E-EB76-5D4D-8272-C1CE4A078361"
+      ],
+      "text": "When do I collect my son from football training?"
+    },
+    {
+      "hardNegativeIDs": [
+        "E9D746A0-BE38-5CD4-962A-6433F09451D0"
+      ],
+      "id": "652339DB-9223-5259-8D24-2BEBC289B6FB",
+      "relationship": "exact",
+      "relevant": [
+        "2EEEEC98-875C-5EA9-9D3C-1F4E1C609313"
+      ],
+      "text": "quarterly review"
+    },
+    {
+      "hardNegativeIDs": [
+        "E9D746A0-BE38-5CD4-962A-6433F09451D0"
+      ],
+      "id": "CB2131A4-2EA6-55EF-AB24-DC41ABB9765B",
+      "relationship": "paraphraseEnglish",
+      "relevant": [
+        "2EEEEC98-875C-5EA9-9D3C-1F4E1C609313"
+      ],
+      "text": "When will the periodic performance check take place?"
+    },
+    {
+      "hardNegativeIDs": [
+        "1A074A88-8080-5E3A-A6EE-1F6B3FD60912"
+      ],
+      "id": "40262660-4AF8-5517-88A2-FA445481C92D",
+      "relationship": "exact",
+      "relevant": [
+        "6237AB04-3860-5ACA-879A-F9212736AF11"
+      ],
+      "text": "cancel gym membership"
+    },
+    {
+      "hardNegativeIDs": [
+        "1A074A88-8080-5E3A-A6EE-1F6B3FD60912"
+      ],
+      "id": "A245149C-1A6D-58CB-A615-2702A1E38437",
+      "relationship": "paraphraseEnglish",
+      "relevant": [
+        "6237AB04-3860-5ACA-879A-F9212736AF11"
+      ],
+      "text": "What subscription for working out must I stop?"
+    },
+    {
+      "hardNegativeIDs": [
+        "15722C15-A293-51F2-9E94-48A6CEE05DFB"
+      ],
+      "id": "D4CA5956-4869-51DB-859C-C36BBFB1F957",
+      "relationship": "exact",
+      "relevant": [
+        "7DE8A783-76A7-512C-90B9-80B024BF2EA4"
+      ],
+      "text": "table for four Italian"
+    },
+    {
+      "hardNegativeIDs": [
+        "15722C15-A293-51F2-9E94-48A6CEE05DFB"
+      ],
+      "id": "B5441E8E-5F43-566E-BBE4-1533D26B3D92",
+      "relationship": "paraphraseEnglish",
+      "relevant": [
+        "7DE8A783-76A7-512C-90B9-80B024BF2EA4"
+      ],
+      "text": "Where am I taking the group to dinner?"
+    },
+    {
+      "hardNegativeIDs": [
+        "2D46441E-69E2-5C0A-B63A-152CCA83419E"
+      ],
+      "id": "7F2908F2-4BCA-584D-BF97-C67FEB81E15E",
+      "relationship": "paraphraseEnglish",
+      "relevant": [
+        "992AA047-623F-56D3-8BDC-A59A109611CC"
+      ],
+      "text": "How many customers left once we raised the cost?"
+    },
+    {
+      "hardNegativeIDs": [
+        "2D46441E-69E2-5C0A-B63A-152CCA83419E"
+      ],
+      "id": "E676B7AD-7A13-5826-91AA-5319F4426FA3",
+      "relationship": "crossLingual",
+      "relevant": [
+        "992AA047-623F-56D3-8BDC-A59A109611CC"
+      ],
+      "text": "¿Cuántos clientes perdimos al subir la tarifa?"
+    },
+    {
+      "hardNegativeIDs": [
+        "EEEE8ACE-4735-5069-96B8-DD53EF895CFD"
+      ],
+      "id": "FDEDA560-38AC-5B13-A253-8CD5163CE6B0",
+      "relationship": "paraphraseEnglish",
+      "relevant": [
+        "850F003D-45D7-5B97-8E79-C8943D52BABC"
+      ],
+      "text": "What episode concept did I come up with about agriculture?"
+    },
+    {
+      "hardNegativeIDs": [
+        "EEEE8ACE-4735-5069-96B8-DD53EF895CFD"
+      ],
+      "id": "6779C434-3CEA-5DA8-9547-ACA042B596D2",
+      "relationship": "crossLingual",
+      "relevant": [
+        "850F003D-45D7-5B97-8E79-C8943D52BABC"
+      ],
+      "text": "¿Qué se me ocurrió grabar con un agricultor y paneles?"
+    },
+    {
+      "hardNegativeIDs": [
+        "2BF936C3-624A-5F3E-9294-677E2CD3DB60"
+      ],
+      "id": "B648D7D3-19B4-5361-AD32-6926F35D9A5F",
+      "relationship": "paraphraseEnglish",
+      "relevant": [
+        "42F5CB7A-2A3D-5590-A196-42919D3EE810"
+      ],
+      "text": "Who must I tell about the new helpdesk schedule?"
+    },
+    {
+      "hardNegativeIDs": [
+        "2BF936C3-624A-5F3E-9294-677E2CD3DB60"
+      ],
+      "id": "5B1738BF-285A-5A9A-BED6-438C3C196888",
+      "relationship": "crossLingual",
+      "relevant": [
+        "42F5CB7A-2A3D-5590-A196-42919D3EE810"
+      ],
+      "text": "¿A quién le aviso del nuevo horario de soporte?"
+    },
+    {
+      "hardNegativeIDs": [
+        "2B1BF3D1-4F59-59EB-9393-6E3BFDF86E83"
+      ],
+      "id": "37139222-959B-5784-B6E5-9CED988E6575",
+      "relationship": "paraphraseEnglish",
+      "relevant": [
+        "8187DE8D-BE50-5EF4-B728-981423645890"
+      ],
+      "text": "What did the animal doctor say about the dog's vaccine?"
+    },
+    {
+      "hardNegativeIDs": [
+        "2B1BF3D1-4F59-59EB-9393-6E3BFDF86E83"
+      ],
+      "id": "A4087D1E-7361-54DE-B83A-AC48B99FE846",
+      "relationship": "crossLingual",
+      "relevant": [
+        "8187DE8D-BE50-5EF4-B728-981423645890"
+      ],
+      "text": "¿Qué dijo la veterinaria sobre la vacuna del perro?"
+    },
+    {
+      "hardNegativeIDs": [
+        "DB0F2060-9C6D-5649-B5E7-8917458AA45A"
+      ],
+      "id": "8639AF65-B4EA-52F0-8FBB-D03640E9259A",
+      "relationship": "paraphraseEnglish",
+      "relevant": [
+        "97AE18F1-2943-53FC-BACB-4FADDD8EA310"
+      ],
+      "text": "Which credentials do I need to replace on the test servers?"
+    },
+    {
+      "hardNegativeIDs": [
+        "DB0F2060-9C6D-5649-B5E7-8917458AA45A"
+      ],
+      "id": "039DE79B-B86A-5571-9736-D696CDF7D672",
+      "relationship": "crossLingual",
+      "relevant": [
+        "97AE18F1-2943-53FC-BACB-4FADDD8EA310"
+      ],
+      "text": "¿Qué claves tenía que cambiar en el ambiente de pruebas?"
+    },
+    {
+      "hardNegativeIDs": [
+        "4F3DABF7-C601-5888-80D7-9471889E1191"
+      ],
+      "id": "70FC992B-3733-580F-B9AA-ABD88A926326",
+      "relationship": "paraphraseEnglish",
+      "relevant": [
+        "FED31DB4-E07D-5975-A1E7-B316F38E0969"
+      ],
+      "text": "What does the European distributor need prior to committing?"
+    },
+    {
+      "hardNegativeIDs": [
+        "4F3DABF7-C601-5888-80D7-9471889E1191"
+      ],
+      "id": "4F3071C0-AAAE-50AC-9EEC-E4E8C176CE96",
+      "relationship": "crossLingual",
+      "relevant": [
+        "FED31DB4-E07D-5975-A1E7-B316F38E0969"
+      ],
+      "text": "¿En qué idioma quiere el socio alemán el acuerdo?"
+    },
+    {
+      "hardNegativeIDs": [
+        "A0D78515-A8BD-52B6-8DF5-F5555B4FA26F"
+      ],
+      "id": "11DE2366-1C95-5FC2-9C67-430B15A600EF",
+      "relationship": "paraphraseEnglish",
+      "relevant": [
+        "D7D8C6B7-7D56-5F05-9584-1BE1ADED938E"
+      ],
+      "text": "Which travel document do I have to update soon?"
+    },
+    {
+      "hardNegativeIDs": [
+        "A0D78515-A8BD-52B6-8DF5-F5555B4FA26F"
+      ],
+      "id": "2E51F8BD-402E-50D2-859D-868D122D1788",
+      "relationship": "crossLingual",
+      "relevant": [
+        "D7D8C6B7-7D56-5F05-9584-1BE1ADED938E"
+      ],
+      "text": "¿Qué documento de viaje tengo que renovar?"
+    },
+    {
+      "hardNegativeIDs": [
+        "5F423FEF-849F-5F11-9EC7-66D5401C2915"
+      ],
+      "id": "4B374F4B-B062-5ECA-9867-5AD7C1DB8213",
+      "relationship": "paraphraseEnglish",
+      "relevant": [
+        "7811A7CA-2F5A-5570-9CC3-CBB2AEB7AC12"
+      ],
+      "text": "What gardening chore did I promise to do for the people next door?"
+    },
+    {
+      "hardNegativeIDs": [
+        "5F423FEF-849F-5F11-9EC7-66D5401C2915"
+      ],
+      "id": "C9355C0E-941E-5B03-B508-664137CB0B08",
+      "relationship": "crossLingual",
+      "relevant": [
+        "7811A7CA-2F5A-5570-9CC3-CBB2AEB7AC12"
+      ],
+      "text": "¿Qué le prometí regar a los vecinos?"
+    },
+    {
+      "hardNegativeIDs": [
+        "B7608E34-7A34-55F1-9E15-4FDB492191CB"
+      ],
+      "id": "A0F9D078-04EE-549E-BC3B-2EBE19FE6B41",
+      "relationship": "codeSwitched",
+      "relevant": [
+        "CB9A12B5-6427-5B5C-8D87-B15FE4C63B66"
+      ],
+      "text": "¿Cuándo es la reunión privada with my teammate?"
+    },
+    {
+      "hardNegativeIDs": [
+        "A0FF1906-79B7-5EBB-99CD-8BBFFAF7CCE1"
+      ],
+      "id": "A523A378-43ED-581D-8067-BC31CC488F2C",
+      "relationship": "codeSwitched",
+      "relevant": [
+        "FEE9022B-7CE9-559F-9BC0-8A99924F3F7A"
+      ],
+      "text": "What changes le hago a la presentación para la junta directiva?"
+    },
+    {
+      "hardNegativeIDs": [
+        "A19D71F0-57FA-525E-9F61-C2B2D32B9C82"
+      ],
+      "id": "9FD3E202-D847-55A5-B8C0-17CB88765F7F",
+      "relationship": "codeSwitched",
+      "relevant": [
+        "AC178EF4-AD36-5366-8878-5B7965535DD6"
+      ],
+      "text": "¿Pagué el alquiler? I still need the proof from the owner."
+    },
+    {
+      "hardNegativeIDs": [
+        "431CC735-0F4F-537C-B53D-5BCFB456C843"
+      ],
+      "id": "A4981050-40D1-5D33-870A-CE982AFFC203",
+      "relationship": "codeSwitched",
+      "relevant": [
+        "61D01319-446F-592D-8A99-17B0C9ABC34B"
+      ],
+      "text": "Is the sign-in problem on the phone solved o todavía no se publica?"
+    },
+    {
+      "hardNegativeIDs": [
+        "6B748768-8B00-5296-BDED-924144635819"
+      ],
+      "id": "CAE2ABF8-AF4A-561F-A95E-8A283A28E7B1",
+      "relationship": "codeSwitched",
+      "relevant": [
+        "0D9A98B6-EE92-5CE5-9629-41A3033D5965"
+      ],
+      "text": "What comments do I owe al compañero about his presentation?"
+    },
+    {
+      "hardNegativeIDs": [
+        "FBA7C48C-F3D1-540E-BEB7-CDF507BF3048"
+      ],
+      "id": "CC81D04B-5807-5899-BE81-18ECBF4861BE",
+      "relationship": "codeSwitched",
+      "relevant": [
+        "BBFA2931-5993-579D-A811-AA479766C0EE"
+      ],
+      "text": "¿Qué accessories para la computadora tenía que buy?"
+    },
+    {
+      "hardNegativeIDs": [
+        "98A31469-F0FE-5EE5-9037-AFA8970C6207"
+      ],
+      "id": "EC6C9E6A-15C6-5FF4-864A-5A140E6DDE58",
+      "relationship": "codeSwitched",
+      "relevant": [
+        "59C1DC92-0671-529C-B1A9-99B502EBE1BB"
+      ],
+      "text": "Why did the demo de fin de ciclo get rescheduled?"
+    },
+    {
+      "hardNegativeIDs": [
+        "09FE5E5A-777F-585D-B3B0-AB4C109B6E0A"
+      ],
+      "id": "F5F7D0BD-C46A-58A0-AF57-AD6EC29CFE28",
+      "relationship": "codeSwitched",
+      "relevant": [
+        "4CB93C4F-8435-5517-91D2-46F334DC35A8"
+      ],
+      "text": "What message did I send a mi madre about being retrasado?"
+    },
+    {
+      "hardNegativeIDs": [],
+      "id": "4B9B9840-59CD-515D-9F8D-A57819087F39",
+      "relationship": "abstain",
+      "relevant": [],
+      "text": "¿Qué le dije al profesor de guitarra sobre la clase?"
+    },
+    {
+      "hardNegativeIDs": [],
+      "id": "BAEC8E9C-3F6D-59FE-B8BB-053658A2B91F",
+      "relationship": "abstain",
+      "relevant": [],
+      "text": "Did I reserve the hotel in Lisbon?"
+    },
+    {
+      "hardNegativeIDs": [],
+      "id": "2213C29B-3A6B-5AF2-9865-7E9BB25B1D83",
+      "relationship": "abstain",
+      "relevant": [],
+      "text": "¿Cuánto costó arreglar la lavadora?"
+    },
+    {
+      "hardNegativeIDs": [],
+      "id": "86D9EC4E-0EE8-5A3F-9E92-B16C5EE321B9",
+      "relationship": "abstain",
+      "relevant": [],
+      "text": "What did I say about the chess tournament?"
+    },
+    {
+      "hardNegativeIDs": [],
+      "id": "9C245A2C-9C32-5B42-84F9-49150FF0CDCD",
+      "relationship": "abstain",
+      "relevant": [],
+      "text": "¿Confirmé la cita con el odontólogo?"
+    },
+    {
+      "hardNegativeIDs": [],
+      "id": "8BCD6AAF-0E39-533D-8865-85B09E3F6D7A",
+      "relationship": "abstain",
+      "relevant": [],
+      "text": "Where did I park the bike?"
+    },
+    {
+      "hardNegativeIDs": [],
+      "id": "07D7D7D5-3B11-5551-8507-ED6277741B1E",
+      "relationship": "abstain",
+      "relevant": [],
+      "text": "¿Qué opiné sobre la película de terror?"
+    },
+    {
+      "hardNegativeIDs": [],
+      "id": "B18932D2-4A43-528E-8A5E-5018EA5A6285",
+      "relationship": "abstain",
+      "relevant": [],
+      "text": "What did I tell the architect about the roof?"
+    }
+  ],
+  "schemaVersion": 1
+}

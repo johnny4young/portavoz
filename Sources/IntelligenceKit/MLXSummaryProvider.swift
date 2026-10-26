@@ -58,6 +58,14 @@ public protocol MLXSummaryRuntimeClient: Sendable {
         user: String,
         directory: URL
     ) async throws -> String
+
+    /// The same generation under a tighter runaway cap, for short rewrites.
+    func respond(
+        system: String,
+        user: String,
+        directory: URL,
+        maximumResponseTokens: Int
+    ) async throws -> String
 }
 
 public enum MLXSummaryRuntimeError: Error, Equatable, Sendable {
@@ -72,6 +80,8 @@ public enum MLXSummaryRuntimeError: Error, Equatable, Sendable {
 public actor MLXSummaryRuntime: MLXSummaryRuntimeClient {
     public init() {}
 
+    public static let maximumResponseTokens = 16_384
+
     /// Long enough that "regenerate in the other language" reuses the hot
     /// container, short enough that the RAM comes back promptly.
     private static let idleRelease: Duration = .seconds(120)
@@ -85,6 +95,19 @@ public actor MLXSummaryRuntime: MLXSummaryRuntimeClient {
         user: String,
         directory newDirectory: URL
     ) async throws -> String {
+        try await respond(
+            system: system,
+            user: user,
+            directory: newDirectory,
+            maximumResponseTokens: Self.maximumResponseTokens)
+    }
+
+    public func respond(
+        system: String,
+        user: String,
+        directory newDirectory: URL,
+        maximumResponseTokens: Int
+    ) async throws -> String {
         standaloneIdleGeneration += 1
         let idleGeneration = standaloneIdleGeneration
         defer { scheduleStandaloneIdleRelease(after: idleGeneration) }
@@ -92,7 +115,8 @@ public actor MLXSummaryRuntime: MLXSummaryRuntimeClient {
         return try await respondPrepared(
             system: system,
             user: user,
-            directory: newDirectory)
+            directory: newDirectory,
+            maximumResponseTokens: maximumResponseTokens)
     }
 
     /// Loads or reuses the exact verified directory without beginning
@@ -115,8 +139,10 @@ public actor MLXSummaryRuntime: MLXSummaryRuntimeClient {
     public func respondPrepared(
         system: String,
         user: String,
-        directory expectedDirectory: URL
+        directory expectedDirectory: URL,
+        maximumResponseTokens: Int = MLXSummaryRuntime.maximumResponseTokens
     ) async throws -> String {
+        let maxTokens = min(max(1, maximumResponseTokens), Self.maximumResponseTokens)
         guard let container, directory == expectedDirectory else {
             throw MLXSummaryRuntimeError.notPrepared
         }
@@ -136,7 +162,7 @@ public actor MLXSummaryRuntime: MLXSummaryRuntimeClient {
             // real generations room and still bounds the worst case.
             let stream = try MLXLMCommon.generate(
                 input: input,
-                parameters: GenerateParameters(maxTokens: 16_384, temperature: 0),
+                parameters: GenerateParameters(maxTokens: maxTokens, temperature: 0),
                 context: context)
             var text = ""
             for await item in stream {

@@ -5,7 +5,7 @@ import XCTest
 
 @testable import ModelStoreKit
 @testable import TranscriptionKit
-@testable import portavoz_cli
+@testable import PortavozCLIKit
 
 final class NemotronLatin1120Tests: XCTestCase {
     private let meetingID = MeetingID()

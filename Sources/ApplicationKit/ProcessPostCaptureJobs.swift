@@ -16,6 +16,7 @@ public struct ProcessPostCaptureJobs: ApplicationUseCase {
     private let audio: any PostCaptureAudioProcessing
     private let summaries: any PostCaptureSummaryConfiguration
     private let actions: any PostCaptureCompletionActions
+    private let translation: TranscriptTranslationWorker?
     private let leaseDuration: TimeInterval
     private let heartbeatInterval: Duration
     private let now: @Sendable () -> Date
@@ -25,6 +26,7 @@ public struct ProcessPostCaptureJobs: ApplicationUseCase {
         audio: any PostCaptureAudioProcessing,
         summaries: any PostCaptureSummaryConfiguration,
         actions: any PostCaptureCompletionActions,
+        translation: TranscriptTranslationWorker? = nil,
         leaseDuration: TimeInterval = 120,
         heartbeatInterval: Duration = .seconds(30),
         now: @escaping @Sendable () -> Date = { Date() }
@@ -33,6 +35,7 @@ public struct ProcessPostCaptureJobs: ApplicationUseCase {
         self.audio = audio
         self.summaries = summaries
         self.actions = actions
+        self.translation = translation
         self.leaseDuration = leaseDuration
         self.heartbeatInterval = heartbeatInterval
         self.now = now
@@ -43,6 +46,7 @@ public struct ProcessPostCaptureJobs: ApplicationUseCase {
     public init<Capabilities>(
         store: any PostCaptureProcessingStore,
         capabilities: Capabilities,
+        translation: TranscriptTranslationWorker? = nil,
         leaseDuration: TimeInterval = 120,
         heartbeatInterval: Duration = .seconds(30),
         now: @escaping @Sendable () -> Date = { Date() }
@@ -54,6 +58,7 @@ public struct ProcessPostCaptureJobs: ApplicationUseCase {
             audio: capabilities,
             summaries: capabilities,
             actions: capabilities,
+            translation: translation,
             leaseDuration: leaseDuration,
             heartbeatInterval: heartbeatInterval,
             now: now)
@@ -69,7 +74,7 @@ public struct ProcessPostCaptureJobs: ApplicationUseCase {
             let job: ProcessingJob?
             do {
                 job = try await store.claimPostCaptureJob(
-                    kinds: Self.supportedKinds,
+                    kinds: claimKinds,
                     owner: request.owner,
                     leaseDuration: leaseDuration,
                     at: now())
@@ -93,9 +98,14 @@ public struct ProcessPostCaptureJobs: ApplicationUseCase {
             issues: issues)
     }
 
+    /// Translation is claimed only by a composition that can translate.
+    private var claimKinds: Set<ProcessingJobKind> {
+        translation == nil ? Self.supportedKinds : Self.supportedKinds.union([.transcriptTranslation])
+    }
+
     public func nextScheduledDate() async throws -> Date? {
         try await store.nextPostCaptureProcessingDate(
-            kinds: Self.supportedKinds,
+            kinds: claimKinds,
             after: now())
     }
 }
@@ -158,6 +168,9 @@ private extension ProcessPostCaptureJobs {
             try await processDiarization(job, owner: owner)
         case .summary:
             try await processSummary(job, owner: owner)
+        case .transcriptTranslation:
+            guard let translation else { throw PostCaptureProcessingError.unsupportedKind(job.kind.rawValue) }
+            try await translation.process(job, owner: owner, now: now)
         default:
             throw PostCaptureProcessingError.unsupportedKind(job.kind.rawValue)
         }
@@ -499,6 +512,13 @@ private extension ProcessPostCaptureJobs {
                 // action belongs to the attempt that actually settles it.
                 shouldRunPostMeetingAction = job.kind == .summary
                     && cancellation.enqueuedJobs.isEmpty
+            } else if let permanent = error as? TranscriptTranslationFailure {
+                _ = try await store.cancelPostCaptureJob(
+                    job.id,
+                    owner: owner,
+                    reason: ProcessingJobFailure(code: permanent.code, message: permanent.localizedDescription),
+                    enqueue: [],
+                    at: timestamp)
             } else if job.kind == .summary, job.attempt >= job.maxAttempts {
                 _ = try await store.cancelPostCaptureJob(
                     job.id,
@@ -593,6 +613,7 @@ private extension ProcessPostCaptureJobs {
         case .transcription: "processing.transcription.failed"
         case .diarization: "processing.diarization.failed"
         case .summary: "processing.summary.failed"
+        case .transcriptTranslation: "processing.translation.failed"
         default: "processing.worker.failed"
         }
     }

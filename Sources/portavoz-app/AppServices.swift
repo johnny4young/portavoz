@@ -180,6 +180,15 @@ final class AppServices {
     @ObservationIgnored var whisperBackgroundPreparation: Task<Void, Never>?
     @ObservationIgnored var whisperProgressObservers: [UUID: WhisperPreparationObserver] = [:]
     private(set) var mlxDownloaded = false
+    var speechGateModel = ConsentedModelState.unknown
+    var parakeetUltraModel = ConsentedModelState.unknown
+    @ObservationIgnored var parakeetUltraDownload: Task<Void, Never>?
+    @ObservationIgnored var pasteLastHotkey: GlobalHotkey?
+    var pasteLastShortcutUnavailable = false
+    @ObservationIgnored var rewriteSelectionHotkey: GlobalHotkey?
+    var rewriteSelectionShortcutUnavailable = false
+    /// Rewrites a selection in another app with Polish or a recipe.
+    let selectionRewrite = SelectionRewriteController()
     /// IntelligenceKit owns container mechanics; composition owns the one
     /// process runtime and every residency transition around it.
     @ObservationIgnored let mlxSummaryRuntime = MLXSummaryRuntime()
@@ -214,6 +223,9 @@ final class AppServices {
     /// session survive any window coming and going.
     let dictation: DictationController
     let dictationTextSettings: DictationTextSettingsModel
+    @ObservationIgnored let dictationPractice = DictationPracticeField()
+    @ObservationIgnored lazy var dictationHistory = DictationHistoryModel(store: store)
+    @ObservationIgnored lazy var dictationStats = DictationStatsModel(store: store)
     @ObservationIgnored let dictationUITestFixture: DictationUITestFixture?
     let dictationNativeUITestFixture: DictationNativeUITestFixture?
     /// THE recording session (one at a time by design): shared so the

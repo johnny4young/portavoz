@@ -174,6 +174,16 @@ struct DictationTextModeDeliveryTests {
         #expect(harness.defaults.string(forKey: DictationTextPreferences.profilesKey) == "[]")
     }
 
+    @Test(arguments: [("Hola, nueva línea, mundo", "Hola\nmundo"), ("Dear team. New paragraph. Thanks", "Dear team.\n\nThanks")])
+    func spokenLayoutCommandsApplyOnlyInCleanMode(_ heard: String, _ typed: String) async throws {
+        for (mode, expected) in [(DictationTextMode.clean, typed), (.literal, heard)] {
+            let harness = DictationControllerHarness(text: heard)
+            defer { harness.controller.cancel() }
+            harness.set(mode.rawValue, forKey: DictationTextPreferences.modeKey)
+            #expect(try await deliver(harness) == expected)
+        }
+    }
+
     private func deliver(_ harness: DictationControllerHarness) async throws -> String {
         harness.controller.toggle(using: harness.dependencies)
         try await eventually { harness.controller.partialText == harness.text }

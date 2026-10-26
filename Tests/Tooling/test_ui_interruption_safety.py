@@ -190,13 +190,13 @@ class InterruptionSafetyTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "missing synthetic action/lifecycle effect"):
             safety.validate_case(**data)
 
-    def test_shared_sources_and_fixture_changes_select_controls_and_full_bilingual(self):
+    def test_shared_sources_and_fixture_changes_select_controls_and_full_english(self):
         for path in (*safety.SOURCE_PATHS, "scripts/check-ui-interruption-safety.py",
                      "Tests/UIInterruptionFixtures/Tests/InterruptionSafetyTests.swift"):
             selection = select_paths([path])
             self.assertTrue(selection.interruption_controls_required, path)
             self.assertTrue(selection.required, path)
-            self.assertEqual(selection.locales, ("en", "es"), path)
+            self.assertEqual(selection.locales, ("en",), path)
             self.assertIn("interruption_controls=true", render(selection, "github"))
             self.assertIn("UI_TEST_INTERRUPTION_REQUIRED=true", render(selection, "shell"))
         self.assertFalse(select_paths([]).interruption_controls_required)
@@ -207,13 +207,13 @@ class InterruptionSafetyTests(unittest.TestCase):
             with self.subTest(path=relative):
                 self.assertTrue(select_paths([relative]).interruption_controls_required, relative)
 
-    def test_unrelated_full_bilingual_fallbacks_do_not_run_the_controls(self):
+    def test_unrelated_full_catalog_fallbacks_do_not_run_the_controls(self):
         for path in ("Resources/Localization/Portavoz/Localizable.xcstrings", "scripts/ui_test_runtime.py",
                      "Tests/PortavozUITests/UITestSupport.swift"):
             with self.subTest(path=path):
                 selection = select_paths([path])
                 self.assertTrue(selection.required)
-                self.assertEqual(selection.locales, ("en", "es"))
+                self.assertEqual(selection.locales, ("en",))
                 self.assertFalse(selection.interruption_controls_required)
                 self.assertIn("interruption_controls=false", render(selection, "github"))
         combined = select_paths(["Resources/Localization/Portavoz/Localizable.xcstrings",

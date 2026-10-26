@@ -164,6 +164,18 @@ extension MeetingStore: DataEgressEventRecorder {
                     "global receipts require bounded local Ask metadata")
             }
             modelID = value
+        case .dictationPolish:
+            guard event.destinationScope == .localDevice,
+                  event.dataClassification == .dictationText,
+                  event.consentSource == .dictationPolishMode,
+                  let value = event.modelID?.trimmingCharacters(
+                      in: .whitespacesAndNewlines),
+                  !value.isEmpty
+            else {
+                throw StorageError.invalidDataEgressEvent(
+                    "global receipts require bounded local dictation metadata")
+            }
+            modelID = value
         case .webSourceRetrieval:
             guard event.dataClassification == .publicWebSourceRequest,
                   event.consentSource == .explicitWebAsk,

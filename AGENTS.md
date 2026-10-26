@@ -27,7 +27,7 @@ swift test    # if it fails with "no such module": DEVELOPER_DIR=/Applications/X
 scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors # required before commit; same test-target diagnostics as current-SDK CI
 make test-recording-stress               # 25 repeated recording/recovery runs
 make test-ui-changed UI_BASE=origin/main  # feature-level XCUITest selected from the diff
-make test-ui-bilingual                    # explicit full EN + ES release gate
+make test-ui-release                      # explicit full English release gate
 ```
 
 ## Verifying UI changes — XCUITest first, computer-use last
@@ -45,10 +45,13 @@ library) and asserts against `accessibilityIdentifier`s.
 - Structural UI changes (a control moving panes, a section going behind a tab) will break
   existing UI tests — that is the point; fix the test in the same commit.
 - Prefer `make test-ui-changed UI_BASE=origin/main`: known presentation files
-  map to feature-level selectors, localization/shared-harness changes expand to
-  bilingual evidence, and unknown production Swift paths fail safe to the full
-  English suite. `make test-ui-en`, `test-ui-es`, and `test-ui-bilingual` remain
-  explicit full-suite gates.
+  map to feature-level selectors, and localization/shared-harness changes and
+  unknown production Swift paths fail safe to the full English suite.
+  `make test-ui-en` and `make test-ui-release` are the explicit full-suite gates.
+- XCUITest runs in English only. Spanish is covered by `LocalizationTests`: every
+  visible literal is cataloged, every key has a translated Spanish value with the
+  same placeholders, and Spanish may equal English only for an explicit list of
+  terms. `make test-ui-es` is a manual, non-gating pass for debugging a report.
 - Reach for **computer-use only as a last resort**, when XCUITest genuinely can't reach
   what you need to see (menu-bar-extra panels, a visual-only regression). Note why.
 - The seed-demo meeting deliberately carries a later turn (200 s) so the detail has a

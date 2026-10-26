@@ -502,6 +502,33 @@ class RetrievalChunkEvidenceTests(unittest.TestCase):
         ):
             evidence.load_json_file(path, "test observation")
 
+    def test_rejects_sequoia_host(self):
+        runner = FakeRunner()
+        document = runner.observation(
+            [
+                "portavoz-cli", "--build", "test", "--commit", "a" * 40,
+                "--fixture-sha256", "b" * 64,
+                "--toolchain-sha256", "c" * 64,
+                "--host-profile", "reference",
+            ],
+            "segment",
+            1,
+        )
+        document["host"]["operatingSystem"] = "macOS 15.7.4"
+
+        with self.assertRaisesRegex(
+            evidence.RetrievalChunkEvidenceError, "host must be supported Tahoe"
+        ):
+            evidence.validate_observation(
+                document,
+                role="segment",
+                build="test",
+                commit="a" * 40,
+                fixture_sha256="b" * 64,
+                toolchain_sha256="c" * 64,
+                host_profile="reference",
+            )
+
     def test_rejects_host_profile_and_equivalent_correction_forgery(self):
         runner = FakeRunner()
         command = [

@@ -84,18 +84,21 @@ public struct AskMeetingAnswer: Equatable, Sendable {
 
 /// One explicit source authority for a manual Ask request. `meeting` is an
 /// exact aggregate identity, `library` is the complete local transcript
-/// corpus, `notes` is the separately typed raw user-note corpus, and `web`
-/// remains a separate authority that local meeting retrieval must reject.
+/// corpus, `notes` is the separately typed raw user-note corpus, `dictations`
+/// is the private dictation history, and `web` remains a separate authority
+/// that local meeting retrieval must reject.
 public enum AskSourceScope: Equatable, Sendable {
     case library
     case meeting(MeetingID)
     case notes
+    case dictations
     case web
 }
 
 public enum AskSourcePolicyError: Error, Equatable, LocalizedError {
     case webUnavailable
     case notesRequireTypedAdapter
+    case dictationsRequireTypedAdapter
     case meetingScopeUnavailable
     case graphFactsRequireLibrary
     case sourceEvidenceMismatch
@@ -106,6 +109,8 @@ public enum AskSourcePolicyError: Error, Equatable, LocalizedError {
             "Web answers are not available. No other source was searched."
         case .notesRequireTypedAdapter:
             "Notes require the typed local-notes adapter. No transcript was searched."
+        case .dictationsRequireTypedAdapter:
+            "Dictations require the typed dictation adapter. No transcript was searched."
         case .meetingScopeUnavailable:
             "This Ask adapter cannot search one meeting without widening scope."
         case .graphFactsRequireLibrary:
@@ -167,6 +172,8 @@ public extension AskMeetingRetrieving {
             break
         case .notes:
             throw AskSourcePolicyError.notesRequireTypedAdapter
+        case .dictations:
+            throw AskSourcePolicyError.dictationsRequireTypedAdapter
         case .web:
             throw AskSourcePolicyError.webUnavailable
         case .meeting:
@@ -187,6 +194,8 @@ public extension AskMeetingRetrieving {
             break
         case .notes:
             throw AskSourcePolicyError.notesRequireTypedAdapter
+        case .dictations:
+            throw AskSourcePolicyError.dictationsRequireTypedAdapter
         case .web:
             throw AskSourcePolicyError.webUnavailable
         case .meeting:

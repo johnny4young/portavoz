@@ -382,3 +382,39 @@ the full public corpus was selected, never accepted quality or verified
 insertion. Files are create-only and owner-only; a new attempt needs a new
 output directory. Keep failed attempts instead of replacing them with a later
 green result. Neither raw child output nor transcript text is exported.
+
+## Observe the speech gate over every cell
+
+`DictationSpeechGateCorpusTests` runs the production speech-gate rule
+(`DictationSpeechGate.heardSpeech`, Silero on CPU) over all 480 admitted cells.
+The model comes only from an explicit scratch store; `PORTAVOZ_SPEECH_GATE_INSTALL=1`
+lets it download the pinned bundle there, never into the app's store:
+
+```sh
+PORTAVOZ_SPEECH_GATE_AUDIO=/absolute/scratch/new-dictation-audio \
+PORTAVOZ_SPEECH_GATE_MODELS=/absolute/scratch/models \
+PORTAVOZ_SPEECH_GATE_INSTALL=1 \
+PORTAVOZ_SPEECH_GATE_OUTPUT=/absolute/scratch/speech-gate.json \
+"$(xcrun --find xctest)" -XCTest PortavozTests.DictationSpeechGateCorpusTests "$RELEASE_TEST_BUNDLE"
+```
+
+Each cell records whether the gate heard speech, the first speech frame, the peak
+probability, process CPU time and the slowest chunk. Chunks are fed unpaced, so
+the receipt measures the decision and its cost, not live timing.
+
+## Compare Parakeet v3 and Ultra on the same cells
+
+`DictationModelComparisonTests` runs v3 and the opt-in Ultra checkpoint over the
+same admitted cells, with the same real-time 100 ms feed and scoring as the
+installed-model lane. Both models come from one explicit scratch store that already
+holds verified copies; the lane never downloads. Release only:
+
+```sh
+PORTAVOZ_ASR_COMPARE_AUDIO=/absolute/scratch/new-dictation-audio \
+PORTAVOZ_ASR_COMPARE_MODELS=/absolute/scratch/models \
+PORTAVOZ_ASR_COMPARE_OUTPUT=/absolute/scratch/compare.json \
+"$(xcrun --find xctest)" -XCTest PortavozTests.DictationModelComparisonTests "$RELEASE_TEST_BUNDLE"
+```
+
+`PORTAVOZ_ASR_COMPARE_CASES` limits the run to a comma-separated list of cells.
+A cell that fails records only the error type, never provider text.
