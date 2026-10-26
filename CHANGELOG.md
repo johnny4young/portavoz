@@ -29,6 +29,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## October 26, 2026
+
+- **🌍 Read a meeting in the other language** — choose Translate in a meeting's transcript to read it in English or Spanish, translated on your Mac; lines already in that language stay as they are, and Original is one click away.
+
 ## October 25, 2026
 
 - **🔠 Capitals that fit the sentence** — turn on “Match capitalization to the text before the cursor” and dictating mid-sentence continues in lowercase while a new sentence starts with a capital; names, acronyms and your own spellings keep theirs.

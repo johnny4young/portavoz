@@ -21877,3 +21877,22 @@ is known in lowercase to the system en or es dictionary, and is not tagged as a
 name by NaturalLanguage in that context. A colon, a quote, an abbreviation or an
 initial changes nothing. Only the first letter of the first word can change;
 history and Paste last keep the dictated text.
+
+## D595 — A meeting transcript is translated on request as an optional, revision-fenced overlay
+
+Reading a Spanish meeting in English, or the reverse, meant exporting it to
+another tool. Meeting Detail's "Translate" asks for English or Spanish and
+enqueues a durable `transcript-translation` job, so the work survives a
+relaunch, can be cancelled, and runs only when asked. It translates the
+corrected reading the transcript shows, row by row, on device with Apple's
+installed languages only: a row already in the target language, or whose
+language is unclear, is left out and reads as the original. The result is
+stored per target language beside the transcript, never over it, and records
+the transcript revision and correction revision it read; publication is
+rejected once either moved, and a stored translation of an older reading is
+shown as out of date until it is translated again. Translation is an optional
+overlay, so its jobs never change the meeting lifecycle: running does not make
+the meeting processing and failing does not make it need attention. Missing
+languages or an unsupported pair end the job with that reason and point to the
+Settings download; a line that times out retries the job once. A translated
+reading is read-only, because corrections edit the original.

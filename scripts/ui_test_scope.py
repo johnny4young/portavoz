@@ -307,6 +307,13 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "testSequoiaApuntadorRefreshPreservesStaleAnswers",
         ),
     ),
+    "meeting-translation": (
+        test_id(
+            "MeetingTranscriptTranslationUITests",
+            "testATranscriptIsTranslatedOnRequestAndTheOriginalStaysOneClickAway",
+        ),
+        test_id("MeetingTranscriptTranslationUITests", "testMissingLanguagesPointToTheirDownload"),
+    ),
     "settings-navigation": (
         test_id("SettingsUITests", "testCategoryNavigationRevealsEachPane"),
         test_id("SettingsUITests", "testLanguageToggleSwitchesVisibleTextWithoutRelaunch"),
@@ -666,6 +673,7 @@ FEATURE_SOURCE_SENTINELS: dict[str, str] = {
     "meeting-health": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
     "meeting-audio": "Sources/portavoz-app/MeetingPlayerBar.swift",
     "meeting-correction": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+    "meeting-translation": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
     "settings-navigation": "Sources/portavoz-app/SettingsView.swift",
     "settings-skills": "Sources/portavoz-app/SkillsSettingsSection.swift",
     "settings-integrations": "Sources/portavoz-app/CommandLineToolSection.swift",
@@ -894,6 +902,8 @@ def app_features(filename: str) -> set[str]:
         "meetingdetailperformancetrace", "scalebenchmark"
     )):
         return {"meeting-performance"}
+    if any(token in lowered for token in ("transcripttranslation", "meetingtranslation")):
+        return {"meeting-translation"}
     if "transcriptsegments" in lowered:
         return {
             "meeting-audio", "meeting-correction", "meeting-evidence", "meeting-performance"
