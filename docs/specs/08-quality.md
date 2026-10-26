@@ -21,8 +21,13 @@ checks a throwing `localStorage` accessor, denied storage reads/writes,
 saved-language admission, clipboard pending and duplicate-click behavior (the
 button stays enabled so keyboard focus survives; `aria-busy` holds the live
 announcement until the outcome), success, rejection, missing API, synchronous
-failure and retry. The runner exits non-zero unless every case completes, so a
-case stuck on a never-settling promise fails instead of passing silently. It
+failure and retry. The screenshot lightbox is a native modal `<dialog>`, so the
+browser owns initial focus, background inertness and Escape, and CSS ties the
+page scroll lock to its open state; its double fires `close` asynchronously and
+requires the autofocused close control, an image click that keeps it open, and
+exact launcher focus restoration after every close route and reopening. The
+runner exits non-zero unless every case completes, so a case stuck on a
+never-settling promise fails instead of passing silently. It
 reads exactly one bare inline `<script>` from `site/index.html`, resolved from
 its own location. These are deterministic capability/lifecycle checks, not
 a browser-rendering, native clipboard-permission or accessibility qualification.
