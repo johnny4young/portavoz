@@ -230,9 +230,17 @@ struct SelectionRewriteSayHowTests {
         let harness = DictationControllerHarness(text: "um make it formal")
         defer { harness.controller.cancel() }
         harness.set(DictationTextMode.polish.rawValue, forKey: DictationTextPreferences.modeKey)
+        harness.defaults.set(
+            DictationTranslationTarget.english.rawValue, forKey: DictationTextPreferences.translationKey)
+        harness.defaults.set("es", forKey: DictationController.languageKey)
         var history: [DictationRecord] = []
+        var translations: [String] = []
         var base = harness.dependencies
         base.beginHistory = { { record in history.append(record); return true } }
+        base.translateDictation = { text, _, _ in
+            translations.append(text)
+            return .translated("hazlo formal")
+        }
         let session = rewrite.instructionDependencies(base)
         #expect(rewrite.phase == .listening)
         #expect(session.textModeOverride == .clean)
@@ -247,6 +255,7 @@ struct SelectionRewriteSayHowTests {
         recorder.dictating = false
         #expect(recorder.recipes == ["make it formal"])
         #expect(rewrite.spokenInstruction == "make it formal")
+        #expect(translations.isEmpty)
         #expect(harness.insertions.isEmpty)
         #expect(history.isEmpty)
         #expect(harness.controller.lastText.current == nil)
@@ -272,7 +281,9 @@ struct SelectionRewriteSayHowTests {
             }
             destination.lastInsertion = {
                 guard let last = receiver.last else { return nil }
-                return DictationInsertion(text: last.text, insertedAt: last.insertedAt, isIntact: last.isIntact) { range, replacement in
+                return DictationInsertion(
+                    text: last.text, insertedAt: last.insertedAt, isIntact: last.isIntact
+                ) { range, replacement in
                     editCalls += 1
                     if refusesEdit { return nil }
                     return await last.edit(range, replacement)
@@ -308,6 +319,7 @@ struct SelectionRewriteSayHowTests {
         try await eventually { !command.controller.isActive }
         #expect(receiver.text == "ship it on friday")
         #expect(editCalls == 0)
+        #expect(first.controller.lastText.current == "ship it on friday")
         #expect(rewrite.spokenInstruction == "change friday to monday")
         try await eventually { rewrite.phase == .preview("SO WE SHIP IT TOMORROW") }
         #expect(recorder.recipes == ["change friday to monday"])

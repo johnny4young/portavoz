@@ -1045,6 +1045,8 @@ extension DictationController {
             policy.mode = mode
             policy.recipeID = nil
         }
+        // An internal receiver takes the words as spoken; nothing is pasted to translate.
+        if dependencies.deliversInternally { policy.translationTarget = .off }
         return policy
     }
 
