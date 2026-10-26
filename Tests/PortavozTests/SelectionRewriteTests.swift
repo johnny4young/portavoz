@@ -254,6 +254,58 @@ struct SelectionRewriteSayHowTests {
         #expect(recorder.insertions.isEmpty)
     }
 
+    @Test(arguments: [false, true])
+    func aSpokenRewriteInstructionNeverCorrectsThePreviousDictation(_ refusesEdit: Bool) async throws {
+        let receiver = DictationFixtureReceiver()
+        let first = DictationControllerHarness(text: "ship it on friday")
+        defer { first.controller.cancel() }
+        first.defaults.set(true, forKey: DictationCorrections.defaultsKey)
+        var initial = first.dependencies
+        var editCalls = 0
+        initial.captureDestination = {
+            var destination = CapturedDictationDestination(name: "Synthetic receiver", canRetry: true) {
+                receiver.insert($0)
+            }
+            destination.lastInsertion = {
+                guard let last = receiver.last else { return nil }
+                return DictationInsertion(text: last.text, insertedAt: last.insertedAt, isIntact: last.isIntact) { range, replacement in
+                    editCalls += 1
+                    if refusesEdit { return nil }
+                    return await last.edit(range, replacement)
+                }
+            }
+            return destination
+        }
+        first.controller.toggle(using: initial)
+        try await eventually { first.controller.partialText == first.text }
+        first.now = first.now.addingTimeInterval(1)
+        first.controller.toggle(using: initial)
+        try await eventually { !first.controller.isActive }
+        #expect(receiver.text == "ship it on friday")
+
+        let recorder = Recorder()
+        let rewrite = SelectionRewriteController(presentsPanel: false)
+        defer { rewrite.cancel() }
+        rewrite.start(using: dependencies(recorder))
+        try await eventually { rewrite.phase == .choosing }
+        let command = DictationControllerHarness(text: "change friday to monday", controller: first.controller)
+        command.defaults.set(true, forKey: DictationCorrections.defaultsKey)
+        let session = rewrite.instructionDependencies(command.dependencies)
+        recorder.dictating = true
+        defer { recorder.dictating = false }
+        command.controller.toggle(using: session)
+        try await eventually { command.controller.partialText == command.text }
+        command.now = command.now.addingTimeInterval(1)
+        command.controller.toggle(using: session)
+        try await eventually { !command.controller.isActive }
+        #expect(receiver.text == "ship it on friday")
+        #expect(editCalls == 0)
+        #expect(rewrite.spokenInstruction == "change friday to monday")
+        try await eventually { rewrite.phase == .preview("SO WE SHIP IT TOMORROW") }
+        #expect(recorder.recipes == ["change friday to monday"])
+        #expect(recorder.insertions.isEmpty)
+    }
+
     @Test
     func aDictationThatEndsWithoutWordsReturnsToTheChoices() async throws {
         let recorder = Recorder()
