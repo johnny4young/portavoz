@@ -1911,6 +1911,16 @@
         }
       }
     },
+    "Download languages": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar idiomas"
+          }
+        }
+      }
+    },
     "Duplicate": {
       "localizations": {
         "es": {
@@ -7555,6 +7565,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Marcado como no sustentado"
+          }
+        }
+      }
+    },
+    "Match capitalization to the text before the cursor": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustar mayúsculas al texto antes del cursor"
           }
         }
       }
@@ -14321,6 +14341,16 @@
         }
       }
     },
+    "Starts a sentence with a capital and continues one in lowercase. Names, acronyms and your replacements keep their capitals. Reads up to 80 characters before the cursor at paste time, only in fields Portavoz can read, and keeps none of it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza una oración con mayúscula y continúa una en minúscula. Los nombres, las siglas y tus reemplazos conservan sus mayúsculas. Lee hasta 80 caracteres antes del cursor al pegar, solo en campos que Portavoz puede leer, y no guarda nada."
+          }
+        }
+      }
+    },
     "Starts recording linked to this event: the meeting gets its real title": {
       "localizations": {
         "es": {
@@ -15281,6 +15311,16 @@
         }
       }
     },
+    "The last translation failed. Try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La última traducción falló. Inténtalo de nuevo."
+          }
+        }
+      }
+    },
     "The launch diagnostics couldn't be saved": {
       "localizations": {
         "es": {
@@ -15627,6 +15667,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "El motor de resúmenes tardó demasiado. Vuelve a intentarlo."
+          }
+        }
+      }
+    },
+    "The transcript changed after this translation. Translate again to update it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La transcripción cambió después de esta traducción. Tradúcela otra vez para actualizarla."
           }
         }
       }
@@ -16491,6 +16541,16 @@
         }
       }
     },
+    "Transcript language": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma de la transcripción"
+          }
+        }
+      }
+    },
     "Transcript recovery stopped after repeated attempts. Your audio and current transcript are still saved.": {
       "localizations": {
         "es": {
@@ -16551,6 +16611,16 @@
         }
       }
     },
+    "Translating a transcript": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduciendo una transcripción"
+          }
+        }
+      }
+    },
     "Translating…": {
       "localizations": {
         "es": {
@@ -16567,6 +16637,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Traducción"
+          }
+        }
+      }
+    },
+    "Translation failed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traducción falló"
+          }
+        }
+      }
+    },
+    "Translation needs Apple's English and Spanish languages on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traducción necesita los idiomas inglés y español de Apple en este Mac."
+          }
+        }
+      }
+    },
+    "Translation out of date": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducción desactualizada"
           }
         }
       }

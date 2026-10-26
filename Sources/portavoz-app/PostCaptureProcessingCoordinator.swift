@@ -236,7 +236,15 @@ extension AppServices {
     var processPostCaptureJobs: ProcessPostCaptureJobs {
         ProcessPostCaptureJobs(
             store: store,
-            capabilities: AppPostCaptureProcessingCapabilities(services: self))
+            capabilities: AppPostCaptureProcessingCapabilities(services: self),
+            translation: TranscriptTranslationWorker(store: store, translator: meetingTranslator))
+    }
+
+    /// Disposable launches never reach Apple's translator.
+    private var meetingTranslator: any DictationTextTranslating {
+        guard usesTemporaryMeetingStore else { return AppleDictationTranslator() }
+        return MeetingTranslationFixture(
+            isMissing: ProcessInfo.processInfo.arguments.contains("-seed-meeting-translation-missing"))
     }
 
     func kickPostCaptureProcessing() {

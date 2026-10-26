@@ -114,6 +114,12 @@ struct MeetingDetailScene: View {
             },
             disableMirrorAfterMeeting: {
                 mirrorAfterMeeting = false
+            },
+            translateTranscript: { core, language in
+                Task { await services.translateMeetingTranscript(core, into: language) }
+            },
+            cancelTranscriptTranslation: {
+                Task { await services.cancelMeetingTranscriptTranslation(meetingID) }
             })
     }
 }
@@ -155,4 +161,6 @@ struct MeetingDetailSceneActions {
     let closeDetail: @MainActor () -> Void
     let showInsights: @MainActor () -> Void
     let disableMirrorAfterMeeting: @MainActor () -> Void
+    let translateTranscript: @MainActor (MeetingReviewCore, String) -> Void
+    let cancelTranscriptTranslation: @MainActor () -> Void
 }

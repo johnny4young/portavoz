@@ -132,7 +132,8 @@ private extension MeetingDetailView {
                 player: player,
                 focusedRowID: playbackNavigation.focusedRowID,
                 performanceScrollEnabled: sceneValues.performanceProfile
-                    .shouldExerciseTranscriptScroll),
+                    .shouldExerciseTranscriptScroll,
+                translation: MeetingTranscriptTranslationState(detail)),
             actions: MeetingTranscriptActions(
                 seekAndPlay: seekAndPlay,
                 renameSpeaker: flow.presentRenameSpeaker,
@@ -148,7 +149,10 @@ private extension MeetingDetailView {
                         accepted: structureProjection.accepted,
                         revision: detail.meeting.transcriptRevision,
                         operation: operation)
-                }))
+                },
+                translate: { sceneActions.translateTranscript(detail.core, $0) },
+                cancelTranslation: sceneActions.cancelTranscriptTranslation,
+                openTranslationSettings: { sceneActions.openSettings(.audio) }))
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
