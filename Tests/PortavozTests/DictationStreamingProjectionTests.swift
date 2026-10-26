@@ -8,6 +8,22 @@ import XCTest
 
 @MainActor
 final class DictationStreamingProjectionTests: XCTestCase {
+    func testOwnedTokensRetainRepetitionThroughControllerStopAndDelivery() async throws {
+        for word in ["very", "muy"] {
+            let fixture = StreamingDictationFixture()
+            defer { fixture.cancel() }
+            fixture.start()
+            try await fixture.waitForEngine()
+            fixture.emit(word, at: 0, mode: .tokenDelta)
+            fixture.emit(word, at: 0.4, mode: .tokenDelta)
+            fixture.emit("meet", at: 0.8, mode: .tokenDelta)
+            fixture.emit("ing", at: 1.2, isFinal: true, mode: .tokenContinuation)
+            try await fixture.expect(confirmed: "", partial: word + " " + word + " meeting")
+            try await fixture.finish()
+            XCTAssertEqual(fixture.harness.insertions, [word + " " + word + " meeting"])
+        }
+    }
+
     func testBilingualDeltasKeepPunctuationBoundariesAndFinalRules() async throws {
         let cases = [
             ("Don’t delete", "these notes", "The total is 1,250.50", "USD", "Done"),
@@ -278,11 +294,12 @@ private final class StreamingDictationFixture {
         _ text: String,
         at time: TimeInterval,
         channel: AudioChannel = .microphone,
-        isFinal: Bool = false
+        isFinal: Bool = false,
+        mode: LiveTranscriptUpdateMode? = nil
     ) {
         let result = continuation.yield(TranscriptSegment(
             meetingID: meetingID, channel: channel, text: text, startTime: time,
-            endTime: time + 0.4, isFinal: isFinal))
+            endTime: time + 0.4, isFinal: isFinal, liveUpdateMode: mode))
         guard case .enqueued = result else {
             return XCTFail("Every synthetic delta must reach the actual controller")
         }

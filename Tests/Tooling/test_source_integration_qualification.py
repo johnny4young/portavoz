@@ -85,7 +85,6 @@ class SourceIntegrationQualificationTests(unittest.TestCase):
             (
                 "build-and-test",
                 "ios-portability",
-                "sequoia-compatibility",
                 "lint",
                 "repository-hygiene",
             ),
@@ -407,11 +406,11 @@ class SourceIntegrationQualificationTests(unittest.TestCase):
     def test_every_required_ci_job_must_run_once_and_pass(self):
         missing = self.good_api()
         missing.jobs = [
-            job for job in missing.jobs if job["name"] != "sequoia-compatibility"
+            job for job in missing.jobs if job["name"] != "ios-portability"
         ]
         with self.assertRaisesRegex(
             source_integration.SourceIntegrationError,
-            "sequoia-compatibility must run exactly once and pass",
+            "ios-portability must run exactly once and pass",
         ):
             self.collect(missing)
 

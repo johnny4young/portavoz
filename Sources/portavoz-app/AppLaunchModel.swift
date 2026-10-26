@@ -160,6 +160,7 @@ final class AppLaunchModel {
             BenchMode.runsIsolatedBenchmark(arguments: arguments)
         if !runsIsolatedBenchmark {
             services.installAutomationEntityCatalog()
+            services.installDictationIntentReader()
             PortavozAppDelegate.services = services
         }
 
@@ -180,6 +181,8 @@ final class AppLaunchModel {
         services.startResourcePressureMonitoring()
         Task { await services.standingPreMeetingBriefs.start() }
         services.requestSearchReconciliation()
+        Task { await services.loadDictationHistory() }
+        Task { await services.loadDictationStats() }
         Task { @MainActor in
             await services.commitmentReminders.send(.start)
         }
@@ -199,7 +202,11 @@ final class AppLaunchModel {
             await services.configureInitialSummaryProviderIfNeeded()
         }
         services.dictation.syncHotkey(services: services)
+        services.syncPasteLastShortcut()
+        services.syncRewriteSelectionShortcut()
         services.dictation.syncMousePTT(services: services)
+        services.dictation.syncModifierPTT(services: services)
+        services.prewarmDictationIfConfigured()
 
         // The AppKit delegate may already have observed application launch
         // while the database was unavailable. Re-publish, without consuming,

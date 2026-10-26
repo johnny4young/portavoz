@@ -17,6 +17,8 @@ enum PostCaptureProcessingError: LocalizedError {
     case inputSuperseded(replacement: ProcessingJobRequest?)
     case meetingUnavailable
     case summaryProviderUnavailable
+    /// A row could not be translated in time; the job retries once.
+    case translationInterrupted
     case unsupportedKind(String)
 
     var errorDescription: String? {
@@ -31,6 +33,8 @@ enum PostCaptureProcessingError: LocalizedError {
             "The meeting is no longer available."
         case .summaryProviderUnavailable:
             "No configured local summary provider is currently available."
+        case .translationInterrupted:
+            "The translator could not finish a line."
         case .unsupportedKind(let kind):
             "The process worker does not support \(kind)."
         }

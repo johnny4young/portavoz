@@ -7,6 +7,7 @@ struct AppleSpeechChoiceControls: View {
     @Binding var selection: String
     let language: String
     let identifierPrefix: String
+    var offersUltra = false
 
     private var model: AppleSpeechPreparationModel { services.appleSpeechPreparation }
     private var selectedApple: Bool { selection == LiveSpeechSelection.appleSpeech.rawValue }
@@ -15,6 +16,9 @@ struct AppleSpeechChoiceControls: View {
     var body: some View {
         Picker("Live transcription engine", selection: $selection) {
             Text("Parakeet (multilingual)").tag(LiveSpeechSelection.parakeet.rawValue)
+            if offersUltra {
+                Text("Parakeet Ultra (more accurate, 613 MB)").tag(LiveSpeechSelection.parakeetUltra.rawValue)
+            }
             Text("Apple Speech (fixed language)")
                 .tag(LiveSpeechSelection.appleSpeech.rawValue)
                 .disabled(!ProcessInfo.processInfo.isOperatingSystemAtLeast(

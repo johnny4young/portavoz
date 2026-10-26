@@ -7,7 +7,7 @@ This is the canonical active backlog. Open and partial gaps state their remainin
 ## Code delivery and deferred external verification
 
 The 1.0.0 code-ready delivery keeps automated functionality, compatibility,
-architecture, performance, memory/recovery and bilingual XCUITest validation in
+architecture, performance, memory/recovery and English XCUITest validation in
 scope. User-dependent approvals, permissions, external accounts, physical
 Sequoia/Tahoe hardware, assistive interaction, real-field evidence and production
 CloudKit verification are follow-up work rather than blockers of this code
@@ -168,12 +168,14 @@ Electron, Java and remote-desktop clients), delivery uses the session keyboard
 stream. Clicking Reinsert makes the non-activating recovery panel key while
 Portavoz stays inactive, so that stream would reach the panel instead of the
 destination. Delivery therefore refuses with `focusUnavailable` and the text
-stays in recovery: Copy works and nothing is lost, but Reinsert cannot succeed
-on this route. Choosing Literal or Clean in the panel during a session
+stays in recovery: Copy works and nothing is lost. Reinsert is disabled on
+this route because its own click guarantees the refusal. Choosing Literal or Clean in the panel during a session
 keys the panel the same way, so that session's delivery on this route is refused
-into recovery too. The likely fix is a panel that does not become key for a button
-click (for example `becomesKeyOnlyIfNeeded`), which needs native verification
-in Slack, VS Code, a Java editor and a remote-desktop client before it ships.
+into recovery too. A panel that cannot become key is not the fix: borderless
+panels then drop their buttons' clicks (the recording HUD relies on key status
+for the same reason). A candidate is `becomesKeyOnlyIfNeeded`, which needs
+native verification in Slack, VS Code, a Java editor and a remote-desktop
+client before it ships.
 
 ### Cancel during unverified-delivery readback
 
@@ -191,6 +193,48 @@ portable-settings allowlist. A fresh installation initializes Literal at
 launch, so importing settings with filler removal and replacements from another
 Mac leaves them inactive until the user chooses Clean. Carrying the mode in
 settings transfer would widen the allowlist and needs an explicit decision.
+
+### Rewrite selection in real applications
+
+D589 reads a selection through Accessibility and falls back to ⌘C on a restored
+clipboard. Automated journeys use a fixture; which editors expose the selected
+range (native text views, browsers, Electron, terminals), how a rich-text
+replacement keeps formatting, and how a global Return registration behaves in
+apps that bind it remain field validation.
+
+### Meeting translation quality and scale
+
+D595 translates row by row with Apple's installed languages. Translation quality
+of conversational meeting speech, the time a long meeting takes, and how often
+language detection leaves short mixed rows untranslated remain field validation.
+The translated export is the next slice.
+
+### Caret capitalization in real editors
+
+D594 trusts the system dictionary and NaturalLanguage name tagging. Names
+that are also common words ("Rose", "Victoria"), editors whose
+`kAXStringForRange` differs from what is shown, and mixed-language sentences
+remain field validation.
+
+### Learned spellings from spoken corrections
+
+D593 learns only what the user confirms. Whether six seconds is enough to
+choose, and how often a confirmed content change (rather than a mishearing)
+later rewrites text the user meant, remain field validation.
+
+### Dictation translation quality and language packs
+
+D592 translates through Apple's installed English and Spanish languages. The
+translation quality of short, informal dictations, how the language download
+behaves offline or under managed devices, and how often Auto misreads mixed
+dictations remain field validation.
+
+### Spoken corrections in real editors
+
+D591 edits the last insertion by setting Accessibility's selected range and text.
+Which editors accept a settable selected text (native text views, browsers,
+Electron, terminals), and how rich text and undo grouping behave there, remain
+field validation.
 
 ### Queued audio imports across a restart or remount
 
@@ -236,9 +280,20 @@ with the existing corpus. Do not silently add RMS thresholds, output vocabulary
 filters or another default engine to hide these counterexamples. This work does
 not alter the original meeting audio or claim native delivery qualification.
 
+The dictation speech gate (D562) withholds the paste when Silero saw no speech
+in a complete pass, and offers the text for Copy instead. It is on by default
+since D563: over the 480-cell corpus it withheld 31 of 32 non-speech cells
+(a soft tone still pastes) with no speech cell missed. It fails open while its
+detector is missing, and the corpus is synthetic speech, so the
+real-microphone false-negative rate (whispering, distant microphones, accents)
+still needs field evidence. The detector analyzes only complete
+256 ms frames, so speech confined to the final partial frame of a session is
+not seen; the 250 ms stop tail makes that rare, and closing it needs a flush in
+the Silero adapter.
+
 The live lane still has no serving pre-transcription VAD gate. The distinct
 token-boundary defect and rejected passthrough repair are recorded below under
-**Live Parakeet still lacks reliable token-delivery ownership**. Neither issue
+**Live Parakeet token-delivery ownership needs field qualification**. Neither issue
 establishes the cause of every observed recognition error.
 
 The installed-model controller lane writes complete per-run receipts rather
@@ -249,6 +304,26 @@ no admitted partial cell count; a fresh process per cohort does not establish
 long single-process endurance or explain a backend stall. Complete matrix
 observation, quality acceptance, leak evidence and native delivery remain
 distinct requirements.
+
+### Dictation cold start needs field timing
+
+D561 opens the microphone while the model loads and holds up to 30 s of queued
+audio, so a cold load no longer loses speech. Deterministic controller tests
+cover ordering, the bound, late leases and release during the load; they do
+not measure real Parakeet cold-load time after a reboot or a first download,
+or the delay between release and insertion on a cold model. Measure
+those on hardware before claiming a cold-start latency, and before considering
+sounds or the launch pre-warm on by default.
+
+### Dictation setup needs a clean-install walk-through
+
+D575 adds the setup dictation step and the practice field. UI journeys run them
+with the deterministic dictation fixture and a fixed Accessibility state, so
+they do not show the real system prompt, the once-a-second refresh after the
+user grants Accessibility in System Settings, the real shortcut delivering into
+the practice field while setup is in front, or a cold model download started
+from the practice button. Walk through setup on a clean user account in English
+and Spanish, with VoiceOver on once, before calling the step finished.
 
 ### Dictation still needs a complete, phase-separated qualification
 
@@ -282,31 +357,42 @@ adapter only scores declared, content-free counts and phases: existing
 model/controller receipts still need a reviewed collection adapter, and its
 reports never qualify a population, consent or a quality threshold.
 
-### Live Parakeet still lacks reliable token-delivery ownership
+### Live Parakeet token-delivery ownership needs field qualification
 
-The adapter's `token.startTime > previousSegment.endTime` filter can discard
-valid words at zero, at the prior end, or sharing time with another subword.
-Native boundary fixtures reproduce that loss. Short installed-model attribution
-also reproduces production output while showing additional word error at this
-mapper, rather than at caption composition.
+The earlier end-time filter lost origin/boundary/subword content; unfiltered
+passthrough then produced massive replay beyond left context. The rejected
+start-frontier candidate improved aggregate WER but retained words that the
+native decoder withdrew. On the declared repeated English sample, native final
+had 54 words/WER 0 while that adapter had 57 words/three insertions. Updating
+stock FluidAudio to the reviewed latest snapshot alone preserved all eight
+public-cell score objects, including the adapter damage. These adverse results
+remain evidence, not accepted quality.
 
-**Removing the filter is not a repair.** Although the resolved provider calls a
-deduplication routine before emitting updates, a separate repeated public-speech
-experiment extending beyond its left context produced massive context replay in
-English, Spanish and mixed speech. Unfiltered production and the independent
-experiment agreed; both were wrong. The ordinary short-cell lane cannot certify
-this shape. The passthrough candidate was rejected before commit, not retained
-behind green consumer tests or reclassified as a harmless model-only error.
+The current explicit producer contract (D559) exposes retained/stable token
+positions and terminal/error authority. Both consumers commit only stable
+positions and replace/clear the mutable preview. Deterministic tests cover
+retirement, equal-time subwords/repetition, empty clears, EOF/failure, cancellation
+and job/meeting/channel isolation. They do not establish model quality, native
+paste delivery, population accuracy or backend quiescence. Local matched
+installed-model checks establish literal native/production/dictation/meeting
+parity and preview cleanup on the declared eight observations. Current live/batch
+diarization and public AMI calibration also retain their bounded baseline. These
+checks cannot certify first-stable-commit/insertion latency, concurrent process
+resources, field review or exact-head hosted evidence; those remain separate
+gates, not borrowed from the prior SDK or a synthetic-green reducer.
 
-A repair must establish which tokens belong to each delivered audio region,
-preserve same-time subwords and legitimate repetition, and survive long context,
-final drain and both meeting/dictation consumers. Neither a timestamp epsilon
-nor unconditional trust in the upstream deduplication claim is demonstrated.
-The existing filter remains imperfect but cannot be removed without replacing
-its replay protection. Separately, `CaptionCoalescer.trimOverlap` can collapse
-literal repetitions and relies on a short-word allowlist; retiring that policy
-requires an explicit producer/boundary contract across supported live engines.
-No successful harness exit closes these unresolved product-quality defects.
+Native recognition errors also remain separate: latest stock native final on
+the declared repeated ES/mixed cells had 7.41%/14.81% WER, and silence emitted two
+words. Consumer parity must not relabel those errors as correct speech or hide
+them with suffix trimming. A separate twelve-repeat batch comparison keeps
+stock/fork text identical in the three declared speech cells, but its mixed
+code-switching cell still has 40.74% WER. Its inputs differ from the six-repeat
+live observations and cannot rank those lanes. The temporary fork remains a maintenance obligation
+until upstream can provide the same reviewed authority contract.
+
+Unmarked producers retain `CaptionCoalescer.trimOverlap` and its literal-repeat
+trade-off. Apple range previews keep their own authority; this contract does not
+silently change another engine, add speech admission or promise awaitable cleanup.
 
 ### Closed-row revision after microphone echo replacement
 
@@ -407,7 +493,7 @@ not isolate a product window-lifecycle defect from external focus/placement
 interference, and a later passing focused journey cannot qualify the failed full
 run retroactively.
 
-Keep the zero-screen assertions, exact catalog, bilingual gate and timing budgets.
+Keep the zero-screen assertions, exact catalog, English gate and timing budgets.
 Do not add positioning loops, dismiss other applications or stop unrelated tasks
 merely to obtain green results. A valid full run needs an automation-capable
 desktop that preserves its interaction context; any lifecycle change must first
@@ -581,16 +667,40 @@ not changed. Public-API admission remains a point-in-time observation: a window
 change after observation cannot be claimed atomically excluded. Full bilingual
 and exact-head hosted qualification remain distinct from native controls.
 
+An independent complete English catalogue passed every functional assertion but
+still exceeded the unchanged runtime budget. Its capture-recovery journey spent
+thirty seconds in final SDK `notRunning` observation after the body completed,
+despite requesting ten seconds. The exact native state before that old delay was
+not logged. Healthy final cleanup now polls the same public state predicate under
+an absolute ten-second deadline after its captured native launch is known ended,
+retaining the independent native inventory and scratch fences. A matched bilingual
+comparison did not reproduce the rare delay or measure material aggregate savings;
+it cannot qualify the earlier failed receipt or close the full-catalog budget.
+
+A separate Background Work recording journey read both expected Settings statuses,
+then an application-wide close shortcut closed the recording instead of Settings.
+Its native video shows Settings behind the recording before the shortcut and still
+open afterward; it does not identify what reordered the windows. The journey now
+targets the unique Settings window's standard close button under native ownership
+and stability checks. This does not qualify the earlier failed invocation or claim
+that foreground changes are atomically excluded.
+
 A later Spanish Background Work journey stopped during its first Settings-form
 scroll after the indicator had opened Your data and the exact owner counts were
 verified. XCTest reported an interrupting `Other` owned by the disposable app;
-the guard completed cleanup before dispatch. The interrupted recording did not
+the guard completed cleanup before dispatch. The interrupted test did not
 finish, so neither the element's frame nor the remaining passing tests identifies
-the surface or qualifies the invocation. This deep link does not use the ordinary
-Settings search-editor handoff, but that omission alone does not establish the
-interruption's cause. Preserve the failed evidence and reproduce the actual
-entry boundary before applying a handoff or changing scroll admission. Do not
-attribute the interruption to another application or dismiss an unknown surface.
+the surface or qualifies the invocation. The same boundary can recur in an
+English first-case invocation; predecessor activity and locale therefore do not
+identify its cause. That route bypassed the ordinary Settings editor handoff,
+but the omission and surface geometry alone do not attribute the interruption.
+Subsequent read-only bilingual observations found the native search editor still
+active before the wheel. The journey now guards that known editor state through
+the existing value-preserving handoff within its original entry deadline; native
+characterization observed successful handoff and released focus in both locales.
+The original `Other` remains unidentified, and scoped success does not qualify
+an interrupted catalog or prove that surface's cause is repaired. Preserve the
+failed evidence; do not blame another application or dismiss an unknown surface.
 
 A required native-controls invocation also stopped before its synchronous
 foreign-overlay counterexample was armed: the arm click was dispatched, but
@@ -645,7 +755,7 @@ before changing production teardown or declaring the failure fixed.
 | # | Gap | Today | Missing | Plan |
 |---|---|---|---|---|
 | 9 | ~~**No recap email**~~ | **RESOLVED (Jul 25, 2026)** by the editable recap/share surface (D136); the confirmed review-first email-draft Skill was added in Aug 2026 (D327). | Physical composer handoff remains field evidence below, not missing product UI | ✅ |
-| 10 | Native App Intents, App Entities, and protected entity Spotlight ✅ / Quick Look remains absent | **Start field-verified Jul 27; Stop and bounded entities implemented Aug 9; protected entity publication implemented Aug 10, 2026.** The SDK-only shipping source extracts exactly five actions, three entities, and three queries: Start/Stop plus exact open actions for meeting, canonical person, and confirmed commitment (D139/D140/D324–D326). Tahoe+ uses immediate foreground modes while the compatibility property preserves Sequoia. Entity lookups are bounded, literal, database-backed, and route inside the chosen process with explicit recovery. On macOS 15+, one coalescing reconciler publishes all three entity types in a named complete-protection index from one consistent narrow snapshot; meeting entities preserve the released capped full-text body. The 14.4 path publishes meeting documents to that same versioned index, so there is no duplicate meeting surface. Stable, Dev, and UI-test identities remain distinct. Start's user-created Shortcut was field-verified from Shortcuts, Spotlight, and Siri. Stop/entity actions and entity publication are locally covered by metadata, unit/integration boundaries, and bilingual real-app handoff, but physical picker/search result presentation, Siri disambiguation, cold recovery, and registration still need Sequoia and Tahoe evidence. D141 still omits the unsupported duplicate `AppShortcutsProvider` | Collect Stop/entity publication and routing evidence on physical Sequoia/Tahoe Macs. Quick Look genuinely needs an extension target and stays planned | D139–D141, D324–D326; AUTO-3 field / QL M14a/M16 |
+| 10 | Native App Intents, App Entities, and protected entity Spotlight ✅ / Quick Look remains absent | **Start field-verified Jul 27; Stop and bounded entities implemented Aug 9; protected entity publication implemented Aug 10, 2026.** The SDK-only shipping source extracts exactly nine actions, three entities, and three queries: Start/Stop, exact open actions for meeting, canonical person, and confirmed commitment (D139/D140/D324–D326), and the background Dictate and Paste last dictation, consent-gated Search dictations and Open dictations (D583). Not yet field-verified: that a dictation Shortcut run from Spotlight or Siri leaves the intended app in front; keyboard- and Stream Deck-triggered Shortcuts keep it by design. Tahoe+ uses immediate foreground modes while the compatibility property preserves Sequoia. Entity lookups are bounded, literal, database-backed, and route inside the chosen process with explicit recovery. On macOS 15+, one coalescing reconciler publishes all three entity types in a named complete-protection index from one consistent narrow snapshot; meeting entities preserve the released capped full-text body. The 14.4 path publishes meeting documents to that same versioned index, so there is no duplicate meeting surface. Stable, Dev, and UI-test identities remain distinct. Start's user-created Shortcut was field-verified from Shortcuts, Spotlight, and Siri. Stop/entity actions and entity publication are locally covered by metadata, unit/integration boundaries, and bilingual real-app handoff, but physical picker/search result presentation, Siri disambiguation, cold recovery, and registration still need Sequoia and Tahoe evidence. D141 still omits the unsupported duplicate `AppShortcutsProvider` | Collect Stop/entity publication and routing evidence on physical Sequoia/Tahoe Macs. Quick Look genuinely needs an extension target and stays planned | D139–D141, D324–D326; AUTO-3 field / QL M14a/M16 |
 | 11 | Cross-device sync has no second-device product yet | **Band 6A–6C2 macOS vertical complete in code (D92–D97):** schema v14 remains the mutation authority; deterministic text-first envelopes replay atomically through encrypted private-zone records and durable exact attempts; D96 owns zero-touch consent/status/actions; and D97 adds one signed-capability-gated private container, process-scoped serialized wakeups, exact Developer ID release admission, and bilingual Settings. Audio, paths, voiceprints, secrets, and embeddings stay local | Production container/profile/account plus two-Mac convergence are still field gates before public enablement; the actual cross-device experience arrives with the 6D in-person iOS recorder shell. Audio remains a later separate opt-in | Band 6D / M14c; field pending |
 | 13 | A meeting's stated priority has nowhere to live | **OPEN AGAIN (Sep 2026, D508).** Field evidence: a real standup declared its priority out loud and later put everything else on hold. Capture and transcription were exact, but the general summary reduced it to a per-person status line, the meeting produced zero action items, and the live Apuntador spent all 23 of its cards on ambient context. A stated priority is not a decision, an action item, a commitment or a topic | A deterministic detector shipped in D505, was widened in D506 and corrected in D507; each round closed defects and opened others, several worse — the plainest Spanish demotion read as a priority, the negation guard missing the apostrophe dictation emits, a question and its answer in one caption resolving to nothing. Because an accepted offer wrote into the objectives and from there into the summary, a wrong reading became a false line in the user's record, so it is withdrawn | Rebuild on `NLTagger(.lexicalClass, .lemma)` and `NLTokenizer(unit: .sentence)`, which remove the hand-kept vocabularies and token windows that failed three times, and gate it on an adversarial bilingual corpus rather than on field counts — five real meetings and 3 754 captions reported one detection and no false positives at every broken revision  [Research #92](https://github.com/johnny4young/portavoz/issues/92) adds an offline model comparison only; this gap remains open. |
 | 12 | Suggested actions baseline is closed; Apuntador 1.0 now carries the finite release expansion | **SEVEN-ACTION BASELINE IN CODE (D317/D327–D328/D335–D343/D359/D369–D379/D381/D434):** Suggested actions Settings owns durable pause/enablement, indexed Recent/Waiting/Attention/Completed execution scopes, content-free causal receipt inspection, a bounded Suggestions-to-review queue with typed why/input explanations plus durable dismissal, explicit read-only reconciliation, unique content-free positional assistive names for repeated same-Skill offers, opaque review-in-context routing for meeting/commitment offers, proposal-UUID-only revocation while an execution is still durably Waiting, and safe failed-run guidance. Schema v41 binds new executions to one exact content-free subject and failure category: local recoverable meeting/commitment receipts can return to their original review surface, calendar recovery remains resident, and external/destructive unknown outcomes are verification-only. Verified non-failed meeting/commitment receipts can also reopen their current exact source without executing; this historical review remains available while Skills are paused or disabled, while calendar receipts stay resident. Receipt inspection now replays audit authority first and consults execution policy only for an otherwise-valid failed local recovery, so unrelated policy failure cannot hide historical source review or external/destructive verification guidance. A failed control mutation retains and disables the last verified snapshot; an explicit read-only reload adopts durable truth in the same Settings pane without replaying the ambiguous write. The proposal projection can explicitly refresh verified empty/populated state without polling; retained rows remain inert until the bounded read verifies them, and failure returns to the existing unavailable retry. Each activity scope starts with 20 visible rows, composes an optional exact available-Skill identity plus an optional past-day/week/30-day `updatedAt` range at query time, probes one bounded successor row before offering one expansion to the existing 50-row application ceiling, can explicitly refresh that selected scope/Skill/period/window, and can clear Skill/time filters from a verified no-match result without losing its lifecycle scope. It does this without false page-local empty states, false continuation, polling, infinite pagination, or unbounded view state. Failed actions retain their row, stale producers/open confirmations cannot override a committed dismissal, and begin/revoke has one SQLite-serialized winner. **PROGRESSIVE RELIABILITY IMPLEMENTED (D384):** full Ask now admits bounded exact progressive evidence/answers, replaces pending questions, rejects stale or late output, preserves evidence across typed model timeout/failure, and bounds per-window history. **SELECTED-ENGINE MANUAL ASK IMPLEMENTED (D385):** the explicit Library/command-palette route samples Apple Foundation Models, configured loopback Ollama, or verified embedded MLX per request; Sequoia can use Ollama/MLX, no selected engine silently falls through, prompts and output remain bounded, and cross-library Ollama attempts receive separate content-free global receipts. **SOURCE POLICY IMPLEMENTED (D386):** full Ask now requires an explicit Library or exact selected-meeting authority, cancels pending work on source changes, scopes all lexical lanes at SQL, filters bounded semantic candidates before publication, and keeps palette/CLI/MCP/brief consumers explicitly Library-only. **DIRECT WEB IMPLEMENTED (D387):** one exact public page requires one-request consent, uses a receipt-backed bounded direct GET, treats all page text as untrusted, answers only through the selected local engine, and preserves direct citations plus observed freshness when generation cannot finish. **INTERVIEW ASSIST IMPLEMENTED (D388):** one explicitly enabled active recording exposes the chronologically current remote question and generates only on request from bounded earlier same-meeting final captions; every published sentence has exact citations, and revision/disable/Stop/reset cancellation rejects stale output. **TYPED NOTES IMPLEMENTED (D389):** full Ask searches only explicit live raw notes through bounded bilingual FTS, keeps exact local-user/meeting/time/provenance citations separate from transcript/Web, excludes AI-enhanced notes structurally, and preserves sources across typed abstention/unavailable/failure/timeout. **BOUNDED PROACTIVE HELP IMPLEMENTED (D390):** every recording starts opted out; one synchronous source-closed policy admits at most three inert cards from open objectives or measured talk balance, with exact bounded finalized-caption evidence, pause/resume, deduplication, and no model, Web, persistence, or external action. **BACKGROUND WORK CENTER IMPLEMENTED IN CODE (D427):** one process-owned content-free projection exposes launch recovery, post-capture jobs, Spotlight, semantic indexing, and memory-graph state in Settings plus a compact non-idle indicator; existing schedulers remain authoritative, recording defers semantic/graph work, and no heartbeat becomes invented progress. **REVIEW-FIRST GITHUB ISSUE IMPLEMENTED IN CODE (D434):** one current pending action item with exact current transcript evidence can create one issue only after canonical repository entry plus exact title/body/citation/egress review. It reuses the existing Keychain token, exporter, and receipt-before-transport gateway; a post-handoff failure is terminal outcome unknown with no automatic retry. **STANDING BRIEF CONTROL AND EXECUTION IMPLEMENTED IN CODE (D435–D437):** schema v46 persists only exact current-version, reversible, local pre-meeting-brief authority; schema v47 binds one exact event occurrence to one immutable Skill owner, consumes a transactionally checked local-day budget, publishes one digest-verified local artifact atomically with the receipt, and recovers confirmed/recoverable-failed work through one signal-driven capture-preemptible macOS supervisor without polling. EventKit notifications are invalidation only, duplicate/manual ownership and prior dismissal fail closed, automatic attempts stop at three, and a persisted executing owner is never repeated. Schema v48 canonicalizes temporal identity at GRDB's durable millisecond precision. Bilingual Settings now exposes the closed template, 1...8 daily ceiling, inherited pause, enablement, deletion, bounded 20/50 history, explicit recoverable retry, and verified private artifact review through the same serialized owner. | Proposed rows and receipts intentionally cannot confirm or execute in Settings; deleted/legacy subjects, stale catalogue versions, malformed history, and missing direct calendar openers fail closed. Failed-run recovery additionally requires current enabled policy, and external outcomes are never made retryable from the receipt. Standing-rule creation/status/history, artifact review, explicit recoverable retry, and rule-mutation wake wiring now exist in code; integrated qualification, real EventKit/TCC delivery, physical accessibility/hardware, signed distribution, CloudKit, and field usefulness remain unverified. Exact preview and confirmation stay on the original subject surface. Broad Web discovery, installed-model measurement, integrated qualification, real GitHub/Keychain/network behavior, and physical field gates remain open. | Preserve the seven-action baseline and the finite D384–D390 Apuntador surfaces through exact 1.0 qualification; preserve and qualify D437's bounded reversible local standing rule without adding another unattended action. Broad Web discovery and additional external mutation kinds remain outside 1.0.0. |
@@ -731,9 +841,12 @@ Physical/model latency and cancellation field evidence remain open.
 | T32 | ~~Database-open failure still terminates the app at launch~~ | **RESOLVED in code (D319):** `AppServices` now throws and opens the authority before constructing any other process owner. A root launch state keeps normal UI and background work absent on failure, offers retry, exports content-free mode-`0600` diagnostics, and creates a `quick_check`-verified read-only SQLite recovery copy through hidden mode-`0700` staging without overwriting, mutating, migrating, deleting, or silently recreating the source. Deterministic tests cover corrupt/missing sources, privacy, permissions, non-overwrite, retry, and source parity; bilingual XCUITest exercises the real disposable recovery journey. Automatic repair or restore-over-authority remains deliberately excluded. | ✅ |
 | T33 | ~~Unreadable or concurrently mutated encrypted voice identity can be hidden, overwritten, or split from its key~~ | **RESOLVED in code (D357–D358):** existing ciphertext forbids replacement-key creation; missing/corrupt keys and unreadable/authentication/decoding failures propagate before every save, remember, or remove; AES-GCM serialization is guarded; Settings keeps Retry plus explicit destructive reset visible; and one no-follow mode-`0600` BSD sidecar lease now serializes each complete ciphertext/Keychain transaction across store values and cooperating D358-capable stable/Dev/CLI processes. Deterministic contention tests preserve both concurrent gallery additions and prevent save/delete from stranding ciphertext. A temporary-store-only unavailable fixture and real-app XCUITest cover both stores without touching host biometric state. The advisory lock cannot constrain a still-running pre-D358 binary; a real Keychain-reset journey, abrupt multi-process termination, mixed-version exclusion, and physical VoiceOver remain field evidence, not data-recovery promises. | ✅ |
 | T34 | Live dictation vocabulary and same-alphabet language restriction remain limited | **PARTIAL (Sep 2026).** Dictation now forwards its supported language hint to the live Parakeet manager (meeting captions do not opt in), and Settings explains that Spanish and English can still mix because the filter works on writing systems. Segments still carry the requested hint rather than a detected-language classification. Default live Parakeet still never reads `hints.vocabulary`: `customVocabulary` biases batch Whisper and the optional fixed-locale Apple Speech live engine, without a measured recognition-quality claim. Streaming vocabulary boosting needs the unpinned `parakeet-ctc-110m` CTC model; on the default route, preferred spellings therefore still come only from the deterministic `DictationTextRules` tier (spec 06). | Evaluate a verified, consented CTC model and wire `configureVocabularyBoosting` only with call-site quality and resource evidence. Do not claim the existing language hint separates same-alphabet languages or improves recognition quality. |
-| T35 | ~~The reviewed speech-engine pin freezes Portavoz behind published upstream fixes~~ | **RESOLVED for published behavior through D539 (Sep 2026).** `Package.swift` now requires exact FluidAudio 0.15.8. A matched 0.15.6/0.15.7/0.15.8 public-synthetic call-site matrix found 0.15.7 production-identical and admitted 0.15.8 only after every speech cell improved, long-run latency stayed flat, three process observations preserved the memory ceiling, and AMI DER remained 7.6%. Silence hallucination did not improve and remains separate evidence. Stock 0.16.1 was rejected before tests because NemoTextProcessing 0.3.1 advertises `Headers` while packaging its module map under `Headers/CNemoTextProcessing`; its speech sources are byte-identical to 0.15.8. Keep the D516 exact-review rule. Reopen for a later release only with matched recognition, diarization, latency and memory evidence; never vendor-patch a malformed binary target merely to make an evaluation pass. | ✅ |
+| T35 | Reviewed speech-engine updates require qualification and temporary-fork maintenance | **PARTIAL (D559, D569).** The immutable latest-based fork retains the reviewed upstream snapshot and adds explicit raw-token revision authority and a monotonic published stable prefix; unused TTS/NeMo are excluded with Swift 6.2 traits rather than repairing a vendor binary. D539 remains historical evidence for 0.15.8, not a receipt for the fork. Stock latest alone did not fix consumer retirement. Keep matched ASR, diarization, latency/memory and exact-head CI separate from source compatibility, and remove the temporary fork only after upstream exposes an equivalent reviewed contract. Models/defaults/deployment floors are unchanged. | Maintain the exact SHA and qualify each subsequent SDK change; no rolling branch or automatic model adoption. The contract is proposed upstream in [FluidAudio #1035](https://github.com/FluidInference/FluidAudio/pull/1035). Exit: return to an `exact:` tagged release once one contains that contract (or an equivalent reviewed one), the batch seam-timing fix and the dependency traits, with the same matched ASR/diarization and exact-head CI evidence. Never pin a release that lacks any of the three. |
 | T36 | FluidAudio's macOS 14 diarizer advisory is unqualified on the deployment floor | **OPEN (Sep 2026).** Upstream documents a BNNS diarizer crash on macOS 14 (#878/#885), and Portavoz still deploys to macOS 14.4. The 0.15.8 comparison ran only on the current macOS host, so it neither confirms nor rules out that crash for batch or live diarization on the floor. | Run batch and live two-speaker diarization on a physical macOS 14.4 Mac before claiming the floor is diarization-safe, or raise the deployment floor. |
-| T37 | Silero voice activity is verified but not serving capture | **PARTIAL (D548):** a small MIT Core ML bundle is pinned by exact artifact hashes and a session-scoped TranscriptionKit adapter reaches FluidAudio's real 4,096-sample VAD inference after a verified local load. Missing model, PCM discontinuity, cancellation and concurrent producers fail closed. No app recording or dictation path constructs this adapter yet; no meeting talk-time, transcript gate or silence-based Stop is changed. | Add explicit consented model preparation and resource admission, then connect only off-callback bounded audio feeds. Qualify EN/ES speech and silence, small packets, device changes, drop/timeout/cancel, RAM/CPU/ANE contention, and full real-app journeys before any opt-in countdown or meeting metric replaces existing behavior. |
+| T37 | Silero voice activity serves only dictation (the speech gate and opt-in stop after a pause) | **PARTIAL (D548, D562, D563, D568):** a small MIT Core ML bundle is pinned by exact artifact hashes and a session-scoped TranscriptionKit adapter reaches FluidAudio's real 4,096-sample VAD inference after a verified local load. Missing model, PCM discontinuity, cancellation and concurrent producers fail closed. The default-on dictation speech gate consumes it over a copy of admitted PCM and fails open; no meeting talk-time, meeting transcript gate or silence-based Stop is changed. | Add explicit consented model preparation and resource admission, then connect only off-callback bounded audio feeds. Qualify EN/ES speech and silence, small packets, device changes, drop/timeout/cancel, RAM/CPU/ANE contention, and full real-app journeys before any opt-in countdown or meeting metric replaces existing behavior. |
+| T38 | Parakeet Ultra is an unqualified opt-in dictation checkpoint | **PARTIAL (D565, Oct 2026).** On the synthetic 480-cell corpus Ultra cut speech WER from 15.3% to 10.3% with the same finalization latency, but it was worse on 35 cells (Spanish Swift identifiers, English literal-cancel phrases, apostrophes, Spanish date corrections). Its resident memory, its cold first load (9.4 s on the measured Mac before Core ML caches it) and real-microphone accuracy are unmeasured. In the same run, v3 failed one cell (`en-apostrophe.very-soft`) with an invalid token lineage; D569 fixes that in the fork, and a full rerun changed only that cell. In-app CC-BY attribution now lives in Settings → Your data (D570). | Measure resident memory and a real-microphone EN/ES/mixed baseline before considering Ultra as a default. |
+| T39 | Pre-Tahoe fallback code outlives the macOS 26 floor | **PARTIAL (D574, D585, Oct 2026).** Releases after 1.2.0 deploy to macOS 26 and every release gate dropped its Sequoia receipts, so the fallbacks are unreachable. The source still carries 33 `#available(macOS 26)` and 6 `#available(macOS 15)` checks in 28 files, their pre-Tahoe branches (deterministic live summary, provider-neutral companion, Sequoia capability states, the macOS 14.4 scroll and Spotlight-document paths), the `-simulate-sequoia-capabilities` launch argument and the tests that exercise them. | Remove the checks, the fallback branches, the simulation argument and their unit and UI tests, keeping every Tahoe behavior; measure how much code and test surface it removes. |
+| T40 | Ask over dictations finds other-language dictations but few same-language paraphrases | **PARTIAL (D580, D581, Oct 2026).** Dates and apps are parsed, and every question with words is rewritten into English and Spanish keywords by the on-device model: on the public corpus cross-lingual recall@5 rose from 0 to 0.62 with no false positives, but Spanish and English paraphrase recall is 0.06. Apple's contextual embedding reached about 0.5 paraphrase recall only at a threshold on the edge of a false-positive cliff, with no cross-lingual gain, so no dictation vectors are stored. | Measure a stronger multilingual embedding (for example Multilingual E5 Small under MIT) with `bench-dictation-search` and the same gate; adopt stored vectors only with their own consent, deletion with the dictation in the same transaction, and a threshold that holds on more than the eight public unanswerable questions. |
 
 - **RESOLVED (D314, Aug 7 2026) — graph rebuild-from-zero was superlinear.**
   The per-scope rebuild used to load every live topic row to resolve family
@@ -1213,7 +1326,7 @@ Earlier broad local UI runs exposed the former runner-container storage
 boundary and an unexpected native interruption. Those failed invocations remain
 unqualified; adopting the explicit shared-scratch owner and content-blind
 interruption guard does not relabel them. The current memory-profile sources
-still require a fresh full bilingual gate and exact-head hosted evidence.
+still require a fresh full English gate and exact-head hosted evidence.
 Focused Settings or installed-model lifetime observations cannot substitute for
 that qualification or close the separate compact-reachability gap.
 

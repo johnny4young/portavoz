@@ -7,6 +7,137 @@ import Testing
 
 @testable import portavoz_app
 
+extension MeetingDetailModelTests {
+    func testTranscriptPresentationPreservesBothApplicationReadingsAndLineage() async throws {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: fixture.updates)
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        await model.observe()
+
+        let detail = try XCTUnwrap(model.state.readModel)
+        let presentation = try XCTUnwrap(model.state.transcriptPresentation)
+        XCTAssertEqual(presentation.current, detail.transcriptContent())
+        XCTAssertEqual(presentation.structure, detail.transcriptStructureProjection(
+            current: detail.transcriptContent(), accepted: detail.acceptedTranscriptContent()))
+        XCTAssertNotEqual(presentation.current.lineage, presentation.structure.accepted.lineage)
+    }
+
+    func testOptionalUpdatesAndCoreFailureRetainTheSameTranscriptPresentation() async throws {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: fixture.updates)
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        await model.observe()
+        let presentation = try XCTUnwrap(model.state.transcriptPresentation)
+
+        client.updates = [
+            .summary(nil), .privacyReceipt(nil), .notes(MeetingReviewNotes()),
+            .companionCards([]), .processingJobs([]), .commitmentReviewStates([]), .translations([]),
+            .failed(.core),
+        ]
+        await model.observe()
+        model.invalidatePlayback()
+        model.recordLastActionError("A recoverable action failed")
+
+        XCTAssertTrue(model.state.transcriptPresentation === presentation)
+        XCTAssertEqual(model.state.readModel?.segments.first?.text, fixture.segment.text)
+        XCTAssertEqual(model.state.phase, .degraded(failures: 1))
+    }
+
+    func testSameRevisionCoreDeliveryReplacesRowsAndRefinedLineage() async throws {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: fixture.updates)
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        await model.observe()
+        let original = try XCTUnwrap(model.state.transcriptPresentation)
+        var segment = fixture.segment
+        segment.text = "The next Friday — otra revisión."
+        segment.language = "en"
+        let core = MeetingReviewCore(
+            meeting: fixture.meeting, speakers: [fixture.speaker], segments: [segment],
+            isRefinedTranscript: true)
+        XCTAssertEqual(core.correctionRevision, fixture.core.correctionRevision)
+        client.updates = [.core(core)]
+        await model.observe()
+
+        let current = try XCTUnwrap(model.state.transcriptPresentation)
+        XCTAssertFalse(current === original)
+        XCTAssertEqual(current.current.rows.first?.text, segment.text)
+        XCTAssertNotEqual(current.current.lineage, original.current.lineage)
+        let detail = try XCTUnwrap(model.state.readModel)
+        XCTAssertEqual(current.current, detail.transcriptContent())
+        XCTAssertEqual(current.structure.accepted, detail.acceptedTranscriptContent())
+    }
+
+    func testMissingCoreClearsTranscriptAndDoesNotShareAnotherRouteProjection() async throws {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: fixture.updates)
+        let first = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        let second = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        await first.observe()
+        await second.observe()
+        let secondPresentation = try XCTUnwrap(second.state.transcriptPresentation)
+        XCTAssertFalse(first.state.transcriptPresentation === secondPresentation)
+
+        client.updates = [.core(nil), .failed(.core)]
+        await first.observe()
+        XCTAssertNil(first.state.readModel)
+        XCTAssertNil(first.state.transcriptPresentation)
+        XCTAssertTrue(second.state.transcriptPresentation === secondPresentation)
+    }
+
+    func testChapterTitleChangesRebuildPresentationAndCorrectionsClearTitles() async throws {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: metadataUpdates(
+            fixture, title: "2026-07-18 Meeting", segments: [fixture.segment]))
+        client.metadataSuggestionsResult = MeetingReviewMetadataSuggestions(
+            chapterTitles: [0: "Plan del viernes"])
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        await model.observe()
+        let original = try XCTUnwrap(model.state.transcriptPresentation)
+        await model.send(.loadMetadataSuggestions)
+        let titled = try XCTUnwrap(model.state.transcriptPresentation)
+        XCTAssertFalse(titled === original)
+        XCTAssertEqual(model.state.chapterTitles, [0: "Plan del viernes"])
+        let detail = try XCTUnwrap(model.state.readModel)
+        XCTAssertEqual(titled.current, detail.transcriptContent(chapterTitles: model.state.chapterTitles))
+        XCTAssertEqual(titled.structure.accepted,
+                       detail.acceptedTranscriptContent(chapterTitles: model.state.chapterTitles))
+        await model.send(.loadMetadataSuggestions)
+        XCTAssertTrue(model.state.transcriptPresentation === titled)
+
+        let correction = TranscriptCorrectionEvent(
+            meetingID: fixture.meeting.id, baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            targetSegmentIDs: [fixture.segment.id], kind: .replaceText(text: "El lunes.", language: "es"),
+            sourceDeviceID: UUID(), createdAt: Date())
+        client.updates = [.core(MeetingReviewCore(
+            meeting: fixture.meeting, speakers: [fixture.speaker], segments: [fixture.segment],
+            corrections: [correction]))]
+        await model.observe()
+        let corrected = try XCTUnwrap(model.state.transcriptPresentation)
+        XCTAssertFalse(corrected === titled)
+        XCTAssertTrue(model.state.chapterTitles.isEmpty)
+        XCTAssertEqual(corrected.current.rows.first?.text, "El lunes.")
+        XCTAssertEqual(corrected.structure.accepted.rows.first?.text, fixture.segment.text)
+    }
+
+    func testInvalidCorrectionRetainsTheExactAcceptedFallbackAndStructuralProjection() async throws {
+        let fixture = MeetingDetailModelFixture()
+        let invalid = TranscriptCorrectionEvent(
+            meetingID: fixture.meeting.id, baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            targetSegmentIDs: [UUID()], kind: .suppress, sourceDeviceID: UUID(), createdAt: Date())
+        let client = MeetingDetailModelClientFake(updates: [.core(MeetingReviewCore(
+            meeting: fixture.meeting, speakers: [fixture.speaker], segments: [fixture.segment],
+            corrections: [invalid]))])
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        await model.observe()
+        let detail = try XCTUnwrap(model.state.readModel)
+        let presentation = try XCTUnwrap(model.state.transcriptPresentation)
+        XCTAssertEqual(presentation.current, detail.acceptedTranscriptContent())
+        XCTAssertEqual(presentation.structure, detail.transcriptStructureProjection(
+            current: detail.transcriptContent(), accepted: detail.acceptedTranscriptContent()))
+    }
+}
+
 @MainActor
 final class MeetingDetailModelTests: XCTestCase {
     func testObservationPublishesOneCompleteReviewProjection() async throws {
@@ -37,7 +168,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .companionCards([fixture.card]),
             .privacyReceipt(fixture.receipt),
             .processingJobs([]), .notes(MeetingReviewNotes()),
-            .commitmentReviewStates([]),
+            .commitmentReviewStates([]), .translations([]),
         ])
         let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
 
@@ -54,7 +185,7 @@ final class MeetingDetailModelTests: XCTestCase {
         let missingClient = MeetingDetailModelClientFake(updates: [
             .core(nil), .summary(nil), .companionCards([]), .privacyReceipt(nil),
             .processingJobs([]), .notes(MeetingReviewNotes()),
-            .commitmentReviewStates([]),
+            .commitmentReviewStates([]), .translations([]),
         ])
         let missing = MeetingDetailModel(
             meetingID: fixture.meeting.id,
@@ -95,7 +226,7 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertEqual(model.state.readModel?.summary?.version, 1)
         XCTAssertEqual(model.state.readModel?.segments.map(\.id), [fixture.segment.id])
         XCTAssertEqual(model.state.readModel?.companionCards.map(\.id), [fixture.card.id])
-        XCTAssertEqual(model.state.revision, 8)
+        XCTAssertEqual(model.state.revision, 9)
     }
 
     func testCorrectionRevisionMarksGeneratedSummaryAndCompanionTruthfullyStale() async throws {
@@ -706,7 +837,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .companionCards([fixture.card]),
             .privacyReceipt(fixture.receipt),
             .processingJobs([]), .notes(MeetingReviewNotes()),
-            .commitmentReviewStates([]),
+            .commitmentReviewStates([]), .translations([]),
         ])
         let model = MeetingDetailModel(meetingID: meeting.id, client: client)
         let destination = FileManager.default.temporaryDirectory
@@ -748,7 +879,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .companionCards([fixture.card]),
             .privacyReceipt(fixture.receipt),
             .processingJobs([]), .notes(MeetingReviewNotes()),
-            .commitmentReviewStates([]),
+            .commitmentReviewStates([]), .translations([]),
         ])
         client.playbackCancellationsRemaining = 1
         let model = MeetingDetailModel(meetingID: meeting.id, client: client)
@@ -995,7 +1126,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .companionCards([fixture.card]),
             .privacyReceipt(fixture.receipt),
             .processingJobs([]), .notes(MeetingReviewNotes()),
-            .commitmentReviewStates([]),
+            .commitmentReviewStates([]), .translations([]),
         ]
     }
 
@@ -1063,7 +1194,7 @@ private struct MeetingDetailModelFixture {
         [
             .core(core), .summary(summary), .companionCards([card]),
             .privacyReceipt(receipt), .processingJobs([]),
-            .notes(MeetingReviewNotes()), .commitmentReviewStates([])
+            .notes(MeetingReviewNotes()), .commitmentReviewStates([]), .translations([])
         ]
     }
 

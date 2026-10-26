@@ -49,6 +49,32 @@ final class RecordingSpeechPreviewTests: XCTestCase {
         }
     }
 
+    func testLowConfidenceCommittedTokensExtendingASentenceAreKept() async {
+        for (head, word, continuation) in [("Y luego", "lo", "s"), ("And then", "we", "'ll")] {
+            let controller = RecordingController()
+            let meetingID = MeetingID()
+            func token(_ text: String, _ mode: LiveTranscriptUpdateMode, start: TimeInterval) -> TranscriptSegment {
+                TranscriptSegment(meetingID: meetingID, channel: .microphone, text: text,
+                                  startTime: start, endTime: start + 0.2, confidence: 0.3,
+                                  isFinal: true, liveUpdateMode: mode)
+            }
+            var opening = token(head, .tokenDelta, start: 0)
+            opening.confidence = 0.9
+            controller.receiveLiveCaption(opening)
+            controller.receiveLiveCaption(token(word, .tokenDelta, start: 0.3))
+            controller.receiveLiveCaption(token(continuation, .tokenContinuation, start: 0.5))
+            XCTAssertEqual(controller.captions.map(\.text), [head + " " + word + continuation])
+        }
+    }
+
+    func testIsolatedLowConfidenceTokenFragmentIsStillNoise() async {
+        let controller = RecordingController()
+        controller.receiveLiveCaption(TranscriptSegment(
+            meetingID: MeetingID(), channel: .microphone, text: "SR", startTime: 0, endTime: 0.2,
+            confidence: 0.3, isFinal: true, liveUpdateMode: .tokenDelta))
+        XCTAssertTrue(controller.captions.isEmpty)
+    }
+
     func testNoiseRevisionWithdrawsTheVisibleMicPreview() async {
         let controller = RecordingController()
         let meetingID = MeetingID()

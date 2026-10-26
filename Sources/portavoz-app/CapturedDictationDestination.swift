@@ -10,6 +10,8 @@ struct CapturedDictationDestination {
     var bundleIdentifier: String?
     let canRetry: Bool
     let insert: (String) async -> DictationDeliveryOutcome
+    /// The latest verified insertion through this destination, for a spoken correction.
+    var lastInsertion: () -> DictationInsertion? = { nil }
 
     static func unavailable(
         name: String?, bundleIdentifier: String? = nil, result: DictationDeliveryOutcome.Refusal
@@ -40,7 +42,8 @@ extension TextInserter {
 
     @MainActor
     static func captureDestination(
-        pasteboard: NSPasteboard = .general, matching expectedApplication: NSRunningApplication? = nil
+        pasteboard: NSPasteboard = .general, matching expectedApplication: NSRunningApplication? = nil,
+        caretCase: DictationCaretCase? = nil
     ) -> CapturedDictationDestination {
         let application = NSWorkspace.shared.frontmostApplication
         guard canInsert(promptIfNeeded: false), let application,
@@ -64,7 +67,9 @@ extension TextInserter {
                                 bundleIdentifier: application.bundleIdentifier,
                                 result: initialSecurity == .secure ? .secureField : .focusUnavailable)
         }
-        let target = Target(processID: application.processIdentifier, readback: .accessibility(element)) {
+        var readback = DictationTextReadback.accessibility(element)
+        readback?.caretCase = caretCase
+        let target = Target(processID: application.processIdentifier, readback: readback) {
             guard canInsert(promptIfNeeded: false) else { return .focusUnavailable }
             // Apple specifies NSRunningApplication equality for process identity,
             // not PID equality. launchDate is absent for non-LaunchServices apps.
@@ -81,10 +86,17 @@ extension TextInserter {
             case .unavailable: return .focusUnavailable
             }
         }
-        return CapturedDictationDestination(
+        let recorded = DictationInsertionRecord()
+        var destination = CapturedDictationDestination(
             name: application.localizedName, bundleIdentifier: application.bundleIdentifier, canRetry: true) { text in
-            await insert(text, into: target, pasteboard: pasteboard)
+            await insert(text, into: target, pasteboard: pasteboard) { span, output in
+                guard let readback = target.readback else { return }
+                recorded.value = DictationInsertion.accessibility(
+                    element: element, readback: readback, validate: target.validate, range: span, text: output)
+            }
         }
+        destination.lastInsertion = { recorded.value }
+        return destination
     }
 
     @MainActor
@@ -98,7 +110,7 @@ extension TextInserter {
     /// focused element at capture: same application still frontmost, then the
     /// system-wide focused field must be inspectable and not secure at delivery.
     @MainActor
-    private static func sessionDestination(
+    static func sessionDestination(
         for application: NSRunningApplication, pasteboard: NSPasteboard
     ) -> CapturedDictationDestination {
         let target = Target(processID: application.processIdentifier, validate: {
@@ -118,8 +130,9 @@ extension TextInserter {
             case .unavailable: return .focusUnavailable
             }
         }, route: .session)
+        // A Reinsert click keys the panel, which this route then always refuses.
         return CapturedDictationDestination(
-            name: application.localizedName, bundleIdentifier: application.bundleIdentifier, canRetry: true) { text in
+            name: application.localizedName, bundleIdentifier: application.bundleIdentifier, canRetry: false) { text in
             await insert(text, into: target, pasteboard: pasteboard)
         }
     }

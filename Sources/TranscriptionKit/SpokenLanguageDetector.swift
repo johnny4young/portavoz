@@ -38,6 +38,17 @@ public enum SpokenLanguageDetector {
             ?? canonicalLanguageCode(fallback)
     }
 
+    /// English or Spanish for one short dictation; nil when it is too short or too mixed to tell.
+    public static func dictationLanguage(in text: String) -> String? {
+        guard text.unicodeScalars.filter({ letters.contains($0) }).count >= 8 else { return nil }
+        let recognizer = NLLanguageRecognizer()
+        recognizer.languageConstraints = [.english, .spanish]
+        recognizer.processString(text)
+        guard let (language, confidence) = recognizer.languageHypotheses(withMaximum: 1).first,
+              confidence >= 0.6 else { return nil }
+        return language == .spanish ? "es" : "en"
+    }
+
     public static func canonicalLanguageCode(_ raw: String?) -> String? {
         LanguageCode(raw)?.identifier
     }

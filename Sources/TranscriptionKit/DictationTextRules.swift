@@ -31,17 +31,56 @@ public enum DictationTextRules {
         "eh", "ehm"
     ]
 
+    // Spoken layout commands; a phrase holding a user's trigger stays literal.
+    // Escaped so the English-source guard does not read them as Spanish prose.
+    static let lineBreakCommands = ["new line", "nueva l\u{ED}nea", "nueva linea"]
+    static let paragraphCommands = ["new paragraph", "nuevo p\u{E1}rrafo", "nuevo parrafo", "punto y aparte"]
+
     public static func apply(
         _ text: String,
         replacements: [DictationReplacement],
-        removeFillers: Bool
+        removeFillers: Bool,
+        spokenCommands: Bool = false
     ) -> String {
         var result = text
         if removeFillers {
             result = strippingFillers(result)
         }
+        var keepsBreaks = false
+        if spokenCommands {
+            let commanded = applyingSpokenCommands(to: result, except: replacements.map(\.trigger))
+            keepsBreaks = commanded != result
+            result = commanded
+        }
         result = applying(replacements, to: result)
-        return result.trimmingCharacters(in: .whitespacesAndNewlines)
+        // A break the user asked for at either end is part of the text.
+        return result.trimmingCharacters(in: keepsBreaks ? .whitespaces : .whitespacesAndNewlines)
+    }
+
+    /// The phrase becomes a line or paragraph break. The commas and closing
+    /// punctuation the recognizer adds around a command are dropped; sentence
+    /// punctuation before it stays ("Hi. New line. World" → "Hi.\nWorld").
+    static func applyingSpokenCommands(to text: String, except triggers: [String]) -> String {
+        // Any user trigger inside a phrase, as whole words, keeps that phrase literal.
+        let claimed = { (phrase: String) in
+            triggers.contains { trigger in
+                let pattern = "(?<![\\p{L}\\p{N}])"
+                    + NSRegularExpression.escapedPattern(for: trigger.trimmingCharacters(in: .whitespaces))
+                    + "(?![\\p{L}\\p{N}])"
+                return phrase.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil
+            }
+        }
+        // Decomposed accents (i + U+0301) must match the precomposed phrases.
+        var result = text.precomposedStringWithCanonicalMapping
+        for (phrases, replacement) in [(paragraphCommands, "\n\n"), (lineBreakCommands, "\n")] {
+            let active = phrases.filter { !claimed($0) }.sorted { $0.count > $1.count }
+            guard !active.isEmpty else { continue }
+            let alternatives = active.map(NSRegularExpression.escapedPattern(for:)).joined(separator: "|")
+            let pattern = "[ \\t]*[,;]?[ \\t]*(?<![\\p{L}\\p{N}])(?:\(alternatives))(?![\\p{L}\\p{N}])[.,;:!?]*[ \\t]*"
+            result = result.replacingOccurrences(
+                of: pattern, with: replacement, options: [.regularExpression, .caseInsensitive])
+        }
+        return result
     }
 
     /// Removes standalone fillers plus one trailing comma/semicolon each

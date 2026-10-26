@@ -216,7 +216,7 @@ cannot establish truth.
 
 Release admission remains strict: simulator/package/XCUITest evidence cannot
 certify permissions, interactive AI setup, external accounts, notarization/App
-Store distribution, physical Sequoia/Tahoe companions, VoiceOver/Voice Control,
+Store distribution, physical Tahoe companions, VoiceOver/Voice Control,
 or 30-day no-loss field evidence.
 
 ## iPad and Watch feasibility, not promises

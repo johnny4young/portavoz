@@ -17,6 +17,7 @@ final class AskModel {
     private let webSourcePolicy: AskWebURLPolicy
     private var answerTask: Task<Void, Never>?
     private var sourceLoadTask: Task<Void, Never>?
+    private var dictationSourceTask: Task<Void, Never>?
     private var generation = 0
     private var sourceLoadGeneration = 0
 
@@ -39,6 +40,7 @@ final class AskModel {
     isolated deinit {
         answerTask?.cancel()
         sourceLoadTask?.cancel()
+        dictationSourceTask?.cancel()
     }
 
     func selectSurface(_ surface: Surface) {
@@ -129,6 +131,10 @@ final class AskModel {
             submitNotes(question)
             return
         }
+        if state.sourceMode == .dictations {
+            submitDictations(question)
+            return
+        }
         guard let source = resolvedSource(),
               let exchangeSource = exchangeSource(for: source)
         else { return }
@@ -191,6 +197,11 @@ final class AskModel {
         sourceLoadTask = nil
         if state.sourceCatalogState == .loading {
             state.sourceCatalogState = .idle
+        }
+        dictationSourceTask?.cancel()
+        dictationSourceTask = nil
+        if state.dictationSourceState == .checking {
+            state.dictationSourceState = .unknown
         }
         memory?.cancelPendingWork()
         topicMemory?.cancelPendingWork()
@@ -279,6 +290,7 @@ final class AskModel {
         state.pendingQuestion = nil
         state.pendingCitations = []
         state.pendingNoteCitations = []
+        state.pendingDictationCitations = []
         state.pendingWebCitations = []
         state.pendingWebSourceFailures = []
         state.pendingAnswerText = nil
@@ -330,6 +342,8 @@ final class AskModel {
             state.selectedSourceMeetingID.map(AskSourceScope.meeting)
         case .notes:
             .notes
+        case .dictations:
+            .dictations
         case .web:
             .web
         }
@@ -347,6 +361,8 @@ final class AskModel {
             }
         case .notes:
             .notes
+        case .dictations:
+            .dictations
         case .web:
             resolvedWebSourceURL()?.host.map { .web(host: $0) }
         }
@@ -452,6 +468,86 @@ extension AskModel {
         }
     }
 
+    /// Reads the history consent again each time the source is shown, so a
+    /// change in Settings applies without reopening Ask.
+    func refreshDictationSource() {
+        dictationSourceTask?.cancel()
+        if state.dictationSourceState != .available {
+            state.dictationSourceState = .checking
+        }
+        let client = client
+        dictationSourceTask = Task { [weak self, client] in
+            let next: DictationSourceState
+            do {
+                next = try await client.askDictationHistoryIsOn() ? .available : .historyOff
+            } catch is CancellationError {
+                return
+            } catch {
+                next = .failed
+            }
+            guard !Task.isCancelled else { return }
+            self?.state.dictationSourceState = next
+            self?.dictationSourceTask = nil
+        }
+    }
+
+    private func submitDictations(_ question: String) {
+        guard state.dictationSourceState == .available else { return }
+        let requestGeneration = beginRequest(
+            question: question,
+            source: .dictations)
+        let client = client
+        answerTask = Task { [weak self, client] in
+            let exchange: Exchange
+            do {
+                let result = try await client.answerAskDictations(
+                    question,
+                    limit: AskDictationLimits.maximumResultCount,
+                    onEvidence: { [weak self] citations in
+                        await self?.publish(
+                            dictationCitations: citations,
+                            generation: requestGeneration)
+                    })
+                guard !Task.isCancelled else { return }
+                if result.historyIsOff {
+                    self?.state.dictationSourceState = .historyOff
+                }
+                exchange = Exchange(
+                    question: question,
+                    answer: AskAnswerPresentation.text(for: result),
+                    citations: [],
+                    dictationCitations: result.citations,
+                    generationOutcome: result.generationOutcome,
+                    source: .dictations)
+            } catch is CancellationError {
+                return
+            } catch {
+                guard !Task.isCancelled else { return }
+                exchange = Exchange(
+                    question: question,
+                    answer: L10n.format(
+                        "Search failed: %@",
+                        error.localizedDescription),
+                    citations: [],
+                    generationOutcome: .failed,
+                    source: .dictations)
+            }
+            self?.complete(exchange, generation: requestGeneration)
+        }
+    }
+
+    private func publish(
+        dictationCitations citations: [AskDictationCitation],
+        generation requestGeneration: Int
+    ) {
+        guard !Task.isCancelled,
+              generation == requestGeneration,
+              state.isAsking
+        else { return }
+        state.pendingDictationCitations = citations
+        state.pendingPhase = .generatingAnswer
+    }
+
     private func beginRequest(
         question: String,
         source: ExchangeSource
@@ -463,6 +559,7 @@ extension AskModel {
         state.pendingQuestion = question
         state.pendingCitations = []
         state.pendingNoteCitations = []
+        state.pendingDictationCitations = []
         state.pendingWebCitations = []
         state.pendingWebSourceFailures = []
         state.pendingAnswerText = nil

@@ -15,12 +15,17 @@ public enum TranscriptNoiseFilter {
 
     private static let vowels = Set("aeiouy")
 
-    public static func isLikelyNoise(text: String, confidence: Double?) -> Bool {
+    public static func isLikelyNoise(
+        text: String, confidence: Double?, allowsTokenFragments: Bool = false
+    ) -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return true }
         let letters = trimmed.filter(\.isLetter)
-        // A lone letter (or none) is never a word — "R", "E", "—".
-        if letters.count <= 1 { return true }
+        // Phrase-shaped results cannot be a lone letter. A producer-owned
+        // token can legitimately be "I", a digit, punctuation or a subword;
+        // retain it only with the same confidence floor used below.
+        if letters.count <= 1,
+            !(allowsTokenFragments && confidence.map({ $0 >= confidenceFloor }) == true) { return true }
         let words = trimmed.split(whereSeparator: \Character.isWhitespace)
         // Diacritic-fold so accented Spanish vowels count as vowels.
         let foldedLetters = String(letters)

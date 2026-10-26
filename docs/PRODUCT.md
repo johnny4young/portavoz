@@ -199,8 +199,7 @@ work remain explicit in the specs and [IOS.md](IOS.md).
 The older July measurements remain provenance, while D346 is the newer clean
 current-control result on the Tahoe reference host. D347 does not promote
 that one host into a market-wide claim: its fail-closed cross-host matrix is
-currently **1/3 required memory profiles**, with no Sequoia receipt and no
-cross-host authority. `docs/GAPS.md` T5 owns the remaining field evidence and
+currently **1/3 required memory profiles**, with no cross-host authority. `docs/GAPS.md` T5 owns the remaining field evidence and
 the separate algorithmic exact-scan limitation.
 
 ## Security (commitments)

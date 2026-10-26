@@ -539,6 +539,26 @@ public struct RAGAnswerer: RAGTextAnswering {
         }
     }
 
+    public func answer(
+        question: String,
+        dictationPassages: [RAGDictationPassage]
+    ) async throws -> String {
+        if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
+            throw IntelligenceError.modelUnavailable(reason)
+        }
+        let prompt = try RAGDictationAnswerPrompt.make(
+            question: question,
+            passages: dictationPassages)
+        let session = LanguageModelSession(
+            instructions: RAGDictationAnswerPrompt.instructions)
+        return try await IntelligenceScheduler.shared.run(.interactive) {
+            try await session.respond(
+                to: prompt.user,
+                options: .greedy(maximumResponseTokens: RAGAnswerPrompt.maximumResponseTokens)
+            ).content
+        }
+    }
+
     /// Answers from separately typed transcript and graph lanes. Fact markers
     /// expose structure to the model, while only exact transcript/source
     /// markers are valid citations in generated prose.
@@ -605,6 +625,33 @@ public struct RAGAnswerer: RAGTextAnswering {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters)) }
             .filter { !$0.isEmpty && $0.caseInsensitiveCompare(question) != .orderedSame }
         return [question] + variants.prefix(2)
+    }
+
+    static let dictationExpansionInstructions = """
+        The user is searching their own saved dictations: short texts they spoke into apps \
+        such as messages, emails and notes, in English, Spanish or both. List the words they \
+        most likely used in the dictation that answers the question: synonyms, related terms \
+        and translations into both English and Spanish. Reply with one line of at most 20 \
+        comma-separated words or short phrases, no commentary.
+        """
+
+    /// Words a matching dictation probably contains, in English and Spanish, so
+    /// a lexical search can find paraphrases and translations. nil on failure.
+    public func expandDictationQuery(_ question: String) async throws -> String? {
+        let session = LanguageModelSession(instructions: Self.dictationExpansionInstructions)
+        do {
+            let content = try await IntelligenceScheduler.shared.run(.interactive) {
+                try await session.respond(to: question, options: .greedy(maximumResponseTokens: 80)).content
+            }
+            try Task.checkCancellation()
+            let line = content.trimmingCharacters(in: .whitespacesAndNewlines)
+            return line.isEmpty ? nil : String(line.prefix(400))
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            try Task.checkCancellation()
+            return nil
+        }
     }
 
 }

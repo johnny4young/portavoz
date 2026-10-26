@@ -1,3 +1,4 @@
+import Foundation
 import PortavozCore
 import TranscriptionKit
 
@@ -9,8 +10,12 @@ struct DictationTranscriptProjection {
     private var closedCount = 0
     private var volatilePreview: TranscriptSegment?
     private(set) var confirmedText = ""
+    var hasProvisionalPreview: Bool { volatilePreview != nil }
     var partialText: String {
-        DictationAssembler.text(confirmed: captions.last?.text ?? "", partial: volatilePreview?.text ?? "")
+        if let preview = volatilePreview, preview.liveUpdateMode == .tokenPreview {
+            return ((captions.last?.text ?? "") + preview.text).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return DictationAssembler.text(confirmed: captions.last?.text ?? "", partial: volatilePreview?.text ?? "")
     }
     var finalText: String {
         DictationAssembler.text(confirmed: confirmedText, partial: captions.last?.text ?? "")
@@ -19,6 +24,14 @@ struct DictationTranscriptProjection {
     /// Whether the caller needs to publish a new confirmed prefix. The tail is
     /// always read from the admitted rows, including same-count replacements.
     mutating func apply(_ segment: TranscriptSegment) -> Bool {
+        if segment.liveUpdateMode == .tokenPreview {
+            volatilePreview = segment.text.isEmpty ? nil : segment
+            return false
+        }
+        if segment.liveUpdateMode == .tokenDelta || segment.liveUpdateMode == .tokenContinuation,
+           volatilePreview?.liveUpdateMode == .tokenPreview {
+            volatilePreview = nil
+        }
         if segment.liveUpdateMode == .rangeRevision {
             if !segment.isFinal {
                 volatilePreview = segment

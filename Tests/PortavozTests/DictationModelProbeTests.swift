@@ -103,6 +103,33 @@ final class DictationModelProbeTests: XCTestCase {
         XCTAssertGreaterThan(silence.hypothesisWords, 0)
     }
 
+    func testTokenPreviewAndControlClearCannotInflateCanonicalDeltaScore() async throws {
+        let result = try await DictationModelProbe.run(samples: [0], transcribe: { input in
+            AsyncThrowingStream { output in
+                let task = Task {
+                    for await _ in input { }
+                    var clear = Self.segment("")
+                    clear.liveUpdateMode = .tokenPreview
+                    output.yield(clear)
+                    var preview = Self.segment(" go")
+                    preview.isFinal = false
+                    preview.liveUpdateMode = .tokenPreview
+                    output.yield(preview)
+                    var committed = Self.segment("go go")
+                    committed.liveUpdateMode = .tokenDelta
+                    output.yield(committed)
+                    output.yield(clear)
+                    output.finish()
+                }
+                output.onTermination = { _ in task.cancel() }
+            }
+        }, pace: { _ in })
+        XCTAssertEqual(result.hypothesis, "go go")
+        XCTAssertEqual(result.mappedDeltas, "go go")
+        XCTAssertEqual(result.updates, 4)
+        XCTAssertNotNil(result.firstUpdateSeconds)
+    }
+
     private func consuming(
         _ texts: [String], received: OSAllocatedUnfairLock<[AudioChunk]>? = nil
     ) -> DictationModelProbe.Engine {

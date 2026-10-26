@@ -1,11 +1,11 @@
-// swift-tools-version:6.0
+// swift-tools-version:6.2
 import PackageDescription
 
 let package = Package(
     name: "Portavoz",
     defaultLocalization: "en",
     platforms: [
-        .macOS("14.4"),
+        .macOS(.v26),
         .iOS(.v17),
     ],
     products: [
@@ -19,6 +19,7 @@ let package = Package(
         .library(name: "IntelligenceKit", targets: ["IntelligenceKit"]),
         .library(name: "StorageKit", targets: ["StorageKit"]),
         .library(name: "AudioPlaybackKit", targets: ["AudioPlaybackKit"]),
+        .library(name: "PortavozCLIKit", targets: ["PortavozCLIKit"]),
         .library(name: "IntegrationsKit", targets: ["IntegrationsKit"]),
         .executable(name: "portavoz-cli", targets: ["portavoz-cli"]),
         .executable(name: "portavoz-app", targets: ["portavoz-app"]),
@@ -29,11 +30,12 @@ let package = Package(
         // caption behavior, so an upgrade needs matched ASR, diarization and
         // resource evidence. A minor bump is categorically riskier still —
         // FluidAudio renames public types across minors (0.12 → 0.15 did).
-        // 0.15.8 is the reviewed D539 upgrade: matched product-path ASR improved
-        // while 0.16.1 remains inadmissible because its binary target is malformed.
+        // Latest upstream plus an explicit raw-token revision contract.
+        // Evaluation candidate: no new models, unused TTS/NeMo are not linked.
         .package(
-            url: "https://github.com/FluidInference/FluidAudio.git",
-            exact: "0.15.8"),
+            url: "https://github.com/johnny4young/FluidAudio.git",
+            revision: "16ff239818ddb6787629dab38ae43e8bdd0e7546",
+            traits: ["Diarizer"]),
         // SQLite toolkit (MIT) — D4: GRDB + FTS5, never SwiftData.
         .package(url: "https://github.com/groue/GRDB.swift.git", .upToNextMajor(from: "7.11.1")),
         // Whisper on CoreML (MIT) for the quality re-pass (D7). Pinned
@@ -152,27 +154,36 @@ let package = Package(
                 "ApplicationKit", "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
                 "PlatformKit",
                 "TranscriptionKit", "DiarizationKit", "IntelligenceKit",
-                "StorageKit", "IntegrationsKit", "AudioPlaybackKit",
+                "StorageKit", "IntegrationsKit", "AudioPlaybackKit", "PortavozCLIKit",
                 .product(name: "Sparkle", package: "Sparkle"),
             ]
         ),
 
-        .executableTarget(
-            name: "portavoz-cli",
+        // The command-line tool is a library so the app executable can serve
+        // it too when invoked as `portavoz-cli` (D582); the sources stay put.
+        .target(
+            name: "PortavozCLIKit",
             dependencies: [
                 "ApplicationKit", "AudioCaptureKit", "PortavozCore", "ModelStoreKit",
                 "PlatformKit",
                 "TranscriptionKit", "DiarizationKit", "IntelligenceKit",
                 "StorageKit", "IntegrationsKit", "AudioPlaybackKit",
                 .product(name: "GRDB", package: "GRDB.swift"),
-            ]
+            ],
+            path: "Sources/portavoz-cli"
+        ),
+
+        .executableTarget(
+            name: "portavoz-cli",
+            dependencies: ["PortavozCLIKit"],
+            path: "Sources/portavoz-cli-main"
         ),
 
         .testTarget(
             name: "PortavozTests",
             dependencies: [
                 "portavoz-app",
-                "portavoz-cli",
+                "PortavozCLIKit",
                 "ApplicationKit",
                 "PortavozCore",
                 "PlatformKit",

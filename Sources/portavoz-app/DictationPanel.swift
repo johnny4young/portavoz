@@ -10,19 +10,16 @@ final class DictationPanelController {
     private var panel: NSPanel?
 
     func show(controller: DictationController) {
-        let height = DictationPanelLayout.height(for: controller.phase)
+        let size = DictationPanelLayout.size(for: controller)
         if let panel {
-            let origin = panel.frame.origin
-            panel.setContentSize(NSSize(width: 520, height: height))
-            if let visible = panel.screen?.visibleFrame {
-                panel.setFrameOrigin(NSPoint(
-                    x: origin.x, y: max(visible.minY, min(origin.y, visible.maxY - panel.frame.height))))
-            }
+            resize(panel, to: size)
+            // A new dictation reuses a notice's panel; it still opens at its own caret.
+            if controller.phase == .preparing { place(panel, size: size, near: controller.panelAnchor) }
             panel.orderFrontRegardless()
             return
         }
         let panel = DictationPanelWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: height),
+            contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false)
@@ -34,13 +31,10 @@ final class DictationPanelController {
         panel.isOpaque = false
         panel.hasShadow = true
         panel.contentView = NSHostingView(
-            rootView: DictationStripView(controller: controller).portavozLocalized())
-        // Bottom-center of the main screen, above the Dock — near where
-        // the eye already is while typing.
-        if let screen = NSScreen.main {
-            let frame = screen.visibleFrame
-            panel.setFrameOrigin(NSPoint(x: frame.midX - 260, y: frame.minY + 48))
-        }
+            rootView: DictationStripView(controller: controller) { [weak self] in
+                self?.relayout(for: controller)
+            }.portavozLocalized())
+        place(panel, size: size, near: controller.panelAnchor)
         panel.orderFrontRegardless()
         self.panel = panel
     }
@@ -49,14 +43,55 @@ final class DictationPanelController {
         panel?.orderOut(nil)
         panel = nil
     }
+
+    /// Beside the caret (or pointer) when known; otherwise bottom-center above the Dock.
+    private func place(_ panel: NSPanel, size: NSSize, near anchor: DictationPanelAnchor?) {
+        if let anchor,
+           let screen = NSScreen.screens.first(where: { $0.frame.contains(anchor.point) }) ?? NSScreen.main {
+            panel.setFrameOrigin(DictationPanelAnchor.origin(for: size, near: anchor, in: screen.visibleFrame))
+        } else if let screen = NSScreen.main {
+            let frame = screen.visibleFrame
+            panel.setFrameOrigin(NSPoint(x: frame.midX - size.width / 2, y: frame.minY + 48))
+        }
+    }
+
+    /// Follows a layout change without ever reopening a closed panel.
+    private func relayout(for controller: DictationController) {
+        guard let panel else { return }
+        resize(panel, to: DictationPanelLayout.size(for: controller))
+    }
+
+    private func resize(_ panel: NSPanel, to size: NSSize) {
+        guard panel.contentRect(forFrameRect: panel.frame).size != size else { return }
+        let origin = panel.frame.origin
+        // Keep the horizontal center when the compact indicator grows into the full panel.
+        let midX = panel.frame.midX
+        panel.setContentSize(size)
+        guard let visible = panel.screen?.visibleFrame else { return }
+        panel.setFrameOrigin(NSPoint(
+            x: max(visible.minX, min(midX - panel.frame.width / 2, visible.maxX - panel.frame.width)),
+            y: max(visible.minY, min(origin.y, visible.maxY - panel.frame.height))))
+    }
 }
 
 /// One height authority for AppKit and SwiftUI: a conflicting intrinsic size
 /// otherwise moves the panel again after every explicit re-show.
 private enum DictationPanelLayout {
+    @MainActor
+    static func size(for controller: DictationController) -> NSSize {
+        DictationCompactIndicator.applies(to: controller)
+            ? DictationCompactIndicator.size
+            : NSSize(width: 520, height: height(for: controller.phase) + transformHintHeight(for: controller))
+    }
+
+    @MainActor
+    private static func transformHintHeight(for controller: DictationController) -> CGFloat {
+        controller.isPolishing || controller.isTranslating ? 28 : 0
+    }
+
     static func height(for phase: DictationController.Phase) -> CGFloat {
         switch phase {
-        case .recovery, .dispatched: 288
+        case .recovery, .dispatched, .noSpeech: 288
         default: 96
         }
     }
@@ -68,13 +103,28 @@ private final class DictationPanelWindow: NSPanel {
 
 private struct DictationStripView: View {
     let controller: DictationController
+    /// Lets the panel follow phases that change without an explicit re-show, such as a failure.
+    let relayout: () -> Void
 
     var body: some View {
+        Group {
+            if DictationCompactIndicator.applies(to: controller) {
+                DictationCompactStripView(controller: controller)
+            } else {
+                fullStrip
+            }
+        }
+        .onChange(of: DictationPanelLayout.size(for: controller)) { relayout() }
+    }
+
+    private var fullStrip: some View {
         Group {
             if case .recovery(let failure) = controller.phase {
                 DictationRecoveryView(controller: controller, failure: failure)
             } else if case .verified(let words) = controller.phase {
                 verifiedDeliveryView(words)
+            } else if controller.phase == .noSpeech {
+                DictationNoSpeechView(controller: controller)
             } else if case .dispatched = controller.phase {
                 DictationUnverifiedDeliveryView(controller: controller)
             } else {
@@ -82,7 +132,7 @@ private struct DictationStripView: View {
             }
         }
         .padding(12)
-        .frame(width: 520, height: DictationPanelLayout.height(for: controller.phase))
+        .frame(width: 520, height: DictationPanelLayout.size(for: controller).height)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
     }
 
@@ -91,9 +141,18 @@ private struct DictationStripView: View {
     private var dictatingView: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Image(systemName: "waveform.badge.mic")
-                    .foregroundStyle(isFailed ? Color.orange : PVDesign.accent)
-                    .symbolEffect(.pulse, isActive: controller.phase == .listening)
+                if showsModelLoading {
+                    // Audio is kept (D561), but no words can appear yet.
+                    Image(systemName: "hourglass")
+                        .foregroundStyle(.orange)
+                        .symbolEffect(.pulse)
+                        .accessibilityLabel(L10n.text("Loading the speech model"))
+                        .accessibilityIdentifier("dictation-panel-loading")
+                } else {
+                    Image(systemName: "waveform.badge.mic")
+                        .foregroundStyle(isFailed ? Color.orange : PVDesign.accent)
+                        .symbolEffect(.pulse, isActive: controller.phase == .listening)
+                }
                 Text(title)
                     .accessibilityIdentifier("dictation-panel-state")
                     .font(.caption.weight(.semibold))
@@ -101,18 +160,28 @@ private struct DictationStripView: View {
                 if let target = controller.targetApp, controller.isActive {
                     targetChip(target)
                 }
-                if controller.isActive {
+                if controller.isActive, controller.phase != .delivering {
                     DictationTextModePicker(
                         identifier: "dictation-panel-text-mode", label: Text("Text mode"), selection: Binding(
-                        get: { controller.textMode }, set: { controller.selectTextMode($0) }))
+                        get: { controller.textChoice }, set: { controller.selectTextChoice($0) }),
+                        recipes: controller.availableRecipes)
                         .labelsHidden()
                         .controlSize(.mini)
-                        .frame(width: 80)
+                        .frame(width: 124)
+                        .disabled(!controller.canChangeTextMode)
+                    DictationTranslationPicker(
+                        identifier: "dictation-panel-translate", label: Text("Translate into"),
+                        selection: Binding(
+                            get: { controller.translationTarget }, set: { controller.selectTranslationTarget($0) }))
+                        .labelsHidden()
+                        .controlSize(.mini)
+                        .frame(width: 72)
                         .disabled(!controller.canChangeTextMode)
                 }
                 Spacer()
                 if controller.phase == .listening {
-                    meter
+                    DictationWaveform(level: controller.micLevel, isActive: true, dimmed: showsModelLoading)
+                        .frame(width: 70, height: 18)
                         .accessibilityIdentifier("dictation-panel-meter")
                 }
                 Button {
@@ -122,6 +191,8 @@ private struct DictationStripView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                // A posted paste cannot be recalled; cancelling would only hide its outcome.
+                .disabled(controller.phase == .delivering)
                 .accessibilityLabel(L10n.text("Cancel dictation"))
                 .accessibilityIdentifier("dictation-panel-cancel")
             }
@@ -131,22 +202,49 @@ private struct DictationStripView: View {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("dictation-panel-microphone-notice")
             }
+            if controller.isPolishing {
+                HStack {
+                    Text("Your words are being polished. Esc pastes them without polish.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("dictation-panel-polish-hint")
+                    Spacer()
+                    Button("Paste without polish") { controller.skipPolish() }
+                        .controlSize(.small)
+                        .accessibilityIdentifier("dictation-panel-skip-polish")
+                }
+            } else if controller.isTranslating {
+                HStack {
+                    Text("Your words are being translated on this Mac. Esc pastes them untranslated.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("dictation-panel-translate-hint")
+                    Spacer()
+                    Button("Paste untranslated") { controller.skipPolish() }
+                        .controlSize(.small)
+                        .accessibilityIdentifier("dictation-panel-skip-translation")
+                }
+            }
             if isFailed {
                 EmptyView()
             } else if controller.confirmedText.isEmpty && controller.partialText.isEmpty {
                 Text(emptyCaptionHint)
+                    .accessibilityIdentifier("dictation-panel-hint")
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 // Confirmed words are settled; the tail is still volatile, so
                 // it reads gray — it firms up as the engine commits it.
-                (Text(controller.confirmedText)
-                    .foregroundStyle(.primary)
-                    + Text(controller.partialText.isEmpty ? "" : " ")
-                    + Text(controller.partialText)
-                    .foregroundStyle(.tertiary))
+                let visible = DictationPanelTranscript.visible(
+                    confirmed: controller.confirmedText, partial: controller.partialText)
+                let confirmed = Text(visible.confirmed).foregroundStyle(.primary)
+                let partial = Text(visible.partial).foregroundStyle(.tertiary)
+                Text("\(confirmed)\(partial)")
                     .accessibilityIdentifier("dictation-panel-transcript")
+                    // The strip elides earlier words visually; VoiceOver keeps the whole dictation.
+                    .accessibilityLabel(DictationAssembler.text(
+                        confirmed: controller.confirmedText, partial: controller.partialText))
                     .font(.body)
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -155,22 +253,38 @@ private struct DictationStripView: View {
     }
 
     /// The brief confirmation after insertion: N words → the target app,
-    /// and the honest reassurance that nothing was stored.
+    /// and whether the dictation history kept it.
     private func verifiedDeliveryView(_ words: Int) -> some View {
         HStack(spacing: 10) {
             Image(systemName: PVSymbol.success)
                 .foregroundStyle(.green)
                 .font(.title3)
             VStack(alignment: .leading, spacing: 1) {
-                Text(insertedTitle(words))
+                Text(controller.correctionSummary ?? insertedTitle(words))
                     .accessibilityIdentifier("dictation-panel-delivery-status")
                     .font(.callout.weight(.medium))
-                Text("Nothing was saved in Portavoz.")
+                Text(controller.deliveryPrivacyLine)
                     .accessibilityIdentifier("dictation-panel-delivery-detail")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                if let notice = controller.polishNotice {
+                    Text(notice)
+                        .accessibilityIdentifier("dictation-panel-polish-notice")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
             }
             Spacer()
+            if let learnable = controller.learnableCorrection {
+                Button(L10n.format("Always write “%@”", learnable.rule.replacement)) {
+                    controller.learnCorrection()
+                }
+                .controlSize(.small)
+                .help(L10n.format(
+                    "Adds “%@” → “%@” to your text replacements.", learnable.rule.trigger, learnable.rule.replacement))
+                .accessibilityIdentifier("dictation-panel-learn-correction")
+            }
         }
     }
 
@@ -195,25 +309,7 @@ private struct DictationStripView: View {
         .background(PVDesign.accent.opacity(0.14), in: Capsule())
     }
 
-    /// Same dB mapping as the recording HUD's meter: −60 dB → 0, 0 dB → 1.
-    private var meter: some View {
-        ZStack(alignment: .leading) {
-            Capsule().fill(.quaternary)
-            GeometryReader { geometry in
-                Capsule()
-                    .fill(PVDesign.accent)
-                    .frame(width: geometry.size.width * meterFraction)
-            }
-        }
-        .frame(width: 70, height: 4)
-    }
-
-    private var meterFraction: CGFloat {
-        let level = controller.micLevel
-        guard level > 0.0001 else { return 0 }
-        let decibels = 20 * log10(level)
-        return CGFloat(max(0, min(1, (Double(decibels) + 60) / 60)))
-    }
+    private var showsModelLoading: Bool { controller.phase == .listening && controller.isLoadingModel }
 
     private var isFailed: Bool {
         if case .failed = controller.phase { return true }
@@ -221,7 +317,10 @@ private struct DictationStripView: View {
     }
 
     private var emptyCaptionHint: String {
-        controller.phase == .preparing ? L10n.text("Preparing microphone…") : L10n.text("Listening…")
+        if controller.phase == .preparing { return L10n.text("Preparing microphone…") }
+        return showsModelLoading
+            ? L10n.text("Keep talking. Your words appear once the model is ready.")
+            : L10n.text("Listening…")
     }
 
     private var title: String {
@@ -229,10 +328,13 @@ private struct DictationStripView: View {
         case .preparing:
             return L10n.text("Preparing dictation…")
         case .listening:
-            return L10n.text("Dictating")
+            return showsModelLoading ? L10n.text("Loading speech model…") : L10n.text("Dictating")
+        case .delivering:
+            if controller.isTranslating { return L10n.text("Translating…") }
+            return controller.isPolishing ? L10n.text("Polishing…") : L10n.text("Inserting…")
         case .failed(let message):
             return message
-        case .idle, .verified, .dispatched, .recovery:
+        case .idle, .verified, .dispatched, .noSpeech, .recovery:
             return ""
         }
     }

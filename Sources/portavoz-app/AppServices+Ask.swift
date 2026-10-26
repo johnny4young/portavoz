@@ -4,10 +4,15 @@ import IntegrationsKit
 import PortavozCore
 import StorageKit
 
+typealias AppAskAnswering = AskMeetingAnswering & AskNoteAnswering & AskDictationAnswering
+    & AskWebAnswering
+
 @MainActor
 final class AppAskModelClient: AskModelClient {
     private let useCase: AskMeetings
     private let noteUseCase: AskNotes
+    private let dictationUseCase: AskDictations
+    private let dictationPolicy: LoadDictationHistoryPolicy
     private let webUseCase: AskWeb
     private let memoryEntities: LoadAutomationEntities
     private let memoryCommitments: LoadPersonCommitments
@@ -21,6 +26,7 @@ final class AppAskModelClient: AskModelClient {
     init(
         useCase: AskMeetings,
         noteUseCase: AskNotes,
+        dictationUseCase: AskDictations,
         webUseCase: AskWeb,
         store: MeetingStore,
         graphTelemetry: MeetingMemoryGraphQueryTelemetry =
@@ -28,6 +34,8 @@ final class AppAskModelClient: AskModelClient {
     ) {
         self.useCase = useCase
         self.noteUseCase = noteUseCase
+        self.dictationUseCase = dictationUseCase
+        dictationPolicy = LoadDictationHistoryPolicy(store: store)
         self.webUseCase = webUseCase
         memoryEntities = LoadAutomationEntities(catalog: store)
         memoryCommitments = LoadPersonCommitments(
@@ -113,6 +121,21 @@ final class AppAskModelClient: AskModelClient {
         onEvidence: @escaping AskNoteEvidenceReceiver
     ) async throws -> AskNoteAnswer {
         try await noteUseCase.answer(
+            question,
+            limit: limit,
+            onEvidence: onEvidence)
+    }
+
+    func askDictationHistoryIsOn() async throws -> Bool {
+        try await dictationPolicy.execute(()).isEnabled
+    }
+
+    func answerAskDictations(
+        _ question: String,
+        limit: Int,
+        onEvidence: @escaping AskDictationEvidenceReceiver
+    ) async throws -> AskDictationAnswer {
+        try await dictationUseCase.answer(
             question,
             limit: limit,
             onEvidence: onEvidence)
@@ -217,6 +240,7 @@ struct AppSemanticSearchComposition {
     let coordinator: SemanticCorpusIndexingCoordinator
     let ask: AskMeetings
     let notesAsk: AskNotes
+    let dictationsAsk: AskDictations
     let webAsk: AskWeb
     let library: LocalLibrarySemanticSearch
     let background: SemanticCorpusIndexingSupervisor
@@ -237,6 +261,7 @@ extension AppServices {
         AppAskModelClient(
             useCase: composition.ask,
             noteUseCase: composition.notesAsk,
+            dictationUseCase: composition.dictationsAsk,
             webUseCase: composition.webAsk,
             store: store)
     }
@@ -254,7 +279,7 @@ extension AppServices {
         store: MeetingStore,
         usesTemporaryStore: Bool,
         semanticRuntime: any SemanticEmbeddingRuntimeClient,
-        selectedAnswering: any AskMeetingAnswering & AskNoteAnswering & AskWebAnswering,
+        selectedAnswering: any AppAskAnswering,
         telemetry: ResourceWorkloadTelemetry,
         backgroundWork: AppBackgroundWorkComposition
     ) -> AppSemanticSearchComposition {
@@ -278,6 +303,15 @@ extension AppServices {
             readiness: readiness,
             pipelineTelemetry: pipelineTelemetry,
             selectedAnswering: selectedAnswering)
+        let dictationAnswering: any AskDictationAnswering = usesTemporaryStore
+            ? UITestAskDictationAnswering()
+            : selectedAnswering
+        let dictationsAsk = AskDictations(
+            retrieval: usesTemporaryStore
+                ? LocalAskDictationRetrieval(store: store, rewriter: UITestNoQueryRewriting())
+                : LocalAskDictationRetrieval(store: store),
+            answering: dictationAnswering,
+            telemetry: usesTemporaryStore ? .disabled : pipelineTelemetry)
         let webAsk = makeWebAsk(
             store: store,
             usesTemporaryStore: usesTemporaryStore,
@@ -303,6 +337,7 @@ extension AppServices {
             coordinator: coordinator,
             ask: ask,
             notesAsk: notesAsk,
+            dictationsAsk: dictationsAsk,
             webAsk: webAsk,
             library: library,
             background: background,
@@ -315,7 +350,7 @@ extension AppServices {
         semanticRuntime: any SemanticEmbeddingRuntimeClient,
         readiness: ResolveSemanticCorpusReadiness,
         pipelineTelemetry: AskPipelineTelemetry,
-        selectedAnswering: any AskMeetingAnswering & AskNoteAnswering & AskWebAnswering
+        selectedAnswering: any AppAskAnswering
     ) -> (AskMeetings, AskNotes, any AskWebAnswering) {
         if usesTemporaryStore {
             return (
@@ -558,9 +593,25 @@ private struct UITestAskMeetingRetrieval: AskMeetingRetrieving {
             meetingID
         case .notes:
             throw AskSourcePolicyError.notesRequireTypedAdapter
+        case .dictations:
+            throw AskSourcePolicyError.dictationsRequireTypedAdapter
         case .web:
             throw AskSourcePolicyError.webUnavailable
         }
+    }
+}
+
+/// Disposable launches never call the on-device model, so journeys stay deterministic.
+private struct UITestNoQueryRewriting: AskQueryExpanding {
+    func expand(_ question: String) async throws -> [String] { [question] }
+}
+
+private struct UITestAskDictationAnswering: AskDictationAnswering {
+    func answer(
+        question _: String,
+        citations _: [AskDictationCitation]
+    ) async throws -> String? {
+        "You said you would send the report on Friday [1]."
     }
 }
 

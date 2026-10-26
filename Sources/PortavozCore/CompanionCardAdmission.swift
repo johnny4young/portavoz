@@ -20,18 +20,6 @@ public enum CompanionCardAdmissionDecision: Equatable, Sendable {
 public enum CompanionCardAdmission {
     private static let lexicalDuplicateWindow: TimeInterval = 12
     private static let minimumDistinctiveTokens = 4
-    private static let stopWords: Set<String> = [
-        // English
-        "a", "an", "and", "are", "as", "at", "be", "but", "by", "can",
-        "could", "did", "do", "does", "for", "from", "how", "i", "if", "in",
-        "is", "it", "of", "on", "or", "that", "the", "they", "this", "to",
-        "uh", "um", "we", "what", "when", "where", "which", "who", "with",
-        "would", "you",
-        // Spanish
-        "a", "al", "como", "con", "cual", "cuando", "de", "del", "donde",
-        "el", "en", "es", "este", "la", "las", "lo", "los", "o", "para",
-        "por", "que", "se", "si", "son", "un", "una", "y", "yo"
-    ]
     private static let negations: Set<String> = [
         "cannot", "cant", "doesnt", "dont", "isnt", "never", "no", "not",
         "nothing", "sin", "ni", "nunca", "tampoco", "wont", "without"
@@ -123,16 +111,12 @@ private extension CompanionCardAdmission {
     }
 
     static func tokens(in text: String) -> [String] {
-        text.folding(
-            options: [.caseInsensitive, .diacriticInsensitive],
-            locale: Locale(identifier: "en_US_POSIX"))
-            .split { !$0.isLetter && !$0.isNumber }
-            .map(String.init)
+        BilingualFunctionWords.foldedTokens(in: text)
     }
 
     static func distinctiveTokens(_ tokens: [String]) -> Set<String> {
         Set(tokens.filter { token in
-            token.count >= 2 && !stopWords.contains(token)
+            token.count >= 2 && !BilingualFunctionWords.all.contains(token)
         })
     }
 

@@ -118,6 +118,7 @@ finish so the reported concurrent-load measurement remains comparable.
 | `bench-fts` | `[--meetings N] [--segments-per-meeting N]` — legacy disposable FTS harness |
 | `bench-scale` | `[--library-sizes 1000,10000,50000,100000] [--meeting-minutes 30,120,480] [--runs 20] [--output report.json]` — Release-only tracked scale matrix over throwaway databases; lexical timing calls the exact ApplicationKit candidate policy without loading embeddings (D79/D81) |
 | `bench-semantic` | `[--segments 100000] [--runs 20] [--variants 1] [--output checkpoint.json]` — one production-schema schema-2 semantic checkpoint with deterministic normalized vectors, exact-top-result validation, compatibility profile/asset disclosure, and separate store-open/corpus-seed/warmup/measured-query wall/CPU plus footprint metrics. `scripts/run-semantic-scale-baseline.sh` isolates each scale in a fresh Release process and seals source, binary, toolchain, host, fixture, query-pack, profile, asset, configuration, and stage identity into one fail-closed manifest; `PORTAVOZ_SEMANTIC_SCALE_VARIANTS` selects the bounded query batch. `scripts/run-semantic-control-baseline.sh` alternates three canonical and three diagnostic matrices from one clean unchanged source, validates both aggregate receipts, then publishes them owner-only. Either runner may set `PORTAVOZ_SEMANTIC_SOURCE_ROOT` to a separate clean source worktree while retaining the current checkout's newer validation tools. `scripts/semantic_scale_manifest.py compare` refuses unlike or legacy evidence; `baseline` requires three unique clean same-identity canonical-scale manifests and retains aggregate-only one-vector control or a separately scoped three-vector diagnostic; `cross-host` embeds and revalidates one canonical control receipt per 8 GiB, 16 GiB, and reference profile, requires collective Sequoia/Tahoe coverage, and emits an incomplete matrix with no authority until the real set is complete (D82/D83/D345–D347) |
+| `bench-dictation-search` | `--fixture <json> --output <json> --build <id> --commit <sha> [--asset-download never\|if-needed] [--scales 1000,10000]` — seeds a disposable store with `Fixtures/DictationSearch/public-synthetic-v1.json` and records, per question, the word-search ranking, the shipped rewritten ranking, a research synonym-rewrite ranking and two semantic rankings with similarities (raw and corpus-mean-centered `SentenceEmbedder` vectors), plus embed, query, rewrite and scale latency and vector bytes. Output is identities and numbers only, owner-only and never overwritten; `scripts/dictation_search_quality.py evaluate` derives the hybrids, sweeps thresholds and applies the D581 gate |
 | `bench-waveform` | `[--mic <audio>] [--system <audio>] [--buckets 600] [--runs 20] [--output report.json]` — Release waveform probe that copies one or both channels to a unique throwaway directory, reports format/size/duration but no source paths or content, separates first/repeat wall/CPU/footprint distributions, fingerprints the exact buckets, and replaces its scratch input to characterize invalidation (D84) |
 | `bench-spotlight` | `[--mode legacy|snapshot] [--meetings N] [--runs N] [--delivery-items N] [--output report.json]` — Release projection probe over a throwaway production-schema database. The wrapper runs isolated 1k/10k/100k legacy and snapshot processes, checks exact fingerprints, and may publish only synthetic items to a unique protected named index before deleting them (D85) |
 
@@ -189,7 +190,8 @@ reported (D75/D103).
 
 - Transport: **JSON-RPC 2.0 over stdio, newline-delimited**; protocolVersion `2024-11-05`. Storage-agnostic protocol layer in IntegrationsKit (`MCPServer`, `MCPTool` with Data→String handlers, raw JSON schemas); the toolbox is assembled in the CLI (`MeetingToolbox`).
 - Registration with an agent: `claude mcp add portavoz -- portavoz-cli mcp`.
-- **9 tools**: the frozen ordered prefix `list_meetings` · `search_meetings` (FTS with snippets+ids+timestamps) · `get_transcript` (attributed) · `get_summary` (latest read-consistent General snapshot + action items) · `get_action_items` (global pending items) · `ask` (the shared ApplicationKit hybrid on-device workflow with bounded per-term lexical candidates, complete selected segments, and citations), plus the appended `portavoz-reading/2` tools `get_transcript_v2` · `get_summary_v2` · `get_action_items_v2`.
+- Distribution (D582): releases ship the tool as `Portavoz.app/Contents/Helpers/portavoz-cli`, a relative link to the app executable, which `PortavozLauncher` routes to `PortavozCLI.main()` whenever the process name is `portavoz-cli`. The Homebrew cask links it into the Homebrew `bin`; Settings › Integrations can link it from `~/.local/bin` and shows the command and JSON configuration for MCP clients. Run from the bundle, the tool uses the same Application Support library and models as the app. A plain `swift build --product portavoz-cli` still produces the standalone development binary.
+- **12 tools**: the frozen ordered prefix `list_meetings` · `search_meetings` (FTS with snippets+ids+timestamps) · `get_transcript` (attributed) · `get_summary` (latest read-consistent General snapshot + action items) · `get_action_items` (global pending items) · `ask` (the shared ApplicationKit hybrid on-device workflow with bounded per-term lexical candidates, complete selected segments, and citations), plus the appended `portavoz-reading/2` tools `get_transcript_v2` · `get_summary_v2` · `get_action_items_v2`, then the dictation tools `list_dictations` · `search_dictations` · `get_dictation`.
 - **Correction boundary (D233/D234/D313):** search and Ask serve the corrected
   text of an active `replaceText` correction under its accepted segment
   identity, keep speaker-only-corrected lines findable, and continue omitting
@@ -205,6 +207,23 @@ reported (D75/D103).
   `get_action_items_v2` always read accepted generated artifacts but disclose
   whether they predate the current corrections via `composed=pending`.
 - **Read-only shape (MCP-001, Jul 2026)**: the `initialize` response carries `instructions` declaring the contract — every tool only reads, nothing can mutate the library, processing stays local, and `ask` is the preferred entry for questions. `get_transcript` is paginated by segment (`offset`/`limit`, default 200, cap 500) with a self-describing header naming the covered range, the total, and the exact offset to continue from — an agent never guesses whether more remains, and a past-the-end offset gets an honest one-line answer instead of an error. `search_meetings` accepts `limit` (default 20, cap 50); the boundary never sees an unbounded client value. `MeetingToolboxTests` covers the real catalog (shape, schemas, pagination overlap/bounds/caps, search clamping) — previously only the protocol layer had tests, against fakes.
+- **Dictation history (D578, Oct 2026)**: `DictationToolbox` appends three
+  read-only tools after the frozen meeting catalog. They read only while the
+  user has turned on both the dictation history and "Let agents read the
+  history"; that consent lives in the database (`dictationHistoryPolicy.exposesToAgents`)
+  because the server is another process, and the store checks it in the same
+  read as the rows on every call. With it off, every call answers one fixed line
+  explaining how to turn it on; the tools stay listed so the catalog never
+  changes. `list_dictations` pages newest first (`offset`/`limit`, default 20,
+  cap 100); `search_dictations` takes `query` plus optional `application` and
+  `only_not_delivered` (default 20, cap 50) and uses the same quoted FTS query
+  as the app; `get_dictation` returns one dictation in full, with the words
+  before Clean mode only when the user kept them. Each response opens with a
+  content-free `portavoz-dictations/1` header (`total`, `range`, `next_offset`,
+  or `id`); entries name the application, delivery (`inserted`, `sent, not
+  verified`, `not delivered`) and mode, and lists preview at most 280
+  characters. `DictationToolboxTests` cover the real catalog, refusal and
+  revocation, paging, filters, hostile queries and the full read.
 - Verified E2E: an MCP agent answered "what did we agree about the transcription budget?" with the correct sources.
 
 ## Exporters — IntegrationsKit
@@ -347,7 +366,18 @@ privacy receipt as the only in-product network-egress truth.
   The SPM shipping path compiles the SDK-only intents source under the shipping
   module name and runs `appintentsmetadataprocessor` out of band;
   `make-app.sh` fails unless the resulting `Metadata.appintents` declares exactly
-  five actions, three App Entities, and their three string queries.
+  nine actions, three App Entities, and their three string queries.
+  Dictation actions (D583): `DictateIntent` and `PasteLastDictationIntent` run in
+  the background (`[.background]` on macOS 26, no foreground compatibility
+  property), post `PortavozAppIntentBridge.requestDictation`, and are answered
+  synchronously by the delegate (`accepted`, `notReady`, `dictationOff`, `busy`,
+  `nothingToPaste`); a request is never replayed after launch. Success returns no
+  dialog; failures throw `PortavozDictationIntentError`. `SearchDictationsIntent`
+  (`Words`, `Limit` 1–50, default 10) returns `[String]` dictation texts newest
+  first through the `AppDependency` `PortavozDictationReader`, whose app
+  implementation calls `ReadDictationsForAgents`; without the agents and
+  Shortcuts consent it throws `notShared`. `OpenDictationsIntent` foregrounds the
+  app and routes `.dictations(words)`, which sets the history search.
   `PortavozMeetingEntity`, `PortavozPersonEntity`, and
   `PortavozCommitmentEntity` expose only a display title/name plus meeting date
   or optional commitment due date. Their standard `AppDependency` catalog is

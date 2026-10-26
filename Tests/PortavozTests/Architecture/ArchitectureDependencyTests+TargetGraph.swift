@@ -30,7 +30,7 @@ extension ArchitectureDependencyTests {
             ])
         XCTAssertTrue(try XCTUnwrap(targets["portavoz-app"]).dependencies.contains(
             "ApplicationKit"))
-        XCTAssertTrue(try XCTUnwrap(targets["portavoz-cli"]).dependencies.contains(
+        XCTAssertTrue(try XCTUnwrap(targets["PortavozCLIKit"]).dependencies.contains(
             "ApplicationKit"))
         XCTAssertTrue(try XCTUnwrap(targets["PortavozTests"]).dependencies.contains(
             "ApplicationKit"))
@@ -43,7 +43,7 @@ extension ArchitectureDependencyTests {
         let targets = try TargetManifestParser.declarations(
             in: Self.contents(of: "Package.swift"))
         let allowedConsumers = Set([
-            "ApplicationKit", "portavoz-app", "portavoz-cli", "PortavozTests",
+            "ApplicationKit", "portavoz-app", "PortavozCLIKit", "PortavozTests",
         ])
         let violations = targets.values
             .filter { !allowedConsumers.contains($0.name) }
@@ -63,7 +63,7 @@ extension ArchitectureDependencyTests {
             "PortavozCore", "ApplicationKit", "PlatformKit", "ModelStoreKit",
             "AudioCaptureKit", "TranscriptionKit", "DiarizationKit",
             "IntelligenceKit", "StorageKit", "AudioPlaybackKit",
-            "IntegrationsKit", "portavoz-app", "portavoz-cli",
+            "IntegrationsKit", "PortavozCLIKit", "portavoz-app", "portavoz-cli",
         ])
         let expected: [String: Set<String>] = [
             "PortavozCore": [],
@@ -80,8 +80,10 @@ extension ArchitectureDependencyTests {
                 "AudioPlaybackKit", "DiarizationKit", "IntelligenceKit",
                 "PortavozCore", "StorageKit", "TranscriptionKit",
             ],
+            "PortavozCLIKit": productionTargets.subtracting(["portavoz-app", "portavoz-cli", "PortavozCLIKit"]),
+            // The app also runs the command-line tool when started as `portavoz-cli` (D582).
             "portavoz-app": productionTargets.subtracting(["portavoz-app", "portavoz-cli"]),
-            "portavoz-cli": productionTargets.subtracting(["portavoz-app", "portavoz-cli"]),
+            "portavoz-cli": ["PortavozCLIKit"],
         ]
 
         XCTAssertEqual(Set(expected.keys), productionTargets)

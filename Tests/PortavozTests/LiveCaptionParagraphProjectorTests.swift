@@ -22,6 +22,18 @@ final class LiveCaptionParagraphProjectorTests: XCTestCase {
             isFinal: true)
     }
 
+    func testParagraphCapNeverSplitsASubwordContinuation() {
+        let long = row(String(repeating: "palabra ", count: 52) + "anal", channel: .microphone, start: 0, end: 30)
+        var continuation = row("izando", channel: .microphone, start: 30.1, end: 30.4)
+        continuation.liveUpdateMode = .tokenContinuation
+
+        let result = LiveCaptionParagraphProjector.project(
+            captions: [long, continuation], liveSpeakerLabels: [:], translations: [:])
+
+        XCTAssertEqual(result.segments.count, 1)
+        XCTAssertTrue(result.segments[0].text.hasSuffix("analizando"))
+    }
+
     func testConsecutiveMicrophoneRowsBecomeOneDisplayParagraph() {
         let first = row("I reviewed the plan.", channel: .microphone, start: 0, end: 1)
         let second = row("The release is tomorrow.", channel: .microphone, start: 1.3, end: 2)
@@ -130,4 +142,34 @@ final class LiveCaptionParagraphProjectorTests: XCTestCase {
         XCTAssertEqual(result.translations.count, 1)
         XCTAssertNil(result.translations[preview.id])
     }
+    func testStableTokenRowsStillGroupWhileTokenPreviewRemainsSeparate() {
+        var first = row("First statement.", channel: .microphone, start: 0, end: 1)
+        first.liveUpdateMode = .tokenDelta
+        var second = row("Next statement.", channel: .microphone, start: 1.2, end: 2)
+        second.liveUpdateMode = .tokenDelta
+        var preview = row(" unfinished", channel: .microphone, start: 2, end: 2.2)
+        preview.isFinal = false
+        preview.liveUpdateMode = .tokenPreview
+        let result = LiveCaptionParagraphProjector.project(
+            captions: [first, second], liveSpeakerLabels: [:],
+            translations: [first.id: "Primera frase.", second.id: "Siguiente frase."], volatilePreviews: [preview])
+        XCTAssertEqual(result.segments.map(\.text), ["First statement. Next statement.", " unfinished"])
+        XCTAssertEqual(result.segments.map(\.id), [first.id, preview.id])
+        XCTAssertEqual(result.translations[first.id], "Primera frase. Siguiente frase.")
+        XCTAssertNil(result.translations[preview.id])
+        XCTAssertEqual(first.text, "First statement.")
+        XCTAssertEqual(second.text, "Next statement.")
+    }
+
+    func testOwnedContinuationKeepsItsBoundaryWhenDisplayParagraphsGroup() {
+        var first = row("meet", channel: .microphone, start: 0, end: 1)
+        first.liveUpdateMode = .tokenDelta
+        var second = row("ing.", channel: .microphone, start: 1, end: 2)
+        second.liveUpdateMode = .tokenContinuation
+        let result = LiveCaptionParagraphProjector.project(
+            captions: [first, second], liveSpeakerLabels: [:], translations: [:])
+        XCTAssertEqual(result.segments.map(\.text), ["meeting."])
+        XCTAssertEqual(result.segments.first?.id, first.id)
+    }
+
 }

@@ -113,6 +113,29 @@ struct MenuBarContent: View {
                     services.dictation.toggle(services: services)
                 }
                 .accessibilityIdentifier("menu-bar-dictate")
+                if services.dictation.hasPastableText {
+                    quickAction("Paste last", "arrow.uturn.down.square", tint: PVDesign.accent) {
+                        services.pasteLastDictation()
+                    }
+                    .accessibilityIdentifier("menu-bar-paste-last")
+                }
+                quickAction("Rewrite selection", PVSymbol.generate, tint: .secondary) {
+                    services.rewriteSelection()
+                }
+                .accessibilityIdentifier("menu-bar-rewrite-selection")
+                if services.dictation.hasAlternateText {
+                    if services.dictation.lastText.alternateIsOriginal {
+                        quickAction("Paste original", "text.badge.minus", tint: .secondary) {
+                            services.pasteLastDictation(alternate: true)
+                        }
+                        .accessibilityIdentifier("menu-bar-paste-original")
+                    } else {
+                        quickAction("Paste without polish", "text.badge.minus", tint: .secondary) {
+                            services.pasteLastDictation(alternate: true)
+                        }
+                        .accessibilityIdentifier("menu-bar-paste-unpolished")
+                    }
+                }
             }
             quickAction("Ask", "bubble.left.and.text.bubble.right", tint: .secondary) {
                 openMainWindow()

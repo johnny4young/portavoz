@@ -49,7 +49,7 @@ value-first text semantics. The Topic and Skills phases share this bounded
 observation helper. Citation clicks
 and exact playback seeks still use live elements, and no snapshot crosses a
 user action. A change to the shared snapshot helper alone requires the complete
-bilingual catalog; neighboring changes cannot supply its missing locale scope.
+catalog; neighboring changes cannot supply its missing scope.
 The existing iterative snapshot traversal is shared with detail
 evidence and publication-receipt tests without changing those assertions. This
 reduces repeated cross-process observations, not launches, jobs, screenshots,
@@ -363,7 +363,7 @@ failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: explicit macos-26/Xcode 26.6 current-SDK
-build/test, explicit macos-15/Xcode 26.3 Sequoia build/test, checksum-pinned
+build/test, checksum-pinned
 **SwiftLint 0.65.0 `--strict`** on Linux, a separate current-SDK iOS 17
 Simulator compile for the four shared targets, and a repository-hygiene/tooling
 gate that runs before macOS allocation). Each behavioral Swift lane owns one
@@ -373,7 +373,7 @@ sequential destination compiles and cannot claim runtime/device behavior.
 
 ### Compatible Swift build reuse, not test-result reuse (D557)
 
-The current-SDK and Sequoia jobs restore only `.build` with commit-pinned
+The current-SDK job restores only `.build` with commit-pinned
 `actions/cache` restore/save actions. `scripts/ci_swift_cache_key.py` binds each
 immutable seed to its lane, absolute workspace and developer paths, CPU
 architecture, macOS version/build, runner image/version, Xcode and Swift build,
@@ -498,6 +498,18 @@ these negative controls are not passing feature tests.
 
 ### Scoped UI execution
 
+Locale policy (D586): XCUITest runs in English only. Pull requests, hosted
+CI, `make test-ui-release` and candidate automation select the `en` locale,
+and the physical VoiceOver/Voice Control cells run English only. Spanish is a
+unit-test property of the string catalogs in `LocalizationTests`: every key
+has a translated, non-empty Spanish value with the same placeholders, every
+visible SwiftUI/AppKit literal (single words included) is cataloged, Spanish
+equals English only for an explicit list of untranslatable terms, and no key
+is stale. `SettingsUITests/testLanguageToggleSwitchesVisibleTextWithoutRelaunch`
+still switches the running app to Spanish inside the English run.
+`make test-ui-es` remains a manual pass that no gate requires. Earlier
+bilingual receipts below are history.
+
 `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates macOS UI runners only when product presentation is
 affected: one job builds the exact products once into an `xctestproducts`
@@ -510,7 +522,7 @@ changes. It ignores earlier child anchors because they may prove only the
 child diff; several criss-cross merge bases widen to their common ancestor,
 and an unavailable default-branch ref fails selection rather than falling back
 to the parent (D542). Manual dispatch selects the complete
-bilingual catalog. Because a prebuilt-products run does not hand the XCTest
+English catalog. Because a prebuilt-products run does not hand the XCTest
 process the app's language, bilingual expectations read
 `UITestLocale.environmentLocale` — the locale the run declared — rather than
 the ambient `Locale.current`; `scripts/check-repository-hygiene.sh` rejects the
@@ -700,8 +712,8 @@ gate passed. No general clipboard, real meeting, model download or microphone
 participates.
 Missing Accessibility permission for the disposable app is an explicit failing
 native gate, not a skipped success, a trust prompt or a simulated delivery.
-`make test-ui-bilingual` and scoped hosted runs select the 140 unattended cases;
-`make test-ui-native-dictation` selects two real receiver cases in EN and ES.
+`make test-ui-release` and scoped hosted runs select the unattended cases;
+`make test-ui-native-dictation` selects two real receiver cases in English.
 The second enters the production controller with scripted audio/recognition,
 chooses Clean from the actual nonactivating panel, explicitly acknowledges Stop
 after the pointer gesture returns on a distinct UUID control board, and reads back the replacement
@@ -920,7 +932,7 @@ word loss and replay protection as a joint unresolved contract (D518).
 | WaveformTests / AudioTranscoderTests / AudioExportSessionTests / MeetingAudioWorkflowTests | Exact range-aligned Accelerate envelopes, deterministic fixed-chunk cancellation, already-cancelled caller rejection, one 600-default/2,000-maximum immutable waveform snapshot, host AAC integration, canonical-output collision preservation, all-channel verification before raw deletion, rollback after later-channel failure, live filesystem byte accounting, text-only playback degradation, role-aware reversible clear-mix ranges, injected application codec semantics, and matched waveform/media-export work |
 | AudioProcessCatalogTests | direct tap scope by bundle ID: exact app/allowed helpers accepted, lookalikes and unrelated apps rejected |
 | AcceleratorFallbackTests / SubtitleExportTests / ExportDocumentTypesTests | One cancellation-aware CPU retry with both Whisper load failures preserved; exact SRT/VTT timestamps, lexical filtering, rendered prefix-aware cue bounds, same-name speaker identity separation, line/arrow sanitization; and extension-preserving text-conforming macOS subtitle content types |
-| DictationTextRulesTests / MousePTTGestureTests / MouseButtonSettingTests | Conservative bilingual filler seams; one-pass case-insensitive whole-trigger replacement without cascading or regex-template interpretation; canonical corrupt/duplicate storage; mouse press/release ownership; and vendor-facing Button 3+/invalid-default normalization without admitting left/right |
+| DictationTextRulesTests / MousePTTGestureTests / MouseButtonSettingTests | Conservative bilingual filler seams; bilingual whole-phrase line and paragraph commands that absorb recognizer commas and yield to user triggers; one-pass case-insensitive whole-trigger replacement without cascading or regex-template interpretation; canonical corrupt/duplicate storage; mouse press/release ownership; and vendor-facing Button 3+/invalid-default normalization without admitting left/right |
 | UITestDefaultsTests | Disposable XCUITest launches overlay selected preferences in volatile `NSArgumentDomain`; the recording owner samples the injected authority only after installation; ordinary launches and malformed payloads are ignored |
 | TranscriptionTests / NemotronLatin1120Tests | Parakeet mapper/deltas, WhisperEngine helpers, anti-silence hygiene, **SpokenLanguageDetector** with automatic/fixed mixed-language policy, **VocabularyPrompt**, **AudioLevel.normalizePeak**, exact non-serving Nemotron artifact/revision/routing and filesystem-layout shape, rejection of unpinned optional bundles and missing artifacts, explicit EN/ES and no-vocabulary admission, index-based shared-timestamp deltas, cursor/non-finite/non-monotonic timing failure, bounded timing-free finalization, and no duplicate final emission |
 | LiveTranscriptionBenchTests | Invalid-duration rejection before file access, exact engine-error propagation without partial evidence, early-engine feeder cancellation/drain, and real WAV feeding through an exact EOF after a partial final chunk (no extra read from floating-point duration drift) |
@@ -3518,8 +3530,8 @@ notarization, stapling, Gatekeeper, and production CloudKit capability checks.
 classes. The original deterministic, signed-build, real-hardware, and user-field
 cells remain. Schema 2 adds complete candidate automation, reviewed source
 integration plus hosted CI, production-sync admission, and physical
-assistive-technology cells for VoiceOver and Voice Control on Sequoia and
-Tahoe. Candidate automation explicitly separates frozen scope, autonomous
+assistive-technology cells for VoiceOver and Voice Control on Tahoe or newer
+(D585 removed the Sequoia cells). Candidate automation explicitly separates frozen scope, autonomous
 Apuntador validation, installed-model coverage, authoritative performance,
 resource/memory, synthetic long capture, upgrade/recovery, and complete
 bilingual XCUITest.
@@ -3551,7 +3563,7 @@ receipt ordering, D147, and D391.
 `docs/evidence/source-integration-qualification.json` freezes one read-only
 GitHub authority: `johnny4young/portavoz`, `main`, the versioned REST API, one
 current independent human approval, the hosted `CI` push workflow, and the
-`build-and-test`, `ios-portability`, `sequoia-compatibility`, `lint`, and
+`build-and-test`, `ios-portability`, `lint`, and
 `repository-hygiene` jobs. `.github/workflows/source-integration-evidence.yml`
 is manual-dispatch only and grants `actions`, `contents`, and `pull-requests`
 read permissions. It accepts dispatch only from `main`, checks out trusted
@@ -3650,14 +3662,14 @@ so a notification burst cannot grow process memory without bound. The app uses
 real Foundation CloudKit account, engine, and notification paths against the
 production container, but only the fixed public corpus.
 Finalization requires one exact OS per role, distinct run-scoped host hashes,
-and a cross-version pair with one Sequoia Mac and one Tahoe-or-newer Mac; it also
+and macOS 26 or newer on both Macs (D585); it also
 rejects a fake account switch.
 No deterministic test, XCUITest, packaging check, or locally shaped JSON file
 can replace this authorized two-Mac/account/APNs observation.
 
 **Physical assistive-technology owner (D405).**
 `docs/evidence/assistive-technology-qualification.json` freezes VoiceOver and
-Voice Control on Sequoia and Tahoe-or-newer, English then Spanish, and six
+Voice Control on Tahoe or newer, English then Spanish, and six
 ordered checkpoints backed by nine existing real-app XCUITest selectors. The
 fixed disposable launch includes the public meeting, duplicate Skills
 proposals, one Waiting receipt, and synthetic Interview Assist. It uses the
@@ -4509,7 +4521,7 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
 - `make exact-path-mutation-cross-host
   PORTAVOZ_EXACT_PATH_MUTATION_RECEIPTS=/private/path/receipts.jsonl`:
   revalidate exactly one mutation host receipt per 8 GB, 16 GB, and reference
-  profile, require Sequoia/Tahoe coverage plus one source commit/toolchain, and
+  profile, require macOS 26 Tahoe hosts plus one source commit/toolchain, and
   emit a detached, exactly recomputable schema-1 review scorecard. Complete
   comparable evidence remains `review-required`; missing, blocked, or
   identity-divergent evidence is blocked, while malformed/repeated evidence
@@ -4913,9 +4925,8 @@ source, Swift/Xcode, profile, fixture, query-pack, stage-policy, scale, or
 configuration drift. Only Apple-Silicon hosts qualify. The required set is one
 receipt for each shared resource profile: 7–10 GiB (`memory-8gb`), 14–18 GiB
 (`memory-16gb`), and at least
-32 GiB (`reference`). Those three receipts must collectively cover Sequoia
-(major 15) and Tahoe (major 26). This is the established three-profile/two-OS
-contract, not an unapproved six-cell Cartesian expansion.
+32 GiB (`reference`). Since D585 all three receipts run on Tahoe (major 26); the Sequoia (major 15)
+requirement was retired with the deployment floor.
 
 The host-derived Swift target may differ only when its architecture and macOS
 major match the sealed host; Swift and Xcode version/build identity must remain
@@ -4932,7 +4943,8 @@ The tracked
 `docs/evidence/semantic-scale-cross-host-readiness-20260819.json` contains the
 only real receipt currently available: Tahoe on the 36 GiB reference host. It
 is therefore an explicit 1/3 incomplete result, naming the missing 8 GiB,
-16 GiB, and Sequoia evidence rather than synthesizing it. Both semantic
+16 GiB evidence rather than synthesizing it (its Sequoia row was retired by
+D585). Both semantic
 collectors accept `PORTAVOZ_SEMANTIC_SOURCE_ROOT`, so the current validation
 tool can build and measure a separate clean worktree at the exact D345 source
 commit named by that receipt. Tool and source roots never become one dirty
@@ -5446,7 +5458,7 @@ verification anchor.
 | Semantic cosine with bounded local mapping at 100k × 512 dimensions | p95 < 100 ms | ✅ 9 Aug canonical Release ledger: **wall/CPU p95 63.53/64.54 ms; 0.17 MiB incremental process footprint**; three independent A/B runs also held wall p95 63.49–67.25 ms and CPU p95 64.30–68.07 ms (D318) |
 | D330 accepted-only semantic regression check at 100k × 512 dimensions | p95 < 100 ms | ✅ 11 Aug 20-sample Release development check: **wall/CPU p95 77.09/78.29 ms; 0.16 MiB incremental process footprint; 12/12 results**. This preserves the accepted fast-path budget but is not a correction-heavy or multi-host field baseline. |
 | D346 clean repeated schema-2 semantic current control at 100k × 512 dimensions | p95 < 100 ms | ✅ 13 Aug one-vector wall/CPU p95 maximum **73.92/74.50 ms** across three stable same-identity observations; separate three-vector diagnostic **80.37/81.63 ms**, no cross-identity delta or budget authority |
-| D347 cross-host semantic current-control matrix | 8 GiB + 16 GiB + reference; Sequoia + Tahoe | **Incomplete 1/3**: Tahoe/reference present; 8 GiB, 16 GiB, and Sequoia receipts missing; cross-host authority `none` |
+| D347 cross-host semantic current-control matrix | 8 GiB + 16 GiB + reference; Tahoe (D585) | **Incomplete 1/3**: Tahoe/reference present; 8 GiB and 16 GiB receipts missing; cross-host authority `none` |
 | Waveform, 55.9-minute dual channel / 600 buckets | first wall < 150 ms; repeat wall/CPU p95 < 100 ms | ✅ first wall/CPU **109.25/94.81 ms**; repeat wall/CPU p50 **69.22/70.10 ms**, p95 **70.11/71.33 ms**, down from 747.53/754.79 ms; **0.33 MiB** incremental footprint p95; exact fingerprint preserved and replacement changes it (D84) |
 | Spotlight projection, 100k meetings | wall/CPU p95 < 500 ms; absolute/incremental footprint < 160/96 MiB | ✅ wall/CPU p95 **425.64/423.58 ms**, down from 22,085.35/22,720.40 ms; **141.14/76.03 MiB** absolute/incremental footprint p95; exact fingerprint preserved. Synthetic 1k protected named-index delivery: **21.19 ms**, cleanup succeeded (D85) |
 | Detail core read, 2 h / 5k segments | diagnostic | **p50 16.31 ms / p95 17.22 ms** |
@@ -5660,9 +5672,9 @@ literal `%`/`_` handling, exact identifier order, canonical-person and
 confirmed-commitment exclusion rules, app-value mapping, navigation buffering,
 typed malformed-ID recovery, exact Radar filter precedence, and model focus
 restore behavior. The architecture ratchet pins the SDK-only import boundary,
-standard dependency injection, three entities/queries/open actions, five-action
+standard dependency injection, three entities/queries/open actions, nine-action
 metadata contract, availability-gated `IndexedEntity`, and explicit absence of
-entity publication. Metadata extraction must report exactly five actions,
+entity publication. Metadata extraction must report exactly nine actions,
 three entities, and three queries. One real-app case per locale performs three
 isolated disposable launches through the same production SDK-only open-action
 logic used by each `OpenIntent`: meeting
@@ -5681,7 +5693,7 @@ relaunch, and content-free telemetry cases. App Entity attributes separately
 prove meeting title/date/capped body, canonical-person name, and commitment
 title/due date. The source compiles under strict Swift 6 with the 14.4 target;
 the macOS 15 backend is availability-gated and keeps the non-Sendable
-AppIntents index receiver task-local. Metadata must remain exactly five actions,
+AppIntents index receiver task-local. Metadata must remain exactly nine actions,
 three entities, and three queries. Bilingual XCUITest reuses the exact entity
 open-route journey because temporary stores deliberately suppress host Spotlight
 publication. Feature-owner tests also require successful commitment confirmation
@@ -9272,3 +9284,23 @@ the typed refusal and unchanged empty editor before its ordinary bilingual
 input. All modal/foreign-owner negative controls remain required. This removes
 one redundant AX enumeration only when no candidate exists; complete runtime
 receipts, not fewer queries alone, establish budget qualification.
+
+### Dictation search quality (D581)
+
+`Fixtures/DictationSearch/public-synthetic-v1.json` is generated by
+`scripts/dictation_search_quality.py generate-public` and verified byte for byte
+by `verify-public` in the hygiene gate. It holds 160 dictations (40 targets, 40
+hard negatives that share surface words, 80 everyday fillers) and 80 questions:
+16 exact, 16 Spanish paraphrase, 16 English paraphrase, 16 cross-lingual, 8
+code-switched and 8 unanswerable. Validation rejects a meaning question that
+shares a content word with its dictation and an exact question that shares
+fewer than two. `bench-dictation-search` observes the lanes and `evaluate`
+reports hit@1, recall@5, reciprocal rank and hard-negative wins per group,
+sweeps semantic thresholds from 0 to 0.95, computes reciprocal-rank-fusion
+hybrids (k = 60) and applies the gate: meaning recall@5 at least 0.15 above
+lexical, no exact hit@1 loss, at most 25% unanswerable questions answered, and
+semantic p95 at most 150 ms at the largest scale. Scorecards are owner-only and
+never overwritten. `DictationSearchBenchmarkTests` exercise the observer with a
+deterministic bag-of-words embedding and no rewrites; the real run needs
+installed embedding assets and Apple Intelligence and is not part of CI.
+

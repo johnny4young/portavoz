@@ -116,6 +116,12 @@ struct DictationModelFixture {
         return (family, entry, Array(UnsafeBufferPointer(start: samples, count: Int(buffer.frameLength))))
     }
 
+    /// Every cell of an admitted manifest, for lanes that run the whole matrix.
+    static func caseIDs(audioRoot: URL) throws -> [String] {
+        let data = try boundedRegularData(audioRoot.appendingPathComponent("manifest.json"), limit: 2_000_000)
+        return try JSONDecoder().decode(Manifest.self, from: data).entries.map(\.caseID).sorted()
+    }
+
     static func digest(_ data: Data) -> String {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }

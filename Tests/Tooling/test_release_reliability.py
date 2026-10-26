@@ -132,7 +132,7 @@ class ReleaseReliabilityTests(unittest.TestCase):
             proof = next(
                 item
                 for item in scorecard["proofs"]
-                if item["id"] == "hardware.built-in.sequoia"
+                if item["id"] == "hardware.built-in.tahoe"
             )
             self.assertEqual(proof["state"], "fail")
 
@@ -431,8 +431,8 @@ class ReleaseReliabilityTests(unittest.TestCase):
     def test_repeated_fixture_and_platform_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            first = self.write_field(root, "airpods-a", "airpods", 15)
-            second = self.write_field(root, "airpods-b", "airpods", 15)
+            first = self.write_field(root, "airpods-a", "airpods", 26)
+            second = self.write_field(root, "airpods-b", "airpods", 26)
 
             with self.assertRaisesRegex(
                 reliability.ReliabilityError,
@@ -441,6 +441,35 @@ class ReleaseReliabilityTests(unittest.TestCase):
                 reliability.evaluate_namespace(
                     self.evaluate_args(None, None, [first, second], root / "scorecard")
                 )
+
+    def test_field_package_from_macos_15_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            evidence = self.write_field(root, "long-call", "long-call", 15)
+
+            with self.assertRaisesRegex(
+                reliability.ReliabilityError,
+                "must be Tahoe or newer",
+            ):
+                reliability.evaluate_namespace(
+                    self.evaluate_args(None, None, [evidence], root / "scorecard")
+                )
+
+    def test_contract_requires_only_tahoe_platform_cells(self):
+        contract = json.loads(
+            (REPOSITORY / "docs" / "evidence" / "reliability-gates.json").read_text()
+        )
+        identifiers = [proof["id"] for proof in contract["proofs"]]
+        self.assertEqual(identifiers, list(reliability.CONTRACT_PROOF_IDS))
+        self.assertEqual(len(identifiers), 25)
+        self.assertEqual(
+            {
+                proof["source"]["macOSMajor"]
+                for proof in contract["proofs"]
+                if "macOSMajor" in proof["source"]
+            },
+            {26},
+        )
 
     def test_field_manifest_rejects_content_bearing_additions(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -685,9 +714,7 @@ class ReleaseReliabilityTests(unittest.TestCase):
 
     def write_complete_field_evidence(self, root):
         return [
-            self.write_field(root, "built-in-15", "built-in-speaker-mic", 15),
             self.write_field(root, "built-in-26", "built-in-speaker-mic", 26),
-            self.write_field(root, "airpods-15", "airpods", 15),
             self.write_field(root, "airpods-26", "airpods", 26),
             self.write_field(
                 root,

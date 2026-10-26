@@ -13,10 +13,12 @@ final class MeetingDetailModel {
     struct State {
         fileprivate(set) var phase: LoadPhase = .idle
         fileprivate(set) var readModel: MeetingReviewReadModel?
+        fileprivate(set) var transcriptPresentationState = MeetingDetailTranscriptPresentationState()
+        var transcriptPresentation: MeetingDetailTranscriptPresentation? { transcriptPresentationState.presentation }
         fileprivate(set) var nameSuggestions: [MeetingNameSuggestion] = []
         fileprivate(set) var isSuggestingNames = false
         fileprivate(set) var voiceSuggestions: [MeetingVoiceSuggestion] = []
-        fileprivate(set) var chapterTitles: [TimeInterval: String] = [:]
+        var chapterTitles: [TimeInterval: String] { transcriptPresentationState.chapterTitles }
         fileprivate(set) var suggestedTitle: String?
         fileprivate(set) var suggestedRecipe: Recipe?
         fileprivate(set) var dismissedThinSummaryVersion: Int?
@@ -629,11 +631,10 @@ private extension MeetingDetailModel {
     }
 
     func loadMetadataSuggestions() async {
-        let titledStarts = Set(state.chapterTitles.keys)
-        guard let detail = state.readModel,
+        guard let detail = state.readModel, let presentation = state.transcriptPresentation,
             let attempt = metadataSuggestionState.begin(
-                review: detail,
-                titledChapterStarts: titledStarts)
+                review: detail, content: presentation.current,
+                titledChapterStarts: Set(state.chapterTitles.keys))
         else { return }
 
         do {
@@ -649,7 +650,11 @@ private extension MeetingDetailModel {
             if attempt.suggestsRecipe {
                 state.suggestedRecipe = suggestions.recipe
             }
-            state.chapterTitles.merge(suggestions.chapterTitles) { _, new in new }
+            var next = state
+            if next.transcriptPresentationState.mergeChapterTitles(
+                suggestions.chapterTitles, detail: state.readModel) {
+                state = next
+            }
         } catch is CancellationError {
             // A newer read revision retries every still-eligible suggestion.
         } catch {
@@ -769,15 +774,23 @@ private extension MeetingDetailModel {
         let transition = reviewAccumulator.apply(update)
         metadataSuggestionState.invalidate(correctionRevisionChanged: transition.correctionRevisionChanged)
         if transition.correctionRevisionChanged {
-            state.chapterTitles = [:]
             state.suggestedTitle = nil
             state.suggestedRecipe = nil
         }
         if transition.shouldInvalidatePlayback {
             invalidatePlayback()
         }
-        state.readModel = transition.readModel
-        state.phase = transition.phase
-        state.revision += 1
+        var next = state
+        next.readModel = transition.readModel
+        if case .core = update {
+            // Every delivered core is authoritative, even if its revision ID
+            // matches: refinement, rows or speakers may still have changed.
+            next.transcriptPresentationState.receiveCore(
+                transition.readModel, resetChapterTitles: transition.correctionRevisionChanged)
+        }
+        next.phase = transition.phase
+        next.revision += 1
+        // Publish the matching read model and derived reading together.
+        state = next
     }
 }

@@ -46,7 +46,15 @@ final class PortavozAppDelegate:
             selector: #selector(navigationIntentRequested(_:)),
             name: PortavozAppIntentBridge.navigationRequested,
             object: nil)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(dictationIntentRequested(_:)),
+            name: PortavozAppIntentBridge.dictationRequested,
+            object: nil)
         MainActor.assumeIsolated {
+            #if DEBUG
+            UITestOwnedExit.installIfRequested()
+            #endif
             routePendingStartRecordingIntent()
             routePendingStopRecordingIntent()
             routePendingNavigationIntent()
@@ -66,6 +74,7 @@ final class PortavozAppDelegate:
         MainActor.assumeIsolated {
             guard let services = Self.services else { return }
             services.dictation.syncMousePTT(services: services)
+            services.dictation.syncModifierPTT(services: services)
         }
     }
 
@@ -85,6 +94,46 @@ final class PortavozAppDelegate:
     private func navigationIntentRequested(_ notification: Notification) {
         _ = notification
         routePendingNavigationIntent()
+    }
+
+    /// Answers during the intent's post; Portavoz is never activated, so the
+    /// app in front keeps receiving the text.
+    @MainActor @objc
+    private func dictationIntentRequested(_ notification: Notification) {
+        _ = notification
+        guard let request = PortavozAppIntentBridge.consumeDictationRequest(),
+              let services = Self.services
+        else { return }
+        let outcome = Self.dictationIntentOutcome(
+            for: request,
+            dictationEnabled: UserDefaults.standard.bool(forKey: DictationController.defaultsKey),
+            phase: services.dictation.phase,
+            hasPastableText: services.dictation.hasPastableText)
+        PortavozAppIntentBridge.answerDictationRequest(outcome)
+        guard outcome == .accepted else { return }
+        switch request {
+        case .toggle: services.dictation.toggle(services: services)
+        case .pasteLast: services.pasteLastDictation()
+        }
+    }
+
+    static func dictationIntentOutcome(
+        for request: PortavozAppIntentBridge.DictationRequest,
+        dictationEnabled: Bool,
+        phase: DictationController.Phase,
+        hasPastableText: Bool
+    ) -> PortavozAppIntentBridge.DictationRequestOutcome {
+        guard dictationEnabled else { return .dictationOff }
+        switch (request, phase) {
+        case (_, .delivering), (_, .recovery):
+            return .busy
+        case (.toggle, _):
+            return .accepted
+        case (.pasteLast, .preparing), (.pasteLast, .listening):
+            return .busy
+        case (.pasteLast, _):
+            return hasPastableText ? .accepted : .nothingToPaste
+        }
     }
 
     @MainActor
@@ -138,6 +187,9 @@ final class PortavozAppDelegate:
               let request = PortavozAppIntentBridge.consumeNavigationRequest()
         else { return }
 
+        if case .dictations(let words) = request {
+            services.dictationHistory.show(search: words)
+        }
         services.pendingRoute = Self.route(for: request)
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -162,6 +214,8 @@ final class PortavozAppDelegate:
             UUID(uuidString: value).map {
                 .commitments(.commitment(CommitmentID(rawValue: $0)))
             } ?? .commitments(nil)
+        case .dictations:
+            .dictations
         }
     }
 

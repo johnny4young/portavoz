@@ -1,5 +1,7 @@
 import AppKit
+import ApplicationKit
 import AudioCaptureKit
+import Carbon.HIToolbox
 import Foundation
 import PlatformKit
 import PortavozCore
@@ -22,6 +24,8 @@ struct DictationSessionDependencies {
     var captureDestination: () -> CapturedDictationDestination
     var copyText: (String) -> Bool
     var defaults: UserDefaults
+    /// The disposable app writes learned preferences to its volatile domain only.
+    var storesPreferencesTemporarily = false
     var now: () -> Date = Date.init
     var waitForFeedbackDismissal: @MainActor (Duration) async throws -> Void = {
         try await Task.sleep(for: $0)
@@ -32,6 +36,10 @@ struct DictationSessionDependencies {
     var waitForFirstBufferDeadline: @Sendable () async throws -> Void = {
         try await Task.sleep(for: .seconds(5))
     }
+    /// Where the strip first appears; nil keeps it bottom-center (disposable launches).
+    var locatePanelAnchor: @MainActor () -> DictationPanelAnchor? = { nil }
+    /// Claims Escape system-wide while capture runs; nil leaves cancel to the panel.
+    var registerCancelKey: (@escaping () -> Void) -> (any GlobalHotkeyRegistration)? = { _ in nil }
 
     func authorizedMicrophone() async throws -> Microphone {
         guard await authorizeMicrophone() else { throw DictationMicrophoneReadiness.Failure.permissionRequired }
@@ -57,6 +65,24 @@ struct DictationSessionDependencies {
     /// Nil in ordinary composition: no observation, file, timer or telemetry.
     var measurementSink: DictationSessionMeasurementRecorder.Sink?
     var measurementClock: DictationSessionMeasurementRecorder.Clock = { .now }
+    var playCue: (DictationSoundCue) -> Void = { _ in }
+    /// Nil leaves delivery to the lexical check alone (the gate is opt-in).
+    var makeSpeechGate: () -> DictationSpeechGate? = { nil }
+    var makePauseDetector: (@escaping @Sendable () -> Void) -> DictationPauseDetector? = { _ in nil }
+    /// Nil when history is off: read once when the session starts.
+    var beginHistory: () -> DictationHistoryWriter? = { nil }
+    /// Counts a finished dictation when statistics are on; the store checks consent.
+    var recordStats: (DictationStatsSample) -> Void = { _ in }
+    /// A rewrite's spoken instruction: a fixed mode, and the text goes to its own destination
+    /// with no Paste last, history, statistics or delivery notice.
+    var textModeOverride: DictationTextMode?
+    var deliversInternally = false
+    /// Translation only: the text, its language when known, and the target language.
+    var translateDictation: (String, String?, String) async -> DictationTranslationOutcome = { _, _, _ in
+        .kept(.unsupported)
+    }
+    /// Polish mode only: the clean text, the user's own spellings to keep and an optional recipe.
+    var polishDictation: (String, [String], String?) async -> DictationPolishOutcome = { _, _, _ in .kept(.failed) }
 
     func transcriptionHints() -> TranscriptionHints {
         let language = defaults.string(forKey: DictationController.languageKey)
@@ -81,9 +107,26 @@ struct DictationSessionDependencies {
                 return try await services.acquireLiveTranscriptionRuntime(for: .dictation)
             },
             canInsert: { TextInserter.canInsert(promptIfNeeded: true) },
-            captureDestination: { TextInserter.captureDestination() },
+            captureDestination: { TextInserter.captureDestination(caretCase: .live()) },
             copyText: { TextInserter.copy($0) },
             defaults: services.defaults,
-            beginCapture: beginCapture)
+            beginCapture: beginCapture,
+            locatePanelAnchor: { DictationPanelAnchor.current() },
+            registerCancelKey: { GlobalHotkey(keyCode: UInt32(kVK_Escape), modifiers: 0, onPress: $0) },
+            playCue: DictationSoundCue.player(defaults: services.defaults),
+            makeSpeechGate: { [defaults = services.defaults, store = services.modelStore] in
+                DictationSpeechGate.isEnabled(in: defaults) ? .silero(store: store) : nil
+            },
+            makePauseDetector: { [defaults = services.defaults, store = services.modelStore] onPause in
+                guard DictationAutoStop.isEnabled(in: defaults) else { return nil }
+                let pause = DictationAutoStop.pause(in: defaults)
+                return DictationAutoStop.silero(store: store, pause: pause, onPause: onPause)
+            },
+            translateDictation: { text, source, target in
+                await TranslateDictation(translator: AppleDictationTranslator())(text, source: source, target: target)
+            },
+            polishDictation: { [polisher = services.dictationPolisher] text, terms, recipe in
+                await PolishDictation(polisher: polisher)(text, protectedTerms: terms, recipe: recipe)
+            })
     }
 }

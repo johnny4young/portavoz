@@ -263,6 +263,7 @@ struct MeetingDetailActivityLine: View {
         case .publishGitHubGist: L10n.text("Meeting export")
         case .createGitHubIssue: L10n.text("GitHub action item")
         case .createLinearIssue: L10n.text("Linear action item")
+        case .dictationPolish: L10n.text("Dictation polish text")
         }
     }
 }
