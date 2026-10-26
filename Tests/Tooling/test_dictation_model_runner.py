@@ -207,7 +207,7 @@ class DictationModelRunnerTests(unittest.TestCase):
             document = self.attribution()
             document[key] = value
             with self.assertRaises(corpus.CorpusError):
-                runner.validate_attribution(document)
+                runner.validate_attribution(document, speech_expected=True)
 
     def attribution(self):
         score = {'wordErrorRate': 0, 'characterErrorRate': 0, 'referenceWords': 1, 'hypothesisWords': 1,
@@ -444,8 +444,12 @@ class DictationModelRunnerTests(unittest.TestCase):
                     self.assertFalse(result['verifiedDeliveryMeasured'])
 
     def test_valid_speech_deletions_and_no_speech_sentinels_survive_every_model_stage(self):
+        # (speech, hypothesis words) -> WER, CER and exact match of a valid score.
+        expected = {(True, 0): (1, 1, False), (True, 3): (2, 1, False),
+                    (False, 0): (0, 0, True), (False, 3): (1, 1, False)}
         for speech, cases in ((True, self.cases), (False, ['non-speech-silence.clean'])):
             for hypothesis in (0, 3):
+                wer, cer, exact = expected[speech, hypothesis]
                 def invoke(arguments, **options):
                     result = self.successful_double(arguments, **options)
                     path = Path(options['env']['PORTAVOZ_DICTATION_BASELINE_OUTPUT'])
@@ -456,10 +460,7 @@ class DictationModelRunnerTests(unittest.TestCase):
                                       row['stageAttribution']['vendorFinal'],
                                       row['stageAttribution']['mappedAndCoalesced']):
                             score.update(referenceWords=int(speech), hypothesisWords=hypothesis,
-                                         wordErrorRate=(1 if hypothesis == 0 else 2) if speech else 1,
-                                         characterErrorRate=1, exactReferenceMatch=False)
-                            if not speech and hypothesis == 0:
-                                score.update(wordErrorRate=0, characterErrorRate=0, exactReferenceMatch=True)
+                                         wordErrorRate=wer, characterErrorRate=cer, exactReferenceMatch=exact)
                         if hypothesis == 0:
                             del row['firstUpdateSeconds']
                     path.write_text(json.dumps(document))
@@ -474,13 +475,20 @@ class DictationModelRunnerTests(unittest.TestCase):
                     self.assertFalse(result['sourceCommitQualified'])
                     self.assertFalse(result['verifiedDeliveryMeasured'])
 
+    def test_reference_scope_rejection_names_the_public_source(self):
+        for speech in (True, False):
+            score = dict(wordErrorRate=0, characterErrorRate=0, referenceWords=int(not speech),
+                         hypothesisWords=int(not speech), exactReferenceMatch=True, legacyCleanupChangedText=False)
+            with self.subTest(speech=speech), self.assertRaisesRegex(corpus.CorpusError, 'reference scope'):
+                receipt.validate_score(score, speech_expected=speech)
+
     def test_word_edit_roundoff_preserves_legitimate_rates_and_empty_speech(self):
         for reference, hypothesis, edits in ((3, 2, 1), (999983, 999979, 333329),
                                               (1, 1000000, 1000000), (2, 0, 2)):
             score = dict(wordErrorRate=edits / reference, characterErrorRate=1,
                          referenceWords=reference, hypothesisWords=hypothesis,
                          exactReferenceMatch=False, legacyCleanupChangedText=False)
-            receipt.validate_score(score)
+            receipt.validate_score(score, speech_expected=True)
 
     def test_high_error_rates_remain_observations_not_a_censored_quality_pass(self):
         def invoke(arguments, **options):

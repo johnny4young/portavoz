@@ -63,6 +63,12 @@ class DictationControllerRunnerTests(unittest.TestCase):
             return result
         return invoke
 
+    @staticmethod
+    def empty_delivery(row):
+        row['controller']['outcome'] = 'empty'
+        for phase in ('deliveryStarted', 'deliveryReturned'):
+            row['controller']['elapsedSeconds'].pop(phase)
+
     def reset_run(self):
         # Remove only this test's exact output, never the input corpus or a prior run.
         import shutil
@@ -209,9 +215,7 @@ class DictationControllerRunnerTests(unittest.TestCase):
                     referenceWords=int(not speech), hypothesisWords=int(not speech),
                     wordErrorRate=0, characterErrorRate=0, exactReferenceMatch=True)
                 if speech:
-                    row['controller']['outcome'] = 'empty'
-                    row['controller']['elapsedSeconds'].pop('deliveryStarted')
-                    row['controller']['elapsedSeconds'].pop('deliveryReturned')
+                    self.empty_delivery(row)
 
             with self.subTest(speech=speech):
                 self.assertEqual(self.run_observation(self.mutated(corrupt))['outcome'],
@@ -228,9 +232,7 @@ class DictationControllerRunnerTests(unittest.TestCase):
                         wordErrorRate=int(hypothesis > 0), characterErrorRate=int(hypothesis > 0),
                         exactReferenceMatch=hypothesis == 0)
                     if hypothesis == 0:
-                        row['controller']['outcome'] = 'empty'
-                        row['controller']['elapsedSeconds'].pop('deliveryStarted')
-                        row['controller']['elapsedSeconds'].pop('deliveryReturned')
+                        self.empty_delivery(row)
 
             with self.subTest(hypothesis=hypothesis):
                 result = self.run_observation(self.mutated(sentinel))

@@ -249,8 +249,8 @@ the model output, adapter deltas, vendor/mapped attribution and controller outpu
 cannot replace a known speech reference with an empty one, or invent a lexical
 reference for silence/noise. Launch-boundary regressions corrupt one stage at a
 time and retain valid full speech deletions plus empty/lexical no-speech sentinels.
-The generic offline benchmark score validator retains its separate caller-owned
-reference contract. This scope check does not recompute normalized reference
+The scope is a required argument: the offline benchmark passes each case's
+declared `speechExpected`. This scope check does not recompute normalized reference
 lengths or attest to transcript truth. No-speech evaluation requires
 lexical-output incidence and exposure denominators, not aggregation of that
 sentinel. Controller prepared-text evidence requires an explicit Stop timestamp

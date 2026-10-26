@@ -12,7 +12,7 @@ def number(value, maximum):
     return type(value) in (int, float) and 0 <= value <= maximum and math.isfinite(value)
 
 
-def validate_score(score, *, speech_expected=None):
+def validate_score(score, *, speech_expected):
     corpus.exact_keys(score, 'wordErrorRate characterErrorRate referenceWords hypothesisWords '
                      'exactReferenceMatch legacyCleanupChangedText', 'model score schema mismatch')
     for key in ('wordErrorRate', 'characterErrorRate'):
@@ -47,13 +47,12 @@ def validate_score(score, *, speech_expected=None):
     if score['exactReferenceMatch']:
         corpus.require(score['wordErrorRate'] == score['characterErrorRate'] == 0
                        and score['referenceWords'] == score['hypothesisWords'], 'inconsistent exact match')
-    if speech_expected is not None:
-        # The admitted public family already distinguishes lexical references
-        # from non-speech. Internal score consistency cannot establish that scope.
-        corpus.require((reference > 0) == speech_expected, 'model reference scope does not match public source')
+    # The known source decides whether a lexical reference exists; internal
+    # score consistency cannot establish that scope.
+    corpus.require((reference > 0) == speech_expected, 'model reference scope does not match public source')
 
 
-def validate_attribution(value, *, speech_expected=None):
+def validate_attribution(value, *, speech_expected):
     corpus.exact_keys(value, 'vendorFinal mappedAndCoalesced matchesProductionText updateCount timingCount '
                      'rejectedAtBoundary rejectedBeforeBoundary mappedSegmentCount',
                      'stage attribution schema mismatch')
@@ -138,12 +137,13 @@ def validate_row(row, case, attempt, family, entry, request):
                    'model observation duration mismatch')
     if 'firstUpdateSeconds' in row:
         corpus.require(number(row['firstUpdateSeconds'], row['completionSeconds']), 'invalid first update duration')
+    speech = family['audioKind'] == 'speech'
     for key in ('score', 'adapterDeltas'):
-        validate_score(row[key], speech_expected=family['audioKind'] == 'speech')
+        validate_score(row[key], speech_expected=speech)
     if 'firstUpdateSeconds' not in row:
         corpus.require(row['score']['hypothesisWords'] == row['adapterDeltas']['hypothesisWords'] == 0,
                        'nonempty output requires a first update observation')
     corpus.require(row['adapterDeltas']['legacyCleanupChangedText'] is False, 'adapter deltas cannot claim cleanup')
     validate_work(row['work'], frames, request['timeoutSeconds'])
     if request['stageAttribution']:
-        validate_attribution(row['stageAttribution'], speech_expected=family['audioKind'] == 'speech')
+        validate_attribution(row['stageAttribution'], speech_expected=speech)
