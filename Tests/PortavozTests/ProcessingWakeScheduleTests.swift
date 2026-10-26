@@ -45,12 +45,11 @@ struct ProcessingWakeScheduleTests {
     }
 
     @Test
-    func failedDrainPreservesLaterFutureDeadline() {
-        let deadline = now.addingTimeInterval(30)
+    func failedDrainRetriesBeforeLaterFutureDeadline() {
         let wake = ProcessingWakeSchedule.nextDate(
-            scheduled: deadline, afterDrainFailure: true, at: now)
+            scheduled: now.addingTimeInterval(3_600), afterDrainFailure: true, at: now)
 
-        #expect(wake == deadline)
+        #expect(wake == now.addingTimeInterval(5))
     }
 
     @Test

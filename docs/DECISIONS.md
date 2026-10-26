@@ -10431,10 +10431,11 @@ reinterpret cancellation. Explicit-timestamp regressions and real temporary
 SQLite contention cover recovery, backoff and successful claim after release.
 
 A failed claim can also strand pending work that has no retry date, such as a
-freshly admitted import or post-capture job. After any failed drain, the wake
-policy therefore uses the five-second backoff even when no persisted date exists.
-The timer exists only after a failure; the next successful drain that finds
-nothing returns no date, so idle processing still has no polling.
+freshly admitted import or post-capture job, and the persisted date cannot see
+it. After any failed drain the wake policy therefore retries exactly five
+seconds later, superseding both a missing and a later persisted date. The timer
+exists only after a failure; the next healthy drain returns to the persisted
+date or, finding nothing, to no timer, so idle processing still has no polling.
 
 ## D297 — Never migrate the recordings root over a live capture (Aug 2026)
 

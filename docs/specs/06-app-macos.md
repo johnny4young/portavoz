@@ -3744,9 +3744,9 @@ summary-provider construction, language/vocabulary preferences, Shortcut
 invocation, and idle engine release. The supervisor only coalesces kicks,
 maps content-free events to telemetry, and schedules the ApplicationKit wake
 policy's date. Healthy overdue deadlines request immediate recovery. After a
-claim failure, an existing deadline waits at least five seconds; a later date
-is preserved, and without a deadline the owner still retries after five
-seconds so unscheduled pending work cannot stay dormant. The audio-import queue uses
+claim failure, the owner retries after five seconds whatever the persisted
+deadline, so unscheduled pending work cannot stay dormant behind a later or
+missing date. The audio-import queue uses
 the same policy after a non-cancellation drain failure. Both owners keep their
 existing generation fences, wake cancellation and coalescing, without idle
 polling or changing intentional suspension. Optional initial summary-provider
