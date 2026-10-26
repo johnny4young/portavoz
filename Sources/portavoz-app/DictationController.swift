@@ -448,16 +448,17 @@ final class DictationController {
             return
         }
         if await correctsLastInsertion(original: original, sessionID: sessionID, dependencies: dependencies) { return }
-        guard activeSessionID == sessionID, let (delivered, unpolished) = await textToDeliver(
+        guard activeSessionID == sessionID, let delivery = await textToDeliver(
             text, original: original, sessionID: sessionID, dependencies: dependencies, capture: capture)
         else { return }
+        let delivered = delivery.text
         measurement?.record(.deliveryStarted)
         let result = await destination.insert(delivered)
         measurement?.finishDelivery(result)
         guard activeSessionID == sessionID else { return }
         completeSession(id: sessionID)
         deliveryID = sessionID
-        presentDelivery(result, text: delivered, unpolished: unpolished, id: sessionID)
+        presentDelivery(result, text: delivered, alternate: delivery, id: sessionID)
     }
 
     private func completeSession(id: UUID) {
@@ -679,9 +680,9 @@ extension DictationController {
     /// Pastes the remembered text into whatever is focused now, through the
     /// same delivery and recovery path as a fresh dictation. Undelivered words
     /// in recovery are that text, so they paste where the user is now.
-    func pasteLastDictation(using dependencies: DictationSessionDependencies, unpolished: Bool = false) {
+    func pasteLastDictation(using dependencies: DictationSessionDependencies, alternate: Bool = false) {
         guard !isActive, retryDeliveryTask == nil,
-              let text = unpolished ? lastText.takeCurrentUnpolished() : pastableText(), dependencies.canInsert()
+              let text = alternate ? lastText.takeCurrentAlternate() : pastableText(), dependencies.canInsert()
         else { return }
         cancelFeedbackDismissal()
         self.dependencies = dependencies
@@ -703,13 +704,13 @@ extension DictationController {
     }
 
     private func presentDelivery(
-        _ result: DictationDeliveryOutcome, text: String, unpolished: String? = nil, id: UUID
+        _ result: DictationDeliveryOutcome, text: String, alternate: DictationDeliveryText? = nil, id: UUID
     ) {
         guard deliveryID == id, let dependencies, !closesInternalDelivery() else { return }
         lastInsertion = result == .verified ? destination?.lastInsertion() : nil
         cancelFeedbackDismissal()
         copyStatus = .idle
-        lastText.remember(text, unpolished: unpolished)
+        lastText.remember(text, alternate: alternate?.alternate, isOriginal: alternate?.alternateIsOriginal == true)
         recordHistory(result, id: id)
         if case .refused(let failure) = result {
             recoveryText = text
@@ -750,6 +751,13 @@ extension DictationController {
     }
 
     var textChoice: DictationTextChoice { textPolicy.choice }
+    var translationTarget: DictationTranslationTarget { textPolicy.translationTarget }
+
+    func selectTranslationTarget(_ target: DictationTranslationTarget) {
+        guard canChangeTextMode else { return }
+        textPolicy.translationTarget = target
+    }
+
     /// The recipes read when this session started, for the strip's choice.
     var availableRecipes: [DictationRecipe] { textPolicy.recipes }
 
@@ -760,11 +768,20 @@ extension DictationController {
     }
 }
 
-/// One pending rewrite: the delivery waiting for it, the task and its token.
+/// The post-recognition steps that run between the speech gate and the paste.
+enum DictationTransformKind: Equatable { case polish, translate }
+
+enum DictationTransformResult: Equatable {
+    case polish(DictationPolishOutcome)
+    case translation(DictationTranslationOutcome)
+}
+
+/// One pending transform: the delivery waiting for it, the task, its token and kind.
 struct DictationPolishRun {
-    var wait: CheckedContinuation<DictationPolishOutcome?, Never>?
+    var wait: CheckedContinuation<DictationTransformResult?, Never>?
     var task: Task<Void, Never>?
     var token: UUID?
+    var kind: DictationTransformKind?
 }
 
 extension DictationController {
@@ -850,62 +867,137 @@ private extension DictationController {
 
 // Polish: one bounded rewrite between the speech gate and the paste.
 private extension DictationController {
-    /// The clean text unless Polish applies; nil when the session ended meanwhile.
+    /// The clean text after Polish and translation when they apply; nil when the session ended.
     func textToDeliver(
         _ clean: String, original: String, sessionID: UUID, dependencies: DictationSessionDependencies,
         capture: DictationCaptureOwnership
-    ) async -> (text: String, unpolished: String?)? {
-        guard textPolicy.mode == .polish else { return (clean, nil) }
+    ) async -> DictationDeliveryText? {
+        guard textPolicy.mode == .polish || textPolicy.translationTarget != .off else {
+            return DictationDeliveryText(text: clean)
+        }
         // The microphone is done; a large local model must not see live capture.
         capture.end()
-        return await polish(clean, original: original, sessionID: sessionID, dependencies: dependencies)
+        var delivery = DictationDeliveryText(text: clean)
+        if textPolicy.mode == .polish {
+            guard let polished = await polish(clean, original: original, sessionID: sessionID,
+                                              dependencies: dependencies) else { return nil }
+            delivery = polished
+        }
+        guard textPolicy.translationTarget != .off else { return delivery }
+        guard let translated = await translate(delivery.text, sessionID: sessionID, dependencies: dependencies)
+        else { return nil }
+        guard translated != delivery.text else { return delivery }
+        // History keeps the mode that produced the text before translation.
+        let unpolishedMode: DictationTextMode = textPolicy.mode == .literal ? .literal : .clean
+        let mode = delivery.alternate != nil ? DictationTextMode.polish : unpolishedMode
+        reviseHistory(text: translated, original: original, mode: mode)
+        return DictationDeliveryText(text: translated, alternate: delivery.text, alternateIsOriginal: true)
     }
 
     /// Nil when the session ended meanwhile. A skip, Escape or the strip's button,
     /// pastes the clean text at once; the rewrite is abandoned, never awaited.
     func polish(
         _ clean: String, original: String, sessionID: UUID, dependencies: DictationSessionDependencies
-    ) async -> (text: String, unpolished: String?)? {
-        let token = UUID()
-        polishRun.token = token
-        showPanel()
-        armPolishSkipKey(dependencies, sessionID: sessionID)
+    ) async -> DictationDeliveryText? {
         let terms = textPolicy.replacements.map(\.replacement)
         let recipe = textPolicy.polishRecipe?.instruction
-        let outcome: DictationPolishOutcome? = await withCheckedContinuation { continuation in
-            polishRun.wait = continuation
-            polishRun.task = Task { [weak self] in
-                let outcome = await dependencies.polishDictation(clean, terms, recipe)
-                guard let self, self.polishRun.token == token else { return }
-                self.endPolish(outcome)
-            }
+        let end = await runTransform(.polish, sessionID: sessionID, dependencies: dependencies) {
+            .polish(await dependencies.polishDictation(clean, terms, recipe))
         }
-        releaseCancelKey()
-        guard activeSessionID == sessionID else { return nil }
-        switch outcome {
-        case .polished(let polished):
+        switch end {
+        case .ended:
+            return nil
+        case .finished(.polish(.polished(let polished))):
             reviseHistory(text: polished, original: original, mode: .polish)
-            return (polished, clean)
-        case .kept(let skip):
+            return DictationDeliveryText(text: polished, alternate: clean)
+        case .finished(.polish(.kept(let skip))):
             polishNotice = Self.polishNotice(for: skip)
-        case nil:
+        case .skipped, .finished(.translation):
             polishNotice = L10n.text("Pasted without polish.")
         }
         reviseHistory(text: clean, original: original, mode: .clean)
-        return (clean, nil)
+        return DictationDeliveryText(text: clean)
     }
 
-    /// Resumes the waiting delivery once; a late rewrite after a skip is dropped.
-    func endPolish(_ outcome: DictationPolishOutcome?) {
-        if outcome == nil { polishRun.task?.cancel() }
+    /// The text untouched unless the system translator produced the target language.
+    func translate(
+        _ text: String, sessionID: UUID, dependencies: DictationSessionDependencies
+    ) async -> String? {
+        guard let target = textPolicy.translationTarget.languageCode else { return text }
+        let configured = dependencies.defaults.string(forKey: Self.languageKey)
+        let source = ["es", "en"].contains(configured) ? configured : SpokenLanguageDetector.dictationLanguage(in: text)
+        let end = await runTransform(.translate, sessionID: sessionID, dependencies: dependencies) {
+            .translation(await dependencies.translateDictation(text, source, target))
+        }
+        switch end {
+        case .ended:
+            return nil
+        case .finished(.translation(.translated(let translated))):
+            return translated
+        case .finished(.translation(.kept(let skip))):
+            appendNotice(Self.translationNotice(for: skip))
+        case .skipped, .finished(.polish):
+            appendNotice(L10n.text("Pasted without translation."))
+        }
+        return text
+    }
+
+    func appendNotice(_ notice: String?) {
+        guard let notice else { return }
+        polishNotice = [polishNotice, notice].compactMap { $0 }.joined(separator: " ")
+    }
+
+    enum TransformEnd { case ended, skipped, finished(DictationTransformResult) }
+
+    /// One bounded step with "Polishing…" or "Translating…" in the strip and Escape to skip it.
+    func runTransform(
+        _ kind: DictationTransformKind, sessionID: UUID, dependencies: DictationSessionDependencies,
+        work: @escaping @MainActor () async -> DictationTransformResult
+    ) async -> TransformEnd {
+        let token = UUID()
+        polishRun.token = token
+        polishRun.kind = kind
+        showPanel()
+        armPolishSkipKey(dependencies, sessionID: sessionID)
+        let result: DictationTransformResult? = await withCheckedContinuation { continuation in
+            polishRun.wait = continuation
+            polishRun.task = Task { [weak self] in
+                let result = await work()
+                guard let self, self.polishRun.token == token else { return }
+                self.endPolish(result)
+            }
+        }
+        releaseCancelKey()
+        guard activeSessionID == sessionID else { return .ended }
+        return result.map(TransformEnd.finished) ?? .skipped
+    }
+
+    /// Resumes the waiting delivery once; a late result after a skip is dropped.
+    func endPolish(_ result: DictationTransformResult?) {
+        if result == nil { polishRun.task?.cancel() }
         let wait = polishRun.wait
         polishRun = DictationPolishRun()
-        wait?.resume(returning: outcome)
+        wait?.resume(returning: result)
     }
 
     func abandonPolish() {
         endPolish(nil)
         polishNotice = nil
+    }
+
+    static func translationNotice(for skip: DictationTranslationSkip) -> String? {
+        switch skip {
+        case .sameLanguage:
+            nil
+        case .unknownLanguage:
+            L10n.text("Pasted without translation: the dictation's language was not clear.")
+        case .notInstalled:
+            L10n.text("Pasted without translation: download the languages in Settings › Audio & dictation first.")
+        case .unsupported:
+            L10n.text("Pasted without translation: this language pair is not available on this Mac.")
+        case .timedOut, .failed:
+            L10n.text("Pasted without translation: the translator could not finish.")
+        }
     }
 
     func armPolishSkipKey(_ dependencies: DictationSessionDependencies, sessionID: UUID) {
@@ -956,11 +1048,13 @@ extension DictationController {
     }
 
     /// Polish rewrites inside `.delivering`, so every delivering guard still applies.
-    var isPolishing: Bool { polishRun.token != nil }
+    var isPolishing: Bool { polishRun.token != nil && polishRun.kind == .polish }
+    var isTranslating: Bool { polishRun.token != nil && polishRun.kind == .translate }
 
     /// Escape or the strip: paste the clean text now.
+    /// Skips polish or translation, whichever is running.
     func skipPolish() {
-        guard isPolishing else { return }
+        guard isPolishing || isTranslating else { return }
         endPolish(nil)
     }
 }
@@ -1072,4 +1166,13 @@ extension DictationController {
             break
         }
     }
+}
+
+/// What delivery pastes, and the version Paste last can offer instead.
+struct DictationDeliveryText: Equatable {
+    var text: String
+    /// The clean text before Polish or translation, when one of them changed it.
+    var alternate: String?
+    /// True when the alternate is the untranslated original, not just the unpolished text.
+    var alternateIsOriginal = false
 }

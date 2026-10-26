@@ -123,11 +123,18 @@ struct MenuBarContent: View {
                     services.rewriteSelection()
                 }
                 .accessibilityIdentifier("menu-bar-rewrite-selection")
-                if services.dictation.hasUnpolishedText {
-                    quickAction("Paste without polish", "text.badge.minus", tint: .secondary) {
-                        services.pasteLastDictation(unpolished: true)
+                if services.dictation.hasAlternateText {
+                    if services.dictation.lastText.alternateIsOriginal {
+                        quickAction("Paste original", "text.badge.minus", tint: .secondary) {
+                            services.pasteLastDictation(alternate: true)
+                        }
+                        .accessibilityIdentifier("menu-bar-paste-original")
+                    } else {
+                        quickAction("Paste without polish", "text.badge.minus", tint: .secondary) {
+                            services.pasteLastDictation(alternate: true)
+                        }
+                        .accessibilityIdentifier("menu-bar-paste-unpolished")
                     }
-                    .accessibilityIdentifier("menu-bar-paste-unpolished")
                 }
             }
             quickAction("Ask", "bubble.left.and.text.bubble.right", tint: .secondary) {

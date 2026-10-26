@@ -21833,3 +21833,18 @@ synthesized keys, and reads the result back. An application that exposes no
 verifiable range, a changed field, or an editor that refuses the edit is told
 so and nothing is pasted or changed. A correction is not a dictation: it is not
 saved to the history or counted, and Paste last then holds the corrected text.
+
+## D592 — Dictation translates on device with Apple's installed languages only
+
+Dictating in one language for a reader of the other meant translating by hand.
+"Translate dictation into" (Off by default, English or Spanish) runs after
+Literal, Clean or Polish, globally, per application profile or for one
+dictation from the strip. The source is the configured dictation language or,
+on Auto, a constrained English/Spanish guess that gives up on short or mixed
+text. Translation uses Apple's Translation framework with an installed
+language pair only, bounded to five seconds and skippable with Escape. Dictation
+never downloads a language: a missing pair, an unclear language, a timeout or a
+failure pastes the untranslated text and says why. The one deliberate download
+is the Settings button that asks Apple to prepare English and Spanish. History
+and Paste last keep the translation; "Paste original" replays the text before
+translation.

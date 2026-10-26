@@ -1791,6 +1791,16 @@
         }
       }
     },
+    "Checking Apple's translation languages…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisando los idiomas de traducción de Apple…"
+          }
+        }
+      }
+    },
     "Choose another": {
       "localizations": {
         "es": {
@@ -1831,6 +1841,16 @@
         }
       }
     },
+    "Default": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Predeterminado"
+          }
+        }
+      }
+    },
     "Deleted the last dictation.": {
       "localizations": {
         "es": {
@@ -1851,6 +1871,16 @@
         }
       }
     },
+    "Download English and Spanish": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar inglés y español"
+          }
+        }
+      }
+    },
     "Duplicate": {
       "localizations": {
         "es": {
@@ -1867,6 +1897,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Editar"
+          }
+        }
+      }
+    },
+    "English and Spanish are not downloaded yet, so dictation is pasted untranslated.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El inglés y el español aún no están descargados, así que el dictado se pega sin traducir."
           }
         }
       }
@@ -9649,6 +9689,26 @@
         }
       }
     },
+    "Paste original": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegar original"
+          }
+        }
+      }
+    },
+    "Paste untranslated": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegar sin traducir"
+          }
+        }
+      }
+    },
     "Paste without polish": {
       "localizations": {
         "es": {
@@ -9715,6 +9775,56 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pegado sin pulir: el motor de resúmenes tardó demasiado."
+          }
+        }
+      }
+    },
+    "Pasted without translation.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegado sin traducir."
+          }
+        }
+      }
+    },
+    "Pasted without translation: download the languages in Settings › Audio & dictation first.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegado sin traducir: primero descarga los idiomas en Ajustes › Audio y dictado."
+          }
+        }
+      }
+    },
+    "Pasted without translation: the dictation's language was not clear.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegado sin traducir: no estaba claro el idioma del dictado."
+          }
+        }
+      }
+    },
+    "Pasted without translation: the translator could not finish.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegado sin traducir: el traductor no pudo terminar."
+          }
+        }
+      }
+    },
+    "Pasted without translation: this language pair is not available on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegado sin traducir: este par de idiomas no está disponible en este Mac."
           }
         }
       }
@@ -15081,6 +15191,16 @@
         }
       }
     },
+    "The languages were not downloaded. Try again when you are online.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se descargaron los idiomas. Inténtalo de nuevo cuando tengas conexión."
+          }
+        }
+      }
+    },
     "The last change could not be verified. Reload controls before trying again.": {
       "localizations": {
         "es": {
@@ -16361,12 +16481,52 @@
         }
       }
     },
+    "Translate dictation into": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducir el dictado a"
+          }
+        }
+      }
+    },
+    "Translate into": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traducir a"
+          }
+        }
+      }
+    },
+    "Translating…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traduciendo…"
+          }
+        }
+      }
+    },
     "Translation": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Traducción"
+          }
+        }
+      }
+    },
+    "Translation runs on this Mac with Apple's English and Spanish languages.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La traducción se hace en este Mac con los idiomas inglés y español de Apple."
           }
         }
       }
@@ -17503,6 +17663,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tu voz suena baja — acércate o usa audífonos con micrófono"
+          }
+        }
+      }
+    },
+    "Your words are being translated on this Mac. Esc pastes them untranslated.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus palabras se están traduciendo en este Mac. Esc las pega sin traducir."
           }
         }
       }

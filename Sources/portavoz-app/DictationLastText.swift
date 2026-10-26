@@ -9,8 +9,10 @@ final class DictationLastText {
     static let lifetime: TimeInterval = 15 * 60
 
     private var text: String?
-    /// The clean text a polished dictation started from, under the same lifetime.
-    private var unpolished: String?
+    /// The clean text a polished or translated dictation started from, under the same lifetime.
+    private var alternate: String?
+    /// True when that text is the untranslated original rather than the unpolished one.
+    private(set) var alternateIsOriginal = false
     private var storedAt: Date?
     @ObservationIgnored private let now: () -> Date
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
@@ -40,7 +42,7 @@ final class DictationLastText {
         return text
     }
 
-    var currentUnpolished: String? { current == nil ? nil : unpolished }
+    var currentAlternate: String? { current == nil ? nil : alternate }
 
     /// The current text, dropping an expired one so its menu action disappears.
     func takeCurrent() -> String? {
@@ -48,20 +50,22 @@ final class DictationLastText {
         return current
     }
 
-    func takeCurrentUnpolished() -> String? {
+    func takeCurrentAlternate() -> String? {
         if current == nil, text != nil { clear() }
-        return currentUnpolished
+        return currentAlternate
     }
 
-    func remember(_ value: String, unpolished: String? = nil) {
+    func remember(_ value: String, alternate: String? = nil, isOriginal: Bool = false) {
         text = value
-        self.unpolished = unpolished == value ? nil : unpolished
+        self.alternate = alternate == value ? nil : alternate
+        alternateIsOriginal = self.alternate != nil && isOriginal
         storedAt = now()
     }
 
     func clear() {
         text = nil
-        unpolished = nil
+        alternate = nil
+        alternateIsOriginal = false
         storedAt = nil
     }
 }

@@ -57,6 +57,47 @@ struct DictationTextModePicker: View {
 
 }
 
+/// Off, English or Spanish, with stable menu identifiers like the text mode picker.
+struct DictationTranslationPicker: View {
+    let identifier: String
+    let label: Text
+    @Binding var selection: DictationTranslationTarget
+    /// Profiles may follow the default instead of choosing a target.
+    var followsDefault: Bool = false
+    var onFollowDefault: (() -> Void)?
+
+    var body: some View {
+        LabeledContent {
+            Menu {
+                if let onFollowDefault {
+                    Button("Default") { onFollowDefault() }
+                        .accessibilityIdentifier(identifier + "-default")
+                }
+                Button("Off") { selection = .off }
+                    .accessibilityIdentifier(identifier + "-off")
+                Button("English") { selection = .english }
+                    .accessibilityIdentifier(identifier + "-en")
+                Button("Spanish") { selection = .spanish }
+                    .accessibilityIdentifier(identifier + "-es")
+            } label: {
+                title
+            }
+            .accessibilityIdentifier(identifier)
+            .accessibilityLabel(label)
+            .accessibilityValue(title)
+        } label: { label }
+    }
+
+    private var title: Text {
+        if followsDefault { return Text("Default") }
+        switch selection {
+        case .off: return Text("Off")
+        case .english: return Text(verbatim: "→ EN")
+        case .spanish: return Text(verbatim: "→ ES")
+        }
+    }
+}
+
 struct DictationTextSettingsSection: View {
     let model: DictationTextSettingsModel
     let selectApplication: @MainActor () async -> Void
@@ -90,6 +131,7 @@ struct DictationTextSettingsSection: View {
         .accessibilityIdentifier("settings-dictation-profiles")
         if showsProfiles { profiles }
         DictationRecipeSettings(model: model)
+        DictationTranslationSettings(model: model)
     }
 
     private var profiles: some View {
@@ -116,6 +158,20 @@ struct DictationTextSettingsSection: View {
                             get: { profile.choice },
                             set: { model.setProfile(bundleIdentifier: profile.bundleIdentifier, choice: $0) }),
                             recipes: model.recipes)
+                        DictationTranslationPicker(
+                            identifier: "settings-dictation-profile-translate-\(profile.bundleIdentifier)",
+                            label: Text("Translate into"),
+                            selection: Binding(
+                                get: { profile.translationTarget ?? model.globalTranslationTarget },
+                                set: {
+                                    model.setProfile(bundleIdentifier: profile.bundleIdentifier, translationTarget: $0)
+                                }),
+                            followsDefault: profile.translationTarget == nil,
+                            onFollowDefault: {
+                                model.setProfile(bundleIdentifier: profile.bundleIdentifier, translationTarget: nil)
+                            })
+                            .labelsHidden()
+                            .frame(width: 90)
                         Button("Remove") { model.removeProfile(bundleIdentifier: profile.bundleIdentifier) }
                         .buttonStyle(.borderless)
                         .accessibilityLabel(L10n.text("Remove application profile") + ": " + profile.bundleIdentifier)

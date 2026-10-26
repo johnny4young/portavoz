@@ -7,6 +7,6 @@ extension DictationController {
 
     func pastableText() -> String? { lastText.takeCurrent() }
 
-    /// Only a polished dictation has a different clean text to fall back to.
-    var hasUnpolishedText: Bool { lastText.currentUnpolished != nil }
+    /// Only a polished or translated dictation has a different clean text to fall back to.
+    var hasAlternateText: Bool { lastText.currentAlternate != nil }
 }

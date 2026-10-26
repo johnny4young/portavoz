@@ -79,7 +79,9 @@ struct DictationCompactStripView: View {
         } else if controller.phase == .delivering {
             ProgressView()
                 .controlSize(.mini)
-                .accessibilityLabel(controller.isPolishing ? L10n.text("Polishing…") : L10n.text("Inserting…"))
+                .accessibilityLabel(
+                    controller.isTranslating ? L10n.text("Translating…")
+                        : controller.isPolishing ? L10n.text("Polishing…") : L10n.text("Inserting…"))
         } else {
             Image(systemName: "waveform.badge.mic")
                 .foregroundStyle(controller.phase == .listening ? PVDesign.accent : Color.secondary)

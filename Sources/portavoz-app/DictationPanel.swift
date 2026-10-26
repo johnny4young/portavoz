@@ -81,7 +81,12 @@ private enum DictationPanelLayout {
     static func size(for controller: DictationController) -> NSSize {
         DictationCompactIndicator.applies(to: controller)
             ? DictationCompactIndicator.size
-            : NSSize(width: 520, height: height(for: controller.phase) + (controller.isPolishing ? 28 : 0))
+            : NSSize(width: 520, height: height(for: controller.phase) + transformHintHeight(for: controller))
+    }
+
+    @MainActor
+    private static func transformHintHeight(for controller: DictationController) -> CGFloat {
+        controller.isPolishing || controller.isTranslating ? 28 : 0
     }
 
     static func height(for phase: DictationController.Phase) -> CGFloat {
@@ -164,6 +169,14 @@ private struct DictationStripView: View {
                         .controlSize(.mini)
                         .frame(width: 124)
                         .disabled(!controller.canChangeTextMode)
+                    DictationTranslationPicker(
+                        identifier: "dictation-panel-translate", label: Text("Translate into"),
+                        selection: Binding(
+                            get: { controller.translationTarget }, set: { controller.selectTranslationTarget($0) }))
+                        .labelsHidden()
+                        .controlSize(.mini)
+                        .frame(width: 72)
+                        .disabled(!controller.canChangeTextMode)
                 }
                 Spacer()
                 if controller.phase == .listening {
@@ -199,6 +212,17 @@ private struct DictationStripView: View {
                     Button("Paste without polish") { controller.skipPolish() }
                         .controlSize(.small)
                         .accessibilityIdentifier("dictation-panel-skip-polish")
+                }
+            } else if controller.isTranslating {
+                HStack {
+                    Text("Your words are being translated on this Mac. Esc pastes them untranslated.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("dictation-panel-translate-hint")
+                    Spacer()
+                    Button("Paste untranslated") { controller.skipPolish() }
+                        .controlSize(.small)
+                        .accessibilityIdentifier("dictation-panel-skip-translation")
                 }
             }
             if isFailed {
@@ -297,6 +321,7 @@ private struct DictationStripView: View {
         case .listening:
             return showsModelLoading ? L10n.text("Loading speech model…") : L10n.text("Dictating")
         case .delivering:
+            if controller.isTranslating { return L10n.text("Translating…") }
             return controller.isPolishing ? L10n.text("Polishing…") : L10n.text("Inserting…")
         case .failed(let message):
             return message

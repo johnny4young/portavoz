@@ -58,8 +58,8 @@ struct DictationPolishDeliveryTests {
         #expect(harness.insertions == ["So we ship it tomorrow."])
         #expect(harness.controller.polishNotice == nil)
         #expect(harness.controller.lastText.current == "So we ship it tomorrow.")
-        #expect(harness.controller.lastText.currentUnpolished == "so we ship it tomorrow")
-        #expect(harness.controller.hasUnpolishedText)
+        #expect(harness.controller.lastText.currentAlternate == "so we ship it tomorrow")
+        #expect(harness.controller.hasAlternateText)
         #expect(recorder.records.first?.text == "So we ship it tomorrow.")
         #expect(recorder.records.first?.mode == .polish)
         #expect(recorder.records.first?.originalText == "um so we ship it tomorrow")
@@ -77,7 +77,7 @@ struct DictationPolishDeliveryTests {
         try await eventually { harness.insertions.count == 1 && recorder.records.count == 1 }
         #expect(harness.insertions == ["don't ship it tomorrow"])
         #expect(harness.controller.polishNotice != nil)
-        #expect(!harness.controller.hasUnpolishedText)
+        #expect(!harness.controller.hasAlternateText)
         #expect(recorder.records.first?.mode == .clean)
         #expect(recorder.records.first?.text == "don't ship it tomorrow")
     }
@@ -124,7 +124,7 @@ struct DictationPolishDeliveryTests {
         try await dictate(harness, dependencies(harness, recorder: recorder) { _ in .polished("Never.") })
         try await eventually { harness.insertions.count == 1 }
         #expect(recorder.polishCalls.isEmpty)
-        #expect(!harness.controller.hasUnpolishedText)
+        #expect(!harness.controller.hasAlternateText)
     }
 
     @Test
@@ -136,7 +136,7 @@ struct DictationPolishDeliveryTests {
         let dependencies = dependencies(harness, recorder: recorder) { _ in .polished("So we ship it tomorrow.") }
         try await dictate(harness, dependencies)
         try await eventually { harness.insertions.count == 1 && !harness.controller.isActive }
-        harness.controller.pasteLastDictation(using: dependencies, unpolished: true)
+        harness.controller.pasteLastDictation(using: dependencies, alternate: true)
         try await eventually { harness.insertions.count == 2 }
         #expect(harness.insertions.last == "so we ship it tomorrow")
     }

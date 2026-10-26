@@ -1302,6 +1302,9 @@ A verified delivery also records its exact span (`DictationInsertion`). With spo
 corrections on, a dictation that parses as a bilingual command naming text in that
 span edits it in place through Accessibility instead of pasting, after confirming
 the same field still holds it.
+An optional translation target (English or Spanish) runs after the text mode through
+`TranslateDictation` and the on-device Translation framework with installed languages
+only; any failure pastes the untranslated text with a notice.
 The app resolves explicit Literal/Clean/Polish mode by session choice, captured bundle-ID
 profile, then global preference. The existing destination capture supplies identity;
 no profile recaptures focus or grants insertion authority. Missing preferences

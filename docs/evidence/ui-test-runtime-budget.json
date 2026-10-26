@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 177
+    "expectedCaseCount": 181
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -48,6 +48,10 @@
     "DictationPolishUITests/testAPolishedDictationCanStillBePastedWithoutPolish()": 20.0,
     "DictationPolishUITests/testPolishingCanBeSkippedToPasteTheCleanText()": 20.0,
     "DictationPolishUITests/testARewriteThatChangesTheMeaningPastesCleanAndSaysWhy()": 20.0,
+    "DictationTranslationUITests/testATranslatedDictationCanStillBePastedInTheOriginal()": 20.0,
+    "DictationTranslationUITests/testMissingLanguagesPasteTheOriginalAndSaySo()": 20.0,
+    "DictationTranslationUITests/testTranslatingCanBeSkippedToPasteTheOriginal()": 20.0,
+    "DictationTranslationUITests/testTranslationIsChosenInSettingsWithTheLanguageStatus()": 20.0,
     "DictationTextModeUITests/testApplicationProfileUsesNativePickerAndKeepsTheOriginal()": 40.0,
     "DictationTextModeUITests/testCorruptProfilesShowAnExplicitResetWithoutChangingTheDefault()": 20.0,
     "DictationTextModeUITests/testSessionModeOverrideCancelsAndRestartsWithoutChangingDefaults()": 20.0,

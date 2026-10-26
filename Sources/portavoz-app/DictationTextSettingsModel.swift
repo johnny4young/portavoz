@@ -9,6 +9,7 @@ final class DictationTextSettingsModel {
     enum SelectionError { case invalidApplication, unavailableWindow }
     private(set) var globalMode: DictationTextMode
     private(set) var globalRecipeID: String?
+    private(set) var globalTranslationTarget: DictationTranslationTarget
     private(set) var customRecipes: [DictationRecipe] = []
     private(set) var hasInvalidRecipes = false
     private(set) var profiles: [DictationApplicationTextProfile] = []
@@ -30,6 +31,7 @@ final class DictationTextSettingsModel {
         DictationTextPreferences.initialize(in: defaults, temporary: temporary)
         globalMode = DictationTextPreferences.globalMode(in: defaults)
         globalRecipeID = DictationTextPreferences.globalRecipeID(in: defaults)
+        globalTranslationTarget = DictationTextPreferences.globalTranslationTarget(in: defaults)
         do {
             customRecipes = try DictationTextPreferences.decodeRecipes(
                 defaults.string(forKey: DictationTextPreferences.recipesKey) ?? "[]")
@@ -64,8 +66,24 @@ final class DictationTextSettingsModel {
             return
         }
         var updated = profiles.filter { $0.bundleIdentifier != bundleIdentifier }
-        updated.append(.init(bundleIdentifier: bundleIdentifier, mode: choice.mode, polishRecipeID: choice.recipeID))
+        let translation = profiles.first { $0.bundleIdentifier == bundleIdentifier }?.translationTarget
+        updated.append(.init(
+            bundleIdentifier: bundleIdentifier, mode: choice.mode, polishRecipeID: choice.recipeID,
+            translationTarget: translation))
         save(updated)
+    }
+
+    func setGlobalTranslationTarget(_ target: DictationTranslationTarget) {
+        write(target.rawValue, forKey: DictationTextPreferences.translationKey)
+        globalTranslationTarget = target
+    }
+
+    /// Nil makes the application follow the default translation.
+    func setProfile(bundleIdentifier: String, translationTarget: DictationTranslationTarget?) {
+        guard !hasInvalidProfiles, var profile = profiles.first(where: { $0.bundleIdentifier == bundleIdentifier })
+        else { return }
+        profile.translationTarget = translationTarget
+        save(profiles.filter { $0.bundleIdentifier != bundleIdentifier } + [profile])
     }
 
     /// Adds a recipe or replaces the one with its identifier. False when it does not fit.

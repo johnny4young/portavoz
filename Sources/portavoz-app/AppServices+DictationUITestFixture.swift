@@ -20,6 +20,7 @@ extension AppServices {
                 fixture: dictationUITestFixture, beginCapture: beginCapture)
             dependencies.waitForFeedbackDismissal = DictationUITestFixture.waitHoldingUnverifiedNotices
             dependencies.polishDictation = DictationUITestFixture.polishing(dictationUITestFixture)
+            dependencies.translateDictation = DictationUITestFixture.translating(dictationUITestFixture)
             if let fixture = dictationUITestFixture, fixture.correctsByVoice {
                 dependencies.captureDestination = { DictationUITestFixture.correctionDestination(fixture) }
             }
@@ -59,6 +60,9 @@ final class DictationUITestFixture {
     /// The polish rewrite: a punctuation-only change, one that never answers, or one that drops the negation.
     enum PolishBehavior { case polishes, holds, changesMeaning }
     let polish: PolishBehavior
+    /// Translation swaps the two seed sentences, never answers, or reports Apple's languages as not downloaded.
+    let translationIsMissing: Bool
+    let translationHolds: Bool
     private var finishesNextCapture: Bool
     private var permissionRequests = 0
     private var sourceCreations = 0
@@ -80,6 +84,8 @@ final class DictationUITestFixture {
         simulatesNoSpeech = arguments.contains("-seed-dictation-no-speech")
         polish = arguments.contains("-seed-dictation-polish-held") ? .holds
             : arguments.contains("-seed-dictation-polish-unfaithful") ? .changesMeaning : .polishes
+        translationIsMissing = arguments.contains("-seed-dictation-translate-missing")
+        translationHolds = arguments.contains("-seed-dictation-translate-held")
         text = arguments.contains("-seed-dictation-english")
             ? "Don't delete these notes."
             : "No borres estas notas."
@@ -197,6 +203,28 @@ final class DictationUITestFixture {
             case .changesMeaning:
                 return text.split(separator: " ").dropFirst().joined(separator: " ")
             }
+        }
+    }
+
+    static func translating(
+        _ fixture: DictationUITestFixture?
+    ) -> (String, String?, String) async -> DictationTranslationOutcome {
+        let translator = FixtureTranslator(
+            isMissing: fixture?.translationIsMissing ?? false, holds: fixture?.translationHolds ?? false)
+        let translate = TranslateDictation(translator: translator)
+        return { text, source, target in await translate(text, source: source, target: target) }
+    }
+
+    /// No Apple languages: the two seed sentences translate into each other.
+    private struct FixtureTranslator: DictationTextTranslating {
+        let isMissing: Bool
+        let holds: Bool
+
+        func translate(_ text: String, from source: String, to target: String) async throws -> String {
+            guard !isMissing else { throw DictationTranslationUnavailable(.notInstalled) }
+            if holds { try await Task.sleep(for: .seconds(3_600)) }
+            let pairs = ["No borres estas notas.": "Don't delete these notes."]
+            return pairs[text] ?? pairs.first { $0.value == text }?.key ?? "[\(target)] \(text)"
         }
     }
 

@@ -41,6 +41,8 @@ final class DictationTextModeUITests: PortavozUITestCase {
         XCTAssertTrue(renderedText(of: profile).contains(cleanTitle), "A new profile starts with the chosen global mode")
         try select(.literal, prefix: prefix, in: app)
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: profile).contains("Literal") })
+        let translation = app.control(withIdentifier: "settings-dictation-profile-translate-app.portavoz.profile.fixture")
+        XCTAssertTrue(renderedText(of: translation).contains("Default"), "A new profile follows the default translation")
         XCTAssertTrue(renderedText(of: global).contains(cleanTitle), "An application override must not rewrite the default")
         let remove = app.buttons["settings-dictation-profile-remove-app.portavoz.profile.fixture"]
         try revealSettings(remove, in: app)
