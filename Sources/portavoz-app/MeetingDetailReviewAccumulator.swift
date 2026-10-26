@@ -38,6 +38,7 @@ struct MeetingDetailReviewAccumulator {
     private var processingJobs: [ProcessingJob] = []
     private var notes = MeetingReviewNotes()
     private var commitmentReviewStates: [CommitmentReviewState] = []
+    private var translations: [TranscriptTranslation] = []
 
     mutating func beginObservation() -> UUID {
         let id = UUID()
@@ -77,7 +78,8 @@ private extension MeetingDetailReviewAccumulator {
             privacyReceipt: privacyReceipt,
             processingJobs: processingJobs,
             notes: notes,
-            commitmentReviewStates: commitmentReviewStates)
+            commitmentReviewStates: commitmentReviewStates,
+            translations: translations)
     }
 
     var phase: MeetingDetailLoadPhase {
@@ -124,6 +126,9 @@ private extension MeetingDetailReviewAccumulator {
         case .commitmentReviewStates(let value):
             commitmentReviewStates = value
             markObserved(.commitments)
+        case .translations(let value):
+            translations = value
+            markObserved(.translations)
         case .failed(let section):
             failedSections.insert(section)
             observedSections.remove(section)

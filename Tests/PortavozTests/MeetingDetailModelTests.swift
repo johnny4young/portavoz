@@ -31,7 +31,7 @@ extension MeetingDetailModelTests {
 
         client.updates = [
             .summary(nil), .privacyReceipt(nil), .notes(MeetingReviewNotes()),
-            .companionCards([]), .processingJobs([]), .commitmentReviewStates([]),
+            .companionCards([]), .processingJobs([]), .commitmentReviewStates([]), .translations([]),
             .failed(.core),
         ]
         await model.observe()
@@ -168,7 +168,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .companionCards([fixture.card]),
             .privacyReceipt(fixture.receipt),
             .processingJobs([]), .notes(MeetingReviewNotes()),
-            .commitmentReviewStates([]),
+            .commitmentReviewStates([]), .translations([]),
         ])
         let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
 
@@ -185,7 +185,7 @@ final class MeetingDetailModelTests: XCTestCase {
         let missingClient = MeetingDetailModelClientFake(updates: [
             .core(nil), .summary(nil), .companionCards([]), .privacyReceipt(nil),
             .processingJobs([]), .notes(MeetingReviewNotes()),
-            .commitmentReviewStates([]),
+            .commitmentReviewStates([]), .translations([]),
         ])
         let missing = MeetingDetailModel(
             meetingID: fixture.meeting.id,
@@ -226,7 +226,7 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertEqual(model.state.readModel?.summary?.version, 1)
         XCTAssertEqual(model.state.readModel?.segments.map(\.id), [fixture.segment.id])
         XCTAssertEqual(model.state.readModel?.companionCards.map(\.id), [fixture.card.id])
-        XCTAssertEqual(model.state.revision, 8)
+        XCTAssertEqual(model.state.revision, 9)
     }
 
     func testCorrectionRevisionMarksGeneratedSummaryAndCompanionTruthfullyStale() async throws {
@@ -837,7 +837,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .companionCards([fixture.card]),
             .privacyReceipt(fixture.receipt),
             .processingJobs([]), .notes(MeetingReviewNotes()),
-            .commitmentReviewStates([]),
+            .commitmentReviewStates([]), .translations([]),
         ])
         let model = MeetingDetailModel(meetingID: meeting.id, client: client)
         let destination = FileManager.default.temporaryDirectory
@@ -879,7 +879,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .companionCards([fixture.card]),
             .privacyReceipt(fixture.receipt),
             .processingJobs([]), .notes(MeetingReviewNotes()),
-            .commitmentReviewStates([]),
+            .commitmentReviewStates([]), .translations([]),
         ])
         client.playbackCancellationsRemaining = 1
         let model = MeetingDetailModel(meetingID: meeting.id, client: client)
@@ -1126,7 +1126,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .companionCards([fixture.card]),
             .privacyReceipt(fixture.receipt),
             .processingJobs([]), .notes(MeetingReviewNotes()),
-            .commitmentReviewStates([]),
+            .commitmentReviewStates([]), .translations([]),
         ]
     }
 
@@ -1194,7 +1194,7 @@ private struct MeetingDetailModelFixture {
         [
             .core(core), .summary(summary), .companionCards([card]),
             .privacyReceipt(receipt), .processingJobs([]),
-            .notes(MeetingReviewNotes()), .commitmentReviewStates([])
+            .notes(MeetingReviewNotes()), .commitmentReviewStates([]), .translations([])
         ]
     }
 

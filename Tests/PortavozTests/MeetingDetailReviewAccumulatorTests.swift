@@ -21,6 +21,7 @@ final class MeetingDetailReviewAccumulatorTests: XCTestCase {
         _ = accumulator.apply(.failed(.privacy))
         _ = accumulator.apply(.processingJobs([]))
         _ = accumulator.apply(.notes(MeetingReviewNotes()))
+        _ = accumulator.apply(.translations([]))
         transition = accumulator.apply(.commitmentReviewStates([]))
         XCTAssertEqual(transition.phase, .degraded(failures: 1))
         XCTAssertNotNil(transition.readModel)
@@ -37,6 +38,7 @@ final class MeetingDetailReviewAccumulatorTests: XCTestCase {
         _ = accumulator.apply(.privacyReceipt(nil))
         _ = accumulator.apply(.processingJobs([]))
         _ = accumulator.apply(.notes(MeetingReviewNotes()))
+        _ = accumulator.apply(.translations([]))
         transition = accumulator.apply(.commitmentReviewStates([]))
         XCTAssertEqual(transition.phase, .degraded(failures: 1))
         XCTAssertEqual(transition.readModel?.meeting.id, fixture.meeting.id)
@@ -124,7 +126,8 @@ final class MeetingDetailReviewAccumulatorTests: XCTestCase {
             .companionCards([]),
             .privacyReceipt(nil),
             .processingJobs([]),
-            .notes(MeetingReviewNotes())
+            .notes(MeetingReviewNotes()),
+            .translations([])
         ]
     }
 }

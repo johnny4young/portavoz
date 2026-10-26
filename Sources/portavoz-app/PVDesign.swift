@@ -165,6 +165,7 @@ enum PVSymbol {
     static let warning = "exclamationmark.circle"
     static let error = "exclamationmark.triangle.fill"
     static let retry = "arrow.clockwise"
+    static let translate = "translate"
     static let history = "clock.arrow.circlepath"
     // Recording
     static let record = "record.circle"

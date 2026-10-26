@@ -21,6 +21,7 @@ struct DictationSection: View {
     @AppStorage(PasteLastShortcut.defaultsKey) private var pasteLastShortcut = false
     @AppStorage(RewriteSelectionShortcut.defaultsKey) private var rewriteShortcut = false
     @AppStorage(DictationCorrections.defaultsKey) private var correctsByVoice = false
+    @AppStorage(DictationCaretCase.defaultsKey) private var matchesCaretCase = false
     @AppStorage(DictationSpeechGate.defaultsKey) private var skipsSilence = DictationSpeechGate.enabledByDefault
     @AppStorage(AppModelMemoryPreferences.key) private var memoryProfile =
         AppModelMemoryPreferences.Profile.balanced.rawValue
@@ -165,6 +166,15 @@ struct DictationSection: View {
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("settings-dictation-corrections-note")
+        Toggle("Match capitalization to the text before the cursor", isOn: $matchesCaretCase)
+            .accessibilityIdentifier("settings-dictation-caret-case")
+        // One-line UI copy.
+        // swiftlint:disable:next line_length
+        Text("Starts a sentence with a capital and continues one in lowercase. Names, acronyms and your replacements keep their capitals. Reads up to 80 characters before the cursor at paste time, only in fields Portavoz can read, and keeps none of it.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("settings-dictation-caret-case-note")
     }
 
     @ViewBuilder private var modifierKeyControls: some View {

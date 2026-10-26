@@ -29,6 +29,8 @@ struct DictationTextReadback {
     var pause: () async throws -> Void = { try await Task.sleep(for: .milliseconds(25)) }
     /// Nil means the editor's text around the selection is never requested.
     var context: ((NSRange) -> String?)?
+    /// Opt-in: reads more of the text before the caret to match the first word's case.
+    var caretCase: DictationCaretCase?
 
     func baseline(for text: String) -> Position? {
         guard Self.admitsLength(of: text), let value = position() else { return nil }
@@ -42,11 +44,14 @@ struct DictationTextReadback {
         guard let context, admits() else { return (text, baseline(for: text, at: value)) }
         let start = value.selection.location
         let end = start + value.selection.length
-        let beforeLength = min(Self.contextLength, start)
+        let beforeLength = min(caretCase == nil ? Self.contextLength : DictationCaretCase.contextLength, start)
         let afterLength = min(Self.contextLength, value.characterCount - end)
         let before = beforeLength == 0 ? "" : context(NSRange(location: start - beforeLength, length: beforeLength))
         let after = afterLength == 0 ? "" : context(NSRange(location: end, length: afterLength))
-        let output = DictationCaretJoin.join(text, after: before, before: after)
+        let cased = before.flatMap { preceding in
+            caretCase?.adapt(text, after: preceding, atFieldStart: beforeLength == start)
+        } ?? text
+        let output = DictationCaretJoin.join(cased, after: before, before: after)
         return (output, baseline(for: output, at: value))
     }
 

@@ -247,6 +247,7 @@ final class TextReadbackHarness {
     /// Off by default so verification tests see only the inserted span.
     var providesContext = false
     var contextSpans: [NSRange] = []
+    var caretCase: DictationCaretCase?
     var clock = ContinuousClock.now
 
     init() { board.setString("Original clipboard", forType: .string) }
@@ -265,6 +266,7 @@ final class TextReadbackHarness {
                 contextSpans.append(span)
                 return (document as NSString).substring(with: span)
             }
+            readback.caretCase = caretCase
         }
         let target = TextInserter.Target(processID: 101, readback: readbackAvailable ? readback : nil) { [self] in
             validations += 1

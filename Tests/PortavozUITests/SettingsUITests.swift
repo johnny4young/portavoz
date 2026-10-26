@@ -531,7 +531,8 @@ final class SettingsUITests: PortavozUITestCase {
                 "settings-dictation-language",
                 "settings-dictation-filler",
                 "settings-dictation-dict-add",
-                "settings-dictation-dict-remove"
+                "settings-dictation-dict-remove",
+                "settings-dictation-caret-case"
             ],
             types: [
                 "settings-dictation-language-support": .staticText,
@@ -539,6 +540,7 @@ final class SettingsUITests: PortavozUITestCase {
                 "settings-dictation-speech-gate-status": .staticText,
                 "settings-dictation-spoken-commands": .staticText,
                 "settings-dictation-paste-last-note": .staticText,
+                "settings-dictation-caret-case-note": .staticText,
                 "settings-dictation-compact-note": .staticText
             ],
             expectedText: ["settings-dictation-language-support": expectedSupport],
@@ -554,6 +556,8 @@ final class SettingsUITests: PortavozUITestCase {
                        "stopping after a pause is opt-in")
         XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-paste-last-hotkey")),
                        "the paste-last shortcut is opt-in")
+        XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-caret-case")),
+                       "reading text before the cursor is opt-in")
         let pasteLast = try uiSnapshotElement("settings-dictation-paste-last-note", type: .staticText, in: controls)
         XCTAssertTrue(renderedText(of: pasteLast).contains(UITestLocale.environmentLocale == "es"
             ? "15 minutos" : "15 minutes"))

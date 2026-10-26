@@ -2948,6 +2948,43 @@ learned spelling. `DictationTextRules.terms` groups rules by exact replacement f
 `settings-dictation-dict-remove`, and `settings-dictation-dict-add-heard` prefills
 the quick-add row with that spelling.
 
+**Caret capitalization (D594).** `dictationCaretCase`
+(`settings-dictation-caret-case`, off) makes the live `captureDestination` pass
+`DictationCaretCase.live()`, which carries the replacement spellings as protected
+words. `DictationTextReadback.prepare` then requests up to
+`DictationCaretCase.contextLength` units before the caret (two after it, as
+before) after the same `admits` revalidation, and `adapt` runs before
+`DictationCaretJoin.join`. `position(after:atFieldStart:)` returns
+`sentenceStart` for the field start, a line break, or `.!?…` not ending an
+abbreviation or initial (looking past opening `¿ ¡ ( “`); `midSentence` after a
+letter, digit, comma or semicolon; otherwise `unknown`, which changes nothing.
+Lowering also requires `NSSpellChecker` to know the lowercase word in `en` or
+`es` and `NLTagger` `.nameType` not to tag it. A failed context read adapts
+nothing, and the session fallback without a pinned field never reads context.
+
+**Meeting transcript translation (D595).** The transcript header's
+`detail-transcript-translate` menu (`-en`, `-es`) calls
+`RequestTranscriptTranslation` with the reading's transcript and correction
+revision and kicks post-capture processing. `ProcessPostCaptureJobs` claims
+`transcript-translation` only when composed with a `TranscriptTranslationWorker`,
+which recomputes the fingerprint for each language against the current reading
+(no match cancels it as superseded), translates each row whose recognized or
+detected language is the other one through `TranslateDictation`, and publishes.
+Missing languages or an unsupported pair cancel the job with
+`translation.languages-missing` or `translation.unsupported`; a timed-out or failed
+line fails it for one retry. Meeting Detail observes translations as their own
+section; `MeetingTranscriptTranslationState` derives the activity from the latest
+translation job and swaps translated rows into the shown reading. The header
+shows `detail-transcript-language` (Original or a stored language),
+`detail-transcript-translation-stale` for an older reading,
+`detail-transcript-translation-cancel` while it runs,
+`detail-transcript-translation-settings` (Settings › Audio) for missing languages
+and `detail-transcript-translation-failure` otherwise. A requested translation is
+shown once it is current; a translated reading cannot be corrected. Translation
+jobs are left out of the trust section and labelled in the background work
+center. Disposable launches use `MeetingTranslationFixture`, which tags each line
+with its target; `-seed-meeting-translation-missing` reports missing languages.
+
 Resolution is session override, then exact captured bundle-ID profile, then
 global mode. The destination's existing NSRunningApplication capture supplies
 its bundle ID even when the captured field is secure or focus cannot be read;
@@ -4077,8 +4114,8 @@ the scoped summary stream remains functional at scale; it does not substitute
 for the unavailable SwiftUI update-cause lane.
 
 The characterization baseline freezes the reviewed interaction surface. The
-current generated `meeting-detail-interaction-contract.json` snapshots 486
-state/control/presentation/keyboard/identifier/navigation signals across forty
+current generated `meeting-detail-interaction-contract.json` snapshots 504
+state/control/presentation/keyboard/identifier/navigation signals across forty-one
 reviewed detail files and assigns all 31 `MeetingDetailUITests` journeys to
 exactly one of sixteen feature owners. Screenshot names derive from test bodies;
 changing a control, route, owner, screenshot, or reviewed evidence digest
