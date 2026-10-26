@@ -276,6 +276,15 @@ private struct DictationStripView: View {
                 }
             }
             Spacer()
+            if let learnable = controller.learnableCorrection {
+                Button(L10n.format("Always write “%@”", learnable.rule.replacement)) {
+                    controller.learnCorrection()
+                }
+                .controlSize(.small)
+                .help(L10n.format(
+                    "Adds “%@” → “%@” to your text replacements.", learnable.rule.trigger, learnable.rule.replacement))
+                .accessibilityIdentifier("dictation-panel-learn-correction")
+            }
         }
     }
 

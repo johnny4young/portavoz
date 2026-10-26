@@ -1305,6 +1305,9 @@ the same field still holds it.
 An optional translation target (English or Spanish) runs after the text mode through
 `TranslateDictation` and the on-device Translation framework with installed languages
 only; any failure pastes the untranslated text with a notice.
+A verified "change X to Y" can add X → Y to the text replacements, only from the
+strip's explicit "Always write" button; Settings groups replacements that share a
+spelling as aliases of one term.
 The app resolves explicit Literal/Clean/Polish mode by session choice, captured bundle-ID
 profile, then global preference. The existing destination capture supplies identity;
 no profile recaptures focus or grants insertion authority. Missing preferences

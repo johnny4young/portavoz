@@ -2932,6 +2932,19 @@ status and `settings-dictation-translate-download`, which calls
 fixture translator; `-seed-dictation-translate-missing` reports missing languages and
 `-seed-dictation-translate-held` never answers.
 
+**Learned spellings and aliases (D593).** After a verified `.replace` correction,
+`DictationLearnableCorrection` holds the heard span and the spoken replacement when
+`DictationTextRules.learning` accepts them against the current
+`dictationReplacements`; the verified strip then stays six seconds instead of 1.6
+and shows `dictation-panel-learn-correction`. `learnCorrection()` re-reads the
+rules, writes the learned pair through `DictationTextPreferences.store` (the
+disposable app writes only its argument domain), and replaces the summary with the
+learned spelling. `DictationTextRules.terms` groups rules by exact replacement for
+`DictationDictionaryEditor`, which reads `dictationReplacements` through
+`@AppStorage` so a learned rule survives its next save; each heard form keeps
+`settings-dictation-dict-remove`, and `settings-dictation-dict-add-heard` prefills
+the quick-add row with that spelling.
+
 Resolution is session override, then exact captured bundle-ID profile, then
 global mode. The destination's existing NSRunningApplication capture supplies
 its bundle ID even when the captured field is secure or focus cannot be read;

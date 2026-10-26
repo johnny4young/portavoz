@@ -21848,3 +21848,16 @@ failure pastes the untranslated text and says why. The one deliberate download
 is the Settings button that asks Apple to prepare English and Spanish. History
 and Paste last keep the translation; "Paste original" replays the text before
 translation.
+
+## D593 — The dictionary learns a spelling only when the user asks, from a verified correction
+
+A word Portavoz kept mishearing had to be fixed by voice every time, or typed
+into Settings by hand. After a verified spoken "change X to Y" (D591), the
+strip offers "Always write “Y”" for six seconds; pressing it adds X → Y to
+the text replacements and the next dictation applies it. Nothing is learned
+from deletions, from edits the user types, from meetings or without that press,
+and nothing is stored to suggest later. A heard form of at most four words with
+two letters, a single-line spelling of at most 80 characters, and a pair the
+dictionary does not already hold are the only ones offered. Aliases are rules
+that share a spelling: Settings groups them under that spelling and adds another
+heard form to it, while storage, import and export stay plain trigger pairs.

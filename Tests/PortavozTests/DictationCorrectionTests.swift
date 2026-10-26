@@ -90,6 +90,49 @@ struct DictationCorrectionDeliveryTests {
     }
 
     @Test
+    func aCorrectionIsLearnedOnlyWhenChosenAndAppliesToTheNextDictation() async throws {
+        let receiver = DictationFixtureReceiver()
+        let first = DictationControllerHarness(text: "ship it on friday")
+        defer { first.controller.cancel() }
+        try await dictate(first, dependencies(first, receiver: receiver))
+        let command = DictationControllerHarness(text: "change friday to monday", controller: first.controller)
+        try await dictate(command, dependencies(command, receiver: receiver))
+        let offered = try #require(first.controller.learnableCorrection)
+        #expect(offered.rule == DictationReplacement(trigger: "friday", replacement: "monday"))
+        #expect(command.defaults.string(forKey: DictationController.replacementsKey) == nil)
+        first.controller.learnCorrection()
+        #expect(first.controller.learnableCorrection == nil)
+        #expect(first.controller.correctionSummary == "From now on, “friday” is written “monday”.")
+        let rules = DictationTextRules.decode(
+            replacements: command.defaults.string(forKey: DictationController.replacementsKey) ?? "")
+        #expect(rules == [DictationReplacement(trigger: "friday", replacement: "monday")])
+        let next = DictationControllerHarness(text: "see you friday", controller: first.controller)
+        var learned = dependencies(next, receiver: receiver)
+        learned.defaults = command.defaults
+        try await dictate(next, learned)
+        #expect(receiver.text.hasSuffix("see you monday"))
+    }
+
+    @Test
+    func deletionsAndKnownRulesAreNotOffered() async throws {
+        let receiver = DictationFixtureReceiver()
+        let first = DictationControllerHarness(text: "ship it on friday please")
+        defer { first.controller.cancel() }
+        try await dictate(first, dependencies(first, receiver: receiver))
+        let deletion = DictationControllerHarness(text: "delete please", controller: first.controller)
+        try await dictate(deletion, dependencies(deletion, receiver: receiver))
+        #expect(first.controller.correctionSummary == "Deleted “please”.")
+        #expect(first.controller.learnableCorrection == nil)
+        let known = DictationControllerHarness(text: "change friday to monday", controller: first.controller)
+        known.defaults.set(
+            DictationTextRules.encode([DictationReplacement(trigger: "friday", replacement: "monday")]),
+            forKey: DictationController.replacementsKey)
+        try await dictate(known, dependencies(known, receiver: receiver))
+        #expect(first.controller.correctionSummary == "Changed “friday” to “monday”.")
+        #expect(first.controller.learnableCorrection == nil)
+    }
+
+    @Test
     func withCorrectionsOffTheCommandIsPastedAsText() async throws {
         let receiver = DictationFixtureReceiver()
         let first = DictationControllerHarness(text: "ship it on friday")

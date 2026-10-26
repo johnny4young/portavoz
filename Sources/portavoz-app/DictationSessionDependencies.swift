@@ -24,6 +24,8 @@ struct DictationSessionDependencies {
     var captureDestination: () -> CapturedDictationDestination
     var copyText: (String) -> Bool
     var defaults: UserDefaults
+    /// The disposable app writes learned preferences to its volatile domain only.
+    var storesPreferencesTemporarily = false
     var now: () -> Date = Date.init
     var waitForFeedbackDismissal: @MainActor (Duration) async throws -> Void = {
         try await Task.sleep(for: $0)
