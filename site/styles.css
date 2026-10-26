@@ -430,6 +430,7 @@ section#privacy {
   animation: lb-in 0.16s ease;
 }
 .lightbox:not([open]) { display: none; }
+body:has(.lightbox[open]) { overflow: hidden; }
 @keyframes lb-in { from { opacity: 0; } to { opacity: 1; } }
 .lightbox img {
   max-width: min(1360px, 94vw);
@@ -456,6 +457,15 @@ section#privacy {
   cursor: pointer;
 }
 .lb-close:hover { background: rgba(23, 27, 49, 1); }
+.lb-close:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
+.lb-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 
 section h2 {
   font-family: "Fraunces", serif;

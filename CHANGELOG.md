@@ -31,7 +31,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 26, 2026
 
-- **⌨️ Keyboard-friendly screenshots** — the website's enlarged screenshots keep keyboard focus inside the viewer and return you to the right thumbnail when closed.
+- **⌨️ Keyboard-friendly screenshots** — on the website, an enlarged screenshot takes keyboard focus, keeps the page behind it out of reach, and returns you to the same thumbnail when it closes.
 - **🌍 Read a meeting in the other language** — choose Translate in a meeting's transcript to read it in English or Spanish, translated on your Mac; lines already in that language stay as they are, and Original is one click away.
 
 ## October 25, 2026
