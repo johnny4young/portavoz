@@ -257,7 +257,11 @@ struct SelectionRewriteSayHowTests {
     @Test(arguments: [false, true])
     func aSpokenRewriteInstructionNeverCorrectsThePreviousDictation(_ refusesEdit: Bool) async throws {
         let receiver = DictationFixtureReceiver()
+        // Harness construction clears the process-wide argument domain; keep other suites
+        // intact across these synchronous, main-actor construction boundaries.
+        let firstArguments = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
         let first = DictationControllerHarness(text: "ship it on friday")
+        first.defaults.setVolatileDomain(firstArguments, forName: UserDefaults.argumentDomain)
         defer { first.controller.cancel() }
         first.defaults.set(true, forKey: DictationCorrections.defaultsKey)
         var initial = first.dependencies
@@ -288,7 +292,9 @@ struct SelectionRewriteSayHowTests {
         defer { rewrite.cancel() }
         rewrite.start(using: dependencies(recorder))
         try await eventually { rewrite.phase == .choosing }
+        let commandArguments = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
         let command = DictationControllerHarness(text: "change friday to monday", controller: first.controller)
+        command.defaults.setVolatileDomain(commandArguments, forName: UserDefaults.argumentDomain)
         command.defaults.set(true, forKey: DictationCorrections.defaultsKey)
         let session = rewrite.instructionDependencies(command.dependencies)
         recorder.dictating = true
