@@ -21,12 +21,12 @@ checks a throwing `localStorage` accessor, denied storage reads/writes,
 saved-language admission, clipboard pending and duplicate-click behavior (the
 button stays enabled so keyboard focus survives; `aria-busy` holds the live
 announcement until the outcome), success, rejection, missing API, synchronous
-failure and retry. Lightbox focus doubles also require opening focus on its
-sole close control, contained Tab/Shift+Tab, consumed Escape, exact launcher
-focus restoration after every close route and reopening, and unaffected
-background keyboard events while closed. The runner exits non-zero unless every
-case completes, so a case stuck on a never-settling promise fails instead of
-passing silently. It
+failure and retry. The screenshot lightbox is a native modal `<dialog>`, so the
+browser owns focus containment, background inertness and Escape; its double
+requires the autofocused close control, an image click that keeps it open, and
+exact launcher focus restoration after every close route and reopening. The
+runner exits non-zero unless every case completes, so a case stuck on a
+never-settling promise fails instead of passing silently. It
 reads exactly one bare inline `<script>` from `site/index.html`, resolved from
 its own location. These are deterministic capability/lifecycle checks, not
 a browser-rendering, native clipboard-permission or accessibility qualification.

@@ -28,7 +28,12 @@ function setup({readFails = false, writeFails = false, storageDenied = false, sa
   brew.querySelector = () => hint;
   thumb.querySelector = () => element({alt: 'Fixture image'});
   thumb2.querySelector = () => element({alt: 'Second image'});
-  const ids = {brew, lightbox: lb, lbImg: image, lbClose: close};
+  // The browser owns modal focus, inertness and Escape; the double models only
+  // what the script relies on: autofocus on open and one close event per close.
+  Object.assign(lb, {open: false,
+    showModal() { this.open = true; close.focus(); },
+    close() { if (!this.open) return; this.open = false; this.events.close(); }});
+  const ids = {brew, lightbox: lb, lbImg: image};
   const document = Object.assign(element(), {documentElement: root, body: {style: {}},
     getElementById: key => ids[key], querySelectorAll: selector => selector === '.thumb' ? [thumb, thumb2] : [en]});
   const timers = new Map(); let timerID = 0;
@@ -43,13 +48,6 @@ function setup({readFails = false, writeFails = false, storageDenied = false, sa
   vm.runInNewContext(script, context);
   return {root, en, hint, brew, lb, image, close, thumb, thumb2, document, timers};
 }
-function keydown(s, key, shiftKey = false) {
-  const event = {key, shiftKey, defaultPrevented: false, propagationStopped: false,
-    preventDefault() { this.defaultPrevented = true; },
-    stopPropagation() { this.propagationStopped = true; }};
-  s.document.events.keydown(event);
-  return event;
-}
 async function tests() {
   const failures = [];
   async function test(name, work) {
@@ -58,16 +56,16 @@ async function tests() {
   }
   await test('denied storage read does not disable controls', () => {
     const s = setup({readFails: true}); s.en.events.click();
-    assert.equal(s.root.getAttribute('lang'), 'en'); s.thumb.events.click(); assert.equal(s.lb.hidden, false);
+    assert.equal(s.root.getAttribute('lang'), 'en'); s.thumb.events.click(); assert.equal(s.lb.open, true);
   });
   await test('denied storage write preserves current language and controls', () => {
     const s = setup({writeFails: true}); s.en.events.click();
-    assert.equal(s.root.getAttribute('lang'), 'en'); s.thumb.events.click(); assert.equal(s.lb.hidden, false);
+    assert.equal(s.root.getAttribute('lang'), 'en'); s.thumb.events.click(); assert.equal(s.lb.open, true);
   });
   await test('throwing storage accessor does not disable controls', () => {
     const s = setup({storageDenied: true});
     assert.equal(s.root.getAttribute('lang'), 'es'); s.en.events.click();
-    assert.equal(s.root.getAttribute('lang'), 'en'); s.thumb.events.click(); assert.equal(s.lb.hidden, false);
+    assert.equal(s.root.getAttribute('lang'), 'en'); s.thumb.events.click(); assert.equal(s.lb.open, true);
   });
   await test('valid saved language is restored; invalid language ignored', () => {
     assert.equal(setup({saved: 'en'}).root.getAttribute('lang'), 'en');
@@ -103,60 +101,33 @@ async function tests() {
     const s = setup({clipboard: {writeText: () => { throw Error('blocked'); }}});
     await s.brew.events.click(); assert.equal(s.brew.getAttribute('aria-busy'), 'false'); assert.match(s.hint.innerHTML, /manually/);
   });
-  await test('lightbox opening moves focus into the dialog', () => {
+  await test('lightbox is a native modal dialog that autofocuses its close control', () => {
+    assert.match(html, /<dialog class="lightbox" id="lightbox">\s*<button class="lb-close"[^>]*\bautofocus\b/);
     const s = setup(); s.thumb.focus(); s.thumb.events.click();
-    assert.equal(s.lb.hidden, false); assert.equal(s.image.getAttribute('src'), 'fixture.png');
+    assert.equal(s.lb.open, true); assert.equal(s.image.getAttribute('src'), 'fixture.png');
     assert.equal(s.image.getAttribute('alt'), 'Fixture image');
+    assert.equal(s.lb.getAttribute('aria-label'), 'Fixture image');
     assert.equal(s.document.body.style.overflow, 'hidden');
     assert.equal(s.document.activeElement, s.close);
   });
-  await test('lightbox contains Tab and Shift+Tab in its sole control', () => {
-    const s = setup(); s.thumb.events.click(); s.close.focus();
-    for (const shiftKey of [false, true]) {
-      const event = keydown(s, 'Tab', shiftKey);
-      assert.equal(event.defaultPrevented, true); assert.equal(event.propagationStopped, true);
-      assert.equal(s.document.activeElement, s.close); assert.equal(s.lb.hidden, false);
-    }
-  });
-  await test('lightbox Escape is consumed and restores launcher focus', () => {
-    const s = setup(); s.thumb.focus(); s.thumb.events.click(); s.close.focus();
-    const event = keydown(s, 'Escape');
-    assert.equal(s.lb.hidden, true); assert.equal(s.image.getAttribute('src'), '');
-    assert.equal(s.document.body.style.overflow, '');
-    assert.equal(s.document.activeElement, s.thumb);
-    assert.equal(event.defaultPrevented, true); assert.equal(event.propagationStopped, true);
-  });
-  await test('lightbox image stays open; backdrop and close button restore focus', () => {
+  await test('lightbox image stays open; every close route restores the launcher', () => {
     const s = setup();
-    for (const target of [s.lb, s.close]) {
-      s.thumb.focus(); s.thumb.events.click(); s.close.focus();
+    // Escape reaches the script only as the dialog's close event.
+    for (const close of [() => s.lb.events.click({target: s.lb}), () => s.lb.events.click({target: s.close}), () => s.lb.close()]) {
+      s.en.focus(); s.thumb.events.click();
       s.lb.events.click({target: s.image});
-      assert.equal(s.lb.hidden, false); assert.equal(s.document.activeElement, s.close);
-      s.lb.events.click({target});
-      assert.equal(s.lb.hidden, true); assert.equal(s.document.activeElement, s.thumb);
+      assert.equal(s.lb.open, true); assert.equal(s.document.activeElement, s.close);
+      close();
+      assert.equal(s.lb.open, false); assert.equal(s.image.getAttribute('src'), '');
+      assert.equal(s.document.body.style.overflow, '');
+      assert.equal(s.document.activeElement, s.thumb, 'restore the launcher even if a pointer click did not focus it');
     }
   });
   await test('lightbox reopen restores the latest exact launcher', () => {
-    const s = setup(); s.en.focus(); s.thumb.events.click(); keydown(s, 'Escape');
-    assert.equal(s.document.activeElement, s.thumb, 'restore the launcher even if a pointer click did not focus it');
-    s.thumb2.focus(); s.thumb2.events.click();
-    assert.equal(s.document.activeElement, s.close);
-    assert.equal(s.image.getAttribute('src'), 'second.png');
-    keydown(s, 'Escape'); assert.equal(s.document.activeElement, s.thumb2);
-  });
-  await test('closed lightbox leaves background keyboard behavior alone', () => {
-    const s = setup(); s.en.focus();
-    s.lb.events.click({target: s.close});
-    for (const key of ['Tab', 'Escape', 'Enter']) {
-      const event = keydown(s, key);
-      assert.equal(event.defaultPrevented, false); assert.equal(event.propagationStopped, false);
-      assert.equal(s.document.activeElement, s.en); assert.equal(s.lb.hidden, true);
-    }
-    s.thumb.focus(); s.thumb.events.click(); keydown(s, 'Escape'); s.en.focus();
-    s.lb.events.click({target: s.lb});
-    const event = keydown(s, 'Tab');
-    assert.equal(event.defaultPrevented, false); assert.equal(event.propagationStopped, false);
-    assert.equal(s.document.activeElement, s.en);
+    const s = setup(); s.thumb.events.click(); s.lb.close();
+    s.thumb2.events.click();
+    assert.equal(s.document.activeElement, s.close); assert.equal(s.image.getAttribute('src'), 'second.png');
+    s.lb.close(); assert.equal(s.document.activeElement, s.thumb2);
   });
   completed = true;
   process.exitCode = failures.length ? 1 : 0;
