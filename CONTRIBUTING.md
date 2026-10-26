@@ -19,9 +19,10 @@ the process in [SECURITY.md](SECURITY.md), never through a public issue.
   and shared-harness changes expand to the complete English suite
   automatically; Spanish is checked by `LocalizationTests`, not by a UI pass.
 - **Domain types live in `PortavozCore`**; workflows live in `ApplicationKit`.
-  Capability modules never depend back on `ApplicationKit`. Follow the current
-  [module graph](docs/ARCHITECTURE.md#current-module-graph) for the explicitly
-  permitted sibling dependencies, including the shared model lifecycle.
+  Kits depend on Core, never on `ApplicationKit` or on each other, except the
+  edges in the [module graph](docs/ARCHITECTURE.md#current-module-graph):
+  `TranscriptionKit` and `DiarizationKit` use `ModelStoreKit`, and
+  `IntegrationsKit` uses `StorageKit` and `IntelligenceKit`.
 - **License hygiene:** we are MIT. Do not port code from GPL projects (e.g. MacParakeet) — patterns and ideas are fine, code is not. MIT/Apache sources are fine with attribution.
 - **Explain the code, not the ticket.** Do not put private tracker keys,
   sprint names, or agent-session names in identifiers and comments. Public

@@ -288,25 +288,23 @@ no cloud service or transcript translation is involved.
 
 ## Build from source
 
-Requires **Xcode 26+ / Swift 6.2 on macOS 26+**. Use the full Xcode
-toolchain; when the active tools are Command Line Tools, set
-`export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` in this shell.
+Requires **Xcode 26+ / Swift 6.2 on macOS 26+** with the full Xcode toolchain.
 
 ```sh
 git clone https://github.com/johnny4young/portavoz.git
 cd portavoz
-swift build -Xswiftc -warnings-as-errors
-scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors
+# If `xcode-select -p` is not inside Xcode.app:
+# export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+swift build
 
-# Build the local app bundle and explore a disposable demo library:
+# Build the app bundle and open it on a fictional library:
 scripts/make-app.sh
-open -na dist/Portavoz.app --args -use-temp-store -seed-demo
+open dist/Portavoz.app --args -use-temp-store -seed-showcase
 ```
 
-The demo flags use a temporary store and synthetic meetings. Launching without
-`-use-temp-store` uses the normal local library. Microphone and system-audio
-permissions are needed for capture; inspecting the demo does not require a real
-meeting. The bundled app supplies the Info.plist required by macOS capture APIs.
+Quit an installed Portavoz first: this build shares its identity and settings.
+`-use-temp-store` keeps meetings in a temporary store; without it the build opens
+your real library. The bundle supplies the Info.plist that macOS capture needs.
 
 Models download on first use; see [Models](#models) for disk and RAM needs. To
 prepare them explicitly, run `swift run portavoz-cli models download`. Optional
