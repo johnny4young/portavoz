@@ -31,6 +31,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 25, 2026
 
+- **🔠 Capitals that fit the sentence** — turn on “Match capitalization to the text before the cursor” and dictating mid-sentence continues in lowercase while a new sentence starts with a capital; names, acronyms and your own spellings keep theirs.
 - **📚 It learns your words** — after you fix a word by voice, press “Always write” and Portavoz spells it your way from then on; Settings groups every way a word is heard under its spelling.
 - **🌐 Dictate in one language, paste in the other** — set “Translate dictation into” to English or Spanish, for every app, one app or just this dictation: Portavoz translates on your Mac with Apple's languages, and Paste original is one click away.
 - **✏️ Fix it by voice** — turn on spoken corrections and start your next dictation with “change Friday to Monday”, “delete Friday” or “scratch that”: Portavoz fixes only what it just pasted, while it is unchanged, instead of typing the command.

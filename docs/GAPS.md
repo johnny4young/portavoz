@@ -202,6 +202,13 @@ range (native text views, browsers, Electron, terminals), how a rich-text
 replacement keeps formatting, and how a global Return registration behaves in
 apps that bind it remain field validation.
 
+### Caret capitalization in real editors
+
+D594 trusts the system dictionary and NaturalLanguage name tagging. Names
+that are also common words ("Rose", "Victoria"), editors whose
+`kAXStringForRange` differs from what is shown, and mixed-language sentences
+remain field validation.
+
 ### Learned spellings from spoken corrections
 
 D593 learns only what the user confirms. Whether six seconds is enough to

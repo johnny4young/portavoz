@@ -42,7 +42,8 @@ extension TextInserter {
 
     @MainActor
     static func captureDestination(
-        pasteboard: NSPasteboard = .general, matching expectedApplication: NSRunningApplication? = nil
+        pasteboard: NSPasteboard = .general, matching expectedApplication: NSRunningApplication? = nil,
+        caretCase: DictationCaretCase? = nil
     ) -> CapturedDictationDestination {
         let application = NSWorkspace.shared.frontmostApplication
         guard canInsert(promptIfNeeded: false), let application,
@@ -66,7 +67,9 @@ extension TextInserter {
                                 bundleIdentifier: application.bundleIdentifier,
                                 result: initialSecurity == .secure ? .secureField : .focusUnavailable)
         }
-        let target = Target(processID: application.processIdentifier, readback: .accessibility(element)) {
+        var readback = DictationTextReadback.accessibility(element)
+        readback?.caretCase = caretCase
+        let target = Target(processID: application.processIdentifier, readback: readback) {
             guard canInsert(promptIfNeeded: false) else { return .focusUnavailable }
             // Apple specifies NSRunningApplication equality for process identity,
             // not PID equality. launchDate is absent for non-LaunchServices apps.

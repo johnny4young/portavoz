@@ -7559,6 +7559,16 @@
         }
       }
     },
+    "Match capitalization to the text before the cursor": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustar mayúsculas al texto antes del cursor"
+          }
+        }
+      }
+    },
     "Matches “%@” from your remembered voices": {
       "localizations": {
         "es": {
@@ -14317,6 +14327,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Inicia una nueva grabación de reunión en Portavoz."
+          }
+        }
+      }
+    },
+    "Starts a sentence with a capital and continues one in lowercase. Names, acronyms and your replacements keep their capitals. Reads up to 80 characters before the cursor at paste time, only in fields Portavoz can read, and keeps none of it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza una oración con mayúscula y continúa una en minúscula. Los nombres, las siglas y tus reemplazos conservan sus mayúsculas. Lee hasta 80 caracteres antes del cursor al pegar, solo en campos que Portavoz puede leer, y no guarda nada."
           }
         }
       }

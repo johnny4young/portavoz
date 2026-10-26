@@ -2945,6 +2945,20 @@ learned spelling. `DictationTextRules.terms` groups rules by exact replacement f
 `settings-dictation-dict-remove`, and `settings-dictation-dict-add-heard` prefills
 the quick-add row with that spelling.
 
+**Caret capitalization (D594).** `dictationCaretCase`
+(`settings-dictation-caret-case`, off) makes the live `captureDestination` pass
+`DictationCaretCase.live()`, which carries the replacement spellings as protected
+words. `DictationTextReadback.prepare` then requests up to
+`DictationCaretCase.contextLength` units before the caret (two after it, as
+before) after the same `admits` revalidation, and `adapt` runs before
+`DictationCaretJoin.join`. `position(after:atFieldStart:)` returns
+`sentenceStart` for the field start, a line break, or `.!?…` not ending an
+abbreviation or initial (looking past opening `¿ ¡ ( “`); `midSentence` after a
+letter, digit, comma or semicolon; otherwise `unknown`, which changes nothing.
+Lowering also requires `NSSpellChecker` to know the lowercase word in `en` or
+`es` and `NLTagger` `.nameType` not to tag it. A failed context read adapts
+nothing, and the session fallback without a pinned field never reads context.
+
 Resolution is session override, then exact captured bundle-ID profile, then
 global mode. The destination's existing NSRunningApplication capture supplies
 its bundle ID even when the captured field is secure or focus cannot be read;

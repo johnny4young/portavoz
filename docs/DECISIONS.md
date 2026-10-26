@@ -21861,3 +21861,19 @@ two letters, a single-line spelling of at most 80 characters, and a pair the
 dictionary does not already hold are the only ones offered. Aliases are rules
 that share a spelling: Settings groups them under that spelling and adds another
 heard form to it, while storage, import and export stay plain trigger pairs.
+
+## D594 — Match the first dictated word's case to the text before the caret, opt-in
+
+D560 spaced dictated text from the caret but left case alone, because lowering
+a capital mid-sentence corrupts names. Dictating into the middle of a sentence
+still pasted "We test it, Then we ship". With "Match capitalization to the text
+before the cursor" on (off by default), the inserter reads up to 80 UTF-16
+units before the caret instead of two, at the same moment and under the same
+revalidation as D560, and keeps none of it. After the field start, a line
+break or a sentence end, a lowercase first letter is capitalized. After a
+letter, digit, comma or semicolon, a capital is lowered only when the word is
+not "I", has no other capital, is not one of the user's replacement spellings,
+is known in lowercase to the system en or es dictionary, and is not tagged as a
+name by NaturalLanguage in that context. A colon, a quote, an abbreviation or an
+initial changes nothing. Only the first letter of the first word can change;
+history and Paste last keep the dictated text.

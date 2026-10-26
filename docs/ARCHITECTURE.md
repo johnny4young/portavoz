@@ -1308,6 +1308,9 @@ only; any failure pastes the untranslated text with a notice.
 A verified "change X to Y" can add X → Y to the text replacements, only from the
 strip's explicit "Always write" button; Settings groups replacements that share a
 spelling as aliases of one term.
+With caret capitalization on, the inserter's readback reads up to 80 units before
+the caret and `DictationCaretCase` adapts only the first word's case before the
+caret spacing join.
 The app resolves explicit Literal/Clean/Polish mode by session choice, captured bundle-ID
 profile, then global preference. The existing destination capture supplies identity;
 no profile recaptures focus or grants insertion authority. Missing preferences
