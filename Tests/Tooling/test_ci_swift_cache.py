@@ -15,7 +15,8 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 COMMIT = "a" * 40
-MAIN_ONLY = "if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'"
+MAIN_ONLY = ("if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && "
+             "steps.swift_cache.outputs.cache-hit != 'true'")
 SPEC = importlib.util.spec_from_file_location("ci_swift_cache_key", ROOT / "scripts/ci_swift_cache_key.py")
 cache = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(cache)
@@ -98,15 +99,14 @@ class SwiftCacheIdentityTests(unittest.TestCase):
             self.assertNotEqual(self.key(), baseline)
 
     def test_first_party_changes_keep_the_graph_prefix(self):
-        baseline = self.key()
+        baseline = cache.cache_prefix(self.root, "build-and-test")
         source = self.root / "Sources/Example.swift"
         source.parent.mkdir()
-        source.write_text("let value = 1")
-        self.assertEqual(self.key(), baseline)
-        source.write_text("let value = 2")
-        self.assertEqual(self.key(), baseline)
+        for content in ("let value = 1", "let value = 2"):
+            source.write_text(content)
+            self.assertEqual(cache.cache_prefix(self.root, "build-and-test"), baseline)
         source.unlink()
-        self.assertEqual(self.key(), baseline)
+        self.assertEqual(cache.cache_prefix(self.root, "build-and-test"), baseline)
         # This only proves key policy. Native fresh-checkout/changed-source runs
         # separately qualify SwiftPM invalidation; cache state is never test proof.
 
@@ -125,7 +125,7 @@ class SwiftCacheIdentityTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.key()
 
-    def test_cli_emits_only_one_key_line_and_fails_closed(self):
+    def test_cli_emits_the_prefix_and_key_lines_and_fails_closed(self):
         arguments = ["cache", "--lane", "build-and-test", "--commit", COMMIT]
         with patch.object(cache, "ROOT", self.root), patch("sys.argv", arguments):
             output = io.StringIO()
@@ -181,10 +181,11 @@ class SwiftCacheWorkflowTests(unittest.TestCase):
                 identity = next(step for step in steps if "id: swift_cache_key" in step)
                 self.assertIn(f'--lane {lane} --commit "$GITHUB_SHA"', identity)
                 restore = next(step for step in steps if "actions/cache/restore@" in step)
-                self.assertIn("if: github.event_name == 'pull_request'", restore)
-                self.assertIn("restore-keys: ${{ steps.swift_cache_key.outputs.prefix }}", restore)
+                self.assertNotIn("if:", restore)
+                self.assertIn("restore-keys: ${{ github.event_name == 'pull_request' && "
+                              "steps.swift_cache_key.outputs.prefix || '' }}", restore)
+                self.assertIn("lookup-only: ${{ github.event_name != 'pull_request' }}", restore)
                 self.assertIn('SEGMENT_DOWNLOAD_TIMEOUT_MINS: "2"', restore)
-                self.assertNotIn("lookup-only", job)
                 self.assertEqual(job.count("restore-keys:"), 1)
                 self.assertNotIn("enableCrossOsArchive", job)
                 self.assertEqual(job.count("          path: .build\n"), 2)

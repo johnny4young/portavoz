@@ -5739,9 +5739,10 @@ graph on pull requests. Cache identity binds the lane, absolute workspace,
 architecture, macOS build, runner image, Xcode/Swift/macOS SDK and build-policy
 inputs, including the dependency lock. Every push to `main` builds cold and,
 after the complete suite passes, saves one seed under that identity plus its
-commit (D596); a pull request restores the newest seed whose identity prefix
-matches exactly, so first-party sources trail `main` by at most the PR's own
-changes. There is no cross-identity restore, cached test verdict or conditional
+commit (D596); a lookup-only probe keeps a rerun from saving the same commit
+twice. A pull request restores the newest saved seed whose identity prefix
+matches exactly; cancelled, failed or oversize `main` runs save nothing, so that
+seed can be a few commits behind. There is no cross-identity restore, cached test verdict or conditional
 test execution. A successful build records tracked source fingerprints. Only
 matching bytes, size and permissions recover their prior timestamps; changed or
 new inputs remain fresh. Restoration never chooses paths outside the current Git
@@ -5750,9 +5751,10 @@ hit whose fingerprints fail validation is discarded and the job builds cold. UI
 products, iOS portability, release/performance evidence and private model
 or library state are outside this cache. The iOS portability lane runs on every
 `main` push and manual run, and on a pull request only when it changes a source
-directory in the manifest closure of the four compiled targets, the package
-manifest or lock, or the lane's own runner, selector or workflow
-(`scripts/ios_portability_scope.py`; an unreadable diff runs the lane). The quality spec owns measurement and
+directory in the manifest closure of the four compiled targets (either side of a
+rename), the package manifest or lock, or the lane's own runner, selector,
+toolchain verifier or workflow (`scripts/ios_portability_scope.py`). An
+unreadable diff, or a manifest form the selector cannot prove, runs the lane. The quality spec owns measurement and
 invalidation checks; a hit alone is not evidence of a faster or passing build.
 
 Pull-request UI evidence is selected deterministically from changed paths.

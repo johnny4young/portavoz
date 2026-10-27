@@ -33,7 +33,7 @@ class CIWorkflowTests(unittest.TestCase):
         self.assertIn("  pull_request:\n", triggers)
         self.assertIn("  workflow_dispatch:\n", triggers)
         # A dispatched run follows the push cache policy, never the pull-request restore path.
-        self.assertIn("if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'", workflow)
+        self.assertIn("lookup-only: ${{ github.event_name != 'pull_request' }}", workflow)
         self.assertIn("if: github.event_name == 'pull_request' &&", workflow)
 
     def test_current_sdk_uses_one_fixed_toolchain_test_build(self):

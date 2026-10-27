@@ -384,8 +384,10 @@ build/test pair that can compile twice. The iOS portability lane owns only its
 sequential destination compiles and cannot claim runtime/device behavior. On a
 pull request it runs only when `scripts/ios_portability_scope.py` finds a change
 in the manifest closure of those targets or in the lane's own policy files;
-`Tests/Tooling/test_ios_portability_scope.py` covers the derived closure, skip
-and run cases, a prefix-sibling directory, an undeclared runner target and the
+`Tests/Tooling/test_ios_portability_scope.py` covers the derived closure
+(compared with `swift package dump-package` on macOS), comments and products,
+unprovable dependency forms, a file moved out of a shared target, skip and run
+cases, a prefix-sibling directory, an undeclared runner target and the
 fail-closed CLI (D596).
 
 ### Compatible Swift build reuse, not test-result reuse (D557, D596)
@@ -399,8 +401,10 @@ launcher, toolchain verifier, cache-key and source-freshness implementations. Un
 missing inputs, failed/empty tool reads and timeouts fail key generation; no
 broad key substitutes for an unknown identity. Each successful `main` commit
 saves one seed as that prefix plus its full commit SHA; a pull request restores
-the newest seed through the exact prefix, never across identities. A dependency
-or build-policy change starts cold. Ordinary source changes keep the prefix. After a successful suite,
+the newest saved seed through the exact prefix, never across identities; a
+lookup-only probe stops a `main` rerun from saving its commit twice. A
+dependency or build-policy change starts cold. Ordinary source changes keep the
+prefix. After a successful suite,
 `scripts/ci_swift_source_stamps.py snapshot` records SHA-256, size, permissions and
 nanosecond mtime for tracked `Sources/`, `Tests/`, `Vendor/`, and package
 manifest/lock inputs inside `.build`. The vendor inventory includes the
