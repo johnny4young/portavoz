@@ -618,6 +618,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(packager.contains("Portavoz_IntelligenceKit.bundle"))
         XCTAssertTrue(packager.contains(
             "PortavozLiveQuestionClassifier.mlmodelc"))
+        XCTAssertTrue(scope.contains("livequestiondetector.swift"))
         XCTAssertTrue(scope.contains(
             "testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador"))
         XCTAssertTrue(decisions.contains("## D431"))

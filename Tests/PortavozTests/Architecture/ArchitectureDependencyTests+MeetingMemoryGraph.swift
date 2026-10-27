@@ -606,6 +606,7 @@ extension ArchitectureDependencyTests {
             of: "Sources/portavoz-app/AppServices+AskTopicMemoryUITestFixture.swift")
         let uiTest = try Self.contents(
             of: "Tests/PortavozUITests/LibraryUITests.swift")
+        let scope = try Self.contents(of: "scripts/ui_test_scope.py")
         let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
         let intelligence = try Self.contents(
             of: "docs/specs/04-intelligence.md")
@@ -639,6 +640,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(topicMemoryFixture.contains("-seed-ask-topic-memory"))
         XCTAssertTrue(uiTest.contains(
             "try assertExactTopicFirstDiscussionAndEvidence(in: app)"))
+        XCTAssertTrue(scope.contains("topicfirstdiscussion"))
 
         XCTAssertTrue(architecture.contains(
             "exact confirmed-topic/first-discussion"))
@@ -670,6 +672,7 @@ extension ArchitectureDependencyTests {
             of: "Sources/portavoz-app/AppServices+AskTopicMemoryUITestFixture.swift")
         let uiTest = try Self.contents(
             of: "Tests/PortavozUITests/LibraryUITests.swift")
+        let scope = try Self.contents(of: "scripts/ui_test_scope.py")
         let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
         let intelligence = try Self.contents(
             of: "docs/specs/04-intelligence.md")
@@ -709,6 +712,7 @@ extension ArchitectureDependencyTests {
             "try assertExactTopicDecisionConflictsAndEvidence(in: app)"))
         XCTAssertTrue(uiTest.contains(
             "ask-topic-conflict-B5D40000-0000-4000-8000-000000000005"))
+        XCTAssertTrue(scope.contains("decisionrelationship"))
 
         XCTAssertTrue(architecture.contains(
             "exact confirmed-topic/decision-conflicts"))
@@ -736,6 +740,7 @@ extension ArchitectureDependencyTests {
             of: "Sources/portavoz-app/AppServices+AskCommitmentBlockerUITestFixture.swift")
         let uiTest = try Self.contents(
             of: "Tests/PortavozUITests/LibraryUITests.swift")
+        let scope = try Self.contents(of: "scripts/ui_test_scope.py")
         let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
         let intelligence = try Self.contents(
             of: "docs/specs/04-intelligence.md")
@@ -780,6 +785,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(uiTest.contains(
             "loadBlockers.label.contains(\"Prepare the rollout\")"))
         XCTAssertTrue(uiTest.contains("waitForValue(\"0:04\", timeout: 10)"))
+        XCTAssertTrue(scope.contains("loadcommitmentblockers"))
 
         XCTAssertTrue(architecture.contains(
             "exact selected-commitment/active-blockers"))

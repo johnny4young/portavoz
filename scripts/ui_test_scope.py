@@ -539,13 +539,12 @@ MEETING_FEATURES = frozenset(
     if feature.startswith("meeting-") and feature != "meeting-brief"
 )
 SETTINGS_FEATURES = frozenset(feature for feature in ALL_FEATURES if feature.startswith("settings-"))
-# Copy/localization and shared-harness changes can alter every accessibility
-# query or localized assertion. They are integration changes, so the safe
+# Shared-harness changes can alter every accessibility query, so their safe
 # expansion is the complete catalog rather than a small canary set.
 HARNESS_TESTS = ALL_TESTS
-# One fast canary per root surface: launch, Library, Today, recording, derived
-# work, Meeting Detail, Ask, dictation, Settings, onboarding, Radar, Insights
-# and App Intents.
+# Canaries across the main surfaces: launch, Library, Today, recording, live
+# assist, derived work, Meeting Detail, Ask, dictation, Settings, onboarding,
+# Radar, Insights, the menu-bar brief and App Intents.
 SMOKE_TESTS = (
     test_id("LibraryUITests", "testDatabaseLaunchFailureOffersSafeRecovery"),
     test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
@@ -562,6 +561,8 @@ SMOKE_TESTS = (
     test_id("CommitmentRadarUITests", "testReminderAlertOpensCommitmentRadar"),
     test_id("InsightsUITests", "testInsightsShowsCompleteLocalDashboard"),
     test_id("AutomationUITests", "testOpenDictationsShortcutShowsItsSearch"),
+    test_id("RecordingAssistUITests", "testLatestManualAssistRequestOwnsTheFocusSlot"),
+    test_id("MenuBarUITests", "testPreMeetingBriefMovesFromExactProposalToDurableReceipt"),
 )
 
 # Changes to these shared owners can alter what gets built, selected, measured,
@@ -715,6 +716,7 @@ NO_UI_PREFIXES = (
     "Tests/Tooling/",
     "Tests/PortavozTests/",
     "Sources/portavoz-cli/",
+    "Sources/portavoz-cli-main/",
     "docs/",
     "site/",
     "packaging/",
@@ -1037,7 +1039,209 @@ def app_features(filename: str) -> set[str]:
         return set(MEETING_FEATURES)
     if any(token in lowered for token in ("settings", "section", "localdata", "whispermodel", "mlxmodel")):
         return set(SETTINGS_FEATURES)
-    return set(ALL_FEATURES)
+    return set()
+
+
+def lower_layer_features(path: str) -> set[str]:
+    if path in {
+        "Sources/ApplicationKit/PortableSettings.swift",
+        "Sources/ApplicationKit/PortableSettingsTransfer.swift",
+    }:
+        return {"settings-transfer"}
+    lowered = path.lower()
+    if lowered in {
+        "sources/applicationkit/processaudioimports+ownedadapters.swift",
+        "sources/applicationkit/audioimportformats.swift",
+        "sources/applicationkit/processaudioimports.swift",
+        "sources/platformkit/audioimportfiletransfer.swift",
+        "sources/platformkit/localaudioimportfiles+acquisition.swift",
+        "sources/platformkit/localaudioimportfiles.swift",
+        "sources/portavozcore/audioimport.swift",
+        "sources/portavozcore/audioimportfiles.swift",
+        "sources/portavozcore/audioimportqueue.swift",
+        "sources/storagekit/meetingstore+audioimportpublication.swift",
+        "sources/storagekit/meetingstore+audioimportqueue.swift",
+        "sources/storagekit/meetingstore+audioimports.swift",
+        "sources/storagekit/records+audioimport.swift",
+        "sources/storagekit/schema+audioimport.swift",
+    }:
+        # These boundaries own durable import and Library lifecycle behavior,
+        # not playback or microphone preferences despite their "audio" names.
+        return {"audio-imports", "library"}
+    exact_owners = {
+        # Shared-store roots affect startup/model preparation, not every
+        # feature that happens to consume the stores after composition.
+        "sources/modelstorekit/modelstore.swift": {"settings-intelligence"},
+        "sources/storagekit/meetingstore.swift": {"launch-recovery", "library"},
+        "sources/diarizationkit/voiceprintstore.swift": {
+            "meeting-health", "meeting-naming", "onboarding", "settings-voice"
+        },
+        # These model adapters have one presentation owner each. Their unit
+        # tests retain provider/availability coverage; XCUITest owns the real
+        # app surface instead of expanding the generic "intelligence" bucket.
+        "sources/intelligencekit/briefsynthesizer.swift": {"meeting-brief"},
+        "sources/intelligencekit/chaptertitler.swift": {"meeting-naming"},
+        "sources/intelligencekit/meetingtypedetector.swift": {"meeting-naming"},
+        "sources/intelligencekit/objectivecheck.swift": {"live-assist"},
+        "sources/intelligencekit/titlesuggester.swift": {"meeting-naming"},
+        # IOS-READY contracts are intentionally dormant. Keep their future
+        # continuity and worker-center presentation owners explicit now so a
+        # later edit cannot silently fall through to an unrelated full suite.
+        "sources/portavozcore/commitmentreplicamerge.swift": {
+            "meeting-commitments", "production-sync"
+        },
+        "sources/portavozcore/deferredmacwork.swift": {"background-work"},
+        "sources/integrationskit/cloudkitmeetingsyncplatform.swift": {
+            "production-sync"
+        },
+    }
+    if owners := exact_owners.get(lowered):
+        return set(owners)
+    if any(token in lowered for token in (
+        "standingskill", "standingpremeetingbrief"
+    )):
+        return {"settings-standing-skills"}
+    if lowered in {
+        "sources/intelligencekit/companion.swift",
+        "sources/intelligencekit/companiongenerationprovenance.swift",
+        "sources/intelligencekit/livequestiondetector.swift",
+        "sources/intelligencekit/providerneutralcompanion.swift",
+        "sources/intelligencekit/turnendpointpolicy.swift",
+    }:
+        return {"live-assist"}
+    if any(token in lowered for token in (
+        "processsemanticcorpusmaintenance",
+        "processmeetingmemorygraphmaintenance",
+        "recoverinterruptedmeetings",
+        "derivedmaintenance",
+    )):
+        return {"background-work"}
+    if "proactivemeetingassist" in lowered:
+        # The deterministic policy is rendered only by the consolidated live-
+        # assist journey; it has no model, Settings, detail, or Library route.
+        return {"recording-recovery"}
+    if any(token in lowered for token in (
+        "asknotes",
+        "localasknote",
+        "contextitemsearch",
+        "meetingstore+notesearch",
+    )):
+        # Typed raw-note Ask has one consolidated real-app journey. Keep its
+        # storage/index and orchestration files from paying for unrelated UI.
+        return {"ask"}
+    if any(token in lowered for token in (
+        "numberedcitationanswer",
+        "ragtextanswering",
+        "raganswerer",
+    )):
+        # The shared cited-prose/provider authority is consumed by manual Ask
+        # and live Interview Assist, but not every intelligence-backed screen.
+        return {"ask", "recording-interview"}
+    if "interview" in lowered:
+        return {"recording-interview"}
+    if "loadcommitmentblockers" in lowered:
+        return {"ask"}
+    if "decisionrelationship" in lowered:
+        return {"ask"}
+    if "topicfirstdiscussion" in lowered:
+        return {"ask"}
+    if "confirmedtopiccatalog" in lowered:
+        return {"ask"}
+    if "semanticsearchassetpreparation" in lowered:
+        return {"settings-intelligence"}
+    if "automationentit" in lowered:
+        return {"automation-entry", "commitment-radar"}
+    if "launchrecovery" in lowered:
+        return {"launch-recovery"}
+    if "skill" in lowered:
+        return {
+            "commitment-radar",
+            "meeting-skills",
+            "menu-bar-brief",
+            "settings-skills",
+        }
+    if "reminderdraft" in lowered:
+        return {"commitment-radar"}
+    if "commitmentradar" in lowered or "commitmentfieldquality" in lowered:
+        return {"commitment-radar"}
+    if any(token in lowered for token in (
+        "managemeetingcommitmentinbox",
+        "meetingcommitmentinbox",
+    )):
+        return {"meeting-commitments"}
+    if lowered in {
+        "sources/applicationkit/correctmeetingtranscript.swift",
+        "sources/applicationkit/meetingtranscriptgenerationmaterial.swift",
+        "sources/applicationkit/restructuremeetingtranscript.swift",
+        "sources/portavozcore/transcriptcorrection.swift",
+        "sources/portavozcore/transcriptcorrectionrevision.swift",
+        "sources/storagekit/meetingstore+transcriptcorrections.swift",
+        "sources/storagekit/meetingstore+transcriptprojection.swift",
+        "sources/storagekit/schema+transcriptcorrection.swift",
+        "sources/storagekit/transcriptcorrectionrecords.swift",
+    }:
+        return {"meeting-correction"}
+    if lowered in {
+        "sources/applicationkit/meetingdetailreadmodels.swift",
+        "sources/storagekit/meetingstore+meetingdetailobservation.swift",
+    }:
+        return set(MEETING_FEATURES)
+    if lowered == "sources/applicationkit/composetranscript.swift":
+        return {"meeting-correction"}
+    if "meetingtranscriptcontent" in lowered:
+        return {
+            "meeting-audio", "meeting-evidence", "meeting-health", "meeting-performance"
+        }
+    if "meetinggenerateddocumentpresentation" in lowered:
+        return {"meeting-evidence", "meeting-summary"}
+    if "queryexpander" in lowered:
+        # Deterministic query variants feed only Library search, full Ask,
+        # and the meeting-brief evidence lookup. Keep a lexicon-only change
+        # from expanding to every unrelated app surface.
+        return {"ask", "library", "meeting-brief"}
+    if "micbleed" in lowered:
+        # Bleed admission affects live captions and the reviewed Refine
+        # replacement, not every unrelated screen in the application.
+        return {"recording-recovery", "meeting-processing"}
+    if "stoprecording" in lowered or "startrecording" in lowered:
+        return {"library", "recording-recovery"}
+    if any(token in lowered for token in ("dictation", "mouseptt")):
+        return {"dictation"}
+    if "subtitle" in lowered:
+        return {"meeting-export"}
+    if "recap" in lowered:
+        return {"meeting-recap"}
+    if "insight" in lowered:
+        return {"insights"}
+    if any(token in lowered for token in ("ask", "brief")):
+        return {"ask", "meeting-brief", "menu-bar-brief"}
+    if any(token in lowered for token in ("recording", "capture", "postcapture")):
+        return {"library", "recording-recovery", "settings-audio"}
+    if any(token in lowered for token in ("playback", "waveform", "audio")):
+        return {"meeting-audio", "settings-audio"}
+    if any(
+        token in lowered
+        for token in ("summary", "summaries", "companion", "intelligence")
+    ):
+        return {
+            "ask",
+            "insights",
+            "library",
+            "meeting-brief",
+            "meeting-correction",
+            "meeting-summary",
+            "meeting-evidence",
+            "meeting-processing",
+            "public-showcase",
+            "settings-intelligence",
+        }
+    if any(token in lowered for token in ("voice", "speaker", "person")):
+        return {"meeting-naming", "meeting-health", "settings-voice", "onboarding"}
+    if "sync" in lowered:
+        return {"settings-data"}
+    # No proven owner: unit tests own the behavior and the smoke canaries
+    # cover the shell; the nightly run owns the complete catalog.
+    return set()
 
 
 def select_paths(paths: Iterable[str]) -> Selection:
@@ -1138,7 +1342,7 @@ def select_paths(paths: Iterable[str]) -> Selection:
                 )
                 continue
             features = app_features(file_name)
-            if features == ALL_FEATURES:
+            if not features:
                 selected.update(SMOKE_TESTS)
                 reasons.append(f"{path}: unmapped app file smoke canaries")
                 continue
@@ -1147,13 +1351,23 @@ def select_paths(paths: Iterable[str]) -> Selection:
             continue
 
         # CLI and reviewed test-only corpus paths cannot alter the app UI.
-        # Check them before generic Sources/*.swift: the latter otherwise
-        # swallows CLI.swift into the unknown-production full fallback.
+        # Check them before generic Sources/*.swift, which would otherwise
+        # spend smoke canaries on CLI.swift.
         if path.startswith(NO_UI_PREFIXES) or path in NO_UI_FILES or path.startswith(".github/") or path.startswith("scripts/"):
             continue
 
         if path.startswith("Sources/") and path.endswith(".swift"):
-            # Unit tests own lower-layer behavior; the nightly run owns the catalog.
+            features = lower_layer_features(path)
+            if not features:
+                selected.update(SMOKE_TESTS)
+                reasons.append(f"{path}: lower-layer smoke canaries")
+                continue
+            selected.update(feature_tests(features))
+            reasons.append(f"{path}: {', '.join(sorted(features))}")
+            continue
+
+        if path.startswith("Sources/"):
+            # Resources and C sources of a lower layer follow its Swift.
             selected.update(SMOKE_TESTS)
             reasons.append(f"{path}: lower-layer smoke canaries")
             continue
@@ -1268,10 +1482,7 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         else:
             budget = json.loads(budget_path.read_text(encoding="utf-8"))
             runtime_ids = set(budget.get("testBudgetsSeconds", {}))
-            expected_runtime_ids = {
-                "/".join(selector.split("/")[1:]) + "()"
-                for selector in ALL_TESTS
-            }
+            expected_runtime_ids = {runtime_budget_key(selector) for selector in ALL_TESTS}
             missing_budgets = sorted(expected_runtime_ids - runtime_ids)
             stale_budgets = sorted(runtime_ids - expected_runtime_ids)
             budget_count = budget.get("catalog", {}).get("expectedCaseCount")
@@ -1347,18 +1558,25 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         raise RuntimeError("UI-test scope catalog is stale; " + "; ".join(details))
 
 
+def runtime_budget_key(selector: str) -> str:
+    return "/".join(selector.split("/")[1:]) + "()"
+
+
 def shard_tests(root: Path, index: int, count: int) -> tuple[str, ...]:
     """Split the catalog into balanced shards by runtime budget, longest first."""
     if not 1 <= index <= count:
-        raise ValueError("A shard must be K/N with 1 <= K <= N")
+        raise ValueError("a shard must be K/N with 1 <= K <= N")
     budgets = json.loads((root / "docs/evidence/ui-test-runtime-budget.json").read_text(encoding="utf-8"))
     seconds = budgets["testBudgetsSeconds"]
+    missing = [test for test in ALL_TESTS if runtime_budget_key(test) not in seconds]
+    if missing:
+        raise ValueError("tests without runtime budget: " + ", ".join(missing))
     loads = [0.0] * count
     owners: dict[str, int] = {}
-    for test in sorted(ALL_TESTS, key=lambda selector: (-seconds["/".join(selector.split("/")[1:]) + "()"], selector)):
+    for test in sorted(ALL_TESTS, key=lambda selector: (-seconds[runtime_budget_key(selector)], selector)):
         shard = min(range(count), key=lambda candidate: (loads[candidate], candidate))
         owners[test] = shard
-        loads[shard] += seconds["/".join(test.split("/")[1:]) + "()"]
+        loads[shard] += seconds[runtime_budget_key(test)]
     return tuple(test for test in ALL_TESTS if owners[test] == index - 1)
 
 
@@ -1460,15 +1678,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"UI-test scope catalog is complete ({len(ALL_TESTS)} tests).")
             return 0
 
-    if arguments.shard and not arguments.all:
+    if arguments.shard is not None and not arguments.all:
         print("--shard requires --all.", file=sys.stderr)
         return 2
-    if arguments.all and arguments.shard:
+    if arguments.all and arguments.shard is not None:
         try:
             index, count = (int(part) for part in arguments.shard.split("/"))
+        except ValueError:
+            print(f"Invalid --shard {arguments.shard!r}: expected K/N", file=sys.stderr)
+            return 2
+        try:
             tests = shard_tests(root, index, count)
-        except (ValueError, KeyError) as error:
-            print(f"Invalid --shard {arguments.shard!r}: {error}", file=sys.stderr)
+        except ValueError as error:
+            print(f"Cannot select shard {arguments.shard}: {error}", file=sys.stderr)
             return 2
         selection = Selection(tests, SELECTION_LOCALES, (f"full-suite shard {index}/{count}",))
     elif arguments.all:

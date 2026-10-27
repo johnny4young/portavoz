@@ -855,8 +855,8 @@ never dismisses the recovery panel to make the trigger reachable.
 
 Each dictation journey has an individual 20-second budget; existing per-test,
 full-suite duration and p95 budgets are unchanged. Source/harness changes still
-expand conservatively. Lockfile changes select the complete English suite rather than bypassing UI
-evidence. The package manifest retains the shared-harness bilingual requirement,
+expand conservatively. Lockfile changes select the smoke canaries rather than bypassing UI
+evidence (D597). The package manifest retains the shared-harness bilingual requirement,
 as do simultaneous localization or shared-harness changes. This coverage does not certify
 real ASR quality, physical
 audio devices, all external editors, or the outstanding capture/delivery gaps.
@@ -3098,11 +3098,14 @@ tests. Each test belongs to a feature scope. Known app and application files
 select only the scopes they can affect; a changed UI-test file selects its own
 class; shared-harness changes select the complete English catalogue; the
 macOS 14 transcript-scroll bridge selects only recording-recovery evidence; and
-lower-layer Swift, an unmapped app file, `Package.resolved` and the string
-catalog select the fifteen `SMOKE_TESTS` canaries (D597). The nightly workflow
-runs the complete catalogue on `main` as three shards balanced greedily by
-`docs/evidence/ui-test-runtime-budget.json` (`--all --shard K/N`), plus the
-interruption controls. The
+a lower-layer file without a proven owner, an unmapped app file,
+`Package.resolved` and the string catalog select the seventeen `SMOKE_TESTS`
+canaries (D597); lower-layer files with a proven owner keep their feature
+scopes. The nightly workflow runs the complete catalogue on `main` as three
+shards balanced greedily by `docs/evidence/ui-test-runtime-budget.json`
+(`--all --shard K/N`), classifies each shard with the pull-request gate, skips
+a scheduled run of a commit that already passed, and runs the interruption
+controls. The
 Meeting Detail primary column also selects the complete English suite: its
 pane layout decides which detail content exists for every journey that opens a
 meeting, including recording-recovery and Skills journeys (D549). Docs,

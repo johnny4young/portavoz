@@ -21910,16 +21910,20 @@ processing-policy edit selected 184 of 186 tests), as did localization and the
 dependency lock, although unit tests already own that behavior and the selector
 cannot prove which journey a lower layer reaches.
 
-**Decision:** Known presentation files keep their feature-level selectors, a
-changed UI-test file keeps its class, and shared-harness, fixture, build and
-unknown non-Swift changes keep the complete English catalog. Lower-layer Swift,
-unmapped app files, `Package.resolved` and the string catalog now select fifteen
-smoke canaries, one per root surface. The complete English catalog runs every
-night on `main` and on demand, split into three shards balanced greedily by the
-runtime budget, together with the interruption controls; the release gate is
-unchanged.
+**Decision:** Known presentation files and lower-layer files with a proven owner
+keep their feature-level selectors, a changed UI-test file keeps its class, and
+shared-harness, fixture, build, language-switch and unknown non-Swift changes
+keep the complete English catalog. Lower-layer files without a proven owner,
+unmapped app files, `Package.resolved` and the string catalog now select
+seventeen smoke canaries across the main surfaces. The complete English catalog
+runs every night on `main` (skipped when that commit already passed) and on
+demand, split into three shards balanced greedily by the runtime budget and
+classified like pull-request lanes, together with the interruption controls.
+The release gate is unchanged, and the release recipe requires a green nightly
+run on the released commit.
 
 **Consequences:** A typical pull request runs a few minutes of XCUITest instead
 of the whole suite. A UI regression caused by a lower layer outside the
 canaries can reach `main` and is caught by the next nightly run instead of the
-pull request, so a red nightly run is a release blocker until it is fixed.
+pull request. A red nightly run is a release blocker until it is fixed; a known
+hosted-automation outage is reported as an advisory, not a product failure.

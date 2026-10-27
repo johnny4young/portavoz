@@ -422,7 +422,13 @@ class NightlyUIWorkflowTests(unittest.TestCase):
         self.assertIn("  workflow_dispatch:\n", triggers)
         self.assertNotIn("pull_request", triggers)
         self.assertNotIn("  push:", triggers)
-        self.assertIn("cancel-in-progress: false", self.workflow)
+        self.assertIn("group: ui-nightly-${{ github.ref }}\n  cancel-in-progress: false", self.workflow)
+
+    def test_an_unchanged_main_skips_the_scheduled_catalog(self):
+        self.assertIn("actions: read", self.workflow)
+        self.assertIn('if [[ "$EVENT_NAME" == "schedule" && "$verified" == "$GITHUB_SHA" ]]; then', self.workflow)
+        self.assertIn("runs?branch=main&status=success&per_page=1", self.workflow)
+        self.assertEqual(self.workflow.count("if: needs.freshness.outputs.run == 'true'"), 2)
 
     def test_three_shards_share_one_build_and_cover_the_validated_catalog(self):
         self.assertEqual(self.workflow.count("run: make test-ui-build"), 1)
@@ -434,7 +440,13 @@ class NightlyUIWorkflowTests(unittest.TestCase):
         self.assertIn("UI_TEST_LOCALES: en", self.workflow)
         self.assertIn('UI_TEST_ENFORCE_RUNTIME_BUDGET: "false"', self.workflow)
         self.assertIn("run: make test-ui-interruption-safety", self.workflow)
-        self.assertNotIn("continue-on-error", self.workflow)
+
+    def test_each_shard_uses_the_pull_request_classifier(self):
+        self.assertEqual(self.workflow.count("continue-on-error: true"), 1)
+        self.assertIn("python3 scripts/ui_test_ci_gate.py --results dist/ui-test-results --locales en", self.workflow)
+        self.assertIn('--english-outcome "$OUTCOME"', self.workflow)
+        self.assertIn("OUTCOME: ${{ steps.ui.outcome }}", self.workflow)
+        self.assertIn("if: steps.classify.outputs.state == 'infrastructure-advisory'", self.workflow)
 
     def test_every_macos_job_uses_the_fixed_toolchain(self):
         self.assertEqual(self.workflow.count("runs-on: macos-26"), 3)
