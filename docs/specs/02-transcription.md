@@ -142,7 +142,7 @@ this composer and corrected text remains intentionally unmaterialized.
 | Role | Engine | Status |
 |---|---|---|
 | Live (`liveTranscription`) | Parakeet TDT 0.6B v3 int8 (FluidAudio) | Historical p95 0.53 s; reviewed-fork latency requalification required |
-| Quality (`finalTranscription`) | Whisper large-v3-turbo (WhisperKit 1.1.0, exact pin) | ✅ 23–42x measured |
+| Quality (`finalTranscription`) | Whisper large-v3-turbo (WhisperKit 1.1.1, exact pin) | ✅ 23–42x measured |
 | Research-only live challenger | Nemotron 3.5 ASR Latin 1120 ms (FluidAudio) | Adapter complete; Portavoz evidence not accepted |
 | Multiple per role with recommender | — | Planned (D25/M12) |
 
