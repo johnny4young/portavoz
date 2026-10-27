@@ -183,7 +183,7 @@ def stage_score(value, case):
     # empty-reference sentinel is NEVER aggregated as WER/CER below.
     validate_score(dict(**rates, referenceWords=case['referenceWords'],
                         hypothesisWords=value['hypothesisWords'], exactReferenceMatch=False,
-                        legacyCleanupChangedText=False))
+                        legacyCleanupChangedText=False), speech_expected=case['speechExpected'])
 
 
 def phases(value):
