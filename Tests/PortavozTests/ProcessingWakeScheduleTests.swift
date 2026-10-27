@@ -8,65 +8,18 @@ import Testing
 struct ProcessingWakeScheduleTests {
     private var now: Date { Date(timeIntervalSince1970: 1_783_699_200) }
 
-    @Test
-    func successfulDrainPreservesImmediateDeadline() {
-        let wake = ProcessingWakeSchedule.nextDate(
-            scheduled: now, afterDrainFailure: false, at: now)
+    @Test(arguments: [(1, 5.0), (2, 10.0), (3, 20.0), (4, 40.0), (5, 60.0), (9, 60.0)])
+    func consecutiveFailedDrainsDoubleUpToAMinute(_ example: (failures: Int, seconds: Double)) {
+        let wake = ProcessingWakeSchedule.retryDate(afterConsecutiveFailures: example.failures, at: now)
 
-        #expect(wake == now)
+        #expect(wake == now.addingTimeInterval(example.seconds))
     }
 
     @Test
-    func successfulDrainPreservesFutureDeadline() {
-        let deadline = now.addingTimeInterval(30)
-        let wake = ProcessingWakeSchedule.nextDate(
-            scheduled: deadline, afterDrainFailure: false, at: now)
+    func theBaseScalesEveryStep() {
+        let wake = ProcessingWakeSchedule.retryDate(afterConsecutiveFailures: 3, base: 0.5, at: now)
 
-        #expect(wake == deadline)
-    }
-
-    @Test
-    func failedDrainDelaysOverdueAndImmediateDeadlines() {
-        let overdueWake = ProcessingWakeSchedule.nextDate(
-            scheduled: now.addingTimeInterval(-30), afterDrainFailure: true, at: now)
-        let immediateWake = ProcessingWakeSchedule.nextDate(
-            scheduled: now, afterDrainFailure: true, at: now)
-
-        #expect(overdueWake == now.addingTimeInterval(5))
-        #expect(immediateWake == now.addingTimeInterval(5))
-    }
-
-    @Test
-    func failedDrainDelaysSoonFutureDeadline() {
-        let wake = ProcessingWakeSchedule.nextDate(
-            scheduled: now.addingTimeInterval(2), afterDrainFailure: true, at: now)
-
-        #expect(wake == now.addingTimeInterval(5))
-    }
-
-    @Test
-    func failedDrainPreservesLaterFutureDeadline() {
-        let deadline = now.addingTimeInterval(30)
-        let wake = ProcessingWakeSchedule.nextDate(
-            scheduled: deadline, afterDrainFailure: true, at: now)
-
-        #expect(wake == deadline)
-    }
-
-    @Test
-    func failedDrainWithoutDurableDeadlineDoesNotCreateTimer() {
-        let wake = ProcessingWakeSchedule.nextDate(
-            scheduled: nil, afterDrainFailure: true, at: now)
-
-        #expect(wake == nil)
-    }
-
-    @Test
-    func successfulDrainWithoutDurableDeadlineDoesNotCreateTimer() {
-        let wake = ProcessingWakeSchedule.nextDate(
-            scheduled: nil, afterDrainFailure: false, at: now)
-
-        #expect(wake == nil)
+        #expect(wake == now.addingTimeInterval(2))
     }
 
     @Test
@@ -104,8 +57,7 @@ struct ProcessingWakeScheduleTests {
 
         let deadline = try await store.nextScheduledProcessingDate(kinds: [.summary], after: now)
         #expect(deadline == now)
-        let wake = ProcessingWakeSchedule.nextDate(scheduled: deadline, afterDrainFailure: true, at: now)
-        #expect(wake == now.addingTimeInterval(5))
+        #expect(ProcessingWakeSchedule.retryDate(afterConsecutiveFailures: 1, at: now) == now.addingTimeInterval(5))
         let retained = try await store.processingJobs(for: meeting.id)
         #expect(retained == [job])
 

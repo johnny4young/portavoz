@@ -10417,18 +10417,23 @@ pass against this one.
 **October 13, 2026 clarification:** a retry or lease deadline that crosses
 between the final empty claim and scheduling read must remain discoverable.
 Scheduling now takes the earliest non-null deadline and clamps it to the read
-timestamp. Unscheduled pending work, including intentional suspension, stays
-signal-driven; an exhausted pending attempt is excluded, while the final
-running lease still wakes to publish exhaustion.
+timestamp. After a healthy drain, unscheduled pending work, including
+intentional suspension, stays signal-driven; an exhausted pending attempt is
+excluded, while the final running lease still wakes to publish exhaustion.
 
 An unavailable SQLite writer can make a claim fail without changing that
-deadline. ApplicationKit therefore owns one pure failed-drain wake policy:
-preserve a healthy deadline, but after a failed claim/drain use the later of
-the persisted date and five seconds from the scheduling decision. Both the
-post-capture and audio-import owners apply it. No persisted date creates no
-timer, so this does not add idle polling, change owner/revision fences, or
-reinterpret cancellation. Explicit-timestamp regressions and real temporary
-SQLite contention cover recovery, backoff and successful claim after release.
+deadline, and a failed claim can strand pending work that has no retry date,
+such as a freshly admitted import or post-capture job, which the persisted date
+cannot see. ApplicationKit therefore owns one pure failed-drain retry policy:
+after a failed claim/drain, the post-capture and audio-import owners retry
+without reading the persisted date, five seconds later, doubling per consecutive
+failure up to one minute. A healthy drain resets the count and returns to the
+persisted date or, finding nothing, to no timer, so idle processing has no
+polling and a persistent storage failure costs at most one attempt a minute.
+Owner/revision fences and cancellation are unchanged. The audio-import queue
+clears its storage error once a drain claims again. Explicit-timestamp
+regressions and real temporary SQLite contention cover recovery, backoff and
+successful claim after release.
 
 ## D297 — Never migrate the recordings root over a live capture (Aug 2026)
 

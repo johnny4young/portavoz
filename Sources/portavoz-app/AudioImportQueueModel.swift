@@ -38,8 +38,14 @@ final class AudioImportQueueModel {
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var observationGeneration = 0
     @ObservationIgnored private var rerun = false
+    @ObservationIgnored private var failedDrains = 0
+    @ObservationIgnored private var errorFromDrain = false
+    @ObservationIgnored private let failureBackoff: TimeInterval
 
-    init(client: any AudioImportQueueClient) { self.client = client }
+    init(client: any AudioImportQueueClient, failureBackoff: TimeInterval = ProcessingWakeSchedule.failedDrainBackoff) {
+        self.client = client
+        self.failureBackoff = failureBackoff
+    }
 
     deinit { observation?.cancel(); drain?.cancel(); wake?.cancel() }
 
@@ -91,6 +97,7 @@ final class AudioImportQueueModel {
     func suspend() async {
         generation += 1
         rerun = false
+        failedDrains = 0
         wake?.cancel()
         wake = nil
         let current = drain
@@ -128,6 +135,7 @@ final class AudioImportQueueModel {
                 }
             } catch {
                 guard !Task.isCancelled, let self, revision == self.observationGeneration else { return }
+                self.errorFromDrain = false
                 self.error = AudioImportQueueError.storage.localizedDescription
             }
         }
@@ -156,6 +164,7 @@ final class AudioImportQueueModel {
             } catch {
                 if !(error is CancellationError), !Task.isCancelled {
                     failed = true
+                    self?.errorFromDrain = true
                     self?.error = AudioImportQueueError.storage.localizedDescription
                 }
             }
@@ -185,22 +194,27 @@ final class AudioImportQueueModel {
         currentID = nil
         phase = nil
         client?.audioImportWorkFinished()
+        failedDrains = afterDrainFailure ? failedDrains + 1 : 0
+        // A drain that claimed again clears the busy-library error it recovered from.
+        if !afterDrainFailure, errorFromDrain { error = nil; errorFromDrain = false }
         if rerun { drain = nil; kick(); return }
-        // The idle lookup is still part of this owner. Retain its task so
-        // suspension can cancel/join it and admission queues one replacement,
-        // rather than abandoning the read while another drain starts.
         let next: Date?
-        do {
-            next = ProcessingWakeSchedule.nextDate(
-                scheduled: try await client?.nextAudioImportWake(),
-                afterDrainFailure: afterDrainFailure,
-                at: Date())
-        } catch {
-            guard generation == revision, !Task.isCancelled else { return }
-            self.error = AudioImportQueueError.storage.localizedDescription
-            drain = nil
-            if rerun { kick() }
-            return
+        if afterDrainFailure {
+            next = ProcessingWakeSchedule.retryDate(
+                afterConsecutiveFailures: failedDrains, base: failureBackoff, at: Date())
+        } else {
+            // The idle lookup is still part of this owner. Retain its task so
+            // suspension can cancel/join it and admission queues one replacement,
+            // rather than abandoning the read while another drain starts.
+            do {
+                next = try await client?.nextAudioImportWake()
+            } catch {
+                guard generation == revision, !Task.isCancelled else { return }
+                self.error = AudioImportQueueError.storage.localizedDescription
+                drain = nil
+                if rerun { kick() }
+                return
+            }
         }
         guard generation == revision else { return }
         drain = nil

@@ -16,6 +16,7 @@ final class PostCaptureProcessingSupervisor {
     private var wakeTask: Task<Void, Never>?
     private var rerunRequested = false
     private var kickGeneration = 0
+    private var failedClaims = 0
     private let owner = "post-capture-\(UUID().uuidString.lowercased())"
 
     init(backgroundWork: BackgroundWorkCenterModel? = nil) {
@@ -56,6 +57,8 @@ final class PostCaptureProcessingSupervisor {
         services: AppServices
     ) async {
         drainTask = nil
+        let claimFailed = result.issues.contains { $0.stage == .claim }
+        failedClaims = claimFailed ? failedClaims + 1 : 0
         if rerunRequested {
             rerunRequested = false
             backgroundWork?.finishProcessingDrain(
@@ -66,14 +69,17 @@ final class PostCaptureProcessingSupervisor {
             return
         }
 
+        if claimFailed {
+            let next = ProcessingWakeSchedule.retryDate(afterConsecutiveFailures: failedClaims, at: Date())
+            backgroundWork?.finishProcessingDrain(token, result: result, retryAt: next)
+            scheduleWake(at: next, services: services)
+            return
+        }
+
         let generation = kickGeneration
         do {
-            let scheduled = try await services.processPostCaptureJobs.nextScheduledDate()
+            let next = try await services.processPostCaptureJobs.nextScheduledDate()
             guard generation == kickGeneration, drainTask == nil else { return }
-            let next = ProcessingWakeSchedule.nextDate(
-                scheduled: scheduled,
-                afterDrainFailure: result.issues.contains { $0.stage == .claim },
-                at: Date())
             backgroundWork?.finishProcessingDrain(
                 token,
                 result: result,
