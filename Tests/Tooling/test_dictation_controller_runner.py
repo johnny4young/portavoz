@@ -63,6 +63,12 @@ class DictationControllerRunnerTests(unittest.TestCase):
             return result
         return invoke
 
+    @staticmethod
+    def empty_delivery(row):
+        row['controller']['outcome'] = 'empty'
+        for phase in ('deliveryStarted', 'deliveryReturned'):
+            row['controller']['elapsedSeconds'].pop(phase)
+
     def reset_run(self):
         # Remove only this test's exact output, never the input corpus or a prior run.
         import shutil
@@ -198,6 +204,42 @@ class DictationControllerRunnerTests(unittest.TestCase):
                                               hypothesisWords=0, exactReferenceMatch=False)
         self.assertEqual(self.run_observation(self.mutated(corrupt))['outcome'],
                          'invalid-observation')
+
+    def test_controller_reference_scope_matches_the_public_audio_kind(self):
+        for speech, cases in ((True, self.fixture.cases), (False, ['non-speech-silence.clean'])):
+            self.fixture.cases = cases
+
+            def corrupt(document):
+                row = document['cells'][0]
+                row['proposedOutputScore'].update(
+                    referenceWords=int(not speech), hypothesisWords=int(not speech),
+                    wordErrorRate=0, characterErrorRate=0, exactReferenceMatch=True)
+                if speech:
+                    self.empty_delivery(row)
+
+            with self.subTest(speech=speech):
+                self.assertEqual(self.run_observation(self.mutated(corrupt))['outcome'],
+                                 'invalid-observation')
+            self.reset_run()
+
+    def test_controller_no_speech_keeps_empty_and_lexical_sentinels(self):
+        self.fixture.cases = ['non-speech-silence.clean']
+        for hypothesis in (0, 3):
+            def sentinel(document):
+                for row in document['cells']:
+                    row['proposedOutputScore'].update(
+                        referenceWords=0, hypothesisWords=hypothesis,
+                        wordErrorRate=int(hypothesis > 0), characterErrorRate=int(hypothesis > 0),
+                        exactReferenceMatch=hypothesis == 0)
+                    if hypothesis == 0:
+                        self.empty_delivery(row)
+
+            with self.subTest(hypothesis=hypothesis):
+                result = self.run_observation(self.mutated(sentinel))
+                self.assertEqual(result['outcome'], 'observed')
+                self.assertFalse(result['verifiedDeliveryMeasured'])
+                self.assertFalse(result['sourceCommitQualified'])
+            self.reset_run()
 
     def test_timed_out_controller_process_is_not_observed(self):
         def timeout(*args, **kwargs):

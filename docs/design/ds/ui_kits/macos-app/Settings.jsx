@@ -9,13 +9,13 @@ const PV_SET_NAV = [
   { id: "general", icon: "globe", label: "General e idioma", sub: "Idioma sistema · English/Español · barra de menú" },
   { id: "audio", icon: "mic", label: "Audio y dictado", sub: "Cancelación de eco · dicta en cualquier lugar · ⌥⌘D" },
   { id: "intel", icon: "sparkles", label: "Inteligencia", sub: "Motor de resúmenes · refine Whisper · vocabulario · 13" },
-  { id: "voice", icon: "person.wave.2", label: "Mi voz y Companion", sub: "Voz enrolada 7 jul · tu nombre «Johnny»" },
+  { id: "voice", icon: "person.wave.2", label: "Mi voz y Companion", sub: "Voz enrolada 7 jul · tu nombre «Ana»" },
   { id: "agenda", icon: "calendar.badge.clock", label: "Agenda y automatización", sub: "Aviso 5 min antes · Atajo al terminar · títulos {date}" },
   { id: "integrations", icon: "link", label: "Integraciones", sub: "BYOK OpenAI-compatible · GitHub gists · MCP local" },
   { id: "data", icon: "lock.shield", label: "Tus datos", sub: "Exportar Markdown · carpeta de grabaciones · papelera" },
 ];
 
-const PV_VOCAB = ["keycloak", "LVGT", "trinity", "processor", "messenger", "Alejo", "Jose", "Cesare", "Johnny", "Daniel", "Event bus", "Rei", "cox2m"];
+const PV_VOCAB = ["Kubernetes", "OAuth", "webhook", "pipeline", "rollback", "Ana", "Marta", "Ilarion", "Nora", "Event bus", "staging", "backlog", "Zephyr"];
 
 // ---- primitives ------------------------------------------------------------
 function PVRow({ title, sub, control, first }) {
@@ -130,7 +130,7 @@ function PVPaneVoice() {
       <span style={{ font: "700 22px/1.2 var(--font-app)" }}>Mi voz y Companion</span>
       <PVGroup>
         <PVRow first title="Voz enrolada" sub="Solo se guarda una huella cifrada en este equipo — nunca audio, nunca en la nube" control={<span style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={{ font: "400 11px/1 var(--font-mono)", color: "rgba(255,255,255,0.55)" }}>7 Jul 2026 · 10:38</span><PVGhostBtn danger>Eliminar mi voz</PVGhostBtn></span>} />
-        <PVRow title="Tu nombre en reuniones" sub="Companion resalta la tarjeta cuando te preguntan por tu nombre" control={<span style={{ font: "500 12px/1 var(--font-app)", color: "rgba(255,255,255,0.7)", background: "rgba(255,255,255,0.08)", borderRadius: 6, padding: "6px 12px" }}>Johnny</span>} />
+        <PVRow title="Tu nombre en reuniones" sub="Companion resalta la tarjeta cuando te preguntan por tu nombre" control={<span style={{ font: "500 12px/1 var(--font-app)", color: "rgba(255,255,255,0.7)", background: "rgba(255,255,255,0.08)", borderRadius: 6, padding: "6px 12px" }}>Ana</span>} />
       </PVGroup>
     </>
   );
@@ -170,7 +170,7 @@ function PVPaneData() {
       <span style={{ font: "700 22px/1.2 var(--font-app)" }}>Tus datos</span>
       <PVGroup>
         <PVRow first title="Exportar todas las reuniones (Markdown)" sub="un archivo Markdown por reunión — resumen, pendientes y transcript, en carpetas que eliges" control={<PVGhostBtn>Exportar…</PVGhostBtn>} />
-        <PVRow title="Guardar grabaciones en" sub="/Users/johnny4young/Library/Application Support/Portavoz" control={<PVGhostBtn>Cambiar…</PVGhostBtn>} />
+        <PVRow title="Guardar grabaciones en" sub="~/Library/Application Support/Portavoz" control={<PVGhostBtn>Cambiar…</PVGhostBtn>} />
         <PVRow title="Plantilla de títulos" sub="vista previa: 2026-07-11 16.04 Reunión — chips {date} {time} {seq} {weekday}" control={<span style={{ font: "500 11px/1 var(--font-mono)", color: "rgba(255,255,255,0.6)", background: "rgba(255,255,255,0.08)", borderRadius: 6, padding: "6px 10px" }}>{"{date} {time} Reunión"}</span>} />
       </PVGroup>
       <PVSecTitle>Panel de tus datos — el ledger de privacidad</PVSecTitle>

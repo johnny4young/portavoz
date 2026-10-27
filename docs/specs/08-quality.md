@@ -21,8 +21,13 @@ checks a throwing `localStorage` accessor, denied storage reads/writes,
 saved-language admission, clipboard pending and duplicate-click behavior (the
 button stays enabled so keyboard focus survives; `aria-busy` holds the live
 announcement until the outcome), success, rejection, missing API, synchronous
-failure and retry. The runner exits non-zero unless every case completes, so a
-case stuck on a never-settling promise fails instead of passing silently. It
+failure and retry. The screenshot lightbox is a native modal `<dialog>`, so the
+browser owns initial focus, background inertness and Escape, and CSS ties the
+page scroll lock to its open state; its double fires `close` asynchronously and
+requires the autofocused close control, an image click that keeps it open, and
+exact launcher focus restoration after every close route and reopening. The
+runner exits non-zero unless every case completes, so a case stuck on a
+never-settling promise fails instead of passing silently. It
 reads exactly one bare inline `<script>` from `site/index.html`, resolved from
 its own location. These are deterministic capability/lifecycle checks, not
 a browser-rendering, native clipboard-permission or accessibility qualification.
@@ -243,7 +248,15 @@ normalized string, so zero WER, zero implied word edits and zero CER must
 coincide exactly. An empty hypothesis for nonempty speech
 must retain full word/character deletions, including cancelled attempts. The
 existing Swift producer's empty-reference 0/1 sentinel remains admitted for
-compatibility; it is not a defined no-speech WER. No-speech evaluation requires
+compatibility; it is not a defined no-speech WER. Every public-family-bound score
+also requires a positive reference word count for speech and zero for non-speech:
+the model output, adapter deltas, vendor/mapped attribution and controller output
+cannot replace a known speech reference with an empty one, or invent a lexical
+reference for silence/noise. Launch-boundary regressions corrupt one stage at a
+time and retain valid full speech deletions plus empty/lexical no-speech sentinels.
+The scope is a required argument: the offline benchmark passes each case's
+declared `speechExpected`. This scope check does not recompute normalized reference
+lengths or attest to transcript truth. No-speech evaluation requires
 lexical-output incidence and exposure denominators, not aggregation of that
 sentinel. Controller prepared-text evidence requires an explicit Stop timestamp
 at or before preparation, even on incomplete input. Missing phases are not zero
