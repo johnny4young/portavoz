@@ -21901,3 +21901,31 @@ the meeting processing and failing does not make it need attention. Missing
 languages or an unsupported pair end the job with that reason and point to the
 Settings download; a line that times out retries the job once. A translated
 reading is read-only, because corrections edit the original.
+
+## D596 — Seed the Swift build cache per `main` commit and scope the iOS lane
+
+**Context:** D557's single immutable seed per build identity changed only with
+dependencies, toolchain or runner image, so it trailed `main` by days. Every
+pull request, including documentation-only and Python-only ones, recompiled
+about 1,280 first-party files (four to seven minutes) despite a cache hit. The
+iOS portability compile (seven to nine minutes) also ran on every pull request
+and held a fourth macOS runner, although most changes touch only the app shell,
+the CLI or tests.
+
+**Decision:** Keep D557's identity, cold `main`, fingerprint-verified freshness,
+size gate and test policy, but save one seed per successful `main` commit under
+that identity and let pull requests restore the newest seed through the exact
+identity prefix. A seed never crosses identities, and pull requests still never
+save. Repository cache eviction, not a retention script, bounds the copies. The
+iOS portability lane keeps running on every `main` push and manual run; a pull
+request runs it only when the diff touches the manifest closure of its compiled
+targets, the package manifest or lock, or the lane's own policy files. The
+closure is derived from `Package.swift` and the runner's target list, so a new
+dependency edge widens the scope without a second list, and an unreadable diff
+or manifest runs the lane.
+
+**Consequences:** A pull request recompiles only what changed since its nearest
+`main` seed, and a skipped iOS lane reports success to required checks while
+`main` keeps the complete signal. Path filters for the macOS test lanes remain
+out of scope: Swift tests still read documentation, scripts and workflows, so a
+docs-only change can still fail them.

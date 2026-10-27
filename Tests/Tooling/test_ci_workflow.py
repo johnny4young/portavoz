@@ -33,7 +33,7 @@ class CIWorkflowTests(unittest.TestCase):
         self.assertIn("  pull_request:\n", triggers)
         self.assertIn("  workflow_dispatch:\n", triggers)
         # A dispatched run follows the push cache policy, never the pull-request restore path.
-        self.assertIn("lookup-only: ${{ github.event_name != 'pull_request' }}", workflow)
+        self.assertIn("if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'", workflow)
         self.assertIn("if: github.event_name == 'pull_request' &&", workflow)
 
     def test_current_sdk_uses_one_fixed_toolchain_test_build(self):
@@ -161,7 +161,8 @@ class CIWorkflowTests(unittest.TestCase):
         ui = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
 
         self.assertEqual(ci.count("run: scripts/check-repository-hygiene.sh"), 1)
-        self.assertEqual(ci.count("needs: repository-hygiene"), 3)
+        self.assertEqual(ci.count("needs: repository-hygiene\n"), 2)
+        self.assertEqual(ci.count("needs: [repository-hygiene, ios-scope]\n"), 1)
         self.assertNotIn("python3 -m unittest Tests.Tooling", ui)
         self.assertEqual(
             ui.count("scripts/ui_test_scope.py --validate-catalog"),

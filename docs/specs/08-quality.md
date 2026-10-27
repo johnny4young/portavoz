@@ -381,20 +381,26 @@ Simulator compile for the four shared targets, and a repository-hygiene/tooling
 gate that runs before macOS allocation). Each behavioral Swift lane owns one
 test invocation, so compilation and tests use the same flags instead of a
 build/test pair that can compile twice. The iOS portability lane owns only its
-sequential destination compiles and cannot claim runtime/device behavior.
+sequential destination compiles and cannot claim runtime/device behavior. On a
+pull request it runs only when `scripts/ios_portability_scope.py` finds a change
+in the manifest closure of those targets or in the lane's own policy files;
+`Tests/Tooling/test_ios_portability_scope.py` covers the derived closure, skip
+and run cases, a prefix-sibling directory, an undeclared runner target and the
+fail-closed CLI (D596).
 
-### Compatible Swift build reuse, not test-result reuse (D557)
+### Compatible Swift build reuse, not test-result reuse (D557, D596)
 
 The current-SDK job restores only `.build` with commit-pinned
 `actions/cache` restore/save actions. `scripts/ci_swift_cache_key.py` binds each
-immutable seed to its lane, absolute workspace and developer paths, CPU
+seed's identity prefix to its lane, absolute workspace and developer paths, CPU
 architecture, macOS version/build, runner image/version, Xcode and Swift build,
 macOS SDK path/build, `Package.swift`, `Package.resolved`, the CI workflow, test
 launcher, toolchain verifier, cache-key and source-freshness implementations. Unknown lanes,
 missing inputs, failed/empty tool reads and timeouts fail key generation; no
-broad key substitutes for an unknown identity. There are no restore prefixes
-and no per-commit cache copies. A dependency or build-policy change starts cold.
-Ordinary source changes retain the seed. After a successful suite,
+broad key substitutes for an unknown identity. Each successful `main` commit
+saves one seed as that prefix plus its full commit SHA; a pull request restores
+the newest seed through the exact prefix, never across identities. A dependency
+or build-policy change starts cold. Ordinary source changes keep the prefix. After a successful suite,
 `scripts/ci_swift_source_stamps.py snapshot` records SHA-256, size, permissions and
 nanosecond mtime for tracked `Sources/`, `Tests/`, `Vendor/`, and package
 manifest/lock inputs inside `.build`. The vendor inventory includes the
@@ -425,9 +431,9 @@ Both complete test invocations are unconditional, including current-SDK
 warnings-as-errors. No `--skip-build`, test filtering, retries, smaller test
 counts or cached success receipts are introduced. The fixed OS/toolchain matrix,
 iOS compile, strict lint, Linux policy tests, UI scopes/locales/assertions,
-first-attempt rules and runtime budgets are unchanged. Every `main` push uses a
-lookup-only cache probe and **still compiles cold**; only a `main` push records
-fingerprints, measures and saves a seed. Pull requests restore but never save:
+first-attempt rules and runtime budgets are unchanged. Every `main` push or
+manual run on `main` skips restore and **still compiles cold**; only those runs
+record fingerprints, measure and save a seed. Pull requests restore but never save:
 a PR-created cache would be reachable only from its own merge ref under GitHub's
 [cache access rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#restrictions-for-accessing-a-cache)
 while consuming the shared repository quota. No privileged trigger or broader
@@ -444,8 +450,9 @@ build resources, including the bundled classifier, remain part of `.build`.
 The ordinary unprivileged Swift test build is not an artifact suitable for release.
 
 `Tests/Tooling/test_ci_swift_cache.py` exercises each identity input, lane/host
-separation, malformed or unavailable tool identity, exact CLI output, missing
-lockfiles, unconditional test ownership, cold-main and main-only seeding policy,
+separation, malformed or unavailable tool identity, exact CLI output, the
+per-commit key under one prefix and malformed commits, missing lockfiles,
+unconditional test ownership, cold-main and main-only seeding policy,
 the actual shell size gate at/beyond its boundary and on measurement failure, and
 the actual freshness step discarding a rejected graph without failing the job. Repository hygiene
 owns these tests before either macOS test lane starts. Source-freshness tests
