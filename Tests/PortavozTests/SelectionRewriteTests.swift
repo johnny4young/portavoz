@@ -230,9 +230,17 @@ struct SelectionRewriteSayHowTests {
         let harness = DictationControllerHarness(text: "um make it formal")
         defer { harness.controller.cancel() }
         harness.set(DictationTextMode.polish.rawValue, forKey: DictationTextPreferences.modeKey)
+        harness.defaults.set(
+            DictationTranslationTarget.english.rawValue, forKey: DictationTextPreferences.translationKey)
+        harness.defaults.set("es", forKey: DictationController.languageKey)
         var history: [DictationRecord] = []
+        var translations: [String] = []
         var base = harness.dependencies
         base.beginHistory = { { record in history.append(record); return true } }
+        base.translateDictation = { text, _, _ in
+            translations.append(text)
+            return .translated("hazlo formal")
+        }
         let session = rewrite.instructionDependencies(base)
         #expect(rewrite.phase == .listening)
         #expect(session.textModeOverride == .clean)
@@ -247,10 +255,74 @@ struct SelectionRewriteSayHowTests {
         recorder.dictating = false
         #expect(recorder.recipes == ["make it formal"])
         #expect(rewrite.spokenInstruction == "make it formal")
+        #expect(translations.isEmpty)
         #expect(harness.insertions.isEmpty)
         #expect(history.isEmpty)
         #expect(harness.controller.lastText.current == nil)
         try await eventually { harness.controller.phase == .idle }
+        #expect(recorder.insertions.isEmpty)
+    }
+
+    @Test(arguments: [false, true])
+    func aSpokenRewriteInstructionNeverCorrectsThePreviousDictation(_ refusesEdit: Bool) async throws {
+        let receiver = DictationFixtureReceiver()
+        // Harness construction clears the process-wide argument domain; keep other suites
+        // intact across these synchronous, main-actor construction boundaries.
+        let firstArguments = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
+        let first = DictationControllerHarness(text: "ship it on friday")
+        first.defaults.setVolatileDomain(firstArguments, forName: UserDefaults.argumentDomain)
+        defer { first.controller.cancel() }
+        first.defaults.set(true, forKey: DictationCorrections.defaultsKey)
+        var initial = first.dependencies
+        var editCalls = 0
+        initial.captureDestination = {
+            var destination = CapturedDictationDestination(name: "Synthetic receiver", canRetry: true) {
+                receiver.insert($0)
+            }
+            destination.lastInsertion = {
+                guard let last = receiver.last else { return nil }
+                return DictationInsertion(
+                    text: last.text, insertedAt: last.insertedAt, isIntact: last.isIntact
+                ) { range, replacement in
+                    editCalls += 1
+                    if refusesEdit { return nil }
+                    return await last.edit(range, replacement)
+                }
+            }
+            return destination
+        }
+        first.controller.toggle(using: initial)
+        try await eventually { first.controller.partialText == first.text }
+        first.now = first.now.addingTimeInterval(1)
+        first.controller.toggle(using: initial)
+        try await eventually { !first.controller.isActive }
+        #expect(receiver.text == "ship it on friday")
+        try #require(first.controller.lastText.current == "ship it on friday")
+
+        let recorder = Recorder()
+        let rewrite = SelectionRewriteController(presentsPanel: false)
+        defer { rewrite.cancel() }
+        rewrite.start(using: dependencies(recorder))
+        try await eventually { rewrite.phase == .choosing }
+        let commandArguments = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
+        let command = DictationControllerHarness(text: "change friday to monday", controller: first.controller)
+        command.defaults.setVolatileDomain(commandArguments, forName: UserDefaults.argumentDomain)
+        command.defaults.set(true, forKey: DictationCorrections.defaultsKey)
+        try #require(DictationCorrections.isEnabled(in: command.defaults))
+        let session = rewrite.instructionDependencies(command.dependencies)
+        recorder.dictating = true
+        defer { recorder.dictating = false }
+        command.controller.toggle(using: session)
+        try await eventually { command.controller.partialText == command.text }
+        command.now = command.now.addingTimeInterval(1)
+        command.controller.toggle(using: session)
+        try await eventually { !command.controller.isActive }
+        #expect(receiver.text == "ship it on friday")
+        #expect(editCalls == 0)
+        #expect(first.controller.lastText.current == "ship it on friday")
+        #expect(rewrite.spokenInstruction == "change friday to monday")
+        try await eventually { rewrite.phase == .preview("SO WE SHIP IT TOMORROW") }
+        #expect(recorder.recipes == ["change friday to monday"])
         #expect(recorder.insertions.isEmpty)
     }
 
