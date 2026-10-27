@@ -2896,6 +2896,9 @@ releases its Escape and Return so the strip owns Escape, shows
 and returns to its choices if the session ends without words. The delivered
 text becomes the rewrite's instruction (`rewrite-instruction`), bounded to 500
 characters, under the recipe prompt and fidelity rules.
+Internal instruction delivery bypasses the spoken-correction router and
+dictation translation, so even a recognized correction command becomes the
+rewrite instruction as spoken and never edits or consumes a previous dictation.
 
 **Spoken corrections (D591).** `TextInserter.insert` reports the verified span
 and output; the pinned destination keeps it as a `DictationInsertion` whose

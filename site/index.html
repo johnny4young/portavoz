@@ -139,10 +139,10 @@
     </div>
   </section>
 
-  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" hidden>
-    <button class="lb-close" id="lbClose" type="button" aria-label="Close">✕</button>
+  <dialog class="lightbox" id="lightbox">
+    <button class="lb-close" type="button" autofocus><span aria-hidden="true">✕</span><span class="lb-label"><span class="es">Cerrar</span><span class="en">Close</span></span></button>
     <img id="lbImg" src="" alt="">
-  </div>
+  </dialog>
 
   <section id="features">
     <h2><span class="es">Nativo, local, serio.</span><span class="en">Native, local, serious.</span></h2>
@@ -294,31 +294,27 @@
       }
     });
 
-    // Screenshot lightbox — click a thumbnail to open the full image; close
-    // by clicking the backdrop / the ✕ / Escape.
+    // Screenshot lightbox: the modal <dialog> owns initial focus, inertness and
+    // Escape. Every close route (✕, backdrop, Escape) refocuses the thumbnail.
     var lb = document.getElementById("lightbox");
     var lbImg = document.getElementById("lbImg");
-    function openLb(src, alt) {
-      lbImg.setAttribute("src", src);
-      lbImg.setAttribute("alt", alt || "");
-      lb.hidden = false;
-      document.body.style.overflow = "hidden";
-    }
-    function closeLb() {
-      lb.hidden = true;
-      lbImg.setAttribute("src", "");
-      document.body.style.overflow = "";
-    }
+    var lbLauncher = null;
     document.querySelectorAll(".thumb").forEach(function (t) {
       t.addEventListener("click", function () {
-        openLb(t.getAttribute("data-full"), t.querySelector("img").getAttribute("alt"));
+        var alt = t.querySelector("img").getAttribute("alt") || "";
+        lbLauncher = t;
+        lbImg.setAttribute("src", t.getAttribute("data-full"));
+        lbImg.setAttribute("alt", alt);
+        lb.showModal();
       });
     });
     lb.addEventListener("click", function (e) {
-      if (e.target !== lbImg) closeLb();
+      if (e.target !== lbImg) lb.close();
     });
-    document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape" && !lb.hidden) closeLb();
+    lb.addEventListener("close", function () {
+      lbImg.setAttribute("src", "");
+      if (lbLauncher) lbLauncher.focus();
+      lbLauncher = null;
     });
   })();
 </script>

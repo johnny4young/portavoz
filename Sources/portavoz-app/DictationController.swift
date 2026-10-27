@@ -825,7 +825,8 @@ private extension DictationController {
     func correctsLastInsertion(
         original: String, sessionID: UUID, dependencies: DictationSessionDependencies
     ) async -> Bool {
-        guard DictationCorrections.isEnabled(in: dependencies.defaults),
+        guard !dependencies.deliversInternally,
+              DictationCorrections.isEnabled(in: dependencies.defaults),
               let command = DictationCorrectionCommand.parse(
                   DictationTextRules.apply(original, replacements: [], removeFillers: true)),
               let pasted = lastText.current else { return false }
@@ -1044,6 +1045,8 @@ extension DictationController {
             policy.mode = mode
             policy.recipeID = nil
         }
+        // An internal receiver takes the words as spoken; nothing is pasted to translate.
+        if dependencies.deliversInternally { policy.translationTarget = .off }
         return policy
     }
 

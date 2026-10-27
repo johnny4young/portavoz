@@ -57,7 +57,7 @@ def validate_row(row, case, attempt, ready, family, entry, request):
                    'controller input duration mismatch')
     corpus.require(row['runtimeState'] == ('reused-engine' if ready else 'first-engine-load'),
                    'controller runtime reuse mismatch')
-    validate_score(row['proposedOutputScore'])
+    validate_score(row['proposedOutputScore'], speech_expected=family['audioKind'] == 'speech')
     corpus.require(row['proposedOutputScore']['legacyCleanupChangedText'] is False, 'controller profile is literal')
     corpus.require(type(row['inputCompleted']) is bool and type(row['pipelineCompleted']) is bool
                    and corpus.integer(row['fedFrames'], 0, frames), 'invalid controller input accounting')
