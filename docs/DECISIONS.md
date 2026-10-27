@@ -21901,3 +21901,19 @@ the meeting processing and failing does not make it need attention. Missing
 languages or an unsupported pair end the job with that reason and point to the
 Settings download; a line that times out retries the job once. A translated
 reading is read-only, because corrections edit the original.
+
+## D598 — Run the XCTest suite in parallel worker processes
+
+**Context:** The complete package suite ran about 3,800 XCTest cases one after
+another, roughly ten of the seventeen minutes of the hosted build-and-test lane
+on a three-core runner, while Swift Testing already ran in parallel.
+
+**Decision:** `scripts/run-swift-tests.sh` passes `--parallel` to `swift test`
+for every caller, locally and in CI. SwiftPM runs XCTest cases in separate
+worker processes, one per core by default, so tests that touch process-wide
+state such as the user-defaults argument domain no longer interleave inside one
+process. The test command, flags, filters and coverage are otherwise unchanged.
+
+**Consequences:** The lane's test phase shrinks with the runner's core count. A
+case that only passed because of serial ordering now fails visibly instead of
+hiding an ordering dependency; it is fixed rather than serialized again.

@@ -107,7 +107,8 @@ fi
 export PORTAVOZ_TEST_WEB_FIXTURE_DESCRIPTOR="$fixture_ready"
 
 set +e
-swift test "$@" &
+# XCTest cases run in worker processes, so no test shares another's process state.
+swift test --parallel "$@" &
 test_pid=$!
 wait "$test_pid"
 test_status=$?

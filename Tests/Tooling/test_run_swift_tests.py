@@ -183,7 +183,7 @@ class RunSwiftTestsTests(unittest.TestCase):
         self.assertIsNotNone(record)
         self.assertEqual(
             record["arguments"],
-            ["--filter", "AskWebFixtureIntegrationTests"],
+            ["--parallel", "--filter", "AskWebFixtureIntegrationTests"],
         )
         descriptor = record["descriptor"]
         self.assertEqual(descriptor["schemaVersion"], 1)

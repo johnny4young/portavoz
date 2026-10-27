@@ -2102,7 +2102,11 @@ evidence without exceeding its type-checking budget.
 
 Current-SDK diagnostic closure uses `scripts/run-swift-tests.sh -Xswiftc
 -warnings-as-errors` both locally before committing and on the explicit
-`macos-26`/Xcode 26.6 CI lane. A strict `swift build` alone does not compile
+`macos-26`/Xcode 26.6 CI lane. The launcher passes `--parallel` (D598): XCTest
+cases run in worker processes, one per core by default, so the three-core
+hosted runner no longer executes about 3,800 cases one after another. Two
+complete local runs with three workers passed every case in 349 and 356
+seconds. A strict `swift build` alone does not compile
 the test targets; a subsequent non-strict `swift test` can therefore miss a
 test-only diagnostic that fails CI. Non-reassigned weak lifetime probes use
 `weak let`, preserving zeroing-weak semantics without artificial mutations or
