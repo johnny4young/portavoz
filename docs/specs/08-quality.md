@@ -2102,11 +2102,16 @@ evidence without exceeding its type-checking budget.
 
 Current-SDK diagnostic closure uses `scripts/run-swift-tests.sh -Xswiftc
 -warnings-as-errors` both locally before committing and on the explicit
-`macos-26`/Xcode 26.6 CI lane. The launcher passes `--parallel` (D598): XCTest
-cases run in worker processes, one per core by default, so the three-core
-hosted runner no longer executes about 3,800 cases one after another. Two
-complete local runs with three workers passed every case in 349 and 356
-seconds. A strict `swift build` alone does not compile
+`macos-26`/Xcode 26.6 CI lane. A complete launcher run pools XCTest by class
+(D598): `scripts/run_xctest_pool.py` runs each listed class in its own `xctest`
+process, three at a time, prints every class's output, and fails when a class
+fails, prints no summary, or the executed total differs from the listed total.
+Swift Testing suites then run in one process through an anchored filter. Tests
+that write preferences use their own suite domain rather than
+`UserDefaults.standard`, which concurrent processes share on disk.
+`Tests/Tooling/test_run_xctest_pool.py` and `test_run_swift_tests.py` cover the
+class selection, summary parsing, count guard, failure propagation, targeted
+passthrough and the process-group stop. A strict `swift build` alone does not compile
 the test targets; a subsequent non-strict `swift test` can therefore miss a
 test-only diagnostic that fails CI. Non-reassigned weak lifetime probes use
 `weak let`, preserving zeroing-weak semantics without artificial mutations or

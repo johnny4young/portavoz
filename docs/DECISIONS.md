@@ -21902,18 +21902,26 @@ languages or an unsupported pair end the job with that reason and point to the
 Settings download; a line that times out retries the job once. A translated
 reading is read-only, because corrections edit the original.
 
-## D598 — Run the XCTest suite in parallel worker processes
+## D598 — Run XCTest classes in a bounded process pool
 
 **Context:** The complete package suite ran about 3,800 XCTest cases one after
 another, roughly ten of the seventeen minutes of the hosted build-and-test lane
-on a three-core runner, while Swift Testing already ran in parallel.
+on a three-core runner. SwiftPM's `--parallel` starts one process per test
+method; on the hosted runner that launch cost erased the gain (11.3 minutes for
+XCTest), and locally it was slower than serial.
 
-**Decision:** `scripts/run-swift-tests.sh` passes `--parallel` to `swift test`
-for every caller, locally and in CI. SwiftPM runs XCTest cases in separate
-worker processes, one per core by default, so tests that touch process-wide
-state such as the user-defaults argument domain no longer interleave inside one
-process. The test command, flags, filters and coverage are otherwise unchanged.
+**Decision:** A complete `scripts/run-swift-tests.sh` run builds once, lists the
+tests, runs each XCTest class in its own `xctest` process from a pool of three
+(the hosted core count, overridable by `PORTAVOZ_SWIFT_TEST_WORKERS`), and then
+runs the Swift Testing suites through an anchored filter. A class keeps its
+cases serial in one process, as before; classes no longer share a process. The
+run fails when a class fails, prints no summary, or the executed XCTest total
+differs from the listed total. A targeted run keeps plain `swift test`.
+Concurrent processes share the on-disk `UserDefaults.standard` domain, so tests
+that persist preferences use their own suite. Cancellation stops the launcher's
+whole process group.
 
-**Consequences:** The lane's test phase shrinks with the runner's core count. A
-case that only passed because of serial ordering now fails visibly instead of
-hiding an ordering dependency; it is fixed rather than serialized again.
+**Consequences:** On a development Mac the complete gate fell from 320 to 154
+seconds with every listed case executed. A test that relied on another class
+running first in the same process now fails visibly and is fixed rather than
+serialized again.

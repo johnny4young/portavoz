@@ -5728,9 +5728,12 @@ so a push whose event GitHub dropped can still be qualified on main; a
 dispatched run follows the push cache policy.
 Each lane
 owns one complete test invocation so its compiler flags cannot trigger a second
-differently configured package build. The launcher runs XCTest with
-`--parallel`, so cases spread across worker processes (one per core by default)
-and none shares another's process-wide state.
+differently configured package build. A complete launcher run builds once,
+lists the tests, runs each XCTest class in its own `xctest` process from a pool
+of three (`PORTAVOZ_SWIFT_TEST_WORKERS` overrides it), then runs the Swift
+Testing suites in one process. The run fails unless the executed XCTest total
+equals the listed total. A targeted run (`--filter`, `--skip`) keeps plain
+`swift test`, and cancelling the launcher stops its whole process group.
 SwiftLint 0.65.0 and XcodeGen 2.46.0 come from official release archives with
 fixed SHA-256 digests instead of floating Homebrew state.
 Third-party GitHub Actions are pinned to immutable full commit SHAs with their
