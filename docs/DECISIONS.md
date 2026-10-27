@@ -21901,3 +21901,25 @@ the meeting processing and failing does not make it need attention. Missing
 languages or an unsupported pair end the job with that reason and point to the
 Settings download; a line that times out retries the job once. A translated
 reading is read-only, because corrections edit the original.
+
+## D597 — Pull requests run feature UI evidence or smoke canaries; the full catalog runs nightly
+
+**Context:** Pull requests waited 33 to 45 minutes for XCUITest on one hosted
+Mac. Any lower-layer Swift change fell back to almost every feature scope (a
+processing-policy edit selected 184 of 186 tests), as did localization and the
+dependency lock, although unit tests already own that behavior and the selector
+cannot prove which journey a lower layer reaches.
+
+**Decision:** Known presentation files keep their feature-level selectors, a
+changed UI-test file keeps its class, and shared-harness, fixture, build and
+unknown non-Swift changes keep the complete English catalog. Lower-layer Swift,
+unmapped app files, `Package.resolved` and the string catalog now select fifteen
+smoke canaries, one per root surface. The complete English catalog runs every
+night on `main` and on demand, split into three shards balanced greedily by the
+runtime budget, together with the interruption controls; the release gate is
+unchanged.
+
+**Consequences:** A typical pull request runs a few minutes of XCUITest instead
+of the whole suite. A UI regression caused by a lower layer outside the
+canaries can reach `main` and is caught by the next nightly run instead of the
+pull request, so a red nightly run is a release blocker until it is fixed.

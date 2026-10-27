@@ -837,10 +837,10 @@ test-ui-run:
 		UI_TEST_LOCALES="$(UI_TEST_LOCALES)" scripts/run-ui-tests.sh
 
 ## Select UI evidence from committed, staged, unstaged, and untracked changes
-## against UI_BASE. Known views map to feature-level tests;
-## shared/localization changes expand to the complete English gate; unknown
-## production paths fail safe to complete English; docs-only changes skip
-## XCUITest. Set UI_HEAD explicitly to inspect a committed Git range instead.
+## against UI_BASE. Known views map to feature-level tests; lower layers,
+## unmapped app files, the lock and localized copy run the smoke canaries;
+## shared-harness changes expand to the complete English gate; docs-only
+## changes skip XCUITest. Set UI_HEAD explicitly to inspect a committed range.
 UI_BASE ?= origin/main
 UI_HEAD ?=
 test-ui-changed:

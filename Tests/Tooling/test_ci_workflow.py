@@ -410,5 +410,37 @@ class UIArtifactTransportTests(unittest.TestCase):
                     self.assertNotIn("verified=true", outputs)
 
 
+
+class NightlyUIWorkflowTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.workflow = (ROOT / ".github/workflows/ui-nightly.yml").read_text(encoding="utf-8")
+
+    def test_nightly_runs_on_main_schedule_and_on_demand_only(self):
+        triggers = self.workflow.split("\npermissions:", 1)[0]
+        self.assertIn('  schedule:\n    - cron: "0 9 * * *"\n', triggers)
+        self.assertIn("  workflow_dispatch:\n", triggers)
+        self.assertNotIn("pull_request", triggers)
+        self.assertNotIn("  push:", triggers)
+        self.assertIn("cancel-in-progress: false", self.workflow)
+
+    def test_three_shards_share_one_build_and_cover_the_validated_catalog(self):
+        self.assertEqual(self.workflow.count("run: make test-ui-build"), 1)
+        self.assertEqual(self.workflow.count("run: make test-ui-run"), 1)
+        self.assertIn("python3 scripts/ui_test_scope.py --validate-catalog --all --format github", self.workflow)
+        self.assertIn("shard: [1, 2, 3]", self.workflow)
+        self.assertIn('--all --shard "${{ matrix.shard }}/3" --format github', self.workflow)
+        self.assertIn("fail-fast: false", self.workflow)
+        self.assertIn("UI_TEST_LOCALES: en", self.workflow)
+        self.assertIn('UI_TEST_ENFORCE_RUNTIME_BUDGET: "false"', self.workflow)
+        self.assertIn("run: make test-ui-interruption-safety", self.workflow)
+        self.assertNotIn("continue-on-error", self.workflow)
+
+    def test_every_macos_job_uses_the_fixed_toolchain(self):
+        self.assertEqual(self.workflow.count("runs-on: macos-26"), 3)
+        self.assertEqual(self.workflow.count("DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer"), 3)
+        self.assertEqual(self.workflow.count("run: scripts/verify-ci-toolchain.sh 26 26.6"), 3)
+
+
 if __name__ == "__main__":
     unittest.main()

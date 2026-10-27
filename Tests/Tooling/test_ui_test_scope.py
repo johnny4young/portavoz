@@ -3,6 +3,7 @@ import hashlib
 import io
 import json
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -21,6 +22,7 @@ from ui_test_scope import (  # noqa: E402
     HARNESS_TESTS,
     MEETING_FEATURES,
     PERMISSION_GATED_TESTS,
+    SMOKE_TESTS,
     select_paths,
     validate_catalog,
     working_tree_paths,
@@ -41,8 +43,6 @@ class UITestScopeTests(unittest.TestCase):
 
     def test_portable_settings_files_reach_both_actual_transfer_journeys(self):
         paths = (
-            "Sources/ApplicationKit/PortableSettings.swift",
-            "Sources/ApplicationKit/PortableSettingsTransfer.swift",
             "Sources/portavoz-app/AppPortableSettingsStore.swift",
             "Sources/portavoz-app/PortableSettingsFile.swift",
             "Sources/portavoz-app/SettingsTransferModel.swift",
@@ -56,16 +56,24 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
 
     def test_package_changes_cannot_bypass_ui_evidence(self):
-        for path, locales in [("Package.swift", ("en",)), ("Package.resolved", ("en",))]:
-            selection = select_paths([path])
-            self.assertTrue(selection.required, path)
-            self.assertEqual(selection.tests, ALL_TESTS, path)
-            self.assertEqual(selection.locales, locales, path)
+        manifest = select_paths(["Package.swift"])
+        self.assertTrue(manifest.required)
+        self.assertEqual(manifest.tests, ALL_TESTS)
+        self.assertEqual(manifest.locales, ("en",))
+
+        lock = select_paths(["Package.resolved"])
+        self.assertTrue(lock.required)
+        self.assertEqual(lock.tests, self.smoke_selection())
+        self.assertEqual(lock.locales, ("en",))
+        self.assertEqual(lock.reasons, ("Package.resolved: dependency smoke canaries",))
 
     def test_package_changes_keep_complete_harness_expansion(self):
         selection = select_paths(["Package.swift", "project.yml"])
         self.assertEqual(selection.tests, ALL_TESTS)
         self.assertEqual(selection.locales, ("en",))
+
+    def smoke_selection(self):
+        return tuple(test for test in ALL_TESTS if test in set(SMOKE_TESTS))
 
     def minimal_catalog_root(self, *methods: str, with_owner: bool = True):
         temporary = tempfile.TemporaryDirectory()
@@ -110,7 +118,7 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(unknown_fixture.tests, ALL_TESTS)
         self.assertEqual(unknown_fixture.locales, ("en",))
 
-    def test_headless_live_benchmark_runs_no_ui_without_weakening_unknown_fallback(self):
+    def test_headless_live_benchmark_runs_no_ui_while_unknown_neighbors_keep_smoke(self):
         benchmark = "Sources/TranscriptionKit/LiveTranscriptionBench.swift"
         self.assertFalse(select_paths([benchmark]).required)
         # The exemption holds only while headless bench mode and the CLI are its callers.
@@ -127,7 +135,8 @@ class UITestScopeTests(unittest.TestCase):
                     "LiveTranscriptionBench.", source.read_text(encoding="utf-8"), path
                 )
         unknown = select_paths(["Sources/TranscriptionKit/UnknownLiveOwner.swift"])
-        self.assertEqual(unknown.tests, ALL_TESTS)
+        self.assertTrue(unknown.required)
+        self.assertEqual(unknown.tests, self.smoke_selection())
         self.assertEqual(unknown.locales, ("en",))
 
     def test_github_summary_is_bounded_without_weakening_selected_evidence(self):
@@ -174,10 +183,6 @@ class UITestScopeTests(unittest.TestCase):
                 set(FEATURE_TESTS["main-shell"]).issubset(selection.tests),
                 path,
             )
-        storage = select_paths(
-            ["Sources/StorageKit/MeetingStore+LaunchRecovery.swift"]
-        )
-        self.assertEqual(storage.tests, recovery)
 
     def test_resource_benchmark_owners_select_startup_canaries(self):
         expected = set(FEATURE_TESTS["launch-recovery"])
@@ -204,39 +209,6 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
             self.assertEqual(selection.tests, expected, path)
             self.assertEqual(len(selection.tests), 1, path)
-            self.assertLess(len(selection.tests), len(ALL_TESTS), path)
-
-    def test_ios_readiness_sources_select_only_their_owned_canaries(self):
-        expected_features = {
-            "Sources/ModelStoreKit/ModelStore.swift": ("settings-intelligence",),
-            "Sources/StorageKit/MeetingStore.swift": ("launch-recovery", "library"),
-            "Sources/DiarizationKit/VoiceprintStore.swift": (
-                "meeting-health", "meeting-naming", "onboarding", "settings-voice"
-            ),
-            "Sources/IntelligenceKit/BriefSynthesizer.swift": ("meeting-brief",),
-            "Sources/IntelligenceKit/ChapterTitler.swift": ("meeting-naming",),
-            "Sources/IntelligenceKit/MeetingTypeDetector.swift": ("meeting-naming",),
-            "Sources/IntelligenceKit/ObjectiveCheck.swift": ("live-assist",),
-            "Sources/IntelligenceKit/TitleSuggester.swift": ("meeting-naming",),
-            "Sources/PortavozCore/CommitmentReplicaMerge.swift": (
-                "meeting-commitments", "production-sync"
-            ),
-            "Sources/PortavozCore/DeferredMacWork.swift": ("background-work",),
-            "Sources/IntegrationsKit/CloudKitMeetingSyncPlatform.swift": (
-                "production-sync",
-            ),
-        }
-
-        for path, features in expected_features.items():
-            expected_set = {
-                test
-                for feature in features
-                for test in FEATURE_TESTS[feature]
-            }
-            expected = tuple(test for test in ALL_TESTS if test in expected_set)
-            selection = select_paths([path])
-            self.assertEqual(selection.tests, expected, path)
-            self.assertEqual(selection.locales, ("en",), path)
             self.assertLess(len(selection.tests), len(ALL_TESTS), path)
 
     def test_docs_governance_and_local_tooling_do_not_spend_a_ui_runner(self):
@@ -266,7 +238,7 @@ class UITestScopeTests(unittest.TestCase):
 
     def test_audio_import_sources_reach_the_queue_instead_of_playback_settings(self):
         expected = set(FEATURE_TESTS["audio-imports"]) | set(FEATURE_TESTS["library"])
-        paths = sorted(ROOT.glob("Sources/**/*AudioImport*.swift"))
+        paths = sorted(ROOT.glob("Sources/portavoz-app/*AudioImport*.swift"))
         self.assertTrue(paths)
         for source in paths:
             path = source.relative_to(ROOT).as_posix()
@@ -364,15 +336,15 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
             self.assertEqual(set(selection.tests), owned_tests, path)
 
-    def test_localization_expands_to_the_complete_english_catalog(self):
+    def test_localization_selects_the_english_smoke_canaries(self):
         selection = select_paths(["Resources/Localization/Portavoz/Localizable.xcstrings"])
-        self.assertEqual(selection.tests, HARNESS_TESTS)
-        self.assertEqual(selection.tests, ALL_TESTS)
+        self.assertTrue(selection.required)
+        self.assertEqual(selection.tests, self.smoke_selection())
         self.assertEqual(selection.locales, ("en",))
         self.assertEqual(
             selection.reasons,
             ("Resources/Localization/Portavoz/Localizable.xcstrings: "
-             "complete localization fallback",),
+             "localization smoke canaries",),
         )
 
     def test_no_path_combination_selects_spanish(self):
@@ -487,147 +459,21 @@ class UITestScopeTests(unittest.TestCase):
     def test_semantic_asset_preparation_selects_its_settings_journey(self):
         expected = FEATURE_TESTS["settings-intelligence"]
         for path in (
-            "Sources/ApplicationKit/SemanticSearchAssetPreparation.swift",
             "Sources/portavoz-app/SemanticSearchPreparationModel.swift",
         ):
             selection = select_paths([path])
             self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en",), path)
 
-    def test_decision_relationship_sources_select_exact_ask_journeys(self):
-        selection = select_paths([
-            "Sources/ApplicationKit/LoadDecisionRelationships.swift",
-            "Sources/StorageKit/MeetingStore+DecisionRelationshipQuery.swift",
-        ])
-        self.assertEqual(selection.tests, FEATURE_TESTS["ask"])
-        self.assertEqual(selection.locales, ("en",))
-
-    def test_recording_sources_select_callback_recovery_evidence(self):
-        selection = select_paths(["Sources/AudioCaptureKit/RecordingSession.swift"])
-        self.assertIn(
-            "PortavozUITests/LibraryUITests/testRecordingWarnsWhenRemoteAudioCallbacksStop",
-            selection.tests,
-        )
-
-    def test_recording_use_cases_skip_unrelated_settings_surfaces(self):
-        for path in (
-            "Sources/ApplicationKit/StartRecording.swift",
-            "Sources/ApplicationKit/StopRecording.swift",
-        ):
-            selection = select_paths([path])
-            self.assertEqual(
-                selection.tests,
-                tuple(dict.fromkeys(
-                    FEATURE_TESTS["library"]
-                    + FEATURE_TESTS["recording-recovery"]
-                )),
-                path,
-            )
-
-    def test_mic_bleed_selects_live_and_refine_evidence_without_full_fallback(self):
-        selection = select_paths(["Sources/TranscriptionKit/MicBleedFilter.swift"])
-        selected = set(
-            FEATURE_TESTS["recording-recovery"]
-            + FEATURE_TESTS["meeting-processing"]
-        )
-        self.assertEqual(
-            selection.tests,
-            tuple(test for test in ALL_TESTS if test in selected),
-        )
-        self.assertLess(len(selection.tests), len(ALL_TESTS))
-
-    def test_query_expander_selects_only_search_consumers(self):
-        selection = select_paths(
-            ["Sources/ApplicationKit/BilingualSearchQueryExpander.swift"]
-        )
-        expected = tuple(dict.fromkeys(
-            FEATURE_TESTS["library"]
-            + FEATURE_TESTS["meeting-brief"]
-            + FEATURE_TESTS["ask"]
-        ))
-        self.assertEqual(selection.tests, expected)
-        self.assertEqual(selection.locales, ("en",))
-        self.assertLess(len(selection.tests), len(ALL_TESTS))
-
-    def test_typed_note_ask_layers_select_only_the_consolidated_ask_scope(self):
-        for path in (
-            "Sources/ApplicationKit/AskNotes.swift",
-            "Sources/ApplicationKit/LocalAskNoteRetrieval.swift",
-            "Sources/StorageKit/Schema+ContextItemSearch.swift",
-            "Sources/StorageKit/MeetingStore+NoteSearch.swift",
-        ):
-            selection = select_paths([path])
-            self.assertEqual(selection.tests, FEATURE_TESTS["ask"], path)
-            self.assertEqual(selection.locales, ("en",), path)
-            self.assertLess(len(selection.tests), len(ALL_TESTS), path)
-
-    def test_shared_cited_answering_selects_ask_and_interview_only(self):
-        selected = set(
-            FEATURE_TESTS["ask"] + FEATURE_TESTS["recording-interview"]
-        )
-        expected = tuple(test for test in ALL_TESTS if test in selected)
-        for path in (
-            "Sources/ApplicationKit/NumberedCitationAnswer.swift",
-            "Sources/IntelligenceKit/RAGTextAnswering.swift",
-            "Sources/IntelligenceKit/RAGAnswerer.swift",
-        ):
-            selection = select_paths([path])
-            self.assertEqual(selection.tests, expected, path)
-            self.assertEqual(selection.locales, ("en",), path)
-            self.assertLess(len(selection.tests), len(ALL_TESTS), path)
-
     def test_proactive_assist_layers_select_only_consolidated_recording_evidence(self):
         expected = FEATURE_TESTS["recording-recovery"]
         for path in (
-            "Sources/IntelligenceKit/ProactiveMeetingAssist.swift",
             "Sources/portavoz-app/RecordingProactiveAssistModel.swift",
         ):
             selection = select_paths([path])
             self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en",), path)
             self.assertLess(len(selection.tests), len(ALL_TESTS), path)
-
-    def test_confirmed_topic_catalog_selects_only_exact_ask_journeys(self):
-        expected = FEATURE_TESTS["ask"]
-        for path in (
-            "Sources/ApplicationKit/LoadConfirmedTopicCatalog.swift",
-            "Sources/StorageKit/MeetingStore+ConfirmedTopicCatalog.swift",
-        ):
-            selection = select_paths([path])
-            self.assertEqual(selection.tests, expected, path)
-            self.assertEqual(selection.locales, ("en",), path)
-            self.assertLess(len(selection.tests), len(ALL_TESTS), path)
-
-    def test_topic_first_discussion_selects_only_exact_ask_journeys(self):
-        expected = FEATURE_TESTS["ask"]
-        for path in (
-            "Sources/ApplicationKit/LoadTopicFirstDiscussion.swift",
-            "Sources/StorageKit/MeetingStore+TopicFirstDiscussionQuery.swift",
-        ):
-            selection = select_paths([path])
-            self.assertEqual(selection.tests, expected, path)
-            self.assertEqual(selection.locales, ("en",), path)
-            self.assertLess(len(selection.tests), len(ALL_TESTS), path)
-
-    def test_commitment_blocker_query_selects_only_exact_ask_journeys(self):
-        selection = select_paths([
-            "Sources/ApplicationKit/LoadCommitmentBlockers.swift",
-        ])
-        self.assertEqual(selection.tests, FEATURE_TESTS["ask"])
-        self.assertEqual(selection.locales, ("en",))
-        self.assertLess(len(selection.tests), len(ALL_TESTS))
-
-    def test_summary_storage_selects_its_consumers_without_full_fallback(self):
-        selection = select_paths(["Sources/StorageKit/MeetingStore+Summaries.swift"])
-        self.assertIn(
-            "PortavozUITests/MeetingDetailUITests/testMostRecentRecipeRemainsVisibleAfterReload",
-            selection.tests,
-        )
-        self.assertIn(
-            "PortavozUITests/LibraryUITests/testSeededMeetingsGroupByRecency",
-            selection.tests,
-        )
-        self.assertLess(len(selection.tests), len(ALL_TESTS))
 
     def test_companion_refresh_selects_correction_publication_evidence(self):
         expected = {
@@ -637,8 +483,6 @@ class UITestScopeTests(unittest.TestCase):
             "testSequoiaApuntadorRefreshPreservesStaleAnswers",
         }
         for path in (
-            "Sources/ApplicationKit/RegenerateCompanionCards.swift",
-            "Sources/StorageKit/MeetingStore+Companion.swift",
             "Sources/portavoz-app/AppServices+CompanionRegeneration.swift",
             "Sources/portavoz-app/CompanionRefresh.swift",
             "Sources/portavoz-app/MeetingDetailCoordinator.swift",
@@ -652,11 +496,6 @@ class UITestScopeTests(unittest.TestCase):
     def test_live_assist_validation_uses_one_bounded_real_app_journey(self):
         expected = FEATURE_TESTS["live-assist"]
         for path in (
-            "Sources/IntelligenceKit/Companion.swift",
-            "Sources/IntelligenceKit/CompanionGenerationProvenance.swift",
-            "Sources/IntelligenceKit/LiveQuestionDetector.swift",
-            "Sources/IntelligenceKit/ProviderNeutralCompanion.swift",
-            "Sources/IntelligenceKit/TurnEndpointPolicy.swift",
             "Sources/portavoz-app/CompanionSettingsSection.swift",
             "Sources/portavoz-app/LiveAssistValidationContract.swift",
             "Sources/portavoz-app/LiveAssistValidationFaultRunner.swift",
@@ -742,12 +581,6 @@ class UITestScopeTests(unittest.TestCase):
                 "meeting-audio", "meeting-correction", "meeting-evidence",
                 "meeting-health", "meeting-performance"
             },
-            "Sources/ApplicationKit/MeetingGeneratedDocumentPresentation.swift": {
-                "meeting-evidence", "meeting-summary"
-            },
-            "Sources/ApplicationKit/MeetingTranscriptContent.swift": {
-                "meeting-audio", "meeting-evidence", "meeting-health", "meeting-performance"
-            },
         }
         for path, features in expected_features.items():
             selection = select_paths([path])
@@ -760,47 +593,9 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en",), path)
 
-    def test_composed_transcript_policy_selects_only_correction_journey(self):
-        selection = select_paths(["Sources/ApplicationKit/ComposeTranscript.swift"])
-        self.assertEqual(selection.tests, FEATURE_TESTS["meeting-correction"])
-        self.assertEqual(selection.locales, ("en",))
-
-        future_consumer = select_paths(["Sources/StorageKit/ComposeTranscriptStore.swift"])
-        self.assertTrue(future_consumer.required)
-        self.assertEqual(future_consumer.tests, ALL_TESTS)
-
-    def test_durable_correction_storage_selects_only_correction_journey(self):
-        expected = FEATURE_TESTS["meeting-correction"]
-        for path in [
-            "Sources/PortavozCore/TranscriptCorrection.swift",
-            "Sources/PortavozCore/TranscriptCorrectionRevision.swift",
-            "Sources/ApplicationKit/MeetingTranscriptGenerationMaterial.swift",
-            "Sources/StorageKit/MeetingStore+TranscriptCorrections.swift",
-            "Sources/StorageKit/MeetingStore+TranscriptProjection.swift",
-            "Sources/StorageKit/Schema+TranscriptCorrection.swift",
-            "Sources/StorageKit/TranscriptCorrectionRecords.swift",
-        ]:
-            selection = select_paths([path])
-            self.assertEqual(selection.tests, expected, path)
-            self.assertEqual(selection.locales, ("en",), path)
-
-    def test_commitment_admission_selects_only_the_confirmation_journey(self):
-        expected = FEATURE_TESTS["meeting-commitments"]
-        for path in [
-            "Sources/ApplicationKit/ManageMeetingCommitmentInbox.swift",
-            "Sources/ApplicationKit/MeetingCommitmentInbox.swift",
-        ]:
-            selection = select_paths([path])
-            self.assertEqual(selection.tests, expected, path)
-            self.assertEqual(selection.locales, ("en",), path)
-
     def test_commitment_radar_selects_only_its_global_continuity_journey(self):
         expected = FEATURE_TESTS["commitment-radar"]
         for path in [
-            "Sources/PortavozCore/CommitmentRadar.swift",
-            "Sources/ApplicationKit/LoadCommitmentRadar.swift",
-            "Sources/ApplicationKit/ManageCommitmentRadar.swift",
-            "Sources/StorageKit/MeetingStore+CommitmentRadar.swift",
             "Sources/portavoz-app/AppServices+CommitmentRadar.swift",
             "Sources/portavoz-app/CommitmentRadarModel.swift",
             "Sources/portavoz-app/CommitmentRadarView.swift",
@@ -831,9 +626,6 @@ class UITestScopeTests(unittest.TestCase):
             "Sources/portavoz-app/RecordingRecoveryCoordinator.swift",
             "Sources/portavoz-app/SemanticCorpusIndexingSupervisor.swift",
             "Sources/portavoz-app/SpotlightIndexer.swift",
-            "Sources/ApplicationKit/ProcessSemanticCorpusMaintenance.swift",
-            "Sources/ApplicationKit/ProcessMeetingMemoryGraphMaintenance.swift",
-            "Sources/ApplicationKit/RecoverInterruptedMeetings.swift",
         ):
             selection = select_paths([path])
             self.assertEqual(selection.tests, expected, path)
@@ -863,17 +655,6 @@ class UITestScopeTests(unittest.TestCase):
                 self.assertEqual(selection.locales, ("en",))
                 self.assertIn("seed-fixture fallback", selection.reasons[0])
 
-    def test_subtitle_export_selects_only_its_meeting_export_smoke(self):
-        selection = select_paths(["Sources/IntegrationsKit/SubtitleExport.swift"])
-        self.assertEqual(
-            selection.tests,
-            (
-                "PortavozUITests/MeetingDetailUITests/"
-                "testExportMenuOffersSubtitleFormats",
-            ),
-        )
-        self.assertEqual(selection.locales, ("en",))
-
     def test_dictation_surfaces_select_unattended_controller_coverage(self):
         for path in [
             "Sources/portavoz-app/DictationSection.swift",
@@ -888,7 +669,6 @@ class UITestScopeTests(unittest.TestCase):
             "Sources/portavoz-app/TextInserter.swift",
             "Sources/portavoz-app/DictationClipboard.swift",
             "Sources/portavoz-app/PasteboardSnapshot.swift",
-            "Sources/TranscriptionKit/DictationTextRules.swift",
         ]:
             selection = select_paths([path])
             expected = tuple(test for test in ALL_TESTS if test in FEATURE_TESTS["dictation"])
@@ -955,9 +735,6 @@ class UITestScopeTests(unittest.TestCase):
             + FEATURE_TESTS["settings-skills"])
         expected = tuple(test for test in ALL_TESTS if test in expected_set)
         for path in [
-            "Sources/PortavozCore/SkillExecutionPolicy.swift",
-            "Sources/ApplicationKit/SkillsControlCenter.swift",
-            "Sources/StorageKit/MeetingStore+SkillControl.swift",
             "Sources/portavoz-app/AppServices+MeetingSkills.swift",
             "Sources/portavoz-app/SkillActivitySection.swift",
             "Sources/portavoz-app/SkillsSettingsSection.swift",
@@ -969,10 +746,6 @@ class UITestScopeTests(unittest.TestCase):
     def test_standing_skill_sources_select_only_the_composed_lifecycle(self):
         expected = FEATURE_TESTS["settings-standing-skills"]
         for path in [
-            "Sources/PortavozCore/StandingSkillRule.swift",
-            "Sources/ApplicationKit/StandingSkillAutomationCenter.swift",
-            "Sources/ApplicationKit/StandingPreMeetingBriefs.swift",
-            "Sources/StorageKit/MeetingStore+StandingSkillHistory.swift",
             "Sources/portavoz-app/AppServices+StandingSkills.swift",
             "Sources/portavoz-app/StandingPreMeetingBriefSupervisor.swift",
             "Sources/portavoz-app/StandingSkillRulesSection.swift",
@@ -1048,8 +821,6 @@ class UITestScopeTests(unittest.TestCase):
         )
         expected = tuple(test for test in ALL_TESTS if test in expected_set)
         for path in [
-            "Sources/ApplicationKit/LoadAutomationEntities.swift",
-            "Sources/StorageKit/MeetingStore+AutomationEntities.swift",
             "Sources/portavoz-app/AppServices+AutomationEntities.swift",
             "Sources/portavoz-app/AppServices+AutomationEntityUITestFixture.swift",
         ]:
@@ -1079,7 +850,6 @@ class UITestScopeTests(unittest.TestCase):
     def test_interview_sources_select_the_single_grounded_real_app_journey(self):
         expected = FEATURE_TESTS["recording-interview"]
         for path in [
-            "Sources/ApplicationKit/AssistInterviewQuestion.swift",
             "Sources/portavoz-app/RecordingInterviewAssistModel.swift",
             "Sources/portavoz-app/RecordingInterviewAssistView.swift",
         ]:
@@ -1109,10 +879,176 @@ class UITestScopeTests(unittest.TestCase):
             )
             self.assertEqual(selection.locales, ("en",), path)
 
-    def test_unknown_production_source_falls_back_to_full_english(self):
-        selection = select_paths(["Sources/NewCapabilityKit/Unknown.swift"])
-        self.assertEqual(selection.tests, ALL_TESTS)
-        self.assertEqual(selection.locales, ("en",))
+    def test_unknown_production_source_selects_the_smoke_canaries(self):
+        for path, reason in (
+            ("Sources/NewCapabilityKit/Unknown.swift", "lower-layer smoke canaries"),
+            ("Sources/portavoz-app/BrandNewUnmappedSurface.swift", "unmapped app file smoke canaries"),
+        ):
+            with self.subTest(path=path):
+                selection = select_paths([path])
+                self.assertTrue(selection.required)
+                self.assertEqual(selection.tests, self.smoke_selection())
+                self.assertEqual(selection.locales, ("en",))
+                self.assertEqual(selection.reasons, (f"{path}: {reason}",))
+
+    def test_unknown_non_swift_paths_keep_the_full_english_fallback(self):
+        for path in ("Fixtures/NewCapability/future-app-resource.json", "project.yml"):
+            with self.subTest(path=path):
+                selection = select_paths([path])
+                self.assertEqual(selection.tests, ALL_TESTS)
+                self.assertEqual(selection.locales, ("en",))
+
+    def test_lower_layer_sources_select_exactly_the_smoke_canaries(self):
+        paths = (
+            "Sources/ApplicationKit/AssistInterviewQuestion.swift",
+            "Sources/ApplicationKit/AudioImportFormats.swift",
+            "Sources/ApplicationKit/BilingualSearchQueryExpander.swift",
+            "Sources/ApplicationKit/ComposeTranscript.swift",
+            "Sources/ApplicationKit/LoadAutomationEntities.swift",
+            "Sources/ApplicationKit/LoadCommitmentBlockers.swift",
+            "Sources/ApplicationKit/LoadCommitmentRadar.swift",
+            "Sources/ApplicationKit/LoadConfirmedTopicCatalog.swift",
+            "Sources/ApplicationKit/LoadDecisionRelationships.swift",
+            "Sources/ApplicationKit/LoadTopicFirstDiscussion.swift",
+            "Sources/ApplicationKit/LocalAskNoteRetrieval.swift",
+            "Sources/ApplicationKit/AskNotes.swift",
+            "Sources/ApplicationKit/ManageCommitmentRadar.swift",
+            "Sources/ApplicationKit/ManageMeetingCommitmentInbox.swift",
+            "Sources/ApplicationKit/MeetingCommitmentInbox.swift",
+            "Sources/ApplicationKit/MeetingGeneratedDocumentPresentation.swift",
+            "Sources/ApplicationKit/MeetingTranscriptContent.swift",
+            "Sources/ApplicationKit/MeetingTranscriptGenerationMaterial.swift",
+            "Sources/ApplicationKit/NumberedCitationAnswer.swift",
+            "Sources/ApplicationKit/PortableSettings.swift",
+            "Sources/ApplicationKit/PortableSettingsTransfer.swift",
+            "Sources/ApplicationKit/ProcessAudioImports+OwnedAdapters.swift",
+            "Sources/ApplicationKit/ProcessAudioImports.swift",
+            "Sources/ApplicationKit/ProcessMeetingMemoryGraphMaintenance.swift",
+            "Sources/ApplicationKit/ProcessSemanticCorpusMaintenance.swift",
+            "Sources/ApplicationKit/RecoverInterruptedMeetings.swift",
+            "Sources/ApplicationKit/RegenerateCompanionCards.swift",
+            "Sources/ApplicationKit/SemanticSearchAssetPreparation.swift",
+            "Sources/ApplicationKit/SkillsControlCenter.swift",
+            "Sources/ApplicationKit/StandingPreMeetingBriefs.swift",
+            "Sources/ApplicationKit/StandingSkillAutomationCenter.swift",
+            "Sources/ApplicationKit/StartRecording.swift",
+            "Sources/ApplicationKit/StopRecording.swift",
+            "Sources/AudioCaptureKit/RecordingSession.swift",
+            "Sources/DiarizationKit/VoiceprintStore.swift",
+            "Sources/IntegrationsKit/CloudKitMeetingSyncPlatform.swift",
+            "Sources/IntegrationsKit/SubtitleExport.swift",
+            "Sources/IntelligenceKit/BriefSynthesizer.swift",
+            "Sources/IntelligenceKit/ChapterTitler.swift",
+            "Sources/IntelligenceKit/Companion.swift",
+            "Sources/IntelligenceKit/CompanionGenerationProvenance.swift",
+            "Sources/IntelligenceKit/LiveQuestionDetector.swift",
+            "Sources/IntelligenceKit/MeetingTypeDetector.swift",
+            "Sources/IntelligenceKit/ObjectiveCheck.swift",
+            "Sources/IntelligenceKit/ProactiveMeetingAssist.swift",
+            "Sources/IntelligenceKit/ProviderNeutralCompanion.swift",
+            "Sources/IntelligenceKit/RAGAnswerer.swift",
+            "Sources/IntelligenceKit/RAGTextAnswering.swift",
+            "Sources/IntelligenceKit/TitleSuggester.swift",
+            "Sources/IntelligenceKit/TurnEndpointPolicy.swift",
+            "Sources/ModelStoreKit/ModelStore.swift",
+            "Sources/PlatformKit/AudioImportFileTransfer.swift",
+            "Sources/PlatformKit/LocalAudioImportFiles+Acquisition.swift",
+            "Sources/PlatformKit/LocalAudioImportFiles.swift",
+            "Sources/PortavozCore/AudioImport.swift",
+            "Sources/PortavozCore/AudioImportFiles.swift",
+            "Sources/PortavozCore/AudioImportQueue.swift",
+            "Sources/PortavozCore/CommitmentRadar.swift",
+            "Sources/PortavozCore/CommitmentReplicaMerge.swift",
+            "Sources/PortavozCore/DeferredMacWork.swift",
+            "Sources/PortavozCore/SkillExecutionPolicy.swift",
+            "Sources/PortavozCore/StandingSkillRule.swift",
+            "Sources/PortavozCore/TranscriptCorrection.swift",
+            "Sources/PortavozCore/TranscriptCorrectionRevision.swift",
+            "Sources/StorageKit/ComposeTranscriptStore.swift",
+            "Sources/StorageKit/MeetingStore+AudioImportPublication.swift",
+            "Sources/StorageKit/MeetingStore+AudioImportQueue.swift",
+            "Sources/StorageKit/MeetingStore+AudioImports.swift",
+            "Sources/StorageKit/MeetingStore+AutomationEntities.swift",
+            "Sources/StorageKit/MeetingStore+CommitmentRadar.swift",
+            "Sources/StorageKit/MeetingStore+Companion.swift",
+            "Sources/StorageKit/MeetingStore+ConfirmedTopicCatalog.swift",
+            "Sources/StorageKit/MeetingStore+DecisionRelationshipQuery.swift",
+            "Sources/StorageKit/MeetingStore+LaunchRecovery.swift",
+            "Sources/StorageKit/MeetingStore+NoteSearch.swift",
+            "Sources/StorageKit/MeetingStore+SkillControl.swift",
+            "Sources/StorageKit/MeetingStore+StandingSkillHistory.swift",
+            "Sources/StorageKit/MeetingStore+Summaries.swift",
+            "Sources/StorageKit/MeetingStore+TopicFirstDiscussionQuery.swift",
+            "Sources/StorageKit/MeetingStore+TranscriptCorrections.swift",
+            "Sources/StorageKit/MeetingStore+TranscriptProjection.swift",
+            "Sources/StorageKit/MeetingStore.swift",
+            "Sources/StorageKit/Records+AudioImport.swift",
+            "Sources/StorageKit/Schema+AudioImport.swift",
+            "Sources/StorageKit/Schema+ContextItemSearch.swift",
+            "Sources/StorageKit/Schema+TranscriptCorrection.swift",
+            "Sources/StorageKit/TranscriptCorrectionRecords.swift",
+            "Sources/TranscriptionKit/DictationTextRules.swift",
+            "Sources/TranscriptionKit/MicBleedFilter.swift",
+        )
+        self.assertEqual(len(paths), len(set(paths)))
+        expected = self.smoke_selection()
+        for path in paths:
+            with self.subTest(path=path):
+                selection = select_paths([path])
+                self.assertTrue(selection.required)
+                self.assertEqual(selection.tests, expected)
+                self.assertEqual(selection.locales, ("en",))
+                self.assertIn("lower-layer smoke canaries", selection.reasons[0])
+
+    def test_smoke_canaries_are_a_unique_unattended_subset_of_the_catalog(self):
+        self.assertTrue(SMOKE_TESTS)
+        self.assertEqual(len(SMOKE_TESTS), len(set(SMOKE_TESTS)))
+        self.assertLessEqual(set(SMOKE_TESTS), set(ALL_TESTS))
+        self.assertTrue(set(SMOKE_TESTS).isdisjoint(PERMISSION_GATED_TESTS))
+        self.assertLess(len(SMOKE_TESTS), len(ALL_TESTS))
+
+    def test_shards_partition_the_catalog_with_balanced_budgets(self):
+        budget = json.loads(
+            (ROOT / "docs/evidence/ui-test-runtime-budget.json").read_text(encoding="utf-8")
+        )["testBudgetsSeconds"]
+        shards = [ui_scope.shard_tests(ROOT, index, 3) for index in (1, 2, 3)]
+        flattened = [test for shard in shards for test in shard]
+        self.assertEqual(len(flattened), len(set(flattened)))
+        self.assertEqual(set(flattened), set(ALL_TESTS))
+        totals = []
+        for shard in shards:
+            self.assertTrue(shard)
+            self.assertEqual(shard, tuple(test for test in ALL_TESTS if test in set(shard)))
+            totals.append(sum(budget["/".join(test.split("/")[1:]) + "()"] for test in shard))
+        self.assertLessEqual(max(totals) - min(totals), 0.05 * max(totals))
+        for index in (0, 4):
+            with self.subTest(index=index), self.assertRaises(ValueError):
+                ui_scope.shard_tests(ROOT, index, 3)
+
+    def test_cli_shard_requires_all_and_emits_only_its_tests(self):
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(ui_scope.main(["--shard", "2/3", "Sources/portavoz-app/ContentView.swift"]), 2)
+        self.assertIn("--shard requires --all", stderr.getvalue())
+
+        for invalid in ("0/3", "4/3", "two/3"):
+            with self.subTest(shard=invalid):
+                with contextlib.redirect_stderr(io.StringIO()), contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(ui_scope.main(["--all", "--shard", invalid]), 2)
+
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            status = ui_scope.main(["--all", "--shard", "2/3", "--format", "shell"])
+        self.assertEqual(status, 0)
+        exports = dict(
+            line.removeprefix("export ").split("=", 1) for line in stdout.getvalue().splitlines()
+        )
+        self.assertEqual(exports["UI_TEST_REQUIRED"], "true")
+        self.assertEqual(exports["UI_TEST_LOCALES"], "en")
+        self.assertEqual(
+            tuple(shlex.split(exports["UI_TESTS"])[0].split()),
+            ui_scope.shard_tests(ROOT, 2, 3),
+        )
 
     def test_working_tree_paths_keeps_staged_change_hidden_from_worktree_diff(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1319,6 +1255,26 @@ class UITestScopeTests(unittest.TestCase):
                     ):
                         with self.assertRaisesRegex(RuntimeError, "known duplicate tests returned"):
                             ui_scope.validate_catalog(root, runtime_budget_required=False)
+
+    def test_catalog_policy_rejects_a_smoke_canary_outside_the_catalog(self):
+        scoped = ui_scope.test_id("InsightsUITests", "testScoped")
+        outside = ui_scope.test_id("InsightsUITests", "testOutside")
+        temporary, root = self.minimal_catalog_root("testScoped")
+        with temporary, mock.patch.multiple(
+            ui_scope,
+            FEATURE_TESTS={"insights": (scoped,)},
+            ALL_TESTS=(scoped,),
+            ALL_FEATURES=frozenset({"insights"}),
+            SMOKE_TESTS=(scoped, outside),
+            FEATURE_SOURCE_SENTINELS={
+                "insights": "Sources/portavoz-app/InsightsView.swift"
+            },
+            RETIRED_DUPLICATE_TESTS=frozenset(),
+        ):
+            with self.assertRaisesRegex(
+                RuntimeError, rf"smoke canaries outside the catalog: {re.escape(outside)}$"
+            ):
+                ui_scope.validate_catalog(root, runtime_budget_required=False)
 
     def test_catalog_policy_rejects_duplicate_selectors_inside_scope(self):
         scoped = ui_scope.test_id("InsightsUITests", "testScoped")

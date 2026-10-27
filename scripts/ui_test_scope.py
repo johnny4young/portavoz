@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Select the smallest safe Portavoz XCUITest set for a Git diff.
 
-The selector is intentionally conservative: known presentation files map to
-feature-level smoke tests, localization and shared composition changes run the
-whole suite, and an unknown production Swift path falls back to the whole
-suite. Every selection runs in English only. Documentation, governance, CLI,
-and package-test-only changes do not spend a macOS UI runner.
+Known presentation files map to feature-level tests, and shared UI-harness,
+fixture and build changes run the whole suite. Lower-layer Swift, unrecognized
+app files, the dependency lock and localized copy run the smoke canaries: unit
+tests own their behavior and the nightly sharded run owns the complete catalog.
+Every selection runs in English only. Documentation, governance, CLI, and
+package-test-only changes do not spend a macOS UI runner.
 """
 
 from __future__ import annotations
@@ -542,6 +543,26 @@ SETTINGS_FEATURES = frozenset(feature for feature in ALL_FEATURES if feature.sta
 # query or localized assertion. They are integration changes, so the safe
 # expansion is the complete catalog rather than a small canary set.
 HARNESS_TESTS = ALL_TESTS
+# One fast canary per root surface: launch, Library, Today, recording, derived
+# work, Meeting Detail, Ask, dictation, Settings, onboarding, Radar, Insights
+# and App Intents.
+SMOKE_TESTS = (
+    test_id("LibraryUITests", "testDatabaseLaunchFailureOffersSafeRecovery"),
+    test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
+    test_id("HomeUITests", "testTodayShowsAgendaOpenWorkAndRecentMeetingsAboveTheFold"),
+    test_id("LibraryUITests", "testRecordingStartFailureOffersTypedRecovery"),
+    test_id("BackgroundWorkUITests", "testRecordingDefersDerivedWorkAndStopResumesIt"),
+    test_id("MeetingDetailUITests", "testPlayerExposesSkipAndOnlyMyVoice"),
+    test_id("MeetingDetailUITests", "testMostRecentRecipeRemainsVisibleAfterReload"),
+    test_id("LibraryUITests", "testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState"),
+    test_id("DictationUITests", "testDeliveredDictationDistinguishesDispatchFromVerification"),
+    test_id("SettingsUITests", "testLanguageToggleSwitchesVisibleTextWithoutRelaunch"),
+    test_id("SettingsUITests", "testIntelligencePaneCreatesACustomStructure"),
+    test_id("OnboardingUITests", "testAdvancesFromFirstListenToLocalVoiceEnrollment"),
+    test_id("CommitmentRadarUITests", "testReminderAlertOpensCommitmentRadar"),
+    test_id("InsightsUITests", "testInsightsShowsCompleteLocalDashboard"),
+    test_id("AutomationUITests", "testOpenDictationsShortcutShowsItsSearch"),
+)
 
 # Changes to these shared owners can alter what gets built, selected, measured,
 # or accepted as UI evidence. They therefore require one complete English
@@ -1019,206 +1040,6 @@ def app_features(filename: str) -> set[str]:
     return set(ALL_FEATURES)
 
 
-def lower_layer_features(path: str) -> set[str]:
-    if path in {
-        "Sources/ApplicationKit/PortableSettings.swift",
-        "Sources/ApplicationKit/PortableSettingsTransfer.swift",
-    }:
-        return {"settings-transfer"}
-    lowered = path.lower()
-    if lowered in {
-        "sources/applicationkit/processaudioimports+ownedadapters.swift",
-        "sources/applicationkit/audioimportformats.swift",
-        "sources/applicationkit/processaudioimports.swift",
-        "sources/platformkit/audioimportfiletransfer.swift",
-        "sources/platformkit/localaudioimportfiles+acquisition.swift",
-        "sources/platformkit/localaudioimportfiles.swift",
-        "sources/portavozcore/audioimport.swift",
-        "sources/portavozcore/audioimportfiles.swift",
-        "sources/portavozcore/audioimportqueue.swift",
-        "sources/storagekit/meetingstore+audioimportpublication.swift",
-        "sources/storagekit/meetingstore+audioimportqueue.swift",
-        "sources/storagekit/meetingstore+audioimports.swift",
-        "sources/storagekit/records+audioimport.swift",
-        "sources/storagekit/schema+audioimport.swift",
-    }:
-        # These boundaries own durable import and Library lifecycle behavior,
-        # not playback or microphone preferences despite their "audio" names.
-        return {"audio-imports", "library"}
-    exact_owners = {
-        # Shared-store roots affect startup/model preparation, not every
-        # feature that happens to consume the stores after composition.
-        "sources/modelstorekit/modelstore.swift": {"settings-intelligence"},
-        "sources/storagekit/meetingstore.swift": {"launch-recovery", "library"},
-        "sources/diarizationkit/voiceprintstore.swift": {
-            "meeting-health", "meeting-naming", "onboarding", "settings-voice"
-        },
-        # These model adapters have one presentation owner each. Their unit
-        # tests retain provider/availability coverage; XCUITest owns the real
-        # app surface instead of expanding the generic "intelligence" bucket.
-        "sources/intelligencekit/briefsynthesizer.swift": {"meeting-brief"},
-        "sources/intelligencekit/chaptertitler.swift": {"meeting-naming"},
-        "sources/intelligencekit/meetingtypedetector.swift": {"meeting-naming"},
-        "sources/intelligencekit/objectivecheck.swift": {"live-assist"},
-        "sources/intelligencekit/titlesuggester.swift": {"meeting-naming"},
-        # IOS-READY contracts are intentionally dormant. Keep their future
-        # continuity and worker-center presentation owners explicit now so a
-        # later edit cannot silently fall through to an unrelated full suite.
-        "sources/portavozcore/commitmentreplicamerge.swift": {
-            "meeting-commitments", "production-sync"
-        },
-        "sources/portavozcore/deferredmacwork.swift": {"background-work"},
-        "sources/integrationskit/cloudkitmeetingsyncplatform.swift": {
-            "production-sync"
-        },
-    }
-    if owners := exact_owners.get(lowered):
-        return set(owners)
-    if any(token in lowered for token in (
-        "standingskill", "standingpremeetingbrief"
-    )):
-        return {"settings-standing-skills"}
-    if lowered in {
-        "sources/intelligencekit/companion.swift",
-        "sources/intelligencekit/companiongenerationprovenance.swift",
-        "sources/intelligencekit/livequestiondetector.swift",
-        "sources/intelligencekit/providerneutralcompanion.swift",
-        "sources/intelligencekit/turnendpointpolicy.swift",
-    }:
-        return {"live-assist"}
-    if any(token in lowered for token in (
-        "processsemanticcorpusmaintenance",
-        "processmeetingmemorygraphmaintenance",
-        "recoverinterruptedmeetings",
-        "derivedmaintenance",
-    )):
-        return {"background-work"}
-    if "proactivemeetingassist" in lowered:
-        # The deterministic policy is rendered only by the consolidated live-
-        # assist journey; it has no model, Settings, detail, or Library route.
-        return {"recording-recovery"}
-    if any(token in lowered for token in (
-        "asknotes",
-        "localasknote",
-        "contextitemsearch",
-        "meetingstore+notesearch",
-    )):
-        # Typed raw-note Ask has one consolidated real-app journey. Keep its
-        # storage/index and orchestration files from paying for unrelated UI.
-        return {"ask"}
-    if any(token in lowered for token in (
-        "numberedcitationanswer",
-        "ragtextanswering",
-        "raganswerer",
-    )):
-        # The shared cited-prose/provider authority is consumed by manual Ask
-        # and live Interview Assist, but not every intelligence-backed screen.
-        return {"ask", "recording-interview"}
-    if "interview" in lowered:
-        return {"recording-interview"}
-    if "loadcommitmentblockers" in lowered:
-        return {"ask"}
-    if "decisionrelationship" in lowered:
-        return {"ask"}
-    if "topicfirstdiscussion" in lowered:
-        return {"ask"}
-    if "confirmedtopiccatalog" in lowered:
-        return {"ask"}
-    if "semanticsearchassetpreparation" in lowered:
-        return {"settings-intelligence"}
-    if "automationentit" in lowered:
-        return {"automation-entry", "commitment-radar"}
-    if "launchrecovery" in lowered:
-        return {"launch-recovery"}
-    if "skill" in lowered:
-        return {
-            "commitment-radar",
-            "meeting-skills",
-            "menu-bar-brief",
-            "settings-skills",
-        }
-    if "reminderdraft" in lowered:
-        return {"commitment-radar"}
-    if "commitmentradar" in lowered or "commitmentfieldquality" in lowered:
-        return {"commitment-radar"}
-    if any(token in lowered for token in (
-        "managemeetingcommitmentinbox",
-        "meetingcommitmentinbox",
-    )):
-        return {"meeting-commitments"}
-    if lowered in {
-        "sources/applicationkit/correctmeetingtranscript.swift",
-        "sources/applicationkit/meetingtranscriptgenerationmaterial.swift",
-        "sources/applicationkit/restructuremeetingtranscript.swift",
-        "sources/portavozcore/transcriptcorrection.swift",
-        "sources/portavozcore/transcriptcorrectionrevision.swift",
-        "sources/storagekit/meetingstore+transcriptcorrections.swift",
-        "sources/storagekit/meetingstore+transcriptprojection.swift",
-        "sources/storagekit/schema+transcriptcorrection.swift",
-        "sources/storagekit/transcriptcorrectionrecords.swift",
-    }:
-        return {"meeting-correction"}
-    if lowered in {
-        "sources/applicationkit/meetingdetailreadmodels.swift",
-        "sources/storagekit/meetingstore+meetingdetailobservation.swift",
-    }:
-        return set(MEETING_FEATURES)
-    if lowered == "sources/applicationkit/composetranscript.swift":
-        return {"meeting-correction"}
-    if "meetingtranscriptcontent" in lowered:
-        return {
-            "meeting-audio", "meeting-evidence", "meeting-health", "meeting-performance"
-        }
-    if "meetinggenerateddocumentpresentation" in lowered:
-        return {"meeting-evidence", "meeting-summary"}
-    if "queryexpander" in lowered:
-        # Deterministic query variants feed only Library search, full Ask,
-        # and the meeting-brief evidence lookup. Keep a lexicon-only change
-        # from expanding to every unrelated app surface.
-        return {"ask", "library", "meeting-brief"}
-    if "micbleed" in lowered:
-        # Bleed admission affects live captions and the reviewed Refine
-        # replacement, not every unrelated screen in the application.
-        return {"recording-recovery", "meeting-processing"}
-    if "stoprecording" in lowered or "startrecording" in lowered:
-        return {"library", "recording-recovery"}
-    if any(token in lowered for token in ("dictation", "mouseptt")):
-        return {"dictation"}
-    if "subtitle" in lowered:
-        return {"meeting-export"}
-    if "recap" in lowered:
-        return {"meeting-recap"}
-    if "insight" in lowered:
-        return {"insights"}
-    if any(token in lowered for token in ("ask", "brief")):
-        return {"ask", "meeting-brief", "menu-bar-brief"}
-    if any(token in lowered for token in ("recording", "capture", "postcapture")):
-        return {"library", "recording-recovery", "settings-audio"}
-    if any(token in lowered for token in ("playback", "waveform", "audio")):
-        return {"meeting-audio", "settings-audio"}
-    if any(
-        token in lowered
-        for token in ("summary", "summaries", "companion", "intelligence")
-    ):
-        return {
-            "ask",
-            "insights",
-            "library",
-            "meeting-brief",
-            "meeting-correction",
-            "meeting-summary",
-            "meeting-evidence",
-            "meeting-processing",
-            "public-showcase",
-            "settings-intelligence",
-        }
-    if any(token in lowered for token in ("voice", "speaker", "person")):
-        return {"meeting-naming", "meeting-health", "settings-voice", "onboarding"}
-    if "sync" in lowered:
-        return {"settings-data"}
-    return set(ALL_FEATURES)
-
-
 def select_paths(paths: Iterable[str]) -> Selection:
     selected: set[str] = set()
     reasons: list[str] = []
@@ -1232,13 +1053,14 @@ def select_paths(paths: Iterable[str]) -> Selection:
         interruption_controls = interruption_controls or requires_interruption_controls(path)
 
         if path == "Package.resolved":
-            selected.update(HARNESS_TESTS)
-            reasons.append(f"{path}: complete English dependency fallback")
+            selected.update(SMOKE_TESTS)
+            reasons.append(f"{path}: dependency smoke canaries")
             continue
 
         if path == "Resources/Localization/Portavoz/Localizable.xcstrings":
-            selected.update(HARNESS_TESTS)
-            reasons.append(f"{path}: complete localization fallback")
+            # LocalizationTests own catalog parity; journeys query identifiers.
+            selected.update(SMOKE_TESTS)
+            reasons.append(f"{path}: localization smoke canaries")
             continue
 
         if path in FULL_HARNESS_FILES or path.startswith(INTERRUPTION_FIXTURE_PREFIX):
@@ -1316,6 +1138,10 @@ def select_paths(paths: Iterable[str]) -> Selection:
                 )
                 continue
             features = app_features(file_name)
+            if features == ALL_FEATURES:
+                selected.update(SMOKE_TESTS)
+                reasons.append(f"{path}: unmapped app file smoke canaries")
+                continue
             selected.update(feature_tests(features))
             reasons.append(f"{path}: {', '.join(sorted(features))}")
             continue
@@ -1327,11 +1153,9 @@ def select_paths(paths: Iterable[str]) -> Selection:
             continue
 
         if path.startswith("Sources/") and path.endswith(".swift"):
-            features = lower_layer_features(path)
-            if not features:
-                continue
-            selected.update(feature_tests(features))
-            reasons.append(f"{path}: {', '.join(sorted(features))}")
+            # Unit tests own lower-layer behavior; the nightly run owns the catalog.
+            selected.update(SMOKE_TESTS)
+            reasons.append(f"{path}: lower-layer smoke canaries")
             continue
 
         # Unknown build/configuration changes may alter the executable even if
@@ -1408,6 +1232,9 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
     )
     retired = sorted(discovered & RETIRED_DUPLICATE_TESTS)
     permission_overlap = sorted(set(ALL_TESTS) & PERMISSION_GATED_TESTS)
+    smoke_errors = sorted(set(SMOKE_TESTS) - set(ALL_TESTS))
+    if len(SMOKE_TESTS) != len(set(SMOKE_TESTS)):
+        smoke_errors.append("duplicate smoke canary")
     sentinel_mismatch = sorted(ALL_FEATURES ^ FEATURE_SOURCE_SENTINELS.keys())
     orphan_scopes: list[str] = []
     for feature, path in FEATURE_SOURCE_SENTINELS.items():
@@ -1493,6 +1320,7 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         or orphan_scopes
         or reachable_fixtures
         or runtime_budget_errors
+        or smoke_errors
     ):
         details = []
         if missing:
@@ -1514,7 +1342,24 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         if reachable_fixtures:
             details.append("no-UI fixtures reachable from UI sources: " + ", ".join(reachable_fixtures))
         details.extend(runtime_budget_errors)
+        if smoke_errors:
+            details.append("smoke canaries outside the catalog: " + ", ".join(smoke_errors))
         raise RuntimeError("UI-test scope catalog is stale; " + "; ".join(details))
+
+
+def shard_tests(root: Path, index: int, count: int) -> tuple[str, ...]:
+    """Split the catalog into balanced shards by runtime budget, longest first."""
+    if not 1 <= index <= count:
+        raise ValueError("A shard must be K/N with 1 <= K <= N")
+    budgets = json.loads((root / "docs/evidence/ui-test-runtime-budget.json").read_text(encoding="utf-8"))
+    seconds = budgets["testBudgetsSeconds"]
+    loads = [0.0] * count
+    owners: dict[str, int] = {}
+    for test in sorted(ALL_TESTS, key=lambda selector: (-seconds["/".join(selector.split("/")[1:]) + "()"], selector)):
+        shard = min(range(count), key=lambda candidate: (loads[candidate], candidate))
+        owners[test] = shard
+        loads[shard] += seconds["/".join(test.split("/")[1:]) + "()"]
+    return tuple(test for test in ALL_TESTS if owners[test] == index - 1)
 
 
 def bounded_summary(reasons: Sequence[str]) -> str:
@@ -1600,6 +1445,7 @@ def parser() -> argparse.ArgumentParser:
         help="Compare --base with the current index, working tree, and untracked files",
     )
     result.add_argument("--all", action="store_true", help="Select every UI test in English")
+    result.add_argument("--shard", help="With --all, select balanced shard K of N (for example 2/3)")
     result.add_argument("--format", choices=("human", "github", "shell"), default="human")
     result.add_argument("--validate-catalog", action="store_true", help="Fail if a UI test lacks a selector")
     return result
@@ -1614,7 +1460,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"UI-test scope catalog is complete ({len(ALL_TESTS)} tests).")
             return 0
 
-    if arguments.all:
+    if arguments.shard and not arguments.all:
+        print("--shard requires --all.", file=sys.stderr)
+        return 2
+    if arguments.all and arguments.shard:
+        try:
+            index, count = (int(part) for part in arguments.shard.split("/"))
+            tests = shard_tests(root, index, count)
+        except (ValueError, KeyError) as error:
+            print(f"Invalid --shard {arguments.shard!r}: {error}", file=sys.stderr)
+            return 2
+        selection = Selection(tests, SELECTION_LOCALES, (f"full-suite shard {index}/{count}",))
+    elif arguments.all:
         selection = Selection(
             ALL_TESTS, SELECTION_LOCALES, ("explicit full-suite request",), interruption_controls=True)
     else:
