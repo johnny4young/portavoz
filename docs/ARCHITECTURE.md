@@ -5739,7 +5739,7 @@ graph on pull requests. Cache identity binds the lane, absolute workspace,
 architecture, macOS build, runner image, Xcode/Swift/macOS SDK and build-policy
 inputs, including the dependency lock. Every push to `main` builds cold and,
 after the complete suite passes, saves one seed under that identity plus its
-commit (D596); a lookup-only probe keeps a rerun from saving the same commit
+commit; a lookup-only probe keeps a rerun from saving the same commit
 twice. A pull request restores the newest saved seed whose identity prefix
 matches exactly; cancelled, failed or oversize `main` runs save nothing, so that
 seed can be a few commits behind. There is no cross-identity restore, cached test verdict or conditional
