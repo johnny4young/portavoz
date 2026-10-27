@@ -1,5 +1,11 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
+`TranscriptTranslationWorkerTests` holds a fake translator's first response,
+cancels the persisted job, then releases it. The worker must skip the next row,
+preserve the cancellation without retry or meeting-lifecycle changes, publish no
+cancelled artifact, and drain the next meeting's translation. It uses an in-memory
+store and no real audio, UI, models or translation service.
+
 `ProcessingJobSchedulingTests` exercises real in-memory StorageKit scheduling
 with explicit timestamps, without sleeping or using models. It covers retry
 and lease deadlines equal to or earlier than the scheduling read, deadlines
