@@ -42,7 +42,7 @@ let package = Package(
         // exact: the package renamed itself at 1.0 and moves API fast.
         .package(url: "https://github.com/argmaxinc/WhisperKit.git", exact: "1.1.1"),
         // Auto-updates for the direct-download channel (D10).
-        .package(url: "https://github.com/sparkle-project/Sparkle.git", .upToNextMajor(from: "2.9.4")),
+        .package(url: "https://github.com/sparkle-project/Sparkle.git", .upToNextMajor(from: "2.10.1")),
         // Embedded local LLM (MLX, MIT) — D25's last mile: summaries on
         // Macs with neither Apple Intelligence nor Ollama. Pinned exact:
         // the LLM API surface moves between minors.
@@ -50,7 +50,7 @@ let package = Package(
         // Tokenizer runtime for the embedded summarizer: mlx-swift-lm 3.x
         // deliberately decoupled swift-transformers — the app provides it
         // through the MLXHuggingFace macros.
-        .package(url: "https://github.com/huggingface/swift-transformers.git", .upToNextMinor(from: "1.3.3")),
+        .package(url: "https://github.com/huggingface/swift-transformers.git", .upToNextMinor(from: "1.3.5")),
     ],
     targets: [
         // Shared domain primitives every Kit builds on.
