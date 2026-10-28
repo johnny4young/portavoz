@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Select the smallest safe Portavoz XCUITest set for a Git diff.
 
-The selector is intentionally conservative: known presentation files map to
-feature-level smoke tests, localization and shared composition changes run the
-whole suite, and an unknown production Swift path falls back to the whole
-suite. Every selection runs in English only. Documentation, governance, CLI,
-and package-test-only changes do not spend a macOS UI runner.
+Known presentation files map to feature-level tests, and shared UI-harness,
+fixture and build changes run the whole suite. Lower-layer Swift, unrecognized
+app files, the dependency lock and localized copy run the smoke canaries: unit
+tests own their behavior and the nightly sharded run owns the complete catalog.
+Every selection runs in English only. Documentation, governance, CLI, and
+package-test-only changes do not spend a macOS UI runner.
 """
 
 from __future__ import annotations
@@ -538,10 +539,31 @@ MEETING_FEATURES = frozenset(
     if feature.startswith("meeting-") and feature != "meeting-brief"
 )
 SETTINGS_FEATURES = frozenset(feature for feature in ALL_FEATURES if feature.startswith("settings-"))
-# Copy/localization and shared-harness changes can alter every accessibility
-# query or localized assertion. They are integration changes, so the safe
+# Shared-harness changes can alter every accessibility query, so their safe
 # expansion is the complete catalog rather than a small canary set.
 HARNESS_TESTS = ALL_TESTS
+# Canaries across the main surfaces: launch, Library, Today, recording, live
+# assist, derived work, Meeting Detail, Ask, dictation, Settings, onboarding,
+# Radar, Insights, the menu-bar brief and App Intents.
+SMOKE_TESTS = (
+    test_id("LibraryUITests", "testDatabaseLaunchFailureOffersSafeRecovery"),
+    test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
+    test_id("HomeUITests", "testTodayShowsAgendaOpenWorkAndRecentMeetingsAboveTheFold"),
+    test_id("LibraryUITests", "testRecordingStartFailureOffersTypedRecovery"),
+    test_id("BackgroundWorkUITests", "testRecordingDefersDerivedWorkAndStopResumesIt"),
+    test_id("MeetingDetailUITests", "testPlayerExposesSkipAndOnlyMyVoice"),
+    test_id("MeetingDetailUITests", "testMostRecentRecipeRemainsVisibleAfterReload"),
+    test_id("LibraryUITests", "testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState"),
+    test_id("DictationUITests", "testDeliveredDictationDistinguishesDispatchFromVerification"),
+    test_id("SettingsUITests", "testLanguageToggleSwitchesVisibleTextWithoutRelaunch"),
+    test_id("SettingsUITests", "testIntelligencePaneCreatesACustomStructure"),
+    test_id("OnboardingUITests", "testAdvancesFromFirstListenToLocalVoiceEnrollment"),
+    test_id("CommitmentRadarUITests", "testReminderAlertOpensCommitmentRadar"),
+    test_id("InsightsUITests", "testInsightsShowsCompleteLocalDashboard"),
+    test_id("AutomationUITests", "testOpenDictationsShortcutShowsItsSearch"),
+    test_id("RecordingAssistUITests", "testLatestManualAssistRequestOwnsTheFocusSlot"),
+    test_id("MenuBarUITests", "testPreMeetingBriefMovesFromExactProposalToDurableReceipt"),
+)
 
 # Changes to these shared owners can alter what gets built, selected, measured,
 # or accepted as UI evidence. They therefore require one complete English
@@ -694,6 +716,7 @@ NO_UI_PREFIXES = (
     "Tests/Tooling/",
     "Tests/PortavozTests/",
     "Sources/portavoz-cli/",
+    "Sources/portavoz-cli-main/",
     "docs/",
     "site/",
     "packaging/",
@@ -1016,7 +1039,7 @@ def app_features(filename: str) -> set[str]:
         return set(MEETING_FEATURES)
     if any(token in lowered for token in ("settings", "section", "localdata", "whispermodel", "mlxmodel")):
         return set(SETTINGS_FEATURES)
-    return set(ALL_FEATURES)
+    return set()
 
 
 def lower_layer_features(path: str) -> set[str]:
@@ -1216,7 +1239,9 @@ def lower_layer_features(path: str) -> set[str]:
         return {"meeting-naming", "meeting-health", "settings-voice", "onboarding"}
     if "sync" in lowered:
         return {"settings-data"}
-    return set(ALL_FEATURES)
+    # No proven owner: unit tests own the behavior and the smoke canaries
+    # cover the shell; the nightly run owns the complete catalog.
+    return set()
 
 
 def select_paths(paths: Iterable[str]) -> Selection:
@@ -1232,13 +1257,14 @@ def select_paths(paths: Iterable[str]) -> Selection:
         interruption_controls = interruption_controls or requires_interruption_controls(path)
 
         if path == "Package.resolved":
-            selected.update(HARNESS_TESTS)
-            reasons.append(f"{path}: complete English dependency fallback")
+            selected.update(SMOKE_TESTS)
+            reasons.append(f"{path}: dependency smoke canaries")
             continue
 
         if path == "Resources/Localization/Portavoz/Localizable.xcstrings":
-            selected.update(HARNESS_TESTS)
-            reasons.append(f"{path}: complete localization fallback")
+            # LocalizationTests own catalog parity; journeys query identifiers.
+            selected.update(SMOKE_TESTS)
+            reasons.append(f"{path}: localization smoke canaries")
             continue
 
         if path in FULL_HARNESS_FILES or path.startswith(INTERRUPTION_FIXTURE_PREFIX):
@@ -1316,22 +1342,34 @@ def select_paths(paths: Iterable[str]) -> Selection:
                 )
                 continue
             features = app_features(file_name)
+            if not features:
+                selected.update(SMOKE_TESTS)
+                reasons.append(f"{path}: unmapped app file smoke canaries")
+                continue
             selected.update(feature_tests(features))
             reasons.append(f"{path}: {', '.join(sorted(features))}")
             continue
 
         # CLI and reviewed test-only corpus paths cannot alter the app UI.
-        # Check them before generic Sources/*.swift: the latter otherwise
-        # swallows CLI.swift into the unknown-production full fallback.
+        # Check them before generic Sources/*.swift, which would otherwise
+        # spend smoke canaries on CLI.swift.
         if path.startswith(NO_UI_PREFIXES) or path in NO_UI_FILES or path.startswith(".github/") or path.startswith("scripts/"):
             continue
 
         if path.startswith("Sources/") and path.endswith(".swift"):
             features = lower_layer_features(path)
             if not features:
+                selected.update(SMOKE_TESTS)
+                reasons.append(f"{path}: lower-layer smoke canaries")
                 continue
             selected.update(feature_tests(features))
             reasons.append(f"{path}: {', '.join(sorted(features))}")
+            continue
+
+        if path.startswith("Sources/"):
+            # Resources and C sources of a lower layer follow its Swift.
+            selected.update(SMOKE_TESTS)
+            reasons.append(f"{path}: lower-layer smoke canaries")
             continue
 
         # Unknown build/configuration changes may alter the executable even if
@@ -1408,6 +1446,9 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
     )
     retired = sorted(discovered & RETIRED_DUPLICATE_TESTS)
     permission_overlap = sorted(set(ALL_TESTS) & PERMISSION_GATED_TESTS)
+    smoke_errors = sorted(set(SMOKE_TESTS) - set(ALL_TESTS))
+    if len(SMOKE_TESTS) != len(set(SMOKE_TESTS)):
+        smoke_errors.append("duplicate smoke canary")
     sentinel_mismatch = sorted(ALL_FEATURES ^ FEATURE_SOURCE_SENTINELS.keys())
     orphan_scopes: list[str] = []
     for feature, path in FEATURE_SOURCE_SENTINELS.items():
@@ -1441,10 +1482,7 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         else:
             budget = json.loads(budget_path.read_text(encoding="utf-8"))
             runtime_ids = set(budget.get("testBudgetsSeconds", {}))
-            expected_runtime_ids = {
-                "/".join(selector.split("/")[1:]) + "()"
-                for selector in ALL_TESTS
-            }
+            expected_runtime_ids = {runtime_budget_key(selector) for selector in ALL_TESTS}
             missing_budgets = sorted(expected_runtime_ids - runtime_ids)
             stale_budgets = sorted(runtime_ids - expected_runtime_ids)
             budget_count = budget.get("catalog", {}).get("expectedCaseCount")
@@ -1493,6 +1531,7 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         or orphan_scopes
         or reachable_fixtures
         or runtime_budget_errors
+        or smoke_errors
     ):
         details = []
         if missing:
@@ -1514,7 +1553,31 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         if reachable_fixtures:
             details.append("no-UI fixtures reachable from UI sources: " + ", ".join(reachable_fixtures))
         details.extend(runtime_budget_errors)
+        if smoke_errors:
+            details.append("smoke canaries outside the catalog: " + ", ".join(smoke_errors))
         raise RuntimeError("UI-test scope catalog is stale; " + "; ".join(details))
+
+
+def runtime_budget_key(selector: str) -> str:
+    return "/".join(selector.split("/")[1:]) + "()"
+
+
+def shard_tests(root: Path, index: int, count: int) -> tuple[str, ...]:
+    """Split the catalog into balanced shards by runtime budget, longest first."""
+    if not 1 <= index <= count:
+        raise ValueError("a shard must be K/N with 1 <= K <= N")
+    budgets = json.loads((root / "docs/evidence/ui-test-runtime-budget.json").read_text(encoding="utf-8"))
+    seconds = budgets["testBudgetsSeconds"]
+    missing = [test for test in ALL_TESTS if runtime_budget_key(test) not in seconds]
+    if missing:
+        raise ValueError("tests without runtime budget: " + ", ".join(missing))
+    loads = [0.0] * count
+    owners: dict[str, int] = {}
+    for test in sorted(ALL_TESTS, key=lambda selector: (-seconds[runtime_budget_key(selector)], selector)):
+        shard = min(range(count), key=lambda candidate: (loads[candidate], candidate))
+        owners[test] = shard
+        loads[shard] += seconds[runtime_budget_key(test)]
+    return tuple(test for test in ALL_TESTS if owners[test] == index - 1)
 
 
 def bounded_summary(reasons: Sequence[str]) -> str:
@@ -1600,6 +1663,7 @@ def parser() -> argparse.ArgumentParser:
         help="Compare --base with the current index, working tree, and untracked files",
     )
     result.add_argument("--all", action="store_true", help="Select every UI test in English")
+    result.add_argument("--shard", help="With --all, select balanced shard K of N (for example 2/3)")
     result.add_argument("--format", choices=("human", "github", "shell"), default="human")
     result.add_argument("--validate-catalog", action="store_true", help="Fail if a UI test lacks a selector")
     return result
@@ -1614,7 +1678,22 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"UI-test scope catalog is complete ({len(ALL_TESTS)} tests).")
             return 0
 
-    if arguments.all:
+    if arguments.shard is not None and not arguments.all:
+        print("--shard requires --all.", file=sys.stderr)
+        return 2
+    if arguments.all and arguments.shard is not None:
+        try:
+            index, count = (int(part) for part in arguments.shard.split("/"))
+        except ValueError:
+            print(f"Invalid --shard {arguments.shard!r}: expected K/N", file=sys.stderr)
+            return 2
+        try:
+            tests = shard_tests(root, index, count)
+        except ValueError as error:
+            print(f"Cannot select shard {arguments.shard}: {error}", file=sys.stderr)
+            return 2
+        selection = Selection(tests, SELECTION_LOCALES, (f"full-suite shard {index}/{count}",))
+    elif arguments.all:
         selection = Selection(
             ALL_TESTS, SELECTION_LOCALES, ("explicit full-suite request",), interruption_controls=True)
     else:

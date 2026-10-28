@@ -5758,9 +5758,14 @@ unreadable diff, or a manifest form the selector cannot prove, runs the lane. Th
 invalidation checks; a hit alone is not evidence of a faster or passing build.
 
 Pull-request UI evidence is selected deterministically from changed paths.
-Known presentation and application files map to feature-level XCUITest
-selectors; localization and shared-harness changes expand to the complete
-English catalogue, as do unknown production Swift paths. XCUITest runs in
+Known presentation files and lower-layer files with a proven owner map to
+feature-level XCUITest selectors. Lower-layer files without a proven owner,
+unmapped app files, the dependency lock and localized copy run seventeen smoke
+canaries across the main surfaces: unit tests own their behavior.
+Shared-harness, fixture, build and language-switch changes and unknown non-Swift
+paths expand to the complete English catalogue, which also runs every night on
+`main` in three shards balanced by runtime budget
+(`.github/workflows/ui-nightly.yml`). XCUITest runs in
 English only: Spanish parity is a unit-test property of the string catalogs
 (every key translated, matching placeholders, every visible literal
 cataloged, Spanish equal to English only for an explicit list of terms), and
@@ -6630,9 +6635,9 @@ reliability evidence retained from 9 Aug, is:
 - the Meeting Detail interaction contract contains 431 signals, 15 feature
   owners, and 30 explicitly owned UI journeys;
 - the complete English XCUITest catalogue is the release UI gate;
-- pull requests run only their minimum-safe selected feature evidence; shared
-  localization/harness changes, release closure and unknown production paths
-  expand to the complete English catalogue;
+- pull requests run their selected feature evidence or the smoke canaries;
+  shared-harness changes, release closure and unknown non-Swift paths expand to
+  the complete English catalogue, which also runs nightly in three shards;
 - hosted pull-request UI runs compile once, execute the English selection as a
   first attempt, preserve its result bundle, and then apply one fail-closed
   functional/receipt classifier. The enclosing job keeps a 90-minute
