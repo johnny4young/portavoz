@@ -177,6 +177,8 @@ class SwiftCacheWorkflowTests(unittest.TestCase):
                 self.assertNotIn("if:", compile_steps[0])
                 self.assertNotIn("continue-on-error:", compile_steps[0])
                 self.assertNotIn("--skip-build", compile_steps[0])
+                # Only the PR scope can narrow the run; main and manual runs leave it empty.
+                self.assertIn("PORTAVOZ_SWIFT_TEST_SCOPE: ${{ needs.swift-scope.outputs.filter }}", compile_steps[0])
                 self.assertNotIn("--filter", compile_steps[0])
                 identity = next(step for step in steps if "id: swift_cache_key" in step)
                 self.assertIn(f'--lane {lane} --commit "$GITHUB_SHA"', identity)

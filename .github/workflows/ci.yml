@@ -29,8 +29,30 @@ jobs:
       - name: Release performance ledger rules
         run: python3 -m unittest Tests.Tooling.test_perf_ledger
 
+  swift-scope:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      filter: ${{ steps.select.outputs.filter }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      # A docs/site/tooling-only diff runs only the Swift classes that read the
+      # checkout; anything else, and every main or manual run, runs everything.
+      - name: Select the Swift test scope
+        id: select
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/swift_test_scope.py --base "$BASE_SHA" --head "$HEAD_SHA" >> "$GITHUB_OUTPUT"
+
   build-and-test:
-    needs: repository-hygiene
+    needs: [repository-hygiene, swift-scope]
+    if: >-
+      !cancelled() && needs.repository-hygiene.result == 'success' &&
+      needs.swift-scope.result != 'failure'
     runs-on: macos-26
     timeout-minutes: 30
     env:
@@ -66,7 +88,9 @@ jobs:
       # One invocation owns compilation and tests with identical flags. The
       # former build-then-test pair changed compiler arguments and could pay a
       # second package build while producing two different diagnostic modes.
-      - name: Current-SDK build and complete test suite
+      - name: Current-SDK build and selected test suite
+        env:
+          PORTAVOZ_SWIFT_TEST_SCOPE: ${{ needs.swift-scope.outputs.filter }}
         run: scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors
       # Bound storage and save only after the complete suite succeeds. Oversize
       # graphs stay cold; do not increase the repository's paid cache allowance.

@@ -5730,7 +5730,11 @@ lists the tests, runs each XCTest class in its own `xctest` process from a pool
 of three (`PORTAVOZ_SWIFT_TEST_WORKERS` overrides it), then runs the Swift
 Testing suites in one process. The run fails unless the executed XCTest total
 equals the listed total. A targeted run (`--filter`, `--skip`) keeps plain
-`swift test`, and cancelling the launcher stops its whole process group.
+`swift test`, and cancelling the launcher stops its whole process group. On a
+pull request whose diff touches only documentation, the website or Python
+tooling, `scripts/swift_test_scope.py` narrows the pooled run to the Swift test
+classes whose sources locate the checkout (`PORTAVOZ_SWIFT_TEST_SCOPE`); any
+other diff, every `main` push and an unreadable diff run the complete suite.
 SwiftLint 0.65.0 and XcodeGen 2.46.0 come from official release archives with
 fixed SHA-256 digests instead of floating Homebrew state.
 Third-party GitHub Actions are pinned to immutable full commit SHAs with their

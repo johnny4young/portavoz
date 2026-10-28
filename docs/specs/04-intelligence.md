@@ -1962,9 +1962,8 @@ distributions. At comparison time, a zero control denominator is
 equal candidate performance.
 
 `docs/evidence/exact-path-cross-host-matrix.json` requires one receipt for each
-8 GB, 16 GB, and reference-memory profile, while the three-host set must cover
-both Sequoia and Tahoe. This is profile coverage plus supported-OS coverage,
-not a six-cell profile-by-OS Cartesian product. All receipts must validate
+8 GB, 16 GB, and reference-memory profile, all on macOS 26 Tahoe, the only
+supported major. All receipts must validate
 against the same host contract. A passing comparison additionally requires the
 same source commit and Apple Swift toolchain plus a passing host outcome in
 every profile. The scorecard exposes these predicates as
