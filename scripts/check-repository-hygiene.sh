@@ -132,6 +132,7 @@ python3 -m unittest Tests.Tooling.test_ci_workflow
 python3 -m unittest Tests.Tooling.test_ci_swift_cache
 python3 -m unittest Tests.Tooling.test_ci_swift_source_stamps
 python3 -m unittest Tests.Tooling.test_ios_portability
+python3 -m unittest Tests.Tooling.test_ios_portability_scope
 python3 -m unittest Tests.Tooling.test_ui_test_ci_gate
 python3 -m unittest Tests.Tooling.test_ui_test_execution
 python3 -m unittest Tests.Tooling.test_ui_interruption_evidence_archive
@@ -207,6 +208,7 @@ python3 -m unittest Tests.Tooling.test_apuntador_web_fixture
 python3 -m unittest Tests.Tooling.test_live_assist_validation
 python3 -m unittest Tests.Tooling.test_live_question_training
 python3 -m unittest Tests.Tooling.test_run_swift_tests
+python3 -m unittest Tests.Tooling.test_run_xctest_pool
 python3 scripts/apuntador_validation.py verify-public \
   --fixture Fixtures/ApuntadorValidation/public-bilingual-v1.json \
   --budget docs/evidence/apuntador-validation-budget.json

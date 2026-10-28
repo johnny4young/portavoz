@@ -3,6 +3,7 @@ import hashlib
 import io
 import json
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -21,6 +22,7 @@ from ui_test_scope import (  # noqa: E402
     HARNESS_TESTS,
     MEETING_FEATURES,
     PERMISSION_GATED_TESTS,
+    SMOKE_TESTS,
     select_paths,
     validate_catalog,
     working_tree_paths,
@@ -56,11 +58,16 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
 
     def test_package_changes_cannot_bypass_ui_evidence(self):
-        for path, locales in [("Package.swift", ("en",)), ("Package.resolved", ("en",))]:
-            selection = select_paths([path])
-            self.assertTrue(selection.required, path)
-            self.assertEqual(selection.tests, ALL_TESTS, path)
-            self.assertEqual(selection.locales, locales, path)
+        manifest = select_paths(["Package.swift"])
+        self.assertTrue(manifest.required)
+        self.assertEqual(manifest.tests, ALL_TESTS)
+        self.assertEqual(manifest.locales, ("en",))
+
+        lock = select_paths(["Package.resolved"])
+        self.assertTrue(lock.required)
+        self.assertEqual(lock.tests, self.smoke_selection())
+        self.assertEqual(lock.locales, ("en",))
+        self.assertEqual(lock.reasons, ("Package.resolved: dependency smoke canaries",))
 
     def test_package_changes_keep_complete_harness_expansion(self):
         selection = select_paths(["Package.swift", "project.yml"])
@@ -110,7 +117,7 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(unknown_fixture.tests, ALL_TESTS)
         self.assertEqual(unknown_fixture.locales, ("en",))
 
-    def test_headless_live_benchmark_runs_no_ui_without_weakening_unknown_fallback(self):
+    def test_headless_live_benchmark_runs_no_ui_while_unknown_neighbors_keep_smoke(self):
         benchmark = "Sources/TranscriptionKit/LiveTranscriptionBench.swift"
         self.assertFalse(select_paths([benchmark]).required)
         # The exemption holds only while headless bench mode and the CLI are its callers.
@@ -127,7 +134,8 @@ class UITestScopeTests(unittest.TestCase):
                     "LiveTranscriptionBench.", source.read_text(encoding="utf-8"), path
                 )
         unknown = select_paths(["Sources/TranscriptionKit/UnknownLiveOwner.swift"])
-        self.assertEqual(unknown.tests, ALL_TESTS)
+        self.assertTrue(unknown.required)
+        self.assertEqual(unknown.tests, self.smoke_selection())
         self.assertEqual(unknown.locales, ("en",))
 
     def test_github_summary_is_bounded_without_weakening_selected_evidence(self):
@@ -364,15 +372,15 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
             self.assertEqual(set(selection.tests), owned_tests, path)
 
-    def test_localization_expands_to_the_complete_english_catalog(self):
+    def test_localization_selects_the_english_smoke_canaries(self):
         selection = select_paths(["Resources/Localization/Portavoz/Localizable.xcstrings"])
-        self.assertEqual(selection.tests, HARNESS_TESTS)
-        self.assertEqual(selection.tests, ALL_TESTS)
+        self.assertTrue(selection.required)
+        self.assertEqual(selection.tests, self.smoke_selection())
         self.assertEqual(selection.locales, ("en",))
         self.assertEqual(
             selection.reasons,
             ("Resources/Localization/Portavoz/Localizable.xcstrings: "
-             "complete localization fallback",),
+             "localization smoke canaries",),
         )
 
     def test_no_path_combination_selects_spanish(self):
@@ -760,7 +768,7 @@ class UITestScopeTests(unittest.TestCase):
 
         future_consumer = select_paths(["Sources/StorageKit/ComposeTranscriptStore.swift"])
         self.assertTrue(future_consumer.required)
-        self.assertEqual(future_consumer.tests, ALL_TESTS)
+        self.assertEqual(future_consumer.tests, self.smoke_selection())
 
     def test_durable_correction_storage_selects_only_correction_journey(self):
         expected = FEATURE_TESTS["meeting-correction"]
@@ -1102,10 +1110,118 @@ class UITestScopeTests(unittest.TestCase):
             )
             self.assertEqual(selection.locales, ("en",), path)
 
-    def test_unknown_production_source_falls_back_to_full_english(self):
-        selection = select_paths(["Sources/NewCapabilityKit/Unknown.swift"])
-        self.assertEqual(selection.tests, ALL_TESTS)
-        self.assertEqual(selection.locales, ("en",))
+    def test_unknown_production_source_selects_the_smoke_canaries(self):
+        for path, reason in (
+            ("Sources/NewCapabilityKit/Unknown.swift", "lower-layer smoke canaries"),
+            ("Sources/portavoz-app/BrandNewUnmappedSurface.swift", "unmapped app file smoke canaries"),
+        ):
+            with self.subTest(path=path):
+                selection = select_paths([path])
+                self.assertTrue(selection.required)
+                self.assertEqual(selection.tests, self.smoke_selection())
+                self.assertEqual(selection.locales, ("en",))
+                self.assertEqual(selection.reasons, (f"{path}: {reason}",))
+
+    def test_lower_layers_keep_proven_owners_and_send_the_rest_to_smoke(self):
+        for path, feature in (
+            ("Sources/ApplicationKit/PortableSettingsTransfer.swift", "settings-transfer"),
+            ("Sources/IntelligenceKit/ChapterTitler.swift", "meeting-naming"),
+            ("Sources/ApplicationKit/ProcessAudioImports.swift", "audio-imports"),
+        ):
+            with self.subTest(path=path):
+                self.assertTrue(set(FEATURE_TESTS[feature]) <= set(select_paths([path]).tests))
+                self.assertLess(len(select_paths([path]).tests), len(ALL_TESTS))
+        for path in ("Sources/ApplicationKit/ProcessingWakeSchedule.swift",
+                     "Sources/IntelligenceKit/Resources/Classifier.json",
+                     "Sources/CSQLiteVecResearch/sqlite-vec.c"):
+            with self.subTest(path=path):
+                selection = select_paths([path])
+                self.assertEqual(selection.tests, self.smoke_selection())
+                self.assertIn(f"{path}: lower-layer smoke canaries", selection.reasons)
+        self.assertFalse(select_paths(["Sources/portavoz-cli-main/main.swift"]).required)
+        for path in ("Sources/portavoz-app/L10n.swift", "Sources/portavoz-app/AppLanguage.swift"):
+            with self.subTest(path=path):
+                self.assertEqual(select_paths([path]).tests, ALL_TESTS)
+
+    def smoke_selection(self):
+        return tuple(test for test in ALL_TESTS if test in set(SMOKE_TESTS))
+
+    def test_unknown_non_swift_paths_keep_the_full_english_fallback(self):
+        for path in ("Fixtures/NewCapability/future-app-resource.json", "project.yml"):
+            with self.subTest(path=path):
+                selection = select_paths([path])
+                self.assertEqual(selection.tests, ALL_TESTS)
+                self.assertEqual(selection.locales, ("en",))
+
+    def test_smoke_canaries_are_a_unique_unattended_subset_of_the_catalog(self):
+        self.assertTrue(SMOKE_TESTS)
+        self.assertEqual(len(SMOKE_TESTS), len(set(SMOKE_TESTS)))
+        self.assertLessEqual(set(SMOKE_TESTS), set(ALL_TESTS))
+        self.assertTrue(set(SMOKE_TESTS).isdisjoint(PERMISSION_GATED_TESTS))
+        self.assertLess(len(SMOKE_TESTS), len(ALL_TESTS))
+
+    def test_shards_partition_the_catalog_with_balanced_budgets(self):
+        budget = json.loads(
+            (ROOT / "docs/evidence/ui-test-runtime-budget.json").read_text(encoding="utf-8")
+        )["testBudgetsSeconds"]
+        shards = [ui_scope.shard_tests(ROOT, index, 3) for index in (1, 2, 3)]
+        flattened = [test for shard in shards for test in shard]
+        self.assertEqual(len(flattened), len(set(flattened)))
+        self.assertEqual(set(flattened), set(ALL_TESTS))
+        totals = []
+        for shard in shards:
+            self.assertTrue(shard)
+            self.assertEqual(shard, tuple(test for test in ALL_TESTS if test in set(shard)))
+            totals.append(sum(budget["/".join(test.split("/")[1:]) + "()"] for test in shard))
+        self.assertLessEqual(max(totals) - min(totals), 0.05 * max(totals))
+        for index in (0, 4):
+            with self.subTest(index=index), self.assertRaises(ValueError):
+                ui_scope.shard_tests(ROOT, index, 3)
+
+    def test_cli_shard_requires_all_and_emits_only_its_tests(self):
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(ui_scope.main(["--shard", "2/3", "Sources/portavoz-app/ContentView.swift"]), 2)
+        self.assertIn("--shard requires --all", stderr.getvalue())
+
+        for invalid in ("0/3", "4/3", "two/3"):
+            with self.subTest(shard=invalid):
+                with contextlib.redirect_stderr(io.StringIO()), contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(ui_scope.main(["--all", "--shard", invalid]), 2)
+
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            status = ui_scope.main(["--all", "--shard", "2/3", "--format", "shell"])
+        self.assertEqual(status, 0)
+        exports = dict(
+            line.removeprefix("export ").split("=", 1) for line in stdout.getvalue().splitlines()
+        )
+        self.assertEqual(exports["UI_TEST_REQUIRED"], "true")
+        self.assertEqual(exports["UI_TEST_LOCALES"], "en")
+        self.assertEqual(
+            tuple(shlex.split(exports["UI_TESTS"])[0].split()),
+            ui_scope.shard_tests(ROOT, 2, 3),
+        )
+
+    def test_catalog_policy_rejects_a_smoke_canary_outside_the_catalog(self):
+        scoped = ui_scope.test_id("InsightsUITests", "testScoped")
+        outside = ui_scope.test_id("InsightsUITests", "testOutside")
+        temporary, root = self.minimal_catalog_root("testScoped")
+        with temporary, mock.patch.multiple(
+            ui_scope,
+            FEATURE_TESTS={"insights": (scoped,)},
+            ALL_TESTS=(scoped,),
+            ALL_FEATURES=frozenset({"insights"}),
+            SMOKE_TESTS=(scoped, outside),
+            FEATURE_SOURCE_SENTINELS={
+                "insights": "Sources/portavoz-app/InsightsView.swift"
+            },
+            RETIRED_DUPLICATE_TESTS=frozenset(),
+        ):
+            with self.assertRaisesRegex(
+                RuntimeError, rf"smoke canaries outside the catalog: {re.escape(outside)}$"
+            ):
+                ui_scope.validate_catalog(root, runtime_budget_required=False)
 
     def test_working_tree_paths_keeps_staged_change_hidden_from_worktree_diff(self):
         with tempfile.TemporaryDirectory() as directory:

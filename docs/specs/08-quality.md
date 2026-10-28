@@ -381,20 +381,30 @@ Simulator compile for the four shared targets, and a repository-hygiene/tooling
 gate that runs before macOS allocation). Each behavioral Swift lane owns one
 test invocation, so compilation and tests use the same flags instead of a
 build/test pair that can compile twice. The iOS portability lane owns only its
-sequential destination compiles and cannot claim runtime/device behavior.
+sequential destination compiles and cannot claim runtime/device behavior. On a
+pull request it runs only when `scripts/ios_portability_scope.py` finds a change
+in the manifest closure of those targets or in the lane's own policy files;
+`Tests/Tooling/test_ios_portability_scope.py` covers the derived closure
+(compared with `swift package dump-package` on macOS), comments and products,
+unprovable dependency forms, a file moved out of a shared target, skip and run
+cases, a prefix-sibling directory, an undeclared runner target and the
+fail-closed CLI (D596).
 
-### Compatible Swift build reuse, not test-result reuse (D557)
+### Compatible Swift build reuse, not test-result reuse (D557, D596)
 
 The current-SDK job restores only `.build` with commit-pinned
 `actions/cache` restore/save actions. `scripts/ci_swift_cache_key.py` binds each
-immutable seed to its lane, absolute workspace and developer paths, CPU
+seed's identity prefix to its lane, absolute workspace and developer paths, CPU
 architecture, macOS version/build, runner image/version, Xcode and Swift build,
 macOS SDK path/build, `Package.swift`, `Package.resolved`, the CI workflow, test
 launcher, toolchain verifier, cache-key and source-freshness implementations. Unknown lanes,
 missing inputs, failed/empty tool reads and timeouts fail key generation; no
-broad key substitutes for an unknown identity. There are no restore prefixes
-and no per-commit cache copies. A dependency or build-policy change starts cold.
-Ordinary source changes retain the seed. After a successful suite,
+broad key substitutes for an unknown identity. Each successful `main` commit
+saves one seed as that prefix plus its full commit SHA; a pull request restores
+the newest saved seed through the exact prefix, never across identities; a
+lookup-only probe stops a `main` rerun from saving its commit twice. A
+dependency or build-policy change starts cold. Ordinary source changes keep the
+prefix. After a successful suite,
 `scripts/ci_swift_source_stamps.py snapshot` records SHA-256, size, permissions and
 nanosecond mtime for tracked `Sources/`, `Tests/`, `Vendor/`, and package
 manifest/lock inputs inside `.build`. The vendor inventory includes the
@@ -425,9 +435,9 @@ Both complete test invocations are unconditional, including current-SDK
 warnings-as-errors. No `--skip-build`, test filtering, retries, smaller test
 counts or cached success receipts are introduced. The fixed OS/toolchain matrix,
 iOS compile, strict lint, Linux policy tests, UI scopes/locales/assertions,
-first-attempt rules and runtime budgets are unchanged. Every `main` push uses a
-lookup-only cache probe and **still compiles cold**; only a `main` push records
-fingerprints, measures and saves a seed. Pull requests restore but never save:
+first-attempt rules and runtime budgets are unchanged. Every `main` push or
+manual run on `main` skips restore and **still compiles cold**; only those runs
+record fingerprints, measure and save a seed. Pull requests restore but never save:
 a PR-created cache would be reachable only from its own merge ref under GitHub's
 [cache access rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#restrictions-for-accessing-a-cache)
 while consuming the shared repository quota. No privileged trigger or broader
@@ -444,8 +454,9 @@ build resources, including the bundled classifier, remain part of `.build`.
 The ordinary unprivileged Swift test build is not an artifact suitable for release.
 
 `Tests/Tooling/test_ci_swift_cache.py` exercises each identity input, lane/host
-separation, malformed or unavailable tool identity, exact CLI output, missing
-lockfiles, unconditional test ownership, cold-main and main-only seeding policy,
+separation, malformed or unavailable tool identity, exact CLI output, the
+per-commit key under one prefix and malformed commits, missing lockfiles,
+unconditional test ownership, cold-main and main-only seeding policy,
 the actual shell size gate at/beyond its boundary and on measurement failure, and
 the actual freshness step discarding a rejected graph without failing the job. Repository hygiene
 owns these tests before either macOS test lane starts. Source-freshness tests
@@ -855,8 +866,8 @@ never dismisses the recovery panel to make the trigger reachable.
 
 Each dictation journey has an individual 20-second budget; existing per-test,
 full-suite duration and p95 budgets are unchanged. Source/harness changes still
-expand conservatively. Lockfile changes select the complete English suite rather than bypassing UI
-evidence. The package manifest retains the shared-harness bilingual requirement,
+expand conservatively. Lockfile changes select the smoke canaries rather than bypassing UI
+evidence (D597). The package manifest retains the shared-harness bilingual requirement,
 as do simultaneous localization or shared-harness changes. This coverage does not certify
 real ASR quality, physical
 audio devices, all external editors, or the outstanding capture/delivery gaps.
@@ -2101,7 +2112,16 @@ evidence without exceeding its type-checking budget.
 
 Current-SDK diagnostic closure uses `scripts/run-swift-tests.sh -Xswiftc
 -warnings-as-errors` both locally before committing and on the explicit
-`macos-26`/Xcode 26.6 CI lane. A strict `swift build` alone does not compile
+`macos-26`/Xcode 26.6 CI lane. A complete launcher run pools XCTest by class
+(D598): `scripts/run_xctest_pool.py` runs each listed class in its own `xctest`
+process, three at a time, prints every class's output, and fails when a class
+fails, prints no summary, or the executed total differs from the listed total.
+Swift Testing suites then run in one process through an anchored filter. Tests
+that write preferences use their own suite domain rather than
+`UserDefaults.standard`, which concurrent processes share on disk.
+`Tests/Tooling/test_run_xctest_pool.py` and `test_run_swift_tests.py` cover the
+class selection, summary parsing, count guard, failure propagation, targeted
+passthrough and the process-group stop. A strict `swift build` alone does not compile
 the test targets; a subsequent non-strict `swift test` can therefore miss a
 test-only diagnostic that fails CI. Non-reassigned weak lifetime probes use
 `weak let`, preserving zeroing-weak semantics without artificial mutations or
@@ -3095,9 +3115,15 @@ or its Keychain key while `-use-temp-store` is active.
 `scripts/ui_test_scope.py` is the executable PR-impact policy for all 103 UI
 tests. Each test belongs to a feature scope. Known app and application files
 select only the scopes they can affect; a changed UI-test file selects its own
-class; localization and shared-harness changes select the complete bilingual
-catalogue; and
-an unknown production Swift path selects the complete English suite. The
+class; shared-harness changes select the complete English catalogue; and
+a lower-layer file without a proven owner, an unmapped app file,
+`Package.resolved` and the string catalog select the seventeen `SMOKE_TESTS`
+canaries (D597); lower-layer files with a proven owner keep their feature
+scopes. The nightly workflow runs the complete catalogue on `main` as three
+shards balanced greedily by `docs/evidence/ui-test-runtime-budget.json`
+(`--all --shard K/N`), classifies each shard with the pull-request gate, skips
+a scheduled run of a commit that already passed, and runs the interruption
+controls. The
 Meeting Detail primary column also selects the complete English suite: its
 pane layout decides which detail content exists for every journey that opens a
 meeting, including recording-recovery and Skills journeys (D549). Docs,

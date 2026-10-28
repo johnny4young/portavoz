@@ -63,6 +63,11 @@ scripts/check-repository-hygiene.sh
   receipt" below), which generates its own public `say` fixtures and never
   inherits a private `PORTAVOZ_TEST_WAV`; run the standalone target here only
   as an early local check with fixtures of your own.
+- The newest **Nightly UI** run on `main` must be green for the commit you release (D597):
+  `gh run list --workflow ui-nightly.yml --branch main --limit 1 --json headSha,conclusion`
+  must show `"conclusion":"success"` with `headSha` equal to `git rev-parse HEAD`.
+  Otherwise dispatch it (`gh workflow run ui-nightly.yml --ref main`) and wait;
+  a red nightly blocks the release until it is fixed.
 - **CHANGELOG.md** has every user-visible change since the last release, newest first.
 - Decide the **version** (SemVer): patch for fixes, minor for features. Last tag: `git tag --list 'v*' | sort -V | tail -1`.
 - The release host's selected Xcode must pass the same strict gates as CI. Xcode 27 needs the separately downloaded Metal Toolchain (`xcodebuild -downloadComponent MetalToolchain`) because `mlx-swift` compiles Metal kernels, and a fresh Xcode needs its license accepted before `swift` runs at all.
