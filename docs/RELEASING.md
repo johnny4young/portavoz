@@ -63,7 +63,7 @@ scripts/check-repository-hygiene.sh
   receipt" below), which generates its own public `say` fixtures and never
   inherits a private `PORTAVOZ_TEST_WAV`; run the standalone target here only
   as an early local check with fixtures of your own.
-- The newest **Nightly UI** run on `main` must be green for the commit you release (D597):
+- The newest **Nightly UI** run on `main` must be green for the commit you release (D597, D601):
   `gh run list --workflow ui-nightly.yml --branch main --limit 1 --json headSha,conclusion`
   must show `"conclusion":"success"` with `headSha` equal to `git rev-parse HEAD`.
   Otherwise dispatch it (`gh workflow run ui-nightly.yml --ref main`) and wait;

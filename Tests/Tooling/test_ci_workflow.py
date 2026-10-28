@@ -425,11 +425,9 @@ class NightlyUIWorkflowTests(unittest.TestCase):
         self.assertNotIn("  push:", triggers)
         self.assertIn("group: ui-nightly-${{ github.ref }}\n  cancel-in-progress: false", self.workflow)
 
-    def test_an_unchanged_main_skips_the_scheduled_catalog(self):
-        self.assertIn("actions: read", self.workflow)
-        self.assertIn('if [[ "$EVENT_NAME" == "schedule" && "$verified" == "$GITHUB_SHA" ]]; then', self.workflow)
-        self.assertIn("runs?branch=main&status=success&per_page=1", self.workflow)
-        self.assertEqual(self.workflow.count("if: needs.freshness.outputs.run == 'true'"), 2)
+    def test_every_scheduled_run_executes_the_catalog(self):
+        self.assertNotIn("freshness", self.workflow)
+        self.assertNotIn("actions: read", self.workflow)
 
     def test_three_shards_share_one_build_and_cover_the_validated_catalog(self):
         self.assertEqual(self.workflow.count("run: make test-ui-build"), 1)
@@ -447,7 +445,9 @@ class NightlyUIWorkflowTests(unittest.TestCase):
         self.assertIn("python3 scripts/ui_test_ci_gate.py --results dist/ui-test-results --locales en", self.workflow)
         self.assertIn('--english-outcome "$OUTCOME"', self.workflow)
         self.assertIn("OUTCOME: ${{ steps.ui.outcome }}", self.workflow)
-        self.assertIn("if: steps.classify.outputs.state == 'infrastructure-advisory'", self.workflow)
+        # Success must mean verified evidence; an advisory shard fails the run.
+        self.assertIn('if [[ "$STATE" != "passed" || "$VERIFIED" != "true" ]]; then', self.workflow)
+        self.assertIn("VERIFIED: ${{ steps.classify.outputs.verified }}", self.workflow)
 
     def test_every_macos_job_uses_the_fixed_toolchain(self):
         self.assertEqual(self.workflow.count("runs-on: macos-26"), 3)

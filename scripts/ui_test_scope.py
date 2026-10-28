@@ -717,6 +717,9 @@ NO_UI_PREFIXES = (
     "Tests/PortavozTests/",
     "Sources/portavoz-cli/",
     "Sources/portavoz-cli-main/",
+    # Research-only targets: only PortavozTests links them, never the app.
+    "Sources/CSQLiteVecResearch/",
+    "Sources/SQLiteVecResearchKit/",
     "docs/",
     "site/",
     "packaging/",
@@ -1096,6 +1099,8 @@ def lower_layer_features(path: str) -> set[str]:
         "standingskill", "standingpremeetingbrief"
     )):
         return {"settings-standing-skills"}
+    if "livequestionclassifier" in lowered:
+        return {"live-assist"}
     if lowered in {
         "sources/intelligencekit/companion.swift",
         "sources/intelligencekit/companiongenerationprovenance.swift",
@@ -1239,7 +1244,33 @@ def lower_layer_features(path: str) -> set[str]:
     return set()
 
 
-def select_paths(paths: Iterable[str]) -> Selection:
+CATALOG = "Resources/Localization/Portavoz/Localizable.xcstrings"
+PLACEHOLDER = re.compile(r"%(?:\d+\$)?(?:ll|l)?[@dfsu]|%%")
+
+
+def catalog_keys(text: str) -> set[str]:
+    return set(json.loads(text).get("strings", {}))
+
+
+def copy_tests(changed_keys: Iterable[str], root: Path) -> set[str]:
+    """UI tests whose sources quote a changed English string or a long literal part of it."""
+    needles = set()
+    for key in changed_keys:
+        parts = [part.strip() for part in PLACEHOLDER.split(key) if len(part.strip()) >= 12]
+        needles.update(parts or [f'"{key}"'])
+    selected: set[str] = set()
+    for source in sorted((root / "Tests/PortavozUITests").glob("*UITests.swift")):
+        text = source.read_text(encoding="utf-8")
+        if any(needle in text for needle in needles):
+            selected |= tests_for_ui_test_file(source.relative_to(root).as_posix())
+    return selected
+
+
+def select_paths(
+    paths: Iterable[str],
+    catalog_changes: set[str] | None = None,
+    root: Path | None = None,
+) -> Selection:
     selected: set[str] = set()
     reasons: list[str] = []
     interruption_controls = False
@@ -1252,14 +1283,21 @@ def select_paths(paths: Iterable[str]) -> Selection:
         interruption_controls = interruption_controls or requires_interruption_controls(path)
 
         if path == "Package.resolved":
-            selected.update(SMOKE_TESTS)
-            reasons.append(f"{path}: dependency smoke canaries")
+            # A dependency can change behavior behind any journey.
+            selected.update(HARNESS_TESTS)
+            reasons.append(f"{path}: complete English dependency fallback")
             continue
 
-        if path == "Resources/Localization/Portavoz/Localizable.xcstrings":
-            # LocalizationTests own catalog parity; journeys query identifiers.
-            selected.update(SMOKE_TESTS)
-            reasons.append(f"{path}: localization smoke canaries")
+        if path == CATALOG:
+            if catalog_changes is None:
+                selected.update(HARNESS_TESTS)
+                reasons.append(f"{path}: complete localization fallback (changed keys unknown)")
+                continue
+            # Journeys assert English copy literally; Spanish values belong to LocalizationTests.
+            if catalog_changes:
+                selected.update(copy_tests(catalog_changes, root or Path(__file__).resolve().parent.parent))
+                selected.update(SMOKE_TESTS)
+                reasons.append(f"{path}: journeys quoting {len(catalog_changes)} changed English strings")
             continue
 
         if path in FULL_HARNESS_FILES or path.startswith(INTERRUPTION_FIXTURE_PREFIX):
@@ -1361,11 +1399,13 @@ def select_paths(paths: Iterable[str]) -> Selection:
             reasons.append(f"{path}: {', '.join(sorted(features))}")
             continue
 
-        if path.startswith("Sources/"):
-            # Resources and C sources of a lower layer follow its Swift.
-            selected.update(SMOKE_TESTS)
-            reasons.append(f"{path}: lower-layer smoke canaries")
-            continue
+        if path.startswith("Sources/") and not path.startswith("Sources/portavoz-app/"):
+            # A lower-layer resource selects its owner's journeys; an unknown one falls through.
+            features = lower_layer_features(path)
+            if features:
+                selected.update(feature_tests(features))
+                reasons.append(f"{path}: {', '.join(sorted(features))}")
+                continue
 
         # Unknown build/configuration changes may alter the executable even if
         # they do not look like a view. Prefer one full English pass to a false
@@ -1386,6 +1426,21 @@ def changed_paths(base: str, head: str) -> list[str]:
     command = ["git", "diff", "--name-only", "--diff-filter=ACDMRTUXB", base, head, "--"]
     result = subprocess.run(command, check=True, capture_output=True, text=True)
     return result.stdout.splitlines()
+
+
+def catalog_changes(base: str, head: str | None, root: Path) -> set[str] | None:
+    """English keys added or removed between base and head (or the working file)."""
+    try:
+        before = subprocess.run(["git", "show", f"{base}:{CATALOG}"], check=True, capture_output=True,
+                                text=True, cwd=root).stdout
+        if head is None:
+            after = (root / CATALOG).read_text(encoding="utf-8")
+        else:
+            after = subprocess.run(["git", "show", f"{head}:{CATALOG}"], check=True, capture_output=True,
+                                   text=True, cwd=root).stdout
+        return catalog_keys(before) ^ catalog_keys(after)
+    except (OSError, ValueError, subprocess.CalledProcessError):
+        return None
 
 
 def working_tree_paths(base: str, *, cwd: Path | None = None) -> list[str]:
@@ -1703,7 +1758,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif not paths:
             print("Provide changed paths, --base, or --all.", file=sys.stderr)
             return 2
-        selection = select_paths(paths)
+        changes = None
+        if arguments.base and CATALOG in paths:
+            changes = catalog_changes(arguments.base, None if arguments.working_tree else arguments.head, root)
+        selection = select_paths(paths, changes, root)
     print(render(selection, arguments.format))
     return 0
 

@@ -8,7 +8,6 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: read
   contents: read
 
 concurrency:
@@ -16,31 +15,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  freshness:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      run: ${{ steps.check.outputs.run }}
-    steps:
-      # A schedule on an unchanged main repeats evidence it already has.
-      - name: Skip a scheduled run of an already verified commit
-        id: check
-        env:
-          GH_TOKEN: ${{ github.token }}
-          EVENT_NAME: ${{ github.event_name }}
-        run: |
-          verified="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ui-nightly.yml/runs?branch=main&status=success&per_page=1" \
-            --jq '.workflow_runs[0].head_sha // ""')"
-          if [[ "$EVENT_NAME" == "schedule" && "$verified" == "$GITHUB_SHA" ]]; then
-            echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "main $GITHUB_SHA already passed the nightly UI catalog."
-          else
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          fi
-
   build-ui-products:
-    needs: freshness
-    if: needs.freshness.outputs.run == 'true'
     runs-on: macos-26
     timeout-minutes: 30
     outputs:
@@ -80,8 +55,6 @@ jobs:
           retention-days: 1
 
   interruption-controls:
-    needs: freshness
-    if: needs.freshness.outputs.run == 'true'
     runs-on: macos-26
     timeout-minutes: 30
     env:
@@ -152,9 +125,17 @@ jobs:
           python3 scripts/ui_test_ci_gate.py --results dist/ui-test-results --locales en \
             --english-outcome "$OUTCOME" --summary "$GITHUB_STEP_SUMMARY" --github-output "$GITHUB_OUTPUT"
 
-      - name: Report hosted infrastructure without evidence
-        if: steps.classify.outputs.state == 'infrastructure-advisory'
-        run: echo "::warning::Hosted UI infrastructure was unavailable; shard ${{ matrix.shard }} produced no product evidence."
+      # A green nightly must mean verified evidence, so an advisory shard fails too.
+      - name: Require verified shard ${{ matrix.shard }} evidence
+        if: always()
+        env:
+          STATE: ${{ steps.classify.outputs.state }}
+          VERIFIED: ${{ steps.classify.outputs.verified }}
+        run: |
+          if [[ "$STATE" != "passed" || "$VERIFIED" != "true" ]]; then
+            echo "Shard ${{ matrix.shard }} is not verified ($STATE/$VERIFIED); dispatch the nightly again." >&2
+            exit 1
+          fi
 
       - name: Preserve shard ${{ matrix.shard }} UI evidence
         if: always()

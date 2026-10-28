@@ -46,9 +46,10 @@ library) and asserts against `accessibilityIdentifier`s.
   existing UI tests — that is the point; fix the test in the same commit.
 - Prefer `make test-ui-changed UI_BASE=origin/main`: known presentation files
   and lower-layer files with a proven owner map to feature-level selectors;
-  other lower-layer files, unmapped app files, the dependency lock and localized
-  copy run the smoke canaries; shared-harness and build changes run the full
-  English suite. The full catalog also runs nightly
+  other lower-layer Swift files and unmapped app Swift files run the smoke
+  canaries; changed English copy runs the journeys that quote it plus the
+  canaries; the dependency lock, shared-harness, build and unowned resource
+  changes run the full English suite. The full catalog also runs nightly
   on `main` in three shards. `make test-ui-en` and `make test-ui-release` are the
   explicit full-suite gates.
 - XCUITest runs in English only. Spanish is covered by `LocalizationTests`: every

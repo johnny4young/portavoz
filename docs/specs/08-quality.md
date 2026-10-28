@@ -3116,14 +3116,19 @@ or its Keychain key while `-use-temp-store` is active.
 tests. Each test belongs to a feature scope. Known app and application files
 select only the scopes they can affect; a changed UI-test file selects its own
 class; shared-harness changes select the complete English catalogue; and
-a lower-layer file without a proven owner, an unmapped app file,
-`Package.resolved` and the string catalog select the seventeen `SMOKE_TESTS`
-canaries (D597); lower-layer files with a proven owner keep their feature
-scopes. The nightly workflow runs the complete catalogue on `main` as three
-shards balanced greedily by `docs/evidence/ui-test-runtime-budget.json`
-(`--all --shard K/N`), classifies each shard with the pull-request gate, skips
-a scheduled run of a commit that already passed, and runs the interruption
-controls. The
+a lower-layer or unmapped app Swift file without a proven owner selects the
+seventeen `SMOKE_TESTS` canaries (D597); lower-layer files and resources with a
+proven owner keep their feature scopes. `Package.resolved`, unowned resources
+and app resources such as `Info.plist` select the complete English catalogue.
+The string catalog compares English keys between the base and head revisions:
+UI tests that quote a changed key, or one of its literal fragments of at least
+twelve characters between placeholders, are selected with the canaries; a
+change that only edits Spanish values selects nothing, and an unreadable diff
+selects everything (D601). The nightly workflow runs the complete catalogue on
+`main` as three shards balanced greedily by
+`docs/evidence/ui-test-runtime-budget.json` (`--all --shard K/N`), classifies
+each shard with the pull-request gate, fails any shard whose result is not
+verified evidence, and runs the interruption controls. The
 Meeting Detail primary column also selects the complete English suite: its
 pane layout decides which detail content exists for every journey that opens a
 meeting, including recording-recovery and Skills journeys (D549). Docs,
