@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import subprocess
 
 
@@ -42,7 +43,7 @@ def command_output(command: tuple[str, ...]) -> str:
     return value
 
 
-def cache_key(root: Path, lane: str) -> str:
+def cache_prefix(root: Path, lane: str) -> str:
     if lane not in LANES:
         raise ValueError("Unknown Swift test lane")
     developer = os.environ.get("DEVELOPER_DIR", "")
@@ -63,18 +64,25 @@ def cache_key(root: Path, lane: str) -> str:
                    for name in INPUTS},
     }
     digest = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
-    # No broad restore prefix and no SHA suffix: one immutable seed per
-    # compatible graph instead of one multi-GB cache per push. Source freshness
-    # is restored separately, only after checking bytes and mode.
-    return f"swift-build-v1-{lane}-{digest}"
+    return f"swift-build-v2-{lane}-{digest}-"
+
+
+def cache_key(root: Path, lane: str, commit: str) -> str:
+    # One seed per main commit keeps first-party state current; a PR restores
+    # the newest seed of its exact graph through the prefix, never another graph.
+    if not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise ValueError("The cache commit must be a full lowercase SHA-1")
+    return cache_prefix(root, lane) + commit
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--lane", choices=LANES, required=True)
+    parser.add_argument("--commit", required=True)
     args = parser.parse_args()
     try:
-        print(f"key={cache_key(ROOT, args.lane)}")
+        key = cache_key(ROOT, args.lane, args.commit)
+        print(f"prefix={key.removesuffix(args.commit)}\nkey={key}")
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         parser.exit(1, f"Cannot identify Swift build cache: {error}\n")
     return 0
