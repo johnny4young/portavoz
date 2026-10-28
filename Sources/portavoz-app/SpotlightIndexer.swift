@@ -20,13 +20,8 @@ actor SpotlightIndexer {
         case failed(attempts: Int)
     }
 
-    enum IndexMode: String, Sendable {
-        /// The deployment-floor fallback keeps released meeting search on
-        /// systems predating App-Entity indexing.
-        case meetingDocuments = "meeting-documents-v1"
-        /// macOS 15 and later publish all three narrow native entity types.
-        case appEntities = "app-entities-v1"
-    }
+    /// Leads the client state so an index published by an older format reindexes.
+    static let indexFormat = "app-entities-v1"
 
     static let domain = "app.portavoz.meetings"
     static let indexName = "app.portavoz.search.v3"
@@ -153,17 +148,8 @@ actor SpotlightIndexer {
 
     private func reconcile() async throws {
         await publish(.projecting)
-        let snapshot: SpotlightIndexSnapshot
-        switch backend.mode {
-        case .meetingDocuments:
-            snapshot = SpotlightIndexSnapshot(
-                meetings: try await store.spotlightDocuments(),
-                people: [],
-                commitments: [])
-        case .appEntities:
-            snapshot = try await store.spotlightIndexSnapshot()
-        }
-        let clientState = Self.clientState(for: snapshot, mode: backend.mode)
+        let snapshot = try await store.spotlightIndexSnapshot()
+        let clientState = Self.clientState(for: snapshot)
         await publish(.publishing)
         if try await backend.lastClientState() != clientState {
             try await backend.replace(snapshot, clientState: clientState)
@@ -190,43 +176,33 @@ actor SpotlightIndexer {
         await statusChanged(status, retryAt)
     }
 
-    static func clientState(
-        for snapshot: SpotlightIndexSnapshot,
-        mode: IndexMode
-    ) -> Data {
+    static func clientState(for snapshot: SpotlightIndexSnapshot) -> Data {
         var hasher = SHA256()
-        update(&hasher, string: mode.rawValue)
+        update(&hasher, string: indexFormat)
         for document in snapshot.meetings {
             update(&hasher, string: document.meetingID.rawValue.uuidString)
             update(&hasher, string: document.title)
             update(&hasher, date: document.startedAt)
             update(&hasher, string: document.contentDescription)
-            if mode == .appEntities {
-                update(&hasher, string: SpotlightEntityPresentation.meetingDate(
-                    document.startedAt))
-            }
+            update(&hasher, string: SpotlightEntityPresentation.meetingDate(document.startedAt))
         }
-        if mode == .appEntities {
-            for person in snapshot.people {
-                update(&hasher, string: person.personID.rawValue.uuidString)
-                update(&hasher, string: person.preferredName)
-            }
-            for commitment in snapshot.commitments {
-                update(&hasher, string: commitment.commitmentID.rawValue.uuidString)
-                update(&hasher, string: commitment.title)
-                update(&hasher, optionalDate: commitment.dueAt)
-                update(&hasher, string: SpotlightEntityPresentation.commitmentDueDate(
-                    commitment.dueAt) ?? "")
-            }
+        for person in snapshot.people {
+            update(&hasher, string: person.personID.rawValue.uuidString)
+            update(&hasher, string: person.preferredName)
+        }
+        for commitment in snapshot.commitments {
+            update(&hasher, string: commitment.commitmentID.rawValue.uuidString)
+            update(&hasher, string: commitment.title)
+            update(&hasher, optionalDate: commitment.dueAt)
+            update(&hasher, string: SpotlightEntityPresentation.commitmentDueDate(
+                commitment.dueAt) ?? "")
         }
         let digest = hasher.finalize().map { String(format: "%02x", $0) }.joined()
-        let personCount = mode == .appEntities ? snapshot.people.count : 0
-        let commitmentCount = mode == .appEntities ? snapshot.commitments.count : 0
         let header = [
-            mode.rawValue,
+            indexFormat,
             String(snapshot.meetings.count),
-            String(personCount),
-            String(commitmentCount)
+            String(snapshot.people.count),
+            String(snapshot.commitments.count)
         ].joined(separator: ":")
         return Data("\(header):\(digest)".utf8)
     }
@@ -256,7 +232,6 @@ actor SpotlightIndexer {
 }
 
 protocol SpotlightIndexBackend: Sendable {
-    var mode: SpotlightIndexer.IndexMode { get }
     func lastClientState() async throws -> Data?
     func replace(_ snapshot: SpotlightIndexSnapshot, clientState: Data) async throws
     func removeLegacyItems() async throws
@@ -285,7 +260,6 @@ private actor UserDefaultsSpotlightLegacyCleanupState: SpotlightLegacyCleanupSta
 }
 
 private actor CoreSpotlightAppEntityIndexBackend: SpotlightIndexBackend {
-    nonisolated let mode: SpotlightIndexer.IndexMode = .appEntities
 
     func lastClientState() async throws -> Data? {
         let index = CSSearchableIndex(

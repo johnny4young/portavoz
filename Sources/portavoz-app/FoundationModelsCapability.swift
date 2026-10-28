@@ -23,14 +23,23 @@ enum FoundationModelsCapability: Equatable, Sendable {
     static func current(
         arguments: [String] = ProcessInfo.processInfo.arguments
     ) -> FoundationModelsCapability {
-        // Deterministic XCUITest coverage for a Mac without Apple
-        // Intelligence, independent of the host running the test suite.
-        if arguments.contains("-simulate-no-apple-intelligence") {
-            return .unavailable(FoundationModelSummaryProvider.appleIntelligenceDisabledReason)
+        guard let reason = FoundationModelSummaryProvider.unavailabilityReason(arguments: arguments) else {
+            return .available
         }
-        if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
-            return .unavailable(reason)
+        return .unavailable(localized(reason))
+    }
+
+    /// The provider reports English reasons; presentation embeds them in localized sentences.
+    static func localized(_ reason: String) -> String {
+        switch reason {
+        case FoundationModelSummaryProvider.deviceNotEligibleReason:
+            L10n.text("this device does not support Apple Intelligence")
+        case FoundationModelSummaryProvider.appleIntelligenceDisabledReason:
+            L10n.text("Apple Intelligence is turned off (System Settings → Apple Intelligence & Siri)")
+        case FoundationModelSummaryProvider.modelNotReadyReason:
+            L10n.text("the on-device model is still downloading; try again in a few minutes")
+        default:
+            reason
         }
-        return .available
     }
 }

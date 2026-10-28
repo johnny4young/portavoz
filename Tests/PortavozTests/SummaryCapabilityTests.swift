@@ -13,6 +13,25 @@ final class SummaryCapabilityTests: XCTestCase {
             .unavailable(FoundationModelSummaryProvider.appleIntelligenceDisabledReason))
     }
 
+    func testTheSimulationReachesEveryDirectProviderCheck() {
+        // Catch-up, suggestions, Ask and briefs ask the provider, not the capability.
+        XCTAssertEqual(
+            FoundationModelSummaryProvider.unavailabilityReason(
+                arguments: ["portavoz-app", FoundationModelSummaryProvider.simulatedUnavailabilityArgument]),
+            FoundationModelSummaryProvider.appleIntelligenceDisabledReason)
+    }
+
+    func testKnownReasonsAreLocalizedAndUnknownOnesPassThrough() {
+        for reason in [
+            FoundationModelSummaryProvider.deviceNotEligibleReason,
+            FoundationModelSummaryProvider.appleIntelligenceDisabledReason,
+            FoundationModelSummaryProvider.modelNotReadyReason
+        ] {
+            XCTAssertEqual(FoundationModelsCapability.localized(reason), L10n.text(reason))
+        }
+        XCTAssertEqual(FoundationModelsCapability.localized("an unlisted reason"), "an unlisted reason")
+    }
+
     func testSelectedOllamaWithoutModelDoesNotFallThroughToApple() async {
         let resolver = AppSummaryRegenerationProviderResolver(
             defaultEngine: .ollama,

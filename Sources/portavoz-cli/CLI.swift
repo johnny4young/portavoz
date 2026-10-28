@@ -158,8 +158,8 @@ public enum PortavozCLI {
             Options:
               --seconds N        Recording length (default 8; bench default 60)
               --mic <name|uid>   Input device to use (default: system default; see `devices`)
-              --pid <pid>        Also capture the audio output of this process (repeatable, macOS 14.4+)
-              --system           Also capture all system audio (macOS 14.4+)
+              --pid <pid>        Also capture the audio output of this process (repeatable)
+              --system           Also capture all system audio
               --out <dir>        Output directory (default: current directory)
               --transcribe       Live-transcribe every captured channel while recording
               --language <tag>   Language hint, e.g. "es" or "en" (default: auto-detect)

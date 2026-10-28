@@ -317,10 +317,11 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "a Mac without Apple Intelligence must expose the explicit action without pretending it can run")
         refresh.click()
 
-        let expectedError = (UITestLocale.environmentLocale == "es"
+        let expectedError = UITestLocale.environmentLocale == "es"
             ? "El Apuntador no está disponible: "
-            : "Apuntador is unavailable: ")
-            + "Apple Intelligence is turned off (System Settings → Apple Intelligence & Siri)"
+                + "Apple Intelligence está desactivado (Ajustes del Sistema → Apple Intelligence y Siri)"
+            : "Apuntador is unavailable: "
+                + "Apple Intelligence is turned off (System Settings → Apple Intelligence & Siri)"
         XCTAssertTrue(
             app.staticTexts[expectedError].waitForExistenceFast(timeout: 10),
             "a Mac without Apple Intelligence must explain the exact model requirement")

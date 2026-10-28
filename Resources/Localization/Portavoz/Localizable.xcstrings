@@ -7219,12 +7219,12 @@
         }
       }
     },
-    "Live captions are unavailable on this Mac. Recording still works.": {
+    "Live captions are unavailable right now. Recording still works.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Los subtítulos en vivo no están disponibles en este Mac. Grabar sigue funcionando."
+            "value": "Los subtítulos en vivo no están disponibles en este momento. Grabar sigue funcionando."
           }
         }
       }
@@ -20643,6 +20643,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Texto de dictado para pulir"
+          }
+        }
+      }
+    },
+    "this device does not support Apple Intelligence": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "este Mac no es compatible con Apple Intelligence"
+          }
+        }
+      }
+    },
+    "Apple Intelligence is turned off (System Settings → Apple Intelligence & Siri)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Intelligence está desactivado (Ajustes del Sistema → Apple Intelligence y Siri)"
+          }
+        }
+      }
+    },
+    "the on-device model is still downloading; try again in a few minutes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "el modelo del dispositivo aún se está descargando; inténtalo de nuevo en unos minutos"
           }
         }
       }

@@ -1708,10 +1708,9 @@ loads one consistent StorageKit projection, hashes every published field into
 a compact mode-versioned client state, skips unchanged publication, and retries
 failures after one and five seconds. Its private backend replaces the named
 `app.portavoz.search.v3` index under complete protection in 500-value batches.
-On macOS 15+ those values are native meeting/person/commitment App Entities; on
-14.4 they are released meeting documents. The distinct state prefixes make an
-OS capability transition repair the representation instead of accepting stale
-state, while one index avoids duplicate meeting results. The entity adapter
+Those values are native meeting/person/commitment App Entities, and the client
+state leads with the index format, so an index published in an older format is
+replaced instead of accepted stale. The entity adapter
 uses task-local Core Spotlight references to satisfy strict Swift 6 isolation.
 It removes the older named/default indexes only after v3 is ready. Failed
 cleanup remains retryable; the first success records a versioned marker instead
@@ -2122,10 +2121,8 @@ refresh from enabling compression or resurrecting an invalidated session.
 The model's read-only skill-preview request lives in a focused extension and
 uses the existing explicit action-error mutation on failure.
 
-Both `AudioClipExporter` overloads and `AudioTranscoder` use one internal
-`AudioExportSession` compatibility bridge. The native async path propagates its
-original errors unchanged; the callback fallback preserves clip/compression
-error families, localized reason or `unknown`, and callback completion ownership.
+Both `AudioClipExporter` overloads and `AudioTranscoder` call
+`AVAssetExportSession.export(to:as:)` and propagate its original errors.
 Caller composition, clear-mix range, output replacement and cleanup stay local
 to the exporter; compression still verifies every output before removing sources.
 The bridge neither removes files nor changes the existing cancellation policy.
@@ -2357,9 +2354,8 @@ Detail, person opens a visible reversible canonical-owner Radar focus, and
 commitment opens only the exact live Radar item. Exact focus temporarily
 overrides stale window filters; **Show all** restores them. Malformed/missing
 identity and read failure take one explicit Library/Radar recovery route.
-`IndexedEntity` conformance is available only on macOS 15+, and this slice does
-not publish entity-native Core Spotlight records; the D85 meeting-document
-index stays separate.
+This slice does not publish entity-native Core Spotlight records; the protected
+Spotlight index owns that publication.
 
 D77 keeps recording lifecycle error identity stable until presentation. Core's
 `FailureCategory` and `CodedFailure` define the small shared taxonomy;
@@ -3675,11 +3671,8 @@ Today screenshot reads lived-in without touching the operator's calendar.
    shell; staging or published evidence preserves it as `needsAttention`
    (D37/D49).
 2. Live: captions in LazyVStack with **reader-owned live follow** (direct scroll pauses indefinitely; incoming rows preserve the reader position and remain fully sharp; only the identified "Jump to live" action resumes follow); **live voice pills** (S1/S2 — streaming diarization with dedicated instance + `LiveSpeakerLabeler`, spec 03: closed rows split/label by voice as each 10 s window arrives; the first child preserves the source ID, later children are fresh; "Ellos" while no coverage; "Me"→"Yo" via voiceprint); translation picker →es/→en (Translation framework, macOS 15+; only translates closed rows); **signal-driven rolling monotonic summary** (one 40-second-minimum coordinator; ≤32 oldest unseen closed rows and ≤6,000 characters per cycle → stack → collapse >6,000 characters → atomic render; never shrinks — `LiveSummaryPolicy`) using the independent summary-output policy, never the transcript hint. D120 callback health crosses the same application callback boundary: if remote frames stop while mic frames continue, the full view and compact HUD show a non-dismissible reconnecting warning, the tap rebuilds in place without stopping the microphone, and a recovered confirmation clears after five seconds. D123 promotes a localized Stop action only after two continuous stalled/recovering outage minutes because the call may have ended, but never stops capture automatically; a terminal tap failure instead tells the user to stop and start a new recording on both surfaces. D121 adds dynamic preparing/available/failure state: a cold model hot-attaches during the same recording, then enables captions and speaker hints without replaying an unbounded backlog. D131/D142 keep the live merged projection clean when speaker output returns through the mic: within a bounded twelve-row window, direct system/room speech replaces matching microphone bleed in either callback order; one-word and sequential acknowledgements remain, while overlapping exact two-word and contiguous rolling-edge copies are rejected. D174 makes the separate presentation-only projector own a 150-source-row tail before it forms readable paragraphs for microphone or stable same-voice rows, but never generic `Them`; raw IDs and downstream consumers remain unchanged, and the controller still retains the complete transcript through Stop. D133 keeps split lineage stable for Companion evidence, translation caches, and rolling-summary admission. Live translation exposes waiting, deliberate-download, unsupported-pair, and execution-failure states; the waiting banner yields to the terminal live-caption failure banner when captions cannot arrive, execution errors stay visible during the automatic retry backoff, and late framework responses are fenced to the task's full source-target pair. D128 resolves every closed row to an explicit source-target pair from persisted per-turn language or a conservative local fallback, leaves target-language and uncertain rows as spoken, never asks Apple Translation to auto-detect the source, scopes consent to the pair, and clears all target-dependent state on a picker change.
-   On macOS 15+, SwiftUI scroll phases are the reader-intent signal. On the
-   minimum macOS 14.4 runtime, a zero-size bridge inside the scroll document
-   observes user-initiated live-scroll events only for its enclosing
-   `NSScrollView`, including legacy mouse wheels without a start/end pair;
-   programmatic recentering does not emit that signal. Unsupported translation
+   SwiftUI scroll phases are the reader-intent signal; programmatic recentering
+   does not emit it. Unsupported translation
    lanes remain original-language handled passthrough, so later supported lanes
    continue while the banner reports partial support.
 3. `stop`: flush and close writers → validate/hash/measure each CAF → atomically
@@ -4045,11 +4038,8 @@ carousel also runs during live recording, but D129 gives it a separate visual
 policy and reader-owned follow state: direct user scroll disables automatic
 following indefinitely, browsing rows stay fully opaque/unscaled/unblurred,
 and only `recording-jump-to-live` resumes the wider, gently bounded live focus
-treatment. SwiftUI scroll phases detect reader intent on macOS 15+; the
-minimum macOS 14.4 runtime uses a zero-size AppKit bridge inside the scroll
-document that observes user-initiated live-scroll events only for its enclosing
-`NSScrollView`, including legacy mouse wheels without a start/end pair.
-Programmatic recentering does not claim reader intent. Audio
+treatment. SwiftUI scroll phases detect reader intent; programmatic
+recentering does not claim it. Audio
 import remains the `ApplicationKit.ImportMeeting` path and preserves automatic
 mixed-language recognition. The Library menu defers its existing application-modal
 `NSOpenPanel.runModal()` to the next main-queue turn so menu tracking can return

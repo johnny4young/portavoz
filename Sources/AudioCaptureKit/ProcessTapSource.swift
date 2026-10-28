@@ -7,7 +7,7 @@ import PortavozCore
 import os
 
 /// Captures the audio *output* of specific processes (or all of them) via a
-/// Core Audio process tap on a private aggregate device (macOS 14.4+).
+/// Core Audio process tap on a private aggregate device.
 ///
 /// This is how Portavoz hears "the meeting" without a virtual driver: tap
 /// only Zoom/Meet/Teams, so unrelated audio (music, notifications) never

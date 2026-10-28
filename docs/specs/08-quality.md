@@ -5701,8 +5701,7 @@ mode and coverage cases, one production App-Entity mapping/attribute case, and
 the existing coalescing, unchanged-state, retry-exhaustion, recovery, cleanup-
 relaunch, and content-free telemetry cases. App Entity attributes separately
 prove meeting title/date/capped body, canonical-person name, and commitment
-title/due date. The source compiles under strict Swift 6 with the 14.4 target;
-the macOS 15 backend is availability-gated and keeps the non-Sendable
+title/due date. The source compiles under strict Swift 6; the backend keeps the non-Sendable
 AppIntents index receiver task-local. Metadata must remain exactly nine actions,
 three entities, and three queries. Bilingual XCUITest reuses the exact entity
 open-route journey because temporary stores deliberately suppress host Spotlight
@@ -9268,17 +9267,11 @@ from a table scan to indexed search. Existing duplicate-owner refusal controls
 remain separate. These checks do not measure native UI duration or qualify
 permission-refresh behavior under a sustained observation burst.
 
-`AudioExportSessionTests` drives the real internal callback bridge with immediate
-and held fake completions, including caller cancellation before/after start. It
-checks every known non-completed status and both existing domain error families,
-with native error text and missing-error fallback. These injected checks establish
-callback/error ownership, not AVFoundation runtime cancellation behavior. The
-real synthetic-WAV clip tests exercise both role-aware clear/original mixes and
-assert output duration, byte-identical input, and lower post-release microphone
-energy only in the clear mix; existing raw clip and compression
-rollback/verification tests remain. Hosted Sequoia/current-SDK tests exercise the
-modern AVFoundation branch. Physical macOS 14 callback-export qualification and
-acoustic/performance measurements remain distinct and are not inferred from mocks.
+The real synthetic-WAV clip tests exercise both role-aware clear/original mixes
+and assert output duration, byte-identical input, and lower post-release
+microphone energy only in the clear mix; existing raw clip and compression
+rollback/verification tests remain. Acoustic and performance measurements are
+not inferred from these tests.
 
 ### Keyboard admission without a modal
 

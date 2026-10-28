@@ -31,25 +31,35 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
     /// version; macOS updates that change it are rare enough to accept).
     public static let providerID = "foundation-models"
 
+    /// UI tests simulate a Mac without Apple Intelligence on any host.
+    public static let simulatedUnavailabilityArgument = "-simulate-no-apple-intelligence"
+    public static let deviceNotEligibleReason = "this device does not support Apple Intelligence"
     public static let appleIntelligenceDisabledReason =
         "Apple Intelligence is turned off (System Settings → Apple Intelligence & Siri)"
+    public static let modelNotReadyReason =
+        "the on-device model is still downloading; try again in a few minutes"
 
     public init() {}
 
     /// nil when ready; otherwise a human-readable reason (Apple
     /// Intelligence off, model still downloading, unsupported device).
-    public static func unavailabilityReason() -> String? {
+    public static func unavailabilityReason(
+        arguments: [String] = ProcessInfo.processInfo.arguments
+    ) -> String? {
+        if arguments.contains(simulatedUnavailabilityArgument) {
+            return appleIntelligenceDisabledReason
+        }
         switch SystemLanguageModel.default.availability {
         case .available:
             return nil
         case .unavailable(let reason):
             switch reason {
             case .deviceNotEligible:
-                return "this device does not support Apple Intelligence"
+                return deviceNotEligibleReason
             case .appleIntelligenceNotEnabled:
                 return appleIntelligenceDisabledReason
             case .modelNotReady:
-                return "the on-device model is still downloading; try again in a few minutes"
+                return modelNotReadyReason
             @unknown default:
                 return "unknown reason"
             }

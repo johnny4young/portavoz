@@ -9,7 +9,7 @@ Two SEPARATE streams, never mixed before diarization:
 | Channel | Source | Meaning | File |
 |---|---|---|---|
 | `microphone` | `MicrophoneSource` (AVAudioEngine) | The user's voice — "Me" by hardware ground truth | `Audio/<meeting-uuid>/microphone.caf` |
-| `system` | `ProcessTapSource` (Core Audio process taps, macOS 14.4+) | The other participants (audio from other apps) | `Audio/<meeting-uuid>/system.caf` |
+| `system` | `ProcessTapSource` (Core Audio process taps) | The other participants (audio from other apps) | `Audio/<meeting-uuid>/system.caf` |
 
 `AudioChunk` (PortavozCore): `channel`, mono `samples: [Float]`, `sampleRate`, `timestamp` (seconds since the first callback, through `HostClock` over host time).
 

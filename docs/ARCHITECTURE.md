@@ -225,14 +225,10 @@ client request and routes preview failure through its explicit error mutation.
 This keeps the root model within its existing source-size limit without
 broadening state setters or changing skill confirmation ownership.
 
-`AudioPlaybackKit.AudioExportSession` owns the shared AAC export bridge used by
-both clip-export paths and compression. Composition, requested ranges, clear
-mixing, output replacement, rollback, verification and source deletion remain
-with their existing callers. Current systems retain AVFoundation's async export
-and native errors. The pre-macOS 15 fallback, unreachable on the macOS 26 and
-iOS 26 floors, waits for its callback and accepts only `.completed`, mapping failures through the caller's existing error family.
-Cancelling a legacy wait does not retire the export before that callback; this
-refactor adds no cancellation or filesystem owner.
+Both clip-export paths and compression call AVFoundation's async
+`AVAssetExportSession.export(to:as:)` directly and propagate its native errors.
+Composition, requested ranges, clear mixing, output replacement, rollback,
+verification and source deletion stay with those callers.
 
 ### Parakeet job preparation
 
@@ -5063,9 +5059,8 @@ state fails closed instead of restoring accepted words. Split parts and merge
 content enter the same bounded transcript order under stable structural
 result identities; suppress remains absent and restore reactivates accepted
 rows. Successful correction writes wake reconciliation after persistence.
-The macOS 14.4 compatibility path publishes meeting documents to
-the same index; its distinct client-state prefix forces replacement when OS
-capability changes. Removal of the obsolete named/default indexes retries until
+The client state leads with the index format (`app-entities-v1`), so an index
+published in an older format is replaced. Removal of the obsolete named/default indexes retries until
 successful, then records a versioned local migration marker so neither later
 reconciliations nor future app launches repeat the one-way cleanup.
 
@@ -5697,8 +5692,8 @@ offers a newer release to an older Mac. The shared targets declare an iOS 26
 floor. No source checks `macOS 26` availability, so Foundation Models and
 SpeechAnalyzer adapters compile unconditionally; a Mac without Apple
 Intelligence resolves the Foundation Models capability as unavailable with the
-system's reason. A few unreachable `macOS 15` and `macOS 14.4` fallbacks remain
-until their removal (GAPS T39). The app is
+system's reason. No source carries an availability check below those floors.
+The app is
 built from SwiftPM and wrapped by `scripts/make-app.sh`; `project.yml` exists for
 XCUITest generation. Generated projects, result bundles, local screenshots,
 agent state, scratch plans, and local work-item files remain outside version control;
@@ -6275,10 +6270,8 @@ The live transcript has reader-owned scroll state independent from the
 playback lyrics treatment. Direct interaction pauses following indefinitely,
 incoming rows preserve that position, and browsing rows render without
 fade/scale/blur. Only the identified Jump to live action resumes following;
-macOS 15+ uses SwiftUI scroll phases; macOS 14.4 uses a document-scoped AppKit
-bridge that observes user-initiated live-scroll events from the enclosing
-`NSScrollView`, including legacy mouse-wheel events without a start/end pair.
-Programmatic `scrollTo` does not emit either reader-intent signal. Live-follow
+SwiftUI scroll phases carry reader intent, and programmatic `scrollTo` does not
+emit them. Live-follow
 mode uses a wider sharp zone and tighter visual bounds than playback.
 
 The shipping app is Developer ID signed, notarized, and stapled. The DMG has an
@@ -6334,15 +6327,11 @@ window's prior filters, and clearing focus restores them. Missing/malformed
 identity and read failure route to an explicit Library or Radar recovery rather
 than terminating or leaving a blank destination.
 
-`AppEntity` and its string query keep the macOS 14.4 deployment floor.
-`IndexedEntity` conformance and native publication are availability-gated to
-macOS 15. One process-scoped reconciler maps the transactionally consistent
-StorageKit projection into homogeneous 500-entity batches in a named index with
-complete protection; meeting attributes preserve capped full-text search,
+One process-scoped reconciler maps the transactionally consistent StorageKit
+projection into homogeneous 500-entity `IndexedEntity` batches in a named index
+with complete protection; meeting attributes preserve capped full-text search,
 people contain only canonical names, and commitments contain only title and
-optional due date. A 14.4 document fallback shares the index under a different
-client-state version, avoiding duplicate meetings without dropping the older OS
-surface. Local metadata, deterministic tests, and XCUITest still do not prove
+optional due date. Local metadata, deterministic tests, and XCUITest still do not prove
 physical Spotlight presentation or system registration.
 
 macOS publishes only those native actions in the Shortcuts action picker: it
