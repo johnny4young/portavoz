@@ -21902,6 +21902,64 @@ languages or an unsupported pair end the job with that reason and point to the
 Settings download; a line that times out retries the job once. A translated
 reading is read-only, because corrections edit the original.
 
+## D596 — Seed the Swift build cache per `main` commit and scope the iOS lane
+
+**Context:** D557's single immutable seed per build identity changed only with
+dependencies, toolchain or runner image, so it trailed `main` by days. Every
+pull request, including documentation-only and Python-only ones, recompiled
+about 1,280 first-party files (four to seven minutes) despite a cache hit. The
+iOS portability compile (seven to nine minutes) also ran on every pull request
+and held a fourth macOS runner, although most changes touch only the app shell,
+the CLI or tests.
+
+**Decision:** Keep D557's identity, cold `main`, fingerprint-verified freshness,
+size gate and test policy, but save one seed per successful `main` commit under
+that identity and let pull requests restore the newest seed through the exact
+identity prefix. A lookup-only probe on `main` skips saving a commit that already
+has a seed. A seed never crosses identities, and pull requests still never save.
+Each `main` run uploads its roughly 2 GB graph, and repository cache eviction,
+not a retention script, bounds the copies within the existing quota. The iOS
+portability lane keeps running on every `main` push and manual run; a pull
+request runs it only when the diff (both sides of a rename) touches the manifest
+closure of its compiled targets, the package manifest or lock, or the lane's own
+runner, selector, toolchain verifier or workflow. The closure is derived from
+`Package.swift` and the runner's target list, so a new dependency edge widens
+the scope without a second list. The selector accepts only literal local
+dependencies and `.product` entries; any other form, an unreadable manifest or
+an unreadable diff runs the lane.
+
+**Consequences:** A pull request recompiles only what changed since the newest
+saved `main` seed, which can trail `main` when recent runs were cancelled, and a skipped iOS lane reports success to required checks while
+`main` keeps the complete signal. Path filters for the macOS test lanes remain
+out of scope: Swift tests still read documentation, scripts and workflows, so a
+docs-only change can still fail them.
+
+## D597 — Pull requests run feature UI evidence or smoke canaries; the full catalog runs nightly
+
+**Context:** Pull requests waited 33 to 45 minutes for XCUITest on one hosted
+Mac. Any lower-layer Swift change fell back to almost every feature scope (a
+processing-policy edit selected 184 of 186 tests), as did localization and the
+dependency lock, although unit tests already own that behavior and the selector
+cannot prove which journey a lower layer reaches.
+
+**Decision:** Known presentation files and lower-layer files with a proven owner
+keep their feature-level selectors, a changed UI-test file keeps its class, and
+shared-harness, fixture, build, language-switch and unknown non-Swift changes
+keep the complete English catalog. Lower-layer files without a proven owner,
+unmapped app files, `Package.resolved` and the string catalog now select
+seventeen smoke canaries across the main surfaces. The complete English catalog
+runs every night on `main` (skipped when that commit already passed) and on
+demand, split into three shards balanced greedily by the runtime budget and
+classified like pull-request lanes, together with the interruption controls.
+The release gate is unchanged, and the release recipe requires a green nightly
+run on the released commit.
+
+**Consequences:** A typical pull request runs a few minutes of XCUITest instead
+of the whole suite. A UI regression caused by a lower layer outside the
+canaries can reach `main` and is caught by the next nightly run instead of the
+pull request. A red nightly run is a release blocker until it is fixed; a known
+hosted-automation outage is reported as an advisory, not a product failure.
+
 ## D598 — Run XCTest classes in a bounded process pool
 
 **Context:** The complete package suite ran about 3,800 XCTest cases one after

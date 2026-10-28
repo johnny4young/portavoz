@@ -987,7 +987,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(scope.contains(#""background-work": ("#))
         XCTAssertEqual(
             scope.components(separatedBy: #""BackgroundWorkUITests""#).count - 1,
-            2)
+            3)
         XCTAssertTrue(scope.contains(
             #""testBackgroundWorkCenterShowsAllOwnersAndRecoversExactFailures""#))
         XCTAssertTrue(scope.contains(
