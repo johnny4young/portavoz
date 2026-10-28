@@ -411,7 +411,6 @@ import FoundationModels
 /// Answers questions over retrieved meeting passages, on-device. The
 /// model may ONLY use the provided context and must cite it — anything
 /// not in the passages is "no lo encuentro".
-@available(macOS 26.0, iOS 26.0, *)
 public struct RAGAnswerer: RAGTextAnswering {
     public init() {}
 

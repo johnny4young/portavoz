@@ -91,7 +91,6 @@ public extension OllamaService {
 import FoundationModels
 
 /// Apple's on-device model through the shared interactive scheduler.
-@available(macOS 26.0, iOS 26.0, *)
 public struct FoundationModelDictationPolisher: DictationTextPolishing {
     private let unavailabilityReason: @Sendable () -> String?
 

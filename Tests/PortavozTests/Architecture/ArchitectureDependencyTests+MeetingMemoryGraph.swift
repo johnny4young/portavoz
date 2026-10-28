@@ -500,7 +500,7 @@ extension ArchitectureDependencyTests {
             "### First released exact graph query surface (D361)"))
         XCTAssertTrue(gaps.contains("D361 ships **By person**"))
         XCTAssertTrue(gaps.contains(
-            "physical VoiceOver/Sequoia/Tahoe validation remain absent"))
+            "physical VoiceOver/Tahoe validation remain absent"))
         XCTAssertTrue(decisions.contains("## D361"))
     }
 

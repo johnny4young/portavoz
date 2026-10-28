@@ -320,7 +320,6 @@ enum DictationSearchBenchmark {
 enum DictationSearchExpansion {
     static var isAvailable: Bool {
         #if canImport(FoundationModels)
-        guard #available(macOS 26.0, *) else { return false }
         return FoundationModelSummaryProvider.unavailabilityReason() == nil
         #else
         return false
@@ -330,7 +329,7 @@ enum DictationSearchExpansion {
     /// Empty when the model refused or failed for this question, as the app would fall back to words.
     static func dictation(_ question: String) async -> String? {
         #if canImport(FoundationModels)
-        guard #available(macOS 26.0, *), FoundationModelSummaryProvider.unavailabilityReason() == nil else {
+        guard FoundationModelSummaryProvider.unavailabilityReason() == nil else {
             return nil
         }
         return (try? await RAGAnswerer().expandDictationQuery(question)) ?? ""

@@ -449,11 +449,9 @@ extension ArchitectureDependencyTests {
                 .count - 1,
             3,
             "Start, Stop and Open dictations must use Tahoe's immediate foreground mode")
-        XCTAssertEqual(
-            intents.components(separatedBy: "static var openAppWhenRun: Bool { true }")
-                .count - 1,
-            3,
-            "Start, Stop and Open dictations must preserve the pre-Tahoe foreground contract")
+        XCTAssertFalse(
+            intents.contains("openAppWhenRun"),
+            "supportedModes is the only foreground contract on the macOS 26 floor")
         // Dictation actions run in the background so the app in front keeps the text.
         XCTAssertEqual(
             intents.components(separatedBy: "static let supportedModes: IntentModes = [.background]").count - 1,

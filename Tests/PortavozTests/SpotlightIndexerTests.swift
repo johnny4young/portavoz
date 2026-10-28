@@ -392,7 +392,6 @@ final class SpotlightIndexerTests: XCTestCase {
     }
 
     func testEntityFactoryPreservesIdentityAndSearchAttributes() {
-        guard #available(macOS 15.0, *) else { return }
         let meeting = SpotlightDocument(
             meetingID: MeetingID(),
             title: "Planning",

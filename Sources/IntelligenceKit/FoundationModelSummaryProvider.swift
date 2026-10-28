@@ -26,11 +26,13 @@ import FoundationModels
 /// meetings are summarized incrementally: transcript chunks → dense notes
 /// (map), notes → structured summary via guided generation (reduce);
 /// note layers collapse recursively until they fit one window.
-@available(macOS 26.0, iOS 26.0, *)
 public struct FoundationModelSummaryProvider: SummaryProvider {
     /// Identity for `SummaryFingerprint` (the OS model has no queryable
     /// version; macOS updates that change it are rare enough to accept).
     public static let providerID = "foundation-models"
+
+    public static let appleIntelligenceDisabledReason =
+        "Apple Intelligence is turned off (System Settings → Apple Intelligence & Siri)"
 
     public init() {}
 
@@ -45,7 +47,7 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
             case .deviceNotEligible:
                 return "this device does not support Apple Intelligence"
             case .appleIntelligenceNotEnabled:
-                return "Apple Intelligence is turned off (System Settings → Apple Intelligence & Siri)"
+                return appleIntelligenceDisabledReason
             case .modelNotReady:
                 return "the on-device model is still downloading; try again in a few minutes"
             @unknown default:
@@ -463,7 +465,6 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
 
 // MARK: - Guided generation shapes
 
-@available(macOS 26.0, iOS 26.0, *)
 @Generable(description: "One translated summary section")
 struct TranslatedSection {
     @Guide(description: "The section heading, translated")
@@ -475,7 +476,6 @@ struct TranslatedSection {
     var bullets: [String]
 }
 
-@available(macOS 26.0, iOS 26.0, *)
 @Generable(description: "A list of action items translated into another language")
 struct TranslatedItems {
     @Guide(
@@ -485,7 +485,6 @@ struct TranslatedItems {
     var items: [String]
 }
 
-@available(macOS 26.0, iOS 26.0, *)
 @Generable(description: "A structured, faithful meeting summary")
 struct GeneratedSummary {
     @Guide(description: "One-paragraph overview of what the meeting was about and its outcome")
@@ -514,7 +513,6 @@ struct GeneratedSummary {
     var actionItems: [GeneratedActionItem]
 }
 
-@available(macOS 26.0, iOS 26.0, *)
 @Generable(description: "One summary section")
 struct GeneratedSection {
     @Guide(description: "The section heading, exactly as instructed")
@@ -529,7 +527,6 @@ struct GeneratedSection {
     var bulletEvidence: [[String]]
 }
 
-@available(macOS 26.0, iOS 26.0, *)
 @Generable(description: "A single action item")
 struct GeneratedActionItem {
     @Guide(description: "What was committed to")
@@ -543,7 +540,6 @@ struct GeneratedActionItem {
     var evidence: [String]
 }
 
-@available(macOS 26.0, iOS 26.0, *)
 extension GeneratedSummary {
     var structured: StructuredSummary {
         StructuredSummary(

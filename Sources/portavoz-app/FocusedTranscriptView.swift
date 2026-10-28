@@ -59,7 +59,6 @@ enum TranscriptFollowOwnershipPolicy {
         mode == .playback || isFollowingLive
     }
 
-    @available(macOS 15.0, *)
     static func shouldYieldFollow(
         mode: FocusedTranscriptMode,
         for phase: ScrollPhase
@@ -160,17 +159,6 @@ struct FocusedTranscriptView<
                         .padding(.top, focusY)
                         .padding(.bottom, height - focusY)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background {
-                            if #available(macOS 15.0, *) {
-                                EmptyView()
-                            } else {
-                                LegacyScrollInteractionTracker {
-                                    guard mode == .live else { return }
-                                    isFollowing = false
-                                }
-                                .frame(width: 0, height: 0)
-                            }
-                        }
                     }),
                 onUserScroll: { isFollowing = false })
             .frame(height: height)
@@ -215,23 +203,16 @@ struct FocusedTranscriptView<
         }
     }
 
-    @ViewBuilder
     private func trackedScroll<Content: View>(
         _ content: Content,
         onUserScroll: @escaping () -> Void
     ) -> some View {
-        if #available(macOS 15.0, *) {
-            content.onScrollPhaseChange { _, phase in
-                guard TranscriptFollowOwnershipPolicy.shouldYieldFollow(
-                    mode: mode,
-                    for: phase)
-                else { return }
-                onUserScroll()
-            }
-        } else {
-            // The document-scoped AppKit bridge inside the content owns the
-            // macOS 14 user-only live-scroll signal.
-            content
+        content.onScrollPhaseChange { _, phase in
+            guard TranscriptFollowOwnershipPolicy.shouldYieldFollow(
+                mode: mode,
+                for: phase)
+            else { return }
+            onUserScroll()
         }
     }
 

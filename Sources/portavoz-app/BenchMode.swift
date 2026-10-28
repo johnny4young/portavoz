@@ -67,10 +67,6 @@ enum BenchMode {
 
         Task.detached {
             do {
-                guard #available(macOS 26.0, *) else {
-                    print("error: el bench de SpeechAnalyzer requiere macOS 26")
-                    exit(1)
-                }
                 guard SpeechAnalyzerEngine.isAvailable else {
                     print("error: SpeechTranscriber is not available on this device")
                     exit(1)

@@ -922,12 +922,6 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
       "category": "presentation",
-      "source": "flow.alert = .summarySetup(.appleRequiresMacOS26)",
-      "occurrences": 2
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
-      "category": "presentation",
       "source": "flow.alert = .summarySetup(.appleUnavailable(reason))",
       "occurrences": 2
     },
@@ -3402,7 +3396,7 @@
       "feature": "summary-and-structures",
       "tests": [
         "testMostRecentRecipeRemainsVisibleAfterReload",
-        "testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador",
+        "testNoAppleIntelligenceSummaryFailureOpensExactSetupAndExplainsApuntador",
         "testStructureMenuOffersSeededTemplates"
       ],
       "sourceAnchors": [
@@ -3416,8 +3410,8 @@
         }
       ],
       "screenshots": [
-        "sequoia-apuntador-requirements",
-        "sequoia-summary-actionable-settings"
+        "no-apple-intelligence-apuntador-requirements",
+        "no-apple-intelligence-summary-actionable-settings"
       ]
     },
     {
@@ -3425,7 +3419,7 @@
       "tests": [
         "testCorrectedTranscriptMarksDerivedArtifactsStale",
         "testExplicitApuntadorRefreshUsesCorrectedTranscript",
-        "testSequoiaApuntadorRefreshPreservesStaleAnswers",
+        "testNoAppleIntelligenceApuntadorRefreshPreservesStaleAnswers",
         "testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo",
         "testTranscriptStructuralCorrectionsSplitMergeHideAndRestoreEvidence"
       ],

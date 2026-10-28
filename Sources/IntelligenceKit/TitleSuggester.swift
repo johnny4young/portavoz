@@ -9,7 +9,6 @@ import FoundationModels
 /// shown as a chip next to the title, applied on click, never renames on
 /// its own. Deterministic gates: length-capped, single line, and never the
 /// current title again.
-@available(macOS 26.0, iOS 26.0, *)
 public enum TitleSuggester {
     /// nil when the model is unavailable, unsure, or suggests something
     /// unusable (empty, too long, or the same title).
@@ -40,7 +39,6 @@ public enum TitleSuggester {
     }
 }
 
-@available(macOS 26.0, iOS 26.0, *)
 @Generable(description: "A short meeting title")
 struct SuggestedTitle {
     @Guide(description: "At most six words, same language as the summary, no dates or quotes")

@@ -106,16 +106,12 @@ final class AppAppleSpeechPreparationClient: AppleSpeechPreparationClient {
     }
 
     func current(language: String?) async throws -> SpeechAnalyzerLiveReadiness {
-        guard #available(macOS 26.0, *) else { return .unavailable }
         return try await SpeechAnalyzerLiveEngine.readiness(language: language)
     }
 
     func prepare(language: String) async throws {
         guard captureState.current == .inactive else {
             throw AppResourceGovernorAdmissionError.activeCaptureModelConflict
-        }
-        guard #available(macOS 26.0, *) else {
-            throw SpeechAnalyzerLiveReadiness.unavailable
         }
         _ = try await SpeechAnalyzerEngine.ensureAssets(language: language)
     }

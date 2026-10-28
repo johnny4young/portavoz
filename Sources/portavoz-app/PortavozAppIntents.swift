@@ -11,7 +11,6 @@ struct StartRecordingIntent: AppIntent {
     static let title: LocalizedStringResource = "Start recording"
     static let description = IntentDescription(
         "Starts a new Portavoz meeting recording.")
-    @available(macOS 26.0, *)
     static let supportedModes: IntentModes = [.foreground(.immediate)]
 
     @MainActor
@@ -33,7 +32,6 @@ struct StopRecordingIntent: AppIntent {
     static let title: LocalizedStringResource = "Stop recording"
     static let description = IntentDescription(
         "Stops the current Portavoz meeting recording.")
-    @available(macOS 26.0, *)
     static let supportedModes: IntentModes = [.foreground(.immediate)]
 
     @MainActor
@@ -151,7 +149,6 @@ struct PortavozMeetingEntity: AppEntity, Equatable {
     }
 }
 
-@available(macOS 15.0, *)
 extension PortavozMeetingEntity: IndexedEntity {
     var attributeSet: CSSearchableItemAttributeSet {
         let attributes = defaultAttributeSet
@@ -204,7 +201,6 @@ struct PortavozPersonEntity: AppEntity, Equatable {
     }
 }
 
-@available(macOS 15.0, *)
 extension PortavozPersonEntity: IndexedEntity {
     var attributeSet: CSSearchableItemAttributeSet {
         let attributes = defaultAttributeSet
@@ -276,7 +272,6 @@ struct PortavozCommitmentEntity: AppEntity, Equatable {
     }
 }
 
-@available(macOS 15.0, *)
 extension PortavozCommitmentEntity: IndexedEntity {
     var attributeSet: CSSearchableItemAttributeSet {
         let attributes = defaultAttributeSet
@@ -460,24 +455,6 @@ struct OpenCommitmentIntent: OpenIntent {
     }
 }
 
-// `IntentModes` starts at macOS 26. Keep the framework's documented
-// compatibility property for Sequoia and older supported systems while the
-// availability-gated declaration above supplies the modern Tahoe contract.
-@available(*, deprecated)
-extension StartRecordingIntent {
-    static var openAppWhenRun: Bool { true }
-}
-
-@available(*, deprecated)
-extension StopRecordingIntent {
-    static var openAppWhenRun: Bool { true }
-}
-
-@available(*, deprecated)
-extension OpenDictationsIntent {
-    static var openAppWhenRun: Bool { true }
-}
-
 // MARK: - Dictation
 
 /// Starts or finishes dictation like the global shortcut. It runs in the
@@ -486,7 +463,6 @@ struct DictateIntent: AppIntent {
     static let title: LocalizedStringResource = "Dictate"
     static let description = IntentDescription(
         "Starts dictation into the app in front, or finishes the one in progress, without bringing Portavoz forward.")
-    @available(macOS 26.0, *)
     static let supportedModes: IntentModes = [.background]
 
     @MainActor
@@ -501,7 +477,6 @@ struct PasteLastDictationIntent: AppIntent {
     static let title: LocalizedStringResource = "Paste last dictation"
     static let description = IntentDescription(
         "Pastes your last dictation into the app in front, while Portavoz still remembers it.")
-    @available(macOS 26.0, *)
     static let supportedModes: IntentModes = [.background]
 
     @MainActor
@@ -518,7 +493,6 @@ struct SearchDictationsIntent: AppIntent {
     static let description = IntentDescription(
         // swiftlint:disable:next line_length
         "Finds your saved dictations that contain these words, newest first. Works only while Portavoz lets agents and Shortcuts read the history.")
-    @available(macOS 26.0, *)
     static let supportedModes: IntentModes = [.background]
 
     @Parameter(title: "Words")
@@ -540,7 +514,6 @@ struct OpenDictationsIntent: AppIntent {
     static let title: LocalizedStringResource = "Open dictations"
     static let description = IntentDescription(
         "Opens your saved dictations in Portavoz, optionally searching for words.")
-    @available(macOS 26.0, *)
     static let supportedModes: IntentModes = [.foreground(.immediate)]
 
     @Parameter(title: "Search")

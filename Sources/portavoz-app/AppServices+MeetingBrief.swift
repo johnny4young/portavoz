@@ -34,8 +34,7 @@ struct AppOnDeviceMeetingBriefSynthesizer: MeetingBriefSynthesizing {
         eventTitle: String,
         sources: [MeetingBrief.SynthesisSource]
     ) async throws -> [MeetingBrief.SynthesisPoint] {
-        guard #available(macOS 26.0, iOS 26.0, *),
-              FoundationModelSummaryProvider.unavailabilityReason() == nil
+        guard FoundationModelSummaryProvider.unavailabilityReason() == nil
         else { return [] }
         let passages = sources.map {
             RAGPassage(

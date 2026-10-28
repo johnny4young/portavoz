@@ -24,7 +24,6 @@ import os
 ///
 /// `@unchecked Sendable`: Core Audio object IDs are plain integers; mutable
 /// state is owned by `start()`/`stop()` and the serialized IO/rebuild queues.
-@available(macOS 14.4, *)
 public final class ProcessTapSource: RecoverableAudioCaptureSource, CaptureReportingSource, @unchecked Sendable {
     public let channel: AudioChannel = .system
 

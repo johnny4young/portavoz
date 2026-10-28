@@ -1526,7 +1526,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(schema.contains(
             "operation = 'ask-answer-generation'"))
         XCTAssertFalse(schema.contains("meetingID"))
-        XCTAssertTrue(uiTest.contains("simulateSequoiaCapabilities: true"))
+        XCTAssertTrue(uiTest.contains("simulateNoAppleIntelligence: true"))
 
         XCTAssertTrue(architecture.contains(
             "schema v43 persists its fixed-loopback attempt"))

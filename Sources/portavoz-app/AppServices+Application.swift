@@ -101,7 +101,6 @@ extension AppServices {
         switch summaryEngine {
         case .appleOnDevice:
             guard foundationModelsCapability.isAvailable else { return nil }
-            guard #available(macOS 26.0, *) else { return nil }
             return try await withLiveSummaryRefinementTimeout(.seconds(12)) {
                 try await self.workloadTelemetry.measure(descriptor) {
                     try await FoundationModelSummaryProvider().summarizeNotes(
@@ -246,16 +245,8 @@ struct AppSummaryRegenerationProviderResolver: SummaryRegenerationProviderResolv
             break
         }
 
-        switch foundationModelsCapability {
-        case .requiresMacOS26:
-            return .unavailable(.requiresMacOS26)
-        case .unavailable(let reason):
+        if case .unavailable(let reason) = foundationModelsCapability {
             return .unavailable(.appleOnDevice(reason: reason))
-        case .available:
-            break
-        }
-        guard #available(macOS 26.0, *) else {
-            return .unavailable(.requiresMacOS26)
         }
         return .available(AppFoundationSummaryRegenerationProvider())
     }
@@ -286,16 +277,8 @@ struct AppSummaryRegenerationProviderResolver: SummaryRegenerationProviderResolv
             break
         }
 
-        switch foundationModelsCapability {
-        case .requiresMacOS26:
-            return .unavailable(.requiresMacOS26)
-        case .unavailable(let reason):
+        if case .unavailable(let reason) = foundationModelsCapability {
             return .unavailable(.appleOnDevice(reason: reason))
-        case .available:
-            break
-        }
-        guard #available(macOS 26.0, *) else {
-            return .unavailable(.requiresMacOS26)
         }
         return .available(RAGAnswerer())
     }
@@ -332,7 +315,6 @@ private struct AppDirectSummaryRegenerationProvider: SummaryRegenerationProvider
     }
 }
 
-@available(macOS 26.0, *)
 private struct AppFoundationSummaryRegenerationProvider: SummaryRegenerationProvider {
     let providerID = FoundationModelSummaryProvider.providerID
     let modelID = "system-language-model"

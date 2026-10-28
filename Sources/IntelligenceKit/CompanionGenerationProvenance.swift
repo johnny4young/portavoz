@@ -307,7 +307,6 @@ public struct CompanionGenerationAttempt: Sendable {
 }
 
 #if canImport(FoundationModels)
-@available(macOS 26.0, iOS 26.0, *)
 public struct ProvenanceCompanion: Sendable {
     private let companion: LiveCompanion
     private let externalProvider: CompanionExternalProviderIdentity?

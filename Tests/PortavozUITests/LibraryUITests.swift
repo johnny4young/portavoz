@@ -494,7 +494,7 @@ final class LibraryUITests: PortavozUITestCase {
     func testRecordingOffersObjectivesNextQuestionAndTalkBalance() throws {
         let app = try XCUIApplication.portavoz(
             seedDemo: true,
-            simulateSequoiaCapabilities: true,
+            simulateNoAppleIntelligence: true,
             simulateLiveTranscriptBrowsing: true,
             simulateLiveApuntador: true,
             simulateProactiveAssist: true)
@@ -560,7 +560,7 @@ final class LibraryUITests: PortavozUITestCase {
                 "the real bundled detector must surface the frozen bilingual question")
             XCTAssertTrue(ready ? statusVisible : app.staticTexts[questionOnlyStatus]
                 .waitForExistenceFast(timeout: 5),
-                "without an answer engine Sequoia must show an honest question-only card")
+                "without an answer engine Apuntador must show an honest question-only card")
             XCTAssertTrue(ready ? transcriptVisible : transcript.waitForExistenceFast(timeout: 8))
         }
         try app.openAssistTab("summary")
@@ -576,7 +576,7 @@ final class LibraryUITests: PortavozUITestCase {
             let ready = summaryVisible && highlightsVisible
             XCTAssertTrue(ready ? summaryVisible : liveSummary.waitForExistenceFast(
                 timeout: max(0, deadline.timeIntervalSinceNow)),
-                "Sequoia must render the deterministic rolling-summary checkpoint")
+                "without Apple Intelligence the deterministic rolling-summary checkpoint must render")
             XCTAssertTrue(ready ? highlightsVisible : app.staticTexts[expectedLiveHighlights]
                 .waitForExistenceFast(timeout: 5),
                 "the model-free checkpoint must disclose its extractive live highlights")
@@ -828,7 +828,7 @@ final class LibraryUITests: PortavozUITestCase {
             .loadFromRunnerEnvironment()
         let app = try XCUIApplication.portavoz(
             seedDemo: true,
-            simulateSequoiaCapabilities: true,
+            simulateNoAppleIntelligence: true,
             includeWebFixture: true)
         app.configureFeatureUITestHandshake(
             argument: "-simulate-ask-progressive-handshake",
@@ -1069,7 +1069,7 @@ final class LibraryUITests: PortavozUITestCase {
             "manual Ask must publish the seeded local answer even when Apple Foundation Models are unavailable")
         XCTAssertFalse(
             app.descendants(matching: .any)["ask-generation-unavailable"].exists,
-            "the explicit manual Ask route must not be gated by Sequoia capabilities")
+            "the explicit manual Ask route must not be gated by Apple Intelligence")
         let citation = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH 'ask-citation-'"))
             .firstMatch

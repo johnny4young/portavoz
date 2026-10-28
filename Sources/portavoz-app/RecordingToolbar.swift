@@ -65,21 +65,19 @@ struct RecordingToolbar: View {
     @ViewBuilder
     private var secondaryControls: some View {
         HStack(spacing: 12) {
-            if #available(macOS 15.0, *) {
-                Picker("Translate", selection: translationBinding) {
-                    Text("No translation").tag(String?.none)
-                    Text("→ Spanish").tag(String?.some("es"))
-                    Text("→ English").tag(String?.some("en"))
-                }
-                .pickerStyle(.menu)
-                .fixedSize()
-                .controlSize(.small)
-                .help(L10n.text(
-                    "Show an English or Spanish translation below each spoken caption."))
-                .accessibilityIdentifier("recording-translation-picker")
-                .accessibilityHint(L10n.text(
-                    "Show an English or Spanish translation below each spoken caption."))
+            Picker("Translate", selection: translationBinding) {
+                Text("No translation").tag(String?.none)
+                Text("→ Spanish").tag(String?.some("es"))
+                Text("→ English").tag(String?.some("en"))
             }
+            .pickerStyle(.menu)
+            .fixedSize()
+            .controlSize(.small)
+            .help(L10n.text(
+                "Show an English or Spanish translation below each spoken caption."))
+            .accessibilityIdentifier("recording-translation-picker")
+            .accessibilityHint(L10n.text(
+                "Show an English or Spanish translation below each spoken caption."))
             if companionAvailable {
                 Toggle(isOn: companionBinding) {
                     Label("Apuntador", systemImage: PVSymbol.apuntador)

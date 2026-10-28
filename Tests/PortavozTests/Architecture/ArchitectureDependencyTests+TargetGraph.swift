@@ -201,7 +201,7 @@ extension ArchitectureDependencyTests {
 
         XCTAssertTrue(runner.contains(
             "targets=(PortavozCore StorageKit ApplicationKit IntegrationsKit)"))
-        XCTAssertTrue(runner.contains("arm64-apple-ios17.0-simulator"))
+        XCTAssertTrue(runner.contains("arm64-apple-ios26.0-simulator"))
         XCTAssertTrue(runner.contains("for target in \"${targets[@]}\""))
         XCTAssertTrue(workflow.contains("  ios-portability:"))
         XCTAssertTrue(workflow.contains("run: scripts/check-ios-portability.sh"))

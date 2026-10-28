@@ -5,7 +5,6 @@ import XCTest
 
 final class PortavozAppIntentBridgeTests: XCTestCase {
     func testIndexedEntityAttributesKeepSearchMaterialNarrowAndTyped() {
-        guard #available(macOS 15.0, *) else { return }
         let startedAt = Date(timeIntervalSince1970: 1_700_000_000)
         let dueAt = Date(timeIntervalSince1970: 1_700_086_400)
         let meeting = PortavozMeetingEntity(

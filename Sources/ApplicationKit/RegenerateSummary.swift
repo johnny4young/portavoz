@@ -27,7 +27,6 @@ public enum SummaryRegenerationFailurePresentation: Equatable, Sendable {
 
 /// Why the Apple summary fallback cannot run on this Mac.
 public enum SummaryRegenerationUnavailability: Equatable, Sendable {
-    case requiresMacOS26
     case appleOnDevice(reason: String)
     case ollamaModelNotSelected
     case mlxModelNotDownloaded

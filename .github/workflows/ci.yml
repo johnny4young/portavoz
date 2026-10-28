@@ -100,7 +100,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Verify fixed Tahoe toolchain
         run: scripts/verify-ci-toolchain.sh 26 26.6
-      - name: Compile transport-neutral iOS 17 surface
+      - name: Compile transport-neutral iOS 26 surface
         run: scripts/check-ios-portability.sh
 
   lint:

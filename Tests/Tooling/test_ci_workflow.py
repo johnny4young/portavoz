@@ -69,7 +69,7 @@ class CIWorkflowTests(unittest.TestCase):
 
         self.assertEqual(workflow.count("  ios-portability:\n"), 1)
         self.assertIn("run: scripts/check-ios-portability.sh", workflow)
-        self.assertIn("arm64-apple-ios17.0-simulator", runner)
+        self.assertIn("arm64-apple-ios26.0-simulator", runner)
         self.assertIn(
             "targets=(PortavozCore StorageKit ApplicationKit IntegrationsKit)",
             runner,

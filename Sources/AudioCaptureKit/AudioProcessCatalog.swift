@@ -9,7 +9,6 @@ import Foundation
 /// app-level process `NSWorkspace` reports — so tapping the app PID captures
 /// nothing. Core Audio's process-object list exposes the real audio
 /// producers, helpers included.
-@available(macOS 14.4, *)
 public enum AudioProcessCatalog {
     /// PIDs currently producing output audio whose bundle ID belongs to one
     /// of the explicitly allowed apps, excluding `excludedPID` (Portavoz).

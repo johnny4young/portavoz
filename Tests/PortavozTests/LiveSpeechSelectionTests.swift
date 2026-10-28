@@ -37,11 +37,9 @@ final class LiveSpeechSelectionTests: XCTestCase {
                 _ = try await services.acquireLiveTranscriptionRuntime(for: purpose)
                 XCTFail("Automatic language must not silently launch a fixed-locale engine")
             } catch SpeechAnalyzerLiveReadiness.languageRequired {
-                // The Tahoe path rejects before consulting the Speech daemon.
+                // Rejected before consulting the Speech daemon.
             } catch {
-                if #available(macOS 26.0, *) {
-                    XCTFail("Expected languageRequired, got \(type(of: error))")
-                }
+                XCTFail("Expected languageRequired, got \(type(of: error))")
             }
         }
         XCTAssertNil(services.liveSpeechRuntimeLoad)

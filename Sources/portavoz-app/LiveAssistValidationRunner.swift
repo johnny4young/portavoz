@@ -241,7 +241,6 @@ enum LiveAssistValidationRunner {
         guard QuestionHeuristic.looksLikeQuestion(event.text) || directed
         else { return "ignore" }
 
-        guard #available(macOS 26.0, *) else { return "abstain" }
         do {
             let detected = try await FoundationModelLiveQuestionDetector().detect(
                 candidate: event.text,

@@ -95,13 +95,14 @@ final class RegenerateCompanionCardsTests: XCTestCase {
 
     func testUnavailableProviderDoesNotReachPersistence() async {
         let fixture = Fixture()
-        let dependencies = Dependencies(result: .unavailable(.requiresMacOS26))
+        let dependencies = Dependencies(
+            result: .unavailable(.appleOnDevice(reason: "Apple Intelligence is turned off")))
 
         let result = await RegenerateCompanionCards(
             store: dependencies,
             provider: dependencies).execute(fixture.request)
 
-        XCTAssertEqual(result, .unavailable(.requiresMacOS26))
+        XCTAssertEqual(result, .unavailable(.appleOnDevice(reason: "Apple Intelligence is turned off")))
         let state = await dependencies.state()
         XCTAssertTrue(state.savedRuns.isEmpty)
         XCTAssertNil(state.replacedArtifacts)

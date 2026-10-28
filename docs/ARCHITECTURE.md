@@ -229,8 +229,8 @@ broadening state setters or changing skill confirmation ownership.
 both clip-export paths and compression. Composition, requested ranges, clear
 mixing, output replacement, rollback, verification and source deletion remain
 with their existing callers. Current systems retain AVFoundation's async export
-and native errors. The macOS 14/iOS 17 fallback waits for its callback and accepts
-only `.completed`, mapping failures through the caller's existing error family.
+and native errors. The pre-macOS 15 fallback, unreachable on the macOS 26 and
+iOS 26 floors, waits for its callback and accepts only `.completed`, mapping failures through the caller's existing error family.
 Cancelling a legacy wait does not retire the export before that callback; this
 refactor adds no cancellation or filesystem owner.
 
@@ -728,9 +728,7 @@ subject identity to presentation. Positions intentionally describe only the
 current verified snapshot and may change after refresh or mutation; they are
 never stored and expose no title, transcript, preview, destination, recipient,
 argument, stable offer key, or subject UUID. `ForEach` receives a bounded
-compatibility array because direct `EnumeratedSequence` collection conformance
-is available only on macOS 26 and cannot raise this Sequoia-capable view's
-deployment floor.
+compatibility array instead of a direct `EnumeratedSequence` collection.
 
 Settings can dismiss one inert row using only its random review UUID. Storage
 resolves the stable intent, inserts the existing terminal dismissal, and
@@ -1058,8 +1056,7 @@ The recording controller also owns one main-actor process activity from startup
 through Stop persistence. It classifies that lifetime as user-initiated even
 when no window is visible, allows idle system sleep, and ends on every terminal
 state or owner deallocation. Idle maintenance inherits no recording activity.
-This visibility layer is available on Sequoia and Tahoe without Foundation
-Models. Its deterministic UI fixture requires both disposable storage and the
+This visibility layer is available without Foundation Models. Its deterministic UI fixture requires both disposable storage and the
 background-work seed, so a production launch cannot replace live owner state.
 
 The Ask workflow, not a model provider or SwiftUI, owns progressive admission.
@@ -1074,11 +1071,11 @@ reject expired work, including when the timer or parent executor is delayed.
 This is admission control, not hard pre-emption of opaque provider code. The per-window model retains at most 20 completed exchanges, weakly
 bridges its task so a non-cooperative provider cannot retain a closed window,
 and lets a new submitted draft cancel and replace pending work. Manual Ask
-samples the explicitly selected local summary engine for every request. On
-macOS 26 the Foundation Models adapter streams cumulative `String` snapshots
-through the shared interactive scheduler; configured loopback Ollama and a
-verified embedded MLX model answer on Sequoia or Tahoe through the same bounded
-grounding contract. Missing selected-engine readiness never falls through to a
+samples the explicitly selected local summary engine for every request. When
+Apple Intelligence is available the Foundation Models adapter streams cumulative
+`String` snapshots through the shared interactive scheduler; configured loopback
+Ollama and a verified embedded MLX model answer without Apple Intelligence
+through the same bounded grounding contract. Missing selected-engine readiness never falls through to a
 different provider, and exact evidence remains usable without generation.
 Every manual Ask request also carries one explicit source authority. The full
 Ask window can search the complete local Library, one exact selected meeting,
@@ -1395,10 +1392,10 @@ deadline, and both a real row close and a two-second silence expiry enter one
 shared detection dispatch without closing or rewriting the coalescer's mutable
 row. A process-shared actor owns the bundled bilingual question classifier and
 serializes its Natural Language model because that framework type is not
-Sendable. The classifier is authoritative on Sequoia and Tahoe; deterministic
-syntax and exact owner-name features adjust only its calibrated admission
-thresholds. Foundation Models may challenge and answer an admitted question on
-Tahoe but never gates detection. Without an answer engine, context and general
+Sendable. The classifier is authoritative with or without Apple Intelligence;
+deterministic syntax and exact owner-name features adjust only its calibrated
+admission thresholds. Foundation Models may challenge and answer an admitted
+question when Apple Intelligence is available but never gates detection. Without an answer engine, context and general
 questions render as honest question-only cards; explicitly configured BYOK can
 receive only an admitted general-knowledge question. Non-directed logistics
 remain silent, while an exact owner mention may produce an asked-you card.
@@ -1409,8 +1406,9 @@ exposes the toggle on every supported macOS version only while that resource is
 loadable. A missing or unloadable asset leaves a visible reinstall explanation
 instead of a dead control. Foundation Models capability text describes optional answer
 enhancement rather than disabling Apuntador. The separate explicit
-post-meeting refresh still uses its existing macOS-26 provider pipeline and is
-not implied to work on Sequoia by the live detector.
+post-meeting refresh still uses its existing Foundation Models provider pipeline
+and reports Apple Intelligence as unavailable instead of borrowing the live
+detector.
 
 Bounded recording-scoped live Apuntador owns generation separately from that
 deadline. One coordinator admits at most one active generation and one newest
@@ -1449,8 +1447,8 @@ three visible inert cards. Pause preserves evidence; disabling clears visible
 cards without making the same signal eligible again; Stop, recording reset, and
 next-session preparation clear the complete ephemeral lifecycle. Evaluation is
 pure and synchronous, so there is no task, callback, provider, or cancellation
-owner that can publish after the recording closes. This path is available on
-the Sequoia deployment floor and Tahoe without Foundation Models availability.
+owner that can publish after the recording closes. This path is available
+without Foundation Models.
 
 The pre-meeting reminder controller owns only its periodic task, session-local
 deduplication, floating panel, and recording route. It requests a typed notice
@@ -2920,7 +2918,7 @@ compatibility; the application use case always assigns an explicit outcome.
 No CLI, MCP, command-palette, meeting-brief, or free-form answer surface invokes the
 graph-aware bundle. The explicit person-commitment explorer instead shows the
 validated typed facts directly, including their exact source navigation, so it
-works without Foundation Models on Sequoia as well as Tahoe.
+works without Foundation Models.
 
 Deterministic prompt instructions and fact-aware context formatting remain
 provider-neutral and compile before the `FoundationModels` availability
@@ -5435,7 +5433,7 @@ directory, and re-signs that disposable copy with the existing benchmark-only
 library-validation exception so Apple's at-exit instrumentation can load its
 embedded Sparkle framework. It never mutates either installed application.
 `xcrun leaks` withholds memory content and stacks while executing released Live
-Assist policy, the bundled Sequoia/Tahoe question classifier, deep Ask, and
+Assist policy, the bundled question classifier, deep Ask, and
 semantic indexing over public synthetic/disposable state. A zero tool exit is
 insufficient: every path must publish its fresh product completion artifact,
 the parser rejects fatal launch/tool markers, and the receipt requires zero
@@ -5656,7 +5654,7 @@ CloudKit record, worker, app target, or UI composes this contract.
 `scripts/check-ios-portability.sh` is the compiler authority for the existing
 shared iOS surface. It resolves one installed iPhone Simulator SDK and
 sequentially cross-builds `PortavozCore`, `StorageKit`, `ApplicationKit`, and
-`IntegrationsKit` for `arm64-apple-ios17.0-simulator` in one scratch graph. The
+`IntegrationsKit` for `arm64-apple-ios26.0-simulator` in one scratch graph. The
 current-SDK CI job owns that gate separately from macOS behavior tests. Passing
 it proves source/API portability only: it does not prove an iOS app target,
 signed entitlements, CloudKit account behavior, microphone/background audio,
@@ -5674,8 +5672,8 @@ thermal or battery behavior, physical devices, or two-device convergence.
   and retryable without polling.
 - Compiler-dense deterministic collections, including operation fingerprints
   and high-cardinality characterization fixtures, are assembled in explicitly
-  typed steps. This preserves order and coverage while keeping the supported
-  Sequoia compiler path bounded.
+  typed steps. This preserves order and coverage while keeping compile time
+  bounded.
 - Cancellation is explicit and cannot convert partial success into false
   completion.
 - StorageKit adapts GRDB observations as pull-through structured streams. The
@@ -5695,8 +5693,12 @@ thermal or battery behavior, physical devices, or two-device convergence.
 The package minimum is macOS 26 Tahoe. The bundle's
 `LSMinimumSystemVersion`, the signed appcast's `sparkle:minimumSystemVersion`
 and the Homebrew cask carry the same floor, so neither Sparkle nor Homebrew
-offers a newer release to an older Mac. Pre-Tahoe availability fallbacks remain
-in the source as unreachable code until their removal (GAPS T39). The app is
+offers a newer release to an older Mac. The shared targets declare an iOS 26
+floor. No source checks `macOS 26` availability, so Foundation Models and
+SpeechAnalyzer adapters compile unconditionally; a Mac without Apple
+Intelligence resolves the Foundation Models capability as unavailable with the
+system's reason. A few unreachable `macOS 15` and `macOS 14.4` fallbacks remain
+until their removal (GAPS T39). The app is
 built from SwiftPM and wrapped by `scripts/make-app.sh`; `project.yml` exists for
 XCUITest generation. Generated projects, result bundles, local screenshots,
 agent state, scratch plans, and local work-item files remain outside version control;
@@ -6025,10 +6027,10 @@ It records stable IDs, closed decisions, timings, and aggregate process
 resource counters; it never decodes expected fixture decisions into the
 adapter path. `--bench-live-assist` is admitted before `AppServices`, so this
 process opens no meeting store and starts no normal recovery, indexing, sync,
-provider-discovery, or input owner. The released prefilter is the
-Sequoia/Tahoe baseline. The separately requested Foundation Models challenger
-requires already-available macOS 26 system assets and never prepares or
-downloads them. Neither a complete run nor a below-target score changes the
+provider-discovery, or input owner. The released prefilter is the baseline
+with or without Apple Intelligence. The separately requested Foundation Models
+challenger requires already-available Apple Intelligence system assets and
+never prepares or downloads them. Neither a complete run nor a below-target score changes the
 serving engine.
 
 `Fixtures/ApuntadorWeb/public-local-v1.json` and
@@ -6434,7 +6436,7 @@ The Swift package requires the reviewed FluidAudio fork revision
 `16ff239818ddb6787629dab38ae43e8bdd0e7546`, based on upstream
 `224de0fb3c304b41bbae24e85e1801900865ff3e`. Swift 6.2 dependency traits
 retain ASR/VAD and Diarizer while excluding unused TTS resources and NeMo linkage;
-the macOS 14.4/iOS 17 deployment floors and curated model artifacts are unchanged.
+the macOS 26/iOS 26 deployment floors and curated model artifacts are unchanged.
 The decision ledger owns every immutable dependency admission; `docs/GAPS.md`
 tracks temporary-fork maintenance and unqualified upstream behavior. No floating
 branch or unrelated package refresh can admit another SDK. Vendor types enter
@@ -6492,7 +6494,7 @@ behind aspirational diagrams:
   target cross-builds for iOS, where that macOS probe returns unavailable until
   a signed iOS composition supplies an equivalent public capability boundary.
 - The tracked iOS portability gate compiles Core, Storage, Application, and
-  Integrations against the real iOS 17 Simulator destination. It is not a
+  Integrations against the real iOS 26 Simulator destination. It is not a
   substitute for an iOS executable, runtime tests, signing, hardware, or sync
   evidence.
 - Durable post-capture product policy enters

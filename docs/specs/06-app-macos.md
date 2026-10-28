@@ -1,6 +1,6 @@
 # Spec 06 — macOS App (portavoz-app + packaging scripts)
 
-Status: implemented, signed with Developer ID, and used in real meetings; public release 1.0.0 independently notarizes and staples both the app bundle and DMG. Its payload is now also verified to be readable by the installing account and to resolve the bundled Apuntador classifier from inside the app; 1.0.0 itself fails that gate and crashed at the first recording on any other Mac (D535). D74 keeps a clean-Sequoia Homebrew install as explicit field validation instead of treating notarization as launch proof. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (atomic Stop handoff), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Apuntador evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment), D107 (application-owned speaker-name admission), D108 (application-owned local-provider discovery), D109 (application-owned Settings device resources), D110 (application-owned pre-meeting reminder resolution), D111 (application-owned Meeting Detail metadata suggestions), D112 (application-owned Meeting Detail audio coordination), D113 (catalog-verified model readiness), D114 (executable dependency and presentation boundaries), D115 (honest private-iCloud receipt disclosure), D121 (bounded live-transcription hot attachment and explicit translation state), D123 (long-outage Stop affordance and capture-shape support evidence), D127 (audio-priority Stop recovery), D128 (explicit live-translation lanes), D129 (reader-owned live transcript position), D130 (unhinted automatic Refine), D131/D142 (bounded temporal live-caption bleed admission and view-only paragraphs), D132 (cast-grounded summary owners), D133 (stable split lineage), D135 (regenerable enhanced notes), D143 (deterministic bilingual Library search and exact hit seeks), D144 (reversible role-aware clear playback), D287/D302 (pure clear-playback volume schedule, ordered on the timescale it is delivered on), D145 (exact-first Library semantic augmentation), D157–D189 (pure resource policy, generation-fenced residency, one composition owner, pinned model-family leases, pressure-driven idle release, capture-exclusive Whisper/MLX admission, bounded persisted-level presentation, signal-driven bounded live translation, recording-scoped bounded live Apuntador generation, signal-driven bounded live-summary delivery, deterministic generated-intelligence admission, observational clipping evidence, policy-owned live-caption presentation bounds, route-cancellable bounded waveform delivery, one shared bounded semantic-indexing flight, capture-prioritized semantic checkpoints, signal-driven semantic maintenance, capture-safe existing-library sync admission, staged whole-library backup checkpoints, crash-safe stage ownership, bounded backup-destination identity, durable publication evidence, strict staged-source adoption, successful-publication source checkpoints, fail-closed pending-publication reconciliation, durable typed backup failure outcomes, and fail-closed launch continuation), D224–D234 (Meeting Detail decomposition, correction editing, derived-artifact lineage, correction-aware export, and protected private-sync convergence), D238 (source-bound commitment-review read foundation), D273 (signal-driven typed memory-graph projection), D319 (fail-closed database launch recovery), D331 (explicit correction-aware Apuntador refresh), D332 (explicit semantic asset preparation), D357 (fail-closed encrypted voice identity recovery), D384 (bounded progressive Ask UI), D385 (selected local-engine manual Ask), D386 (explicit Ask source UI and ownership), D387 (one-request direct-Web Ask UI), D388 (pull-based cited interview assistance), D389 (typed raw-note Ask UI), D580 (consent-bound dictation Ask UI), D427 (one content-free owner-fed background-work projection with recording priority), D431 (provider-neutral live Apuntador admission on Sequoia and Tahoe).
+Status: implemented, signed with Developer ID, and used in real meetings; public release 1.0.0 independently notarizes and staples both the app bundle and DMG. Its payload is now also verified to be readable by the installing account and to resolve the bundled Apuntador classifier from inside the app; 1.0.0 itself fails that gate and crashed at the first recording on any other Mac (D535). D74 keeps a clean-Sequoia Homebrew install as explicit field validation instead of treating notarization as launch proof. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (atomic Stop handoff), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Apuntador evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment), D107 (application-owned speaker-name admission), D108 (application-owned local-provider discovery), D109 (application-owned Settings device resources), D110 (application-owned pre-meeting reminder resolution), D111 (application-owned Meeting Detail metadata suggestions), D112 (application-owned Meeting Detail audio coordination), D113 (catalog-verified model readiness), D114 (executable dependency and presentation boundaries), D115 (honest private-iCloud receipt disclosure), D121 (bounded live-transcription hot attachment and explicit translation state), D123 (long-outage Stop affordance and capture-shape support evidence), D127 (audio-priority Stop recovery), D128 (explicit live-translation lanes), D129 (reader-owned live transcript position), D130 (unhinted automatic Refine), D131/D142 (bounded temporal live-caption bleed admission and view-only paragraphs), D132 (cast-grounded summary owners), D133 (stable split lineage), D135 (regenerable enhanced notes), D143 (deterministic bilingual Library search and exact hit seeks), D144 (reversible role-aware clear playback), D287/D302 (pure clear-playback volume schedule, ordered on the timescale it is delivered on), D145 (exact-first Library semantic augmentation), D157–D189 (pure resource policy, generation-fenced residency, one composition owner, pinned model-family leases, pressure-driven idle release, capture-exclusive Whisper/MLX admission, bounded persisted-level presentation, signal-driven bounded live translation, recording-scoped bounded live Apuntador generation, signal-driven bounded live-summary delivery, deterministic generated-intelligence admission, observational clipping evidence, policy-owned live-caption presentation bounds, route-cancellable bounded waveform delivery, one shared bounded semantic-indexing flight, capture-prioritized semantic checkpoints, signal-driven semantic maintenance, capture-safe existing-library sync admission, staged whole-library backup checkpoints, crash-safe stage ownership, bounded backup-destination identity, durable publication evidence, strict staged-source adoption, successful-publication source checkpoints, fail-closed pending-publication reconciliation, durable typed backup failure outcomes, and fail-closed launch continuation), D224–D234 (Meeting Detail decomposition, correction editing, derived-artifact lineage, correction-aware export, and protected private-sync convergence), D238 (source-bound commitment-review read foundation), D273 (signal-driven typed memory-graph projection), D319 (fail-closed database launch recovery), D331 (explicit correction-aware Apuntador refresh), D332 (explicit semantic asset preparation), D357 (fail-closed encrypted voice identity recovery), D384 (bounded progressive Ask UI), D385 (selected local-engine manual Ask), D386 (explicit Ask source UI and ownership), D387 (one-request direct-Web Ask UI), D388 (pull-based cited interview assistance), D389 (typed raw-note Ask UI), D580 (consent-bound dictation Ask UI), D427 (one content-free owner-fed background-work projection with recording priority), D431 (provider-neutral live Apuntador admission on Tahoe).
 
 Library navigation uses full-width, labeled destinations with semantic selected
 state rather than compact icon tiles. Import progress keeps the other
@@ -12,8 +12,9 @@ voice-mix cues and all existing route/control identifiers remain intact.
 Settings category buttons share readable type and restrained selected tint;
 their accessible name is the category, their subtitle is a hint, and selected
 state is semantic rather than color-only. The Settings search has a stable ID.
-Summary-engine help describes the provider-neutral live checkpoint on Sequoia
-and Tahoe and optional refinement by the selected local engine. Apple readiness
+Summary-engine help says Apple requires Apple Intelligence and describes the
+provider-neutral live checkpoint and optional refinement by the selected local
+engine. Apple readiness
 copy promises on-device processing, not a specific compute unit or an absence
 of operating-system asset preparation.
 
@@ -49,13 +50,14 @@ deinitializer so a closed window cancels without unsafe actor access.
 D385 late-binds manual Ask only after `AppServices` finishes initialization.
 The router samples the current explicit local engine for each request and maps
 the same exact citations into a provider-neutral grounded answer. Apple
-Foundation Models remains macOS-26-only; configured loopback Ollama and a
-verified embedded MLX installation work on Sequoia and Tahoe. MLX reuses the
+Foundation Models requires Apple Intelligence; configured loopback Ollama and a
+verified embedded MLX installation work without it. MLX reuses the
 single process-owned runtime and resource ledger. Duplicate router installation
 is inert rather than process-fatal. Ask and the command palette share outcome
 presentation: unavailable, failed, and timed-out generation have distinct
 localized guidance while the exact passages stay navigable. Automatic live
-Apuntador now uses D431's bundled bilingual detector on Sequoia and Tahoe;
+Apuntador now uses D431's bundled bilingual detector with or without Apple
+Intelligence;
 Foundation Models is an optional challenger/answer lane rather than its
 availability gate.
 D386 gives the full Ask conversation an explicit Library / one Meeting / Web
@@ -253,7 +255,7 @@ feature control; only readiness starts pressure/search/reminder/sync/backup,
 recording/job recovery, provider discovery, and dictation work, once.
 
 The database-unavailable view is one bilingual, keyboard-accessible SwiftUI
-surface available on both the Sequoia deployment floor and Tahoe. Its stable
+surface available on every supported macOS version. Its stable
 identifiers are `launch-recovery-retry`, `launch-recovery-save-copy`, and
 `launch-recovery-export-diagnostics`. Native panels choose the output
 directory/file. Diagnostics omit paths and raw errors; recovery reads the
@@ -417,7 +419,7 @@ or graph wake. A non-idle/attention toolbar button deep-links to the same pane.
 Semantic and graph requests publish **Waiting for capture to end** while
 capture is protected and resume through the existing capture-stop
 reconciliation. None of this depends on Foundation Models, so the surface is
-available on both Sequoia and Tahoe.
+available without Apple Intelligence.
 
 The real-app fixture is content-free and activates only when both
 `-use-temp-store` and `-seed-background-work` are present. A separate
@@ -1421,16 +1423,17 @@ state, carries no durable queue, and never blocks capture or Stop.
 D431 changes the operation injected into that existing owner, not the owner's
 bound. `RecordingController` always composes
 `ProviderNeutralProvenanceCompanion`; the mandatory bundled classifier admits
-questions on Sequoia and Tahoe, while the app-owned Foundation Models
-capability enables only the optional challenger. This same injection makes the
-temporary-store `-simulate-sequoia-capabilities` path disable the challenger
-on a Tahoe runner instead of accidentally exercising installed host assets.
+questions with or without Apple Intelligence, while the app-owned Foundation
+Models capability enables only the optional challenger. This same injection
+makes the temporary-store `-simulate-no-apple-intelligence` path disable the
+challenger instead of accidentally exercising installed host assets.
 The real-app fixture adds `-simulate-live-apuntador`, emits one frozen localized
 remote question through the normal caption callback, and relies on the actual
 compiled classifier. The fixture never supplies a card or a classification.
-Settings presents `settings-apuntador-enabled` on Sequoia, distinguishes ready
-offline detection from Tahoe answer enhancement, and never implies that the
-separate post-meeting refresh lost its macOS-26 requirement.
+Settings presents `settings-apuntador-enabled` without Apple Intelligence,
+distinguishes ready offline detection from Apple Intelligence answer
+enhancement, and never implies that the separate post-meeting refresh lost its
+Apple Intelligence requirement.
 
 ### Recording-scoped proactive assistance (D390)
 
@@ -1795,8 +1798,7 @@ loading keep independent tasks and generation fences; switching surfaces or
 closing the window cancels hidden work. Typed abstention, malformed evidence,
 and an operational read failure remain separate states with explicit retry.
 The existing free-form Ask, command palette, CLI, MCP, and meeting briefs do
-not inherit this query, and no Foundation Models capability is required on
-Sequoia or Tahoe.
+not inherit this query, and no Foundation Models capability is required.
 
 ## Exact decisions by topic in Ask (D362)
 
@@ -1812,10 +1814,9 @@ and exact evidence buttons. Typed abstention, malformed evidence, and an
 operational read failure remain distinct with retry; no state silently falls
 back to free-form Ask. Every interactive control has an `ask-topic-*`
 accessibility identifier, uses localized English/Spanish copy, and reuses the
-existing meeting-and-timestamp navigation. The surface needs neither
-Foundation Models nor Tahoe-only APIs, so the deployment floor and Sequoia
-behavior remain unchanged; physical VoiceOver and independent Sequoia/Tahoe
-validation are still external evidence.
+existing meeting-and-timestamp navigation. The surface needs no Foundation
+Models capability; physical VoiceOver and independent hardware validation are
+still external evidence.
 
 ## First confirmed discussion by topic in Ask (D363)
 
@@ -1837,7 +1838,7 @@ The picker, both segments, load action, card, and evidence action have stable
 The temporary-store graph fixture drives an independent bilingual XCUITest that
 switches jobs, loads the first discussion, and follows its source to 00:03.
 No Foundation Models or Tahoe-only API is involved; physical VoiceOver and
-independent Sequoia/Tahoe validation remain external.
+independent Tahoe validation remain external.
 
 ## Confirmed decision changes by topic in Ask (D364)
 
@@ -1862,7 +1863,7 @@ successor, confirms their supersession, and projects the real disposable graph.
 An independent bilingual XCUITest verifies both statements, both exact source
 actions, and the successor seek to 00:03. The app path adds no Foundation
 Models or Tahoe-only dependency; physical VoiceOver and independent
-Sequoia/Tahoe validation remain external.
+Tahoe validation remain external.
 
 ## Active blockers for one exact commitment in Ask (D365)
 
@@ -1889,7 +1890,7 @@ the causal blocker, and projects the real disposable graph. Its evidence
 meeting reuses only the fixture's synthetic audio so the independent bilingual
 XCUITest can verify both exact sources and follow the blocker source to 00:04.
 No user library, model, inferred causality, network, or Tahoe-only API is
-involved; physical VoiceOver and independent Sequoia/Tahoe validation remain
+involved; physical VoiceOver and independent Tahoe validation remain
 external.
 
 ## Confirmed changes since one exact meeting in Ask (D366)
@@ -1923,7 +1924,7 @@ rollout`. The bilingual XCUITest searches and selects that exact meeting,
 verifies both Spanish statements and both evidence paths, then follows the
 successor source to 00:03. It touches no user library, network, Foundation
 Models, new storage authority, or Tahoe-only API; physical VoiceOver and
-independent Sequoia/Tahoe validation remain external.
+independent Tahoe validation remain external.
 
 ## Exact graph query timing in the app (D367)
 
@@ -1948,7 +1949,7 @@ No SwiftUI state, copy, accessibility identity, graph authority, database
 schema, model, or support export changes. No identity, text, source, count,
 abstention reason, or error description reaches OSLog, persistence, or a
 network. The signposts make local Instruments runs possible; they are not an
-accepted Sequoia/Tahoe performance receipt by themselves.
+accepted Tahoe performance receipt by themselves.
 
 ## Isolated graph query timing runner (D368)
 
@@ -2020,9 +2021,10 @@ recording. A disposable-store-only fixture supplies a first failure and then
 success without downloading models.
 
 First Listen owns a separate generation-fenced microphone/caption session.
-On Tahoe it resolves the optional SpeechAnalyzer asset before microphone start;
-on Sequoia the caption capability resolves unavailable without changing the
-same capture cleanup contract. Continue, Skip, root dismissal, retry, and task
+It resolves the optional SpeechAnalyzer asset before microphone start; when
+that asset or the analyzer is unavailable the caption capability resolves
+unavailable ("Live captions are unavailable on this Mac. Recording still
+works.") without changing the same capture cleanup contract. Continue, Skip, root dismissal, retry, and task
 cancellation invalidate the session, cancel the caption consumer, and await the
 microphone and analyzer teardown before any stale result can publish. This
 ordering prevents a cold framework wait from buffering live microphone chunks
@@ -2650,7 +2652,7 @@ to review, the standing rules and the action history.
 
 Font: `docs/design/ds/` (authored in Claude Design, pine project). (1) `PVDesign` (app): Swift mirror of `tokens/*.css` — spacing 12/16/24, radios 8/10/12/14, tints 0.14/0.08, brand amber/violet/slate. When a value changes in the DS, it changes THERE and nowhere else. (2) **Voice B direction «el color ES la voz»**: `VoiceHue.index` (ApplicationKit, pure, FNV-1a — Swift hashValue is randomized by launch and DOESN'T work; 3 tests) assigns stable hue: named by hash of normalized name (same person = same color in all meetings), S-labels by appearance order; `VoicePalette` (app) maps to DS light/dark colors. Applied in: SpeakerPill (Me = solid amber + amber-contrast text; others hue 0.26), MeetingHealth bars (0.85), transcript pills, mic channel of waveform player (amber) and live recording labels. Indigo reserved for interaction (chips ✦, links, selection). (3) **App accent**: `assets/Assets.xcassets/AccentColor` (indigo #5856D6/#5E5CE6) compiled with `xcrun actool` in make-app.sh + `NSAccentColorName` — resolves system-accent debt for multicolor users (macOS gives priority to user who chose explicit color). **DS batch Jul 11 (2nd night — pull 9f11623 + implementation)**: (1) **Icon «La P que habla»**: assets/AppIcon.icns regenerated from DS SVG — the P is Fraunces (NOT installed locally): rendered in browser with Google Fonts via `scripts/icon-p.html` (canvas 1024, macOS grid: square 824 + radius 185) and `scripts/make-icns.sh` builds .icns; menu bar = `assets/icon/pv-menubar-32.png` pre-rendered as NSImage template (MenuBarIcon.swift) — the P adapts to appearance; recording follows record.circle.fill red (the «asta que pulsa» of DS remains flourish web). scripts/make-icon.swift (old icon) removed. (2) **Chips by evidence** (tokens --chip-* new): ChipLabel.swift (ai/voice/offer) + dynamic light/dark tokens in PVDesign (NSColor(name:dynamicProvider:)) — AI = violet tint + spark ✦ AMBER, voice = cyan + waveform, offer = neutral; applied to suggested title, S→name, voice matches, «Summarize as X?» and voice reminder offer. CONTROLS ✦ (Suggest names) follow indigo — deliberate distinction suggestion≠button. (3) **Settings 2a**: NavigationSplitView with 7 categories (SettingsCategories.swift) + search (.searchable filters by title and keyword bags EN/ES — ES live in catalog because EnglishSourceTests scans strings in code) + banner «100% local» → ledger; LedgerSection = real numbers (du of recordings root in Task.detached, count of meetings, enrolled+recorded voices) + honesty line of what actually goes out. gitHubSection extracted to GitHubSection.swift (file_length 700). (4) **Live lyrics 4a**: captionRow with colored voice pills (hash of label — S1/S2 stable, names = canonical hue), active line .title3, YOUR card in amber (me 0.12 + ring 0.35); FocusedTranscriptView already had fade/shrink/blur cylinder. **DS batch Jul 11 (3rd — pull 35264fb: Settings/Menubar/Dictation.jsx + menu bar implementation + mix)**: (1) **Menu bar 2b**: MenuBarContent rewritten as panel `.menuBarExtraStyle(.window)` (previously flat menu) — status header (mini waveform with amber/red peak when recording + a green local-first/opt-in-transfer policy), quick actions grid (Record red / Dictate indigo / Ask), next meeting card (only if calendar access — never prompt here) with «grabar al empezar» → route .recording(event), recent with relative dates, footer (Open / Launch at login / Quit). Panel closes only on focus loss (opening window closes it). (2) **Voice mix in sidebar** (kit signature): `MeetingStore.voiceMixes(for:)` (StorageKit) — ONE added query that sums segment durations by (meeting, speaker), normalizes to assigned voice of each meeting and returns ordered slices by talk-time (isMe/displayName/fraction/order); 3 tests (fractions sum to 1 + order, empty input, meeting without attributed speech absent). `VoiceMixBar` under each meeting row colors each slice with `VoicePalette.color(for slice:)` — amber = you, stable hue by name, order for S-labels. Meetings without attributed segments simply don't show bar (honest).
 
-**Catch me up (Jul 2026)**: a standing pull control in the recording bar (`recording-catch-up`) on EVERY platform. On macOS 26 with the on-device model available it renders a 2-4 bullet recap of the last five minutes of CLOSED captions (`CatchUpPolicy.clip` — window and minimum rows pinned by tests; the growing coalescer row is excluded) via `FoundationModelSummaryProvider.catchUp` at interactive priority with the injection guard; the formatted clip keeps its TAIL when over budget because newest speech wins. On Sequoia or without Apple Intelligence the same button answers with the honest capability explanation — visible and truthful, never a hidden control. The card (`recording-catch-up-panel`) never persists anywhere; dismiss cancels any in-flight generation, and Stop synchronously cancels and clears the ephemeral card before capture crosses the durable boundary.
+**Catch me up (Jul 2026)**: a standing pull control in the recording bar (`recording-catch-up`) on EVERY platform. With the on-device model available it renders a 2-4 bullet recap of the last five minutes of CLOSED captions (`CatchUpPolicy.clip` — window and minimum rows pinned by tests; the growing coalescer row is excluded) via `FoundationModelSummaryProvider.catchUp` at interactive priority with the injection guard; the formatted clip keeps its TAIL when over budget because newest speech wins. Without Apple Intelligence the same button answers with the honest capability explanation ("Catch-up needs Apple Intelligence. Summaries at Stop still work with your configured engine.") — visible and truthful, never a hidden control. The card (`recording-catch-up-panel`) never persists anywhere; dismiss cancels any in-flight generation, and Stop synchronously cancels and clears the ephemeral card before capture crosses the durable boundary.
 
 **Objectives with live check-off (D134, Jul 2026)**: `RecordingObjectivesModel` owns the checklist (`recording-objectives-panel`, add via `recording-objective-field`/`recording-objective-add`); adding trims and de-duplicates case-insensitively, manual toggling is always available and clears the model mark. The AUTOMATIC pass rides the signal-driven live-summary cycle behind the Apuntador opt-in: `ObjectiveCheckPolicy` (pure, tested) clips a 150-second window of closed rows and only runs with pending objectives plus enough conversation; `ObjectiveCheckDetector` (few-shot, `.background`, greedy) returns addressed indexes through a deterministic gate — out-of-range indexes drop, doubt leaves objectives pending, announced-but-not-discussed is explicitly NOT covered, and the model can never uncheck. Each accepted objective change commits a stable-ID `ContextItem.Kind.objective` row ("✓ " prefix + check-off timestamp for covered ones), so the D28 notes block reports coverage to every summary without any schema change. Brief seeding is deferred (the `MeetingBrief` dies at the recording route boundary today).
 
@@ -3614,8 +3616,7 @@ re-checks readiness, so a missing or removed asset is never silently treated
 as a working session. Dictation reports a missing asset with an actionable
 Settings message and closes the microphone it opened in parallel (D561). Meeting capture remains audio-first and starts a
 bounded hot attachment; early or failed live coverage forces durable recovery.
-Neither route changes batch transcription, Sequoia behavior, or the default
-multilingual path.
+Neither route changes batch transcription or the default multilingual path.
 The versioned portable-settings allowlist does not export either live-engine
 selection: importing settings on another Mac must not silently select an OS
 asset that may be absent or trigger an unreviewed preparation action.
@@ -3947,7 +3948,7 @@ exercises this same production path in the durable-resume XCUITest (D63).
   through ApplicationKit; SwiftUI does not render the canonical document, read
   the publishing credential, or construct the publisher/network gateway.
 
-**SettingsView (⌘,)**: Language (use system language or force English/Spanish, saved in `@AppStorage("app-language")`, applies `\.locale` live to `ContentView` and `SettingsView`) · Intelligence language policies (`transcriptionLanguage`: "Auto-detect" / "English" / "Español" for recognition only; `summaryLanguage`: "Meeting language" / "English" / "Español" for generated output only) · capability-aware Summary engine selection whose localized recommendation action is prominent and whose unavailable Apple state names Ollama/MLX recovery · proactive Whisper Turbo/Compact rows with select/download/retry/delete, background preparation progress that says download occurs only when needed, stable `settings-whisper-*` accessibility identifiers, and full catalog-integrity verification before any model is shown as downloaded (D71/D113). Whisper artifacts live under user Application Support rather than either app bundle, so Dev reinstall and normal application updates preserve them · Audio (always-on call-safe raw capture status, preferred mic with visible fallback, capture mode auto/app/system and disclosure of scope; no VPIO/AEC recording toggle, D125) · Recordings (configurable folder with migration and progress) · Titles (template with help popover of tokens, insertable chips, `Reset` button, and live preview) · Vocabulary (list editor: Enter adds, − removes) · My voice (enroll 12 s / delete — destroys file+key) · Apuntador activation/status (enabled here or from recording only when the macOS 26 Apple classifier is available; Sequoia explains the requirement while retaining Mirror) · External model BYOK (endpoint/model in defaults, key through the async application secret boundary into this-device-only Keychain, answer-provider opt-in disabled until everything and the Apuntador classifier are available; deleting key turns it off — spec 04) · GitHub (same injected secret boundary) · explicit local redacted support export in Your data (`settings-export-diagnostics`, D76) · whole-library Markdown backup with the native `NSOpenPanel`, visible progress, localized complete/partial/fatal status, bounded bookmark access plus a private publication/failure journal, and no Store or IntegrationsKit coordination in SwiftUI (`settings-export-all-button`, `settings-backup-progress`, `settings-backup-status`, D99/D180–D189). A one-shot app route lets any feature open an existing or new Settings window at an exact category (D72). `AppServices` is the sole app constructor of PlatformKit security and permission adapters; onboarding renders permission state and invokes app adapters rather than importing AVFoundation or EventKit.
+**SettingsView (⌘,)**: Language (use system language or force English/Spanish, saved in `@AppStorage("app-language")`, applies `\.locale` live to `ContentView` and `SettingsView`) · Intelligence language policies (`transcriptionLanguage`: "Auto-detect" / "English" / "Español" for recognition only; `summaryLanguage`: "Meeting language" / "English" / "Español" for generated output only) · capability-aware Summary engine selection whose localized recommendation action is prominent and whose unavailable Apple state names Ollama/MLX recovery · proactive Whisper Turbo/Compact rows with select/download/retry/delete, background preparation progress that says download occurs only when needed, stable `settings-whisper-*` accessibility identifiers, and full catalog-integrity verification before any model is shown as downloaded (D71/D113). Whisper artifacts live under user Application Support rather than either app bundle, so Dev reinstall and normal application updates preserve them · Audio (always-on call-safe raw capture status, preferred mic with visible fallback, capture mode auto/app/system and disclosure of scope; no VPIO/AEC recording toggle, D125) · Recordings (configurable folder with migration and progress) · Titles (template with help popover of tokens, insertable chips, `Reset` button, and live preview) · Vocabulary (list editor: Enter adds, − removes) · My voice (enroll 12 s / delete — destroys file+key) · Apuntador activation/status (the bundled detector is enabled with or without Apple Intelligence; without it, cards show the question only unless a provider answers) · External model BYOK (endpoint/model in defaults, key through the async application secret boundary into this-device-only Keychain, answer-provider opt-in disabled until everything and the Apuntador classifier are available; deleting key turns it off — spec 04) · GitHub (same injected secret boundary) · explicit local redacted support export in Your data (`settings-export-diagnostics`, D76) · whole-library Markdown backup with the native `NSOpenPanel`, visible progress, localized complete/partial/fatal status, bounded bookmark access plus a private publication/failure journal, and no Store or IntegrationsKit coordination in SwiftUI (`settings-export-all-button`, `settings-backup-progress`, `settings-backup-status`, D99/D180–D189). A one-shot app route lets any feature open an existing or new Settings window at an exact category (D72). `AppServices` is the sole app constructor of PlatformKit security and permission adapters; onboarding renders permission state and invokes app adapters rather than importing AVFoundation or EventKit.
 
 ## Portable settings contract
 
@@ -4008,7 +4009,7 @@ call-safe capture, pending the explicit cross-OS A/B in `docs/GAPS.md`.
 stays centered in a fixed-height viewport while surrounding lines fade,
 shrink, and blur; its explicit vertical/no-indicator initializer and built-in
 vertical scroll-view coordinate space preserve the same behavior across the
-supported Sequoia and latest SwiftUI SDK signatures without sharing a generic
+current and next SwiftUI SDK signatures without sharing a generic
 named key with the visual-effect closure, and its fade/scale/blur values cross
 `CGFloat`/`Double` boundaries explicitly),
 click-to-jump, the channel-colored waveform scrubber, clip marks, skip-silence,
@@ -4117,7 +4118,7 @@ the scoped summary stream remains functional at scale; it does not substitute
 for the unavailable SwiftUI update-cause lane.
 
 The characterization baseline freezes the reviewed interaction surface. The
-current generated `meeting-detail-interaction-contract.json` snapshots 504
+current generated `meeting-detail-interaction-contract.json` snapshots 503
 state/control/presentation/keyboard/identifier/navigation signals across forty-one
 reviewed detail files and assigns all 31 `MeetingDetailUITests` journeys to
 exactly one of sixteen feature owners. Screenshot names derive from test bodies;
@@ -4149,7 +4150,7 @@ start recovery + visible system-callback recovery + reader-owned live-caption
 history and explicit Jump to live), Insights (heatmap + interlocutors), Onboarding (first listen +
 advance), MeetingDetail (summary tabs reveal ▸, typed overview/decision/action-item and role-separated Apuntador source transcript/audio navigation, explicit correction/unsupported/clear review, explicit confirmed-person
 memory, SRT/WebVTT export-menu availability, newest-recipe reload, right
-rail health+chapters, post-meeting mirror, processing failure/retry, player skip+only-my-voice, compression, clip export, refine cancel, Sequoia summary setup routing and Apuntador requirements), and Settings (all categories,
+rail health+chapters, post-meeting mirror, processing failure/retry, player skip+only-my-voice, compression, clip export, refine cancel, no-Apple-Intelligence summary setup routing and Apuntador requirements), and Settings (all categories,
 independent transcript/summary language controls, proactive clean-install
 Whisper preparation, explicit iCloud sync opt-in/existing-library separation,
 custom structures, capture
@@ -4164,8 +4165,9 @@ the user's library or Keychain. `-seed-recovery`,
 `-simulate-live-transcript-browsing`, `-simulate-live-apuntador`, and
 `-seed-without-summary` are
 accepted only with the temp
-store. `-simulate-sequoia-capabilities` makes the Foundation Models adapter
-deterministically unavailable without depending on the XCUITest host. The processing
+store. `-simulate-no-apple-intelligence` makes the Foundation Models capability
+deterministically `unavailable` with the system's Apple-Intelligence-off reason
+without depending on the XCUITest host. The processing
 fixture uses a deterministic fake local provider and no real audio, models,
 biometric files, Keychain, or host Shortcut; it uses the normal exact request
 factory and observes the original transcript and dependent summary after launch
@@ -4379,7 +4381,7 @@ journey proves exact seeded-summary content, recipient and sync disclosures,
 the localized submit boundary, foreground app ownership, receipt, and per-offer
 retirement. An architecture test, not the journey, keeps pasteboard access out
 of the email plan, delivery, openers, and composition. Physical default-client
-presentation and handoff behavior on Sequoia and Tahoe remain field evidence.
+presentation and handoff behavior on Tahoe remain field evidence.
 
 ## Review-first secret Gist publication (D328, Aug 2026)
 
@@ -4416,7 +4418,7 @@ executes the same renderer, request codec, egress metadata validation,
 proposal, effect, settlement, and store receipts but replaces network
 transport with a stable
 provider-shaped response. That proves app behavior, not physical GitHub,
-browser, Keychain, or network behavior on Sequoia or Tahoe.
+browser, Keychain, or network behavior on Tahoe.
 
 ## Review-first GitHub issue creation (D434, Aug 2026)
 
@@ -4460,7 +4462,7 @@ passes the same draft, request codec, metadata validation, execution, receipt,
 and response-fence boundaries with one stable provider-shaped URL. The combined
 Gist-and-issue journey covers exact English and Spanish UI paths without a
 second app launch. Physical GitHub authentication, provider state, slow or
-interrupted networks, browser opening, and actual Sequoia/Tahoe behavior remain
+interrupted networks, browser opening, and actual Tahoe behavior remain
 field evidence.
 
 ## Suggested-actions control center in Settings (D317/D333/D335–D343/D359/D369–D379, Aug 2026)
@@ -4540,9 +4542,8 @@ that propose the same Skill therefore have distinct English and Spanish Voice
 Control/VoiceOver names without revealing either subject. The ordinal is not
 durable and may change when the verified list changes; no stable offer key,
 subject UUID, title, transcript, preview, argument, destination, or recipient
-enters the label. The enumerated rows use a bounded compatibility array because
-the SDK's direct `EnumeratedSequence` collection conformance is macOS 26-only;
-Sequoia support remains unchanged.
+enters the label. The enumerated rows use a bounded compatibility array instead of a direct
+`EnumeratedSequence` collection.
 
 An already-open exact confirmation is also fenced. `ExecuteSkillRequest`
 carries the reviewed offer key separately from the effect's idempotency key;
@@ -4954,7 +4955,7 @@ window because `MenuBarExtra` belongs to SystemUIServer and cannot be opened
 deterministically across supported macOS versions. It proves exact preview,
 confirmation, unchanged result, offer retirement, and the global durable
 receipt without reading the host Calendar. Opening the actual status item on
-Sequoia and Tahoe remains a field-shell check, not something this host claims.
+Tahoe remains a field-shell check, not something this host claims.
 
 ## Confirmed commitment to Reminders proposal (D323, Aug 2026)
 
@@ -4989,7 +4990,7 @@ disposable XCUITest platform starts undetermined, grants access only through
 the production permission action, exposes one exact fake list, and never reads
 or writes host Reminders or TCC. The bilingual real-app journey covers preview,
 explicit access, exact destination, confirmation, offer retirement, and both
-receipt surfaces. Physical Sequoia/Tahoe TCC prompt, default-list, and save
+receipt surfaces. Physical Tahoe TCC prompt, default-list, and save
 behavior remain field evidence.
 
 ### Persistent capture warnings (D482)

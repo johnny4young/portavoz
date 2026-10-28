@@ -296,7 +296,6 @@ import Translation
 /// translation for every caption that lacks one. The OS may ask to
 /// download the language pair on first use — that's the interactive bit
 /// pending user verification.
-@available(macOS 15.0, *)
 struct LiveTranslationModifier: ViewModifier {
     @Bindable var controller: RecordingController
 
@@ -659,15 +658,11 @@ struct LiveTranslationModifier: ViewModifier {
 #endif
 
 extension View {
-    /// Applies live translation when the OS supports it; a no-op earlier.
+    /// Applies live translation where the Translation framework exists.
     @ViewBuilder
     func liveTranslation(_ controller: RecordingController) -> some View {
         #if canImport(Translation)
-        if #available(macOS 15.0, *) {
-            modifier(LiveTranslationModifier(controller: controller))
-        } else {
-            self
-        }
+        modifier(LiveTranslationModifier(controller: controller))
         #else
         self
         #endif

@@ -577,7 +577,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(decisions.contains("## D430"))
     }
 
-    func testLiveApuntadorUsesPinnedProviderNeutralSequoiaDetector() throws {
+    func testLiveApuntadorUsesPinnedProviderNeutralDetector() throws {
         let manifest = try Self.contents(of: "Package.swift")
         let detector = try Self.contents(
             of: "Sources/IntelligenceKit/LiveQuestionDetector.swift")
@@ -614,13 +614,13 @@ extension ArchitectureDependencyTests {
             "BundledLiveQuestionDetector.resourceIsLoadable"))
         XCTAssertTrue(settings.contains("settings-apuntador-enabled"))
         XCTAssertTrue(settings.contains(
-            "On macOS Sequoia, cards show the question only."))
+            "Generated answers are unavailable: %@. Cards show the question only."))
         XCTAssertTrue(packager.contains("Portavoz_IntelligenceKit.bundle"))
         XCTAssertTrue(packager.contains(
             "PortavozLiveQuestionClassifier.mlmodelc"))
         XCTAssertTrue(scope.contains("livequestiondetector.swift"))
         XCTAssertTrue(scope.contains(
-            "testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador"))
+            "testNoAppleIntelligenceSummaryFailureOpensExactSetupAndExplainsApuntador"))
         XCTAssertTrue(decisions.contains("## D431"))
         XCTAssertTrue(architecture.contains(
             "bundled bilingual question classifier"))

@@ -1,9 +1,10 @@
 import Foundation
 import PortavozCore
 
-/// Cross-version Apuntador serving adapter. The bundled classifier owns
-/// admission; Foundation Models may refine/answer on Tahoe but never gates the
-/// feature, and Sequoia degrades to an honest question-only card.
+/// Provider-neutral Apuntador serving adapter. The bundled classifier owns
+/// admission; Foundation Models may refine/answer when Apple Intelligence is
+/// available but never gates the feature, and its absence degrades to an
+/// honest question-only card.
 public struct ProviderNeutralProvenanceCompanion: Sendable {
     private static let knowledgeInstructions = """
         Answer the question directly and correctly in one to three short sentences, \
@@ -70,15 +71,15 @@ public struct ProviderNeutralProvenanceCompanion: Sendable {
             classifierProviderID: detection.providerID,
             classifierModelID: detection.modelID)
         do {
-            if let tahoe = try await tahoeResult(
+            if let challenger = try await foundationModelsResult(
                 request: request,
                 authoritativeDetection: detection,
                 trace: &trace) {
                 return artifact(
-                    tahoe.card,
-                    evidenceIndexes: tahoe.answerEvidenceIndexes,
+                    challenger.card,
+                    evidenceIndexes: challenger.answerEvidenceIndexes,
                     request: request,
-                    trace: tahoe.trace,
+                    trace: challenger.trace,
                     attempt: attempt)
             }
 
@@ -88,7 +89,7 @@ public struct ProviderNeutralProvenanceCompanion: Sendable {
             if detection.kind == .logistics, !directed {
                 return .noArtifact
             }
-            let card = try await sequoiaCard(
+            let card = try await fallbackCard(
                 detection: detection,
                 request: request,
                 directed: directed,
@@ -119,7 +120,7 @@ public struct ProviderNeutralProvenanceCompanion: Sendable {
             startedAt: now())
     }
 
-    private func sequoiaCard(
+    private func fallbackCard(
         detection: LiveQuestionDetection,
         request: CompanionGenerationRequest,
         directed: Bool,
@@ -202,20 +203,19 @@ public struct ProviderNeutralProvenanceCompanion: Sendable {
 }
 
 extension ProviderNeutralProvenanceCompanion {
-    private struct TahoeResult {
+    private struct FoundationModelsResult {
         let card: CompanionCard
         let trace: CompanionProcessTrace
         let answerEvidenceIndexes: [Int]
     }
 
-    private func tahoeResult(
+    private func foundationModelsResult(
         request: CompanionGenerationRequest,
         authoritativeDetection: LiveQuestionDetection,
         trace: inout CompanionProcessTrace
-    ) async throws -> TahoeResult? {
+    ) async throws -> FoundationModelsResult? {
         #if canImport(FoundationModels)
         guard allowsFoundationModelChallenger,
-              #available(macOS 26.0, iOS 26.0, *),
               FoundationModelSummaryProvider.unavailabilityReason() == nil
         else { return nil }
         do {
@@ -242,7 +242,7 @@ extension ProviderNeutralProvenanceCompanion {
                 card,
                 authoritativeDetection: authoritativeDetection,
                 request: request)
-            return TahoeResult(
+            return FoundationModelsResult(
                 card: groundedCard,
                 trace: merged,
                 answerEvidenceIndexes: result.answerEvidenceIndexes)

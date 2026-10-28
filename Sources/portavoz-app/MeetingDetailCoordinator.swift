@@ -104,9 +104,6 @@ struct MeetingDetailCoordinator {
             switch result {
             case .replaced:
                 break
-            case .unavailable(.requiresMacOS26):
-                flow.operationError = L10n.text(
-                    "Re-checking Apuntador answers requires macOS 26 and Apple Intelligence.")
             case .unavailable(.appleOnDevice(let reason)):
                 flow.operationError = L10n.format(
                     "Apuntador is unavailable: %@",

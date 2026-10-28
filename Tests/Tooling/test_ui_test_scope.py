@@ -634,7 +634,7 @@ class UITestScopeTests(unittest.TestCase):
             "PortavozUITests/MeetingDetailUITests/"
             "testExplicitApuntadorRefreshUsesCorrectedTranscript",
             "PortavozUITests/MeetingDetailUITests/"
-            "testSequoiaApuntadorRefreshPreservesStaleAnswers",
+            "testNoAppleIntelligenceApuntadorRefreshPreservesStaleAnswers",
         }
         for path in (
             "Sources/ApplicationKit/RegenerateCompanionCards.swift",
@@ -673,13 +673,6 @@ class UITestScopeTests(unittest.TestCase):
             selection = select_paths([path])
             self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en",), path)
-
-    def test_legacy_scroll_bridge_selects_only_recording_recovery_evidence(self):
-        selection = select_paths(
-            ["Sources/portavoz-app/LegacyScrollInteractionTracker.swift"]
-        )
-        self.assertEqual(selection.tests, FEATURE_TESTS["recording-recovery"])
-        self.assertEqual(selection.locales, ("en",))
 
     def test_detail_performance_harness_selects_only_scale_journeys(self):
         for path in (

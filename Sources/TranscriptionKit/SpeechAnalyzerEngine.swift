@@ -142,7 +142,6 @@ private final class AudioConverterInputBox: @unchecked Sendable {
 /// engine forwards them as `TranscriptSegment`s with `isFinal` mapped, and
 /// leaves append-versus-replace admission to `SpeechAnalyzerLiveEngine` when
 /// serving live captions; the raw spike remains useful for batch/benchmark work.
-@available(macOS 26.0, iOS 26.0, *)
 public struct SpeechAnalyzerEngine: Sendable {
     public init() {}
 

@@ -50,7 +50,6 @@ final class RecipeCatalogTests: XCTestCase {
     }
 
     func testExcerptCapsLengthAndLeadsWithSpeakerCount() throws {
-        guard #available(macOS 26.0, *) else { throw XCTSkip("needs macOS 26") }
         let meeting = MeetingID()
         let long = String(repeating: "palabra ", count: 80)
         let segments = (0..<40).map { index in
@@ -81,7 +80,6 @@ final class MeetingTypeDetectorIntegrationTests: XCTestCase {
         try XCTSkipUnless(
             ProcessInfo.processInfo.environment["PORTAVOZ_MODEL_TESTS"] == "1",
             "set PORTAVOZ_MODEL_TESTS=1 to run")
-        guard #available(macOS 26.0, *) else { throw XCTSkip("needs macOS 26") }
 
         let standup = segments([
             "Ayer terminé la migración de la base de datos y cerré el ticket 142.",

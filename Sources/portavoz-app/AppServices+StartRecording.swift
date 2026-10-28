@@ -489,11 +489,9 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
 
         var sources: [any AudioCaptureSource] = [microphone]
         var tappedMeetingApps: [String] = []
-        if #available(macOS 14.4, *) {
-            let system = await makeSystemTapSource(mode: preferences.captureMode)
-            sources.append(system.source)
-            tappedMeetingApps = system.appNames
-        }
+        let system = await makeSystemTapSource(mode: preferences.captureMode)
+        sources.append(system.source)
+        tappedMeetingApps = system.appNames
         prepared = Prepared(
             microphone: microphone,
             warmup: warmup,
@@ -556,7 +554,6 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
         services?.scheduleRecordingEnginesRelease()
     }
 
-    @available(macOS 14.4, *)
     private func makeSystemTapSource(
         mode: StartRecordingCaptureMode
     ) async -> (source: ProcessTapSource, appNames: [String]) {

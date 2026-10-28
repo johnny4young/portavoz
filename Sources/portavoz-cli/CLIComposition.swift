@@ -153,9 +153,6 @@ struct CLIPlatformDependencies {
                 apiKey: apiKey,
                 gateway: URLSessionDataEgressGateway(receiptRecorder: recorder))
         case .onDevice:
-            guard #available(macOS 26.0, *) else {
-                throw CLISummaryProviderConfigurationError.requiresMacOS26
-            }
             if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
                 throw CLISummaryProviderConfigurationError.unavailable(reason)
             }
@@ -190,13 +187,10 @@ enum CLISummaryProviderConfiguration: Sendable {
 }
 
 enum CLISummaryProviderConfigurationError: Error, LocalizedError {
-    case requiresMacOS26
     case unavailable(String)
 
     var errorDescription: String? {
         switch self {
-        case .requiresMacOS26:
-            "on-device summaries need macOS 26+; use --byok as an explicit fallback"
         case .unavailable(let reason):
             reason
         }

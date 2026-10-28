@@ -1416,7 +1416,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(spotlightIndexer.contains("case meetingDocuments"))
         XCTAssertTrue(spotlightIndexer.contains("case appEntities"))
         XCTAssertTrue(spotlightIndexer.contains("index.indexAppEntities("))
-        XCTAssertTrue(spotlightIndexer.contains("index.indexSearchableItems("))
+        XCTAssertFalse(spotlightIndexer.contains("index.indexSearchableItems("))
         XCTAssertTrue(spotlightIndexer.contains("protectionClass: .complete"))
         XCTAssertTrue(spotlightIndexer.contains("index.beginBatch()"))
         XCTAssertTrue(spotlightIndexer.contains("endBatch(withClientState:"))
@@ -1478,7 +1478,7 @@ extension ArchitectureDependencyTests {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            504)
+            503)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
             16)

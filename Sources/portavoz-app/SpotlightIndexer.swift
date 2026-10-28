@@ -24,7 +24,7 @@ actor SpotlightIndexer {
         /// The deployment-floor fallback keeps released meeting search on
         /// systems predating App-Entity indexing.
         case meetingDocuments = "meeting-documents-v1"
-        /// Sequoia and later publish all three narrow native entity types.
+        /// macOS 15 and later publish all three narrow native entity types.
         case appEntities = "app-entities-v1"
     }
 
@@ -232,10 +232,7 @@ actor SpotlightIndexer {
     }
 
     private static func productionBackend() -> any SpotlightIndexBackend {
-        if #available(macOS 15.0, *) {
-            return CoreSpotlightAppEntityIndexBackend()
-        }
-        return CoreSpotlightMeetingDocumentIndexBackend()
+        CoreSpotlightAppEntityIndexBackend()
     }
 
     private static func update(_ hasher: inout SHA256, string: String) {
@@ -287,47 +284,6 @@ private actor UserDefaultsSpotlightLegacyCleanupState: SpotlightLegacyCleanupSta
     }
 }
 
-private actor CoreSpotlightMeetingDocumentIndexBackend: SpotlightIndexBackend {
-    nonisolated let mode: SpotlightIndexer.IndexMode = .meetingDocuments
-    private let index = CSSearchableIndex(
-        name: SpotlightIndexer.indexName,
-        protectionClass: .complete)
-
-    func lastClientState() async throws -> Data? {
-        return try await index.fetchLastClientState()
-    }
-
-    func replace(_ snapshot: SpotlightIndexSnapshot, clientState: Data) async throws {
-        index.beginBatch()
-        do {
-            try await index.deleteAllSearchableItems()
-            for batch in snapshot.meetings.batches(of: SpotlightIndexer.batchSize) {
-                try await index.indexSearchableItems(batch.map(Self.searchableItem))
-            }
-        } catch {
-            try? await index.endBatch(withClientState: Data("incomplete".utf8))
-            throw error
-        }
-        try await index.endBatch(withClientState: clientState)
-    }
-
-    func removeLegacyItems() async throws {
-        try await removeLegacySpotlightItems()
-    }
-
-    private static func searchableItem(_ document: SpotlightDocument) -> CSSearchableItem {
-        let attributes = CSSearchableItemAttributeSet(contentType: .content)
-        attributes.title = document.title
-        attributes.contentCreationDate = document.startedAt
-        attributes.contentDescription = document.contentDescription
-        return CSSearchableItem(
-            uniqueIdentifier: document.meetingID.rawValue.uuidString,
-            domainIdentifier: SpotlightIndexer.domain,
-            attributeSet: attributes)
-    }
-}
-
-@available(macOS 15.0, *)
 private actor CoreSpotlightAppEntityIndexBackend: SpotlightIndexBackend {
     nonisolated let mode: SpotlightIndexer.IndexMode = .appEntities
 
@@ -372,7 +328,6 @@ private actor CoreSpotlightAppEntityIndexBackend: SpotlightIndexBackend {
     }
 }
 
-@available(macOS 15.0, *)
 enum SpotlightAppEntityFactory {
     static func meeting(_ document: SpotlightDocument) -> PortavozMeetingEntity {
         PortavozMeetingEntity(

@@ -8,7 +8,6 @@ import XCTest
 /// output never decides what survives — grounding does. (Class-level
 /// availability: the Point type appears in helper signatures; on older
 /// macOS the whole class is skipped by the runtime.)
-@available(macOS 26.0, *)
 final class BriefSynthesizerTests: XCTestCase {
     private let passages = [
         "El equipo decidió migrar de Keycloak a Zephyr antes del cierre del trimestre.",

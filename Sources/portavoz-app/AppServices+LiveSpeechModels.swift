@@ -144,10 +144,6 @@ extension AppServices {
         for purpose: LiveSpeechPurpose = .meeting
     ) async throws -> LiveTranscriptionRuntime {
         if purpose.selectedEngine(in: defaults) == .appleSpeech {
-            guard #available(macOS 26.0, *) else {
-                throw TranscriptionError.engineUnavailable(
-                    "Apple Speech requires macOS Tahoe or later")
-            }
             let engine = try await SpeechAnalyzerLiveEngine.acquireInstalled(
                 language: purpose.language(in: defaults))
             return LiveTranscriptionRuntime(engine: engine) {}

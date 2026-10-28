@@ -470,8 +470,7 @@ public struct OnDeviceAskMeetingIntelligence:
 
     public func expand(_ question: String) async throws -> [String] {
         try Task.checkCancellation()
-        guard #available(macOS 26.0, iOS 26.0, *),
-              FoundationModelSummaryProvider.unavailabilityReason() == nil
+        guard FoundationModelSummaryProvider.unavailabilityReason() == nil
         else { return [question] }
         return try await RAGAnswerer().expandQuery(question)
     }
@@ -480,8 +479,7 @@ public struct OnDeviceAskMeetingIntelligence:
         question: String,
         citations: [AskCitation]
     ) async throws -> String? {
-        guard #available(macOS 26.0, iOS 26.0, *),
-              FoundationModelSummaryProvider.unavailabilityReason() == nil
+        guard FoundationModelSummaryProvider.unavailabilityReason() == nil
         else { return nil }
         return try await RAGAnswerer().answer(
             question: question,
@@ -493,8 +491,7 @@ public struct OnDeviceAskMeetingIntelligence:
         citations: [AskCitation],
         onAnswer: @escaping AskAnswerReceiver
     ) async throws -> String? {
-        guard #available(macOS 26.0, iOS 26.0, *),
-              FoundationModelSummaryProvider.unavailabilityReason() == nil
+        guard FoundationModelSummaryProvider.unavailabilityReason() == nil
         else { return nil }
         return try await RAGAnswerer().streamAnswer(
             question: question,
@@ -508,8 +505,7 @@ public struct OnDeviceAskMeetingIntelligence:
         question: String,
         evidence: AskSynthesisInput
     ) async throws -> String? {
-        guard #available(macOS 26.0, iOS 26.0, *),
-              FoundationModelSummaryProvider.unavailabilityReason() == nil,
+        guard FoundationModelSummaryProvider.unavailabilityReason() == nil,
               evidence.isFactAwareGenerationReady,
               case .facts(let graphPage) = evidence.graphFacts,
               let selection = evidence.selection
