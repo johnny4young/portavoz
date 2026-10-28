@@ -129,7 +129,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id(
             "MeetingDetailUITests",
-            "testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador",
+            "testNoAppleIntelligenceSummaryFailureOpensExactSetupAndExplainsApuntador",
         ),
     ),
     "recording-interview": (
@@ -224,7 +224,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id(
             "MeetingDetailUITests",
             "testAbandonedAutomaticSummarySaysSoBesideGeneration"),
-        test_id("MeetingDetailUITests", "testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador"),
+        test_id("MeetingDetailUITests", "testNoAppleIntelligenceSummaryFailureOpensExactSetupAndExplainsApuntador"),
         test_id("MeetingDetailUITests", "testRunningRefineCanBeCanceledWithoutChangingTheTranscript"),
     ),
     "meeting-summary": (
@@ -305,7 +305,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id(
             "MeetingDetailUITests",
-            "testSequoiaApuntadorRefreshPreservesStaleAnswers",
+            "testNoAppleIntelligenceApuntadorRefreshPreservesStaleAnswers",
         ),
     ),
     "meeting-translation": (
@@ -916,11 +916,6 @@ def app_features(filename: str) -> set[str]:
         return {"settings-standing-skills"}
     if any(token in lowered for token in ("meetingbrief", "meetingreminder")):
         return {"meeting-brief", "library"}
-    if "legacyscrollinteractiontracker" in lowered:
-        # This AppKit escape exists only for reader-owned live transcript
-        # history on macOS 14. Keep a new focused bridge from silently
-        # expanding one interaction fix to the complete suite.
-        return {"recording-recovery"}
     if any(token in lowered for token in (
         "meetingdetailperformancetrace", "scalebenchmark"
     )):

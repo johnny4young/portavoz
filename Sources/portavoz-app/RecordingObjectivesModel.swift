@@ -39,7 +39,6 @@ final class RecordingObjectivesModel {
     @ObservationIgnored private let check: Check
 
     init(check: @escaping Check = { objectives, window in
-        guard #available(macOS 26.0, *) else { return [] }
         return await ObjectiveCheckDetector.addressedIndexes(objectives: objectives, window: window)
     }) {
         self.check = check

@@ -4,7 +4,6 @@ import PortavozCore
 import StorageKit
 
 public enum CompanionRegenerationUnavailability: Equatable, Sendable {
-    case requiresMacOS26
     case appleOnDevice(reason: String)
 }
 

@@ -3,9 +3,10 @@ import PortavozCore
 
 /// A bounded, extractive checkpoint for the rolling summary.
 ///
-/// This value is the always-available authority on Sequoia and Tahoe. Local
-/// generative providers may refine its rendered Markdown, but they never own
-/// the source cursor or the ability to make live summary disappear.
+/// This value is the always-available authority, with or without Apple
+/// Intelligence. Local generative providers may refine its rendered Markdown,
+/// but they never own the source cursor or the ability to make live summary
+/// disappear.
 public struct DeterministicLiveSummaryCheckpoint: Sendable {
     public struct Extract: Equatable, Sendable {
         public let id: UUID

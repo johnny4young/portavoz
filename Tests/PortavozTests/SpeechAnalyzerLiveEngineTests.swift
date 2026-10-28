@@ -6,7 +6,6 @@ import XCTest
 
 final class SpeechAnalyzerLiveEngineTests: XCTestCase {
     func testReadinessDoesNotTreatAutomaticOrUnsupportedLanguageAsInstalled() {
-        guard #available(macOS 26.0, *) else { return }
         XCTAssertEqual(
             SpeechAnalyzerLiveReadiness.resolve(
                 requested: nil, available: true, supported: "en_US", installed: ["en_US"]),
@@ -26,7 +25,6 @@ final class SpeechAnalyzerLiveEngineTests: XCTestCase {
     }
 
     func testReadinessPrefersAnAlreadyInstalledEquivalentLanguage() {
-        guard #available(macOS 26.0, *) else { return }
         XCTAssertEqual(
             SpeechAnalyzerLiveReadiness.resolve(
                 requested: "es", available: true, supported: "es_CL", installed: ["es_ES"]),
@@ -46,7 +44,6 @@ final class SpeechAnalyzerLiveEngineTests: XCTestCase {
     }
 
     func testFinalResultGateRejectsEmptyInvalidAndOverlappingRanges() throws {
-        guard #available(macOS 26.0, *) else { return }
         let meetingID = MeetingID()
         func segment(
             _ text: String,
@@ -74,7 +71,6 @@ final class SpeechAnalyzerLiveEngineTests: XCTestCase {
     }
 
     func testUnconfirmedTailFailsClosedAndLateVolatileCannotReviseAConfirmedRange() throws {
-        guard #available(macOS 26.0, *) else { return }
         let meetingID = MeetingID()
         func segment(_ text: String, start: Double, end: Double, final: Bool) -> TranscriptSegment {
             TranscriptSegment(meetingID: meetingID, channel: .microphone,
@@ -89,7 +85,6 @@ final class SpeechAnalyzerLiveEngineTests: XCTestCase {
     }
 
     func testShortFinalCannotConfirmTheRestOfALongerVolatileRange() throws {
-        guard #available(macOS 26.0, *) else { return }
         let meetingID = MeetingID()
         var gate = SpeechAnalyzerFinalResultGate()
         XCTAssertTrue(try gate.accept(TranscriptSegment(
@@ -102,7 +97,6 @@ final class SpeechAnalyzerLiveEngineTests: XCTestCase {
     }
 
     func testAdjacentFinalRangesTogetherConfirmOneLongerVolatileRange() throws {
-        guard #available(macOS 26.0, *) else { return }
         let meetingID = MeetingID()
         var gate = SpeechAnalyzerFinalResultGate()
         func segment(_ text: String, start: Double, end: Double, final: Bool)

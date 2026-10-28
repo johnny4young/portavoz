@@ -8,7 +8,7 @@ swift_bin="$(xcrun --find swift)"
 sdk_path="$(xcrun --sdk iphonesimulator --show-sdk-path)"
 sdk_version="$(xcrun --sdk iphonesimulator --show-sdk-version)"
 scratch="${PORTAVOZ_IOS_PORTABILITY_SCRATCH:-$ROOT/.build/ios-portability}"
-triple="arm64-apple-ios17.0-simulator"
+triple="arm64-apple-ios26.0-simulator"
 targets=(PortavozCore StorageKit ApplicationKit IntegrationsKit)
 
 if [[ ! -x "$swift_bin" ]]; then

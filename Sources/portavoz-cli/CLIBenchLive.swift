@@ -109,10 +109,6 @@ enum BenchLiveCommand {
                     transcribe: { engine.transcribe($0, hints: hints) },
                     log: { print($0) })
             case .speech:
-                guard #available(macOS 26.0, *) else {
-                    print("error: --engine speech requiere macOS 26")
-                    return false
-                }
                 guard SpeechAnalyzerEngine.isAvailable else {
                     print("error: SpeechTranscriber is not available on this device")
                     return false

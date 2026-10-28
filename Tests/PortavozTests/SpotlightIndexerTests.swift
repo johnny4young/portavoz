@@ -40,9 +40,7 @@ final class SpotlightIndexerTests: XCTestCase {
         let store = try await seededStore()
         let projection = try await store.spotlightIndexSnapshot()
         let backend = SpotlightBackendSpy(
-            clientState: SpotlightIndexer.clientState(
-                for: projection,
-                mode: .appEntities))
+            clientState: SpotlightIndexer.clientState(for: projection))
         let indexer = SpotlightIndexer(
             store: store,
             enabled: true,
@@ -68,9 +66,7 @@ final class SpotlightIndexerTests: XCTestCase {
         let store = try await seededStore()
         let projection = try await store.spotlightIndexSnapshot()
         let backend = SpotlightBackendSpy(
-            clientState: SpotlightIndexer.clientState(
-                for: projection,
-                mode: .appEntities),
+            clientState: SpotlightIndexer.clientState(for: projection),
             legacyRemovalFailures: 1)
         let indexer = SpotlightIndexer(
             store: store,
@@ -183,9 +179,7 @@ final class SpotlightIndexerTests: XCTestCase {
         let store = try await seededStore()
         let projection = try await store.spotlightIndexSnapshot()
         let backend = SpotlightBackendSpy(
-            clientState: SpotlightIndexer.clientState(
-                for: projection,
-                mode: .appEntities))
+            clientState: SpotlightIndexer.clientState(for: projection))
         let cleanupState = SpotlightLegacyCleanupStateSpy()
 
         let first = SpotlightIndexer(
@@ -247,25 +241,7 @@ final class SpotlightIndexerTests: XCTestCase {
         XCTAssertEqual(outcome, .completed)
     }
 
-    func testDocumentAndEntityModesCannotShareClientState() async throws {
-        let store = try await seededStore()
-        let snapshot = try await store.spotlightIndexSnapshot()
-
-        let documentState = SpotlightIndexer.clientState(
-            for: snapshot,
-            mode: .meetingDocuments)
-        let entityState = SpotlightIndexer.clientState(
-            for: snapshot,
-            mode: .appEntities)
-
-        XCTAssertNotEqual(documentState, entityState)
-        XCTAssertTrue(String(bytes: documentState, encoding: .utf8)?.hasPrefix(
-            "meeting-documents-v1:") == true)
-        XCTAssertTrue(String(bytes: entityState, encoding: .utf8)?.hasPrefix(
-            "app-entities-v1:") == true)
-    }
-
-    func testEntityModePublishesWholeSnapshotWhileFallbackPublishesOnlyMeetings() async throws {
+    func testIndexPublishesMeetingsPeopleAndCommitments() async throws {
         let store = try MeetingStore.inMemory()
         let meeting = Meeting(
             title: "Planning",
@@ -283,7 +259,7 @@ final class SpotlightIndexerTests: XCTestCase {
                 origin: .manual(meetingID: meeting.id)),
             at: Date(timeIntervalSince1970: 1_700_000_100))
 
-        let entityBackend = SpotlightBackendSpy(mode: .appEntities)
+        let entityBackend = SpotlightBackendSpy()
         let entityIndexer = SpotlightIndexer(
             store: store,
             enabled: true,
@@ -295,26 +271,10 @@ final class SpotlightIndexerTests: XCTestCase {
         await entityIndexer.requestReindex()
         await entityIndexer.waitUntilIdle()
 
-        let documentBackend = SpotlightBackendSpy(mode: .meetingDocuments)
-        let documentIndexer = SpotlightIndexer(
-            store: store,
-            enabled: true,
-            backend: documentBackend,
-            legacyCleanupState: SpotlightLegacyCleanupStateSpy(),
-            debounce: .zero,
-            retryDelays: [],
-            sleep: { _ in })
-        await documentIndexer.requestReindex()
-        await documentIndexer.waitUntilIdle()
-
         let entitySnapshot = await entityBackend.snapshot()
         XCTAssertEqual(entitySnapshot.meetingCounts, [1])
         XCTAssertEqual(entitySnapshot.personCounts, [1])
         XCTAssertEqual(entitySnapshot.commitmentCounts, [1])
-        let documentSnapshot = await documentBackend.snapshot()
-        XCTAssertEqual(documentSnapshot.meetingCounts, [1])
-        XCTAssertEqual(documentSnapshot.personCounts, [0])
-        XCTAssertEqual(documentSnapshot.commitmentCounts, [0])
     }
 
     func testCorrectionChangesClientStateAndReplacesPublishedMeetingBody() async throws {
@@ -331,7 +291,7 @@ final class SpotlightIndexerTests: XCTestCase {
             isFinal: true)
         try await store.save(meeting)
         try await store.save([segment])
-        let backend = SpotlightBackendSpy(mode: .appEntities)
+        let backend = SpotlightBackendSpy()
         let indexer = SpotlightIndexer(
             store: store,
             enabled: true,
@@ -378,21 +338,13 @@ final class SpotlightIndexerTests: XCTestCase {
         ]
 
         let states = ([baseline] + variants).map {
-            SpotlightIndexer.clientState(for: $0, mode: .appEntities)
+            SpotlightIndexer.clientState(for: $0)
         }
         XCTAssertEqual(Set(states).count, states.count)
-        XCTAssertEqual(
-            SpotlightIndexer.clientState(for: baseline, mode: .meetingDocuments),
-            SpotlightIndexer.clientState(
-                for: SpotlightIndexSnapshot(
-                    meetings: [meeting],
-                    people: [],
-                    commitments: []),
-                mode: .meetingDocuments))
+        XCTAssertTrue(String(bytes: states[0], encoding: .utf8)?.hasPrefix("app-entities-v1:") == true)
     }
 
     func testEntityFactoryPreservesIdentityAndSearchAttributes() {
-        guard #available(macOS 15.0, *) else { return }
         let meeting = SpotlightDocument(
             meetingID: MeetingID(),
             title: "Planning",
@@ -539,7 +491,6 @@ private actor SpotlightBackendSpy: SpotlightIndexBackend {
         let legacyRemovals: Int
     }
 
-    nonisolated let mode: SpotlightIndexer.IndexMode
     private var clientState: Data?
     private var remainingReplacementFailures: Int
     private var remainingLegacyRemovalFailures: Int
@@ -551,12 +502,10 @@ private actor SpotlightBackendSpy: SpotlightIndexBackend {
     private var legacyRemovalCount = 0
 
     init(
-        mode: SpotlightIndexer.IndexMode = .appEntities,
         clientState: Data? = nil,
         replacementFailures: Int = 0,
         legacyRemovalFailures: Int = 0
     ) {
-        self.mode = mode
         self.clientState = clientState
         remainingReplacementFailures = replacementFailures
         remainingLegacyRemovalFailures = legacyRemovalFailures

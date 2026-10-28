@@ -6,11 +6,30 @@ import PortavozCore
 import XCTest
 
 final class SummaryCapabilityTests: XCTestCase {
-    func testSequoiaFixtureCannotReportFoundationModelsAvailable() {
+    func testNoAppleIntelligenceFixtureReportsDisabledAppleIntelligence() {
         XCTAssertEqual(
             FoundationModelsCapability.current(
-                arguments: ["portavoz-app", "-simulate-sequoia-capabilities"]),
-            .requiresMacOS26)
+                arguments: ["portavoz-app", "-simulate-no-apple-intelligence"]),
+            .unavailable(FoundationModelSummaryProvider.appleIntelligenceDisabledReason))
+    }
+
+    func testTheSimulationReachesEveryDirectProviderCheck() {
+        // Catch-up, suggestions, Ask and briefs ask the provider, not the capability.
+        XCTAssertEqual(
+            FoundationModelSummaryProvider.unavailabilityReason(
+                arguments: ["portavoz-app", FoundationModelSummaryProvider.simulatedUnavailabilityArgument]),
+            FoundationModelSummaryProvider.appleIntelligenceDisabledReason)
+    }
+
+    func testKnownReasonsAreLocalizedAndUnknownOnesPassThrough() {
+        for reason in [
+            FoundationModelSummaryProvider.deviceNotEligibleReason,
+            FoundationModelSummaryProvider.appleIntelligenceDisabledReason,
+            FoundationModelSummaryProvider.modelNotReadyReason
+        ] {
+            XCTAssertEqual(FoundationModelsCapability.localized(reason), L10n.text(reason))
+        }
+        XCTAssertEqual(FoundationModelsCapability.localized("an unlisted reason"), "an unlisted reason")
     }
 
     func testSelectedOllamaWithoutModelDoesNotFallThroughToApple() async {
@@ -62,37 +81,37 @@ final class SummaryCapabilityTests: XCTestCase {
         }
     }
 
-    func testManualAskKeepsAppleUnavailableOnSequoia() async {
+    func testManualAskKeepsAppleUnavailableWithoutAppleIntelligence() async {
         let resolver = AppSummaryRegenerationProviderResolver(
             defaultEngine: .appleOnDevice,
             ollamaModel: "unused",
             mlxModelDirectory: { nil },
             mlxProvider: { _, _ in SummaryCapabilityProviderStub() },
-            foundationModelsCapability: .requiresMacOS26,
+            foundationModelsCapability: .unavailable("Apple Intelligence is turned off"),
             gateway: TestDataEgressGateway())
 
         switch await resolver.resolveAsk(
             mlxProvider: { _, _ in RAGCapabilityProviderStub() }) {
-        case .unavailable(.requiresMacOS26):
+        case .unavailable(.appleOnDevice(reason: "Apple Intelligence is turned off")):
             break
         default:
-            XCTFail("Apple Foundation Models must remain explicitly unavailable on Sequoia")
+            XCTFail("Apple Foundation Models must remain explicitly unavailable without Apple Intelligence")
         }
     }
 
-    func testManualAskResolvesConfiguredOllamaOnSequoia() async throws {
+    func testManualAskResolvesConfiguredOllamaWithoutAppleIntelligence() async throws {
         let gateway = CapturingDataEgressGateway()
         let resolver = AppSummaryRegenerationProviderResolver(
             defaultEngine: .ollama,
             ollamaModel: "qwen-local",
             mlxModelDirectory: { nil },
             mlxProvider: { _, _ in SummaryCapabilityProviderStub() },
-            foundationModelsCapability: .requiresMacOS26,
+            foundationModelsCapability: .unavailable("Apple Intelligence is turned off"),
             gateway: gateway)
 
         guard case .available(let provider) = await resolver.resolveAsk(
             mlxProvider: { _, _ in RAGCapabilityProviderStub() })
-        else { return XCTFail("configured Ollama should answer manual Ask on Sequoia") }
+        else { return XCTFail("configured Ollama should answer manual Ask without Apple Intelligence") }
 
         _ = try await provider.answer(
             question: "What changed?",
@@ -105,7 +124,7 @@ final class SummaryCapabilityTests: XCTestCase {
         XCTAssertEqual(operation, .askAnswerGeneration)
     }
 
-    func testManualAskResolvesVerifiedMLXOnSequoiaWithoutFallback() async throws {
+    func testManualAskResolvesVerifiedMLXWithoutAppleIntelligenceOrFallback() async throws {
         let directory = URL(fileURLWithPath: "/verified/model", isDirectory: true)
         let provider = RAGCapabilityProviderStub()
         let resolver = AppSummaryRegenerationProviderResolver(
@@ -113,7 +132,7 @@ final class SummaryCapabilityTests: XCTestCase {
             ollamaModel: "unused",
             mlxModelDirectory: { directory },
             mlxProvider: { _, _ in SummaryCapabilityProviderStub() },
-            foundationModelsCapability: .requiresMacOS26,
+            foundationModelsCapability: .unavailable("Apple Intelligence is turned off"),
             gateway: TestDataEgressGateway())
 
         guard case .available(let resolved) = await resolver.resolveAsk(
@@ -121,7 +140,7 @@ final class SummaryCapabilityTests: XCTestCase {
                 XCTAssertEqual(resolvedDirectory, directory)
                 return provider
             })
-        else { return XCTFail("verified MLX should answer manual Ask on Sequoia") }
+        else { return XCTFail("verified MLX should answer manual Ask without Apple Intelligence") }
 
         let answer = try await resolved.answer(question: "Q", passages: [])
         XCTAssertEqual(answer, "mlx")

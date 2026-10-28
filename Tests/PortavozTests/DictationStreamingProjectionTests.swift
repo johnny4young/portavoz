@@ -140,7 +140,6 @@ final class DictationStreamingProjectionTests: XCTestCase {
     }
 
     func testAppleRangeRevisionsNeverBecomeInsertedDuplicateDeltas() async throws {
-        guard #available(macOS 26.0, *) else { return }
         for (locale, volatile, corrected, closing) in [
             ("en_US", "I have two", "I had two", "questions"),
             ("es_ES", "Tengo dos", "Tenía dos", "preguntas")
@@ -161,7 +160,6 @@ final class DictationStreamingProjectionTests: XCTestCase {
     }
 
     func testAppleUnconfirmedTailFailsWithoutInsertingText() async throws {
-        guard #available(macOS 26.0, *) else { return }
         let fixture = StreamingDictationFixture()
         defer { fixture.cancel() }
         fixture.start(speechLocale: "es_ES")
@@ -177,7 +175,6 @@ final class DictationStreamingProjectionTests: XCTestCase {
     }
 
     func testOlderAppleFinalDoesNotEraseALaterVolatilePreview() async throws {
-        guard #available(macOS 26.0, *) else { return }
         for (locale, first, later) in [
             ("en_US", "Keep this", "and the later phrase"),
             ("es_ES", "Conserva esto", "y la frase posterior")
@@ -198,7 +195,6 @@ final class DictationStreamingProjectionTests: XCTestCase {
     }
 
     func testAppleOverlappingFinalRangesFailBeforeInsertion() async throws {
-        guard #available(macOS 26.0, *) else { return }
         let fixture = StreamingDictationFixture()
         defer { fixture.cancel() }
         fixture.start(speechLocale: "en_US")
@@ -268,7 +264,7 @@ private final class StreamingDictationFixture {
             harness.loads += 1
             let engine: any TranscriptionEngine
             let markInputEnded: @MainActor @Sendable () -> Void = { [weak self] in self?.inputEnded = true }
-            if let speechLocale, #available(macOS 26.0, *) {
+            if let speechLocale {
                 let stream = self.stream
                 engine = SpeechAnalyzerLiveEngine(locale: Locale(identifier: speechLocale)) { audio, _ in
                     Task {

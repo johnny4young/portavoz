@@ -4,8 +4,8 @@ import PortavozCore
 import SwiftUI
 import TranscriptionKit
 
-/// A caption source, erased so the macOS-26-only transcriber type never
-/// escapes into code compiled for the app's macOS 14 floor.
+/// A caption source, erased so the concrete transcriber type stays an
+/// implementation detail of the caption factory.
 struct FirstListenCaptionFeed: Sendable {
     let feed: @Sendable (AudioChunk) -> Void
     let finish: @Sendable () -> Void
@@ -22,7 +22,7 @@ struct FirstListenAudioCapture: Sendable {
 
 /// The onboarding "first listen" (design system 6a-4): before any 1 GB model
 /// download, let the user say one sentence and watch Portavoz transcribe it
-/// live, 100% on-device, using Apple's `SpeechAnalyzer` (macOS 26, no app
+/// live, 100% on-device, using Apple's `SpeechAnalyzer` (no app
 /// model needed). The 10 s of audio doubles as the voice-enrollment sample so
 /// the user never has to speak twice. Everything is local; nothing is stored
 /// unless the user chooses to enroll.
@@ -39,7 +39,7 @@ final class FirstListenController {
         case preparing
         case listening
         case done
-        /// Live captions need macOS 26; older systems still hear the audio.
+        /// Speech assets are unavailable; the listen still captures the audio.
         case captionsUnavailable
         case failed(String)
     }
@@ -199,12 +199,12 @@ final class FirstListenController {
             stop: { await microphone.stop() })
     }
 
-    /// Build the on-device caption feed if this OS has `SpeechAnalyzer`; nil
-    /// means pre-macOS 26 — the listen still records audio, just without text.
+    /// Build the on-device caption feed when `SpeechAnalyzer` can run; nil
+    /// still records audio, just without text.
     private static func startLiveCaptionFeed(
         apply: @escaping @MainActor @Sendable (String, String) -> Void
     ) async -> FirstListenCaptionFeed? {
-        guard #available(macOS 26.0, *), SpeechAnalyzerEngine.isAvailable else { return nil }
+        guard SpeechAnalyzerEngine.isAvailable else { return nil }
         let locale: Locale
         do {
             locale = try await SpeechAnalyzerEngine.ensureAssets(language: nil)

@@ -34,7 +34,6 @@ private struct AppMeetingReviewMetadataGenerator: MeetingReviewMetadataGeneratin
 
     func chapterTitle(for text: String) async throws -> String? {
         guard isAvailable else { return nil }
-        guard #available(macOS 26.0, *) else { return nil }
         let result = await ChapterTitler.title(forChapterText: text)
         try Task.checkCancellation()
         return result
@@ -45,7 +44,6 @@ private struct AppMeetingReviewMetadataGenerator: MeetingReviewMetadataGeneratin
         currentTitle: String
     ) async throws -> String? {
         guard isAvailable else { return nil }
-        guard #available(macOS 26.0, *) else { return nil }
         let result = await TitleSuggester.suggest(
             summaryMarkdown: summaryMarkdown,
             currentTitle: currentTitle)
@@ -58,7 +56,6 @@ private struct AppMeetingReviewMetadataGenerator: MeetingReviewMetadataGeneratin
         speakerCount: Int
     ) async throws -> Recipe? {
         guard isAvailable else { return nil }
-        guard #available(macOS 26.0, *) else { return nil }
         let result = await MeetingTypeDetector.detect(
             segments: segments,
             speakerCount: speakerCount)

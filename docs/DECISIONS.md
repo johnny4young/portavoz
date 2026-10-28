@@ -21983,3 +21983,26 @@ whole process group.
 seconds with every listed case executed. A test that relied on another class
 running first in the same process now fails visibly and is fixed rather than
 serialized again.
+
+## D599 — Tahoe-only support and the iOS 26 floor
+
+**Context:** Releases after 1.2.0 deploy to macOS 26 Tahoe, and every release
+gate dropped its Sequoia receipts, yet the source still carried a "requires
+macOS 26" capability state, macOS 14 and 15 fallbacks (a scroll bridge, a
+Spotlight document index, a legacy AAC export completion), Sequoia copy, a
+`-simulate-sequoia-capabilities` launch argument and the tests for all of
+them. The dormant iOS surface still compiled for iOS 17, which kept roughly a
+hundred `#available` guards alive.
+
+**Decision:** Support macOS 26 and later only and raise the iOS floor to 26.
+Remove every availability check below those floors with its fallback branch,
+the "requires macOS 26" state across ApplicationKit, the app and the CLI, and
+its Sequoia copy. A Mac where Apple Intelligence is off or ineligible is a
+different, still supported case: it keeps every fallback (Ollama, the built-in
+model, question-only Apuntador cards) and its own copy, and
+`-simulate-no-apple-intelligence` replaces the old argument in UI tests.
+
+**Consequences:** The capability model has two states instead of three, and
+the code and tests for unreachable OS branches are gone. Evidence contracts
+that still name Sequoia, such as the cross-host exact-path matrix, are
+historical receipts until a later change retires their Sequoia cells.

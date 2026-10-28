@@ -216,7 +216,6 @@ private final class AppRefineMeetingCompanion: RefineMeetingCompanion {
 
     func isRefreshAvailable() -> Bool {
         guard FoundationModelsCapability.current().isAvailable else { return false }
-        guard #available(macOS 26.0, *) else { return false }
         return UserDefaults.standard.bool(forKey: "companionEnabled")
     }
 
@@ -225,9 +224,6 @@ private final class AppRefineMeetingCompanion: RefineMeetingCompanion {
         meetingID: MeetingID,
         transcriptRevision: Int
     ) async -> RefineMeetingCompanionRefresh {
-        guard #available(macOS 26.0, *) else {
-            return RefineMeetingCompanionRefresh(cards: [], completed: false)
-        }
         guard let services else {
             return RefineMeetingCompanionRefresh(cards: [], completed: false)
         }

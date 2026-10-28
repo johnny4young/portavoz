@@ -6,7 +6,7 @@ let package = Package(
     defaultLocalization: "en",
     platforms: [
         .macOS(.v26),
-        .iOS(.v17),
+        .iOS(.v26),
     ],
     products: [
         .library(name: "PortavozCore", targets: ["PortavozCore"]),

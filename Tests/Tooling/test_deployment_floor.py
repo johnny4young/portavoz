@@ -11,10 +11,11 @@ def read(relative: str) -> str:
 
 
 class DeploymentFloorTests(unittest.TestCase):
-    """Every place that declares the macOS floor must agree on macOS 26."""
+    """Every place that declares the floor must agree on macOS 26 and iOS 26."""
 
     def test_package_and_project_target_macos_26(self):
         self.assertIn(".macOS(.v26)", read("Package.swift"))
+        self.assertIn(".iOS(.v26)", read("Package.swift"))
         project = read("project.yml")
         self.assertNotRegex(project, r'deploymentTarget: "(?!26\.0")')
         self.assertEqual(len(re.findall(r'deploymentTarget: "26\.0"', project)), 3)

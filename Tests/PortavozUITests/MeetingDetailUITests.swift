@@ -160,7 +160,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         withoutSummary: Bool = false,
         staleDerived: Bool = false,
         commitmentInbox: Bool = false,
-        simulateSequoiaCapabilities: Bool = false,
+        simulateNoAppleIntelligence: Bool = false,
         unnamedSpeaker: Bool = false,
         aiSuggestions: Bool = false,
         abandonedSummary: Bool = false,
@@ -180,7 +180,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             seedWithoutSummary: withoutSummary,
             seedStaleDerived: staleDerived,
             seedCommitmentInbox: commitmentInbox,
-            simulateSequoiaCapabilities: simulateSequoiaCapabilities,
+            simulateNoAppleIntelligence: simulateNoAppleIntelligence,
             simulateSkillEffectFailureOnce: simulateSkillEffectFailureOnce,
             simulateApuntadorRefreshSuccess: simulateApuntadorRefreshSuccess)
         if justRecorded {
@@ -304,25 +304,27 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testSequoiaApuntadorRefreshPreservesStaleAnswers() throws {
+    func testNoAppleIntelligenceApuntadorRefreshPreservesStaleAnswers() throws {
         let app = try launchOnSeededMeeting(
             staleDerived: true,
-            simulateSequoiaCapabilities: true)
+            simulateNoAppleIntelligence: true)
         defer { finishUITestApplication(app) }
 
         selectRailTab("apuntador", in: app)
         let refresh = app.buttons["detail-apuntador-refresh"]
         XCTAssertTrue(
             refresh.waitForStableFrame(timeout: 10),
-            "Sequoia must expose the explicit action without pretending it can run")
+            "a Mac without Apple Intelligence must expose the explicit action without pretending it can run")
         refresh.click()
 
         let expectedError = UITestLocale.environmentLocale == "es"
-            ? "Volver a comprobar las respuestas del Apuntador requiere macOS 26 y Apple Intelligence."
-            : "Re-checking Apuntador answers requires macOS 26 and Apple Intelligence."
+            ? "El Apuntador no está disponible: "
+                + "Apple Intelligence está desactivado (Ajustes del Sistema → Apple Intelligence y Siri)"
+            : "Apuntador is unavailable: "
+                + "Apple Intelligence is turned off (System Settings → Apple Intelligence & Siri)"
         XCTAssertTrue(
             app.staticTexts[expectedError].waitForExistenceFast(timeout: 10),
-            "the unsupported OS must explain the exact model requirement")
+            "a Mac without Apple Intelligence must explain the exact model requirement")
         XCTAssertTrue(
             app.control(
                 withIdentifier:
@@ -741,10 +743,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador() throws {
+    func testNoAppleIntelligenceSummaryFailureOpensExactSetupAndExplainsApuntador() throws {
         let app = try launchOnSeededMeeting(
             withoutSummary: true,
-            simulateSequoiaCapabilities: true,
+            simulateNoAppleIntelligence: true,
             summaryEngine: "appleOnDevice")
         defer { finishUITestApplication(app) }
         XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
@@ -767,7 +769,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "the recovery action must land directly in Intelligence Settings")
         XCTAssertTrue(
             app.control(withIdentifier: "settings-summary-apple-unavailable").exists,
-            "the selected Apple engine must explain that it cannot run on Sequoia")
+            "the selected Apple engine must explain that Apple Intelligence is off")
         if UITestLocale.environmentLocale == "es" {
             let localizedRecommendations = [
                 "Apple Intelligence: resúmenes en el dispositivo, gratis y rápidos.",
@@ -779,7 +781,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 localizedRecommendations.contains { app.staticTexts[$0].exists },
                 "the recommendation must cross the app localization boundary")
         }
-        attachScreenshot(of: app, named: "sequoia-summary-actionable-settings")
+        attachScreenshot(of: app, named: "no-apple-intelligence-summary-actionable-settings")
 
         XCTAssertTrue(
             app.finishSettingsSearchEditing(timeout: 5),
@@ -789,11 +791,11 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let status = app.control(withIdentifier: "settings-apuntador-status")
         XCTAssertTrue(
             status.waitForExistenceFast(timeout: 5),
-            "the Intelligence pane must explain Apuntador's cross-version capability")
+            "the Intelligence pane must explain Apuntador's capability without Apple Intelligence")
         let toggle = app.control(withIdentifier: "settings-apuntador-enabled")
         XCTAssertTrue(
             toggle.exists,
-            "Sequoia must expose the bundled detector instead of a dead platform gate")
+            "a Mac without Apple Intelligence must expose the bundled detector instead of a dead gate")
         let expectedDetectionStatus = UITestLocale.environmentLocale == "es"
                 ? "Apuntador: solo preguntas"
                 : "Apuntador: questions only"
@@ -804,7 +806,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 + "saw '\(detectionStatus)'")
         let cause = app.control(withIdentifier: "settings-apuntador-status-cause")
         XCTAssertTrue(cause.exists, "one cause line must follow the status")
-        attachScreenshot(of: app, named: "sequoia-apuntador-requirements")
+        attachScreenshot(of: app, named: "no-apple-intelligence-apuntador-requirements")
     }
 
     @MainActor

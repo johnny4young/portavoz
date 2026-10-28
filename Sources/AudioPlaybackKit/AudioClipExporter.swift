@@ -59,10 +59,7 @@ public enum AudioClipExporter {
                 asset: composition, presetName: AVAssetExportPresetAppleM4A)
         else { throw ClipError.exportFailed("no export session") }
 
-        try await AudioExportSession.export(
-            session,
-            to: output,
-            legacyFailure: ClipError.exportFailed)
+        try await session.export(to: output, as: .m4a)
     }
 
     /// Clear-channel export matching the default player. The complete
@@ -100,9 +97,6 @@ public enum AudioClipExporter {
             session.audioMix = mixed.cleanAudioMix
         }
 
-        try await AudioExportSession.export(
-            session,
-            to: output,
-            legacyFailure: ClipError.exportFailed)
+        try await session.export(to: output, as: .m4a)
     }
 }

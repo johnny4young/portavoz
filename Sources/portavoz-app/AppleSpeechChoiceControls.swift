@@ -21,8 +21,6 @@ struct AppleSpeechChoiceControls: View {
             }
             Text("Apple Speech (fixed language)")
                 .tag(LiveSpeechSelection.appleSpeech.rawValue)
-                .disabled(!ProcessInfo.processInfo.isOperatingSystemAtLeast(
-                    OperatingSystemVersion(majorVersion: 26, minorVersion: 0, patchVersion: 0)))
         }
         .accessibilityIdentifier("\(identifierPrefix)-engine")
         .task(id: "\(selection)-\(language)") {
@@ -60,11 +58,6 @@ struct AppleSpeechChoiceControls: View {
                     .controlSize(.small)
                     .accessibilityIdentifier("\(identifierPrefix)-apple-progress")
             }
-        } else if #unavailable(macOS 26.0) {
-            Text("Apple Speech requires macOS Tahoe or later. Parakeet remains available here.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .accessibilityIdentifier("\(identifierPrefix)-apple-requirement")
         }
     }
 

@@ -348,8 +348,7 @@ privacy receipt as the only in-product network-egress truth.
 - **Post-meeting hook**: `PostMeetingShortcut.runIfConfigured(markdown:)` — when stop reaches `.done`, if Ajustes → Automation has a Shortcut name, runs `/usr/bin/shortcuts run <name> --input-path <tmp.md>` with the complete Markdown export (MeetingExporter). Deliberately fire-and-forget: it never blocks or delays the pipeline; Shortcut failures are visible in Shortcuts (the meeting is saved regardless).
 - **URL scheme** `portavoz://record` (CFBundleURLTypes in make-app.sh): opens the app and STARTS a recording — always visible (window + mic indicator; nothing records while hidden). Verified E2E: `open "portavoz://record"` launches, navigates, and records. Combined with Shortcuts automations (time/calendar), this provides scheduled auto-recording.
 - **AppIntents/Siri**: `StartRecordingIntent` and `StopRecordingIntent` use
-  immediate foreground execution on macOS 26+ and retain the framework's
-  deprecated compatibility property for macOS 14.4/15. Each posts one buffered
+  immediate foreground execution. Each posts one buffered
   process-local request that `PortavozAppDelegate` consumes only after the
   complete service graph exists. Neither reopens a URL, because a LaunchServices
   lookup could select another installed handler after the system already chose
@@ -405,29 +404,26 @@ privacy receipt as the only in-product network-egress truth.
   require the recording controller's typed recovery. The saved Start Shortcut
   was field-verified from Shortcuts, Spotlight, and Siri on July 27, 2026; Stop
   and the App Entity surface remain physical Sequoia/Tahoe field gates.
-  App Entity queries retain the macOS 14.4 deployment floor. On macOS 15+,
   D326 publishes all three `IndexedEntity` values through one protected named
-  index; 14.4 keeps the released meeting-document representation in that same
-  versioned index. This local implementation evidence does not close physical
+  index. This local implementation evidence does not close physical
   system presentation or registration.
 - **Spotlight** (`SpotlightIndexer`, D85/D326): local Core Spotlight search uses
   one process-scoped actor and one consistent StorageKit projection. Launch and
   searchable mutations request reconciliation; 250 ms burst coalescing,
   mode-versioned SHA-256 client state, and bounded retry make it independent of
   a SwiftUI window. One named `app.portavoz.search.v3` index uses complete
-  protection and 500-value replacement batches. On macOS 15+ it publishes
-  native meeting, canonical-person, and confirmed/done commitment App Entities;
-  on 14.4 it publishes meeting documents. Meeting entity attributes retain
+  protection and 500-value replacement batches. It publishes native meeting,
+  canonical-person, and confirmed/done commitment App Entities. Meeting entity
+  attributes retain
   title + date + newest cross-recipe summary + first 40 ordered live segments
   under the released 4,000-character cap. People retain only canonical name;
-  commitments retain only title and optional due date. Distinct state prefixes
-  force replacement when OS capability changes, while one index prevents
-  duplicate meeting results. Only after v3 is ready does retryable, marker-
+  commitments retain only title and optional due date. The client state leads
+  with the index format, so an index published in an older format is replaced. Only after v3 is ready does retryable, marker-
   guarded cleanup remove `app.portavoz.meetings.v2` and the released default
   domain. `-use-temp-store` suppresses OS indexing.
   The measured 100,000-meeting D85 projection remains 425.64 ms wall p95 versus
   22,085.35 ms for the legacy N+1 path, so no outbox consumer is introduced.
-  The 14.4 document hit navigates through
+  A legacy document hit navigates through
   `CSSearchableItemActionType` → `Route.meeting`; entity hits use their exact
   `OpenIntent`. **Double GOTCHA (field, Jul 2026):** (1) without
   `NSUserActivityTypes: [com.apple.corespotlightitem]` in Info.plist, macOS

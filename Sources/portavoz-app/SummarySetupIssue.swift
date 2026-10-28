@@ -1,7 +1,6 @@
 import Foundation
 
 enum SummarySetupIssue: Equatable {
-    case appleRequiresMacOS26
     case appleUnavailable(String)
     case ollamaModelNotSelected
     case mlxModelNotDownloaded
@@ -12,9 +11,6 @@ enum SummarySetupIssue: Equatable {
     // swiftlint:disable line_length
     var message: String {
         switch self {
-        case .appleRequiresMacOS26:
-            return L10n.text(
-                "Apple summaries require macOS 26 and Apple Intelligence. On macOS Sequoia, choose Ollama or Built-in (MLX) in Intelligence Settings.")
         case .appleUnavailable(let reason):
             return L10n.format(
                 "Apple summaries are unavailable: %@. Choose Ollama or Built-in (MLX) in Intelligence Settings.",

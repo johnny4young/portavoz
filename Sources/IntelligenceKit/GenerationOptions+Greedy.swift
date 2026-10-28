@@ -1,6 +1,5 @@
 import FoundationModels
 
-@available(macOS 26.0, iOS 26.0, *)
 extension GenerationOptions {
     /// Deterministic decoding for every Portavoz prompt.
     ///

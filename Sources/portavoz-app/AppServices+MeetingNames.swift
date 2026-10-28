@@ -4,17 +4,6 @@ import IntegrationsKit
 import IntelligenceKit
 import PortavozCore
 
-enum AppMeetingNameSuggestionError: Error, LocalizedError {
-    case unavailable
-
-    var errorDescription: String? {
-        switch self {
-        case .unavailable:
-            "Name suggestions require macOS 26."
-        }
-    }
-}
-
 extension AppServices {
     func meetingDetailNameSuggestions(
         _ meetingID: MeetingID
@@ -56,9 +45,6 @@ private struct AppMeetingSpeakerNameProposer: MeetingSpeakerNameProposing {
         speakers: [Speaker],
         attendeeCandidates: [String]
     ) async throws -> [MeetingNameProposal] {
-        guard #available(macOS 26.0, *) else {
-            throw AppMeetingNameSuggestionError.unavailable
-        }
         return try await SpeakerNamer().suggestNames(
             segments: segments,
             speakers: speakers,

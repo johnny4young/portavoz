@@ -11,14 +11,6 @@ struct SummaryEngineCapabilityNotice: View {
             switch capability {
             case .available:
                 EmptyView()
-            case .requiresMacOS26:
-                Label(
-                    "Apple summaries are unavailable on this Mac. Choose Ollama or Built-in (MLX).",
-                    systemImage: PVSymbol.error
-                )
-                .font(.caption)
-                .foregroundStyle(.orange)
-                .accessibilityIdentifier("settings-summary-apple-unavailable")
             case .unavailable(let reason):
                 Label(
                     L10n.format(

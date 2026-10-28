@@ -3,16 +3,16 @@
 Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (ApplicationKit durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation), D148 (content-free resource measurement), D151 (independent MLX inference lane), D152 (one semantic-corpus indexing operation), D161 (composition-owned MLX residency), D170 (recording-scoped bounded live Apuntador generation), D171 (signal-driven bounded live-summary delivery), D172 (deterministic generated-intelligence admission), D176 (one bounded semantic-indexing flight), D177 (capture-prioritized semantic checkpoints), D178 (signal-driven background semantic owner), D192 (content-free staged Ask tracing), D193 (authoritative Ask benchmark receipts), D194 (adapter-neutral multilingual quality contract), D195 (production retrieval observation without answer-quality claims), D196 (corpus-read-only Ask retrieval), D197 (typed semantic readiness and background-only product writes), D198 (revision-fenced semantic publication), D199 (compatibility-fenced semantic vectors), D200 (independent durable semantic maintenance ownership), D201 (progressive exact-first Ask evidence), D206 (injected semantic-index query port with exact control retained), D207–D217 (governed non-serving semantic shadows, exact-path evidence, and research-only baseline retention), D233 (correction-aware generation lineage and stale artifacts), D236 (commitment-candidate benchmark before continuity state), D245 (adapter-neutral cross-meeting link quality), D246 (bounded non-serving product observation), D247 (isolated product-path quality adapter), D248 (profile-bound non-serving similarity evidence), D249 (versioned scored evidence contract), D250 (deterministic non-serving similarity-policy replay), D251 (private anonymized calibration-pack boundary), D252 (isolated private product-path evidence collection), D253 (deterministic private policy replay), D254 (clean-head public/private profile matrix), D255 (explicit private calibration review gate), D270 (query contract before graph schema), D271 (explicit topic identity), D272 (explicit decision continuity), D273 (disposable typed graph projection), D274 (authoritative memory timeline hydration), D275 (exact commitment-change evidence), D276 (explicit topic-scoped question continuity), D277 (explicit decision-to-commitment blocker continuity), D278 (source-backed commitment-blocker query), D279 (canonical blocker product conformance), D280 (authoritative first-discussion query and canonical conformance), D281 (exact source-backed person commitments), D282 (fail-closed alias resolution and canonical person-commitment conformance), D283 (independent exact graph-fact Ask lane), D284 (exact ambiguity-safe graph filters), D285 (typed source-backed graph-fact synthesis), D286 (bounded post-RRF fact-aware selection), D308–D314 (explicit decision-topic authority, complete graph adapters, user confirmation/retraction, relational scale verdict, and near-linear rebuild), D315 (content-free Ask answer judge), D330 (correction-aware semantic maintenance), D331 (explicit correction-aware Apuntador regeneration), D332 (explicit semantic asset preparation), D360 (same-generation graph-profile readmission), D361–D366 (six released exact graph explorers), D380 (Foundation Models context headroom and content-free real-model gate), D384 (bounded progressive Ask ownership), D385 (selected local-engine manual Ask), D386 (explicit fail-closed Ask source authority), D387 (consented direct-Web evidence and hostile-content isolation), D388 (bounded cited interview assistance), D389 (typed raw-note Ask), D580 (consent-bound dictation Ask).
 
 D390 adds bounded source-closed proactive meeting assistance. D431 makes the
-bundled bilingual classifier authoritative for live question admission on
-Sequoia and Tahoe while keeping Foundation Models as an optional challenger
-and answer engine. D433 makes a bounded deterministic rolling-summary checkpoint
+bundled bilingual classifier authoritative for live question admission with or
+without Apple Intelligence while keeping Foundation Models as an optional
+challenger and answer engine. D433 makes a bounded deterministic rolling-summary checkpoint
 authoritative before any optional Apple, loopback Ollama, or verified MLX
 refinement and keeps compact MLX candidates non-serving until measured.
 
 D406 keeps deterministic meeting prompt instructions and fact-aware RAG
 formatting outside the Foundation Models availability boundary. The pure
-contracts remain executable on Sequoia; macOS-26-gated adapters own only model
-availability, session construction, and generation.
+contracts remain executable without Apple Intelligence; the Foundation Models
+adapters own only model availability, session construction, and generation.
 
 D239 additionally owns explicit evidence-first commitment admission in Meeting
 Detail. D243 adds an explicit Application/Storage link boundary for a later
@@ -118,7 +118,7 @@ release. Neither runtime layer replaces scheduling.
 
 ## On-device summaries — `FoundationModelSummaryProvider`
 
-Requires macOS 26 + active Apple Intelligence (`unavailabilityReason()` provides the human-readable reason: ineligible device / AI turned off / model downloading).
+Requires active Apple Intelligence (`unavailabilityReason()` provides the human-readable reason: ineligible device / AI turned off / model downloading). The app-owned `FoundationModelsCapability` is `available` or `unavailable(reason)`; no OS-version state exists on the macOS 26 floor.
 
 **3B model budgets (measured, nonnegotiable):**
 - The 4096-token window counts EVERYTHING: instructions + prompt + guided-generation schema + output. Structured-pass material ≤ 3000 chars (`TranscriptFormatter.onDeviceReduceBudget`).
@@ -609,8 +609,8 @@ facts directly and never call `answerBundle`.
 and availability boundary. The Foundation Models adapter passes its exact
 result to `LanguageModelSession`, while the package contract tests call only
 the pure formatter. Chapter, brief, meeting-type, and title instructions follow
-the same provider-neutral pattern through `PromptFactory`, so the Sequoia lane
-does not need to instantiate macOS-26-only adapter metadata to validate prompt-
+the same provider-neutral pattern through `PromptFactory`, so package tests do
+not need to instantiate Foundation Models adapter metadata to validate prompt-
 injection defenses.
 
 ## Bounded post-RRF fact-aware selection (D286)
@@ -663,7 +663,7 @@ selected. D360 makes same-generation profile return re-admit the exact completed
 or cancelled graph operation only while its target is still unsatisfied; failed
 work remains terminal and source generation remains authority-only. Private
 owner-reviewed evidence, natural-language query extraction, sync/export,
-CLI/MCP adoption, and accepted timing receipts from supported Sequoia/Tahoe
+CLI/MCP adoption, and accepted timing receipts from supported Tahoe
 hosts remain outside this implemented boundary. D361–D366 release all six
 dedicated query surfaces, and D367 instruments their local product timing
 without turning observation into authority.
@@ -691,7 +691,7 @@ This surface does not parse a question, resolve an alias, infer identity,
 invoke a model, call the graph-aware answer bundle, or flatten facts into
 transcript rank. Typed graph abstention, malformed evidence, and operational
 unavailability remain distinct UI states. It therefore provides source-backed
-answers without Foundation Models on both Sequoia and Tahoe. Together with the
+answers without Foundation Models. Together with the
 D362–D366 explorers, free-form answer composition, private evidence,
 sync/export, CLI/MCP adoption, accepted supported-host performance receipts,
 and physical accessibility/OS validation remain separate gates.
@@ -717,8 +717,9 @@ fences, and an in-flight read cannot retain a closed window model. Oversized,
 duplicate, merged, malformed, wrong-topic, or incomplete responses fail
 closed. This surface does not parse question prose, guess aliases, invoke
 Foundation Models, execute the graph-aware answer bundle, or change graph
-authority. Sequoia and Tahoe use the same SwiftUI and SQLite path; physical
-VoiceOver and independent OS/hardware evidence remain open.
+authority. It uses the same SwiftUI and SQLite path with or without Apple
+Intelligence; physical VoiceOver and independent OS/hardware evidence remain
+open.
 
 ## Released exact-topic first-discussion explorer (D363)
 
@@ -742,7 +743,7 @@ the read and prevents a late result from publishing into another selection.
 The UI says **first confirmed discussion**, not “first ever”, renders the exact
 meeting and date, and reuses the exact evidence seek route. It does not invoke
 Foundation Models or require Tahoe-only APIs; physical VoiceOver and
-independent Sequoia/Tahoe evidence remain external gates.
+independent Tahoe evidence remain external gates.
 
 ## Released exact-topic decision-conflict explorer (D364)
 
@@ -771,7 +772,7 @@ failure remain separate. This adds no model, graph authority, natural-language
 topic inference, new index, or Tahoe-only API. Exact commitment blockers are
 released by D365 and exact topic-plus-meeting change-since by D366; private
 owner-reviewed evidence, accepted supported-host performance receipts,
-sync/export, CLI/MCP adoption, and physical VoiceOver/Sequoia/Tahoe validation
+sync/export, CLI/MCP adoption, and physical VoiceOver/Tahoe validation
 remain separate gates.
 
 ## Released exact commitment-blocker explorer (D365)
@@ -800,7 +801,7 @@ blockers, while malformed evidence and operational failure remain distinct.
 The surface adds no model, inferred causality, graph write, new index, or Tahoe-
 only API. Private evidence, accepted supported-host performance receipts,
 sync/export, CLI/MCP, free-form graph answers, and physical
-VoiceOver/Sequoia/Tahoe validation remain
+VoiceOver/Tahoe validation remain
 separate gates.
 
 ## Released exact-topic change-since explorer (D366)
@@ -831,7 +832,7 @@ both Spanish decision statements and both sources, and follows the successor
 to 00:03. No new schema, graph authority, model, network, or Tahoe-only API is
 introduced. Private evidence, accepted supported-host performance receipts,
 sync/export, free-form graph answers, physical VoiceOver, and independent
-Sequoia/Tahoe validation remain open.
+Tahoe validation remain open.
 
 ## Content-free exact graph query telemetry (D367)
 
@@ -855,7 +856,7 @@ interval state behind a lock and offers an explicit, removable process-local
 observer seam for controlled measurement. No meeting, person, topic,
 commitment, decision, question, answer, source, count, abstention reason, or
 error text enters the event. Nothing is persisted or sent over a network, and
-the spans do not establish a performance baseline. Accepted Sequoia and Tahoe
+the spans do not establish a performance baseline. Accepted Tahoe
 latency receipts still require controlled runs on the supported physical
 hosts.
 
@@ -969,8 +970,8 @@ truncated. Ollama uses a distinct local-Ask egress operation. MLX crosses the
 existing composition-owned runtime and residency ledger rather than
 constructing another model container. Provider choice is sampled for each
 request, so a Settings change affects the next question without mutating an
-in-flight one. Apple selection stays explicitly unavailable before macOS 26;
-configured Ollama and verified MLX keep manual answers available on Sequoia.
+in-flight one. Apple selection stays explicitly unavailable without Apple
+Intelligence; configured Ollama and verified MLX keep manual answers available.
 Automatic live Apuntador, graph-bundle synthesis, and source-selection policy
 remain separate contracts.
 
@@ -1234,7 +1235,7 @@ callbacks. `IntelligenceScheduler` also checks after an opaque operation returns
 so a provider that ignores cancellation cannot convert a stale value into
 success or leave cancellation identifiers resident.
 
-Foundation Models streaming is macOS 26-only and uses
+Foundation Models streaming uses
 `LanguageModelSession.streamResponse`; the fallback protocol implementation
 adapts final-string providers as one cumulative update. This does not claim hard
 pre-emption of arbitrary code: Swift structured timeout waits for cooperative
@@ -1520,7 +1521,7 @@ scored for every query variant. Authoritative projection again validates the
 current lane, emits replacement text under accepted identity, and emits split
 or merge text under its stable result identity with accepted provenance.
 Suppress remains absent and restore reuses the accepted vector. This does not
-supply physical Sequoia/Tahoe asset, correction-heavy latency, or memory
+supply physical Tahoe asset, correction-heavy latency, or memory
 evidence. D210's
 non-serving identity-only research projection remains accepted-only because it
 cannot prove which correction source produced a rank; it drops an active
@@ -1716,7 +1717,7 @@ retrieval path while retaining every ordered canonical source in observation
 schema 2. Product Ask, Library, semantic maintenance, app composition, and
 StorageKit remain unchanged. D351 proves deterministic mechanics and
 fail-closed identity, not multilingual retrieval parity, model suitability,
-resource superiority, physical Sequoia/Tahoe availability, or serving
+resource superiority, physical Tahoe availability, or serving
 authority.
 
 ### Retrieval-chunk resource and correction observation (D353)
@@ -1924,7 +1925,7 @@ These observations remain development evidence until the host-matrix boundary
 validates them. `docs/evidence/exact-path-shadow-matrix.json` fixes the Release
 build, fixture, alternating query policy, 512 dimensions, eight queries, five
 runs per query, top 10, 1k/10k/50k/100k scales, three observations per scale,
-the 1.25 timing-stability rule, and supported Sequoia/Tahoe majors. Hardware
+the 1.25 timing-stability rule, and supported Tahoe majors. Hardware
 tiers reuse the existing 8 GB, 16 GB, and reference-memory resource contract.
 
 `scripts/exact_path_matrix.py` accepts a JSONL observation stream and one closed
@@ -2223,12 +2224,12 @@ logistics vocabulary, and labels only remaining factual/technical material as
 general knowledge.
 
 `ProviderNeutralProvenanceCompanion` treats that bundled result as authoritative
-on Sequoia and Tahoe. When macOS 26 and Apple Intelligence are available, the
+with or without Apple Intelligence. When Apple Intelligence is available, the
 released `LiveCompanion` can act as a challenger and supply its local
 context/general answer, but its classifier identity is recorded separately and
-cannot replace the bundled admission identity. On Sequoia, when Apple
-Intelligence is unavailable, or when the challenger declines or fails, the
-base result remains usable:
+cannot replace the bundled admission identity. When Apple Intelligence is
+unavailable, or when the challenger declines or fails, the base result remains
+usable:
 
 - a context question becomes an honest question-only card;
 - a general-knowledge question may use the explicitly configured BYOK client,
@@ -2245,13 +2246,12 @@ Question-only cards omit copy/answer UI and say `question detected` (or
 exact question evidence and a content-free generation run. Its authoritative
 provider/model are the bundled classifier when no answer provider ran; optional
 Foundation Models challenger identity and actual answer provider remain
-separate trace fields. The recording toggle and owner name are available on the
-Sequoia deployment floor whenever the mandatory bundle loads. A missing or
-unloadable model disables the toggle with a visible reinstall path. Settings states
-that Tahoe/Apple Intelligence adds generated on-device answers and that BYOK is
-limited to general knowledge. The explicit correction-aware post-meeting
-refresh remains the older macOS-26/Foundation-Models pipeline; D431 changes live
-serving, not that separate review action.
+separate trace fields. The recording toggle and owner name are available
+whenever the mandatory bundle loads. A missing or unloadable model disables the
+toggle with a visible reinstall path. Settings states that Apple Intelligence
+adds generated on-device answers and that BYOK is limited to general knowledge.
+The explicit correction-aware post-meeting refresh remains the older Foundation
+Models pipeline; D431 changes live serving, not that separate review action.
 
 ### Bounded live Apuntador work (D170)
 
@@ -2285,8 +2285,8 @@ translation, or generated text enters the observation.
 `FoundationModelLiveQuestionDetector` exposes the existing detect-only
 classifier as a benchmark adapter while retaining the exact production prompt,
 guided-generation schema, and post-classification normalization. It is an
-explicit macOS 26 lane over already-installed Apple Intelligence assets. The
-released deterministic prefilter remains the Sequoia/Tahoe baseline, and
+explicit lane over already-installed Apple Intelligence assets. The released
+deterministic prefilter remains the baseline without Apple Intelligence, and
 neither adapter replaces `LiveCompanion` serving authority merely because a
 measurement completed.
 
@@ -2312,8 +2312,8 @@ into `Portavoz_IntelligenceKit.bundle`, at the bundle root on Xcode 26 and
 under `Contents/Resources` with Xcode 27's Swift Build; packaging and the
 payload verifier accept either layout and fail when the model is in neither. A deterministic bilingual real-app journey enables Apuntador through
 volatile temporary-store preferences, emits one frozen public-synthetic remote
-question, exercises the bundled model, and expects the Sequoia question-only
-state. It never reads a private meeting or requires an installed generative
+question, exercises the bundled model, and expects the question-only state of a
+Mac without Apple Intelligence. It never reads a private meeting or requires an installed generative
 model.
 
 The first dirty-tree diagnostic of that exact adapter passed all frozen quality
@@ -2322,7 +2322,7 @@ false prompts per hour, zero late publication, 3.284 ms cold question latency,
 0.606 ms p95 steady question latency, and 1,556,528 bytes of footprint growth.
 That run is informational only. A clean exact-commit observation is required
 before treating the candidate as controlled local evidence, and neither run
-certifies physical Sequoia/Tahoe, signed distribution, real meetings, answer
+certifies physical Tahoe, signed distribution, real meetings, answer
 quality, or assistive technology.
 
 ### Bounded source-closed proactive assistance (D390)
@@ -2352,8 +2352,8 @@ app can read admitted output but cannot create an unchecked card directly.
 
 There is no Foundation Models, MLX, Ollama, BYOK, Web, URLSession, persistence,
 or external-effect dependency in this path. No transcript text enters a prompt
-or receipt. The policy therefore behaves identically on the Sequoia deployment
-floor and Tahoe, subject only to finalized caption availability. It complements
+or receipt. The policy therefore behaves identically with or without Apple
+Intelligence, subject only to finalized caption availability. It complements
 the generated live Companion instead of sharing its scheduler or automatic
 objective-check model.
 
@@ -2472,8 +2472,8 @@ stale. It is an explicit whole-snapshot operation, never a side effect of a
 correction. ApplicationKit receives `MeetingTranscriptGenerationMaterial`, and
 the app reuses the post-Refine question/answer pipeline with the distinct
 `meeting-review` workflow. The live-recording toggle does not gate this direct
-request; the Foundation Models classifier still requires macOS 26 plus Apple
-Intelligence, while an enabled BYOK provider may replace only the answer stage.
+request; the Foundation Models classifier still requires Apple Intelligence,
+while an enabled BYOK provider may replace only the answer stage.
 
 A completed pass with no terminal outcome atomically replaces every card and
 linked successful run, including with an empty set when corrected content

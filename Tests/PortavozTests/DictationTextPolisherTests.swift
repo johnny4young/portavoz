@@ -77,7 +77,6 @@ final class DictationTextPolisherTests: XCTestCase {
         }
     }
 
-    @available(macOS 26.0, *)
     func testAppleUnavailableModelThrowsPolishUnavailableWithItsReason() async {
         let polisher = FoundationModelDictationPolisher(unavailabilityReason: { "Apple Intelligence is turned off" })
 

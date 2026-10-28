@@ -20,7 +20,7 @@ final class RecordingCatchUpModel {
     private var task: Task<Void, Never>?
 
     /// Recap of the last few minutes of CLOSED captions at interactive
-    /// priority. On Sequoia (or without Apple Intelligence) the answer is
+    /// priority. Without Apple Intelligence the answer is
     /// the honest capability explanation instead of a hidden control.
     func request(
         captions: [TranscriptSegment],
@@ -29,13 +29,10 @@ final class RecordingCatchUpModel {
         isRecording: @escaping @MainActor () -> Bool
     ) {
         guard isRecording(), state != .generating else { return }
-        guard #available(macOS 26.0, *),
-            FoundationModelSummaryProvider.unavailabilityReason() == nil
+        guard FoundationModelSummaryProvider.unavailabilityReason() == nil
         else {
             state = .unavailable(L10n.text(
-                // One-line UI copy.
-                // swiftlint:disable:next line_length
-                "Catch-up needs Apple Intelligence on macOS 26. Summaries at Stop still work with your configured engine."))
+                "Catch-up needs Apple Intelligence. Summaries at Stop still work with your configured engine."))
             return
         }
         let clip = CatchUpPolicy.clip(captions)

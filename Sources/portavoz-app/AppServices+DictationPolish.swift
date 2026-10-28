@@ -17,7 +17,7 @@ struct AppDictationPolishSelection: Sendable {
 struct AppDictationPolishRouter: DictationTextPolishing {
     let selection: @MainActor @Sendable () -> AppDictationPolishSelection?
     let mlxModelDirectory: @Sendable () async -> URL?
-    let makeApple: @MainActor @Sendable () -> (any DictationTextPolishing)?
+    let makeApple: @MainActor @Sendable () -> any DictationTextPolishing
     let makeOllama: @Sendable (_ endpoint: URL, _ model: String) -> any DictationTextPolishing
     let makeMLX: @MainActor @Sendable (_ directory: URL) -> any DictationTextPolishing
 
@@ -52,18 +52,11 @@ struct AppDictationPolishRouter: DictationTextPolishing {
             return await makeMLX(directory)
         case .appleOnDevice:
             switch current.foundationModelsCapability {
-            case .requiresMacOS26:
-                throw DictationPolishUnavailable(reason: L10n.text(
-                    "Polish needs Apple Intelligence on macOS 26."))
             case .unavailable(let reason):
                 throw DictationPolishUnavailable(reason: L10n.format(
                     "Apple Intelligence is unavailable: %@.", reason))
             case .available:
-                guard let apple = await makeApple() else {
-                    throw DictationPolishUnavailable(reason: L10n.text(
-                        "Polish needs Apple Intelligence on macOS 26."))
-                }
-                return apple
+                return await makeApple()
             }
         }
     }
@@ -108,10 +101,7 @@ extension AppServices {
             mlxModelDirectory: { [modelLifecycle] in
                 await modelLifecycle.installation(for: ModelCatalog.mlxQwen35)?.directory
             },
-            makeApple: {
-                guard #available(macOS 26.0, *) else { return nil }
-                return FoundationModelDictationPolisher()
-            },
+            makeApple: { FoundationModelDictationPolisher() },
             makeOllama: { [dataEgressGateway] endpoint, model in
                 OpenAICompatibleDictationPolisher(
                     endpoint: endpoint, model: model, apiKey: "ollama", gateway: dataEgressGateway)

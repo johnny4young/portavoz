@@ -16,7 +16,7 @@ final class AppSelectedAskMeetingAnsweringTests: XCTestCase {
             citations: [citation])
         XCTAssertNil(beforeInstall)
 
-        router.install { .unavailable(.requiresMacOS26) }
+        router.install { .unavailable(.appleOnDevice(reason: "Apple Intelligence is turned off")) }
         let unavailable = try await router.answer(
             question: "What changed?",
             citations: [citation])
@@ -163,7 +163,7 @@ final class AppSelectedAskMeetingAnsweringTests: XCTestCase {
         XCTAssertEqual(captured.passages, [passage])
 
         let unavailable = AppSelectedAskMeetingAnswering()
-        unavailable.install { .unavailable(.requiresMacOS26) }
+        unavailable.install { .unavailable(.appleOnDevice(reason: "Apple Intelligence is turned off")) }
         let unavailableAnswer = try await unavailable.answer(
             question: "What would you do first?",
             passages: [passage])
