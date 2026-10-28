@@ -22026,3 +22026,28 @@ scan that finds no reader runs the complete suite.
 about 3,900 while every test that can read the changed files still runs. The
 assertions keep living in Swift; a later move to Python tooling could narrow the
 lane further.
+
+## D601 — UI evidence for the dependency lock, copy and resources fails closed
+
+**Context:** D597 sent `Package.resolved` and the string catalog to the
+seventeen smoke canaries, and a nightly shard that ended as a hosted advisory
+still reported success. A dependency bump can change any rendered surface, a
+copy change breaks exactly the tests that quote it, non-Swift resources fell
+through to whatever owner their module happened to have, and a green nightly
+run without verified evidence cannot back a release.
+
+**Decision:** The dependency lock selects the complete English catalog. The
+string catalog compares English keys between the two revisions and selects the
+UI tests that quote a changed key, or a literal fragment of it, plus the
+canaries; Spanish-only edits select nothing because `LocalizationTests` owns
+them, and an unreadable diff selects everything. Lower-layer resources keep a
+proven owner, other resources and app resources select the complete catalog,
+and the research-only targets that the app never links select nothing. Every
+scheduled nightly run executes the catalog, and a shard succeeds only when its
+classifier reports verified, passed evidence.
+
+**Consequences:** Dependency bumps pay for one complete English pass on the pull
+request. Copy edits run the journeys that assert them instead of an unrelated
+sample. A hosted-automation outage turns the nightly run red, so the release
+recipe's green-nightly rule now means verified evidence; the run is
+re-dispatched instead of being accepted as an advisory.

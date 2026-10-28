@@ -65,9 +65,9 @@ class UITestScopeTests(unittest.TestCase):
 
         lock = select_paths(["Package.resolved"])
         self.assertTrue(lock.required)
-        self.assertEqual(lock.tests, self.smoke_selection())
+        self.assertEqual(lock.tests, ALL_TESTS)
         self.assertEqual(lock.locales, ("en",))
-        self.assertEqual(lock.reasons, ("Package.resolved: dependency smoke canaries",))
+        self.assertEqual(lock.reasons, ("Package.resolved: complete English dependency fallback",))
 
     def test_package_changes_keep_complete_harness_expansion(self):
         selection = select_paths(["Package.swift", "project.yml"])
@@ -372,16 +372,39 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
             self.assertEqual(set(selection.tests), owned_tests, path)
 
-    def test_localization_selects_the_english_smoke_canaries(self):
-        selection = select_paths(["Resources/Localization/Portavoz/Localizable.xcstrings"])
-        self.assertTrue(selection.required)
-        self.assertEqual(selection.tests, self.smoke_selection())
-        self.assertEqual(selection.locales, ("en",))
-        self.assertEqual(
-            selection.reasons,
-            ("Resources/Localization/Portavoz/Localizable.xcstrings: "
-             "localization smoke canaries",),
-        )
+    def test_localization_selects_journeys_quoting_changed_english_copy(self):
+        catalog = ui_scope.CATALOG
+        unknown = select_paths([catalog])
+        self.assertEqual(unknown.tests, ALL_TESTS, "changed keys must be known to narrow the run")
+        quoted = select_paths([catalog], {"Live captions are available now."}, ROOT)
+        library = {test for test in ALL_TESTS if "/LibraryUITests/" in test}
+        self.assertTrue(library <= set(quoted.tests))
+        self.assertTrue(set(SMOKE_TESTS) <= set(quoted.tests))
+        self.assertLess(len(quoted.tests), len(ALL_TESTS))
+        formatted = select_paths([catalog], {"Apple summaries are unavailable: %@. Choose Ollama or Built-in (MLX)."}, ROOT)
+        self.assertTrue(set(SMOKE_TESTS) <= set(formatted.tests))
+        spanish_only = select_paths([catalog], set(), ROOT)
+        self.assertFalse(spanish_only.required, "Spanish values belong to LocalizationTests")
+
+    def test_catalog_changes_compare_english_keys_between_revisions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            def git(*arguments):
+                return subprocess.run(["git", *arguments], cwd=root, check=True, capture_output=True, text=True).stdout
+            git("init", "-q", "-b", "main")
+            git("config", "user.email", "fixture@example.invalid")
+            git("config", "user.name", "Fixture")
+            path = root / ui_scope.CATALOG
+            path.parent.mkdir(parents=True)
+            path.write_text(json.dumps({"strings": {"Keep": {}, "Old copy": {}}}))
+            git("add", "-A")
+            git("commit", "-q", "-m", "base")
+            base = git("rev-parse", "HEAD").strip()
+            path.write_text(json.dumps({"strings": {"Keep": {"localizations": {"es": {}}}, "New copy": {}}}))
+            git("commit", "-qam", "copy")
+            self.assertEqual(ui_scope.catalog_changes(base, "HEAD", root), {"Old copy", "New copy"})
+            self.assertEqual(ui_scope.catalog_changes(base, None, root), {"Old copy", "New copy"})
+            self.assertIsNone(ui_scope.catalog_changes("0" * 40, "HEAD", root))
 
     def test_no_path_combination_selects_spanish(self):
         selection = select_paths([
@@ -1131,14 +1154,17 @@ class UITestScopeTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertTrue(set(FEATURE_TESTS[feature]) <= set(select_paths([path]).tests))
                 self.assertLess(len(select_paths([path]).tests), len(ALL_TESTS))
-        for path in ("Sources/ApplicationKit/ProcessingWakeSchedule.swift",
-                     "Sources/IntelligenceKit/Resources/Classifier.json",
-                     "Sources/CSQLiteVecResearch/sqlite-vec.c"):
-            with self.subTest(path=path):
-                selection = select_paths([path])
-                self.assertEqual(selection.tests, self.smoke_selection())
-                self.assertIn(f"{path}: lower-layer smoke canaries", selection.reasons)
-        self.assertFalse(select_paths(["Sources/portavoz-cli-main/main.swift"]).required)
+        selection = select_paths(["Sources/ApplicationKit/ProcessingWakeSchedule.swift"])
+        self.assertEqual(selection.tests, self.smoke_selection())
+        classifier = "Sources/IntelligenceKit/Resources/PortavozLiveQuestionClassifier.mlmodelc/coremldata.bin"
+        self.assertEqual(set(select_paths([classifier]).tests), set(FEATURE_TESTS["live-assist"]))
+        for unknown in ("Sources/PlatformKit/Resources/Unowned.json", "Sources/portavoz-app/Info.plist"):
+            with self.subTest(path=unknown):
+                self.assertEqual(select_paths([unknown]).tests, ALL_TESTS)
+        for research in ("Sources/portavoz-cli-main/main.swift", "Sources/CSQLiteVecResearch/sqlite-vec.c",
+                         "Sources/SQLiteVecResearchKit/Ranker.swift"):
+            with self.subTest(path=research):
+                self.assertFalse(select_paths([research]).required)
         for path in ("Sources/portavoz-app/L10n.swift", "Sources/portavoz-app/AppLanguage.swift"):
             with self.subTest(path=path):
                 self.assertEqual(select_paths([path]).tests, ALL_TESTS)
