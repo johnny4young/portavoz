@@ -21959,3 +21959,27 @@ of the whole suite. A UI regression caused by a lower layer outside the
 canaries can reach `main` and is caught by the next nightly run instead of the
 pull request. A red nightly run is a release blocker until it is fixed; a known
 hosted-automation outage is reported as an advisory, not a product failure.
+
+## D598 — Run XCTest classes in a bounded process pool
+
+**Context:** The complete package suite ran about 3,800 XCTest cases one after
+another, roughly ten of the seventeen minutes of the hosted build-and-test lane
+on a three-core runner. SwiftPM's `--parallel` starts one process per test
+method; on the hosted runner that launch cost erased the gain (11.3 minutes for
+XCTest), and locally it was slower than serial.
+
+**Decision:** A complete `scripts/run-swift-tests.sh` run builds once, lists the
+tests, runs each XCTest class in its own `xctest` process from a pool of three
+(the hosted core count, overridable by `PORTAVOZ_SWIFT_TEST_WORKERS`), and then
+runs the Swift Testing suites through an anchored filter. A class keeps its
+cases serial in one process, as before; classes no longer share a process. The
+run fails when a class fails, prints no summary, or the executed XCTest total
+differs from the listed total. A targeted run keeps plain `swift test`.
+Concurrent processes share the on-disk `UserDefaults.standard` domain, so tests
+that persist preferences use their own suite. Cancellation stops the launcher's
+whole process group.
+
+**Consequences:** On a development Mac the complete gate fell from 320 to 154
+seconds with every listed case executed. A test that relied on another class
+running first in the same process now fails visibly and is fixed rather than
+serialized again.

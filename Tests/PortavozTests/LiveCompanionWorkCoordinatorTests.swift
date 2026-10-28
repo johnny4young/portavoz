@@ -58,22 +58,16 @@ final class LiveCompanionWorkCoordinatorTests: XCTestCase {
     }
 
     func testDisablingApuntadorCancelsTheRecordingScopedCoordinator() async {
-        let defaults = UserDefaults.standard
-        let previousValue = defaults.object(forKey: "companionEnabled")
-        defer {
-            if let previousValue {
-                defaults.set(previousValue, forKey: "companionEnabled")
-            } else {
-                defaults.removeObject(forKey: "companionEnabled")
-            }
-        }
+        let suite = "live-companion-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
 
         let generator = ControlledCompanionGenerator()
         let received = CompanionResultSink()
         let coordinator = LiveCompanionWorkCoordinator(
             generator: { await generator.generate($0) },
             receiver: { request, _ in received.append(request.candidate) })
-        let controller = RecordingController()
+        let controller = RecordingController(defaults: defaults)
         controller.companionWorkCoordinator = coordinator
         controller.companionEnabled = true
 
