@@ -426,8 +426,13 @@ class NightlyUIWorkflowTests(unittest.TestCase):
 
     def test_an_unchanged_main_skips_the_scheduled_catalog(self):
         self.assertIn("actions: read", self.workflow)
-        self.assertIn('if [[ "$EVENT_NAME" == "schedule" && "$verified" == "$GITHUB_SHA" ]]; then', self.workflow)
-        self.assertIn("runs?branch=main&status=success&per_page=1", self.workflow)
+        self.assertIn('scripts/ui_test_nightly.py freshness --commit "$GITHUB_SHA"', self.workflow)
+        self.assertNotIn("status=success&per_page=1", self.workflow)
+        self.assertIn("if: steps.verify.outputs.verified == 'true'", self.workflow)
+        self.assertIn("name: nightly-ui-verification-${{ github.sha }}", self.workflow)
+        self.assertIn("needs: [freshness, build-ui-products, interruption-controls, shard]", self.workflow)
+        self.assertIn("needs.freshness.outputs.run == 'true'", self.workflow)
+        self.assertIn("pattern: nightly-ui-classification-*-${{ github.run_id }}", self.workflow)
         self.assertEqual(self.workflow.count("if: needs.freshness.outputs.run == 'true'"), 2)
 
     def test_three_shards_share_one_build_and_cover_the_validated_catalog(self):

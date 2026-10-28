@@ -3103,9 +3103,14 @@ a lower-layer file without a proven owner, an unmapped app file,
 canaries (D597); lower-layer files with a proven owner keep their feature
 scopes. The nightly workflow runs the complete catalogue on `main` as three
 shards balanced greedily by `docs/evidence/ui-test-runtime-budget.json`
-(`--all --shard K/N`), classifies each shard with the pull-request gate, skips
-a scheduled run of a commit that already passed, and runs the interruption
-controls. The
+(`--all --shard K/N`), classifies each shard with the pull-request gate, and
+runs the interruption controls. Only first-attempt evidence with all three
+shards `verified=true`/`state=passed` and successful required controls publishes
+the workflow-owned `nightly-ui-verification-<exact SHA>` artifact. Freshness and
+release eligibility require this unexpired exact-SHA artifact, not workflow
+success: known infrastructure remains advisory but establishes no anchor and
+allows the next schedule to retry. A scheduled skip never republishes or renews
+an anchor; it can only reuse the original qualifying run. The
 Meeting Detail primary column also selects the complete English suite: its
 pane layout decides which detail content exists for every journey that opens a
 meeting, including recording-recovery and Skills journeys (D549). Docs,

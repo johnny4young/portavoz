@@ -22,18 +22,17 @@ jobs:
     outputs:
       run: ${{ steps.check.outputs.run }}
     steps:
-      # A schedule on an unchanged main repeats evidence it already has.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # A green advisory or skip is not complete catalog evidence. Reuse only
+      # the original unexpired artifact; never renew it from a skipped run.
       - name: Skip a scheduled run of an already verified commit
         id: check
         env:
           GH_TOKEN: ${{ github.token }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
-          verified="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ui-nightly.yml/runs?branch=main&status=success&per_page=1" \
-            --jq '.workflow_runs[0].head_sha // ""')"
-          if [[ "$EVENT_NAME" == "schedule" && "$verified" == "$GITHUB_SHA" ]]; then
-            echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "main $GITHUB_SHA already passed the nightly UI catalog."
+          if [[ "$EVENT_NAME" == "schedule" ]]; then
+            python3 scripts/ui_test_nightly.py freshness --commit "$GITHUB_SHA" >> "$GITHUB_OUTPUT"
           else
             echo "run=true" >> "$GITHUB_OUTPUT"
           fi
@@ -152,6 +151,26 @@ jobs:
           python3 scripts/ui_test_ci_gate.py --results dist/ui-test-results --locales en \
             --english-outcome "$OUTCOME" --summary "$GITHUB_STEP_SUMMARY" --github-output "$GITHUB_OUTPUT"
 
+      - name: Record compact shard classification
+        if: always()
+        env:
+          SHARD: ${{ matrix.shard }}
+          VERIFIED: ${{ steps.classify.outputs.verified }}
+          STATE: ${{ steps.classify.outputs.state }}
+        run: |
+          python3 scripts/ui_test_nightly.py shard --commit "$GITHUB_SHA" \
+            --shard "$SHARD" --verified "$VERIFIED" --state "$STATE" \
+            --output "$RUNNER_TEMP/nightly-shards/$SHARD.json"
+
+      - name: Publish compact shard classification
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nightly-ui-classification-${{ matrix.shard }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/nightly-shards/${{ matrix.shard }}.json
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Report hosted infrastructure without evidence
         if: steps.classify.outputs.state == 'infrastructure-advisory'
         run: echo "::warning::Hosted UI infrastructure was unavailable; shard ${{ matrix.shard }} produced no product evidence."
@@ -164,3 +183,40 @@ jobs:
           path: dist/ui-test-results
           if-no-files-found: warn
           retention-days: 7
+
+  verification-anchor:
+    needs: [freshness, build-ui-products, interruption-controls, shard]
+    if: >-
+      always() && needs.freshness.result == 'success' &&
+      needs.freshness.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Collect all shard classifications
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: nightly-ui-classification-*-${{ github.run_id }}
+          path: dist/nightly-shards
+          merge-multiple: true
+      - name: Require complete catalog and interruption evidence
+        id: verify
+        env:
+          BUILD: ${{ needs.build-ui-products.result }}
+          CONTROLS: ${{ needs.interruption-controls.result }}
+          SHARDS: ${{ needs.shard.result }}
+          ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          python3 scripts/ui_test_nightly.py verify --commit "$GITHUB_SHA" \
+            --results dist/nightly-shards --build "$BUILD" --controls "$CONTROLS" \
+            --shards "$SHARDS" --attempt "$ATTEMPT" --output dist/nightly-verification/receipt.json
+      # Only this job can publish the attestation. Advisory stays green but
+      # cannot certify freshness, and a skip never republishes an old anchor.
+      - name: Preserve complete nightly verification anchor
+        if: steps.verify.outputs.verified == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nightly-ui-verification-${{ github.sha }}
+          path: dist/nightly-verification/receipt.json
+          if-no-files-found: error
+          retention-days: 90

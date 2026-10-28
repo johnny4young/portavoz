@@ -5756,7 +5756,12 @@ canaries across the main surfaces: unit tests own their behavior.
 Shared-harness, fixture, build and language-switch changes and unknown non-Swift
 paths expand to the complete English catalogue, which also runs every night on
 `main` in three shards balanced by runtime budget
-(`.github/workflows/ui-nightly.yml`). XCUITest runs in
+(`.github/workflows/ui-nightly.yml`). Nightly freshness and release eligibility
+require an unexpired workflow-owned verification artifact for the exact SHA,
+created only after first-attempt verification of all three shards and the
+required interruption controls. A green infrastructure advisory creates no
+anchor and permits retry; a scheduled skip can reuse the original anchor but
+never republishes it or renews its retention. XCUITest runs in
 English only: Spanish parity is a unit-test property of the string catalogs
 (every key translated, matching placeholders, every visible literal
 cataloged, Spanish equal to English only for an explicit list of terms), and

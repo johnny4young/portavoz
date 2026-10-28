@@ -63,11 +63,19 @@ scripts/check-repository-hygiene.sh
   receipt" below), which generates its own public `say` fixtures and never
   inherits a private `PORTAVOZ_TEST_WAV`; run the standalone target here only
   as an early local check with fixtures of your own.
-- The newest **Nightly UI** run on `main` must be green for the commit you release (D597):
-  `gh run list --workflow ui-nightly.yml --branch main --limit 1 --json headSha,conclusion`
-  must show `"conclusion":"success"` with `headSha` equal to `git rev-parse HEAD`.
-  Otherwise dispatch it (`gh workflow run ui-nightly.yml --ref main`) and wait;
-  a red nightly blocks the release until it is fixed.
+- **Nightly UI** must have explicit complete evidence on `main` for the exact
+  commit you release (D597). From that checkout, with `GH_TOKEN` available, run
+  `python3 scripts/ui_test_nightly.py freshness --repository johnny4young/portavoz --commit "$(git rev-parse HEAD)" --require-verified`.
+  This must exit zero and report a `verified_run`: a successful first-attempt
+  nightly with an unexpired `nightly-ui-verification-<exact SHA>` artifact.
+  Only the aggregate verifier publishes that artifact after all three shards
+  report `verified=true`/`state=passed` and the required interruption controls
+  succeed. Workflow `conclusion=success` and `headSha` alone are insufficient:
+  known infrastructure can stay advisory without functional evidence.
+  A scheduled skip may reuse the original unexpired anchor but never republishes
+  it or renews its retention. Missing, expired, advisory, failed or different-SHA
+  evidence blocks release and requires a new complete run; a red nightly must
+  be fixed before release. The scheduled lane retries any unverified commit.
 - **CHANGELOG.md** has every user-visible change since the last release, newest first.
 - Decide the **version** (SemVer): patch for fixes, minor for features. Last tag: `git tag --list 'v*' | sort -V | tail -1`.
 - The release host's selected Xcode must pass the same strict gates as CI. Xcode 27 needs the separately downloaded Metal Toolchain (`xcodebuild -downloadComponent MetalToolchain`) because `mlx-swift` compiles Metal kernels, and a fresh Xcode needs its license accepted before `swift` runs at all.
