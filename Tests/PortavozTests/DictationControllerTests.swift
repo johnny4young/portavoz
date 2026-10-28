@@ -539,7 +539,7 @@ final class DictationControllerHarness {
     var dependencies: DictationSessionDependencies {
         DictationSessionDependencies(
             authorizeMicrophone: { true },
-            makeMicrophone: { [microphone] in .init(source: microphone, warmUp: {}) },
+            makeMicrophone: { [microphone] in .init(source: ControlledMicrophoneSession(microphone), warmUp: {}) },
             acquireRuntime: { [weak self] in
                 guard let self else { throw CancellationError() }
                 self.loads += 1
@@ -578,6 +578,7 @@ actor ControlledDictationMicrophone: CaptureReportingSource {
     private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?
     private var failOnStop = false
     private var stopDrain: (@Sendable () async -> Void)?
+    private var generation = 0
 
     func holdStop(_ drain: @escaping @Sendable () async -> Void) { stopDrain = drain }
 
@@ -595,6 +596,7 @@ actor ControlledDictationMicrophone: CaptureReportingSource {
 
     func start() async throws -> AsyncThrowingStream<AudioChunk, Error> {
         starts += 1
+        generation += 1
         let (stream, continuation) = AsyncThrowingStream.makeStream(of: AudioChunk.self)
         self.continuation = continuation
         continuation.yield(AudioChunk(
@@ -602,8 +604,17 @@ actor ControlledDictationMicrophone: CaptureReportingSource {
         return stream
     }
 
-    func stop() async {
+    func startSession() async throws -> (Int, AsyncThrowingStream<AudioChunk, Error>) {
+        let stream = try await start()
+        return (generation, stream)
+    }
+
+    func stop() async { await stop(generation: nil) }
+
+    /// A cancelled session's detached Stop can land after the next Start; it must not end that capture.
+    func stop(generation stopped: Int?) async {
         stops += 1
+        if let stopped, stopped != generation { return }
         if failOnStop {
             health.withLock { $0.failure = .sourceFailed }
             failOnStop = false
@@ -633,6 +644,29 @@ actor ControlledDictationMicrophone: CaptureReportingSource {
     func armUnnotifiedFailureOnStop() {
         failOnStop = true
     }
+}
+
+/// Production builds a new source per session; this view gives each session its own Stop.
+actor ControlledMicrophoneSession: CaptureReportingSource {
+    nonisolated let channel = AudioChannel.microphone
+    private let shared: ControlledDictationMicrophone
+    private var generation: Int?
+
+    init(_ shared: ControlledDictationMicrophone) { self.shared = shared }
+
+    nonisolated var captureReport: CaptureChannelReport { shared.captureReport }
+
+    nonisolated func setCaptureFailureHandler(_ handler: @escaping @Sendable () -> Void) {
+        shared.setCaptureFailureHandler(handler)
+    }
+
+    func start() async throws -> AsyncThrowingStream<AudioChunk, Error> {
+        let (generation, stream) = try await shared.startSession()
+        self.generation = generation
+        return stream
+    }
+
+    func stop() async { await shared.stop(generation: generation) }
 }
 
 private struct ControlledDictationEngine: TranscriptionEngine {

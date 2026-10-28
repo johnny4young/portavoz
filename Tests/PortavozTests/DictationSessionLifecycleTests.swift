@@ -343,7 +343,9 @@ extension DictationControllerTests {
     }
 
     func testCancelRevokesPendingStopBeforeRestartAndEarlyStopRemainsCancellation() async {
-        for elapsed in [0.0, 0.749, 0.75, 1.0] {
+        // Readiness backdates the first frame by real main-actor lag, so a
+        // too-short case keeps a margin; the exact edge is a pure policy test.
+        for elapsed in [0.0, 0.5, 0.75, 1.0] {
             let controller = DictationController(presentsPanel: false)
             let first = DictationControllerHarness(text: "No borres estas notas.", controller: controller)
             let second = DictationControllerHarness(text: "Don’t delete these notes.", controller: controller)
