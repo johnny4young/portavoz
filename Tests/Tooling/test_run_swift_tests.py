@@ -28,6 +28,7 @@ class RunSwiftTestsTests(unittest.TestCase):
         completion_timeout: float = 20,
         workers: str | None = None,
         xctest_exit: int = 0,
+        scope: str | None = None,
     ) -> tuple[subprocess.CompletedProcess[str], dict[str, object] | None, Path]:
         root = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, root, True)
@@ -121,6 +122,8 @@ class RunSwiftTestsTests(unittest.TestCase):
         if workers is not None:
             environment["PORTAVOZ_SWIFT_TEST_WORKERS"] = workers
         environment["XCTEST_EXIT"] = str(xctest_exit)
+        if scope is not None:
+            environment["PORTAVOZ_SWIFT_TEST_SCOPE"] = scope
         command = [str(RUNNER), *arguments]
         with subprocess.Popen(
             command,
@@ -296,6 +299,15 @@ class RunSwiftTestsTests(unittest.TestCase):
         self.assertIn("XCTest classes: 1; cases: 1 of 1 listed", result.stdout)
         self.assertEqual(record["arguments"],
                          ["--skip-build", "-Xswiftc", "-warnings-as-errors", "--filter", "^(PortavozTests\\.GammaSuite)/"])
+
+    def test_a_scope_pools_only_the_matching_listed_tests(self):
+        result, record, root = self.run_runner(scope=r"^PortavozTests\.(AlphaTests)/")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((root / "xctest.log").read_text().split(), ["PortavozTests.AlphaTests"])
+        self.assertIsNone(record, "no Swift Testing suite is in scope")
+        result, record, _ = self.run_runner(scope=r"^PortavozTests\.(MissingTests)/")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("matched no listed test", result.stderr)
 
     def test_a_failing_xctest_class_fails_the_launcher_after_swift_testing_runs(self):
         result, record, root = self.run_runner(xctest_exit=1)

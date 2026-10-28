@@ -161,7 +161,8 @@ class CIWorkflowTests(unittest.TestCase):
         ui = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
 
         self.assertEqual(ci.count("run: scripts/check-repository-hygiene.sh"), 1)
-        self.assertEqual(ci.count("needs: repository-hygiene\n"), 2)
+        self.assertEqual(ci.count("needs: repository-hygiene\n"), 1)
+        self.assertEqual(ci.count("needs: [repository-hygiene, swift-scope]\n"), 1)
         self.assertEqual(ci.count("needs: [repository-hygiene, ios-scope]\n"), 1)
         self.assertNotIn("python3 -m unittest Tests.Tooling", ui)
         self.assertEqual(

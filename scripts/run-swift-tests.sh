@@ -139,6 +139,14 @@ run_tests() {
   fi
   local listing="$scratch_root/tests.txt" bin
   swift test list --skip-build ${build[@]+"${build[@]}"} >"$listing" || return
+  # A scoped CI run keeps only the listed tests its anchored class pattern names.
+  if [[ -n "${PORTAVOZ_SWIFT_TEST_SCOPE:-}" ]]; then
+    grep -E "$PORTAVOZ_SWIFT_TEST_SCOPE" "$listing" >"$listing.scoped" || {
+      echo "PORTAVOZ_SWIFT_TEST_SCOPE matched no listed test." >&2
+      return 2
+    }
+    mv "$listing.scoped" "$listing"
+  fi
   bin="$(swift build --show-bin-path ${build[@]+"${build[@]}"})" || return
   local bundles=("$bin"/*.xctest)
   if [[ ${#bundles[@]} -ne 1 || ! -d "${bundles[0]}" ]]; then
