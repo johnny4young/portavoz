@@ -2121,7 +2121,12 @@ that write preferences use their own suite domain rather than
 `UserDefaults.standard`, which concurrent processes share on disk.
 `Tests/Tooling/test_run_xctest_pool.py` and `test_run_swift_tests.py` cover the
 class selection, summary parsing, count guard, failure propagation, targeted
-passthrough and the process-group stop. A strict `swift build` alone does not compile
+passthrough and the process-group stop. A documentation, website or Python-tooling
+pull request runs only the classes that locate the checkout through `#filePath`
+or a repository root (D600): `Tests/Tooling/test_swift_test_scope.py` checks
+that every Swift test naming a repository path is selected, that build, test,
+runner, workflow, resource and fixture changes select everything, that a scan
+finding no reader fails, and that the CLI fails closed to the complete suite. A strict `swift build` alone does not compile
 the test targets; a subsequent non-strict `swift test` can therefore miss a
 test-only diagnostic that fails CI. Non-reassigned weak lifetime probes use
 `weak let`, preserving zeroing-weak semantics without artificial mutations or

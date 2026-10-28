@@ -22003,9 +22003,29 @@ model, question-only Apuntador cards) and its own copy, and
 `-simulate-no-apple-intelligence` replaces the old argument in UI tests.
 
 **Consequences:** The capability model has two states instead of three, and
-the code and tests for unreachable OS branches are gone. Evidence contracts
-that still name Sequoia, such as the cross-host exact-path matrix, are
-historical receipts until a later change retires their Sequoia cells.
+the code and tests for unreachable OS branches are gone. The cross-host
+exact-path matrix already requires macOS 26 only.
+
+## D600 — Documentation-only pull requests run only the Swift tests that read the checkout
+
+**Context:** About 380 Swift assertions and the English-prose scan read
+documentation, scripts and workflows, so a documentation-only pull request
+could not skip the macOS test lane without letting those tests break on `main`.
+It still ran all of roughly 3,900 tests.
+
+**Decision:** On a pull request, `scripts/swift_test_scope.py` returns an
+anchored class pattern when every changed path is documentation, the website,
+Python tooling under `Tests/Tooling`, an issue template, the license or a root
+Markdown file. The pattern names every test class declared in a Swift test
+source that locates the checkout (`#filePath` or a repository root), and the
+launcher keeps only those listed tests before the class pool runs. Any other
+path, every `main` push and manual run, an empty diff, an unreadable diff or a
+scan that finds no reader runs the complete suite.
+
+**Consequences:** A documentation pull request runs about 890 tests instead of
+about 3,900 while every test that can read the changed files still runs. The
+assertions keep living in Swift; a later move to Python tooling could narrow the
+lane further.
 
 ## D601 — UI evidence for the dependency lock, copy and resources fails closed
 
