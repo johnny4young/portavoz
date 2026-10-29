@@ -2093,7 +2093,20 @@ Meeting Detail audio enters ApplicationKit (D112/D144). Playback preparation
 resolves the current canonical system and microphone files through an injected
 port, constructs one synchronized observable application facade, derives a
 bounded capability-neutral waveform away from the main actor, and installs
-silence and microphone-turn filters before publication. The application policy
+dead-time and voice-focus filters before publication. `PlaybackTimeline`
+(D605) treats transcript gaps of at least 20 s (speech padded by 1 s) as dead
+time: the scrubber draws each such gap no longer than a tenth of the
+conversation (at least 10 s), labels it with its real length when it fits, and
+Skip silence, on by default, jumps over it. Without a transcript the scrubber
+stays linear and skipping falls back to waveform silence. The one-row transport
+is play/pause, back/forward 15 s (`player-skip-back`, `player-skip-forward`),
+current/total time, speed 1×–2× with preserved pitch (`player-speed`), a
+"Play: Everyone" menu over the speakers with turns (`player-voice-focus`,
+`player-voice-everyone`, `player-voice-<label>`) and an options menu
+(`player-options`) holding Skip silence (`player-skip-silence`), Reduce echo
+(`player-clear-playback`) and Mark clip start/end (`clip-mark-start`,
+`clip-mark-end`); a marked clip shows its length, Export and discard below the
+waveform (`player-waveform`). The application policy
 admits 600 buckets by default and never publishes more than 2,000. The
 AudioPlaybackKit worker reads the complete finalized channels, propagates route
 cancellation into its detached task, and checks cancellation between 65,536-
@@ -2553,7 +2566,7 @@ every `.help(...)` tooltip to stay at or under 90 characters, and requires the
 single privacy phrase "On your Mac" to exist while the old disclaimer variants
 do not. The in-meeting assistant is "Apuntador" in both languages; the Skills
 category and its proposals are "Automations" / "Automatizaciones"; transcript
-Refine is presented as "Improve"; clear playback as "Voice only"; note
+Refine is presented as "Improve"; clear playback as "Reduce echo"; note
 enhancement as "Tidy up". Architecture ratchets that pin control labels
 (`ArchitectureDependencyTests+SkillsAndIntegrations`, `+CaptureAndLive`) and
 the meeting-detail interaction contract snapshot follow the same wording.
@@ -4008,8 +4021,8 @@ vertical scroll-view coordinate space preserve the same behavior across the
 current and next SwiftUI SDK signatures without sharing a generic
 named key with the visual-effect closure, and its fade/scale/blur values cross
 `CGFloat`/`Double` boundaries explicitly),
-click-to-jump, the channel-colored waveform scrubber, clip marks, skip-silence,
-and microphone-only playback. `MeetingDetailModel` owns
+click-to-jump, the channel-colored waveform scrubber with compressed dead time,
+clip marks, skip-silence, speed and per-speaker playback. `MeetingDetailModel` owns
 one playback-preparation attempt per recording directory, cancellation retry,
 compression state, session invalidation, and clip-export effects.
 `ApplicationKit.PrepareMeetingPlayback` resolves current channels through an

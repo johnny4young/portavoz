@@ -21,16 +21,23 @@ public final class MeetingPlayer {
     public private(set) var clipStart: TimeInterval?
     public private(set) var clipEnd: TimeInterval?
 
-    /// Skip silent gaps during playback (M11). The silent ranges come from
-    /// the waveform.
-    public var skipSilence = false
+    /// Skip dead time during playback (M11), on by default. The caller
+    /// supplies the ranges: transcript gaps, or waveform silence without one.
+    public var skipSilence = true
     private var silentRanges: [ClosedRange<TimeInterval>] = []
 
-    /// Play only the user's own turns (design system: "solo mi voz"). The
-    /// non-voice ranges are everything that is NOT the user speaking; while
-    /// on, playback jumps over them exactly like silent gaps.
-    public var onlyMyVoice = false
-    private var nonVoiceRanges: [ClosedRange<TimeInterval>] = []
+    /// Play only one voice's turns; playback jumps over everything outside
+    /// them exactly like silent gaps.
+    public var playsFocusOnly = false
+    private var outsideFocusRanges: [ClosedRange<TimeInterval>] = []
+
+    /// Playback speed; pitch is preserved.
+    public var rate: Float = 1 {
+        didSet {
+            player.defaultRate = rate
+            if isPlaying { player.rate = rate }
+        }
+    }
 
     /// Removes the delayed copy of remote speech picked up by the microphone.
     /// The original flat channel mix remains one click away for unusual
@@ -75,8 +82,8 @@ public final class MeetingPlayer {
                         $0.contains(self.currentTime) && self.currentTime < $0.upperBound - 0.3
                     }) {
                     self.seek(to: gap.upperBound - 0.2)
-                } else if self.onlyMyVoice, self.isPlaying,
-                    let gap = self.nonVoiceRanges.first(where: {
+                } else if self.playsFocusOnly, self.isPlaying,
+                    let gap = self.outsideFocusRanges.first(where: {
                         $0.contains(self.currentTime) && self.currentTime < $0.upperBound - 0.3
                     }) {
                     self.seek(to: gap.upperBound - 0.05)
@@ -158,10 +165,13 @@ public final class MeetingPlayer {
         silentRanges = ranges
     }
 
-    /// The gaps to skip when "solo mi voz" is on: everything that is NOT
-    /// the user speaking, merged and sorted by the caller.
-    public func setNonVoiceRanges(_ ranges: [ClosedRange<TimeInterval>]) {
-        nonVoiceRanges = ranges
+    /// Everything outside the focused voice, merged and sorted by the caller.
+    public func setOutsideFocusRanges(_ ranges: [ClosedRange<TimeInterval>]) {
+        outsideFocusRanges = ranges
+    }
+
+    public func skip(by seconds: TimeInterval) {
+        seek(to: currentTime + seconds)
     }
 
     public func play() {

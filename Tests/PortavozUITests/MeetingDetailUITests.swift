@@ -695,10 +695,13 @@ final class MeetingDetailUITests: PortavozUITestCase {
         nameDismiss.click()
         XCTAssertFalse(app.buttons["detail-name-suggestion-S1"].exists)
 
+        let options = app.control(withIdentifier: "player-options")
+        XCTAssertTrue(options.waitForExistenceFast(timeout: 10))
+        options.click()
         XCTAssertTrue(
-            app.control(withIdentifier: "player-clear-playback")
-                .waitForExistenceFast(timeout: 10),
+            app.menuItems["player-clear-playback"].waitForExistenceFast(timeout: 5),
             "two-channel playback must expose the reversible clear mix")
+        typeKey(.escape, modifierFlags: [], in: app)
         attachScreenshot(of: app, named: "dismissible-ai-suggestions-and-clear-playback")
     }
 
@@ -1848,9 +1851,17 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "detail-player-section").exists,
             "the complete playback dock must retain one accessible section boundary")
+        XCTAssertTrue(app.buttons["player-skip-back"].exists)
+        XCTAssertTrue(app.buttons["player-skip-forward"].exists)
+        XCTAssertTrue(app.control(withIdentifier: "player-speed").exists)
+        XCTAssertTrue(app.control(withIdentifier: "player-waveform").exists)
+        let options = app.control(withIdentifier: "player-options")
+        XCTAssertTrue(options.exists, "skip silence, echo and clips live in the options menu")
+        options.click()
         XCTAssertTrue(
-            app.control(withIdentifier: "player-only-my-voice").exists,
-            "the player must offer the 'only my voice' filter")
+            app.menuItems["player-skip-silence"].waitForExistenceFast(timeout: 5),
+            "the player must offer skipping dead time")
+        typeKey(.escape, modifierFlags: [], in: app)
         XCTAssertTrue(
             app.control(withIdentifier: "detail-compress-audio").exists,
             "raw seeded meeting audio must keep its compression action")
@@ -1986,13 +1997,16 @@ final class MeetingDetailUITests: PortavozUITestCase {
 
         XCTAssertTrue(app.buttons["player-play-pause"].waitForExistenceFast(timeout: 15))
         app.buttons["player-play-pause"].click()  // play → the playhead moves
-        app.buttons["clip-mark-start"].click()
+        let options = app.control(withIdentifier: "player-options")
+        options.click()
+        app.menuItems["clip-mark-start"].click()
         let currentTime = app.control(withIdentifier: "player-current-time")
         let clipStartTime = String(describing: currentTime.value)
         XCTAssertTrue(
             currentTime.waitForValueChange(from: clipStartTime, timeout: 5),
             "the playhead must advance before marking a non-empty clip")
-        app.buttons["clip-mark-end"].click()  // end after start → valid range
+        options.click()
+        app.menuItems["clip-mark-end"].click()  // end after start → valid range
 
         XCTAssertTrue(
             app.buttons["clip-export"].waitForExistenceFast(timeout: 5),

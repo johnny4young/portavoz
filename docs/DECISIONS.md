@@ -22128,3 +22128,23 @@ silence after a call. A recording made only through the microphone never asks.
 A call with more than three quiet minutes on both sides shows the question,
 and an unattended one stops; D123's outage nudge is unchanged.
 
+## D605 — The player compresses dead time and plays one voice at a time
+
+**Context:** A 169-minute recording held six minutes of conversation. The
+waveform spread those six minutes over a sliver, Skip silence judged silence
+from 600 peak buckets (about 17 s each) and stayed off by default, and the
+controls ("Only my voice", "Voice only", "Start"/"End" with full-screen icons)
+did not say what they did.
+
+**Decision:** `PlaybackTimeline` uses the transcript, not the volume: gaps of
+at least 20 s between transcribed phrases are dead time, drawn no longer than
+a tenth of the conversation and labelled with their real length. Skip silence
+is on by default and jumps over them. The transport becomes one row: play,
+back/forward 15 s, time, speed, a "Play: Everyone" menu over any speaker with
+turns, and an options menu with Skip silence, Reduce echo and the clip marks.
+
+**Consequences:** Long silences no longer hide the conversation or slow review,
+while pauses under 20 s keep their natural length. Without a transcript the
+scrubber stays linear. "Only my voice" generalizes to any speaker; clip marks
+and echo reduction move one click deeper.
+

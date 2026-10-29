@@ -35,8 +35,14 @@ final class MeetingAudioWorkflowTests: XCTestCase {
         playback.session.seek(to: 0.8)
         playback.session.markClipEnd()
         XCTAssertEqual(playback.session.clipRange, 0.5...0.8)
-        playback.session.onlyMyVoice = true
-        XCTAssertTrue(playback.session.onlyMyVoice)
+        let speaker = SpeakerID()
+        playback.session.focus(on: speaker)
+        XCTAssertEqual(playback.session.voiceFocus, speaker)
+        playback.session.focus(on: nil)
+        XCTAssertNil(playback.session.voiceFocus)
+        XCTAssertTrue(playback.session.skipSilence, "dead time is skipped by default")
+        playback.session.rate = 1.5
+        XCTAssertEqual(playback.session.rate, 1.5)
         playback.session.invalidate()
     }
 

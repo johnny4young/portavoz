@@ -1761,6 +1761,16 @@
         }
       }
     },
+    "Back 15 seconds": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retroceder 15 segundos"
+          }
+        }
+      }
+    },
     "Both sides have been quiet. Portavoz stops recording in %lld min.": {
       "localizations": {
         "es": {
@@ -1827,6 +1837,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Elegir otra"
+          }
+        }
+      }
+    },
+    "Clip %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fragmento %@"
           }
         }
       }
@@ -6029,6 +6049,16 @@
         }
       }
     },
+    "Forward 15 seconds": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adelantar 15 segundos"
+          }
+        }
+      }
+    },
     "Free disk used by the variant you do not use": {
       "localizations": {
         "es": {
@@ -7539,12 +7569,32 @@
         }
       }
     },
+    "Mark clip end": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marcar fin del clip"
+          }
+        }
+      }
+    },
     "Mark clip end at the current playhead": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Marcar el final del clip en la posición actual"
+          }
+        }
+      }
+    },
+    "Mark clip start": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marcar inicio del clip"
           }
         }
       }
@@ -10029,12 +10079,62 @@
         }
       }
     },
+    "Play only one person's turns": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducir solo los turnos de una persona"
+          }
+        }
+      }
+    },
     "Play only your own turns — skips everyone else": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Reproduce solo tus turnos — salta a los demás"
+          }
+        }
+      }
+    },
+    "Play: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducir: %@"
+          }
+        }
+      }
+    },
+    "Playback options": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opciones de reproducción"
+          }
+        }
+      }
+    },
+    "Playback position": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posición de reproducción"
+          }
+        }
+      }
+    },
+    "Playback speed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Velocidad de reproducción"
           }
         }
       }
@@ -11545,6 +11645,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rehacer borrador"
+          }
+        }
+      }
+    },
+    "Reduce echo": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reducir eco"
           }
         }
       }

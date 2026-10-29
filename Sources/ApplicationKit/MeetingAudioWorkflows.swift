@@ -44,23 +44,31 @@ public final class MeetingPlaybackSession {
         didSet { player.skipSilence = skipSilence }
     }
 
-    public var onlyMyVoice: Bool {
-        didSet { player.onlyMyVoice = onlyMyVoice }
+    public var rate: Float {
+        didSet { player.rate = rate }
     }
+
+    /// Scrubber geometry with dead time drawn short.
+    public let timeline: PlaybackTimeline
+    /// The voice playback is limited to; nil plays everyone.
+    public private(set) var voiceFocus: SpeakerID?
+    private let segments: [TranscriptSegment]
 
     public let canClearPlayback: Bool
     public var clearPlayback: Bool {
         didSet { player.clearPlayback = clearPlayback }
     }
 
-    init(player: MeetingPlayer) {
+    init(player: MeetingPlayer, timeline: PlaybackTimeline, segments: [TranscriptSegment]) {
         self.player = player
+        self.timeline = timeline
+        self.segments = segments
         currentTime = player.currentTime
         duration = player.duration
         isPlaying = player.isPlaying
         clipRange = player.clipRange
         skipSilence = player.skipSilence
-        onlyMyVoice = player.onlyMyVoice
+        rate = player.rate
         canClearPlayback = player.canClearPlayback
         clearPlayback = player.clearPlayback
         synchronizationTask = Task { [weak self] in
@@ -94,6 +102,27 @@ public final class MeetingPlaybackSession {
     public func seek(to seconds: TimeInterval) {
         player.seek(to: seconds)
         synchronize()
+    }
+
+    public func skip(by seconds: TimeInterval) {
+        player.skip(by: seconds)
+        synchronize()
+    }
+
+    /// Plays only one speaker's turns, or everyone when `speaker` is nil.
+    public func focus(on speaker: SpeakerID?) {
+        voiceFocus = speaker
+        guard let speaker else {
+            player.playsFocusOnly = false
+            return
+        }
+        let turns = PlaybackRanges.merge(
+            segments
+                .filter { $0.speakerID == speaker && $0.endTime > $0.startTime }
+                .map { $0.startTime...$0.endTime },
+            margin: 0.12)
+        player.setOutsideFocusRanges(PlaybackRanges.complement(of: turns, within: duration))
+        player.playsFocusOnly = true
     }
 
     public func markClipStart() {
@@ -181,7 +210,7 @@ public struct PreparedMeetingPlayback: Sendable {
 }
 
 /// Resolves channels, builds the synchronized player, derives the waveform,
-/// and configures skip-silence and only-my-voice ranges as one workflow.
+/// and configures dead-time skipping and voice focus as one workflow.
 public struct PrepareMeetingPlayback: ApplicationUseCase {
     private let resolver: any MeetingAudioChannelResolving
     private let compressionAdmission: any MeetingAudioCompressionChecking
@@ -244,12 +273,8 @@ public struct PrepareMeetingPlayback: ApplicationUseCase {
                     buckets: bucketCount)
             }
             try Task.checkCancellation()
-            let duration = await player.duration
-            await player.setSilentRanges(
-                Waveform.silentRanges(capabilityBuckets, duration: duration))
-            await player.setNonVoiceRanges(
-                PlaybackRanges.complement(of: localVoiceRanges, within: duration))
-            let session = await MeetingPlaybackSession(player: player)
+            let session = await Self.session(
+                player: player, buckets: capabilityBuckets, segments: request.segments)
             return PreparedMeetingPlayback(
                 session: session,
                 waveform: capabilityBuckets.map {
@@ -262,6 +287,25 @@ public struct PrepareMeetingPlayback: ApplicationUseCase {
             await player.invalidate()
             throw error
         }
+    }
+}
+
+extension PrepareMeetingPlayback {
+    /// Transcript gaps define dead time; waveform silence stands in without one.
+    @MainActor
+    static func session(
+        player: MeetingPlayer,
+        buckets: [Waveform.Bucket],
+        segments: [TranscriptSegment]
+    ) -> MeetingPlaybackSession {
+        let timeline = PlaybackTimeline(
+            duration: player.duration,
+            speech: segments.filter { $0.endTime > $0.startTime }.map { $0.startTime...$0.endTime })
+        player.setSilentRanges(
+            segments.isEmpty
+                ? Waveform.silentRanges(buckets, duration: player.duration)
+                : timeline.gaps)
+        return MeetingPlaybackSession(player: player, timeline: timeline, segments: segments)
     }
 }
 
