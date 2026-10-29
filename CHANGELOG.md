@@ -31,6 +31,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 29, 2026
 
+- **⏩ A player that skips the dead air** — long silences shrink to a small labeled mark on the waveform and playback jumps over them; skip 15 seconds, change speed, and play just one person's turns from the new compact player.
+
 - **⏹️ Forgot to press Stop?** — when both sides go quiet for three minutes after a call, Portavoz asks whether the call ended (also as a notification) and stops by itself five minutes later unless you keep recording.
 - **🤫 Refine skips the silence** — Refine now transcribes only the moments people actually speak: no more "Thank you." every 20 seconds or Japanese and Russian phrases in quiet stretches, English stays English, and long meetings with little talk refine much faster.
 
