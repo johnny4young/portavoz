@@ -22051,3 +22051,100 @@ request. Copy edits run the journeys that assert them instead of an unrelated
 sample. A hosted-automation outage turns the nightly run red, so the release
 recipe's green-nightly rule now means verified evidence; the run is
 re-dispatched instead of being accepted as an advisory.
+
+## D602 — Measure speaker echo offline instead of cancelling it live
+
+**Context:** In a 169-minute meeting recorded on MacBook speakers, the raw
+microphone carried the remote side 75 ms late. Eighteen remote rows appeared a
+second time as "Me", three remote sentences existed only in the microphone
+transcript because the system transcript missed them, and the summary assigned
+remote action items to the user. The word-level `MicBleedFilter` failed because
+that stretch of the system channel was transcribed in German. Live Apple voice
+processing remains excluded by D125, and an offline linear (NLMS) canceller
+reached only ~4 dB on this audio because the built-in speakers apply
+level-dependent processing.
+
+**Decision:** After capture, `MicrophoneEchoAnalysis` re-reads both channel
+files and models the echo per frequency band in magnitude only, with a
+measured delay, learned per-band gains and a short tail. It produces a
+`MicrophoneEchoProfile` of per-frame microphone and near-end energy, or nil
+when the channels are not coupled. Post-capture transcription and Refine pass
+microphone rows through `SpeakerEchoFilter` before `MicBleedFilter`. A row that
+is at least 90% predicted echo is dropped when the system transcript covers it,
+and otherwise moves to the system channel. Any failure degrades to the previous
+text-only filtering. Capture files are never rewritten.
+
+**Consequences:** "Me" stops claiming remote speech on speakers in any language,
+and remote speech that only the microphone transcribed is kept and attributed
+to a remote speaker. The capture stays observational and the original
+microphone remains the evidence. Live captions and the playback mix still use
+the raw microphone; an echo-suppressed playback track is a separate change.
+
+## D603 — Refine decodes only speech, one supported language per window
+
+**Context:** On a 169-minute meeting with a six-minute call, Refine ran
+WhisperKit's energy chunker over the whole file. Every silent 22.5 s chunk was
+decoded: the system channel gained 435 "Thank you." rows and the microphone
+channel invented Japanese, Portuguese and Russian phrases. WhisperKit 1.1.1
+never computes its no-speech probability, so nothing filtered them. Automatic
+language detection also re-ran on every temperature fallback, which rendered
+one English passage in German. Refine took 11.5 minutes for six minutes of
+speech.
+
+**Decision:** Batch Whisper (Refine, audio import, CLI) segments each channel
+with Silero, packs the regions into windows of at most 28 s and decodes only
+those windows, each with its own offset so timestamps stay exact. Automatic
+mode detects each window's language once at temperature 0 and limits it to
+English and Spanish; other detections take the channel's majority supported
+language. The window then decodes with that language fixed. Subtitle speaker
+labels and dialogue dashes are stripped. Refine and import install the ~1 MB
+Silero model with the same on-demand consent as Whisper; without it, or when
+detection fails, the previous whole-file path runs unchanged.
+
+**Consequences:** Silence produces no rows and no decoding time. A meeting in a
+language other than English or Spanish needs a fixed transcription language
+for Refine. The live lane, post-capture Parakeet and talk-time metrics are
+unchanged.
+
+## D604 — A quiet call asks whether it ended, then stops the recording
+
+**Context:** A six-minute call was followed by 2 h 43 min of recorded silence
+because nobody pressed Stop. D123 only promotes Stop when the system tap stops
+delivering frames; a finished call keeps delivering silent frames, so nothing
+fired. The quiet tail then fed hallucinated transcript rows and made playback
+hard to navigate.
+
+**Decision:** `CallEndDetector` (PortavozCore) reads the persisted level of
+both channels in captured time. After at least 10 s of remote sound, three
+minutes with both channels quiet ask "Did the call end?" in the recording view,
+the HUD and, when notifications are already allowed, a macOS notification with
+Stop recording and Keep recording. An unanswered question stops the recording
+through the normal Stop path five minutes later. Remote or nearby speech
+cancels the question; Keep recording silences it until the remote side is
+heard again. Notification permission is never requested for this.
+
+**Consequences:** A forgotten recording keeps at most about eight minutes of
+silence after a call. A recording made only through the microphone never asks.
+A call with more than three quiet minutes on both sides shows the question,
+and an unattended one stops; D123's outage nudge is unchanged.
+
+## D605 — The player compresses dead time and plays one voice at a time
+
+**Context:** A 169-minute recording held six minutes of conversation. The
+waveform spread those six minutes over a sliver, Skip silence judged silence
+from 600 peak buckets (about 17 s each) and stayed off by default, and the
+controls ("Only my voice", "Voice only", "Start"/"End" with full-screen icons)
+did not say what they did.
+
+**Decision:** `PlaybackTimeline` uses the transcript, not the volume: gaps of
+at least 20 s between transcribed phrases are dead time, drawn no longer than
+a tenth of the conversation and labelled with their real length. Skip silence
+is on by default and jumps over them. The transport becomes one row: play,
+back/forward 15 s, time, speed, a "Play: Everyone" menu over any speaker with
+turns, and an options menu with Skip silence, Reduce echo and the clip marks.
+
+**Consequences:** Long silences no longer hide the conversation or slow review,
+while pauses under 20 s keep their natural length. Without a transcript the
+scrubber stays linear. "Only my voice" generalizes to any speaker; clip marks
+and echo reduction move one click deeper.
+

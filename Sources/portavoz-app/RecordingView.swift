@@ -381,6 +381,7 @@ extension RecordingView {
                 message: L10n.text("Microphone capture failed. Stop and start a new recording."),
                 symbol: "mic.slash.fill"))
         }
+        if let callEnded = callEndedNotice { list.append(callEnded) }
         if let health = systemCaptureHealthNotice { list.append(health) }
         if controller.liveTranscriptState == .failed {
             list.append(RecordingNotice(
@@ -439,6 +440,28 @@ extension RecordingView {
                     prominent: false) { appTapNoteDismissed = true }]))
         }
         return list
+    }
+
+    /// Both sides went quiet after the call was heard. Speech dismisses it on
+    /// its own; otherwise the recording stops when the countdown ends.
+    private var callEndedNotice: RecordingNotice? {
+        guard case .asking(let secondsUntilStop) = controller.callEnd else { return nil }
+        return RecordingNotice(
+            id: "recording-call-ended",
+            severity: .warning,
+            message: L10n.format(
+                "Did the call end? Both sides are quiet. Recording stops in %@.",
+                Duration.seconds(secondsUntilStop).formatted(.time(pattern: .minuteSecond))),
+            actions: [
+                RecordingNotice.Action(
+                    title: L10n.text("Keep recording"),
+                    identifier: "recording-call-ended-keep",
+                    prominent: false) { controller.keepRecordingAfterCallEnded() },
+                RecordingNotice.Action(
+                    title: L10n.text("Stop now"),
+                    identifier: "recording-call-ended-stop",
+                    prominent: true) { Task { await controller.stop(services: services) } }
+            ])
     }
 
     /// A tap that stops invoking its callback is different from silent audio:

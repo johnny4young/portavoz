@@ -113,6 +113,19 @@ public protocol PostCaptureAudioProcessing: Sendable {
         voiceprint: Voiceprint?
     ) async throws -> [SpeakerTurn]
     func schedulePostCaptureIdleRelease() async
+    /// Speaker echo measured from both channel files; nil when the microphone
+    /// did not hear the speakers or the measurement is unavailable.
+    func postCaptureMicrophoneEchoProfile(
+        microphone: AudioAsset,
+        system: AudioAsset
+    ) async -> MicrophoneEchoProfile?
+}
+
+extension PostCaptureAudioProcessing {
+    public func postCaptureMicrophoneEchoProfile(
+        microphone: AudioAsset,
+        system: AudioAsset
+    ) async -> MicrophoneEchoProfile? { nil }
 }
 
 /// Samples the currently configured summary provider and output preferences

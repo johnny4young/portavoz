@@ -79,6 +79,11 @@ enum TranscribeCommand {
                 format: "audio %.1fs · processed in %.1fs · %.0fx real time",
                 result.audioDuration, result.processingTime, result.speedFactor
             ))
+            if let detected = result.detectedSpeechSeconds {
+                let transcribed = result.segments.reduce(0) { $0 + $1.endTime - $1.startTime }
+                print(String(
+                    format: "speech detected %.1fs · transcribed %.1fs", detected, transcribed))
+            }
         } catch {
             print("error: \(error.localizedDescription)")
         }

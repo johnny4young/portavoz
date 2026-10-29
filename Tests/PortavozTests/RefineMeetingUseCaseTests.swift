@@ -79,6 +79,31 @@ final class RefineMeetingUseCaseTests: XCTestCase {
         XCTAssertEqual(state.releaseCount, 1)
     }
 
+    func testSpeakerEchoHeardOnlyByTheMicrophoneMovesToTheRemoteSide() async throws {
+        let fixture = RefineFixture()
+        // Echo explains the microphone from 6 s on; the system transcript has nothing there.
+        let frames = 750
+        let dependencies = RefineDependencies(
+            audio: fixture.audio,
+            systemTranscription: fixture.systemTranscription,
+            microphoneTranscription: fixture.microphoneTranscription,
+            turns: [SpeakerTurn(voiceLabel: "S1", startTime: 0, endTime: 10)],
+            echoProfile: MicrophoneEchoProfile(
+                frameDuration: 0.016,
+                microphoneEnergy: Array(repeating: 1, count: frames),
+                nearEndEnergy: (0..<frames).map { $0 < 375 ? 1 : 0.001 }))
+
+        let draft = try await fixture.useCase(dependencies)(
+            fixture.request(dependencies))
+
+        XCTAssertEqual(draft.segments.map(\.text), [
+            "Revisamos el presupuesto trimestral y aprobamos el lanzamiento.",
+            "Yo prepararé el despliegue mañana por la mañana.",
+        ])
+        XCTAssertEqual(draft.segments.map(\.channel), [.system, .system])
+        XCTAssertFalse(draft.speakers.contains { $0.isMe })
+    }
+
     func testRefineDoesNotAutoLinkFreshDiarizationSpeakersToCanonicalPeople() async throws {
         let fixture = RefineFixture()
         let personID = PersonID()
@@ -1042,6 +1067,7 @@ private actor RefineDependencies:
     private let systemTranscription: FileTranscription
     private let microphoneTranscription: FileTranscription
     private let turns: [SpeakerTurn]
+    private let echoProfile: MicrophoneEchoProfile?
     private let companionAvailable: Bool
     private let companionRefresh: RefineMeetingCompanionRefresh
     private let failures: Set<RefineFailure>
@@ -1066,6 +1092,7 @@ private actor RefineDependencies:
         systemTranscription: FileTranscription,
         microphoneTranscription: FileTranscription,
         turns: [SpeakerTurn],
+        echoProfile: MicrophoneEchoProfile? = nil,
         companionAvailable: Bool = false,
         companionRefresh: RefineMeetingCompanionRefresh = .init(
             cards: [],
@@ -1078,6 +1105,7 @@ private actor RefineDependencies:
         self.systemTranscription = systemTranscription
         self.microphoneTranscription = microphoneTranscription
         self.turns = turns
+        self.echoProfile = echoProfile
         self.companionAvailable = companionAvailable
         self.companionRefresh = companionRefresh
         self.failures = failures
@@ -1157,6 +1185,10 @@ private actor RefineDependencies:
         events.append("diarize")
         if failures.contains(.diarization) { throw RefineDependencyError() }
         return turns
+    }
+
+    func microphoneEchoProfile(microphone: URL, system: URL) -> MicrophoneEchoProfile? {
+        echoProfile
     }
 
     func scheduleIdleRelease() {

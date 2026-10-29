@@ -127,6 +127,16 @@ struct RecordingHUDView: View {
                         .foregroundStyle(.orange)
                         .accessibilityIdentifier("recording-hud-microphone-capture-failure")
                 }
+                if case .asking(let secondsUntilStop) = controller.callEnd {
+                    Label(
+                        L10n.format(
+                            "Call ended? Stopping in %@",
+                            Duration.seconds(secondsUntilStop).formatted(.time(pattern: .minuteSecond))),
+                        systemImage: PVSymbol.warning)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.orange)
+                        .accessibilityIdentifier("recording-hud-call-ended")
+                }
                 if controller.systemCaptureHealth != .healthy {
                     Label {
                         Text(hudCaptureHealthMessage)

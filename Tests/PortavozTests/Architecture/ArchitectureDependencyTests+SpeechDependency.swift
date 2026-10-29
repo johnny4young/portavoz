@@ -115,6 +115,7 @@ extension ArchitectureDependencyTests {
             "TranscriptionKit/NemotronLatin1120Engine.swift",
             "TranscriptionKit/ParakeetEngine.swift",
             "TranscriptionKit/ParakeetSegmentMapper.swift",
+            "TranscriptionKit/SileroSpeechRegionDetector.swift",
             "TranscriptionKit/SileroVoiceActivityDetector.swift",
         ])
         let targets = try TargetManifestParser.declarations(in: Self.contents(of: "Package.swift"))

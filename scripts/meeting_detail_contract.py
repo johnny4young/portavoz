@@ -279,6 +279,7 @@ DEFAULT_FEATURE_OWNERSHIP = (
     {
         "feature": "playback-and-clips",
         "tests": [
+            "testClickingALineOfTextJumpsThere",
             "testClipMarkingRevealsExport",
             "testPlayerExposesSkipAndOnlyMyVoice",
         ],

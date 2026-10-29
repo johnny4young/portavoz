@@ -111,6 +111,21 @@ final class RecordingLevelBufferTests: XCTestCase {
         XCTAssertEqual(buffer.pendingValueCount, 0)
     }
 
+    func testSnapshotCarriesTheCallEndedQuestionUntilKeepRecording() throws {
+        var buffer = RecordingLevelBuffer()
+        let generation = try XCTUnwrap(buffer.submit(
+            sample(channel: .system, rms: 0.05, duration: 30)))
+        _ = buffer.submit(sample(channel: .system, rms: 0, duration: 200))
+
+        guard case .asking = try XCTUnwrap(buffer.drain(generation: generation)).callEnd else {
+            return XCTFail("quiet after remote speech must ask")
+        }
+
+        buffer.keepRecording()
+        let next = try XCTUnwrap(buffer.submit(sample(channel: .system, rms: 0, duration: 1)))
+        XCTAssertEqual(buffer.drain(generation: next)?.callEnd, .listening)
+    }
+
     private func sample(
         channel: AudioChannel,
         peak: Float = 0,
