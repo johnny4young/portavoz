@@ -214,7 +214,8 @@ public actor WhisperEngine {
             text: text,
             segments: segments,
             audioDuration: duration,
-            processingTime: processingTime
+            processingTime: processingTime,
+            detectedSpeechSeconds: regions.map { $0.reduce(0) { $0 + $1.upperBound - $1.lowerBound } }
         )
     }
 

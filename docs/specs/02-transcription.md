@@ -451,7 +451,13 @@ Hardened against 3 REAL WhisperKit failures (all reproduced and verified, Jul 20
    resample it. A fixed policy language applies to every window. Segments
    are shifted back to file time and pass the same hygiene as before. A
    missing model or a detection failure keeps the whole-file path above,
-   including its coverage retry. On the 169-minute field meeting's first 20
+   including its coverage retry. `FileTranscription.detectedSpeechSeconds`
+   carries the detected speech, and the Refine review warns that a draft
+   "probably failed" when Whisper decoded under half of it
+   (`SpeechDecodeEvidence`, measured before echo and boilerplate filters).
+   Only ungated drafts compare against the current transcript, which may be
+   mostly silence hallucinations; the field meeting decoded 905 s of 953 s
+   detected while its old transcript claimed 263 minutes. On the 169-minute field meeting's first 20
    minutes this removed 38 "Thank you." rows from the system channel, every
    Japanese and Russian mic row, the German rendering of an English passage
    and the invented speaker labels, and cut decoding time by about a quarter.
