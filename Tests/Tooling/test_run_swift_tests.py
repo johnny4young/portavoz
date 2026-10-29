@@ -24,6 +24,7 @@ class RunSwiftTestsTests(unittest.TestCase):
         arguments: tuple[str, ...] = (),
         startup_attempts: int = 1500,
         interrupt_after_start: bool = False,
+        worker_start_delay: float = 0,
         readiness_timeout: float = 10,
         completion_timeout: float = 20,
         workers: str | None = None,
@@ -64,9 +65,14 @@ class RunSwiftTestsTests(unittest.TestCase):
             "    }, destination)\n"
             "PY\n"
             "if [ \"${SWIFT_BLOCK:-false}\" = true ]; then\n"
-            "  sh -c 'while :; do sleep 1; done' &\n"
-            "  echo $! > \"$SWIFT_WORKER_PID\"\n"
+            "  \"$REAL_PYTHON\" -c 'import os, time; time.sleep(float(os.environ[\"SWIFT_WORKER_START_DELAY\"]))'\n"
             "  trap 'exit 0' TERM INT\n"
+            # The worker publishes its own PID only after both shells' traps
+            # are installed. Atomic publication excludes an empty PID read.
+            "  sh -c 'trap \"exit 0\" TERM INT; "
+            "printf \"%s\\n\" \"$$\" > \"$SWIFT_WORKER_PID.tmp\"; "
+            "mv \"$SWIFT_WORKER_PID.tmp\" \"$SWIFT_WORKER_PID\"; "
+            "while :; do sleep 1; done' &\n"
             "  while :; do sleep 1; done\n"
             "fi\n"
             "exit \"$SWIFT_EXIT_CODE\"\n",
@@ -108,6 +114,7 @@ class RunSwiftTestsTests(unittest.TestCase):
                 "SWIFT_EXIT_CODE": str(swift_exit_code),
                 "SWIFT_BLOCK": str(interrupt_after_start).lower(),
                 "SWIFT_WORKER_PID": str(root / "worker.pid"),
+                "SWIFT_WORKER_START_DELAY": str(worker_start_delay),
                 "SWIFT_BUILD_LOG": str(root / "build.log"),
                 "XCTEST_LOG": str(root / "xctest.log"),
                 "FAKE_PRODUCTS": str(products),
@@ -137,11 +144,15 @@ class RunSwiftTestsTests(unittest.TestCase):
             try:
                 if interrupt_after_start:
                     deadline = time.monotonic() + readiness_timeout
-                    while time.monotonic() < deadline and not swift_log.exists():
+                    worker_ready = False
+                    while time.monotonic() < deadline:
+                        if swift_log.exists() and self.worker_is_ready(root / "worker.pid"):
+                            worker_ready = True
+                            break
                         if process.poll() is not None:
                             break
                         time.sleep(0.02)
-                    self.assertTrue(swift_log.exists(), "Swift child did not start")
+                    self.assertTrue(worker_ready, "Swift worker did not become ready")
                     process.send_signal(signal.SIGTERM)
                 stdout, stderr = process.communicate(
                     timeout=10 if interrupt_after_start else completion_timeout
@@ -162,6 +173,17 @@ class RunSwiftTestsTests(unittest.TestCase):
             else None
         )
         return result, record, root
+
+    @staticmethod
+    def worker_is_ready(pid_path: Path) -> bool:
+        try:
+            worker_pid = int(pid_path.read_text(encoding="utf-8"))
+            if worker_pid <= 0:
+                return False
+            os.kill(worker_pid, 0)
+        except (FileNotFoundError, ValueError, ProcessLookupError):
+            return False
+        return True
 
     @staticmethod
     def stop_owned_process_group(process: subprocess.Popen[str]) -> None:
@@ -272,6 +294,18 @@ class RunSwiftTestsTests(unittest.TestCase):
         with self.assertRaises(ProcessLookupError):
             os.kill(int((root / "worker.pid").read_text()), 0)
 
+    def test_interrupt_waits_for_delayed_worker_readiness(self):
+        result, record, root = self.run_runner(
+            interrupt_after_start=True,
+            worker_start_delay=0.5,
+        )
+
+        self.assertEqual(result.returncode, 143, result.stderr)
+        self.assertIsNotNone(record)
+        self.assert_fixture_was_cleaned(record, root)
+        with self.assertRaises(ProcessLookupError):
+            os.kill(int((root / "worker.pid").read_text()), 0)
+
     def test_invalid_startup_budget_fails_before_starting_children(self):
         result, record, root = self.run_runner(startup_attempts=0)
 
@@ -320,6 +354,14 @@ class RunSwiftTestsTests(unittest.TestCase):
             AssertionError,
             fixture_mode="hang",
             interrupt_after_start=True,
+            readiness_timeout=0.1,
+        )
+
+    def test_delayed_worker_readiness_timeout_releases_processes_and_pipes(self):
+        self.assert_runner_failure_releases_processes(
+            AssertionError,
+            interrupt_after_start=True,
+            worker_start_delay=0.5,
             readiness_timeout=0.1,
         )
 

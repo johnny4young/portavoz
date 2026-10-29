@@ -2570,6 +2570,11 @@ The shell-runner tests own a separate process session and clean it in `finally`,
 including descendants and pipes when readiness assertions or outer timeouts
 fail. Real subprocess regressions exercise both failure paths, while existing
 success, child failure, interruption and scratch cleanup assertions remain.
+The interrupt helper waits for a live positive worker PID, atomically published
+by the worker after both synthetic shells install their signal traps, rather
+than treating the earlier Swift argument log as readiness. Delayed worker
+startup regressions cover both interruption after readiness and bounded
+readiness failure with owned-process cleanup.
 Their normal readiness/completion budgets are unchanged; failure is not turned
 into success by cleanup or by an automatic rerun.
 
