@@ -1248,8 +1248,25 @@ CATALOG = "Resources/Localization/Portavoz/Localizable.xcstrings"
 PLACEHOLDER = re.compile(r"%(?:\d+\$)?(?:ll|l)?[@dfsu]|%%")
 
 
-def catalog_keys(text: str) -> set[str]:
-    return set(json.loads(text).get("strings", {}))
+def catalog_english(text: str) -> dict[str, str]:
+    """Effective English copy, matching export-localizations.py's value-or-key fallback."""
+    catalog = json.loads(text)
+    if not isinstance(catalog, dict) or not isinstance(catalog.get("strings"), dict):
+        raise ValueError("Invalid string catalog")
+    values: dict[str, str] = {}
+    for key, entry in catalog["strings"].items():
+        unit = entry
+        for field in ("localizations", "en", "stringUnit"):
+            if not isinstance(unit, dict):
+                raise ValueError("Invalid English localization")
+            unit = unit.get(field, {})
+        if not isinstance(unit, dict):
+            raise ValueError("Invalid English string unit")
+        value = unit.get("value")
+        if value is not None and not isinstance(value, str):
+            raise ValueError("Invalid English string value")
+        values[key] = value or key
+    return values
 
 
 def copy_tests(changed_keys: Iterable[str], root: Path) -> set[str]:
@@ -1429,7 +1446,7 @@ def changed_paths(base: str, head: str) -> list[str]:
 
 
 def catalog_changes(base: str, head: str | None, root: Path) -> set[str] | None:
-    """English keys added or removed between base and head (or the working file)."""
+    """Changed keys and old/new effective English copy; None means unreadable."""
     try:
         before = subprocess.run(["git", "show", f"{base}:{CATALOG}"], check=True, capture_output=True,
                                 text=True, cwd=root).stdout
@@ -1438,7 +1455,13 @@ def catalog_changes(base: str, head: str | None, root: Path) -> set[str] | None:
         else:
             after = subprocess.run(["git", "show", f"{head}:{CATALOG}"], check=True, capture_output=True,
                                    text=True, cwd=root).stdout
-        return catalog_keys(before) ^ catalog_keys(after)
+        old_values, new_values = catalog_english(before), catalog_english(after)
+        changed: set[str] = set()
+        for key in old_values.keys() | new_values.keys():
+            if old_values.get(key) != new_values.get(key):
+                changed.add(key)
+                changed.update(values[key] for values in (old_values, new_values) if key in values)
+        return changed
     except (OSError, ValueError, subprocess.CalledProcessError):
         return None
 
