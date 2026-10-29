@@ -11,6 +11,12 @@ final class SpeakerEchoFilterTests: XCTestCase {
         microphoneEnergy: Array(repeating: 1, count: 40),
         nearEndEnergy: (0..<40).map { $0 < 20 ? 0.01 : 0.9 })
 
+    /// All speaker echo, measured only through 10 s.
+    private let shortProfile = MicrophoneEchoProfile(
+        frameDuration: 0.5,
+        microphoneEnergy: Array(repeating: 1, count: 20),
+        nearEndEnergy: Array(repeating: 0.01, count: 20))
+
     func testEchoAlreadyInTheSystemTranscriptIsDropped() {
         let system = [segment("Wir haben keine Site-ID", .system, 2, 6)]
         let microphone = [segment("We don't have a site ID", .microphone, 2.1, 6.1)]
@@ -67,10 +73,6 @@ final class SpeakerEchoFilterTests: XCTestCase {
     }
 
     func testPartiallyMeasuredTailStaysOnTheMicrophoneWithOrWithoutSystemCoverage() {
-        let shortProfile = MicrophoneEchoProfile(
-            frameDuration: 0.5,
-            microphoneEnergy: Array(repeating: 1, count: 20),
-            nearEndEnergy: Array(repeating: 0.01, count: 20))
         let tail = segment("I will follow up after the call", .microphone, 9, 12)
 
         XCTAssertNil(shortProfile.echoAttenuationDB(from: 9, to: 12))
@@ -89,10 +91,6 @@ final class SpeakerEchoFilterTests: XCTestCase {
     }
 
     func testExactMeasurementEndCanStillResolveEcho() throws {
-        let shortProfile = MicrophoneEchoProfile(
-            frameDuration: 0.5,
-            microphoneEnergy: Array(repeating: 1, count: 20),
-            nearEndEnergy: Array(repeating: 0.01, count: 20))
         let echo = segment("Please follow up", .microphone, 9, 10)
 
         XCTAssertEqual(

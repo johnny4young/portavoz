@@ -26,7 +26,7 @@ public struct MicrophoneEchoProfile: Equatable, Sendable {
         guard start >= 0, end > start, !microphoneEnergy.isEmpty,
             end <= Double(microphoneEnergy.count) * frameDuration
         else { return nil }
-        let first = max(0, Int((start / frameDuration).rounded(.down)))
+        let first = Int((start / frameDuration).rounded(.down))
         let last = min(microphoneEnergy.count, Int((end / frameDuration).rounded(.up)))
         guard first < last else { return nil }
         var microphone = 0.0
