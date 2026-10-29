@@ -109,6 +109,23 @@ final class SpeakerEchoFilterTests: XCTestCase {
         XCTAssertTrue(dropped.recoveredSystem.isEmpty)
     }
 
+    func testAnalysisWindowPastTheLastHopStillResolvesEcho() throws {
+        let windowed = MicrophoneEchoProfile(
+            frameDuration: 0.5,
+            microphoneEnergy: Array(repeating: 1, count: 20),
+            nearEndEnergy: Array(repeating: 0.01, count: 20),
+            measuredDuration: 10.5)
+        let echo = segment("Please follow up", .microphone, 9, 10.5)
+
+        XCTAssertEqual(
+            try XCTUnwrap(windowed.echoAttenuationDB(from: 9, to: 10.5)), 20, accuracy: 1e-6)
+        XCTAssertNil(windowed.echoAttenuationDB(from: 9, to: Double(10.5).nextUp))
+        let resolution = SpeakerEchoFilter.resolve(
+            microphone: [echo], system: [], profile: windowed)
+        XCTAssertTrue(resolution.microphone.isEmpty)
+        XCTAssertEqual(resolution.recoveredSystem.map(\.id), [echo.id])
+    }
+
     func testAttenuationReadsTheEnergyShareInDecibels() throws {
         XCTAssertEqual(try XCTUnwrap(profile.echoAttenuationDB(from: 0, to: 10)), 20, accuracy: 1e-6)
         XCTAssertEqual(

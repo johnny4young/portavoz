@@ -7,24 +7,30 @@ public struct MicrophoneEchoProfile: Equatable, Sendable {
     public let frameDuration: TimeInterval
     public let microphoneEnergy: [Float]
     public let nearEndEnergy: [Float]
+    /// End of the measured audio. An analysis window longer than its hop
+    /// reaches past `frameCount * frameDuration`; that is the default.
+    public let measuredDuration: TimeInterval
 
     public init(
         frameDuration: TimeInterval,
         microphoneEnergy: [Float],
-        nearEndEnergy: [Float]
+        nearEndEnergy: [Float],
+        measuredDuration: TimeInterval? = nil
     ) {
+        let framed = Double(microphoneEnergy.count) * frameDuration
         precondition(frameDuration > 0)
         precondition(microphoneEnergy.count == nearEndEnergy.count)
+        precondition((measuredDuration ?? framed) >= framed)
         self.frameDuration = frameDuration
         self.microphoneEnergy = microphoneEnergy
         self.nearEndEnergy = nearEndEnergy
+        self.measuredDuration = measuredDuration ?? framed
     }
 
     /// Decibels of microphone energy explained by speaker echo over a time
     /// range, or nil when the full range is not measured or holds no microphone signal.
     public func echoAttenuationDB(from start: TimeInterval, to end: TimeInterval) -> Double? {
-        guard start >= 0, end > start, !microphoneEnergy.isEmpty,
-            end <= Double(microphoneEnergy.count) * frameDuration
+        guard start >= 0, end > start, !microphoneEnergy.isEmpty, end <= measuredDuration
         else { return nil }
         let first = Int((start / frameDuration).rounded(.down))
         let last = min(microphoneEnergy.count, Int((end / frameDuration).rounded(.up)))
