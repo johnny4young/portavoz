@@ -7,8 +7,8 @@ public struct MicrophoneEchoProfile: Equatable, Sendable {
     public let frameDuration: TimeInterval
     public let microphoneEnergy: [Float]
     public let nearEndEnergy: [Float]
-    /// End of the measured audio. An analysis window longer than its hop
-    /// reaches past `frameCount * frameDuration`; that is the default.
+    /// End of the measured audio, never before `frameCount * frameDuration`
+    /// (the default): an analysis window longer than its hop reaches past it.
     public let measuredDuration: TimeInterval
 
     public init(
@@ -20,11 +20,10 @@ public struct MicrophoneEchoProfile: Equatable, Sendable {
         let framed = Double(microphoneEnergy.count) * frameDuration
         precondition(frameDuration > 0)
         precondition(microphoneEnergy.count == nearEndEnergy.count)
-        precondition((measuredDuration ?? framed) >= framed)
         self.frameDuration = frameDuration
         self.microphoneEnergy = microphoneEnergy
         self.nearEndEnergy = nearEndEnergy
-        self.measuredDuration = measuredDuration ?? framed
+        self.measuredDuration = max(measuredDuration ?? framed, framed)
     }
 
     /// Decibels of microphone energy explained by speaker echo over a time

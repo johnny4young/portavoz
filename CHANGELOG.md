@@ -31,7 +31,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 29, 2026
 
-- **🔚 Echo sorted to the last second** — the other side's voice that your microphone picked up at the very end of a recording now goes to them too.
+- **🔚 Echo sorted right up to Stop** — the other side's voice your microphone picked up as the recording stops now goes to them too.
 - **🎙️ Keep your final words** — microphone speech that extends past the measured speaker echo stays yours, even when the other audio channel ends early.
 - **👆 Click the words to jump there** — in a meeting with audio, clicking anywhere on a transcript line now plays from that moment, not only its time.
 

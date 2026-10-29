@@ -120,6 +120,14 @@ final class SpeakerEchoFilterTests: XCTestCase {
         XCTAssertEqual(
             try XCTUnwrap(windowed.echoAttenuationDB(from: 9, to: 10.5)), 20, accuracy: 1e-6)
         XCTAssertNil(windowed.echoAttenuationDB(from: 9, to: Double(10.5).nextUp))
+        XCTAssertEqual(
+            MicrophoneEchoProfile(
+                frameDuration: 0.5,
+                microphoneEnergy: Array(repeating: 1, count: 20),
+                nearEndEnergy: Array(repeating: 0.01, count: 20),
+                measuredDuration: 9.9
+            ).measuredDuration,
+            10)
         let resolution = SpeakerEchoFilter.resolve(
             microphone: [echo], system: [], profile: windowed)
         XCTAssertTrue(resolution.microphone.isEmpty)
