@@ -192,9 +192,13 @@ private struct MeetingTranscriptRowView: View {
                 speaker: speaker,
                 cast: cast,
                 onRename: onRenameTap)
-            Text(row.text)
-                .font(.callout)
-                .textSelection(.enabled)
+            // Selectable text swallows clicks on macOS, so with audio a click
+            // on the words jumps there instead of starting a selection.
+            if canSeek {
+                Text(row.text).font(.callout)
+            } else {
+                Text(row.text).font(.callout).textSelection(.enabled)
+            }
             Spacer(minLength: 0)
         }
         .padding(.vertical, 2)
@@ -203,6 +207,8 @@ private struct MeetingTranscriptRowView: View {
         .background(
             isActive ? PVDesign.accent.opacity(0.12) : Color.clear,
             in: RoundedRectangle(cornerRadius: 6))
+        .contentShape(Rectangle())
+        .onTapGesture { if canSeek { onSeek(row.startTime) } }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("transcript-segment-\(row.id.uuidString)")
         .accessibilityAddTraits(isActive ? .isSelected : [])
