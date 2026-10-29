@@ -2107,7 +2107,8 @@ from the transcript on screen, because post-capture processing replaces
 speaker identities after playback has loaded) and an options menu
 (`player-options`) holding Skip silence (`player-skip-silence`), Reduce echo
 (`player-clear-playback`) and Mark clip start/end (`clip-mark-start`,
-`clip-mark-end`). When the last phrase ends at least five minutes before the
+`clip-mark-end`). A phrase ending exactly at the audio duration remains speech and prevents
+tail trimming. When the last phrase ends at least five minutes before the
 audio of a settled meeting, the same menu offers "Remove … of silence at the
 end…" (`player-trim-silence`), confirmed in a destructive dialog
 (`player-trim-silence-confirm`); the section shows progress

@@ -24,6 +24,13 @@ struct TrailingSilenceTests {
     }
 
     @Test
+    func keepsSpeechEndingAtTheAudioBoundary() {
+        let meetingID = MeetingID()
+        let segments = [segment(meetingID, 0, 100), segment(meetingID, 900, 1_000)]
+        #expect(TrailingSilence.cutoff(segments: segments, duration: 1_000) == nil)
+    }
+
+    @Test
     func ignoresRowsThatEndPastTheAudio() {
         let meetingID = MeetingID()
         let segments = [segment(meetingID, 0, 100), segment(meetingID, 900, 1_200)]

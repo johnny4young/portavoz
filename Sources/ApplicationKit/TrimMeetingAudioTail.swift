@@ -12,7 +12,7 @@ public enum TrailingSilence {
 
     /// The cut point, or nil when the tail is shorter than five minutes.
     public static func cutoff(segments: [TranscriptSegment], duration: TimeInterval) -> TimeInterval? {
-        guard let lastSpeech = segments.map(\.endTime).filter({ $0 < duration }).max(),
+        guard let lastSpeech = segments.map(\.endTime).filter({ $0 <= duration }).max(),
             duration - lastSpeech >= minimumLength
         else { return nil }
         return lastSpeech + keptAfterSpeech
