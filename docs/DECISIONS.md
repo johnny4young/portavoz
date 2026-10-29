@@ -22106,3 +22106,25 @@ language other than English or Spanish needs a fixed transcription language
 for Refine. The live lane, post-capture Parakeet and talk-time metrics are
 unchanged.
 
+## D604 — A quiet call asks whether it ended, then stops the recording
+
+**Context:** A six-minute call was followed by 2 h 43 min of recorded silence
+because nobody pressed Stop. D123 only promotes Stop when the system tap stops
+delivering frames; a finished call keeps delivering silent frames, so nothing
+fired. The quiet tail then fed hallucinated transcript rows and made playback
+hard to navigate.
+
+**Decision:** `CallEndDetector` (PortavozCore) reads the persisted level of
+both channels in captured time. After at least 10 s of remote sound, three
+minutes with both channels quiet ask "Did the call end?" in the recording view,
+the HUD and, when notifications are already allowed, a macOS notification with
+Stop recording and Keep recording. An unanswered question stops the recording
+through the normal Stop path five minutes later. Remote or nearby speech
+cancels the question; Keep recording silences it until the remote side is
+heard again. Notification permission is never requested for this.
+
+**Consequences:** A forgotten recording keeps at most about eight minutes of
+silence after a call. A recording made only through the microphone never asks.
+A call with more than three quiet minutes on both sides shows the question,
+and an unattended one stops; D123's outage nudge is unchanged.
+
