@@ -394,6 +394,16 @@ Unmarked producers retain `CaptionCoalescer.trimOverlap` and its literal-repeat
 trade-off. Apple range previews keep their own authority; this contract does not
 silently change another engine, add speech admission or promise awaitable cleanup.
 
+### Speaker echo thresholds need more rooms and devices
+
+D602 was calibrated on one MacBook built-in speaker/microphone meeting, where
+it separated 21 echo rows (13-35 dB) from the user's own rows (under 7 dB). The
+10 dB row threshold, 0.8 gain quantile and 0.5 coupling floor still need field
+evidence from external speakers, a display's speakers, a loud room and a quiet
+user who talks over the remote side. Live captions still show echo rows until
+post-capture processing replaces them, and playback still mixes the raw
+microphone.
+
 ### Closed-row revision after microphone echo replacement
 
 A synthetic controller call-site sequence reproduces a limitation in the shared

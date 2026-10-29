@@ -196,6 +196,10 @@ private final class AppRefineMeetingProcessor: RefineMeetingProcessor {
         }
     }
 
+    func microphoneEchoProfile(microphone: URL, system: URL) async -> MicrophoneEchoProfile? {
+        await AppServices.measureMicrophoneEcho(microphone: microphone, system: system)
+    }
+
     func scheduleIdleRelease() {
         if let whisperRuntime {
             _ = services?.finishWhisperRuntime(whisperRuntime)

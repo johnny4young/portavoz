@@ -116,6 +116,9 @@ public protocol RefineMeetingProcessor: Sendable {
     ) async throws -> FileTranscription
     func diarize(fileURL: URL) async throws -> [SpeakerTurn]
     func scheduleIdleRelease() async
+    /// Speaker echo measured from both channel files; nil when the microphone
+    /// did not hear the speakers or the measurement is unavailable.
+    func microphoneEchoProfile(microphone: URL, system: URL) async -> MicrophoneEchoProfile?
 }
 
 public enum RefineMeetingError: Error, Equatable, LocalizedError, Sendable {
@@ -359,9 +362,15 @@ public struct RefineMeeting: ApplicationUseCase {
                     text: $0.text,
                     confidence: $0.confidence)
             }
-            segments.append(contentsOf: MicBleedFilter.filter(
-                microphone: voiced,
-                system: segments))
+            var profile: MicrophoneEchoProfile?
+            if let system = audio.system, !system.isSilent {
+                profile = await processor.microphoneEchoProfile(
+                    microphone: microphone.fileURL, system: system.fileURL)
+            }
+            let echo = SpeakerEchoFilter.resolve(microphone: voiced, system: segments, profile: profile)
+            let microphoneSegments = MicBleedFilter.filter(microphone: echo.microphone, system: segments)
+            segments.append(contentsOf: echo.recoveredSystem)
+            segments.append(contentsOf: microphoneSegments)
             try Task.checkCancellation()
         }
         return segments.sorted { $0.startTime < $1.startTime }

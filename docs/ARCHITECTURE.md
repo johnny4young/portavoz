@@ -2173,8 +2173,12 @@ Meeting capture obeys an observational passivity invariant: production
 recording and global dictation never enable AVAudioEngine voice processing,
 other-audio ducking, or a system mute/volume mutation. The conferencing app
 retains ownership of its microphone processing and playback graph. Raw
-microphone spill is handled after capture by transcript bleed filtering rather
-than by modifying the live call. `MicrophoneSource` keeps an explicit
+microphone spill is handled after capture rather than by modifying the live
+call: `AudioCaptureKit.MicrophoneEchoAnalysis` re-reads both channel files and
+measures, across the spectrum, how much microphone energy the system
+channel's speaker echo explains. `TranscriptionKit.SpeakerEchoFilter` uses that
+measurement to drop echoed microphone rows or move them to the system channel,
+and the word-level `MicBleedFilter` still runs afterwards. `MicrophoneSource` keeps an explicit
 voice-processing option only for bounded nonmeeting tools such as local voice
 enrollment and the CLI diagnostic flag. Microphone graph preparation is also
 fail-closed. The app resolves microphone authorization through `PlatformKit`

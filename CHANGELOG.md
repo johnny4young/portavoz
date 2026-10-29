@@ -29,6 +29,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## October 28, 2026
+
+- **🔈 Speakers no longer put words in your mouth** — when you take a call on speakers, what the others say no longer shows up as yours; Portavoz measures the speaker echo after the call, removes the duplicates and gives anything only your mic caught back to the person who said it.
+
 ## October 27, 2026
 
 - **🍎 Clearer Apple Intelligence notices** — summaries, Apuntador and Settings explain when Apple Intelligence is off instead of pointing at older macOS versions.

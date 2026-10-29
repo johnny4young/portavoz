@@ -76,6 +76,56 @@ final class ProcessPostCaptureJobsUseCaseTests: XCTestCase {
         ])
     }
 
+    func testSpeakerEchoLeavesMeAndRecoversWhatTheSystemTranscriptMissed() async throws {
+        let fixture = Fixture(now: now)
+        let assets = [
+            fixture.asset(channel: .system, sha256: "system-sha"),
+            fixture.asset(channel: .microphone, sha256: "microphone-sha")
+        ]
+        let fingerprint = try XCTUnwrap(InitialTranscriptionOperationFingerprint.compute(
+            meetingID: fixture.meeting.id,
+            transcriptRevision: fixture.meeting.transcriptRevision,
+            assets: assets))
+        let remote = fixture.segment(
+            channel: .system, text: "Wir haben keine Site-ID", language: "de", start: 4)
+        let duplicatedEcho = fixture.segment(
+            channel: .microphone, text: "We don't have a site ID", language: "en", start: 4)
+        let missedRemote = fixture.segment(
+            channel: .microphone, text: "I can create it for staging", language: "en", start: 8)
+        let mine = fixture.segment(
+            channel: .microphone, text: "Let me know in the chat", language: "en", start: 12)
+        // Echo explains every frame before 10 s; after it, the microphone is near end.
+        let frames = 1_000
+        let profile = MicrophoneEchoProfile(
+            frameDuration: 0.016,
+            microphoneEnergy: Array(repeating: 1, count: frames),
+            nearEndEnergy: (0..<frames).map { $0 < 625 ? 0.001 : 1 })
+        let store = WorkflowStoreFake(
+            jobs: [fixture.job(kind: .transcription, fingerprint: fingerprint)],
+            details: [fixture.meeting.id: fixture.detail()],
+            assets: [fixture.meeting.id: assets])
+        let capabilities = WorkflowCapabilitiesFake(
+            transcriptions: [
+                .system: fixture.transcription([remote]),
+                .microphone: fixture.transcription([duplicatedEcho, missedRemote, mine])
+            ],
+            echoProfile: profile)
+        let workflow = ProcessPostCaptureJobs(
+            store: store,
+            capabilities: capabilities,
+            heartbeatInterval: .seconds(3_600),
+            now: { processPostCaptureNow })
+
+        _ = await workflow.execute(.init(owner: "test-owner") { _ in })
+
+        let storedPublication = await store.transcriptionPublication()
+        let segments = try XCTUnwrap(storedPublication).artifact.segments
+        XCTAssertEqual(segments.map(\.text), [
+            "Wir haben keine Site-ID", "I can create it for staging", "Let me know in the chat"
+        ])
+        XCTAssertEqual(segments.map(\.channel), [.system, .system, .microphone])
+    }
+
     func testDiarizationUsesTheSameVoiceprintAsItsInputFingerprint() async throws {
         let fixture = Fixture(now: now)
         let systemAsset = fixture.asset(channel: .system, sha256: "system-sha")
@@ -830,6 +880,7 @@ private actor WorkflowCapabilitiesFake:
     private let provider: PostCaptureSummaryProviderSelection?
     private let preferences: PostCaptureSummaryPreferences
     private let voiceprint: Voiceprint?
+    private let echoProfile: MicrophoneEchoProfile?
     private var channels: [AudioChannel] = []
     private var diarizedVoiceprints: [Voiceprint?] = []
     private var actions: [MeetingID] = []
@@ -839,6 +890,7 @@ private actor WorkflowCapabilitiesFake:
         transcriptions: [AudioChannel: FileTranscription] = [:],
         provider: PostCaptureSummaryProviderSelection? = nil,
         voiceprint: Voiceprint? = nil,
+        echoProfile: MicrophoneEchoProfile? = nil,
         preferences: PostCaptureSummaryPreferences = PostCaptureSummaryPreferences(
             outputLanguage: "en",
             vocabulary: [])
@@ -846,6 +898,7 @@ private actor WorkflowCapabilitiesFake:
         self.transcriptions = transcriptions
         self.provider = provider
         self.voiceprint = voiceprint
+        self.echoProfile = echoProfile
         self.preferences = preferences
     }
 
@@ -869,6 +922,10 @@ private actor WorkflowCapabilitiesFake:
         diarizedVoiceprints.append(voiceprint)
         return []
     }
+    func postCaptureMicrophoneEchoProfile(
+        microphone: AudioAsset,
+        system: AudioAsset
+    ) -> MicrophoneEchoProfile? { echoProfile }
     func postCaptureSummaryProvider() -> PostCaptureSummaryProviderSelection? { provider }
 
     func postCaptureSummaryPreferences(
