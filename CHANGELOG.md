@@ -31,6 +31,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 29, 2026
 
+- **✂️ Cut the silence after the call** — if a recording kept running long after everyone left, the player's ⋯ menu offers to remove that quiet tail from the audio and the transcript, freeing the space and fixing the meeting's length.
+
 - **👆 Click the words to jump there** — in a meeting with audio, clicking anywhere on a transcript line now plays from that moment, not only its time.
 
 - **⏩ A player that skips the dead air** — long silences shrink to a small labeled mark on the waveform and playback jumps over them; skip 15 seconds, change speed, and play just one person's turns from the new compact player.

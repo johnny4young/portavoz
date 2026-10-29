@@ -2107,7 +2107,12 @@ from the transcript on screen, because post-capture processing replaces
 speaker identities after playback has loaded) and an options menu
 (`player-options`) holding Skip silence (`player-skip-silence`), Reduce echo
 (`player-clear-playback`) and Mark clip start/end (`clip-mark-start`,
-`clip-mark-end`); a marked clip shows its length, Export and discard below the
+`clip-mark-end`). When the last phrase ends at least five minutes before the
+audio of a settled meeting, the same menu offers "Remove … of silence at the
+end…" (`player-trim-silence`), confirmed in a destructive dialog
+(`player-trim-silence-confirm`); the section shows progress
+(`detail-trim-progress`) or the result (`detail-trim-message`) and the player
+is prepared again on the shorter files (D606). A marked clip shows its length, Export and discard below the
 waveform (`player-waveform`). The application policy
 admits 600 buckets by default and never publishes more than 2,000. The
 AudioPlaybackKit worker reads the complete finalized channels, propagates route

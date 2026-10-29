@@ -109,6 +109,9 @@ protocol MeetingDetailModelClient: AnyObject {
     func compressMeetingDetailAudio(
         _ request: CompressMeetingAudioRequest
     ) async throws -> MeetingAudioCompressionResult
+    func trimMeetingDetailAudioTail(
+        _ request: TrimMeetingAudioTailRequest
+    ) async throws -> TimeInterval
     func exportMeetingDetailAudioClip(
         _ request: ExportMeetingAudioClipRequest
     ) async throws

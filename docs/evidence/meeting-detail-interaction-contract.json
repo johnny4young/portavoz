@@ -1394,6 +1394,18 @@
       "occurrences": 1
     },
     {
+      "path": "Sources/portavoz-app/MeetingDetailPlayerSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-trim-message\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailPlayerSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-trim-progress\")",
+      "occurrences": 1
+    },
+    {
       "path": "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift",
       "category": "control",
       "source": "Button(\"Summary\") { selectedPane = .summary }",
@@ -1894,6 +1906,12 @@
     {
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
       "category": "control",
+      "source": "Button(\"Cancel\", role: .cancel) {}",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "control",
       "source": "Button(\"Mark clip end\") { player.markClipEnd() }",
       "occurrences": 1
     },
@@ -1907,6 +1925,18 @@
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
       "category": "control",
       "source": "Button(\"OK\", role: .cancel) {}",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "control",
+      "source": "Button(\"Remove\", role: .destructive, action: trimSilence)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "control",
+      "source": "Button(L10n.format(",
       "occurrences": 1
     },
     {
@@ -2008,6 +2038,18 @@
     {
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
       "category": "identifier",
+      "source": ".accessibilityIdentifier(\"player-trim-silence\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"player-trim-silence-confirm\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "identifier",
       "source": ".accessibilityIdentifier(\"player-voice-\\(voice.label)\")",
       "occurrences": 1
     },
@@ -2063,6 +2105,18 @@
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
       "category": "presentation",
       "source": ".alert(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "presentation",
+      "source": ".confirmationDialog(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "state",
+      "source": "@State private var confirmingTrim = false",
       "occurrences": 1
     },
     {

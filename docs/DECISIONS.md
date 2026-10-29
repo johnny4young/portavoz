@@ -22148,3 +22148,27 @@ while pauses under 20 s keep their natural length. Without a transcript the
 scrubber stays linear. "Only my voice" generalizes to any speaker; clip marks
 and echo reduction move one click deeper.
 
+## D606 — A long silent tail can be cut from the audio and the transcript
+
+**Context:** D604 limits new forgotten recordings to about eight minutes of
+silence, but recordings made before it can hold hours of it. D605 hides dead
+time while playing, yet the files still take the disk space and the meeting
+still reports the wrong length. D27 treats the audio as the source of truth,
+so removing it must be explicit and safe.
+
+**Decision:** When the last transcribed phrase ends at least five minutes
+before the audio does, the player's options menu offers "Remove … of silence
+at the end…" behind a confirmation. `TrimMeetingAudioTail` keeps 10 s after
+the last phrase. It runs only for a settled meeting (lifecycle ready, no
+pending or running job, the compression owner checks). Cut copies of both
+channels are written and verified first; then one revision-fenced write
+tombstones rows that start after the cut, clips a row that crosses it, moves
+the meeting's end and increments the transcript revision; only then are the
+files swapped, with the originals restored if any swap fails (D112). The
+summary is not regenerated.
+
+**Consequences:** The cut is permanent and retires corrections made at the
+previous revision. A failed swap leaves extra silence, never transcript rows
+past the end of the audio. Older recordings whose silence was transcribed as
+hallucinated phrases have no trailing gap until Refine (D603) removes those
+rows.

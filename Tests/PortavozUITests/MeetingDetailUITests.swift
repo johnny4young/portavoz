@@ -1861,6 +1861,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.menuItems["player-skip-silence"].waitForExistenceFast(timeout: 5),
             "the player must offer skipping dead time")
+        XCTAssertFalse(
+            app.menuItems["player-trim-silence"].exists,
+            "a meeting without a long silent tail must not offer to trim it")
         typeKey(.escape, modifierFlags: [], in: app)
         XCTAssertTrue(
             app.control(withIdentifier: "detail-compress-audio").exists,

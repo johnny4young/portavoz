@@ -28,6 +28,15 @@ extension AppServices {
             telemetry: workloadTelemetry).execute(request)
     }
 
+    func trimMeetingDetailAudioTail(
+        _ request: TrimMeetingAudioTailRequest
+    ) async throws -> TimeInterval {
+        try await TrimMeetingAudioTail(
+            resolver: AppMeetingAudioChannelResolver(),
+            trimmer: AudioFileTailTrimmer(),
+            store: store).execute(request)
+    }
+
     func exportMeetingDetailAudioClip(
         _ request: ExportMeetingAudioClipRequest
     ) async throws {
