@@ -169,7 +169,11 @@ struct CLIAudioTranscriptionProcessor: AudioFileTranscriptionProcessor {
         case .whisper:
             return try await CLIModelLoader.whisper(
                 store: store,
-                progress: progress).transcribeFile(at: fileURL, hints: hints)
+                progress: progress
+            ).transcribeFile(
+                at: fileURL,
+                hints: hints,
+                speechDetector: try? await SileroSpeechRegionDetector.load(from: store))
         }
     }
 }
@@ -622,7 +626,12 @@ actor CLIRefineMeetingProcessor: RefineMeetingProcessor {
         channel: AudioChannel
     ) async throws -> FileTranscription {
         guard let whisper else { throw CLIProductAdapterError.processorNotPrepared }
-        return try await whisper.transcribeFile(at: fileURL, hints: hints, channel: channel)
+        return try await whisper.transcribeFile(
+            at: fileURL,
+            hints: hints,
+            channel: channel,
+            speechDetector: try? await SileroSpeechRegionDetector.load(
+                from: CLISupport.modelStore(fromModelsDir: modelsDirectory)))
     }
 
     func diarize(fileURL: URL) async throws -> [SpeakerTurn] {

@@ -2,7 +2,7 @@
 
 Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence), D174 (bounded live-caption presentation derivations), D229 (pure correction composition policy), D230 (durable correction history without product adoption), D231 (focused Meeting Detail text/speaker correction), D232 (explicit structural correction commands), D233 (correction-aware derived-artifact lineage and invalidation), D234 (correction-aware document projection and replica convergence), D320 (structured SpeechAnalyzer and First Listen lifetime), D355 (pinned non-serving Nemotron challenger), D433 (pinned non-serving compact MLX challengers and exact live-translation admission), D516 (reviewed exact speech-engine pin), D539 (evidence-backed FluidAudio 0.15.8 upgrade), D548 (verified non-serving Silero VAD capability), D559 (explicit producer token revisions on the latest reviewed fork).
 
-Additional decisions: D235 (correction recovery and scale gates), D602 (offline speaker-echo measurement).
+Additional decisions: D235 (correction recovery and scale gates), D602 (offline speaker-echo measurement), D603 (speech-gated Whisper windows).
 
 ## Correction composition contract (D229)
 
@@ -192,9 +192,11 @@ PCM and native rate changes reset model state and report a discontinuity, never
 manufactured silence. A failed or cancelled inference commits no partial
 model/resampler state; a concurrent producer is rejected rather than interleaved.
 
-The capability does not yet attach to recording or dictation. It cannot end
-capture, filter a transcript, alter a CAF, consume the model in the background,
-or claim improved meeting talk-time. Activation, explicit model preparation,
+The streaming adapter serves dictation only. Batch Whisper uses the separate
+whole-file `SileroSpeechRegionDetector` (D603), which Refine and audio import
+install with the same on-demand consent as Whisper itself. Neither ends
+capture, alters a CAF, runs in the background, or claims improved meeting
+talk-time. Activation, explicit model preparation,
 resource admission, bilingual quality/latency evidence and the opt-in silence
 countdown belong to the later serving slice (GAPS T37). An opt-in local test
 reaches the actual Core ML/FluidAudio call site over pinned model bytes,
@@ -410,7 +412,7 @@ safety net.
 
 ## Quality: WhisperEngine — `Sources/TranscriptionKit/WhisperEngine.swift`
 
-Two whisper.cpp-era hardening patterns are deliberately absent, verified against WhisperKit's source (Jul 2026): per-job decoder-state isolation is structural — WhisperKit prepares fresh decoder inputs and KV cache on every transcription call and Portavoz builds promptTokens per call, so the prompt_past cross-job poisoning class cannot occur; and VAD speech-only stitching is inapplicable because refine requires exact timestamps, which stitching desynchronizes (the pattern's own reference implementation skips it whenever timestamps are requested). The applicable input-side protections already exist: peak normalization, digitally-silent channel skipping, single-worker decoding, and anti-boilerplate hygiene.
+Two whisper.cpp-era hardening patterns are deliberately absent, verified against WhisperKit's source (Jul 2026): per-job decoder-state isolation is structural — WhisperKit prepares fresh decoder inputs and KV cache on every transcription call and Portavoz builds promptTokens per call, so the prompt_past cross-job poisoning class cannot occur; and VAD speech-only stitching stays out because refine requires exact timestamps, which stitching desynchronizes (the pattern's own reference implementation skips it whenever timestamps are requested). Speech-gated decoding (D603, item 6) is different: each speech window is decoded on its own and its segments are shifted by the window's start, so timestamps stay exact. The other input-side protections are peak normalization, digitally-silent channel skipping, single-worker decoding, and anti-boilerplate hygiene.
 
 Model load degrades before it fails (Jul 2026): a failed load — accelerator context creation is the recurring field class (ANE/GPU contention, stale Metal contexts) — retries exactly once with CPU-only compute units via the pure, tested `AcceleratorFallback`; a user cancel never triggers the second load, and a dual failure surfaces both causes so diagnostics distinguish an accelerator-only fault from a broken model directory. Artifact downloads were already atomic before this (D113: verified sibling staging + streaming sha256 + atomic rename preserving the previous file).
 
@@ -433,6 +435,36 @@ Hardened against 3 REAL WhisperKit failures (all reproduced and verified, Jul 20
    never become recognition fallbacks. Refine recomputes `Meeting.language`
    from the attributed result and clears stale aggregate metadata when the
    result is mixed or unknown.
+
+6. **Speech-gated windows (D603)**: when the caller passes a
+   `SpeechRegionDetecting` (Refine, audio import and the CLI pass
+   `SileroSpeechRegionDetector`), the peak-normalized channel is segmented by
+   Silero (threshold 0.5, minimum speech 0.25 s, minimum silence 0.5 s,
+   regions at most 28 s). `SpeechDecodeWindows.plan` pads regions by 0.2 s and
+   packs neighbours separated by at most 2 s into windows of at most 28 s.
+   Silence between windows never reaches the decoder. In automatic mode each
+   window's language comes from WhisperKit's temperature-0 detection, limited
+   to English and Spanish: a window detected as anything else takes the
+   channel's majority supported language, and stays automatic only when no
+   window was detected as a supported one. The window then decodes
+   sequentially with that language fixed, so temperature fallbacks cannot
+   resample it. A fixed policy language applies to every window. Segments
+   are shifted back to file time and pass the same hygiene as before. A
+   missing model or a detection failure keeps the whole-file path above,
+   including its coverage retry. `FileTranscription.detectedSpeechSeconds`
+   carries the detected speech, and the Refine review warns that a draft
+   "probably failed" when Whisper decoded under half of it
+   (`SpeechDecodeEvidence`, measured before echo and boilerplate filters).
+   Only ungated drafts compare against the current transcript, which may be
+   mostly silence hallucinations; the field meeting decoded 905 s of 953 s
+   detected while its old transcript claimed 263 minutes. On the 169-minute field meeting's first 20
+   minutes this removed 38 "Thank you." rows from the system channel, every
+   Japanese and Russian mic row, the German rendering of an English passage
+   and the invented speaker labels, and cut decoding time by about a quarter.
+7. **Caption markers**: subtitle-style speaker labels ("JOHN MUELLER: …",
+   one to three upper-case words with a colon) and leading dialogue dashes are
+   stripped from Whisper segment text. "Gracias", "gracias por ver" and
+   "gracias por ver el video" join the known microphone silence boilerplate.
 
 - Loads model+tokenizer from verified directories, `download: false` (never downloads without verification). Local tokenizer avoids the network.
 - Vocabulary (`hints.vocabulary`) → `promptTokens` as a natural sentence in the homogeneous spoken language ("In this meeting we discussed …" / "En esta reunión hablamos de …", not a "Glossary:" list); for mixed/unknown meetings, the prompt is omitted to avoid biasing Whisper toward one language. WhisperKit prepends it with `<|startofprev|>` and filters special tokens.

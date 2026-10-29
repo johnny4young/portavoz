@@ -1228,7 +1228,8 @@ final class RepeatedHallucinationCountTests: XCTestCase {
 /// meeting, flagging the GOOD refine (49:50 covered) as a failure.
 final class RefineDraftLossyGuardTests: XCTestCase {
     private func draft(
-        oldSpeech: TimeInterval, newSpeech: TimeInterval, meeting: TimeInterval?
+        oldSpeech: TimeInterval, newSpeech: TimeInterval, meeting: TimeInterval?,
+        speechEvidence: SpeechDecodeEvidence? = nil
     ) -> RefineDraft {
         let id = MeetingID()
         let segment = TranscriptSegment(
@@ -1238,7 +1239,33 @@ final class RefineDraftLossyGuardTests: XCTestCase {
             sourceTranscriptRevision: 0,
             language: nil, speakers: [], segments: [segment],
             oldSegmentCount: 1, oldSpeakerCount: 1,
-            oldSpeechSeconds: oldSpeech, meetingSeconds: meeting)
+            oldSpeechSeconds: oldSpeech, meetingSeconds: meeting,
+            speechEvidence: speechEvidence)
+    }
+
+    /// Field case: a transcript of silence hallucinations claimed 263:52 min;
+    /// the speech-gated refine decoded 905 s of the 953 s Silero found.
+    func testDecodedDetectedSpeechIsTheBaselineOverAHallucinatedTranscript() {
+        let healthy = draft(
+            oldSpeech: 15_832, newSpeech: 534, meeting: 10_153,
+            speechEvidence: SpeechDecodeEvidence(detectedSeconds: 953, decodedSeconds: 904))
+        XCTAssertFalse(healthy.looksLossy)
+    }
+
+    func testDecoderCollapseStillWarnsWithDetectedSpeech() {
+        let lossy = draft(
+            oldSpeech: 400, newSpeech: 300, meeting: 3_380,
+            speechEvidence: SpeechDecodeEvidence(detectedSeconds: 2_000, decodedSeconds: 300))
+        XCTAssertTrue(lossy.looksLossy)
+    }
+
+    func testEvidenceRequiresADetectorOnEveryChannel() {
+        let gated = FileTranscription(
+            text: "", segments: [], audioDuration: 60, processingTime: 1, detectedSpeechSeconds: 10)
+        let ungated = FileTranscription(text: "", segments: [], audioDuration: 60, processingTime: 1)
+        XCTAssertNotNil(SpeechDecodeEvidence([gated]))
+        XCTAssertNil(SpeechDecodeEvidence([gated, ungated]))
+        XCTAssertNil(SpeechDecodeEvidence([]))
     }
 
     func testCorruptBaselineIsCappedByMeetingDuration() {

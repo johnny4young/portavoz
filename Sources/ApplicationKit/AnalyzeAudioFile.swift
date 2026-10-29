@@ -77,12 +77,14 @@ public struct TranscribeAudioFileResult: Sendable {
     public let audioDuration: TimeInterval
     public let processingTime: TimeInterval
     public let speedFactor: Double
+    public let detectedSpeechSeconds: TimeInterval?
 
     public init(_ transcription: FileTranscription) {
         segments = transcription.segments
         audioDuration = transcription.audioDuration
         processingTime = transcription.processingTime
         speedFactor = transcription.speedFactor
+        detectedSpeechSeconds = transcription.detectedSpeechSeconds
     }
 }
 

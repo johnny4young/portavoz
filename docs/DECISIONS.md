@@ -22080,3 +22080,29 @@ to a remote speaker. The capture stays observational and the original
 microphone remains the evidence. Live captions and the playback mix still use
 the raw microphone; an echo-suppressed playback track is a separate change.
 
+## D603 — Refine decodes only speech, one supported language per window
+
+**Context:** On a 169-minute meeting with a six-minute call, Refine ran
+WhisperKit's energy chunker over the whole file. Every silent 22.5 s chunk was
+decoded: the system channel gained 435 "Thank you." rows and the microphone
+channel invented Japanese, Portuguese and Russian phrases. WhisperKit 1.1.1
+never computes its no-speech probability, so nothing filtered them. Automatic
+language detection also re-ran on every temperature fallback, which rendered
+one English passage in German. Refine took 11.5 minutes for six minutes of
+speech.
+
+**Decision:** Batch Whisper (Refine, audio import, CLI) segments each channel
+with Silero, packs the regions into windows of at most 28 s and decodes only
+those windows, each with its own offset so timestamps stay exact. Automatic
+mode detects each window's language once at temperature 0 and limits it to
+English and Spanish; other detections take the channel's majority supported
+language. The window then decodes with that language fixed. Subtitle speaker
+labels and dialogue dashes are stripped. Refine and import install the ~1 MB
+Silero model with the same on-demand consent as Whisper; without it, or when
+detection fails, the previous whole-file path runs unchanged.
+
+**Consequences:** Silence produces no rows and no decoding time. A meeting in a
+language other than English or Spanish needs a fixed transcription language
+for Refine. The live lane, post-capture Parakeet and talk-time metrics are
+unchanged.
+

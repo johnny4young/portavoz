@@ -29,6 +29,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## October 29, 2026
+
+- **🤫 Refine skips the silence** — Refine now transcribes only the moments people actually speak: no more "Thank you." every 20 seconds or Japanese and Russian phrases in quiet stretches, English stays English, and long meetings with little talk refine much faster.
+
 ## October 28, 2026
 
 - **🔈 Speakers no longer put words in your mouth** — when you take a call on speakers, what the others say no longer shows up as yours; Portavoz measures the speaker echo after the call, removes the duplicates and gives anything only your mic caught back to the person who said it.
