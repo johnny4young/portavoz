@@ -403,6 +403,14 @@ Spanish per window, so a meeting in another language needs a fixed
 transcription language. Whisper still loads the whole channel into memory
 before segmentation, about 650 MB per channel for a three-hour meeting.
 
+### Call-ended thresholds need field evidence
+
+D604's quiet thresholds (about -50 dBFS remote, -40 dBFS microphone, 2 s
+smoothing) and its 3 + 5 minute timing come from one MacBook meeting. Field
+evidence is still needed for long screen-share silences, hold music, a noisy
+room that keeps the microphone above the threshold, and the notification
+actions while the app is hidden or the Mac is locked.
+
 ### Speaker echo thresholds need more rooms and devices
 
 D602 was calibrated on one MacBook built-in speaker/microphone meeting, where

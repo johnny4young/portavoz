@@ -7,6 +7,7 @@ struct RecordingLevelSnapshot: Equatable, Sendable {
     var hasSystemSamples = false
     var systemAudioIsMissing = false
     var systemAudioIsClipping = false
+    var callEnd: CallEndDetector.State = .listening
 }
 
 /// Constant-space detector for a hard-limited incoming channel. It measures
@@ -79,9 +80,11 @@ struct RecordingLevelBuffer {
     private var smoothedSystemRMS: Float = 0
     private var systemChunks = 0
     private var systemCeilingDetector = SustainedCeilingDetector()
+    private var callEndDetector = CallEndDetector()
 
     mutating func submit(_ sample: PersistedAudioLevel) -> UInt64? {
         guard acceptsSubmissions else { return nil }
+        snapshot.callEnd = callEndDetector.observe(sample)
         switch sample.channel {
         case .microphone:
             smoothedMicrophoneLevel = max(
@@ -141,6 +144,12 @@ struct RecordingLevelBuffer {
         smoothedSystemRMS = 0
         systemChunks = 0
         systemCeilingDetector = SustainedCeilingDetector()
+        callEndDetector = CallEndDetector()
+    }
+
+    mutating func keepRecording() {
+        callEndDetector.keepRecording()
+        snapshot.callEnd = callEndDetector.state
     }
 }
 
@@ -191,6 +200,12 @@ final class RecordingLevelRelay: @unchecked Sendable {
     func cancel() {
         lock.lock()
         buffer.cancel()
+        lock.unlock()
+    }
+
+    func keepRecording() {
+        lock.lock()
+        buffer.keepRecording()
         lock.unlock()
     }
 

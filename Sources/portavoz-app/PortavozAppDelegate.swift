@@ -24,7 +24,8 @@ final class PortavozAppDelegate:
         let center = UNUserNotificationCenter.current()
         center.delegate = self
         center.setNotificationCategories([
-            AppReminderNotificationMetadata.category
+            AppReminderNotificationMetadata.category,
+            AppCallEndedNotification.category
         ])
     }
 
@@ -330,6 +331,13 @@ final class PortavozAppDelegate:
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         _ = center
+        if response.notification.request.content.categoryIdentifier
+            == AppCallEndedNotification.categoryIdentifier {
+            let reply = AppCallEndedNotification.response(for: response.actionIdentifier)
+            completionHandler()
+            Task { @MainActor in Self.handleCallEnded(reply) }
+            return
+        }
         guard let record = reminderRecord(from: response.notification) else {
             completionHandler()
             return
@@ -363,6 +371,22 @@ final class PortavozAppDelegate:
 }
 
 private extension PortavozAppDelegate {
+    @MainActor
+    static func handleCallEnded(_ reply: AppCallEndedNotification.Response?) {
+        guard let reply, let services, services.recording.phase == .recording else { return }
+        switch reply {
+        case .stop:
+            services.pendingRoute = .recording(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            Task { await services.recording.stop(services: services) }
+        case .keepRecording:
+            services.recording.keepRecordingAfterCallEnded()
+        case .open:
+            services.pendingRoute = .recording(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
     var runsProductionSyncQualification: Bool {
         ProductionSyncQualificationConfiguration.isRequested(
             arguments: ProcessInfo.processInfo.arguments)

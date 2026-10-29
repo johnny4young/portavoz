@@ -2113,8 +2113,12 @@ path, while source recovery remains actor-isolated. The application presents a
 non-dismissible warning and an explicit recovered state; callback or stream
 health events contain no audio or transcript content. After two uninterrupted
 minutes without remote callbacks, Core policy makes Stop prominent in both the
-full recording surface and compact HUD because the call may have ended; it
-never stops automatically or interrupts microphone capture.
+full recording surface and compact HUD because the call may have ended; the
+outage never stops capture or interrupts microphone capture. A separate Core
+`CallEndDetector` watches persisted levels: after the remote side was heard,
+three quiet minutes on both channels ask whether the call ended, and an
+unanswered question stops the recording through the normal Stop path five
+minutes later.
 
 At launch, expired leases are recovered before the application workflow
 resumes. It claims supported work serially, renews each lease, recomputes the
