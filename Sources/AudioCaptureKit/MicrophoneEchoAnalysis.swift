@@ -323,12 +323,15 @@ final class BandSpectrum {
 }
 
 /// Streams any readable audio file as mono Float samples at one rate.
-final class MonoResamplingReader {
+/// `@unchecked Sendable`: `convert(to:)` runs its input block synchronously on
+/// the calling thread, and one instance belongs to one offline pass.
+final class MonoResamplingReader: @unchecked Sendable {
     private let file: AVAudioFile
     private let converter: AVAudioConverter
     private let input: AVAudioPCMBuffer
     private let output: AVAudioPCMBuffer
     private var reachedEnd = false
+    private var readError: Error?
 
     init(url: URL, sampleRate: Double, chunkFrames: AVAudioFrameCount = 48_000) throws {
         file = try AVAudioFile(forReading: url)
@@ -355,7 +358,7 @@ final class MonoResamplingReader {
         guard !reachedEnd else { return [] }
         output.frameLength = 0
         var conversionError: NSError?
-        var readError: Error?
+        readError = nil
         let status = converter.convert(to: output, error: &conversionError) { _, inputStatus in
             guard self.file.framePosition < self.file.length else {
                 inputStatus.pointee = .endOfStream
@@ -365,7 +368,7 @@ final class MonoResamplingReader {
                 self.input.frameLength = 0
                 try self.file.read(into: self.input)
             } catch {
-                readError = error
+                self.readError = error
                 inputStatus.pointee = .endOfStream
                 return nil
             }
