@@ -90,6 +90,8 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("LibraryUITests", "testRecordingStartFailureOffersTypedRecovery"),
         test_id("LibraryUITests", "testRecordingWarnsWhenRemoteAudioCallbacksStop"),
         test_id("LibraryUITests", "testRecordingWarnsWhenIncomingAudioClips"),
+        test_id("LibraryUITests", "testRecordingAsksWhetherTheCallEndedAndKeepsRecording"),
+        test_id("LibraryUITests", "testUnansweredCallEndedQuestionStopsTheRecording"),
         test_id("LibraryUITests", "testColdRecordingStartsLiveCaptionsWhenModelBecomesReady"),
         test_id("LibraryUITests", "testLiveTranscriptYieldsFollowWhileReadingHistory"),
         test_id("LibraryUITests", "testOwnedTokenPreviewRetiresWithoutEnteringCanonicalCaption"),
@@ -281,6 +283,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id("MeetingDetailUITests", "testPlayerExposesSkipAndOnlyMyVoice"),
         test_id("MeetingDetailUITests", "testClipMarkingRevealsExport"),
+        test_id("MeetingDetailUITests", "testClickingALineOfTextJumpsThere"),
     ),
     "meeting-correction": (
         test_id(

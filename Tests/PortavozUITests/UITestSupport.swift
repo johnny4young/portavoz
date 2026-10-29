@@ -89,6 +89,8 @@ extension XCUIApplication {
         simulateRecordingStartFailure: Bool = false,
         simulateSystemCaptureStall: Bool = false,
         simulateSystemAudioClipping: Bool = false,
+        simulateCallEnded: Bool = false,
+        simulateCallEndedTimeout: Bool = false,
         simulateLiveTranscriptionAttach: Bool = false,
         simulateLiveTranscriptBrowsing: Bool = false,
         simulateLiveApuntador: Bool = false,
@@ -162,6 +164,12 @@ extension XCUIApplication {
         }
         if simulateSystemAudioClipping {
             app.launchArguments.append("-simulate-system-audio-clipping")
+        }
+        if simulateCallEnded || simulateCallEndedTimeout {
+            app.launchArguments.append("-simulate-call-ended")
+        }
+        if simulateCallEndedTimeout {
+            app.launchArguments.append("-simulate-call-ended-timeout")
         }
         if simulateLiveTranscriptionAttach {
             app.launchArguments.append("-simulate-live-transcription-attach")

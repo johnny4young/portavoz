@@ -70,6 +70,7 @@ extension AppServices: AudioImportQueueClient {
 private final class AppImportMeetingProcessor: ImportMeetingProcessor {
     private weak var services: AppServices?
     private var whisperRuntime: AppServices.WhisperRuntimeLease?
+    private var speechDetector: SileroSpeechRegionDetector?
     private var diarizationRuntime: AppServices.DiarizationRuntimeLease?
     private var diarizer: PyannoteDiarizer?
 
@@ -82,6 +83,7 @@ private final class AppImportMeetingProcessor: ImportMeetingProcessor {
     ) async throws {
         guard let services else { throw AppImportMeetingError.servicesUnavailable }
         if whisperRuntime != nil { return }
+        speechDetector = await services.batchSpeechDetector()
         whisperRuntime = try await services.acquireWhisperRuntime(
             progress: { _ in },
             preparationProgress: { size, percent, isDownloading in
@@ -127,7 +129,8 @@ private final class AppImportMeetingProcessor: ImportMeetingProcessor {
             try await whisper.transcribeFile(
                 at: audio.fileURL,
                 hints: hints,
-                channel: .system)
+                channel: .system,
+                speechDetector: speechDetector)
         }
     }
 

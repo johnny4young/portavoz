@@ -172,7 +172,7 @@ remote replacement cannot silently undo a dismissal or deferral.
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access, microphone authorization, and regular persistent file bookmarks while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
 | `AudioCaptureKit` | Call-safe raw microphone capture, explicit nondefault voice processing for bounded nonmeeting tools, macOS process taps, checked PCM geometry and native buffer views, single-owner failed-source retirement, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
-| `TranscriptionKit` | Live Parakeet, quality Whisper, and an optional macOS 26 SpeechAnalyzer live adapter for fixed installed locales; a CLI-only non-serving Nemotron challenger; a verified Silero voice-activity adapter serving only the default-on dictation speech gate; transcript scheduling; language-aware operation fingerprints; model preparation tokens; segment mapping; structured SpeechAnalyzer input ownership; and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
+| `TranscriptionKit` | Live Parakeet, quality Whisper, and an optional macOS 26 SpeechAnalyzer live adapter for fixed installed locales; a CLI-only non-serving Nemotron challenger; a verified Silero voice-activity adapter serving the default-on dictation speech gate, plus whole-file Silero speech regions that limit batch Whisper to speech windows with one supported language each; transcript scheduling; language-aware operation fingerprints; model preparation tokens; segment mapping; structured SpeechAnalyzer input ownership; and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, session-clock-anchored live windowing, and encrypted local voice-gallery support. |
 | `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Apuntador plus pure bounded proactive meeting-assist admission; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
 | `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, immutable transcript-correction history with atomic multi-lane appends and sparse correction-search lineage, explicit topic and decision continuity with immutable evidence and append-only relationship history, explicitly confirmed decision-topic authority, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and correction-fenced Spotlight projections. |
@@ -2113,8 +2113,12 @@ path, while source recovery remains actor-isolated. The application presents a
 non-dismissible warning and an explicit recovered state; callback or stream
 health events contain no audio or transcript content. After two uninterrupted
 minutes without remote callbacks, Core policy makes Stop prominent in both the
-full recording surface and compact HUD because the call may have ended; it
-never stops automatically or interrupts microphone capture.
+full recording surface and compact HUD because the call may have ended; the
+outage never stops capture or interrupts microphone capture. A separate Core
+`CallEndDetector` watches persisted levels: after the remote side was heard,
+three quiet minutes on both channels ask whether the call ended, and an
+unanswered question stops the recording through the normal Stop path five
+minutes later.
 
 At launch, expired leases are recovered before the application workflow
 resumes. It claims supported work serially, renews each lease, recomputes the
@@ -2173,8 +2177,12 @@ Meeting capture obeys an observational passivity invariant: production
 recording and global dictation never enable AVAudioEngine voice processing,
 other-audio ducking, or a system mute/volume mutation. The conferencing app
 retains ownership of its microphone processing and playback graph. Raw
-microphone spill is handled after capture by transcript bleed filtering rather
-than by modifying the live call. `MicrophoneSource` keeps an explicit
+microphone spill is handled after capture rather than by modifying the live
+call: `AudioCaptureKit.MicrophoneEchoAnalysis` re-reads both channel files and
+measures, across the spectrum, how much microphone energy the system
+channel's speaker echo explains. `TranscriptionKit.SpeakerEchoFilter` uses that
+measurement to drop echoed microphone rows or move them to the system channel,
+and the word-level `MicBleedFilter` still runs afterwards. `MicrophoneSource` keeps an explicit
 voice-processing option only for bounded nonmeeting tools such as local voice
 enrollment and the CLI diagnostic flag. Microphone graph preparation is also
 fail-closed. The app resolves microphone authorization through `PlatformKit`
@@ -6460,9 +6468,10 @@ tracks temporary-fork maintenance and unqualified upstream behavior. No floating
 branch or unrelated package refresh can admit another SDK. Vendor types enter
 production only through the reviewed transcription and diarization adapters:
 `ParakeetEngine`, `ParakeetSegmentMapper`,
-`NemotronLatin1120Engine`, `SileroVoiceActivityDetector`, `PyannoteDiarizer`
-and `DiarizationEvaluation`. The Silero adapter serves only the default-on
-dictation speech gate, over a copy of admitted PCM; meetings do not use it. Core,
+`NemotronLatin1120Engine`, `SileroVoiceActivityDetector`,
+`SileroSpeechRegionDetector`, `PyannoteDiarizer` and `DiarizationEvaluation`. The streaming Silero adapter serves only the
+default-on dictation speech gate, over a copy of admitted PCM; batch Whisper
+uses `SileroSpeechRegionDetector` over a channel already loaded from disk. Core,
 ApplicationKit and executable presentation consume Portavoz contracts instead. In
 the test tree the vendor import is confined to engine-specific suites
 `TranscriptionTests`, `ParakeetLanguageConfigurationTests`,

@@ -116,6 +116,9 @@ public protocol RefineMeetingProcessor: Sendable {
     ) async throws -> FileTranscription
     func diarize(fileURL: URL) async throws -> [SpeakerTurn]
     func scheduleIdleRelease() async
+    /// Speaker echo measured from both channel files; nil when the microphone
+    /// did not hear the speakers or the measurement is unavailable.
+    func microphoneEchoProfile(microphone: URL, system: URL) async -> MicrophoneEchoProfile?
 }
 
 public enum RefineMeetingError: Error, Equatable, LocalizedError, Sendable {
@@ -224,7 +227,7 @@ public struct RefineMeeting: ApplicationUseCase {
             audio: audio,
             hints: hints)
         do {
-            let segments = try await transcribe(
+            let (segments, speechEvidence) = try await transcribe(
                 audio: audio,
                 hints: hints,
                 progress: request.progress)
@@ -236,6 +239,7 @@ public struct RefineMeeting: ApplicationUseCase {
             return refinedDraft(
                 detail: detail,
                 attribution: attribution,
+                speechEvidence: speechEvidence,
                 attempt: attempt)
         } catch {
             if let attempt {
@@ -256,13 +260,12 @@ public struct RefineMeeting: ApplicationUseCase {
     private func refinedDraft(
         detail: MeetingDetail,
         attribution: SpeakerAttributor.Attribution,
+        speechEvidence: SpeechDecodeEvidence?,
         attempt: RefinedTranscriptGenerationAttempt?
     ) -> RefineDraft {
         let language = SpokenLanguageDetector.homogeneousLanguage(
             in: attribution.segments)
-        let oldSpeech = detail.segments.reduce(0) {
-            $0 + ($1.endTime - $1.startTime)
-        }
+        let oldSpeech = detail.segments.reduce(0) { $0 + ($1.endTime - $1.startTime) }
         let meetingSeconds = detail.meeting.endedAt.map {
             $0.timeIntervalSince(detail.meeting.startedAt)
         }
@@ -275,6 +278,7 @@ public struct RefineMeeting: ApplicationUseCase {
             oldSpeakerCount: detail.speakers.count,
             oldSpeechSeconds: oldSpeech,
             meetingSeconds: meetingSeconds,
+            speechEvidence: speechEvidence,
             generationRun: attempt?.finish(
                 outcome: .succeeded,
                 outputLanguage: language,
@@ -326,14 +330,16 @@ public struct RefineMeeting: ApplicationUseCase {
         audio: RefineMeetingAudio,
         hints: TranscriptionHints,
         progress: RefineMeetingProgressHandler
-    ) async throws -> [TranscriptSegment] {
+    ) async throws -> ([TranscriptSegment], SpeechDecodeEvidence?) {
         var segments: [TranscriptSegment] = []
+        var results: [FileTranscription] = []
         if let system = audio.system, !system.isSilent {
             await progress(.transcribingParticipants)
             let result = try await processor.transcribe(
                 fileURL: system.fileURL,
                 hints: hints,
                 channel: .system)
+            results.append(result)
             await progress(.transcribed(
                 channel: .system,
                 audioDuration: result.audioDuration,
@@ -349,6 +355,7 @@ public struct RefineMeeting: ApplicationUseCase {
                 fileURL: microphone.fileURL,
                 hints: hints,
                 channel: .microphone)
+            results.append(result)
             await progress(.transcribed(
                 channel: .microphone,
                 audioDuration: result.audioDuration,
@@ -359,12 +366,18 @@ public struct RefineMeeting: ApplicationUseCase {
                     text: $0.text,
                     confidence: $0.confidence)
             }
-            segments.append(contentsOf: MicBleedFilter.filter(
-                microphone: voiced,
-                system: segments))
+            var profile: MicrophoneEchoProfile?
+            if let system = audio.system, !system.isSilent {
+                profile = await processor.microphoneEchoProfile(
+                    microphone: microphone.fileURL, system: system.fileURL)
+            }
+            let echo = SpeakerEchoFilter.resolve(microphone: voiced, system: segments, profile: profile)
+            let microphoneSegments = MicBleedFilter.filter(microphone: echo.microphone, system: segments)
+            segments.append(contentsOf: echo.recoveredSystem)
+            segments.append(contentsOf: microphoneSegments)
             try Task.checkCancellation()
         }
-        return segments.sorted { $0.startTime < $1.startTime }
+        return (segments.sorted { $0.startTime < $1.startTime }, SpeechDecodeEvidence(results))
     }
 
     private func speakerTurns(

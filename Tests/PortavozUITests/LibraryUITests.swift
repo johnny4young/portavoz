@@ -355,6 +355,45 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testRecordingAsksWhetherTheCallEndedAndKeepsRecording() throws {
+        let app = try XCUIApplication.portavoz(simulateCallEnded: true)
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        let record = app.buttons["library-new-recording-button"]
+        XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
+        record.click()
+
+        let question = app.control(withIdentifier: "recording-call-ended")
+        XCTAssertTrue(
+            question.waitForExistenceFast(timeout: 10),
+            "quiet after the remote side was heard must ask whether the call ended")
+        XCTAssertTrue(app.buttons["recording-call-ended-stop"].exists)
+        attachScreenshot(of: app, named: "recording-call-ended")
+
+        app.buttons["recording-call-ended-keep"].click()
+        XCTAssertTrue(
+            question.waitForDisappearance(timeout: 5),
+            "Keep recording leaves capture running without the question")
+        XCTAssertFalse(app.buttons["recording-call-ended-stop"].exists)
+    }
+
+    @MainActor
+    func testUnansweredCallEndedQuestionStopsTheRecording() throws {
+        let app = try XCUIApplication.portavoz(simulateCallEndedTimeout: true)
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        let record = app.buttons["library-new-recording-button"]
+        XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
+        record.click()
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "recording-failure").waitForExistenceFast(timeout: 15),
+            "the countdown must stop capture and surface the fixture's no-audio outcome")
+    }
+
+    @MainActor
     func testColdRecordingStartsLiveCaptionsWhenModelBecomesReady() throws {
         let app = try XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)
         app.launchPortavoz()

@@ -24,6 +24,7 @@ class RunSwiftTestsTests(unittest.TestCase):
         arguments: tuple[str, ...] = (),
         startup_attempts: int = 1500,
         interrupt_after_start: bool = False,
+        worker_start_delay: float = 0,
         readiness_timeout: float = 10,
         completion_timeout: float = 20,
         workers: str | None = None,
@@ -64,9 +65,14 @@ class RunSwiftTestsTests(unittest.TestCase):
             "    }, destination)\n"
             "PY\n"
             "if [ \"${SWIFT_BLOCK:-false}\" = true ]; then\n"
-            "  sh -c 'while :; do sleep 1; done' &\n"
-            "  echo $! > \"$SWIFT_WORKER_PID\"\n"
+            "  sleep \"$SWIFT_WORKER_START_DELAY\"\n"
             "  trap 'exit 0' TERM INT\n"
+            # The worker publishes its own PID only after both shells' traps
+            # are installed. Atomic publication excludes an empty PID read.
+            "  sh -c 'trap \"exit 0\" TERM INT; "
+            "printf \"%s\\n\" \"$$\" > \"$SWIFT_WORKER_PID.tmp\"; "
+            "mv \"$SWIFT_WORKER_PID.tmp\" \"$SWIFT_WORKER_PID\"; "
+            "while :; do sleep 1; done' &\n"
             "  while :; do sleep 1; done\n"
             "fi\n"
             "exit \"$SWIFT_EXIT_CODE\"\n",
@@ -108,6 +114,7 @@ class RunSwiftTestsTests(unittest.TestCase):
                 "SWIFT_EXIT_CODE": str(swift_exit_code),
                 "SWIFT_BLOCK": str(interrupt_after_start).lower(),
                 "SWIFT_WORKER_PID": str(root / "worker.pid"),
+                "SWIFT_WORKER_START_DELAY": str(worker_start_delay),
                 "SWIFT_BUILD_LOG": str(root / "build.log"),
                 "XCTEST_LOG": str(root / "xctest.log"),
                 "FAKE_PRODUCTS": str(products),
@@ -137,11 +144,15 @@ class RunSwiftTestsTests(unittest.TestCase):
             try:
                 if interrupt_after_start:
                     deadline = time.monotonic() + readiness_timeout
-                    while time.monotonic() < deadline and not swift_log.exists():
+                    worker_ready = False
+                    while time.monotonic() < deadline:
+                        if swift_log.exists() and self.worker_is_ready(root / "worker.pid"):
+                            worker_ready = True
+                            break
                         if process.poll() is not None:
                             break
                         time.sleep(0.02)
-                    self.assertTrue(swift_log.exists(), "Swift child did not start")
+                    self.assertTrue(worker_ready, "Swift worker did not become ready")
                     process.send_signal(signal.SIGTERM)
                 stdout, stderr = process.communicate(
                     timeout=10 if interrupt_after_start else completion_timeout
@@ -162,6 +173,17 @@ class RunSwiftTestsTests(unittest.TestCase):
             else None
         )
         return result, record, root
+
+    @staticmethod
+    def worker_is_ready(pid_path: Path) -> bool:
+        try:
+            worker_pid = int(pid_path.read_text(encoding="utf-8"))
+            if worker_pid <= 0:
+                return False
+            os.kill(worker_pid, 0)
+        except (FileNotFoundError, ValueError, ProcessLookupError):
+            return False
+        return True
 
     @staticmethod
     def stop_owned_process_group(process: subprocess.Popen[str]) -> None:
@@ -195,8 +217,20 @@ class RunSwiftTestsTests(unittest.TestCase):
         self.assertIsNotNone(process.returncode)
         self.assertTrue(process.stdout.closed)
         self.assertTrue(process.stderr.closed)
-        with self.assertRaises(ProcessLookupError):
-            os.killpg(process.pid, 0)
+        self.assert_process_group_released(process.pid)
+
+    def assert_process_group_released(self, group_id: int, timeout: float = 3):
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                os.killpg(group_id, 0)
+            except ProcessLookupError:
+                return
+            except PermissionError:
+                # macOS reports EPERM while an exited member awaits reaping.
+                pass
+            self.assertLess(time.monotonic(), deadline, "owned process group was not released")
+            time.sleep(0.02)
 
     def assert_fixture_was_cleaned(self, record: dict[str, object], root: Path):
         descriptor = record["descriptor"]
@@ -263,14 +297,19 @@ class RunSwiftTestsTests(unittest.TestCase):
         self.assertEqual(list(root.glob("portavoz-swift-tests.*")), [])
 
     def test_interrupt_stops_swift_fixture_and_scratch_state(self):
-        result, record, root = self.run_runner(interrupt_after_start=True)
+        for worker_start_delay in (0, 0.5):
+            with self.subTest(worker_start_delay=worker_start_delay):
+                result, record, root = self.run_runner(
+                    interrupt_after_start=True,
+                    worker_start_delay=worker_start_delay,
+                )
 
-        self.assertEqual(result.returncode, 143, result.stderr)
-        self.assertIsNotNone(record)
-        self.assert_fixture_was_cleaned(record, root)
-        # A parallel worker shares the swift test process group and stops with it.
-        with self.assertRaises(ProcessLookupError):
-            os.kill(int((root / "worker.pid").read_text()), 0)
+                self.assertEqual(result.returncode, 143, result.stderr)
+                self.assertIsNotNone(record)
+                self.assert_fixture_was_cleaned(record, root)
+                # A parallel worker shares the swift test process group and stops with it.
+                with self.assertRaises(ProcessLookupError):
+                    os.kill(int((root / "worker.pid").read_text()), 0)
 
     def test_invalid_startup_budget_fails_before_starting_children(self):
         result, record, root = self.run_runner(startup_attempts=0)

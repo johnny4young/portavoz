@@ -4,6 +4,7 @@ import SwiftUI
 struct MeetingDetailPlayerValues {
     let player: MeetingPlaybackSession?
     let waveform: [MeetingWaveformBucket]
+    let voices: [MeetingPlaybackVoice]
     let canCompressAudio: Bool
     let isCompressingAudio: Bool
     let compressionMessage: String?
@@ -33,6 +34,7 @@ struct MeetingDetailPlayerSection: View {
                     MeetingPlayerBar(
                         player: player,
                         waveform: values.waveform,
+                        voices: values.voices,
                         exportClip: actions.exportClip)
                     compressionRow
                 }

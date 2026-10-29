@@ -161,6 +161,9 @@ private extension MeetingDetailView {
             values: MeetingDetailPlayerValues(
                 player: player,
                 waveform: waveform,
+                voices: detail.map {
+                    MeetingPlaybackVoice.voices(speakers: $0.speakers, segments: $0.segments)
+                } ?? [],
                 canCompressAudio: canCompressAudio,
                 isCompressingAudio: model.state.isCompressingAudio,
                 compressionMessage: model.state.audioCompressionMessage),

@@ -14,8 +14,16 @@ enum TranscriptionTextFilter {
         "thank you",
         "thanks",
         "thank you for watching",
-        "thanks for watching"
+        "thanks for watching",
+        "gracias",
+        "gracias por ver",
+        "gracias por ver el video"
     ]
+    /// Whisper learned subtitle markers: a speaker label such as "JOHN
+    /// MUELLER:" (one to three upper-case words, the first of three or more
+    /// letters) or a leading dialogue dash.
+    private static let captionMarker = try? NSRegularExpression(
+        pattern: #"^(?:-+\s+|\p{Lu}{3,}(?:[ .'-]+\p{Lu}+){0,2}:\s+)"#)
 
     static func hasLexicalContent(_ text: String) -> Bool {
         TranscriptContentPolicy.hasLexicalContent(text)
@@ -38,6 +46,14 @@ enum TranscriptionTextFilter {
             }
         }
         return String(scalars).trimmingCharacters(in: .whitespaces)
+    }
+
+    static func strippingCaptionMarkers(_ text: String) -> String {
+        let range = NSRange(text.startIndex..., in: text)
+        guard let match = captionMarker?.firstMatch(in: text, range: range),
+            let labelRange = Range(match.range, in: text)
+        else { return text }
+        return String(text[labelRange.upperBound...])
     }
 
     static func isKnownSilenceHallucination(_ text: String) -> Bool {
