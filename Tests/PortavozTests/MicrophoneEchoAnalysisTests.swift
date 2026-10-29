@@ -46,6 +46,23 @@ final class MicrophoneEchoAnalysisTests: XCTestCase {
         XCTAssertNil(try MicrophoneEchoAnalysis.profile(microphone: urls[0], system: urls[1]))
     }
 
+    func testShorterSystemFileDoesNotClassifyTheUnmeasuredMicrophoneTail() throws {
+        let remote = Self.speech(seed: 1, active: { _ in true })
+        let microphone = remote.map { 0.2 * tanh(3 * $0) }
+        let urls = try write(
+            microphone: microphone, system: Array(remote.prefix(Self.sampleRate * 30)))
+        defer { urls.forEach { try? FileManager.default.removeItem(at: $0) } }
+
+        let profile = try XCTUnwrap(
+            MicrophoneEchoAnalysis.profile(microphone: urls[0], system: urls[1]))
+        let measuredEnd = Double(profile.microphoneEnergy.count) * profile.frameDuration
+
+        XCTAssertLessThan(measuredEnd, 30)
+        XCTAssertGreaterThan(measuredEnd, 29)
+        XCTAssertNotNil(profile.echoAttenuationDB(from: 29, to: measuredEnd))
+        XCTAssertNil(profile.echoAttenuationDB(from: 29, to: 32))
+    }
+
     func testSilentRemoteSideProducesNoProfile() throws {
         let user = Self.speech(seed: 2, active: { _ in true })
         let urls = try write(

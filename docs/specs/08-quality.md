@@ -2570,6 +2570,12 @@ The shell-runner tests own a separate process session and clean it in `finally`,
 including descendants and pipes when readiness assertions or outer timeouts
 fail. Real subprocess regressions exercise both failure paths, while existing
 success, child failure, interruption and scratch cleanup assertions remain.
+The interrupt helper waits for a live positive worker PID, atomically published
+by the worker after both synthetic shells install their signal traps, rather
+than treating the earlier Swift argument log as readiness. A delayed worker
+startup regression covers interruption after readiness. Process-group release
+is awaited within a bounded deadline because macOS reports EPERM, not ESRCH,
+while an exited member awaits reaping.
 Their normal readiness/completion budgets are unchanged; failure is not turned
 into success by cleanup or by an automatic rerun.
 
