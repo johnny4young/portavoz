@@ -80,6 +80,15 @@ final class AppPostCaptureProcessingCapabilities:
         }) ?? []
     }
 
+    func postCaptureMicrophoneEchoProfile(
+        microphone: AudioAsset,
+        system: AudioAsset
+    ) async -> MicrophoneEchoProfile? {
+        await AppServices.measureMicrophoneEcho(
+            microphone: RecordingsLocation.shared.resolve(microphone.relativePath),
+            system: RecordingsLocation.shared.resolve(system.relativePath))
+    }
+
     func postCaptureSummaryProvider() async -> PostCaptureSummaryProviderSelection? {
         await services?.processingPostCaptureSummaryProviderSelection()
     }

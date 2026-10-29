@@ -22051,3 +22051,32 @@ request. Copy edits run the journeys that assert them instead of an unrelated
 sample. A hosted-automation outage turns the nightly run red, so the release
 recipe's green-nightly rule now means verified evidence; the run is
 re-dispatched instead of being accepted as an advisory.
+
+## D602 — Measure speaker echo offline instead of cancelling it live
+
+**Context:** In a 169-minute meeting recorded on MacBook speakers, the raw
+microphone carried the remote side 75 ms late. Eighteen remote rows appeared a
+second time as "Me", three remote sentences existed only in the microphone
+transcript because the system transcript missed them, and the summary assigned
+remote action items to the user. The word-level `MicBleedFilter` failed because
+that stretch of the system channel was transcribed in German. Live Apple voice
+processing remains excluded by D125, and an offline linear (NLMS) canceller
+reached only ~4 dB on this audio because the built-in speakers apply
+level-dependent processing.
+
+**Decision:** After capture, `MicrophoneEchoAnalysis` re-reads both channel
+files and models the echo per frequency band in magnitude only, with a
+measured delay, learned per-band gains and a short tail. It produces a
+`MicrophoneEchoProfile` of per-frame microphone and near-end energy, or nil
+when the channels are not coupled. Post-capture transcription and Refine pass
+microphone rows through `SpeakerEchoFilter` before `MicBleedFilter`. A row that
+is at least 90% predicted echo is dropped when the system transcript covers it,
+and otherwise moves to the system channel. Any failure degrades to the previous
+text-only filtering. Capture files are never rewritten.
+
+**Consequences:** "Me" stops claiming remote speech on speakers in any language,
+and remote speech that only the microphone transcribed is kept and attributed
+to a remote speaker. The capture stays observational and the original
+microphone remains the evidence. Live captions and the playback mix still use
+the raw microphone; an echo-suppressed playback track is a separate change.
+

@@ -2,7 +2,7 @@
 
 Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence), D174 (bounded live-caption presentation derivations), D229 (pure correction composition policy), D230 (durable correction history without product adoption), D231 (focused Meeting Detail text/speaker correction), D232 (explicit structural correction commands), D233 (correction-aware derived-artifact lineage and invalidation), D234 (correction-aware document projection and replica convergence), D320 (structured SpeechAnalyzer and First Listen lifetime), D355 (pinned non-serving Nemotron challenger), D433 (pinned non-serving compact MLX challengers and exact live-translation admission), D516 (reviewed exact speech-engine pin), D539 (evidence-backed FluidAudio 0.15.8 upgrade), D548 (verified non-serving Silero VAD capability), D559 (explicit producer token revisions on the latest reviewed fork).
 
-Additional decision: D235 (correction recovery and scale gates).
+Additional decisions: D235 (correction recovery and scale gates), D602 (offline speaker-echo measurement).
 
 ## Correction composition contract (D229)
 
@@ -399,8 +399,8 @@ the app capability adapter to join only verified Parakeet loading and transcribe
 healthy/clipped system and microphone files through the serial batch scheduler
 while preserving their real `AudioChannel`. Automatic mode
 uses no fixed language and no vocabulary so a mixed Spanish/English meeting is
-not biased or translated. Mic fragments pass `TranscriptNoiseFilter` and
-`MicBleedFilter`; StorageKit then atomically publishes the complete attributed
+not biased or translated. Mic fragments pass `TranscriptNoiseFilter`,
+`SpeakerEchoFilter` and `MicBleedFilter` (see "Speaker echo" below); StorageKit then atomically publishes the complete attributed
 cast/transcript, advances `transcriptRevision`, completes the owned lease, and
 enqueues exact diarization. The application workflow owns job leases,
 dependency admission, retry/cancellation, and publication order; the adapter
@@ -540,8 +540,31 @@ read that fails because the recordings volume went away mid-scan.
 removes rows with no letter or digit from both system and microphone results;
 Whisper mapping, the ApplicationKit Refine boundary, accepted-aggregate storage,
 and intelligence formatting independently enforce the same minimum. Microphone
-results then pass through `TranscriptNoiseFilter` and `MicBleedFilter`,
-preserving the released anti-hallucination and echo behavior. Required preparation/transcription errors
+results then pass through `TranscriptNoiseFilter`, `SpeakerEchoFilter` and
+`MicBleedFilter`, preserving the released anti-hallucination and echo behavior.
+
+**Speaker echo (D602).** When both channels carry audio, post-capture
+transcription and Refine ask the app adapter for a `MicrophoneEchoProfile`.
+`MicrophoneEchoAnalysis` streams both files at 16 kHz in three passes with
+bounded memory (about 4 s and 26 MB for a 169-minute meeting):
+1. Per-frame envelopes estimate the speaker-to-microphone delay (0-640 ms) and
+   the microphone noise floor per band. An envelope correlation below 0.5, or
+   under ~10 s of remote audio, means no measurable echo (headphones, muted
+   speakers) and returns nil.
+2. Twenty log-spaced bands (150 Hz-7 kHz) learn a per-band echo gain as the
+   0.8 quantile of microphone/system ratios while the system side is loud.
+3. Each 16 ms frame records microphone energy and the near-end energy that
+   exceeds 4x the predicted echo (max over a -16 to +96 ms tail) plus twice
+   the noise floor.
+
+The model is magnitude-only because laptop speaker processing is
+level-dependent; a linear canceller reached only ~4 dB on field audio.
+`SpeakerEchoFilter` treats a microphone row as echo when at least 90% of its
+energy is predicted echo (10 dB). An echo row is dropped when system rows cover
+at least half of it, otherwise it moves to the system channel with the same
+identity so diarization attributes it to the remote speaker. Rows outside the
+measurement, and every row when the profile is nil or unavailable, stay with
+the user. The analysis never writes audio; capture files remain raw. Required preparation/transcription errors
 propagate; diarization degrades to honest unattributed segments; cancellation
 is never swallowed. Every exit after model ownership begins schedules both
 Whisper and recording-engine idle release. The draft carries the source
