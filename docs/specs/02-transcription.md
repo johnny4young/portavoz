@@ -562,9 +562,13 @@ level-dependent; a linear canceller reached only ~4 dB on field audio.
 `SpeakerEchoFilter` treats a microphone row as echo when at least 90% of its
 energy is predicted echo (10 dB). An echo row is dropped when system rows cover
 at least half of it, otherwise it moves to the system channel with the same
-identity so diarization attributes it to the remote speaker. Rows outside the
-measurement, and every row when the profile is nil or unavailable, stay with
-the user. The analysis never writes audio; capture files remain raw. Required preparation/transcription errors
+identity so diarization attributes it to the remote speaker. A row must lie
+entirely within the measured interval, from zero through the frame count times
+the frame duration; the exact end is included. Analysis stops at the shorter
+channel's last complete window, so a row crossing that measured end receives
+no attenuation estimate and retains its microphone identity, channel and text.
+Rows outside the measurement, and every row when the profile is nil or
+unavailable, stay with the user. The analysis never writes audio; capture files remain raw. Required preparation/transcription errors
 propagate; diarization degrades to honest unattributed segments; cancellation
 is never swallowed. Every exit after model ownership begins schedules both
 Whisper and recording-engine idle release. The draft carries the source
