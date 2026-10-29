@@ -65,7 +65,7 @@ class RunSwiftTestsTests(unittest.TestCase):
             "    }, destination)\n"
             "PY\n"
             "if [ \"${SWIFT_BLOCK:-false}\" = true ]; then\n"
-            "  \"$REAL_PYTHON\" -c 'import os, time; time.sleep(float(os.environ[\"SWIFT_WORKER_START_DELAY\"]))'\n"
+            "  sleep \"$SWIFT_WORKER_START_DELAY\"\n"
             "  trap 'exit 0' TERM INT\n"
             # The worker publishes its own PID only after both shells' traps
             # are installed. Atomic publication excludes an empty PID read.
@@ -297,26 +297,19 @@ class RunSwiftTestsTests(unittest.TestCase):
         self.assertEqual(list(root.glob("portavoz-swift-tests.*")), [])
 
     def test_interrupt_stops_swift_fixture_and_scratch_state(self):
-        result, record, root = self.run_runner(interrupt_after_start=True)
+        for worker_start_delay in (0, 0.5):
+            with self.subTest(worker_start_delay=worker_start_delay):
+                result, record, root = self.run_runner(
+                    interrupt_after_start=True,
+                    worker_start_delay=worker_start_delay,
+                )
 
-        self.assertEqual(result.returncode, 143, result.stderr)
-        self.assertIsNotNone(record)
-        self.assert_fixture_was_cleaned(record, root)
-        # A parallel worker shares the swift test process group and stops with it.
-        with self.assertRaises(ProcessLookupError):
-            os.kill(int((root / "worker.pid").read_text()), 0)
-
-    def test_interrupt_waits_for_delayed_worker_readiness(self):
-        result, record, root = self.run_runner(
-            interrupt_after_start=True,
-            worker_start_delay=0.5,
-        )
-
-        self.assertEqual(result.returncode, 143, result.stderr)
-        self.assertIsNotNone(record)
-        self.assert_fixture_was_cleaned(record, root)
-        with self.assertRaises(ProcessLookupError):
-            os.kill(int((root / "worker.pid").read_text()), 0)
+                self.assertEqual(result.returncode, 143, result.stderr)
+                self.assertIsNotNone(record)
+                self.assert_fixture_was_cleaned(record, root)
+                # A parallel worker shares the swift test process group and stops with it.
+                with self.assertRaises(ProcessLookupError):
+                    os.kill(int((root / "worker.pid").read_text()), 0)
 
     def test_invalid_startup_budget_fails_before_starting_children(self):
         result, record, root = self.run_runner(startup_attempts=0)
