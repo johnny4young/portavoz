@@ -2102,7 +2102,9 @@ stays linear and skipping falls back to waveform silence. The one-row transport
 is play/pause, back/forward 15 s (`player-skip-back`, `player-skip-forward`),
 current/total time, speed 1×–2× with preserved pitch (`player-speed`), a
 "Play: Everyone" menu over the speakers with turns (`player-voice-focus`,
-`player-voice-everyone`, `player-voice-<label>`) and an options menu
+`player-voice-everyone`, `player-voice-<label>`; each option carries its turns
+from the transcript on screen, because post-capture processing replaces
+speaker identities after playback has loaded) and an options menu
 (`player-options`) holding Skip silence (`player-skip-silence`), Reduce echo
 (`player-clear-playback`) and Mark clip start/end (`clip-mark-start`,
 `clip-mark-end`); a marked clip shows its length, Export and discard below the

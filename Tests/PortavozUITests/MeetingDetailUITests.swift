@@ -1865,12 +1865,19 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "detail-compress-audio").exists,
             "raw seeded meeting audio must keep its compression action")
+        let voices = app.control(withIdentifier: "player-voice-focus")
+        XCTAssertTrue(voices.exists, "a meeting with two voices offers per-speaker playback")
+        voices.click()
+        app.menuItems["player-voice-Me"].click()
         let currentTime = app.control(withIdentifier: "player-current-time")
         let initialTime = String(describing: currentTime.value)
         play.click()
         XCTAssertTrue(
             currentTime.waitForValueChange(from: initialTime, timeout: 5),
             "playback must advance instead of merely accepting the click")
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 15) { currentTime.value as? String == "0:00" },
+            "focused playback must jump past the other voice and finish instead of stalling on the jump")
         attachScreenshot(of: app, named: "meeting-detail-waveform")
     }
 

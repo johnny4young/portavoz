@@ -45,6 +45,16 @@ final class PlaybackTimelineTests: XCTestCase {
         XCTAssertEqual(timeline.time(at: 0.75), 75, accuracy: 1e-9)
     }
 
+    func testSpeechPastTheEndOfAShorterFileIsClamped() {
+        let timeline = PlaybackTimeline(duration: 5, speech: [0...3, 3...6, 6...8, 200...205])
+
+        XCTAssertTrue(timeline.gaps.isEmpty)
+        XCTAssertEqual(timeline.fraction(at: 5), 1)
+
+        let longer = PlaybackTimeline(duration: 100, speech: [0...8, 200...205])
+        XCTAssertEqual(longer.gaps, [9...100])
+    }
+
     func testFractionsOutsideTheScrubberAreClamped() {
         XCTAssertEqual(forgottenStop.time(at: -1), 0)
         XCTAssertEqual(forgottenStop.time(at: 2), 10_152, accuracy: 1e-6)

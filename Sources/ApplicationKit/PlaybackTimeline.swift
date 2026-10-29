@@ -24,10 +24,11 @@ public struct PlaybackTimeline: Equatable, Sendable {
         self.duration = max(0, duration)
         var gaps: [ClosedRange<TimeInterval>] = []
         var cursor: TimeInterval = 0
+        // Transcript times can run past a shorter audio file; clamp to it.
         for range in PlaybackRanges.merge(speech, margin: Self.speechMargin) {
-            if range.lowerBound - cursor >= Self.minimumGap {
-                gaps.append(cursor...min(range.lowerBound, self.duration))
-            }
+            let start = min(cursor, self.duration)
+            let end = min(range.lowerBound, self.duration)
+            if end - start >= Self.minimumGap { gaps.append(start...end) }
             cursor = max(cursor, range.upperBound)
         }
         if self.duration - cursor >= Self.minimumGap { gaps.append(cursor...self.duration) }

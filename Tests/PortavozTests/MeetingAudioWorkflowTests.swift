@@ -37,6 +37,8 @@ final class MeetingAudioWorkflowTests: XCTestCase {
         XCTAssertEqual(playback.session.clipRange, 0.5...0.8)
         let speaker = SpeakerID()
         playback.session.focus(on: speaker)
+        XCTAssertNil(playback.session.voiceFocus, "a voice without turns plays everyone")
+        playback.session.focus(on: speaker, turns: [0.1...0.3])
         XCTAssertEqual(playback.session.voiceFocus, speaker)
         playback.session.focus(on: nil)
         XCTAssertNil(playback.session.voiceFocus)

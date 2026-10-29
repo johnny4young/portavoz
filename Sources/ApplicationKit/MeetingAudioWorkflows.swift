@@ -52,17 +52,15 @@ public final class MeetingPlaybackSession {
     public let timeline: PlaybackTimeline
     /// The voice playback is limited to; nil plays everyone.
     public private(set) var voiceFocus: SpeakerID?
-    private let segments: [TranscriptSegment]
 
     public let canClearPlayback: Bool
     public var clearPlayback: Bool {
         didSet { player.clearPlayback = clearPlayback }
     }
 
-    init(player: MeetingPlayer, timeline: PlaybackTimeline, segments: [TranscriptSegment]) {
+    init(player: MeetingPlayer, timeline: PlaybackTimeline) {
         self.player = player
         self.timeline = timeline
-        self.segments = segments
         currentTime = player.currentTime
         duration = player.duration
         isPlaying = player.isPlaying
@@ -110,18 +108,17 @@ public final class MeetingPlaybackSession {
     }
 
     /// Plays only one speaker's turns, or everyone when `speaker` is nil.
-    public func focus(on speaker: SpeakerID?) {
-        voiceFocus = speaker
-        guard let speaker else {
+    /// Callers pass turns from the current transcript: speaker identities are
+    /// replaced while post-capture processing runs.
+    public func focus(on speaker: SpeakerID?, turns: [ClosedRange<TimeInterval>] = []) {
+        let merged = PlaybackRanges.merge(turns.filter { !$0.isEmpty }, margin: 0.12)
+        guard let speaker, !merged.isEmpty else {
+            voiceFocus = nil
             player.playsFocusOnly = false
             return
         }
-        let turns = PlaybackRanges.merge(
-            segments
-                .filter { $0.speakerID == speaker && $0.endTime > $0.startTime }
-                .map { $0.startTime...$0.endTime },
-            margin: 0.12)
-        player.setOutsideFocusRanges(PlaybackRanges.complement(of: turns, within: duration))
+        voiceFocus = speaker
+        player.setOutsideFocusRanges(PlaybackRanges.complement(of: merged, within: duration))
         player.playsFocusOnly = true
     }
 
@@ -305,7 +302,7 @@ extension PrepareMeetingPlayback {
             segments.isEmpty
                 ? Waveform.silentRanges(buckets, duration: player.duration)
                 : timeline.gaps)
-        return MeetingPlaybackSession(player: player, timeline: timeline, segments: segments)
+        return MeetingPlaybackSession(player: player, timeline: timeline)
     }
 }
 

@@ -124,7 +124,7 @@ struct MeetingPlayerBar: View {
             .accessibilityIdentifier("player-voice-everyone")
             ForEach(voices) { voice in
                 Button {
-                    player.focus(on: voice.id)
+                    player.focus(on: voice.id, turns: voice.turns)
                 } label: {
                     focusLabel(voice.name, selected: player.voiceFocus == voice.id)
                 }
@@ -242,18 +242,21 @@ struct MeetingPlaybackVoice: Identifiable, Equatable {
     /// Stable speaker label ("Me", "S1") for accessibility identifiers.
     let label: String
     let name: String
+    /// This speaker's turns in the current transcript.
+    let turns: [ClosedRange<TimeInterval>]
 
     /// Speakers with transcribed turns, "Me" first.
     static func voices(speakers: [Speaker], segments: [TranscriptSegment]) -> [MeetingPlaybackVoice] {
-        let speaking = Set(segments.compactMap(\.speakerID))
+        let turns = Dictionary(grouping: segments.filter { $0.endTime > $0.startTime }, by: \.speakerID)
         return speakers
-            .filter { speaking.contains($0.id) }
+            .filter { turns[$0.id] != nil }
             .sorted { ($0.isMe ? 0 : 1, $0.label) < ($1.isMe ? 0 : 1, $1.label) }
             .map { speaker in
                 MeetingPlaybackVoice(
                     id: speaker.id,
                     label: speaker.label,
-                    name: speaker.isMe ? L10n.text("Me") : speaker.displayName ?? speaker.label)
+                    name: speaker.isMe ? L10n.text("Me") : speaker.displayName ?? speaker.label,
+                    turns: turns[speaker.id, default: []].map { $0.startTime...$0.endTime })
             }
     }
 }
