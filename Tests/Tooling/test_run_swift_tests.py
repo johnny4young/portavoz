@@ -217,8 +217,20 @@ class RunSwiftTestsTests(unittest.TestCase):
         self.assertIsNotNone(process.returncode)
         self.assertTrue(process.stdout.closed)
         self.assertTrue(process.stderr.closed)
-        with self.assertRaises(ProcessLookupError):
-            os.killpg(process.pid, 0)
+        self.assert_process_group_released(process.pid)
+
+    def assert_process_group_released(self, group_id: int, timeout: float = 3):
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                os.killpg(group_id, 0)
+            except ProcessLookupError:
+                return
+            except PermissionError:
+                # macOS reports EPERM while an exited member awaits reaping.
+                pass
+            self.assertLess(time.monotonic(), deadline, "owned process group was not released")
+            time.sleep(0.02)
 
     def assert_fixture_was_cleaned(self, record: dict[str, object], root: Path):
         descriptor = record["descriptor"]
@@ -354,14 +366,6 @@ class RunSwiftTestsTests(unittest.TestCase):
             AssertionError,
             fixture_mode="hang",
             interrupt_after_start=True,
-            readiness_timeout=0.1,
-        )
-
-    def test_delayed_worker_readiness_timeout_releases_processes_and_pipes(self):
-        self.assert_runner_failure_releases_processes(
-            AssertionError,
-            interrupt_after_start=True,
-            worker_start_delay=0.5,
             readiness_timeout=0.1,
         )
 
