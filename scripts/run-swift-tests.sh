@@ -14,10 +14,13 @@ scratch_root=""
 stop_test() {
   [[ -n "$test_pid" ]] || return 0
   # swift test leads its own process group, so parallel workers stop with it.
+  # macOS reports EPERM, not ESRCH, once only unreaped members remain; both end the wait.
   if kill -0 -- "-$test_pid" 2>/dev/null; then
     kill -TERM -- "-$test_pid" 2>/dev/null || true
     for _attempt in {1..250}; do
       kill -0 -- "-$test_pid" 2>/dev/null || break
+      # A child forked while TERM was in flight never received it.
+      (( _attempt % 25 )) || kill -TERM -- "-$test_pid" 2>/dev/null || true
       sleep 0.02
     done
     if kill -0 -- "-$test_pid" 2>/dev/null; then
@@ -62,10 +65,25 @@ cleanup() {
   fi
 }
 
+interrupted=""
+
+# A signal between a fork and its PID assignment would leave that child behind,
+# so it is held until the PID is recorded.
+defer_signals() {
+  trap 'interrupted=129' HUP
+  trap 'interrupted=130' INT
+  trap 'interrupted=143' TERM
+}
+
+honor_signals() {
+  trap 'exit 129' HUP
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  [[ -z "$interrupted" ]] || exit "$interrupted"
+}
+
 trap cleanup EXIT
-trap 'exit 129' HUP
-trap 'exit 130' INT
-trap 'exit 143' TERM
+honor_signals
 
 startup_attempts="${PORTAVOZ_TEST_WEB_FIXTURE_STARTUP_ATTEMPTS:-1500}"
 case "$startup_attempts" in
@@ -99,11 +117,13 @@ unset PORTAVOZ_TEST_WEB_FIXTURE_DESCRIPTOR
 # GitHub-hosted XCTest runners have proven unable to launch this Python child
 # reliably from inside the test process. Own it in the invoking shell instead,
 # then pass only its atomic, content-free descriptor to the package tests.
+defer_signals
 python3 scripts/apuntador_web_fixture.py serve \
   --fixture Fixtures/ApuntadorWeb/public-local-v1.json \
   --ready-file "$fixture_ready" \
   >"$fixture_log" 2>&1 &
 fixture_pid=$!
+honor_signals
 
 for ((_attempt = 0; _attempt < startup_attempts; _attempt += 1)); do
   [[ -f "$fixture_ready" ]] && break
@@ -174,10 +194,12 @@ PY
 
 set +e
 # XCTest classes run in a pool of xctest processes; the group lets cleanup stop them.
+defer_signals
 set -m
 run_tests "$@" &
 test_pid=$!
 set +m
+honor_signals
 wait "$test_pid"
 test_status=$?
 test_pid=""

@@ -25,6 +25,7 @@ class RunSwiftTestsTests(unittest.TestCase):
         startup_attempts: int = 1500,
         interrupt_after_start: bool = False,
         worker_start_delay: float = 0,
+        fork_on_term: bool = False,
         readiness_timeout: float = 10,
         completion_timeout: float = 20,
         workers: str | None = None,
@@ -65,6 +66,13 @@ class RunSwiftTestsTests(unittest.TestCase):
             "    }, destination)\n"
             "PY\n"
             "if [ \"${SWIFT_BLOCK:-false}\" = true ]; then\n"
+            "  if [ \"${SWIFT_FORK_ON_TERM:-false}\" = true ]; then\n"
+            # The child starts only after the group TERM, so it never receives it.
+            "    trap 'late-worker & echo $! > \"$SWIFT_LATE_PID\"; exit 0' TERM\n"
+            "    printf \"%s\\n\" \"$$\" > \"$SWIFT_WORKER_PID.tmp\"\n"
+            "    mv \"$SWIFT_WORKER_PID.tmp\" \"$SWIFT_WORKER_PID\"\n"
+            "    while :; do sleep 1; done\n"
+            "  fi\n"
             "  sleep \"$SWIFT_WORKER_START_DELAY\"\n"
             "  trap 'exit 0' TERM INT\n"
             # The worker publishes its own PID only after both shells' traps
@@ -79,6 +87,12 @@ class RunSwiftTestsTests(unittest.TestCase):
             encoding="utf-8",
         )
         fake_swift.chmod(0o755)
+        late_worker = binary / "late-worker"
+        late_worker.write_text(
+            "#!/bin/sh\ntrap 'exit 0' TERM INT\nwhile :; do sleep 1; done\n",
+            encoding="utf-8",
+        )
+        late_worker.chmod(0o755)
         products = root / "products"
         (products / "PortavozTests.xctest").mkdir(parents=True)
         fake_xcrun = binary / "xcrun"
@@ -115,6 +129,8 @@ class RunSwiftTestsTests(unittest.TestCase):
                 "SWIFT_BLOCK": str(interrupt_after_start).lower(),
                 "SWIFT_WORKER_PID": str(root / "worker.pid"),
                 "SWIFT_WORKER_START_DELAY": str(worker_start_delay),
+                "SWIFT_FORK_ON_TERM": str(fork_on_term).lower(),
+                "SWIFT_LATE_PID": str(root / "late.pid"),
                 "SWIFT_BUILD_LOG": str(root / "build.log"),
                 "XCTEST_LOG": str(root / "xctest.log"),
                 "FAKE_PRODUCTS": str(products),
@@ -187,16 +203,17 @@ class RunSwiftTestsTests(unittest.TestCase):
 
     @staticmethod
     def stop_owned_process_group(process: subprocess.Popen[str]) -> None:
+        # macOS reports EPERM, not ESRCH, when only unreaped members remain.
         try:
             os.killpg(process.pid, signal.SIGTERM)
-        except ProcessLookupError:
+        except (ProcessLookupError, PermissionError):
             pass
         try:
             process.communicate(timeout=3)
         except subprocess.TimeoutExpired:
             try:
                 os.killpg(process.pid, signal.SIGKILL)
-            except ProcessLookupError:
+            except (ProcessLookupError, PermissionError):
                 pass
             process.communicate(timeout=3)
 
@@ -220,16 +237,19 @@ class RunSwiftTestsTests(unittest.TestCase):
         self.assert_process_group_released(process.pid)
 
     def assert_process_group_released(self, group_id: int, timeout: float = 3):
+        self.assert_released(os.killpg, group_id, timeout)
+
+    def assert_released(self, probe, process_id: int, timeout: float = 3):
         deadline = time.monotonic() + timeout
         while True:
             try:
-                os.killpg(group_id, 0)
+                probe(process_id, 0)
             except ProcessLookupError:
                 return
             except PermissionError:
                 # macOS reports EPERM while an exited member awaits reaping.
                 pass
-            self.assertLess(time.monotonic(), deadline, "owned process group was not released")
+            self.assertLess(time.monotonic(), deadline, f"process {process_id} was not released")
             time.sleep(0.02)
 
     def assert_fixture_was_cleaned(self, record: dict[str, object], root: Path):
@@ -311,6 +331,17 @@ class RunSwiftTestsTests(unittest.TestCase):
                 with self.assertRaises(ProcessLookupError):
                     os.kill(int((root / "worker.pid").read_text()), 0)
 
+    def test_interrupt_stops_a_child_forked_after_the_group_signal(self):
+        result, record, root = self.run_runner(interrupt_after_start=True, fork_on_term=True)
+        finished = time.time()
+
+        self.assertEqual(result.returncode, 143, result.stderr)
+        self.assert_fixture_was_cleaned(record, root)
+        late_pid = root / "late.pid"
+        self.assert_released(os.kill, int(late_pid.read_text()))
+        # Re-signalled well before the KILL fallback, which an outer 3 s budget would preempt.
+        self.assertLess(finished - late_pid.stat().st_mtime, 3)
+
     def test_invalid_startup_budget_fails_before_starting_children(self):
         result, record, root = self.run_runner(startup_attempts=0)
 
@@ -359,6 +390,14 @@ class RunSwiftTestsTests(unittest.TestCase):
             AssertionError,
             fixture_mode="hang",
             interrupt_after_start=True,
+            readiness_timeout=0.1,
+        )
+
+    def test_delayed_worker_readiness_timeout_releases_processes_and_pipes(self):
+        self.assert_runner_failure_releases_processes(
+            AssertionError,
+            interrupt_after_start=True,
+            worker_start_delay=0.5,
             readiness_timeout=0.1,
         )
 
