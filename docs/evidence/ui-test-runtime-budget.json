@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 186
+    "expectedCaseCount": 187
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -99,6 +99,7 @@
     "LibraryUITests/testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment()": 20.0,
     "MeetingDetailUITests/testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix()": 20.0,
     "MeetingDetailUITests/testAbandonedAutomaticSummarySaysSoBesideGeneration()": 20.0,
+    "MeetingDetailUITests/testClickingALineOfTextJumpsThere()": 20.0,
     "MeetingDetailUITests/testClipMarkingRevealsExport()": 20.0,
     "MeetingDetailUITests/testCompactTranscriptCorrectionCanReachItsOwnAction()": 30.0,
     "MeetingDetailUITests/testCommitmentInboxRequiresEvidenceReviewBeforeConfirmation()": 26.784,

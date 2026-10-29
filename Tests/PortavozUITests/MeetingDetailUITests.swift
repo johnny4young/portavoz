@@ -1881,6 +1881,24 @@ final class MeetingDetailUITests: PortavozUITestCase {
         attachScreenshot(of: app, named: "meeting-detail-waveform")
     }
 
+    @MainActor
+    func testClickingALineOfTextJumpsThere() throws {
+        let app = try launchOnSeededMeeting()
+        defer { finishUITestApplication(app) }
+
+        XCTAssertTrue(app.buttons["player-play-pause"].waitForExistenceFast(timeout: 15))
+        let line = app.staticTexts["El rollout del modelo queda para el viernes."]
+        XCTAssertTrue(line.waitForExistenceFast(timeout: 10))
+        line.click()
+
+        let currentTime = app.control(withIdentifier: "player-current-time")
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 5) {
+                ["0:03", "0:04", "0:05"].contains(currentTime.value as? String ?? "")
+            },
+            "clicking the words of a line, not only its time, must jump to that moment")
+    }
+
     /// The export menu is the only path to subtitle files, so both the SRT
     /// and VTT items must exist for a seeded diarized meeting.
     @MainActor

@@ -31,6 +31,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 29, 2026
 
+- **👆 Click the words to jump there** — in a meeting with audio, clicking anywhere on a transcript line now plays from that moment, not only its time.
+
 - **⏩ A player that skips the dead air** — long silences shrink to a small labeled mark on the waveform and playback jumps over them; skip 15 seconds, change speed, and play just one person's turns from the new compact player.
 
 - **⏹️ Forgot to press Stop?** — when both sides go quiet for three minutes after a call, Portavoz asks whether the call ended (also as a notification) and stops by itself five minutes later unless you keep recording.

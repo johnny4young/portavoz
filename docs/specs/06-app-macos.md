@@ -4023,7 +4023,10 @@ vertical scroll-view coordinate space preserve the same behavior across the
 current and next SwiftUI SDK signatures without sharing a generic
 named key with the visual-effect closure, and its fade/scale/blur values cross
 `CGFloat`/`Double` boundaries explicitly),
-click-to-jump, the channel-colored waveform scrubber with compressed dead time,
+click-to-jump on the whole line (with audio, a click on the words seeks
+instead of selecting them, because selectable text swallows clicks on macOS;
+without audio the text stays selectable), the channel-colored waveform
+scrubber with compressed dead time,
 clip marks, skip-silence, speed and per-speaker playback. `MeetingDetailModel` owns
 one playback-preparation attempt per recording directory, cancellation retry,
 compression state, session invalidation, and clip-export effects.
