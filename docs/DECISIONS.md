@@ -22172,3 +22172,27 @@ previous revision. A failed swap leaves extra silence, never transcript rows
 past the end of the audio. Older recordings whose silence was transcribed as
 hallucinated phrases have no trailing gap until Refine (D603) removes those
 rows.
+
+## D607 — Refine drops rows stretched over room noise and never leaves English or Spanish
+
+**Context:** A test recording of 26 s of speech followed by 13 minutes of a
+quiet room came back from Refine with "Gracias.", "so" and five "E aí" rows
+labelled Portuguese, so D606 never saw a silent tail. Silero accepted the faint
+room sound as speech, and because no window of the channel was detected as
+English or Spanish, D603 left the language automatic. Those rows sat 1–6 dB
+above the channel's noise floor, about 13 dB below the speaker; real phrases
+said while walking away from the microphone sat at 4–7 dB, so level alone
+cannot separate them.
+
+**Decision:** After decoding, `FaintSpeechFilter` drops a row only when it is
+both stretched (at least 3 s with under 0.5 words per second) and faint (its
+loud frames within 10 dB of the channel's noise floor). Their duration no
+longer counts as detected speech, so the Refine loss warning stays honest.
+When no window of a channel is detected as English or Spanish, Romance
+detections decode as Spanish and the rest as English.
+
+**Consequences:** On the test recording all eight invented rows go and all
+seven real ones stay; across 982 rows of two real meetings two rows go (a lone
+"." and a faint four-word phrase). Real speech slower than 0.5 words per
+second near the noise floor is lost. A meeting in another language still
+needs a fixed transcription language (D603).
