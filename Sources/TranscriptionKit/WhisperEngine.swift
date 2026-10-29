@@ -137,10 +137,15 @@ public actor WhisperEngine {
 
     /// Batch quality transcription. Segments come out sentence-sized with
     /// Whisper's native punctuation and timestamps.
+    ///
+    /// With a `speechDetector`, only detected speech is decoded, window by
+    /// window, each with one language from the supported set. Without one, or
+    /// when detection fails, the whole file goes through WhisperKit's chunker.
     public func transcribeFile(
         at url: URL,
         hints: TranscriptionHints = TranscriptionHints(),
-        channel: AudioChannel = .system
+        channel: AudioChannel = .system,
+        speechDetector: (any SpeechRegionDetecting)? = nil
     ) async throws -> FileTranscription {
         // Domain vocabulary rides in as conditioning context (biasing, not
         // forcing); WhisperKit filters special tokens out of the prompt.
@@ -175,9 +180,95 @@ public actor WhisperEngine {
         AudioLevel.normalizePeak(&samples)
         let meetingID = hints.meetingID ?? MeetingID()
 
+        let fileDuration = Double(samples.count) / Double(WhisperKit.sampleRate)
+        var regions: [ClosedRange<TimeInterval>]?
+        if let speechDetector {
+            regions = try? await speechDetector.speechRegions(in: samples)
+            try Task.checkCancellation()
+        }
+        var segments: [TranscriptSegment]
+        if let regions {
+            segments = Self.postprocessSegments(try await transcribeSpeech(
+                samples,
+                windows: SpeechDecodeWindows.plan(regions, duration: fileDuration),
+                options: options,
+                meetingID: meetingID,
+                channel: channel))
+        } else {
+            segments = try await transcribeWholeFile(
+                samples, options: options, meetingID: meetingID, channel: channel,
+                language: hints.language)
+        }
+        let processingTime = Date().timeIntervalSince(started)
+
+        // timings.inputAudioSeconds under-reports with VAD chunking; the
+        // file itself is the truth.
+        var duration: TimeInterval = 0
+        if let audioFile = try? AVAudioFile(forReading: url) {
+            duration = Double(audioFile.length) / audioFile.processingFormat.sampleRate
+        }
+        segments.sort { $0.startTime < $1.startTime }
+        let text = segments.map(\.text).joined(separator: " ")
+
+        return FileTranscription(
+            text: text,
+            segments: segments,
+            audioDuration: duration,
+            processingTime: processingTime
+        )
+    }
+
+    /// Languages automatic detection may choose for a decoding window.
+    static let automaticLanguages: Set<String> = ["en", "es"]
+
+    private func transcribeSpeech(
+        _ samples: [Float],
+        windows: [Range<TimeInterval>],
+        options: DecodingOptions,
+        meetingID: MeetingID,
+        channel: AudioChannel
+    ) async throws -> [TranscriptSegment] {
+        let rate = Double(WhisperKit.sampleRate)
+        let slices = windows.map { window in
+            Array(samples[Int(window.lowerBound * rate)..<min(samples.count, Int(window.upperBound * rate))])
+        }
+        var languages: [String?] = Array(repeating: options.language, count: slices.count)
+        if options.language == nil {
+            var detected: [String?] = []
+            for slice in slices {
+                detected.append(try? await pipe.detectLangauge(audioArray: slice).language)
+                try Task.checkCancellation()
+            }
+            languages = SpeechDecodeWindows.languages(
+                detected: detected, allowed: Self.automaticLanguages)
+        }
+
+        var segments: [TranscriptSegment] = []
+        for (index, slice) in slices.enumerated() {
+            var windowOptions = options
+            windowOptions.language = languages[index]
+            windowOptions.detectLanguage = languages[index] == nil
+            windowOptions.chunkingStrategy = nil
+            let results = try await pipe.transcribe(audioArray: slice, decodeOptions: windowOptions)
+            let offset = windows[index].lowerBound
+            segments += Self.buildSegments(
+                from: results, meetingID: meetingID, channel: channel, language: languages[index]
+            ).map { $0.shifted(by: offset) }
+            try Task.checkCancellation()
+        }
+        return segments
+    }
+
+    private func transcribeWholeFile(
+        _ samples: [Float],
+        options: DecodingOptions,
+        meetingID: MeetingID,
+        channel: AudioChannel,
+        language: String?
+    ) async throws -> [TranscriptSegment] {
         let results = try await pipe.transcribe(audioArray: samples, decodeOptions: options)
         var segments = Self.postprocessSegments(Self.buildSegments(
-            from: results, meetingID: meetingID, channel: channel, language: hints.language))
+            from: results, meetingID: meetingID, channel: channel, language: language))
 
         // The VAD-chunked path SWALLOWS failed chunks (they only reach the
         // debug log), so a systematic per-chunk failure looks like a mostly
@@ -200,28 +291,12 @@ public actor WhisperEngine {
                 audioArray: samples, decodeOptions: sequential)
             let rebuilt = Self.postprocessSegments(Self.buildSegments(
                 from: retried, meetingID: meetingID, channel: channel,
-                language: hints.language))
+                language: language))
             if Self.coverage(of: rebuilt) > Self.coverage(of: segments) {
                 segments = rebuilt
             }
         }
-        let processingTime = Date().timeIntervalSince(started)
-
-        // timings.inputAudioSeconds under-reports with VAD chunking; the
-        // file itself is the truth.
-        var duration: TimeInterval = 0
-        if let audioFile = try? AVAudioFile(forReading: url) {
-            duration = Double(audioFile.length) / audioFile.processingFormat.sampleRate
-        }
-        segments.sort { $0.startTime < $1.startTime }
-        let text = segments.map(\.text).joined(separator: " ")
-
-        return FileTranscription(
-            text: text,
-            segments: segments,
-            audioDuration: duration,
-            processingTime: processingTime
-        )
+        return segments
     }
 
     static func shouldDetectLanguage(for hints: TranscriptionHints) -> Bool {
@@ -237,7 +312,8 @@ public actor WhisperEngine {
         var segments: [TranscriptSegment] = []
         for result in results {
             for segment in result.segments {
-                let text = Self.cleanSegmentText(segment.text)
+                let text = TranscriptionTextFilter.strippingCaptionMarkers(
+                    Self.cleanSegmentText(segment.text))
                 guard TranscriptContentPolicy.hasLexicalContent(text) else { continue }
                 segments.append(
                     TranscriptSegment(
@@ -278,5 +354,14 @@ public actor WhisperEngine {
             cleaned.removeSubrange(start.lowerBound..<end.upperBound)
         }
         return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+private extension TranscriptSegment {
+    func shifted(by offset: TimeInterval) -> TranscriptSegment {
+        TranscriptSegment(
+            id: id, meetingID: meetingID, speakerID: speakerID, channel: channel, text: text,
+            language: language, startTime: startTime + offset, endTime: endTime + offset,
+            confidence: confidence, isFinal: isFinal)
     }
 }

@@ -126,6 +126,7 @@ private final class AppRefineMeetingProcessor: RefineMeetingProcessor {
     private weak var services: AppServices?
     private let descriptor: ModelDescriptor
     private var whisperRuntime: AppServices.WhisperRuntimeLease?
+    private var speechDetector: SileroSpeechRegionDetector?
 
     init(services: AppServices) {
         self.services = services
@@ -142,6 +143,7 @@ private final class AppRefineMeetingProcessor: RefineMeetingProcessor {
     func prepare(progress: @escaping RefineMeetingProgressHandler) async throws {
         guard let services else { throw AppRefineMeetingError.servicesUnavailable }
         if whisperRuntime != nil { return }
+        speechDetector = await services.batchSpeechDetector()
         whisperRuntime = try await services.acquireWhisperRuntime(
             descriptor: descriptor,
             progress: { _ in },
@@ -172,7 +174,8 @@ private final class AppRefineMeetingProcessor: RefineMeetingProcessor {
             try await whisper.transcribeFile(
                 at: fileURL,
                 hints: hints,
-                channel: channel)
+                channel: channel,
+                speechDetector: speechDetector)
         }
     }
 
