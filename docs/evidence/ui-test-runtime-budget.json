@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 184
+    "expectedCaseCount": 186
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -89,11 +89,13 @@
     "LibraryUITests/testLiveTranslationUsesADistinctLabeledRail()": 20.0,
     "LibraryUITests/testOwnedTokenPreviewRetiresWithoutEnteringCanonicalCaption()": 20.0,
     "LibraryUITests/testPrivacyChipOpensTheActivityLogInYourData()": 20.0,
+    "LibraryUITests/testRecordingAsksWhetherTheCallEndedAndKeepsRecording()": 20.0,
     "LibraryUITests/testRecordingOffersObjectivesNextQuestionAndTalkBalance()": 21.5,
     "LibraryUITests/testRecordingStartFailureOffersTypedRecovery()": 20.0,
     "LibraryUITests/testRecordingWarnsWhenIncomingAudioClips()": 20.0,
     "LibraryUITests/testRecordingWarnsWhenRemoteAudioCallbacksStop()": 20.0,
     "LibraryUITests/testSeededMeetingsGroupByRecency()": 20.0,
+    "LibraryUITests/testUnansweredCallEndedQuestionStopsTheRecording()": 20.0,
     "LibraryUITests/testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment()": 20.0,
     "MeetingDetailUITests/testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix()": 20.0,
     "MeetingDetailUITests/testAbandonedAutomaticSummarySaysSoBesideGeneration()": 20.0,

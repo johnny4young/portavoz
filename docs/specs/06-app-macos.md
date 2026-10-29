@@ -2093,7 +2093,22 @@ Meeting Detail audio enters ApplicationKit (D112/D144). Playback preparation
 resolves the current canonical system and microphone files through an injected
 port, constructs one synchronized observable application facade, derives a
 bounded capability-neutral waveform away from the main actor, and installs
-silence and microphone-turn filters before publication. The application policy
+dead-time and voice-focus filters before publication. `PlaybackTimeline`
+(D605) treats transcript gaps of at least 20 s (speech padded by 1 s) as dead
+time: the scrubber draws each such gap no longer than a tenth of the
+conversation (at least 10 s), labels it with its real length when it fits, and
+Skip silence, on by default, jumps over it. Without a transcript the scrubber
+stays linear and skipping falls back to waveform silence. The one-row transport
+is play/pause, back/forward 15 s (`player-skip-back`, `player-skip-forward`),
+current/total time, speed 1×–2× with preserved pitch (`player-speed`), a
+"Play: Everyone" menu over the speakers with turns (`player-voice-focus`,
+`player-voice-everyone`, `player-voice-<label>`; each option carries its turns
+from the transcript on screen, because post-capture processing replaces
+speaker identities after playback has loaded) and an options menu
+(`player-options`) holding Skip silence (`player-skip-silence`), Reduce echo
+(`player-clear-playback`) and Mark clip start/end (`clip-mark-start`,
+`clip-mark-end`); a marked clip shows its length, Export and discard below the
+waveform (`player-waveform`). The application policy
 admits 600 buckets by default and never publishes more than 2,000. The
 AudioPlaybackKit worker reads the complete finalized channels, propagates route
 cancellation into its detached task, and checks cancellation between 65,536-
@@ -2553,7 +2568,7 @@ every `.help(...)` tooltip to stay at or under 90 characters, and requires the
 single privacy phrase "On your Mac" to exist while the old disclaimer variants
 do not. The in-meeting assistant is "Apuntador" in both languages; the Skills
 category and its proposals are "Automations" / "Automatizaciones"; transcript
-Refine is presented as "Improve"; clear playback as "Voice only"; note
+Refine is presented as "Improve"; clear playback as "Reduce echo"; note
 enhancement as "Tidy up". Architecture ratchets that pin control labels
 (`ArchitectureDependencyTests+SkillsAndIntegrations`, `+CaptureAndLive`) and
 the meeting-detail interaction contract snapshot follow the same wording.
@@ -3205,8 +3220,11 @@ The pause clock starts only when the speech model is ready: the session calls
 never counts, and `stopAfterPause` also ignores a report while
 `isLoadingModel`. A dropped chunk, a detector failure or a missing model turns auto-stop off for
 that session, and the note explains that dictation then stops only when the
-user does (`settings-dictation-auto-stop-note`). Meetings never stop on
-silence.
+user does (`settings-dictation-auto-stop-note`). Meetings stop on silence
+only after the call-ended question (D604): `recording-call-ended` with
+`recording-call-ended-keep` / `recording-call-ended-stop`, the HUD label
+`recording-hud-call-ended`, and the `portavoz.call-ended` notification
+category; an unanswered question stops the recording after five minutes.
 
 **Opt-in controller phase measurements.** A session dependency may supply a
 content-free measurement sink and monotonic clock. Ordinary composition supplies
@@ -3670,7 +3688,7 @@ Today screenshot reads lived-in without touching the operator's calendar.
    **CaptionCoalescer**. A no-file startup failure rolls back only the empty
    shell; staging or published evidence preserves it as `needsAttention`
    (D37/D49).
-2. Live: captions in LazyVStack with **reader-owned live follow** (direct scroll pauses indefinitely; incoming rows preserve the reader position and remain fully sharp; only the identified "Jump to live" action resumes follow); **live voice pills** (S1/S2 — streaming diarization with dedicated instance + `LiveSpeakerLabeler`, spec 03: closed rows split/label by voice as each 10 s window arrives; the first child preserves the source ID, later children are fresh; "Ellos" while no coverage; "Me"→"Yo" via voiceprint); translation picker →es/→en (Translation framework, macOS 15+; only translates closed rows); **signal-driven rolling monotonic summary** (one 40-second-minimum coordinator; ≤32 oldest unseen closed rows and ≤6,000 characters per cycle → stack → collapse >6,000 characters → atomic render; never shrinks — `LiveSummaryPolicy`) using the independent summary-output policy, never the transcript hint. D120 callback health crosses the same application callback boundary: if remote frames stop while mic frames continue, the full view and compact HUD show a non-dismissible reconnecting warning, the tap rebuilds in place without stopping the microphone, and a recovered confirmation clears after five seconds. D123 promotes a localized Stop action only after two continuous stalled/recovering outage minutes because the call may have ended, but never stops capture automatically; a terminal tap failure instead tells the user to stop and start a new recording on both surfaces. D121 adds dynamic preparing/available/failure state: a cold model hot-attaches during the same recording, then enables captions and speaker hints without replaying an unbounded backlog. D131/D142 keep the live merged projection clean when speaker output returns through the mic: within a bounded twelve-row window, direct system/room speech replaces matching microphone bleed in either callback order; one-word and sequential acknowledgements remain, while overlapping exact two-word and contiguous rolling-edge copies are rejected. D174 makes the separate presentation-only projector own a 150-source-row tail before it forms readable paragraphs for microphone or stable same-voice rows, but never generic `Them`; raw IDs and downstream consumers remain unchanged, and the controller still retains the complete transcript through Stop. D133 keeps split lineage stable for Companion evidence, translation caches, and rolling-summary admission. Live translation exposes waiting, deliberate-download, unsupported-pair, and execution-failure states; the waiting banner yields to the terminal live-caption failure banner when captions cannot arrive, execution errors stay visible during the automatic retry backoff, and late framework responses are fenced to the task's full source-target pair. D128 resolves every closed row to an explicit source-target pair from persisted per-turn language or a conservative local fallback, leaves target-language and uncertain rows as spoken, never asks Apple Translation to auto-detect the source, scopes consent to the pair, and clears all target-dependent state on a picker change.
+2. Live: captions in LazyVStack with **reader-owned live follow** (direct scroll pauses indefinitely; incoming rows preserve the reader position and remain fully sharp; only the identified "Jump to live" action resumes follow); **live voice pills** (S1/S2 — streaming diarization with dedicated instance + `LiveSpeakerLabeler`, spec 03: closed rows split/label by voice as each 10 s window arrives; the first child preserves the source ID, later children are fresh; "Ellos" while no coverage; "Me"→"Yo" via voiceprint); translation picker →es/→en (Translation framework, macOS 15+; only translates closed rows); **signal-driven rolling monotonic summary** (one 40-second-minimum coordinator; ≤32 oldest unseen closed rows and ≤6,000 characters per cycle → stack → collapse >6,000 characters → atomic render; never shrinks — `LiveSummaryPolicy`) using the independent summary-output policy, never the transcript hint. D120 callback health crosses the same application callback boundary: if remote frames stop while mic frames continue, the full view and compact HUD show a non-dismissible reconnecting warning, the tap rebuilds in place without stopping the microphone, and a recovered confirmation clears after five seconds. D123 promotes a localized Stop action only after two continuous stalled/recovering outage minutes because the call may have ended, and the outage itself never stops capture (only D604's quiet-call countdown does); a terminal tap failure instead tells the user to stop and start a new recording on both surfaces. D121 adds dynamic preparing/available/failure state: a cold model hot-attaches during the same recording, then enables captions and speaker hints without replaying an unbounded backlog. D131/D142 keep the live merged projection clean when speaker output returns through the mic: within a bounded twelve-row window, direct system/room speech replaces matching microphone bleed in either callback order; one-word and sequential acknowledgements remain, while overlapping exact two-word and contiguous rolling-edge copies are rejected. D174 makes the separate presentation-only projector own a 150-source-row tail before it forms readable paragraphs for microphone or stable same-voice rows, but never generic `Them`; raw IDs and downstream consumers remain unchanged, and the controller still retains the complete transcript through Stop. D133 keeps split lineage stable for Companion evidence, translation caches, and rolling-summary admission. Live translation exposes waiting, deliberate-download, unsupported-pair, and execution-failure states; the waiting banner yields to the terminal live-caption failure banner when captions cannot arrive, execution errors stay visible during the automatic retry backoff, and late framework responses are fenced to the task's full source-target pair. D128 resolves every closed row to an explicit source-target pair from persisted per-turn language or a conservative local fallback, leaves target-language and uncertain rows as spoken, never asks Apple Translation to auto-detect the source, scopes consent to the pair, and clears all target-dependent state on a picker change.
    SwiftUI scroll phases are the reader-intent signal; programmatic recentering
    does not emit it. Unsupported translation
    lanes remain original-language handled passthrough, so later supported lanes
@@ -4005,8 +4023,8 @@ vertical scroll-view coordinate space preserve the same behavior across the
 current and next SwiftUI SDK signatures without sharing a generic
 named key with the visual-effect closure, and its fade/scale/blur values cross
 `CGFloat`/`Double` boundaries explicitly),
-click-to-jump, the channel-colored waveform scrubber, clip marks, skip-silence,
-and microphone-only playback. `MeetingDetailModel` owns
+click-to-jump, the channel-colored waveform scrubber with compressed dead time,
+clip marks, skip-silence, speed and per-speaker playback. `MeetingDetailModel` owns
 one playback-preparation attempt per recording directory, cancellation retry,
 compression state, session invalidation, and clip-export effects.
 `ApplicationKit.PrepareMeetingPlayback` resolves current channels through an

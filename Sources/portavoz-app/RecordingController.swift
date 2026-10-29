@@ -153,6 +153,8 @@ final class RecordingController {
     /// can lower live-ASR accuracy. This is presentation evidence only: capture
     /// stays raw and no sample is attenuated or rewritten.
     private(set) var systemAudioClipping = false
+    /// The remote side went quiet after being heard; asking, then stopping.
+    private(set) var callEnd: CallEndDetector.State = .listening
     /// Non-empty when this recording taps meeting apps by process (Bluetooth
     /// output) instead of the global device output — the AirPods-HFP workaround.
     /// Names the apps being captured for the on-screen note.
@@ -322,6 +324,7 @@ final class RecordingController {
         liveDiarizerTask?.cancel()
         levelRelay?.cancel()
         levelRelay = nil
+        updateCallEnd(.listening)
         liveDiarizerFeed = nil
         liveDiarizerStream = nil
         liveDiarizerTask = nil
@@ -602,6 +605,7 @@ extension RecordingController {
         speechVolatileByChannel = [:]
         levelRelay?.cancel()
         levelRelay = nil
+        updateCallEnd(.listening)
         catchUp.dismiss()
         nextQuestion.dismiss()
         interviewAssist.reset()
@@ -804,6 +808,7 @@ private extension RecordingController {
         if systemAudioClipping != snapshot.systemAudioIsClipping {
             systemAudioClipping = snapshot.systemAudioIsClipping
         }
+        updateCallEnd(snapshot.callEnd)
         if liveTranscriptState == .available {
             startLiveDiarizationIfReady()
         }
@@ -1163,5 +1168,30 @@ extension RecordingController {
         liveSpeakerLabels = result.labels
         requestLiveSummaryRefresh()
         liveTranslationWakeHub.signal()
+    }
+}
+
+extension RecordingController {
+    /// The user says the call is still on; ask again only after the remote
+    /// side is heard and then goes quiet again.
+    func keepRecordingAfterCallEnded() {
+        levelRelay?.keepRecording()
+        updateCallEnd(.listening)
+    }
+
+    fileprivate func updateCallEnd(_ next: CallEndDetector.State) {
+        guard callEnd != next else { return }
+        let wasAsking = if case .asking = callEnd { true } else { false }
+        callEnd = next
+        switch next {
+        case .asking(let secondsUntilStop):
+            if !wasAsking { AppCallEndedNotification.post(secondsUntilStop: secondsUntilStop) }
+        case .listening:
+            if wasAsking { AppCallEndedNotification.withdraw() }
+        case .stopping:
+            AppCallEndedNotification.withdraw()
+            guard phase == .recording, let services else { return }
+            Task { await stop(services: services) }
+        }
     }
 }

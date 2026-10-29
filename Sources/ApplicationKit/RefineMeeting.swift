@@ -227,7 +227,7 @@ public struct RefineMeeting: ApplicationUseCase {
             audio: audio,
             hints: hints)
         do {
-            let segments = try await transcribe(
+            let (segments, speechEvidence) = try await transcribe(
                 audio: audio,
                 hints: hints,
                 progress: request.progress)
@@ -239,6 +239,7 @@ public struct RefineMeeting: ApplicationUseCase {
             return refinedDraft(
                 detail: detail,
                 attribution: attribution,
+                speechEvidence: speechEvidence,
                 attempt: attempt)
         } catch {
             if let attempt {
@@ -259,13 +260,12 @@ public struct RefineMeeting: ApplicationUseCase {
     private func refinedDraft(
         detail: MeetingDetail,
         attribution: SpeakerAttributor.Attribution,
+        speechEvidence: SpeechDecodeEvidence?,
         attempt: RefinedTranscriptGenerationAttempt?
     ) -> RefineDraft {
         let language = SpokenLanguageDetector.homogeneousLanguage(
             in: attribution.segments)
-        let oldSpeech = detail.segments.reduce(0) {
-            $0 + ($1.endTime - $1.startTime)
-        }
+        let oldSpeech = detail.segments.reduce(0) { $0 + ($1.endTime - $1.startTime) }
         let meetingSeconds = detail.meeting.endedAt.map {
             $0.timeIntervalSince(detail.meeting.startedAt)
         }
@@ -278,6 +278,7 @@ public struct RefineMeeting: ApplicationUseCase {
             oldSpeakerCount: detail.speakers.count,
             oldSpeechSeconds: oldSpeech,
             meetingSeconds: meetingSeconds,
+            speechEvidence: speechEvidence,
             generationRun: attempt?.finish(
                 outcome: .succeeded,
                 outputLanguage: language,
@@ -329,14 +330,16 @@ public struct RefineMeeting: ApplicationUseCase {
         audio: RefineMeetingAudio,
         hints: TranscriptionHints,
         progress: RefineMeetingProgressHandler
-    ) async throws -> [TranscriptSegment] {
+    ) async throws -> ([TranscriptSegment], SpeechDecodeEvidence?) {
         var segments: [TranscriptSegment] = []
+        var results: [FileTranscription] = []
         if let system = audio.system, !system.isSilent {
             await progress(.transcribingParticipants)
             let result = try await processor.transcribe(
                 fileURL: system.fileURL,
                 hints: hints,
                 channel: .system)
+            results.append(result)
             await progress(.transcribed(
                 channel: .system,
                 audioDuration: result.audioDuration,
@@ -352,6 +355,7 @@ public struct RefineMeeting: ApplicationUseCase {
                 fileURL: microphone.fileURL,
                 hints: hints,
                 channel: .microphone)
+            results.append(result)
             await progress(.transcribed(
                 channel: .microphone,
                 audioDuration: result.audioDuration,
@@ -373,7 +377,7 @@ public struct RefineMeeting: ApplicationUseCase {
             segments.append(contentsOf: microphoneSegments)
             try Task.checkCancellation()
         }
-        return segments.sorted { $0.startTime < $1.startTime }
+        return (segments.sorted { $0.startTime < $1.startTime }, SpeechDecodeEvidence(results))
     }
 
     private func speakerTurns(

@@ -37,7 +37,7 @@ final class PublicShowcaseUITests: PortavozUITestCase {
             app.buttons["detail-name-suggestion-dismiss-S3"]
                 .waitForExistenceFast(timeout: 10))
         XCTAssertTrue(
-            app.control(withIdentifier: "player-clear-playback")
+            app.control(withIdentifier: "player-options")
                 .waitForExistenceFast(timeout: 10))
         attachScreenshot(of: app, named: "public-meeting-detail")
     }
