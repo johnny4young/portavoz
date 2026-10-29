@@ -210,7 +210,8 @@ final class SettingsUITests: PortavozUITestCase {
         let providerHelp = try uiSnapshotElement("settings-summary-provider-help", type: .staticText, in: intelligence)
         let providerCopy = (providerHelp.value as? String) ?? providerHelp.label
         let spanish = UITestLocale.environmentLocale == "es"
-        XCTAssertTrue(providerCopy.contains(spanish ? "Sequoia y Tahoe" : "Sequoia and Tahoe"))
+        XCTAssertTrue(providerCopy.contains(
+            spanish ? "Apple requiere Apple Intelligence" : "Apple requires Apple Intelligence"))
         XCTAssertTrue(providerCopy.contains(spanish ? "motor local seleccionado" : "selected local engine"))
         _ = try uiSnapshotElement("settings-category-data", in: intelligence)
         _ = try uiSnapshotElement("settings-category-integrations", in: intelligence)
@@ -262,7 +263,7 @@ final class SettingsUITests: PortavozUITestCase {
             downloadIsVisible(),
             "the proactive Whisper action must be visible before capturing UI evidence")
         let attachment = XCTAttachment(screenshot: settingsWindow.screenshot())
-        attachment.name = "sequoia-whisper-background-settings"
+        attachment.name = "whisper-background-settings"
         attachment.lifetime = .keepAlways
         add(attachment)
 

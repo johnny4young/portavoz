@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 184
+    "expectedCaseCount": 187
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -89,14 +89,17 @@
     "LibraryUITests/testLiveTranslationUsesADistinctLabeledRail()": 20.0,
     "LibraryUITests/testOwnedTokenPreviewRetiresWithoutEnteringCanonicalCaption()": 20.0,
     "LibraryUITests/testPrivacyChipOpensTheActivityLogInYourData()": 20.0,
+    "LibraryUITests/testRecordingAsksWhetherTheCallEndedAndKeepsRecording()": 20.0,
     "LibraryUITests/testRecordingOffersObjectivesNextQuestionAndTalkBalance()": 21.5,
     "LibraryUITests/testRecordingStartFailureOffersTypedRecovery()": 20.0,
     "LibraryUITests/testRecordingWarnsWhenIncomingAudioClips()": 20.0,
     "LibraryUITests/testRecordingWarnsWhenRemoteAudioCallbacksStop()": 20.0,
     "LibraryUITests/testSeededMeetingsGroupByRecency()": 20.0,
+    "LibraryUITests/testUnansweredCallEndedQuestionStopsTheRecording()": 20.0,
     "LibraryUITests/testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment()": 20.0,
     "MeetingDetailUITests/testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix()": 20.0,
     "MeetingDetailUITests/testAbandonedAutomaticSummarySaysSoBesideGeneration()": 20.0,
+    "MeetingDetailUITests/testClickingALineOfTextJumpsThere()": 20.0,
     "MeetingDetailUITests/testClipMarkingRevealsExport()": 20.0,
     "MeetingDetailUITests/testCompactTranscriptCorrectionCanReachItsOwnAction()": 30.0,
     "MeetingDetailUITests/testCommitmentInboxRequiresEvidenceReviewBeforeConfirmation()": 26.784,
@@ -117,8 +120,8 @@
     "MeetingDetailUITests/testRecapSheetDraftsFromTheSummaryWithoutTheTranscript()": 20.0,
     "MeetingDetailUITests/testRunningRefineCanBeCanceledWithoutChangingTheTranscript()": 20.0,
     "MeetingDetailUITests/testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument()": 26.5,
-    "MeetingDetailUITests/testSequoiaApuntadorRefreshPreservesStaleAnswers()": 20.0,
-    "MeetingDetailUITests/testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador()": 20.0,
+    "MeetingDetailUITests/testNoAppleIntelligenceApuntadorRefreshPreservesStaleAnswers()": 20.0,
+    "MeetingDetailUITests/testNoAppleIntelligenceSummaryFailureOpensExactSetupAndExplainsApuntador()": 20.0,
     "MeetingDetailUITests/testSkillProposalJourneyFromBannerToReceipt()": 30.848,
     "MeetingDetailUITests/testStructureMenuOffersSeededTemplates()": 20.0,
     "MeetingDetailUITests/testSummaryFeedbackIsExplicitReversibleAndLocal()": 20.0,

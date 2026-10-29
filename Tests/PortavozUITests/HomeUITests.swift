@@ -55,7 +55,7 @@ final class HomeUITests: PortavozUITestCase {
         XCTAssertTrue(recent.waitForStableFrame(timeout: 5))
         recent.click()
         XCTAssertTrue(app.staticTexts["Test meeting"].waitForExistenceFast(timeout: 10))
-        XCTAssertTrue(app.control(withIdentifier: "player-clear-playback").waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(app.control(withIdentifier: "player-options").waitForExistenceFast(timeout: 10))
         let home = app.buttons["library-home-button"]
         XCTAssertTrue(home.waitForStableFrame(timeout: 5))
         home.click()

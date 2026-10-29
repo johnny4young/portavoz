@@ -77,14 +77,10 @@ enum RecordCommand {
             MicrophoneSource(deviceIdentifier: micIdentifier, voiceProcessing: voiceProcessing)
         ]
         #if os(macOS)
-        if #available(macOS 14.4, *) {
-            if !pids.isEmpty {
-                sources.append(ProcessTapSource(processIDs: pids))
-            } else if captureSystem {
-                sources.append(ProcessTapSource())
-            }
-        } else if !pids.isEmpty || captureSystem {
-            print("Process taps require macOS 14.4+; recording microphone only.")
+        if !pids.isEmpty {
+            sources.append(ProcessTapSource(processIDs: pids))
+        } else if captureSystem {
+            sources.append(ProcessTapSource())
         }
         #endif
 

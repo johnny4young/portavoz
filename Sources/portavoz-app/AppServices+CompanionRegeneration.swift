@@ -30,16 +30,8 @@ private final class AppCompanionRegenerationProvider: CompanionRegenerationProvi
                "-simulate-apuntador-refresh-success") {
             return fixturePass(for: request)
         }
-        switch services.foundationModelsCapability {
-        case .requiresMacOS26:
-            return .unavailable(.requiresMacOS26)
-        case .unavailable(let reason):
+        if case .unavailable(let reason) = services.foundationModelsCapability {
             return .unavailable(.appleOnDevice(reason: reason))
-        case .available:
-            break
-        }
-        guard #available(macOS 26.0, *) else {
-            return .unavailable(.requiresMacOS26)
         }
         let refreshed = await CompanionRefresh.regenerate(
             from: request.material,

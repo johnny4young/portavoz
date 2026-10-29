@@ -1261,16 +1261,6 @@
         }
       }
     },
-    "Apple Speech requires macOS Tahoe or later. Parakeet remains available here.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Speech requiere macOS Tahoe o posterior. Parakeet sigue disponible aquí."
-          }
-        }
-      }
-    },
     "Apple Translation does not support this language pair on this Mac.": {
       "localizations": {
         "es": {
@@ -1281,22 +1271,12 @@
         }
       }
     },
-    "Apple requires macOS 26 and Apple Intelligence. Ollama and the built-in model run locally after setup. Live summaries keep a transcript-based checkpoint on Sequoia and Tahoe; your selected local engine can refine it when ready.": {
+    "Apple requires Apple Intelligence. Ollama and the built-in model run locally after setup. Live summaries keep a transcript-based checkpoint; your selected local engine can refine it when ready.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple requiere macOS 26 y Apple Intelligence. Ollama y el modelo integrado se ejecutan localmente tras configurarlos. El resumen en vivo conserva una base del texto transcrito en Sequoia y Tahoe; tu motor local seleccionado puede mejorarla cuando esté listo."
-          }
-        }
-      }
-    },
-    "Apple summaries are unavailable on this Mac. Choose Ollama or Built-in (MLX).": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Los resúmenes de Apple no están disponibles en este Mac. Elige Ollama o Integrado (MLX)."
+            "value": "Apple requiere Apple Intelligence. Ollama y el modelo integrado se ejecutan localmente tras configurarlos. El resumen en vivo conserva una base del texto transcrito; tu motor local seleccionado puede mejorarla cuando esté listo."
           }
         }
       }
@@ -1317,16 +1297,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Los resúmenes de Apple no están disponibles: %@. Elige Ollama o Integrado (MLX)."
-          }
-        }
-      }
-    },
-    "Apple summaries require macOS 26 and Apple Intelligence. On macOS Sequoia, choose Ollama or Built-in (MLX) in Intelligence Settings.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Los resúmenes de Apple requieren macOS 26 y Apple Intelligence. En macOS Sequoia, elige Ollama o Integrado (MLX) en Ajustes de Inteligencia."
           }
         }
       }
@@ -1481,12 +1451,12 @@
         }
       }
     },
-    "Apuntador listens for questions in the live captions and shows each one as a card. With an answer engine (Apple Intelligence on macOS Tahoe, or a provider you enable) it drafts an answer from the meeting; without one, cards show the question only. Nothing is sent anywhere unless you enabled a provider.": {
+    "Apuntador listens for questions in the live captions and shows each one as a card. With an answer engine (Apple Intelligence, or a provider you enable) it drafts an answer from the meeting; without one, cards show the question only. Nothing is sent anywhere unless you enabled a provider.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El Apuntador escucha preguntas en los subtítulos en vivo y muestra cada una como una tarjeta. Con un motor de respuestas (Apple Intelligence en macOS Tahoe o un proveedor que actives) redacta una respuesta a partir de la reunión; sin uno, las tarjetas muestran solo la pregunta. No se envía nada a ningún lado a menos que hayas activado un proveedor."
+            "value": "El Apuntador escucha preguntas en los subtítulos en vivo y muestra cada una como una tarjeta. Con un motor de respuestas (Apple Intelligence o un proveedor que actives) redacta una respuesta a partir de la reunión; sin uno, las tarjetas muestran solo la pregunta. No se envía nada a ningún lado a menos que hayas activado un proveedor."
           }
         }
       }
@@ -1791,12 +1761,42 @@
         }
       }
     },
+    "Back 15 seconds": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retroceder 15 segundos"
+          }
+        }
+      }
+    },
+    "Both sides have been quiet. Portavoz stops recording in %lld min.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ambos lados han estado en silencio. Portavoz detendrá la grabación en %lld min."
+          }
+        }
+      }
+    },
     "Bullet list": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Lista de viñetas"
+          }
+        }
+      }
+    },
+    "Call ended? Stopping in %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Terminó la llamada? Se detiene en %@"
           }
         }
       }
@@ -1837,6 +1837,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Elegir otra"
+          }
+        }
+      }
+    },
+    "Clip %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fragmento %@"
           }
         }
       }
@@ -1897,6 +1907,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Borrado “%@”."
+          }
+        }
+      }
+    },
+    "Did the call end?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Terminó la llamada?"
+          }
+        }
+      }
+    },
+    "Did the call end? Both sides are quiet. Recording stops in %@.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Terminó la llamada? Ambos lados están en silencio. La grabación se detiene en %@."
           }
         }
       }
@@ -2501,12 +2531,12 @@
         }
       }
     },
-    "Catch-up needs Apple Intelligence on macOS 26. Summaries at Stop still work with your configured engine.": {
+    "Catch-up needs Apple Intelligence. Summaries at Stop still work with your configured engine.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ponerte al día necesita Apple Intelligence en macOS 26. Los resúmenes al detener siguen funcionando con tu motor configurado."
+            "value": "Ponerte al día necesita Apple Intelligence. Los resúmenes al detener siguen funcionando con tu motor configurado."
           }
         }
       }
@@ -6019,6 +6049,16 @@
         }
       }
     },
+    "Forward 15 seconds": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adelantar 15 segundos"
+          }
+        }
+      }
+    },
     "Free disk used by the variant you do not use": {
       "localizations": {
         "es": {
@@ -6919,6 +6959,16 @@
         }
       }
     },
+    "Keep recording": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seguir grabando"
+          }
+        }
+      }
+    },
     "Keep rule": {
       "localizations": {
         "es": {
@@ -7249,12 +7299,12 @@
         }
       }
     },
-    "Live captions need macOS 26. Recording still works.": {
+    "Live captions are unavailable right now. Recording still works.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Los subtítulos en vivo necesitan macOS 26. Grabar sigue funcionando."
+            "value": "Los subtítulos en vivo no están disponibles en este momento. Grabar sigue funcionando."
           }
         }
       }
@@ -7519,12 +7569,32 @@
         }
       }
     },
+    "Mark clip end": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marcar fin del clip"
+          }
+        }
+      }
+    },
     "Mark clip end at the current playhead": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Marcar el final del clip en la posición actual"
+          }
+        }
+      }
+    },
+    "Mark clip start": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marcar inicio del clip"
           }
         }
       }
@@ -8115,16 +8185,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nombre"
-          }
-        }
-      }
-    },
-    "Name suggestions require macOS 26.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Las sugerencias de nombres requieren macOS 26."
           }
         }
       }
@@ -9179,16 +9239,6 @@
         }
       }
     },
-    "On macOS Sequoia, cards show the question only. Generated answers need macOS Tahoe with Apple Intelligence, or a provider you enable.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "En macOS Sequoia las tarjetas muestran solo la pregunta. Las respuestas generadas necesitan macOS Tahoe con Apple Intelligence, o un proveedor que actives."
-          }
-        }
-      }
-    },
     "On your Mac": {
       "localizations": {
         "es": {
@@ -10029,12 +10079,62 @@
         }
       }
     },
+    "Play only one person's turns": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducir solo los turnos de una persona"
+          }
+        }
+      }
+    },
     "Play only your own turns — skips everyone else": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Reproduce solo tus turnos — salta a los demás"
+          }
+        }
+      }
+    },
+    "Play: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducir: %@"
+          }
+        }
+      }
+    },
+    "Playback options": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opciones de reproducción"
+          }
+        }
+      }
+    },
+    "Playback position": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posición de reproducción"
+          }
+        }
+      }
+    },
+    "Playback speed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Velocidad de reproducción"
           }
         }
       }
@@ -11019,12 +11119,12 @@
         }
       }
     },
-    "Question suggestions need Apple Intelligence on macOS 26. The recording continues untouched.": {
+    "Question suggestions need Apple Intelligence. The recording continues untouched.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Las sugerencias de preguntas necesitan Apple Intelligence en macOS 26. La grabación continúa sin cambios."
+            "value": "Las sugerencias de preguntas necesitan Apple Intelligence. La grabación continúa sin cambios."
           }
         }
       }
@@ -11125,16 +11225,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Volver a comprobar las respuestas con la transcripción corregida"
-          }
-        }
-      }
-    },
-    "Re-checking Apuntador answers requires macOS 26 and Apple Intelligence.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Volver a comprobar las respuestas del Apuntador requiere macOS 26 y Apple Intelligence."
           }
         }
       }
@@ -11555,6 +11645,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rehacer borrador"
+          }
+        }
+      }
+    },
+    "Reduce echo": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reducir eco"
           }
         }
       }
@@ -20677,16 +20777,6 @@
         }
       }
     },
-    "Polish needs Apple Intelligence on macOS 26.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pulir necesita Apple Intelligence en macOS 26."
-          }
-        }
-      }
-    },
     "Apple Intelligence is unavailable: %@.": {
       "localizations": {
         "es": {
@@ -20713,6 +20803,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Texto de dictado para pulir"
+          }
+        }
+      }
+    },
+    "this device does not support Apple Intelligence": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "este Mac no es compatible con Apple Intelligence"
+          }
+        }
+      }
+    },
+    "Apple Intelligence is turned off (System Settings → Apple Intelligence & Siri)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Intelligence está desactivado (Ajustes del Sistema → Apple Intelligence y Siri)"
+          }
+        }
+      }
+    },
+    "the on-device model is still downloading; try again in a few minutes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "el modelo del dispositivo aún se está descargando; inténtalo de nuevo en unos minutos"
           }
         }
       }

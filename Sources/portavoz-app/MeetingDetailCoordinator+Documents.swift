@@ -381,8 +381,6 @@ extension MeetingDetailCoordinator {
                     // swiftlint:disable:next line_length
                     "Summary v%d already matches this material — there is nothing to regenerate. Change the transcript, notes, or vocabulary to produce a new one.",
                     version))
-        case .unavailable(.requiresMacOS26):
-            flow.alert = .summarySetup(.appleRequiresMacOS26)
         case .unavailable(.appleOnDevice(let reason)):
             flow.alert = .summarySetup(.appleUnavailable(reason))
         case .unavailable(.ollamaModelNotSelected):
@@ -409,8 +407,6 @@ extension MeetingDetailCoordinator {
                 "Your enhanced notes already match this material — change the transcript or your notes to produce new ones.")
         case .noNotes:
             flow.notesNotice = L10n.text("Add notes during the recording to enhance them here.")
-        case .unavailable(.requiresMacOS26):
-            flow.alert = .summarySetup(.appleRequiresMacOS26)
         case .unavailable(.appleOnDevice(let reason)):
             flow.alert = .summarySetup(.appleUnavailable(reason))
         case .unavailable(.ollamaModelNotSelected):

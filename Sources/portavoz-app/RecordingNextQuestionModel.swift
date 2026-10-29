@@ -29,11 +29,10 @@ final class RecordingNextQuestionModel {
         isRecording: @escaping @MainActor () -> Bool
     ) {
         guard isRecording(), state != .generating else { return }
-        guard #available(macOS 26.0, *),
-            FoundationModelSummaryProvider.unavailabilityReason() == nil
+        guard FoundationModelSummaryProvider.unavailabilityReason() == nil
         else {
             state = .unavailable(L10n.text(
-                "Question suggestions need Apple Intelligence on macOS 26. The recording continues untouched."))
+                "Question suggestions need Apple Intelligence. The recording continues untouched."))
             return
         }
         let clip = CatchUpPolicy.clip(captions)

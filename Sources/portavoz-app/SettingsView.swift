@@ -705,7 +705,7 @@ extension SettingsView {
             Text(
                 // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "Apple requires macOS 26 and Apple Intelligence. Ollama and the built-in model run locally after setup. Live summaries keep a transcript-based checkpoint on Sequoia and Tahoe; your selected local engine can refine it when ready."
+                "Apple requires Apple Intelligence. Ollama and the built-in model run locally after setup. Live summaries keep a transcript-based checkpoint; your selected local engine can refine it when ready."
             )
             .font(.caption)
             .foregroundStyle(.secondary)

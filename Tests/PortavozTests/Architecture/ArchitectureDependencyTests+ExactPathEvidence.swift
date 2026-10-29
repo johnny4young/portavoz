@@ -1413,10 +1413,10 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(spotlightProjection.contains("segmentRank <= 40"))
         XCTAssertTrue(spotlightIndexer.contains("actor SpotlightIndexer"))
         XCTAssertTrue(spotlightIndexer.contains(#"indexName = "app.portavoz.search.v3""#))
-        XCTAssertTrue(spotlightIndexer.contains("case meetingDocuments"))
-        XCTAssertTrue(spotlightIndexer.contains("case appEntities"))
+        XCTAssertFalse(spotlightIndexer.contains("meetingDocuments"))
+        XCTAssertTrue(spotlightIndexer.contains(#"indexFormat = "app-entities-v1""#))
         XCTAssertTrue(spotlightIndexer.contains("index.indexAppEntities("))
-        XCTAssertTrue(spotlightIndexer.contains("index.indexSearchableItems("))
+        XCTAssertFalse(spotlightIndexer.contains("index.indexSearchableItems("))
         XCTAssertTrue(spotlightIndexer.contains("protectionClass: .complete"))
         XCTAssertTrue(spotlightIndexer.contains("index.beginBatch()"))
         XCTAssertTrue(spotlightIndexer.contains("endBatch(withClientState:"))
@@ -1478,7 +1478,7 @@ extension ArchitectureDependencyTests {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            504)
+            514)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
             16)

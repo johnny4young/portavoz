@@ -116,7 +116,6 @@ final class LiveTranscriptionAttacherTests: XCTestCase {
     }
 
     func testAppleRangeRevisionsCarryPreviewMarkerBeforeCorrectedFinal() async throws {
-        guard #available(macOS 26.0, *) else { return }
         for (localeID, volatile, corrected) in [
             ("en_US", "We have two items", "We had two items"),
             ("es_ES", "Tenemos dos puntos", "Teníamos dos puntos")
@@ -155,7 +154,6 @@ final class LiveTranscriptionAttacherTests: XCTestCase {
     }
 
     func testAppleSystemFeedCannotBeMisattributedToMicrophone() async throws {
-        guard #available(macOS 26.0, *) else { return }
         let probe = LiveTranscriptionProbe()
         let (segments, continuation) = AsyncThrowingStream.makeStream(
             of: TranscriptSegment.self)
@@ -184,7 +182,6 @@ final class LiveTranscriptionAttacherTests: XCTestCase {
     }
 
     func testAppleOverlappingMeetingFinalsForceDurableRecovery() async throws {
-        guard #available(macOS 26.0, *) else { return }
         let probe = LiveTranscriptionProbe()
         let (segments, continuation) = AsyncThrowingStream.makeStream(
             of: TranscriptSegment.self)
@@ -872,7 +869,6 @@ final class LiveTranslationRoutingTests: XCTestCase {
 
 final class TranscriptFocusVisualPolicyTests: XCTestCase {
     func testLiveScrollYieldsForEveryUserOwnedPhaseButNotRecentering() {
-        guard #available(macOS 15.0, *) else { return }
 
         XCTAssertTrue(
             TranscriptFollowOwnershipPolicy.shouldYieldFollow(

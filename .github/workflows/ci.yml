@@ -29,8 +29,30 @@ jobs:
       - name: Release performance ledger rules
         run: python3 -m unittest Tests.Tooling.test_perf_ledger
 
+  swift-scope:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      filter: ${{ steps.select.outputs.filter }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      # A docs/site/tooling-only diff runs only the Swift classes that read the
+      # checkout; anything else, and every main or manual run, runs everything.
+      - name: Select the Swift test scope
+        id: select
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/swift_test_scope.py --base "$BASE_SHA" --head "$HEAD_SHA" >> "$GITHUB_OUTPUT"
+
   build-and-test:
-    needs: repository-hygiene
+    needs: [repository-hygiene, swift-scope]
+    if: >-
+      !cancelled() && needs.repository-hygiene.result == 'success' &&
+      needs.swift-scope.result != 'failure'
     runs-on: macos-26
     timeout-minutes: 30
     env:
@@ -41,20 +63,22 @@ jobs:
         run: scripts/verify-ci-toolchain.sh 26 26.6
       - name: Identify compatible Swift build state
         id: swift_cache_key
-        run: python3 scripts/ci_swift_cache_key.py --lane build-and-test >> "$GITHUB_OUTPUT"
-      # Main always compiles cold and alone seeds the cache. PRs may reuse
-      # compilation, never test results.
+        run: python3 scripts/ci_swift_cache_key.py --lane build-and-test --commit "$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+      # Main always compiles cold and seeds one entry per commit; its probe only
+      # stops a rerun from saving the same commit twice. PRs restore the newest
+      # entry of the same graph: they reuse compilation, never test results.
       - name: Restore compatible Swift build state
         id: swift_cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .build
           key: ${{ steps.swift_cache_key.outputs.key }}
+          restore-keys: ${{ github.event_name == 'pull_request' && steps.swift_cache_key.outputs.prefix || '' }}
           lookup-only: ${{ github.event_name != 'pull_request' }}
         env:
           SEGMENT_DOWNLOAD_TIMEOUT_MINS: "2"
       - name: Verify cached source freshness
-        if: github.event_name == 'pull_request' && steps.swift_cache.outputs.cache-hit == 'true'
+        if: github.event_name == 'pull_request' && steps.swift_cache.outputs.cache-matched-key != ''
         # A rejected graph is discarded so the job builds cold instead of failing.
         run: |
           if ! python3 scripts/ci_swift_source_stamps.py restore; then
@@ -64,16 +88,18 @@ jobs:
       # One invocation owns compilation and tests with identical flags. The
       # former build-then-test pair changed compiler arguments and could pay a
       # second package build while producing two different diagnostic modes.
-      - name: Current-SDK build and complete test suite
+      - name: Current-SDK build and selected test suite
+        env:
+          PORTAVOZ_SWIFT_TEST_SCOPE: ${{ needs.swift-scope.outputs.filter }}
         run: scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors
       # Bound storage and save only after the complete suite succeeds. Oversize
       # graphs stay cold; do not increase the repository's paid cache allowance.
       - name: Record successful source fingerprints
-        if: github.ref == 'refs/heads/main' && steps.swift_cache.outputs.cache-hit != 'true'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && steps.swift_cache.outputs.cache-hit != 'true'
         run: python3 scripts/ci_swift_source_stamps.py snapshot
       - name: Check Swift cache size
         id: swift_cache_size
-        if: github.ref == 'refs/heads/main' && steps.swift_cache.outputs.cache-hit != 'true'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && steps.swift_cache.outputs.cache-hit != 'true'
         run: |
           size_kib="$(du -sk .build | awk '{print $1}')"
           echo "Swift build cache: $size_kib KiB (limit 6291456 KiB)"
@@ -87,8 +113,30 @@ jobs:
           path: .build
           key: ${{ steps.swift_cache_key.outputs.key }}
 
+  ios-scope:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      required: ${{ steps.select.outputs.required }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      # A PR compiles only when it touches the shared targets' closure or the
+      # lane's own policy; main pushes and manual runs skip this job and compile.
+      - name: Select the iOS portability lane
+        id: select
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/ios_portability_scope.py --base "$BASE_SHA" --head "$HEAD_SHA" >> "$GITHUB_OUTPUT"
+
   ios-portability:
-    needs: repository-hygiene
+    needs: [repository-hygiene, ios-scope]
+    if: >-
+      !cancelled() && needs.repository-hygiene.result == 'success' &&
+      (github.event_name != 'pull_request' || needs.ios-scope.outputs.required == 'true')
     # Compile the exact future shared surface in its own current-SDK lane. A
     # failure means an iOS deployment/API break, not a duplicate macOS test or
     # an unavailable signed-container/device assertion.
@@ -100,7 +148,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Verify fixed Tahoe toolchain
         run: scripts/verify-ci-toolchain.sh 26 26.6
-      - name: Compile transport-neutral iOS 17 surface
+      - name: Compile transport-neutral iOS 26 surface
         run: scripts/check-ios-portability.sh
 
   lint:

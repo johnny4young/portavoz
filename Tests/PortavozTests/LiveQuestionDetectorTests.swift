@@ -178,7 +178,7 @@ final class BundledLiveQuestionDetectorTests: XCTestCase {
 }
 
 final class ProviderNeutralProvenanceCompanionTests: XCTestCase {
-    func testSequoiaPathPublishesQuestionOnlyArtifactWithBundledProvenance() async throws {
+    func testNoAppleIntelligencePathPublishesQuestionOnlyArtifactWithBundledProvenance() async throws {
         let meetingID = MeetingID()
         let questionID = UUID()
         let companion = ProviderNeutralProvenanceCompanion(
@@ -203,7 +203,7 @@ final class ProviderNeutralProvenanceCompanionTests: XCTestCase {
             outputLanguage: "en",
             askedAt: 42))
         guard case .artifact(let artifact) = result else {
-            return XCTFail("the admitted Sequoia question must produce a safe card")
+            return XCTFail("the admitted question must produce a safe card without Apple Intelligence")
         }
         XCTAssertTrue(artifact.card.answer.isEmpty)
         XCTAssertFalse(artifact.card.directed)

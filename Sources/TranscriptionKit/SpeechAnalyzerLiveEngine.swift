@@ -43,7 +43,6 @@ public enum SpeechAnalyzerLiveReadiness: Equatable, Error, Sendable {
 /// Adapts Apple's range-based results to the append-only live transcript
 /// contract. Volatile range revisions cannot enter CaptionCoalescer: joining
 /// them as deltas would turn a corrected phrase into a false duplicate.
-@available(macOS 26.0, iOS 26.0, *)
 public struct SpeechAnalyzerLiveEngine: TranscriptionEngine {
     public let descriptor: EngineDescriptor
     public let locale: Locale

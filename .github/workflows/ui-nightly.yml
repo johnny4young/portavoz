@@ -1,0 +1,147 @@
+name: Nightly UI
+
+# Pull requests run feature-scoped UI evidence plus smoke canaries; this run
+# owns the complete English catalog on main, split into balanced shards.
+on:
+  schedule:
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-nightly-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-ui-products:
+    runs-on: macos-26
+    timeout-minutes: 30
+    outputs:
+      tests: ${{ steps.select.outputs.tests }}
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Verify fixed Tahoe toolchain
+        run: scripts/verify-ci-toolchain.sh 26 26.6
+
+      - name: Install checksum-pinned XcodeGen 2.46.0
+        run: scripts/install-ci-xcodegen.sh "$RUNNER_TEMP/portavoz-xcodegen"
+
+      - name: Select the complete catalog
+        id: select
+        run: python3 scripts/ui_test_scope.py --validate-catalog --all --format github >> "$GITHUB_OUTPUT"
+
+      - name: Build every UI product once
+        env:
+          UI_TESTS: ${{ steps.select.outputs.tests }}
+          UI_TEST_PRODUCTS_PATH: ${{ runner.temp }}/ui-products/portavoz-ui.xctestproducts
+          UI_TEST_BUILD_RECEIPT: ${{ runner.temp }}/ui-products/build-duration-seconds.txt
+        run: make test-ui-build
+
+      # Artifacts drop the executable bit and symlinks; tar keeps the .app intact.
+      - name: Archive the exact products with their bundle permissions
+        run: tar -czf "$RUNNER_TEMP/ui-products.tar.gz" -C "$RUNNER_TEMP/ui-products" .
+
+      - name: Publish the exact UI products for the shards
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nightly-ui-products-${{ github.run_id }}
+          path: ${{ runner.temp }}/ui-products.tar.gz
+          if-no-files-found: error
+          retention-days: 1
+
+  interruption-controls:
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Verify fixed Tahoe toolchain
+        run: scripts/verify-ci-toolchain.sh 26 26.6
+
+      - name: Install checksum-pinned XcodeGen 2.46.0
+        run: scripts/install-ci-xcodegen.sh "$RUNNER_TEMP/portavoz-xcodegen"
+
+      - name: Verify interruption safety at the shared callback
+        run: make test-ui-interruption-safety UI_INTERRUPTION_RESULTS="$RUNNER_TEMP/ui-interruption-safety"
+
+  shard:
+    needs: build-ui-products
+    runs-on: macos-26
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Verify fixed Tahoe toolchain
+        run: scripts/verify-ci-toolchain.sh 26 26.6
+
+      - name: Restore the exact UI products
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: nightly-ui-products-${{ github.run_id }}
+          path: ${{ runner.temp }}/ui-archive
+
+      - name: Unpack the products with their bundle permissions
+        run: |
+          mkdir -p "$RUNNER_TEMP/ui-products"
+          tar -xzf "$RUNNER_TEMP/ui-archive/ui-products.tar.gz" -C "$RUNNER_TEMP/ui-products"
+
+      - name: Select shard ${{ matrix.shard }} of 3
+        id: select
+        run: python3 scripts/ui_test_scope.py --all --shard "${{ matrix.shard }}/3" --format github >> "$GITHUB_OUTPUT"
+
+      - name: Run shard ${{ matrix.shard }} in English
+        id: ui
+        continue-on-error: true
+        env:
+          UI_TESTS: ${{ steps.select.outputs.tests }}
+          UI_TEST_LOCALES: en
+          UI_TEST_PRODUCTS_PATH: ${{ runner.temp }}/ui-products/portavoz-ui.xctestproducts
+          UI_TEST_BUILD_RECEIPT: ${{ runner.temp }}/ui-products/build-duration-seconds.txt
+          # Hosted wall-clock variance stays advisory, as on pull requests.
+          UI_TEST_ENFORCE_RUNTIME_BUDGET: "false"
+        run: make test-ui-run
+
+      # The pull-request classifier separates product failures from a known
+      # hosted-automation outage, so infrastructure noise is not a red product.
+      - name: Classify shard ${{ matrix.shard }} evidence
+        id: classify
+        if: always()
+        env:
+          OUTCOME: ${{ steps.ui.outcome }}
+        run: |
+          python3 scripts/ui_test_ci_gate.py --results dist/ui-test-results --locales en \
+            --english-outcome "$OUTCOME" --summary "$GITHUB_STEP_SUMMARY" --github-output "$GITHUB_OUTPUT"
+
+      # A green nightly must mean verified evidence, so an advisory shard fails too.
+      - name: Require verified shard ${{ matrix.shard }} evidence
+        if: always()
+        env:
+          STATE: ${{ steps.classify.outputs.state }}
+          VERIFIED: ${{ steps.classify.outputs.verified }}
+        run: |
+          if [[ "$STATE" != "passed" || "$VERIFIED" != "true" ]]; then
+            echo "Shard ${{ matrix.shard }} is not verified ($STATE/$VERIFIED); dispatch the nightly again." >&2
+            exit 1
+          fi
+
+      - name: Preserve shard ${{ matrix.shard }} UI evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nightly-ui-shard-${{ matrix.shard }}-${{ github.run_id }}
+          path: dist/ui-test-results
+          if-no-files-found: warn
+          retention-days: 7

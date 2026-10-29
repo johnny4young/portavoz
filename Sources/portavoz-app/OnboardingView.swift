@@ -193,7 +193,7 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Label("Got it.", systemImage: PVSymbol.success)
                     .foregroundStyle(.green)
-                Text("Live captions need macOS 26. Recording still works.")
+                Text("Live captions are unavailable right now. Recording still works.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         case .failed(let message):

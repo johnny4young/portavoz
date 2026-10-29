@@ -2,7 +2,7 @@
 
 Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence), D174 (bounded live-caption presentation derivations), D229 (pure correction composition policy), D230 (durable correction history without product adoption), D231 (focused Meeting Detail text/speaker correction), D232 (explicit structural correction commands), D233 (correction-aware derived-artifact lineage and invalidation), D234 (correction-aware document projection and replica convergence), D320 (structured SpeechAnalyzer and First Listen lifetime), D355 (pinned non-serving Nemotron challenger), D433 (pinned non-serving compact MLX challengers and exact live-translation admission), D516 (reviewed exact speech-engine pin), D539 (evidence-backed FluidAudio 0.15.8 upgrade), D548 (verified non-serving Silero VAD capability), D559 (explicit producer token revisions on the latest reviewed fork).
 
-Additional decision: D235 (correction recovery and scale gates).
+Additional decisions: D235 (correction recovery and scale gates), D602 (offline speaker-echo measurement), D603 (speech-gated Whisper windows).
 
 ## Correction composition contract (D229)
 
@@ -142,7 +142,7 @@ this composer and corrected text remains intentionally unmaterialized.
 | Role | Engine | Status |
 |---|---|---|
 | Live (`liveTranscription`) | Parakeet TDT 0.6B v3 int8 (FluidAudio) | Historical p95 0.53 s; reviewed-fork latency requalification required |
-| Quality (`finalTranscription`) | Whisper large-v3-turbo (WhisperKit 1.1.0, exact pin) | ✅ 23–42x measured |
+| Quality (`finalTranscription`) | Whisper large-v3-turbo (WhisperKit 1.1.1, exact pin) | ✅ 23–42x measured on WhisperKit 1.1.0 |
 | Research-only live challenger | Nemotron 3.5 ASR Latin 1120 ms (FluidAudio) | Adapter complete; Portavoz evidence not accepted |
 | Multiple per role with recommender | — | Planned (D25/M12) |
 
@@ -192,9 +192,11 @@ PCM and native rate changes reset model state and report a discontinuity, never
 manufactured silence. A failed or cancelled inference commits no partial
 model/resampler state; a concurrent producer is rejected rather than interleaved.
 
-The capability does not yet attach to recording or dictation. It cannot end
-capture, filter a transcript, alter a CAF, consume the model in the background,
-or claim improved meeting talk-time. Activation, explicit model preparation,
+The streaming adapter serves dictation only. Batch Whisper uses the separate
+whole-file `SileroSpeechRegionDetector` (D603), which Refine and audio import
+install with the same on-demand consent as Whisper itself. Neither ends
+capture, alters a CAF, runs in the background, or claims improved meeting
+talk-time. Activation, explicit model preparation,
 resource admission, bilingual quality/latency evidence and the opt-in silence
 countdown belong to the later serving slice (GAPS T37). An opt-in local test
 reaches the actual Core ML/FluidAudio call site over pinned model bytes,
@@ -399,8 +401,8 @@ the app capability adapter to join only verified Parakeet loading and transcribe
 healthy/clipped system and microphone files through the serial batch scheduler
 while preserving their real `AudioChannel`. Automatic mode
 uses no fixed language and no vocabulary so a mixed Spanish/English meeting is
-not biased or translated. Mic fragments pass `TranscriptNoiseFilter` and
-`MicBleedFilter`; StorageKit then atomically publishes the complete attributed
+not biased or translated. Mic fragments pass `TranscriptNoiseFilter`,
+`SpeakerEchoFilter` and `MicBleedFilter` (see "Speaker echo" below); StorageKit then atomically publishes the complete attributed
 cast/transcript, advances `transcriptRevision`, completes the owned lease, and
 enqueues exact diarization. The application workflow owns job leases,
 dependency admission, retry/cancellation, and publication order; the adapter
@@ -410,7 +412,7 @@ safety net.
 
 ## Quality: WhisperEngine — `Sources/TranscriptionKit/WhisperEngine.swift`
 
-Two whisper.cpp-era hardening patterns are deliberately absent, verified against WhisperKit's source (Jul 2026): per-job decoder-state isolation is structural — WhisperKit prepares fresh decoder inputs and KV cache on every transcription call and Portavoz builds promptTokens per call, so the prompt_past cross-job poisoning class cannot occur; and VAD speech-only stitching is inapplicable because refine requires exact timestamps, which stitching desynchronizes (the pattern's own reference implementation skips it whenever timestamps are requested). The applicable input-side protections already exist: peak normalization, digitally-silent channel skipping, single-worker decoding, and anti-boilerplate hygiene.
+Two whisper.cpp-era hardening patterns are deliberately absent, verified against WhisperKit's source (Jul 2026): per-job decoder-state isolation is structural — WhisperKit prepares fresh decoder inputs and KV cache on every transcription call and Portavoz builds promptTokens per call, so the prompt_past cross-job poisoning class cannot occur; and VAD speech-only stitching stays out because refine requires exact timestamps, which stitching desynchronizes (the pattern's own reference implementation skips it whenever timestamps are requested). Speech-gated decoding (D603, item 6) is different: each speech window is decoded on its own and its segments are shifted by the window's start, so timestamps stay exact. The other input-side protections are peak normalization, digitally-silent channel skipping, single-worker decoding, and anti-boilerplate hygiene.
 
 Model load degrades before it fails (Jul 2026): a failed load — accelerator context creation is the recurring field class (ANE/GPU contention, stale Metal contexts) — retries exactly once with CPU-only compute units via the pure, tested `AcceleratorFallback`; a user cancel never triggers the second load, and a dual failure surfaces both causes so diagnostics distinguish an accelerator-only fault from a broken model directory. Artifact downloads were already atomic before this (D113: verified sibling staging + streaming sha256 + atomic rename preserving the previous file).
 
@@ -433,6 +435,36 @@ Hardened against 3 REAL WhisperKit failures (all reproduced and verified, Jul 20
    never become recognition fallbacks. Refine recomputes `Meeting.language`
    from the attributed result and clears stale aggregate metadata when the
    result is mixed or unknown.
+
+6. **Speech-gated windows (D603)**: when the caller passes a
+   `SpeechRegionDetecting` (Refine, audio import and the CLI pass
+   `SileroSpeechRegionDetector`), the peak-normalized channel is segmented by
+   Silero (threshold 0.5, minimum speech 0.25 s, minimum silence 0.5 s,
+   regions at most 28 s). `SpeechDecodeWindows.plan` pads regions by 0.2 s and
+   packs neighbours separated by at most 2 s into windows of at most 28 s.
+   Silence between windows never reaches the decoder. In automatic mode each
+   window's language comes from WhisperKit's temperature-0 detection, limited
+   to English and Spanish: a window detected as anything else takes the
+   channel's majority supported language, and stays automatic only when no
+   window was detected as a supported one. The window then decodes
+   sequentially with that language fixed, so temperature fallbacks cannot
+   resample it. A fixed policy language applies to every window. Segments
+   are shifted back to file time and pass the same hygiene as before. A
+   missing model or a detection failure keeps the whole-file path above,
+   including its coverage retry. `FileTranscription.detectedSpeechSeconds`
+   carries the detected speech, and the Refine review warns that a draft
+   "probably failed" when Whisper decoded under half of it
+   (`SpeechDecodeEvidence`, measured before echo and boilerplate filters).
+   Only ungated drafts compare against the current transcript, which may be
+   mostly silence hallucinations; the field meeting decoded 905 s of 953 s
+   detected while its old transcript claimed 263 minutes. On the 169-minute field meeting's first 20
+   minutes this removed 38 "Thank you." rows from the system channel, every
+   Japanese and Russian mic row, the German rendering of an English passage
+   and the invented speaker labels, and cut decoding time by about a quarter.
+7. **Caption markers**: subtitle-style speaker labels ("JOHN MUELLER: …",
+   one to three upper-case words with a colon) and leading dialogue dashes are
+   stripped from Whisper segment text. "Gracias", "gracias por ver" and
+   "gracias por ver el video" join the known microphone silence boilerplate.
 
 - Loads model+tokenizer from verified directories, `download: false` (never downloads without verification). Local tokenizer avoids the network.
 - Vocabulary (`hints.vocabulary`) → `promptTokens` as a natural sentence in the homogeneous spoken language ("In this meeting we discussed …" / "En esta reunión hablamos de …", not a "Glossary:" list); for mixed/unknown meetings, the prompt is omitted to avoid biasing Whisper toward one language. WhisperKit prepends it with `<|startofprev|>` and filters special tokens.
@@ -540,8 +572,35 @@ read that fails because the recordings volume went away mid-scan.
 removes rows with no letter or digit from both system and microphone results;
 Whisper mapping, the ApplicationKit Refine boundary, accepted-aggregate storage,
 and intelligence formatting independently enforce the same minimum. Microphone
-results then pass through `TranscriptNoiseFilter` and `MicBleedFilter`,
-preserving the released anti-hallucination and echo behavior. Required preparation/transcription errors
+results then pass through `TranscriptNoiseFilter`, `SpeakerEchoFilter` and
+`MicBleedFilter`, preserving the released anti-hallucination and echo behavior.
+
+**Speaker echo (D602).** When both channels carry audio, post-capture
+transcription and Refine ask the app adapter for a `MicrophoneEchoProfile`.
+`MicrophoneEchoAnalysis` streams both files at 16 kHz in three passes with
+bounded memory (about 4 s and 26 MB for a 169-minute meeting):
+1. Per-frame envelopes estimate the speaker-to-microphone delay (0-640 ms) and
+   the microphone noise floor per band. An envelope correlation below 0.5, or
+   under ~10 s of remote audio, means no measurable echo (headphones, muted
+   speakers) and returns nil.
+2. Twenty log-spaced bands (150 Hz-7 kHz) learn a per-band echo gain as the
+   0.8 quantile of microphone/system ratios while the system side is loud.
+3. Each 16 ms frame records microphone energy and the near-end energy that
+   exceeds 4x the predicted echo (max over a -16 to +96 ms tail) plus twice
+   the noise floor.
+
+The model is magnitude-only because laptop speaker processing is
+level-dependent; a linear canceller reached only ~4 dB on field audio.
+`SpeakerEchoFilter` treats a microphone row as echo when at least 90% of its
+energy is predicted echo (10 dB). An echo row is dropped when system rows cover
+at least half of it, otherwise it moves to the system channel with the same
+identity so diarization attributes it to the remote speaker. A row must lie
+entirely within the measured interval, from zero through the frame count times
+the frame duration; the exact end is included. Analysis stops at the shorter
+channel's last complete window, so a row crossing that measured end receives
+no attenuation estimate and retains its microphone identity, channel and text.
+Rows outside the measurement, and every row when the profile is nil or
+unavailable, stay with the user. The analysis never writes audio; capture files remain raw. Required preparation/transcription errors
 propagate; diarization degrades to honest unattributed segments; cancellation
 is never swallowed. Every exit after model ownership begins schedules both
 Whisper and recording-engine idle release. The draft carries the source

@@ -26,14 +26,8 @@ struct CompanionSettingsSection: View {
         switch capability {
         case .available:
             return .ready
-        case .requiresMacOS26 where providerAnswersAvailable,
-             .unavailable where providerAnswersAvailable:
+        case .unavailable where providerAnswersAvailable:
             return .readyThroughProvider
-        case .requiresMacOS26:
-            return .questionsOnly(cause: L10n.text(
-                // One-line UI explanation.
-                // swiftlint:disable:next line_length
-                "On macOS Sequoia, cards show the question only. Generated answers need macOS Tahoe with Apple Intelligence, or a provider you enable."))
         case .unavailable(let reason):
             return .questionsOnly(cause: L10n.format(
                 "Generated answers are unavailable: %@. Cards show the question only.", reason))
@@ -53,7 +47,7 @@ struct CompanionSettingsSection: View {
                 HowItWorksLink(
                     text: L10n.text(
                         // swiftlint:disable:next line_length
-                        "Apuntador listens for questions in the live captions and shows each one as a card. With an answer engine (Apple Intelligence on macOS Tahoe, or a provider you enable) it drafts an answer from the meeting; without one, cards show the question only. Nothing is sent anywhere unless you enabled a provider."),
+                        "Apuntador listens for questions in the live captions and shows each one as a card. With an answer engine (Apple Intelligence, or a provider you enable) it drafts an answer from the meeting; without one, cards show the question only. Nothing is sent anywhere unless you enabled a provider."),
                     identifier: "settings-apuntador-how-it-works")
             }
 

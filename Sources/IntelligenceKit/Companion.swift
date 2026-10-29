@@ -207,7 +207,6 @@ import FoundationModels
 /// The released Foundation Models classifier as an explicit, detect-only
 /// challenger. It never prepares or downloads an asset; serving admission is
 /// owned by the bundled bilingual classifier and does not depend on this path.
-@available(macOS 26.0, iOS 26.0, *)
 public struct FoundationModelLiveQuestionDetector: Sendable {
     public init() {}
 
@@ -294,7 +293,6 @@ struct CompanionProcessFailure: Error {
 /// external provider (a 3B model answers "¿var vs let?" fine; it is not
 /// who you want for anything deeper). Never speaks, never posts — it only
 /// produces cards the user may read, copy or dismiss.
-@available(macOS 26.0, iOS 26.0, *)
 public struct LiveCompanion: Sendable {
     /// Non-nil only when the user configured BYOK AND enabled it for the
     /// companion (D8/D26). Only the detected question text ever leaves the
@@ -578,7 +576,6 @@ public struct LiveCompanion: Sendable {
     }
 }
 
-@available(macOS 26.0, iOS 26.0, *)
 @Generable(description: "Screening result for one live caption")
 struct DetectedQuestion {
     @Guide(description: "true ONLY if the caption contains a real question someone asked")

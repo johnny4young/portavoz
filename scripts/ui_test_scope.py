@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Select the smallest safe Portavoz XCUITest set for a Git diff.
 
-The selector is intentionally conservative: known presentation files map to
-feature-level smoke tests, localization and shared composition changes run the
-whole suite, and an unknown production Swift path falls back to the whole
-suite. Every selection runs in English only. Documentation, governance, CLI,
-and package-test-only changes do not spend a macOS UI runner.
+Known presentation files map to feature-level tests, and shared UI-harness,
+fixture and build changes run the whole suite. Lower-layer Swift, unrecognized
+app files, the dependency lock and localized copy run the smoke canaries: unit
+tests own their behavior and the nightly sharded run owns the complete catalog.
+Every selection runs in English only. Documentation, governance, CLI, and
+package-test-only changes do not spend a macOS UI runner.
 """
 
 from __future__ import annotations
@@ -89,6 +90,8 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("LibraryUITests", "testRecordingStartFailureOffersTypedRecovery"),
         test_id("LibraryUITests", "testRecordingWarnsWhenRemoteAudioCallbacksStop"),
         test_id("LibraryUITests", "testRecordingWarnsWhenIncomingAudioClips"),
+        test_id("LibraryUITests", "testRecordingAsksWhetherTheCallEndedAndKeepsRecording"),
+        test_id("LibraryUITests", "testUnansweredCallEndedQuestionStopsTheRecording"),
         test_id("LibraryUITests", "testColdRecordingStartsLiveCaptionsWhenModelBecomesReady"),
         test_id("LibraryUITests", "testLiveTranscriptYieldsFollowWhileReadingHistory"),
         test_id("LibraryUITests", "testOwnedTokenPreviewRetiresWithoutEnteringCanonicalCaption"),
@@ -128,7 +131,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id(
             "MeetingDetailUITests",
-            "testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador",
+            "testNoAppleIntelligenceSummaryFailureOpensExactSetupAndExplainsApuntador",
         ),
     ),
     "recording-interview": (
@@ -223,7 +226,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id(
             "MeetingDetailUITests",
             "testAbandonedAutomaticSummarySaysSoBesideGeneration"),
-        test_id("MeetingDetailUITests", "testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador"),
+        test_id("MeetingDetailUITests", "testNoAppleIntelligenceSummaryFailureOpensExactSetupAndExplainsApuntador"),
         test_id("MeetingDetailUITests", "testRunningRefineCanBeCanceledWithoutChangingTheTranscript"),
     ),
     "meeting-summary": (
@@ -280,6 +283,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id("MeetingDetailUITests", "testPlayerExposesSkipAndOnlyMyVoice"),
         test_id("MeetingDetailUITests", "testClipMarkingRevealsExport"),
+        test_id("MeetingDetailUITests", "testClickingALineOfTextJumpsThere"),
     ),
     "meeting-correction": (
         test_id(
@@ -304,7 +308,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id(
             "MeetingDetailUITests",
-            "testSequoiaApuntadorRefreshPreservesStaleAnswers",
+            "testNoAppleIntelligenceApuntadorRefreshPreservesStaleAnswers",
         ),
     ),
     "meeting-translation": (
@@ -538,10 +542,31 @@ MEETING_FEATURES = frozenset(
     if feature.startswith("meeting-") and feature != "meeting-brief"
 )
 SETTINGS_FEATURES = frozenset(feature for feature in ALL_FEATURES if feature.startswith("settings-"))
-# Copy/localization and shared-harness changes can alter every accessibility
-# query or localized assertion. They are integration changes, so the safe
+# Shared-harness changes can alter every accessibility query, so their safe
 # expansion is the complete catalog rather than a small canary set.
 HARNESS_TESTS = ALL_TESTS
+# Canaries across the main surfaces: launch, Library, Today, recording, live
+# assist, derived work, Meeting Detail, Ask, dictation, Settings, onboarding,
+# Radar, Insights, the menu-bar brief and App Intents.
+SMOKE_TESTS = (
+    test_id("LibraryUITests", "testDatabaseLaunchFailureOffersSafeRecovery"),
+    test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
+    test_id("HomeUITests", "testTodayShowsAgendaOpenWorkAndRecentMeetingsAboveTheFold"),
+    test_id("LibraryUITests", "testRecordingStartFailureOffersTypedRecovery"),
+    test_id("BackgroundWorkUITests", "testRecordingDefersDerivedWorkAndStopResumesIt"),
+    test_id("MeetingDetailUITests", "testPlayerExposesSkipAndOnlyMyVoice"),
+    test_id("MeetingDetailUITests", "testMostRecentRecipeRemainsVisibleAfterReload"),
+    test_id("LibraryUITests", "testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState"),
+    test_id("DictationUITests", "testDeliveredDictationDistinguishesDispatchFromVerification"),
+    test_id("SettingsUITests", "testLanguageToggleSwitchesVisibleTextWithoutRelaunch"),
+    test_id("SettingsUITests", "testIntelligencePaneCreatesACustomStructure"),
+    test_id("OnboardingUITests", "testAdvancesFromFirstListenToLocalVoiceEnrollment"),
+    test_id("CommitmentRadarUITests", "testReminderAlertOpensCommitmentRadar"),
+    test_id("InsightsUITests", "testInsightsShowsCompleteLocalDashboard"),
+    test_id("AutomationUITests", "testOpenDictationsShortcutShowsItsSearch"),
+    test_id("RecordingAssistUITests", "testLatestManualAssistRequestOwnsTheFocusSlot"),
+    test_id("MenuBarUITests", "testPreMeetingBriefMovesFromExactProposalToDurableReceipt"),
+)
 
 # Changes to these shared owners can alter what gets built, selected, measured,
 # or accepted as UI evidence. They therefore require one complete English
@@ -694,6 +719,10 @@ NO_UI_PREFIXES = (
     "Tests/Tooling/",
     "Tests/PortavozTests/",
     "Sources/portavoz-cli/",
+    "Sources/portavoz-cli-main/",
+    # Research-only targets: only PortavozTests links them, never the app.
+    "Sources/CSQLiteVecResearch/",
+    "Sources/SQLiteVecResearchKit/",
     "docs/",
     "site/",
     "packaging/",
@@ -893,11 +922,6 @@ def app_features(filename: str) -> set[str]:
         return {"settings-standing-skills"}
     if any(token in lowered for token in ("meetingbrief", "meetingreminder")):
         return {"meeting-brief", "library"}
-    if "legacyscrollinteractiontracker" in lowered:
-        # This AppKit escape exists only for reader-owned live transcript
-        # history on macOS 14. Keep a new focused bridge from silently
-        # expanding one interaction fix to the complete suite.
-        return {"recording-recovery"}
     if any(token in lowered for token in (
         "meetingdetailperformancetrace", "scalebenchmark"
     )):
@@ -1016,7 +1040,7 @@ def app_features(filename: str) -> set[str]:
         return set(MEETING_FEATURES)
     if any(token in lowered for token in ("settings", "section", "localdata", "whispermodel", "mlxmodel")):
         return set(SETTINGS_FEATURES)
-    return set(ALL_FEATURES)
+    return set()
 
 
 def lower_layer_features(path: str) -> set[str]:
@@ -1078,6 +1102,8 @@ def lower_layer_features(path: str) -> set[str]:
         "standingskill", "standingpremeetingbrief"
     )):
         return {"settings-standing-skills"}
+    if "livequestionclassifier" in lowered:
+        return {"live-assist"}
     if lowered in {
         "sources/intelligencekit/companion.swift",
         "sources/intelligencekit/companiongenerationprovenance.swift",
@@ -1216,10 +1242,38 @@ def lower_layer_features(path: str) -> set[str]:
         return {"meeting-naming", "meeting-health", "settings-voice", "onboarding"}
     if "sync" in lowered:
         return {"settings-data"}
-    return set(ALL_FEATURES)
+    # No proven owner: unit tests own the behavior and the smoke canaries
+    # cover the shell; the nightly run owns the complete catalog.
+    return set()
 
 
-def select_paths(paths: Iterable[str]) -> Selection:
+CATALOG = "Resources/Localization/Portavoz/Localizable.xcstrings"
+PLACEHOLDER = re.compile(r"%(?:\d+\$)?(?:ll|l)?[@dfsu]|%%")
+
+
+def catalog_keys(text: str) -> set[str]:
+    return set(json.loads(text).get("strings", {}))
+
+
+def copy_tests(changed_keys: Iterable[str], root: Path) -> set[str]:
+    """UI tests whose sources quote a changed English string or a long literal part of it."""
+    needles = set()
+    for key in changed_keys:
+        parts = [part.strip() for part in PLACEHOLDER.split(key) if len(part.strip()) >= 12]
+        needles.update(parts or [f'"{key}"'])
+    selected: set[str] = set()
+    for source in sorted((root / "Tests/PortavozUITests").glob("*UITests.swift")):
+        text = source.read_text(encoding="utf-8")
+        if any(needle in text for needle in needles):
+            selected |= tests_for_ui_test_file(source.relative_to(root).as_posix())
+    return selected
+
+
+def select_paths(
+    paths: Iterable[str],
+    catalog_changes: set[str] | None = None,
+    root: Path | None = None,
+) -> Selection:
     selected: set[str] = set()
     reasons: list[str] = []
     interruption_controls = False
@@ -1232,13 +1286,21 @@ def select_paths(paths: Iterable[str]) -> Selection:
         interruption_controls = interruption_controls or requires_interruption_controls(path)
 
         if path == "Package.resolved":
+            # A dependency can change behavior behind any journey.
             selected.update(HARNESS_TESTS)
             reasons.append(f"{path}: complete English dependency fallback")
             continue
 
-        if path == "Resources/Localization/Portavoz/Localizable.xcstrings":
-            selected.update(HARNESS_TESTS)
-            reasons.append(f"{path}: complete localization fallback")
+        if path == CATALOG:
+            if catalog_changes is None:
+                selected.update(HARNESS_TESTS)
+                reasons.append(f"{path}: complete localization fallback (changed keys unknown)")
+                continue
+            # Journeys assert English copy literally; Spanish values belong to LocalizationTests.
+            if catalog_changes:
+                selected.update(copy_tests(catalog_changes, root or Path(__file__).resolve().parent.parent))
+                selected.update(SMOKE_TESTS)
+                reasons.append(f"{path}: journeys quoting {len(catalog_changes)} changed English strings")
             continue
 
         if path in FULL_HARNESS_FILES or path.startswith(INTERRUPTION_FIXTURE_PREFIX):
@@ -1316,23 +1378,37 @@ def select_paths(paths: Iterable[str]) -> Selection:
                 )
                 continue
             features = app_features(file_name)
+            if not features:
+                selected.update(SMOKE_TESTS)
+                reasons.append(f"{path}: unmapped app file smoke canaries")
+                continue
             selected.update(feature_tests(features))
             reasons.append(f"{path}: {', '.join(sorted(features))}")
             continue
 
         # CLI and reviewed test-only corpus paths cannot alter the app UI.
-        # Check them before generic Sources/*.swift: the latter otherwise
-        # swallows CLI.swift into the unknown-production full fallback.
+        # Check them before generic Sources/*.swift, which would otherwise
+        # spend smoke canaries on CLI.swift.
         if path.startswith(NO_UI_PREFIXES) or path in NO_UI_FILES or path.startswith(".github/") or path.startswith("scripts/"):
             continue
 
         if path.startswith("Sources/") and path.endswith(".swift"):
             features = lower_layer_features(path)
             if not features:
+                selected.update(SMOKE_TESTS)
+                reasons.append(f"{path}: lower-layer smoke canaries")
                 continue
             selected.update(feature_tests(features))
             reasons.append(f"{path}: {', '.join(sorted(features))}")
             continue
+
+        if path.startswith("Sources/") and not path.startswith("Sources/portavoz-app/"):
+            # A lower-layer resource selects its owner's journeys; an unknown one falls through.
+            features = lower_layer_features(path)
+            if features:
+                selected.update(feature_tests(features))
+                reasons.append(f"{path}: {', '.join(sorted(features))}")
+                continue
 
         # Unknown build/configuration changes may alter the executable even if
         # they do not look like a view. Prefer one full English pass to a false
@@ -1353,6 +1429,21 @@ def changed_paths(base: str, head: str) -> list[str]:
     command = ["git", "diff", "--name-only", "--diff-filter=ACDMRTUXB", base, head, "--"]
     result = subprocess.run(command, check=True, capture_output=True, text=True)
     return result.stdout.splitlines()
+
+
+def catalog_changes(base: str, head: str | None, root: Path) -> set[str] | None:
+    """English keys added or removed between base and head (or the working file)."""
+    try:
+        before = subprocess.run(["git", "show", f"{base}:{CATALOG}"], check=True, capture_output=True,
+                                text=True, cwd=root).stdout
+        if head is None:
+            after = (root / CATALOG).read_text(encoding="utf-8")
+        else:
+            after = subprocess.run(["git", "show", f"{head}:{CATALOG}"], check=True, capture_output=True,
+                                   text=True, cwd=root).stdout
+        return catalog_keys(before) ^ catalog_keys(after)
+    except (OSError, ValueError, subprocess.CalledProcessError):
+        return None
 
 
 def working_tree_paths(base: str, *, cwd: Path | None = None) -> list[str]:
@@ -1408,6 +1499,9 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
     )
     retired = sorted(discovered & RETIRED_DUPLICATE_TESTS)
     permission_overlap = sorted(set(ALL_TESTS) & PERMISSION_GATED_TESTS)
+    smoke_errors = sorted(set(SMOKE_TESTS) - set(ALL_TESTS))
+    if len(SMOKE_TESTS) != len(set(SMOKE_TESTS)):
+        smoke_errors.append("duplicate smoke canary")
     sentinel_mismatch = sorted(ALL_FEATURES ^ FEATURE_SOURCE_SENTINELS.keys())
     orphan_scopes: list[str] = []
     for feature, path in FEATURE_SOURCE_SENTINELS.items():
@@ -1441,10 +1535,7 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         else:
             budget = json.loads(budget_path.read_text(encoding="utf-8"))
             runtime_ids = set(budget.get("testBudgetsSeconds", {}))
-            expected_runtime_ids = {
-                "/".join(selector.split("/")[1:]) + "()"
-                for selector in ALL_TESTS
-            }
+            expected_runtime_ids = {runtime_budget_key(selector) for selector in ALL_TESTS}
             missing_budgets = sorted(expected_runtime_ids - runtime_ids)
             stale_budgets = sorted(runtime_ids - expected_runtime_ids)
             budget_count = budget.get("catalog", {}).get("expectedCaseCount")
@@ -1493,6 +1584,7 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         or orphan_scopes
         or reachable_fixtures
         or runtime_budget_errors
+        or smoke_errors
     ):
         details = []
         if missing:
@@ -1514,7 +1606,31 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         if reachable_fixtures:
             details.append("no-UI fixtures reachable from UI sources: " + ", ".join(reachable_fixtures))
         details.extend(runtime_budget_errors)
+        if smoke_errors:
+            details.append("smoke canaries outside the catalog: " + ", ".join(smoke_errors))
         raise RuntimeError("UI-test scope catalog is stale; " + "; ".join(details))
+
+
+def runtime_budget_key(selector: str) -> str:
+    return "/".join(selector.split("/")[1:]) + "()"
+
+
+def shard_tests(root: Path, index: int, count: int) -> tuple[str, ...]:
+    """Split the catalog into balanced shards by runtime budget, longest first."""
+    if not 1 <= index <= count:
+        raise ValueError("a shard must be K/N with 1 <= K <= N")
+    budgets = json.loads((root / "docs/evidence/ui-test-runtime-budget.json").read_text(encoding="utf-8"))
+    seconds = budgets["testBudgetsSeconds"]
+    missing = [test for test in ALL_TESTS if runtime_budget_key(test) not in seconds]
+    if missing:
+        raise ValueError("tests without runtime budget: " + ", ".join(missing))
+    loads = [0.0] * count
+    owners: dict[str, int] = {}
+    for test in sorted(ALL_TESTS, key=lambda selector: (-seconds[runtime_budget_key(selector)], selector)):
+        shard = min(range(count), key=lambda candidate: (loads[candidate], candidate))
+        owners[test] = shard
+        loads[shard] += seconds[runtime_budget_key(test)]
+    return tuple(test for test in ALL_TESTS if owners[test] == index - 1)
 
 
 def bounded_summary(reasons: Sequence[str]) -> str:
@@ -1600,6 +1716,7 @@ def parser() -> argparse.ArgumentParser:
         help="Compare --base with the current index, working tree, and untracked files",
     )
     result.add_argument("--all", action="store_true", help="Select every UI test in English")
+    result.add_argument("--shard", help="With --all, select balanced shard K of N (for example 2/3)")
     result.add_argument("--format", choices=("human", "github", "shell"), default="human")
     result.add_argument("--validate-catalog", action="store_true", help="Fail if a UI test lacks a selector")
     return result
@@ -1614,7 +1731,22 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"UI-test scope catalog is complete ({len(ALL_TESTS)} tests).")
             return 0
 
-    if arguments.all:
+    if arguments.shard is not None and not arguments.all:
+        print("--shard requires --all.", file=sys.stderr)
+        return 2
+    if arguments.all and arguments.shard is not None:
+        try:
+            index, count = (int(part) for part in arguments.shard.split("/"))
+        except ValueError:
+            print(f"Invalid --shard {arguments.shard!r}: expected K/N", file=sys.stderr)
+            return 2
+        try:
+            tests = shard_tests(root, index, count)
+        except ValueError as error:
+            print(f"Cannot select shard {arguments.shard}: {error}", file=sys.stderr)
+            return 2
+        selection = Selection(tests, SELECTION_LOCALES, (f"full-suite shard {index}/{count}",))
+    elif arguments.all:
         selection = Selection(
             ALL_TESTS, SELECTION_LOCALES, ("explicit full-suite request",), interruption_controls=True)
     else:
@@ -1629,7 +1761,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif not paths:
             print("Provide changed paths, --base, or --all.", file=sys.stderr)
             return 2
-        selection = select_paths(paths)
+        changes = None
+        if arguments.base and CATALOG in paths:
+            changes = catalog_changes(arguments.base, None if arguments.working_tree else arguments.head, root)
+        selection = select_paths(paths, changes, root)
     print(render(selection, arguments.format))
     return 0
 

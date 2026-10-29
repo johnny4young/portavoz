@@ -95,7 +95,7 @@ class IOSPortabilityTests(unittest.TestCase):
             self.assertEqual(call[0], "build")
             self.assertEqual(
                 call[call.index("--triple") + 1],
-                "arm64-apple-ios17.0-simulator",
+                "arm64-apple-ios26.0-simulator",
             )
             self.assertEqual(
                 call[call.index("--scratch-path") + 1],

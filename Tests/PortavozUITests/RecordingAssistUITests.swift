@@ -5,7 +5,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
     func testCompanionActionsKeepIdentityAndSeenStateAfterReentry() throws {
         let app = try XCUIApplication.portavoz(
             seedDemo: true,
-            simulateSequoiaCapabilities: true,
+            simulateNoAppleIntelligence: true,
             simulateLiveTranscriptBrowsing: true)
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"companionEnabled":true}"#
         app.launchArguments.append("-seed-live-companion-ui")
@@ -114,7 +114,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
     @MainActor
     func testUnsubmittedNotesAndObjectivesSurviveTabsAndLibraryBrowsing() throws {
         let app = try XCUIApplication.portavoz(
-            seedDemo: true, simulateSequoiaCapabilities: true,
+            seedDemo: true, simulateNoAppleIntelligence: true,
             simulateLiveTranscriptBrowsing: true)
         app.launchPortavoz()
         defer { finishUITestApplication(app) }
@@ -174,7 +174,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
     func testLiveAssistKeepsOnePanelOpenAndABoundedCardList() throws {
         let app = try XCUIApplication.portavoz(
             seedDemo: true,
-            simulateSequoiaCapabilities: true,
+            simulateNoAppleIntelligence: true,
             simulateLiveTranscriptBrowsing: true)
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
             #"{"companionEnabled":true}"#

@@ -142,7 +142,6 @@ final class RecordingObjectivesModelTests: XCTestCase {
 
 final class ObjectiveCheckDetectorShapeTests: XCTestCase {
     func testInstructionsPinTheConservativeBar() throws {
-        guard #available(macOS 26.0, *) else { throw XCTSkip("needs macOS 26") }
         XCTAssertTrue(
             ObjectiveCheckDetector.instructions.contains("NOT addressed"),
             "the few-shot must show the announced-is-not-covered case")
@@ -152,7 +151,6 @@ final class ObjectiveCheckDetectorShapeTests: XCTestCase {
     }
 
     func testPromptNumbersObjectivesAndEscapesEvidenceTags() throws {
-        guard #available(macOS 26.0, *) else { throw XCTSkip("needs macOS 26") }
         let segment = TranscriptSegment(
             meetingID: MeetingID(),
             channel: .system,

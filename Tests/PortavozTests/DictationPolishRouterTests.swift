@@ -80,9 +80,6 @@ final class DictationPolishRouterTests: XCTestCase {
 
     func testAppleCapabilityGapsStayExplicit() async {
         await assertUnavailable(
-            makeRouter(selected: EngineSelectionBox(.appleOnDevice), capability: .requiresMacOS26),
-            "Polish needs Apple Intelligence on macOS 26.")
-        await assertUnavailable(
             makeRouter(selected: EngineSelectionBox(.appleOnDevice), capability: .unavailable("it is off")),
             "Apple Intelligence is unavailable: it is off.")
     }
@@ -112,7 +109,7 @@ final class DictationPolishRouterTests: XCTestCase {
         let router = AppDictationPolishRouter(
             selection: { nil },
             mlxModelDirectory: { nil },
-            makeApple: { nil },
+            makeApple: { FixedPolisher(text: "apple") },
             makeOllama: { _, _ in FixedPolisher(text: "ollama") },
             makeMLX: { _ in FixedPolisher(text: "mlx") })
 

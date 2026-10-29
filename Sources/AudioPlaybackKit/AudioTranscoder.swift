@@ -125,10 +125,7 @@ public enum AudioTranscoder {
                 presetName: AVAssetExportPresetAppleM4A)
         else { throw TranscodeError.exportFailed("no export session") }
 
-        try await AudioExportSession.export(
-            session,
-            to: output,
-            legacyFailure: TranscodeError.exportFailed)
+        try await session.export(to: output, as: .m4a)
     }
 
     private static func verifyAudio(at output: URL) throws {

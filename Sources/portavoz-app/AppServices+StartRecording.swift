@@ -28,6 +28,9 @@ extension AppServices {
             runtime = UITestSystemCaptureStallRuntime()
         } else if isSystemAudioClippingFixture {
             runtime = UITestSystemAudioClippingRuntime()
+        } else if fixtureRequested("-simulate-call-ended") {
+            runtime = UITestCallEndedRuntime(
+                exhaustsCountdown: fixtureRequested("-simulate-call-ended-timeout"))
         } else if isInterviewAssistFixture {
             runtime = UITestInterviewAssistRuntime()
         } else if isLiveTranscriptBrowsingFixture {
@@ -155,6 +158,39 @@ private struct UITestSystemAudioClippingRuntime: StartRecordingRuntime {
                 rms: 0.4,
                 timestamp: TimeInterval(index) / 100,
                 duration: 0.01))
+        }
+        return UITestSystemCaptureStallSession()
+    }
+
+    func cancelPreparation() async {}
+    func scheduleIdleRelease() async {}
+}
+
+/// Thirty seconds of remote speech, then enough quiet to ask whether the call
+/// ended, or to run out the countdown.
+private struct UITestCallEndedRuntime: StartRecordingRuntime {
+    let exhaustsCountdown: Bool
+
+    func prepare(
+        preferences: StartRecordingPreferencesSnapshot
+    ) async throws -> StartRecordingPreparedRuntime {
+        StartRecordingPreparedRuntime(
+            channels: [.microphone, .system],
+            tappedMeetingApps: ["Meet"],
+            liveTranscriptionAvailable: true)
+    }
+
+    func startCapture(
+        _ request: StartRecordingCaptureRequest
+    ) async throws -> any StartRecordingSession {
+        let level = request.callbacks.level
+        let quiet = CallEndDetector.askAfterQuiet
+            + (exhaustsCountdown ? CallEndDetector.stopAfterAsking : 30)
+        Task {
+            // Let the recording screen settle before the call goes quiet.
+            try? await Task.sleep(for: .seconds(1))
+            level(PersistedAudioLevel(channel: .system, peak: 0.4, rms: 0.1, timestamp: 0, duration: 30))
+            level(PersistedAudioLevel(channel: .system, peak: 0, rms: 0, timestamp: 30, duration: quiet))
         }
         return UITestSystemCaptureStallSession()
     }
@@ -489,11 +525,9 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
 
         var sources: [any AudioCaptureSource] = [microphone]
         var tappedMeetingApps: [String] = []
-        if #available(macOS 14.4, *) {
-            let system = await makeSystemTapSource(mode: preferences.captureMode)
-            sources.append(system.source)
-            tappedMeetingApps = system.appNames
-        }
+        let system = await makeSystemTapSource(mode: preferences.captureMode)
+        sources.append(system.source)
+        tappedMeetingApps = system.appNames
         prepared = Prepared(
             microphone: microphone,
             warmup: warmup,
@@ -556,7 +590,6 @@ private final class AppStartRecordingRuntime: StartRecordingRuntime {
         services?.scheduleRecordingEnginesRelease()
     }
 
-    @available(macOS 14.4, *)
     private func makeSystemTapSource(
         mode: StartRecordingCaptureMode
     ) async -> (source: ProcessTapSource, appNames: [String]) {

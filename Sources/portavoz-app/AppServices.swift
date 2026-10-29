@@ -520,8 +520,8 @@ final class AppServices {
         foundationModelsCapability.isAvailable
     }
 
-    /// Live Apuntador admission is bundled and runs from Sequoia onward.
-    /// Foundation Models is an optional Tahoe refinement/answer lane.
+    /// Live Apuntador admission is bundled and runs without Apple Intelligence.
+    /// Foundation Models is an optional refinement/answer lane.
     var companionAvailable: Bool {
         BundledLiveQuestionDetector.resourceIsLoadable
     }

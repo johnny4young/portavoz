@@ -294,7 +294,7 @@ extension AppServices {
             break
         }
 
-        if #available(macOS 26.0, *), foundationModelsCapability.isAvailable {
+        if foundationModelsCapability.isAvailable {
             return PostCaptureSummaryProviderSelection(
                 provider: FoundationModelSummaryProvider(),
                 providerID: FoundationModelSummaryProvider.providerID,

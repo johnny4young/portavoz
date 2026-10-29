@@ -45,9 +45,13 @@ library) and asserts against `accessibilityIdentifier`s.
 - Structural UI changes (a control moving panes, a section going behind a tab) will break
   existing UI tests — that is the point; fix the test in the same commit.
 - Prefer `make test-ui-changed UI_BASE=origin/main`: known presentation files
-  map to feature-level selectors, and localization/shared-harness changes and
-  unknown production Swift paths fail safe to the full English suite.
-  `make test-ui-en` and `make test-ui-release` are the explicit full-suite gates.
+  and lower-layer files with a proven owner map to feature-level selectors;
+  other lower-layer Swift files and unmapped app Swift files run the smoke
+  canaries; changed English copy runs the journeys that quote it plus the
+  canaries; the dependency lock, shared-harness, build and unowned resource
+  changes run the full English suite. The full catalog also runs nightly
+  on `main` in three shards. `make test-ui-en` and `make test-ui-release` are the
+  explicit full-suite gates.
 - XCUITest runs in English only. Spanish is covered by `LocalizationTests`: every
   visible literal is cataloged, every key has a translated Spanish value with the
   same placeholders, and Spanish may equal English only for an explicit list of

@@ -279,9 +279,20 @@ private extension ProcessPostCaptureJobs {
                     text: $0.text,
                     confidence: $0.confidence)
             }
-            microphoneSegments = MicBleedFilter.filter(
+            var profile: MicrophoneEchoProfile?
+            if let system = current[.system], Self.isTranscribable(system) {
+                profile = await audio.postCaptureMicrophoneEchoProfile(
+                    microphone: microphone,
+                    system: system)
+            }
+            let echo = SpeakerEchoFilter.resolve(
                 microphone: voiced,
+                system: systemSegments,
+                profile: profile)
+            microphoneSegments = MicBleedFilter.filter(
+                microphone: echo.microphone,
                 system: systemSegments)
+            systemSegments += echo.recoveredSystem
         }
         return TranscriptSegmentOrder.canonical(systemSegments + microphoneSegments)
     }

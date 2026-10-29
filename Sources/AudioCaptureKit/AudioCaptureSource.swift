@@ -3,7 +3,7 @@ import PortavozCore
 
 /// A source of audio (microphone, per-app system tap, room device).
 /// Implementations: `MicrophoneSource` (AVAudioEngine), `ProcessTapSource`
-/// (Core Audio process taps, macOS 14.4+). Arrives in M1.
+/// (Core Audio process taps). Arrives in M1.
 public protocol AudioCaptureSource: Sendable {
     var channel: AudioChannel { get }
     /// Starts capture. The stream finishes on `stop()` and throws on device errors.

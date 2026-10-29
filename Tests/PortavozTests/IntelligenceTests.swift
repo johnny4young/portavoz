@@ -814,7 +814,6 @@ final class FoundationModelIntegrationTests: XCTestCase {
         try XCTSkipUnless(
             ProcessInfo.processInfo.environment["PORTAVOZ_MODEL_TESTS"] == "1",
             "set PORTAVOZ_MODEL_TESTS=1 to run")
-        guard #available(macOS 26.0, *) else { throw XCTSkip("needs macOS 26") }
         if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
             throw XCTSkip("Apple Intelligence unavailable: \(reason)")
         }
@@ -857,7 +856,6 @@ final class FoundationModelIntegrationTests: XCTestCase {
         try XCTSkipUnless(
             ProcessInfo.processInfo.environment["PORTAVOZ_MODEL_TESTS"] == "1",
             "set PORTAVOZ_MODEL_TESTS=1 to run")
-        guard #available(macOS 26.0, *) else { throw XCTSkip("needs macOS 26") }
         if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
             throw XCTSkip("Apple Intelligence unavailable: \(reason)")
         }
@@ -902,7 +900,6 @@ final class FoundationModelIntegrationTests: XCTestCase {
         try XCTSkipUnless(
             ProcessInfo.processInfo.environment["PORTAVOZ_MODEL_TESTS"] == "1",
             "set PORTAVOZ_MODEL_TESTS=1 to run")
-        guard #available(macOS 26.0, *) else { throw XCTSkip("needs macOS 26") }
         if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
             throw XCTSkip("Apple Intelligence unavailable: \(reason)")
         }
@@ -946,7 +943,6 @@ final class FoundationModelIntegrationTests: XCTestCase {
         try XCTSkipUnless(
             ProcessInfo.processInfo.environment["PORTAVOZ_MODEL_TESTS"] == "1",
             "set PORTAVOZ_MODEL_TESTS=1 to run")
-        guard #available(macOS 26.0, *) else { throw XCTSkip("needs macOS 26") }
         if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
             throw XCTSkip("Apple Intelligence unavailable: \(reason)")
         }
@@ -1517,7 +1513,6 @@ final class QuestionHeuristicTests: XCTestCase {
         XCTAssertFalse(QuestionHeuristic.mentions("Ana", in: ""))
     }
 
-    @available(macOS 26.0, *)
     func testClassifierInstructionsCarryTheOwnerNameOnlyWhenKnown() {
         let named = LiveCompanion.classifierInstructions(ownerName: "Johnny")
         XCTAssertTrue(named.contains("\"Johnny\""))
@@ -1530,7 +1525,6 @@ final class QuestionHeuristicTests: XCTestCase {
 
     /// A spoken "ignore your instructions" is a caption, not a command: both
     /// live prompts must pin the quoted-speech guard.
-    @available(macOS 26.0, *)
     func testLivePromptsRefuseInstructionsEmbeddedInSpeech() {
         for owner in [nil, "Johnny"] {
             let classifier = LiveCompanion.classifierInstructions(ownerName: owner)

@@ -24,8 +24,12 @@ class RunSwiftTestsTests(unittest.TestCase):
         arguments: tuple[str, ...] = (),
         startup_attempts: int = 1500,
         interrupt_after_start: bool = False,
+        worker_start_delay: float = 0,
         readiness_timeout: float = 10,
         completion_timeout: float = 20,
+        workers: str | None = None,
+        xctest_exit: int = 0,
+        scope: str | None = None,
     ) -> tuple[subprocess.CompletedProcess[str], dict[str, object] | None, Path]:
         root = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, root, True)
@@ -35,8 +39,17 @@ class RunSwiftTestsTests(unittest.TestCase):
         fake_swift = binary / "swift"
         fake_swift.write_text(
             "#!/bin/sh\n"
+            "if [ \"$1\" = build ]; then\n"
+            "  if [ \"$2\" = --show-bin-path ]; then echo \"$FAKE_PRODUCTS\"; exit 0; fi\n"
+            "  echo \"$@\" >> \"$SWIFT_BUILD_LOG\"\n"
+            "  exit \"${SWIFT_BUILD_EXIT:-0}\"\n"
+            "fi\n"
             "test \"$1\" = test || exit 65\n"
             "shift\n"
+            "if [ \"$1\" = list ]; then\n"
+            "  printf 'PortavozTests.AlphaTests/testOne\\nPortavozTests.GammaSuite/plain()\\n'\n"
+            "  exit 0\n"
+            "fi\n"
             "\"$REAL_PYTHON\" - \"$SWIFT_LOG\" \"$@\" <<'PY'\n"
             "import json, os, sys\n"
             "descriptor_path = os.environ.get(\n"
@@ -52,13 +65,31 @@ class RunSwiftTestsTests(unittest.TestCase):
             "    }, destination)\n"
             "PY\n"
             "if [ \"${SWIFT_BLOCK:-false}\" = true ]; then\n"
+            "  sleep \"$SWIFT_WORKER_START_DELAY\"\n"
             "  trap 'exit 0' TERM INT\n"
+            # The worker publishes its own PID only after both shells' traps
+            # are installed. Atomic publication excludes an empty PID read.
+            "  sh -c 'trap \"exit 0\" TERM INT; "
+            "printf \"%s\\n\" \"$$\" > \"$SWIFT_WORKER_PID.tmp\"; "
+            "mv \"$SWIFT_WORKER_PID.tmp\" \"$SWIFT_WORKER_PID\"; "
+            "while :; do sleep 1; done' &\n"
             "  while :; do sleep 1; done\n"
             "fi\n"
             "exit \"$SWIFT_EXIT_CODE\"\n",
             encoding="utf-8",
         )
         fake_swift.chmod(0o755)
+        products = root / "products"
+        (products / "PortavozTests.xctest").mkdir(parents=True)
+        fake_xcrun = binary / "xcrun"
+        fake_xcrun.write_text(
+            "#!/bin/sh\n"
+            "echo \"$3\" >> \"$XCTEST_LOG\"\n"
+            "echo 'Executed 1 test, with 0 failures (0 unexpected) in 0.1 (0.1) seconds'\n"
+            "exit \"${XCTEST_EXIT:-0}\"\n",
+            encoding="utf-8",
+        )
+        fake_xcrun.chmod(0o755)
 
         if fixture_mode != "real":
             fake_python = binary / "python3"
@@ -82,6 +113,11 @@ class RunSwiftTestsTests(unittest.TestCase):
                 "SWIFT_LOG": str(swift_log),
                 "SWIFT_EXIT_CODE": str(swift_exit_code),
                 "SWIFT_BLOCK": str(interrupt_after_start).lower(),
+                "SWIFT_WORKER_PID": str(root / "worker.pid"),
+                "SWIFT_WORKER_START_DELAY": str(worker_start_delay),
+                "SWIFT_BUILD_LOG": str(root / "build.log"),
+                "XCTEST_LOG": str(root / "xctest.log"),
+                "FAKE_PRODUCTS": str(products),
                 "TMPDIR": str(root),
                 "PORTAVOZ_TEST_WEB_FIXTURE_STARTUP_ATTEMPTS": str(
                     startup_attempts
@@ -90,6 +126,11 @@ class RunSwiftTestsTests(unittest.TestCase):
                 "PORTAVOZ_TEST_WEB_FIXTURE_DESCRIPTOR": "/tmp/foreign.json",
             }
         )
+        if workers is not None:
+            environment["PORTAVOZ_SWIFT_TEST_WORKERS"] = workers
+        environment["XCTEST_EXIT"] = str(xctest_exit)
+        if scope is not None:
+            environment["PORTAVOZ_SWIFT_TEST_SCOPE"] = scope
         command = [str(RUNNER), *arguments]
         with subprocess.Popen(
             command,
@@ -103,11 +144,15 @@ class RunSwiftTestsTests(unittest.TestCase):
             try:
                 if interrupt_after_start:
                     deadline = time.monotonic() + readiness_timeout
-                    while time.monotonic() < deadline and not swift_log.exists():
+                    worker_ready = False
+                    while time.monotonic() < deadline:
+                        if swift_log.exists() and self.worker_is_ready(root / "worker.pid"):
+                            worker_ready = True
+                            break
                         if process.poll() is not None:
                             break
                         time.sleep(0.02)
-                    self.assertTrue(swift_log.exists(), "Swift child did not start")
+                    self.assertTrue(worker_ready, "Swift worker did not become ready")
                     process.send_signal(signal.SIGTERM)
                 stdout, stderr = process.communicate(
                     timeout=10 if interrupt_after_start else completion_timeout
@@ -128,6 +173,17 @@ class RunSwiftTestsTests(unittest.TestCase):
             else None
         )
         return result, record, root
+
+    @staticmethod
+    def worker_is_ready(pid_path: Path) -> bool:
+        try:
+            worker_pid = int(pid_path.read_text(encoding="utf-8"))
+            if worker_pid <= 0:
+                return False
+            os.kill(worker_pid, 0)
+        except (FileNotFoundError, ValueError, ProcessLookupError):
+            return False
+        return True
 
     @staticmethod
     def stop_owned_process_group(process: subprocess.Popen[str]) -> None:
@@ -161,8 +217,20 @@ class RunSwiftTestsTests(unittest.TestCase):
         self.assertIsNotNone(process.returncode)
         self.assertTrue(process.stdout.closed)
         self.assertTrue(process.stderr.closed)
-        with self.assertRaises(ProcessLookupError):
-            os.killpg(process.pid, 0)
+        self.assert_process_group_released(process.pid)
+
+    def assert_process_group_released(self, group_id: int, timeout: float = 3):
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                os.killpg(group_id, 0)
+            except ProcessLookupError:
+                return
+            except PermissionError:
+                # macOS reports EPERM while an exited member awaits reaping.
+                pass
+            self.assertLess(time.monotonic(), deadline, "owned process group was not released")
+            time.sleep(0.02)
 
     def assert_fixture_was_cleaned(self, record: dict[str, object], root: Path):
         descriptor = record["descriptor"]
@@ -181,10 +249,9 @@ class RunSwiftTestsTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIsNotNone(record)
-        self.assertEqual(
-            record["arguments"],
-            ["--filter", "AskWebFixtureIntegrationTests"],
-        )
+        # A targeted run keeps plain swift test semantics.
+        self.assertEqual(record["arguments"], ["--filter", "AskWebFixtureIntegrationTests"])
+        self.assertFalse((root / "xctest.log").exists())
         descriptor = record["descriptor"]
         self.assertEqual(descriptor["schemaVersion"], 1)
         self.assertEqual(descriptor["generation"], "public-local-v1")
@@ -230,11 +297,19 @@ class RunSwiftTestsTests(unittest.TestCase):
         self.assertEqual(list(root.glob("portavoz-swift-tests.*")), [])
 
     def test_interrupt_stops_swift_fixture_and_scratch_state(self):
-        result, record, root = self.run_runner(interrupt_after_start=True)
+        for worker_start_delay in (0, 0.5):
+            with self.subTest(worker_start_delay=worker_start_delay):
+                result, record, root = self.run_runner(
+                    interrupt_after_start=True,
+                    worker_start_delay=worker_start_delay,
+                )
 
-        self.assertEqual(result.returncode, 143, result.stderr)
-        self.assertIsNotNone(record)
-        self.assert_fixture_was_cleaned(record, root)
+                self.assertEqual(result.returncode, 143, result.stderr)
+                self.assertIsNotNone(record)
+                self.assert_fixture_was_cleaned(record, root)
+                # A parallel worker shares the swift test process group and stops with it.
+                with self.assertRaises(ProcessLookupError):
+                    os.kill(int((root / "worker.pid").read_text()), 0)
 
     def test_invalid_startup_budget_fails_before_starting_children(self):
         result, record, root = self.run_runner(startup_attempts=0)
@@ -243,6 +318,41 @@ class RunSwiftTestsTests(unittest.TestCase):
         self.assertIsNone(record)
         self.assertIn("must be within 1...1500", result.stderr)
         self.assertEqual(list(root.glob("portavoz-swift-tests.*")), [])
+
+    def test_worker_count_is_bounded_and_forwarded(self):
+        for invalid in ("0", "33", "four"):
+            with self.subTest(workers=invalid):
+                result, record, root = self.run_runner(workers=invalid)
+                self.assertEqual(result.returncode, 64)
+                self.assertIsNone(record)
+                self.assertIn("PORTAVOZ_SWIFT_TEST_WORKERS", result.stderr)
+        result, record, _ = self.run_runner(workers="6")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIsNotNone(record)
+
+    def test_complete_run_builds_pools_xctest_classes_then_runs_swift_testing(self):
+        result, record, root = self.run_runner(arguments=("-Xswiftc", "-warnings-as-errors"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((root / "build.log").read_text().split(), ["build", "--build-tests", "-Xswiftc", "-warnings-as-errors"])
+        self.assertEqual((root / "xctest.log").read_text().split(), ["PortavozTests.AlphaTests"])
+        self.assertIn("XCTest classes: 1; cases: 1 of 1 listed", result.stdout)
+        self.assertEqual(record["arguments"],
+                         ["--skip-build", "-Xswiftc", "-warnings-as-errors", "--filter", "^(PortavozTests\\.GammaSuite)/"])
+
+    def test_a_scope_pools_only_the_matching_listed_tests(self):
+        result, record, root = self.run_runner(scope=r"^PortavozTests\.(AlphaTests)/")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((root / "xctest.log").read_text().split(), ["PortavozTests.AlphaTests"])
+        self.assertIsNone(record, "no Swift Testing suite is in scope")
+        result, record, _ = self.run_runner(scope=r"^PortavozTests\.(MissingTests)/")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("matched no listed test", result.stderr)
+
+    def test_a_failing_xctest_class_fails_the_launcher_after_swift_testing_runs(self):
+        result, record, root = self.run_runner(xctest_exit=1)
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIsNotNone(record)
+        self.assertIn("FAILED XCTest class: PortavozTests.AlphaTests", result.stdout)
 
     def test_failed_readiness_assertion_releases_processes_and_pipes(self):
         self.assert_runner_failure_releases_processes(

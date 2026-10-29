@@ -171,8 +171,7 @@ extension BenchMode {
     private static func makeAskBenchmark(
         services: AppServices
     ) async throws -> AskResourceBenchmark {
-        guard #available(macOS 26.0, *),
-              FoundationModelSummaryProvider.unavailabilityReason() == nil
+        guard FoundationModelSummaryProvider.unavailabilityReason() == nil
         else {
             throw BenchAskResourceError.assetsNotReady
         }

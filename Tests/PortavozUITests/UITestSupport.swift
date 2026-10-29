@@ -85,10 +85,12 @@ extension XCUIApplication {
         seedAskTopicMemory: Bool = false,
         seedBackgroundWork: Bool = false,
         enableBackgroundWorkFixture: Bool = false,
-        simulateSequoiaCapabilities: Bool = false,
+        simulateNoAppleIntelligence: Bool = false,
         simulateRecordingStartFailure: Bool = false,
         simulateSystemCaptureStall: Bool = false,
         simulateSystemAudioClipping: Bool = false,
+        simulateCallEnded: Bool = false,
+        simulateCallEndedTimeout: Bool = false,
         simulateLiveTranscriptionAttach: Bool = false,
         simulateLiveTranscriptBrowsing: Bool = false,
         simulateLiveApuntador: Bool = false,
@@ -151,8 +153,8 @@ extension XCUIApplication {
         if enableBackgroundWorkFixture {
             app.launchArguments.append("-enable-background-work-fixture")
         }
-        if simulateSequoiaCapabilities {
-            app.launchArguments.append("-simulate-sequoia-capabilities")
+        if simulateNoAppleIntelligence {
+            app.launchArguments.append("-simulate-no-apple-intelligence")
         }
         if simulateRecordingStartFailure {
             app.launchArguments.append("-simulate-recording-start-failure")
@@ -162,6 +164,12 @@ extension XCUIApplication {
         }
         if simulateSystemAudioClipping {
             app.launchArguments.append("-simulate-system-audio-clipping")
+        }
+        if simulateCallEnded || simulateCallEndedTimeout {
+            app.launchArguments.append("-simulate-call-ended")
+        }
+        if simulateCallEndedTimeout {
+            app.launchArguments.append("-simulate-call-ended-timeout")
         }
         if simulateLiveTranscriptionAttach {
             app.launchArguments.append("-simulate-live-transcription-attach")

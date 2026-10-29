@@ -160,7 +160,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         withoutSummary: Bool = false,
         staleDerived: Bool = false,
         commitmentInbox: Bool = false,
-        simulateSequoiaCapabilities: Bool = false,
+        simulateNoAppleIntelligence: Bool = false,
         unnamedSpeaker: Bool = false,
         aiSuggestions: Bool = false,
         abandonedSummary: Bool = false,
@@ -180,7 +180,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             seedWithoutSummary: withoutSummary,
             seedStaleDerived: staleDerived,
             seedCommitmentInbox: commitmentInbox,
-            simulateSequoiaCapabilities: simulateSequoiaCapabilities,
+            simulateNoAppleIntelligence: simulateNoAppleIntelligence,
             simulateSkillEffectFailureOnce: simulateSkillEffectFailureOnce,
             simulateApuntadorRefreshSuccess: simulateApuntadorRefreshSuccess)
         if justRecorded {
@@ -304,25 +304,27 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testSequoiaApuntadorRefreshPreservesStaleAnswers() throws {
+    func testNoAppleIntelligenceApuntadorRefreshPreservesStaleAnswers() throws {
         let app = try launchOnSeededMeeting(
             staleDerived: true,
-            simulateSequoiaCapabilities: true)
+            simulateNoAppleIntelligence: true)
         defer { finishUITestApplication(app) }
 
         selectRailTab("apuntador", in: app)
         let refresh = app.buttons["detail-apuntador-refresh"]
         XCTAssertTrue(
             refresh.waitForStableFrame(timeout: 10),
-            "Sequoia must expose the explicit action without pretending it can run")
+            "a Mac without Apple Intelligence must expose the explicit action without pretending it can run")
         refresh.click()
 
         let expectedError = UITestLocale.environmentLocale == "es"
-            ? "Volver a comprobar las respuestas del Apuntador requiere macOS 26 y Apple Intelligence."
-            : "Re-checking Apuntador answers requires macOS 26 and Apple Intelligence."
+            ? "El Apuntador no está disponible: "
+                + "Apple Intelligence está desactivado (Ajustes del Sistema → Apple Intelligence y Siri)"
+            : "Apuntador is unavailable: "
+                + "Apple Intelligence is turned off (System Settings → Apple Intelligence & Siri)"
         XCTAssertTrue(
             app.staticTexts[expectedError].waitForExistenceFast(timeout: 10),
-            "the unsupported OS must explain the exact model requirement")
+            "a Mac without Apple Intelligence must explain the exact model requirement")
         XCTAssertTrue(
             app.control(
                 withIdentifier:
@@ -693,10 +695,13 @@ final class MeetingDetailUITests: PortavozUITestCase {
         nameDismiss.click()
         XCTAssertFalse(app.buttons["detail-name-suggestion-S1"].exists)
 
+        let options = app.control(withIdentifier: "player-options")
+        XCTAssertTrue(options.waitForExistenceFast(timeout: 10))
+        options.click()
         XCTAssertTrue(
-            app.control(withIdentifier: "player-clear-playback")
-                .waitForExistenceFast(timeout: 10),
+            app.menuItems["player-clear-playback"].waitForExistenceFast(timeout: 5),
             "two-channel playback must expose the reversible clear mix")
+        typeKey(.escape, modifierFlags: [], in: app)
         attachScreenshot(of: app, named: "dismissible-ai-suggestions-and-clear-playback")
     }
 
@@ -741,10 +746,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador() throws {
+    func testNoAppleIntelligenceSummaryFailureOpensExactSetupAndExplainsApuntador() throws {
         let app = try launchOnSeededMeeting(
             withoutSummary: true,
-            simulateSequoiaCapabilities: true,
+            simulateNoAppleIntelligence: true,
             summaryEngine: "appleOnDevice")
         defer { finishUITestApplication(app) }
         XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
@@ -767,7 +772,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "the recovery action must land directly in Intelligence Settings")
         XCTAssertTrue(
             app.control(withIdentifier: "settings-summary-apple-unavailable").exists,
-            "the selected Apple engine must explain that it cannot run on Sequoia")
+            "the selected Apple engine must explain that Apple Intelligence is off")
         if UITestLocale.environmentLocale == "es" {
             let localizedRecommendations = [
                 "Apple Intelligence: resúmenes en el dispositivo, gratis y rápidos.",
@@ -779,7 +784,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 localizedRecommendations.contains { app.staticTexts[$0].exists },
                 "the recommendation must cross the app localization boundary")
         }
-        attachScreenshot(of: app, named: "sequoia-summary-actionable-settings")
+        attachScreenshot(of: app, named: "no-apple-intelligence-summary-actionable-settings")
 
         XCTAssertTrue(
             app.finishSettingsSearchEditing(timeout: 5),
@@ -789,11 +794,11 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let status = app.control(withIdentifier: "settings-apuntador-status")
         XCTAssertTrue(
             status.waitForExistenceFast(timeout: 5),
-            "the Intelligence pane must explain Apuntador's cross-version capability")
+            "the Intelligence pane must explain Apuntador's capability without Apple Intelligence")
         let toggle = app.control(withIdentifier: "settings-apuntador-enabled")
         XCTAssertTrue(
             toggle.exists,
-            "Sequoia must expose the bundled detector instead of a dead platform gate")
+            "a Mac without Apple Intelligence must expose the bundled detector instead of a dead gate")
         let expectedDetectionStatus = UITestLocale.environmentLocale == "es"
                 ? "Apuntador: solo preguntas"
                 : "Apuntador: questions only"
@@ -804,7 +809,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 + "saw '\(detectionStatus)'")
         let cause = app.control(withIdentifier: "settings-apuntador-status-cause")
         XCTAssertTrue(cause.exists, "one cause line must follow the status")
-        attachScreenshot(of: app, named: "sequoia-apuntador-requirements")
+        attachScreenshot(of: app, named: "no-apple-intelligence-apuntador-requirements")
     }
 
     @MainActor
@@ -1846,19 +1851,52 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "detail-player-section").exists,
             "the complete playback dock must retain one accessible section boundary")
+        XCTAssertTrue(app.buttons["player-skip-back"].exists)
+        XCTAssertTrue(app.buttons["player-skip-forward"].exists)
+        XCTAssertTrue(app.control(withIdentifier: "player-speed").exists)
+        XCTAssertTrue(app.control(withIdentifier: "player-waveform").exists)
+        let options = app.control(withIdentifier: "player-options")
+        XCTAssertTrue(options.exists, "skip silence, echo and clips live in the options menu")
+        options.click()
         XCTAssertTrue(
-            app.control(withIdentifier: "player-only-my-voice").exists,
-            "the player must offer the 'only my voice' filter")
+            app.menuItems["player-skip-silence"].waitForExistenceFast(timeout: 5),
+            "the player must offer skipping dead time")
+        typeKey(.escape, modifierFlags: [], in: app)
         XCTAssertTrue(
             app.control(withIdentifier: "detail-compress-audio").exists,
             "raw seeded meeting audio must keep its compression action")
+        let voices = app.control(withIdentifier: "player-voice-focus")
+        XCTAssertTrue(voices.exists, "a meeting with two voices offers per-speaker playback")
+        voices.click()
+        app.menuItems["player-voice-Me"].click()
         let currentTime = app.control(withIdentifier: "player-current-time")
         let initialTime = String(describing: currentTime.value)
         play.click()
         XCTAssertTrue(
             currentTime.waitForValueChange(from: initialTime, timeout: 5),
             "playback must advance instead of merely accepting the click")
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 15) { currentTime.value as? String == "0:00" },
+            "focused playback must jump past the other voice and finish instead of stalling on the jump")
         attachScreenshot(of: app, named: "meeting-detail-waveform")
+    }
+
+    @MainActor
+    func testClickingALineOfTextJumpsThere() throws {
+        let app = try launchOnSeededMeeting()
+        defer { finishUITestApplication(app) }
+
+        XCTAssertTrue(app.buttons["player-play-pause"].waitForExistenceFast(timeout: 15))
+        let line = app.staticTexts["El rollout del modelo queda para el viernes."]
+        XCTAssertTrue(line.waitForExistenceFast(timeout: 10))
+        line.click()
+
+        let currentTime = app.control(withIdentifier: "player-current-time")
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 5) {
+                ["0:03", "0:04", "0:05"].contains(currentTime.value as? String ?? "")
+            },
+            "clicking the words of a line, not only its time, must jump to that moment")
     }
 
     /// The export menu is the only path to subtitle files, so both the SRT
@@ -1984,13 +2022,16 @@ final class MeetingDetailUITests: PortavozUITestCase {
 
         XCTAssertTrue(app.buttons["player-play-pause"].waitForExistenceFast(timeout: 15))
         app.buttons["player-play-pause"].click()  // play → the playhead moves
-        app.buttons["clip-mark-start"].click()
+        let options = app.control(withIdentifier: "player-options")
+        options.click()
+        app.menuItems["clip-mark-start"].click()
         let currentTime = app.control(withIdentifier: "player-current-time")
         let clipStartTime = String(describing: currentTime.value)
         XCTAssertTrue(
             currentTime.waitForValueChange(from: clipStartTime, timeout: 5),
             "the playhead must advance before marking a non-empty clip")
-        app.buttons["clip-mark-end"].click()  // end after start → valid range
+        options.click()
+        app.menuItems["clip-mark-end"].click()  // end after start → valid range
 
         XCTAssertTrue(
             app.buttons["clip-export"].waitForExistenceFast(timeout: 5),

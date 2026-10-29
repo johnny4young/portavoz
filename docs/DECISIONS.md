@@ -21901,3 +21901,250 @@ the meeting processing and failing does not make it need attention. Missing
 languages or an unsupported pair end the job with that reason and point to the
 Settings download; a line that times out retries the job once. A translated
 reading is read-only, because corrections edit the original.
+
+## D596 — Seed the Swift build cache per `main` commit and scope the iOS lane
+
+**Context:** D557's single immutable seed per build identity changed only with
+dependencies, toolchain or runner image, so it trailed `main` by days. Every
+pull request, including documentation-only and Python-only ones, recompiled
+about 1,280 first-party files (four to seven minutes) despite a cache hit. The
+iOS portability compile (seven to nine minutes) also ran on every pull request
+and held a fourth macOS runner, although most changes touch only the app shell,
+the CLI or tests.
+
+**Decision:** Keep D557's identity, cold `main`, fingerprint-verified freshness,
+size gate and test policy, but save one seed per successful `main` commit under
+that identity and let pull requests restore the newest seed through the exact
+identity prefix. A lookup-only probe on `main` skips saving a commit that already
+has a seed. A seed never crosses identities, and pull requests still never save.
+Each `main` run uploads its roughly 2 GB graph, and repository cache eviction,
+not a retention script, bounds the copies within the existing quota. The iOS
+portability lane keeps running on every `main` push and manual run; a pull
+request runs it only when the diff (both sides of a rename) touches the manifest
+closure of its compiled targets, the package manifest or lock, or the lane's own
+runner, selector, toolchain verifier or workflow. The closure is derived from
+`Package.swift` and the runner's target list, so a new dependency edge widens
+the scope without a second list. The selector accepts only literal local
+dependencies and `.product` entries; any other form, an unreadable manifest or
+an unreadable diff runs the lane.
+
+**Consequences:** A pull request recompiles only what changed since the newest
+saved `main` seed, which can trail `main` when recent runs were cancelled, and a skipped iOS lane reports success to required checks while
+`main` keeps the complete signal. Path filters for the macOS test lanes remain
+out of scope: Swift tests still read documentation, scripts and workflows, so a
+docs-only change can still fail them.
+
+## D597 — Pull requests run feature UI evidence or smoke canaries; the full catalog runs nightly
+
+**Context:** Pull requests waited 33 to 45 minutes for XCUITest on one hosted
+Mac. Any lower-layer Swift change fell back to almost every feature scope (a
+processing-policy edit selected 184 of 186 tests), as did localization and the
+dependency lock, although unit tests already own that behavior and the selector
+cannot prove which journey a lower layer reaches.
+
+**Decision:** Known presentation files and lower-layer files with a proven owner
+keep their feature-level selectors, a changed UI-test file keeps its class, and
+shared-harness, fixture, build, language-switch and unknown non-Swift changes
+keep the complete English catalog. Lower-layer files without a proven owner,
+unmapped app files, `Package.resolved` and the string catalog now select
+seventeen smoke canaries across the main surfaces. The complete English catalog
+runs every night on `main` (skipped when that commit already passed) and on
+demand, split into three shards balanced greedily by the runtime budget and
+classified like pull-request lanes, together with the interruption controls.
+The release gate is unchanged, and the release recipe requires a green nightly
+run on the released commit.
+
+**Consequences:** A typical pull request runs a few minutes of XCUITest instead
+of the whole suite. A UI regression caused by a lower layer outside the
+canaries can reach `main` and is caught by the next nightly run instead of the
+pull request. A red nightly run is a release blocker until it is fixed; a known
+hosted-automation outage is reported as an advisory, not a product failure.
+
+## D598 — Run XCTest classes in a bounded process pool
+
+**Context:** The complete package suite ran about 3,800 XCTest cases one after
+another, roughly ten of the seventeen minutes of the hosted build-and-test lane
+on a three-core runner. SwiftPM's `--parallel` starts one process per test
+method; on the hosted runner that launch cost erased the gain (11.3 minutes for
+XCTest), and locally it was slower than serial.
+
+**Decision:** A complete `scripts/run-swift-tests.sh` run builds once, lists the
+tests, runs each XCTest class in its own `xctest` process from a pool of three
+(the hosted core count, overridable by `PORTAVOZ_SWIFT_TEST_WORKERS`), and then
+runs the Swift Testing suites through an anchored filter. A class keeps its
+cases serial in one process, as before; classes no longer share a process. The
+run fails when a class fails, prints no summary, or the executed XCTest total
+differs from the listed total. A targeted run keeps plain `swift test`.
+Concurrent processes share the on-disk `UserDefaults.standard` domain, so tests
+that persist preferences use their own suite. Cancellation stops the launcher's
+whole process group.
+
+**Consequences:** On a development Mac the complete gate fell from 320 to 154
+seconds with every listed case executed. A test that relied on another class
+running first in the same process now fails visibly and is fixed rather than
+serialized again.
+
+## D599 — Tahoe-only support and the iOS 26 floor
+
+**Context:** Releases after 1.2.0 deploy to macOS 26 Tahoe, and every release
+gate dropped its Sequoia receipts, yet the source still carried a "requires
+macOS 26" capability state, macOS 14 and 15 fallbacks (a scroll bridge, a
+Spotlight document index, a legacy AAC export completion), Sequoia copy, a
+`-simulate-sequoia-capabilities` launch argument and the tests for all of
+them. The dormant iOS surface still compiled for iOS 17, which kept roughly a
+hundred `#available` guards alive.
+
+**Decision:** Support macOS 26 and later only and raise the iOS floor to 26.
+Remove every availability check below those floors with its fallback branch,
+the "requires macOS 26" state across ApplicationKit, the app and the CLI, and
+its Sequoia copy. A Mac where Apple Intelligence is off or ineligible is a
+different, still supported case: it keeps every fallback (Ollama, the built-in
+model, question-only Apuntador cards) and its own copy, and
+`-simulate-no-apple-intelligence` replaces the old argument in UI tests.
+
+**Consequences:** The capability model has two states instead of three, and
+the code and tests for unreachable OS branches are gone. The cross-host
+exact-path matrix already requires macOS 26 only.
+
+## D600 — Documentation-only pull requests run only the Swift tests that read the checkout
+
+**Context:** About 380 Swift assertions and the English-prose scan read
+documentation, scripts and workflows, so a documentation-only pull request
+could not skip the macOS test lane without letting those tests break on `main`.
+It still ran all of roughly 3,900 tests.
+
+**Decision:** On a pull request, `scripts/swift_test_scope.py` returns an
+anchored class pattern when every changed path is documentation, the website,
+Python tooling under `Tests/Tooling`, an issue template, the license or a root
+Markdown file. The pattern names every test class declared in a Swift test
+source that locates the checkout (`#filePath` or a repository root), and the
+launcher keeps only those listed tests before the class pool runs. Any other
+path, every `main` push and manual run, an empty diff, an unreadable diff or a
+scan that finds no reader runs the complete suite.
+
+**Consequences:** A documentation pull request runs about 890 tests instead of
+about 3,900 while every test that can read the changed files still runs. The
+assertions keep living in Swift; a later move to Python tooling could narrow the
+lane further.
+
+## D601 — UI evidence for the dependency lock, copy and resources fails closed
+
+**Context:** D597 sent `Package.resolved` and the string catalog to the
+seventeen smoke canaries, and a nightly shard that ended as a hosted advisory
+still reported success. A dependency bump can change any rendered surface, a
+copy change breaks exactly the tests that quote it, non-Swift resources fell
+through to whatever owner their module happened to have, and a green nightly
+run without verified evidence cannot back a release.
+
+**Decision:** The dependency lock selects the complete English catalog. The
+string catalog compares English keys between the two revisions and selects the
+UI tests that quote a changed key, or a literal fragment of it, plus the
+canaries; Spanish-only edits select nothing because `LocalizationTests` owns
+them, and an unreadable diff selects everything. Lower-layer resources keep a
+proven owner, other resources and app resources select the complete catalog,
+and the research-only targets that the app never links select nothing. Every
+scheduled nightly run executes the catalog, and a shard succeeds only when its
+classifier reports verified, passed evidence.
+
+**Consequences:** Dependency bumps pay for one complete English pass on the pull
+request. Copy edits run the journeys that assert them instead of an unrelated
+sample. A hosted-automation outage turns the nightly run red, so the release
+recipe's green-nightly rule now means verified evidence; the run is
+re-dispatched instead of being accepted as an advisory.
+
+## D602 — Measure speaker echo offline instead of cancelling it live
+
+**Context:** In a 169-minute meeting recorded on MacBook speakers, the raw
+microphone carried the remote side 75 ms late. Eighteen remote rows appeared a
+second time as "Me", three remote sentences existed only in the microphone
+transcript because the system transcript missed them, and the summary assigned
+remote action items to the user. The word-level `MicBleedFilter` failed because
+that stretch of the system channel was transcribed in German. Live Apple voice
+processing remains excluded by D125, and an offline linear (NLMS) canceller
+reached only ~4 dB on this audio because the built-in speakers apply
+level-dependent processing.
+
+**Decision:** After capture, `MicrophoneEchoAnalysis` re-reads both channel
+files and models the echo per frequency band in magnitude only, with a
+measured delay, learned per-band gains and a short tail. It produces a
+`MicrophoneEchoProfile` of per-frame microphone and near-end energy, or nil
+when the channels are not coupled. Post-capture transcription and Refine pass
+microphone rows through `SpeakerEchoFilter` before `MicBleedFilter`. A row that
+is at least 90% predicted echo is dropped when the system transcript covers it,
+and otherwise moves to the system channel. Any failure degrades to the previous
+text-only filtering. Capture files are never rewritten.
+
+**Consequences:** "Me" stops claiming remote speech on speakers in any language,
+and remote speech that only the microphone transcribed is kept and attributed
+to a remote speaker. The capture stays observational and the original
+microphone remains the evidence. Live captions and the playback mix still use
+the raw microphone; an echo-suppressed playback track is a separate change.
+
+## D603 — Refine decodes only speech, one supported language per window
+
+**Context:** On a 169-minute meeting with a six-minute call, Refine ran
+WhisperKit's energy chunker over the whole file. Every silent 22.5 s chunk was
+decoded: the system channel gained 435 "Thank you." rows and the microphone
+channel invented Japanese, Portuguese and Russian phrases. WhisperKit 1.1.1
+never computes its no-speech probability, so nothing filtered them. Automatic
+language detection also re-ran on every temperature fallback, which rendered
+one English passage in German. Refine took 11.5 minutes for six minutes of
+speech.
+
+**Decision:** Batch Whisper (Refine, audio import, CLI) segments each channel
+with Silero, packs the regions into windows of at most 28 s and decodes only
+those windows, each with its own offset so timestamps stay exact. Automatic
+mode detects each window's language once at temperature 0 and limits it to
+English and Spanish; other detections take the channel's majority supported
+language. The window then decodes with that language fixed. Subtitle speaker
+labels and dialogue dashes are stripped. Refine and import install the ~1 MB
+Silero model with the same on-demand consent as Whisper; without it, or when
+detection fails, the previous whole-file path runs unchanged.
+
+**Consequences:** Silence produces no rows and no decoding time. A meeting in a
+language other than English or Spanish needs a fixed transcription language
+for Refine. The live lane, post-capture Parakeet and talk-time metrics are
+unchanged.
+
+## D604 — A quiet call asks whether it ended, then stops the recording
+
+**Context:** A six-minute call was followed by 2 h 43 min of recorded silence
+because nobody pressed Stop. D123 only promotes Stop when the system tap stops
+delivering frames; a finished call keeps delivering silent frames, so nothing
+fired. The quiet tail then fed hallucinated transcript rows and made playback
+hard to navigate.
+
+**Decision:** `CallEndDetector` (PortavozCore) reads the persisted level of
+both channels in captured time. After at least 10 s of remote sound, three
+minutes with both channels quiet ask "Did the call end?" in the recording view,
+the HUD and, when notifications are already allowed, a macOS notification with
+Stop recording and Keep recording. An unanswered question stops the recording
+through the normal Stop path five minutes later. Remote or nearby speech
+cancels the question; Keep recording silences it until the remote side is
+heard again. Notification permission is never requested for this.
+
+**Consequences:** A forgotten recording keeps at most about eight minutes of
+silence after a call. A recording made only through the microphone never asks.
+A call with more than three quiet minutes on both sides shows the question,
+and an unattended one stops; D123's outage nudge is unchanged.
+
+## D605 — The player compresses dead time and plays one voice at a time
+
+**Context:** A 169-minute recording held six minutes of conversation. The
+waveform spread those six minutes over a sliver, Skip silence judged silence
+from 600 peak buckets (about 17 s each) and stayed off by default, and the
+controls ("Only my voice", "Voice only", "Start"/"End" with full-screen icons)
+did not say what they did.
+
+**Decision:** `PlaybackTimeline` uses the transcript, not the volume: gaps of
+at least 20 s between transcribed phrases are dead time, drawn no longer than
+a tenth of the conversation and labelled with their real length. Skip silence
+is on by default and jumps over them. The transport becomes one row: play,
+back/forward 15 s, time, speed, a "Play: Everyone" menu over any speaker with
+turns, and an options menu with Skip silence, Reduce echo and the clip marks.
+
+**Consequences:** Long silences no longer hide the conversation or slow review,
+while pauses under 20 s keep their natural length. Without a transcript the
+scrubber stays linear. "Only my voice" generalizes to any speaker; clip marks
+and echo reduction move one click deeper.
+

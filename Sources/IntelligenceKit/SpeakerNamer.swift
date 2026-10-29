@@ -102,7 +102,6 @@ import FoundationModels
 /// Proposes real names for diarization labels (S1, S2…) using only what
 /// the transcript itself proves: self-introductions and being addressed
 /// by name around their turns. On-device (M6, "1-tap speaker→name").
-@available(macOS 26.0, iOS 26.0, *)
 public struct SpeakerNamer: Sendable {
     public init() {}
 
@@ -170,7 +169,6 @@ public struct SpeakerNamer: Sendable {
     }
 }
 
-@available(macOS 26.0, iOS 26.0, *)
 @Generable(description: "Speaker label to possible real-name mappings for user review")
 struct GeneratedNameSuggestions {
     @Guide(
@@ -182,7 +180,6 @@ struct GeneratedNameSuggestions {
     var suggestions: [GeneratedNameSuggestion]
 }
 
-@available(macOS 26.0, iOS 26.0, *)
 @Generable(description: "One proposed label→name mapping")
 struct GeneratedNameSuggestion {
     @Guide(description: "The speaker label exactly as it appears, e.g. S1")

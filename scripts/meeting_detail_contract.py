@@ -279,6 +279,7 @@ DEFAULT_FEATURE_OWNERSHIP = (
     {
         "feature": "playback-and-clips",
         "tests": [
+            "testClickingALineOfTextJumpsThere",
             "testClipMarkingRevealsExport",
             "testPlayerExposesSkipAndOnlyMyVoice",
         ],
@@ -388,7 +389,7 @@ DEFAULT_FEATURE_OWNERSHIP = (
         "feature": "summary-and-structures",
         "tests": [
             "testMostRecentRecipeRemainsVisibleAfterReload",
-            "testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador",
+            "testNoAppleIntelligenceSummaryFailureOpensExactSetupAndExplainsApuntador",
             "testStructureMenuOffersSeededTemplates",
         ],
         "sourceAnchors": [
@@ -407,7 +408,7 @@ DEFAULT_FEATURE_OWNERSHIP = (
         "tests": [
             "testCorrectedTranscriptMarksDerivedArtifactsStale",
             "testExplicitApuntadorRefreshUsesCorrectedTranscript",
-            "testSequoiaApuntadorRefreshPreservesStaleAnswers",
+            "testNoAppleIntelligenceApuntadorRefreshPreservesStaleAnswers",
             "testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo",
             "testTranscriptStructuralCorrectionsSplitMergeHideAndRestoreEvidence",
         ],

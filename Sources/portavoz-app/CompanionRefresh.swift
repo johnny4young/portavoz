@@ -11,7 +11,6 @@ import PortavozCore
 /// (`RecordingController.detectClosedRow`): only the participants' channel,
 /// whole interventions (not raw segments), never noise, only real questions or
 /// an "asked you" ping, and context drawn from BOTH sides of the conversation.
-@available(macOS 26.0, *)
 enum CompanionRefresh {
     struct Result {
         let artifacts: [CompanionGenerationArtifact]
@@ -161,7 +160,6 @@ enum CompanionTranscriptContext {
 
 }
 
-@available(macOS 26.0, *)
 private extension CompanionRefresh {
 
     /// Coalesces the participants' (system-channel) segments into interventions:

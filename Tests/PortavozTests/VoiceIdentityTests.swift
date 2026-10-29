@@ -567,7 +567,6 @@ final class VoiceIdentityIntegrationTests: XCTestCase {
         try XCTSkipUnless(
             ProcessInfo.processInfo.environment["PORTAVOZ_MODEL_TESTS"] == "1",
             "set PORTAVOZ_MODEL_TESTS=1 to run")
-        guard #available(macOS 26.0, *) else { throw XCTSkip("needs macOS 26") }
         if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
             throw XCTSkip("Apple Intelligence unavailable: \(reason)")
         }
