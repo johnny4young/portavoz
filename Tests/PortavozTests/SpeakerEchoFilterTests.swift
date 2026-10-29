@@ -11,6 +11,12 @@ final class SpeakerEchoFilterTests: XCTestCase {
         microphoneEnergy: Array(repeating: 1, count: 40),
         nearEndEnergy: (0..<40).map { $0 < 20 ? 0.01 : 0.9 })
 
+    /// All speaker echo, measured only through 10 s.
+    private let shortProfile = MicrophoneEchoProfile(
+        frameDuration: 0.5,
+        microphoneEnergy: Array(repeating: 1, count: 20),
+        nearEndEnergy: Array(repeating: 0.01, count: 20))
+
     func testEchoAlreadyInTheSystemTranscriptIsDropped() {
         let system = [segment("Wir haben keine Site-ID", .system, 2, 6)]
         let microphone = [segment("We don't have a site ID", .microphone, 2.1, 6.1)]
@@ -64,6 +70,43 @@ final class SpeakerEchoFilterTests: XCTestCase {
             microphone: [late], system: [], profile: profile)
 
         XCTAssertEqual(resolution.microphone.map(\.id), [late.id])
+    }
+
+    func testPartiallyMeasuredTailStaysOnTheMicrophoneWithOrWithoutSystemCoverage() {
+        let tail = segment("I will follow up after the call", .microphone, 9, 12)
+
+        XCTAssertNil(shortProfile.echoAttenuationDB(from: 9, to: 12))
+        for system in [[], [segment("Other words", .system, 9, 12)]] {
+            let resolution = SpeakerEchoFilter.resolve(
+                microphone: [tail], system: system, profile: shortProfile)
+
+            XCTAssertEqual(resolution.microphone.count, 1)
+            XCTAssertEqual(resolution.microphone.first?.text, tail.text)
+            XCTAssertEqual(resolution.microphone.first?.startTime, tail.startTime)
+            XCTAssertEqual(resolution.microphone.first?.endTime, tail.endTime)
+            XCTAssertEqual(resolution.microphone.first?.id, tail.id)
+            XCTAssertEqual(resolution.microphone.first?.channel, .microphone)
+            XCTAssertTrue(resolution.recoveredSystem.isEmpty)
+        }
+    }
+
+    func testExactMeasurementEndCanStillResolveEcho() throws {
+        let echo = segment("Please follow up", .microphone, 9, 10)
+
+        XCTAssertEqual(
+            try XCTUnwrap(shortProfile.echoAttenuationDB(from: 9, to: 10)), 20, accuracy: 1e-6)
+        XCTAssertNil(shortProfile.echoAttenuationDB(from: 9, to: Double(10).nextUp))
+        let recovered = SpeakerEchoFilter.resolve(
+            microphone: [echo], system: [], profile: shortProfile)
+        XCTAssertTrue(recovered.microphone.isEmpty)
+        XCTAssertEqual(recovered.recoveredSystem.first?.id, echo.id)
+        XCTAssertEqual(recovered.recoveredSystem.first?.channel, .system)
+
+        let dropped = SpeakerEchoFilter.resolve(
+            microphone: [echo], system: [segment("Other words", .system, 9, 10)],
+            profile: shortProfile)
+        XCTAssertTrue(dropped.microphone.isEmpty)
+        XCTAssertTrue(dropped.recoveredSystem.isEmpty)
     }
 
     func testAttenuationReadsTheEnergyShareInDecibels() throws {

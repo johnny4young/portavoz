@@ -21,10 +21,12 @@ public struct MicrophoneEchoProfile: Equatable, Sendable {
     }
 
     /// Decibels of microphone energy explained by speaker echo over a time
-    /// range, or nil when the range holds no measured microphone signal.
+    /// range, or nil when the full range is not measured or holds no microphone signal.
     public func echoAttenuationDB(from start: TimeInterval, to end: TimeInterval) -> Double? {
-        guard end > start, !microphoneEnergy.isEmpty else { return nil }
-        let first = max(0, Int((start / frameDuration).rounded(.down)))
+        guard start >= 0, end > start, !microphoneEnergy.isEmpty,
+            end <= Double(microphoneEnergy.count) * frameDuration
+        else { return nil }
+        let first = Int((start / frameDuration).rounded(.down))
         let last = min(microphoneEnergy.count, Int((end / frameDuration).rounded(.up)))
         guard first < last else { return nil }
         var microphone = 0.0
