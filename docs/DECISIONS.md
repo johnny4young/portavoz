@@ -22226,7 +22226,10 @@ neutral, which the evaluator would have credited on gold abstentions. The
 arm now checks that the language's schemes are listed and tag a probe verb,
 and otherwise abstains as `runtime-unavailable`. The evaluator scores that,
 like `missing-context` and `low-confidence`, as a refusal, so a degraded host
-cannot look accurate. The tests request the assets before classifying.
+cannot look accurate. The runner cannot download the assets either (a request
+fails after about five minutes). Hosted CI therefore checks only that Spanish
+cases abstain as `runtime-unavailable`; their linguistic expectations run on
+hosts with the assets, and the sealed run must use one.
 
 The policy was tuned only on the 20 development cases and on original
 sentences in `StatedPriorityClassifierTests`. It is frozen at the commit that
@@ -22239,11 +22242,12 @@ supersession policy as statements, starting after the answer and retaining both
 question and answer in claim evidence. An immediate retraction withdraws the
 answer, a later same-target demotion replaces it, and assistant-addressed text
 cannot retract or supersede it. Original synthetic regressions, not the sealed
-corpus, exposed this missing path. This changes the policy: the commit that
-introduces this paragraph is the revised freeze identity and must be recorded
-by exact SHA before any sealed run of this revision. The original freeze and
-its scorecard below describe the earlier policy; no sealed result transfers
-to this revision. The evaluation split remains sealed in this change.
+corpus, exposed this missing path. This changes the policy: the final integrated
+commit containing this revision must be recorded by exact SHA as its revised
+freeze identity before any sealed run. Validation from a different tree does
+not qualify that identity. The original freeze and its scorecard below describe
+the earlier policy; no sealed result transfers to this revision. The evaluation
+split remains sealed in this change.
 
 **Development scorecard:** 20/20 correct (10/10 per language), 16 decided,
 0 unsafe promotions (Wilson 95% upper bound 0.215 over 14 non-priorities),

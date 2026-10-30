@@ -1,4 +1,5 @@
 import Foundation
+import IntelligenceKit
 import Testing
 @testable import PortavozCLIKit
 
@@ -59,8 +60,7 @@ struct StatedPriorityBaselineBenchmarkTests {
             == "a6580d3516c4575713ad79183bf384adf7846bd815babb01a1985fef2a08dc4e")
     }
 
-    @Test func developmentRoundTripEmitsGroundedObservations() async throws {
-        _ = await StatedPriorityTaggerAssets.ready.value
+    @Test func developmentRoundTripEmitsGroundedObservations() throws {
         let fixture = try StatedPriorityQualityFixture.load(from: Self.fixtureURL)
         let document = StatedPriorityBaselineBenchmark.observations(fixture: fixture, split: "development")
         let development = try Self.developmentCases()
@@ -70,9 +70,12 @@ struct StatedPriorityBaselineBenchmarkTests {
         #expect(document.observations.map(\.id) == development.map(\.id))
         for (observation, raw) in zip(document.observations, development) {
             let texts = Dictionary(uniqueKeysWithValues: raw.captions.map { ($0.id, $0.text) })
+            let taggable = StatedPriorityTaggerAssets.available(
+                for: raw.captions.map { StatedPriorityCaption(id: $0.id, text: $0.text) })
+            // Only a case whose language has no tagger assets may, and must, report the runtime missing.
+            #expect((observation.reason == "runtime-unavailable") == !taggable, "\(raw.id) tagger availability")
             if observation.decision == "abstain" {
                 #expect(observation.reason != nil && observation.target == nil && observation.evidence.isEmpty)
-                #expect(observation.reason != "runtime-unavailable", "\(raw.id) ran without tagger assets")
                 continue
             }
             #expect(observation.reason == nil)

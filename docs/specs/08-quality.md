@@ -4380,9 +4380,13 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   retraction, named and elided demotion, correction to another target, and
   assistant-addressed demotion or retraction, within one caption and across
   captions; they assert the exact ordered evidence. Each claim is also checked
-  for whole, once-occurring evidence that includes the focal sentence. The suites first
-  request the Spanish `NLTagger` assets, assert that both languages tag, and
-  check that a classifier without them abstains as `runtime-unavailable`.
+  for whole, once-occurring evidence that includes the focal sentence. The
+  hosted macOS runner has no Spanish `NLTagger` assets and cannot download them,
+  so every Spanish case checks the language's availability first: where it is
+  missing the case must abstain as `runtime-unavailable`, and its linguistic
+  expectations run only on hosts with the assets, including the measurement
+  host. English tagging is asserted everywhere, and an injected unavailable
+  tagger must abstain as `runtime-unavailable`.
   `StatedPriorityBaselineBenchmarkTests` checks the options and the sealed-split
   refusal, matches the evaluator's digest on an original document, and runs
   the development split end to end: one grounded observation per case, null
