@@ -343,6 +343,7 @@ private extension MeetingDetailView {
                 hasSummary: summary != nil,
                 hasCorrections: !detail.correctionRevision.isAccepted,
                 includeCorrectionProvenance: flow.includeCorrectionProvenance,
+                exportTranslation: flow.exportTranslation(for: detail),
                 skillOffers: model.state.skillOffers),
             actions: MeetingDetailActionActions(
                 startRefine: { coordinator.startRefine(detail) },

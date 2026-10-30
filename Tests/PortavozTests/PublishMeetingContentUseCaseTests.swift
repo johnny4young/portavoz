@@ -37,6 +37,64 @@ final class PublishMeetingContentUseCaseTests: XCTestCase {
         XCTAssertEqual(vtt.data, Data("WEBVTT\n\nfixture".utf8))
     }
 
+    func testATranslatedExportSwapsOnlyTranslatedRowsAndNamesItsLanguage() async throws {
+        let meeting = Meeting(title: "Weekly", startedAt: Date(timeIntervalSince1970: 1_000))
+        let spanish = TranscriptSegment(
+            meetingID: meeting.id, channel: .system, text: "Hola a todos", language: "es",
+            startTime: 0, endTime: 2, isFinal: true)
+        let english = TranscriptSegment(
+            meetingID: meeting.id, channel: .system, text: "Already English", language: "en",
+            startTime: 3, endTime: 4, isFinal: true)
+        let translation = TranscriptTranslation(
+            meetingID: meeting.id, targetLanguage: "en", sourceTranscriptRevision: meeting.transcriptRevision,
+            sourceCorrectionRevision: .accepted, lines: [spanish.id: "Hello everyone"], createdAt: Date())
+        let detail = MeetingLibraryDetail(
+            meeting: meeting, speakers: [], segments: [spanish, english], summary: nil, summaryVersion: nil,
+            translations: [translation])
+        let documents = MeetingDocumentsFake()
+        let useCase = PrepareMeetingDocument(
+            library: QueryMeetingLibrary(reader: PublishingReaderFake(detail: detail)), documents: documents)
+
+        let translated = try await useCase.execute(.init(
+            meetingID: meeting.id, format: .markdown, options: MeetingDocumentOptions(translationLanguage: "en")))
+        let original = try await useCase.execute(.init(meetingID: meeting.id, format: .markdown))
+
+        XCTAssertEqual(translated.filename, "Weekly (en).md")
+        XCTAssertEqual(original.filename, "Weekly.md")
+        let contents = await documents.contents
+        XCTAssertEqual(contents.first?.segments.map(\.text), ["Hello everyone", "Already English"])
+        XCTAssertEqual(contents.first?.segments.map(\.language), ["en", "en"])
+        XCTAssertEqual(contents.first?.translationLanguage, "en")
+        XCTAssertEqual(contents.last?.segments.map(\.text), ["Hola a todos", "Already English"])
+        XCTAssertNil(contents.last?.translationLanguage)
+    }
+
+    func testAMissingOrOutOfDateTranslationIsNeverExported() async throws {
+        let meeting = Meeting(title: "Weekly", startedAt: Date(timeIntervalSince1970: 1_000))
+        let segment = TranscriptSegment(
+            meetingID: meeting.id, channel: .system, text: "Hola a todos", language: "es",
+            startTime: 0, endTime: 2, isFinal: true)
+        let olderReading = TranscriptTranslation(
+            meetingID: meeting.id, targetLanguage: "en", sourceTranscriptRevision: meeting.transcriptRevision + 1,
+            sourceCorrectionRevision: .accepted, lines: [segment.id: "Hello everyone"], createdAt: Date())
+        let detail = MeetingLibraryDetail(
+            meeting: meeting, speakers: [], segments: [segment], summary: nil, summaryVersion: nil,
+            translations: [olderReading])
+        let documents = MeetingDocumentsFake()
+        let useCase = PrepareMeetingDocument(
+            library: QueryMeetingLibrary(reader: PublishingReaderFake(detail: detail)), documents: documents)
+        for language in ["en", "es"] {
+            do {
+                _ = try await useCase.execute(.init(
+                    meetingID: meeting.id, format: .srt,
+                    options: MeetingDocumentOptions(translationLanguage: language)))
+                XCTFail("\(language) has no current translation")
+            } catch ExportMeetingDocumentError.translationUnavailable {}
+        }
+        let rendered = await documents.contents
+        XCTAssertTrue(rendered.isEmpty, "Nothing is rendered from a translation of another reading")
+    }
+
     func testDocumentFormatsOwnTheirAcceptedFileExtensions() {
         XCTAssertEqual(MeetingDocumentFormat(fileExtension: "md"), .markdown)
         XCTAssertEqual(MeetingDocumentFormat(fileExtension: "MARKDOWN"), .markdown)
