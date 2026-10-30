@@ -9,6 +9,7 @@ public enum StorageError: Error, LocalizedError {
     case invalidImportedMeeting(String)
     case invalidRefinedMeeting(String)
     case invalidTrimCutoff(TimeInterval)
+    case audioTrimUnavailable(MeetingID)
     case invalidSemanticEmbedding(String)
     case invalidDerivedMaintenanceJob(String)
     case invalidTranscriptCorrection(String)
@@ -51,6 +52,8 @@ public enum StorageError: Error, LocalizedError {
             return "invalid refined meeting: \(reason)"
         case .invalidTrimCutoff(let cutoff):
             return "invalid audio trim point: \(cutoff)"
+        case .audioTrimUnavailable:
+            return "audio can only be trimmed when the meeting is ready and has no active processing jobs"
         case .invalidSemanticEmbedding(let reason):
             return "invalid semantic embedding publication: \(reason)"
         case .invalidDerivedMaintenanceJob(let reason):

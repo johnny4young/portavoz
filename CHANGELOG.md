@@ -31,6 +31,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 30, 2026
 
+- **🛑 Wait for background work** — removing a silent tail stops safely if another processing job starts while its audio copies are being prepared.
 - **🛟 Keep a recovery copy** — removing a silent tail preserves the original audio backup if a disk error also prevents restoration.
 
 ## October 29, 2026

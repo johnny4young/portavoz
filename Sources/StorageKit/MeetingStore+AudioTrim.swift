@@ -32,7 +32,8 @@ extension MeetingStore {
 
     /// Ends the transcript at `cutoff` seconds in one revision-fenced write:
     /// later rows are tombstoned, a row crossing the cut is clipped (keeping
-    /// its identity and embedding), and the meeting ends there.
+    /// its identity and embedding), and the meeting ends there. Admission is
+    /// rechecked in this write because staging can yield to newly queued work.
     public func trimMeetingTail(
         meetingID: MeetingID,
         expectedTranscriptRevision: Int,
@@ -52,6 +53,14 @@ extension MeetingStore {
                     expected: expectedTranscriptRevision,
                     actual: meeting.transcriptRevision)
             }
+            let activeJobs = try ProcessingJobRecord
+                .filter(Column("meetingID") == key)
+                .filter([ProcessingJobState.pending.rawValue, ProcessingJobState.running.rawValue]
+                    .contains(Column("state")))
+                .fetchCount(db)
+            guard meeting.lifecycleState == MeetingLifecycleState.ready.rawValue,
+                activeJobs == 0
+            else { throw StorageError.audioTrimUnavailable(meetingID) }
             let timestamp = Date()
             try db.execute(
                 sql: "UPDATE segment SET deletedAt = ?, updatedAt = ? "

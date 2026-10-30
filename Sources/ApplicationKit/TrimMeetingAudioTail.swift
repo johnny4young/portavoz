@@ -100,6 +100,10 @@ public struct TrimMeetingAudioTail: ApplicationUseCase {
                 cutoff: cutoff)
         } catch {
             trimmer.discardTrim(staged)
+            if let storageError = error as? StorageError,
+                case .audioTrimUnavailable = storageError {
+                throw TrimMeetingAudioTailError.unavailable
+            }
             throw error
         }
         try trimmer.commitTrim(originals: files, staged: staged)

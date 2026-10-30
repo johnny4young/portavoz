@@ -56,6 +56,17 @@ hidden `.partial-` copy that later runs never reuse or remove. Finder metadata
 written into only one copy of an otherwise identical recording also counts as a
 conflict. A resumable reconcile step needs its own ownership design and tests.
 
+### Silent-tail audio mutation ownership
+
+Trimming stages verified channel copies, rechecks lifecycle and active jobs in
+its transcript write, and preserves an original backup when caught-error
+restoration fails. The staging/job interleaving is covered by deterministic
+store and use-case regressions. The database write and subsequent file swap
+remain separate operations: there is no exclusive reservation preventing new
+processing admission in between them. Cross-boundary ownership and abrupt
+termination during the multi-file swap remain unqualified; retained recovery
+backups require manual reconciliation rather than automatic deletion.
+
 ### Device-local action review across meeting sync
 
 Aggregate replay previously cascaded local dismiss/defer decisions away while
