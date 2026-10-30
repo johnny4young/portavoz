@@ -4329,6 +4329,24 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   `docs/evidence/commitment-quality-research-20260802.json`; its local-model
   result remains `review-required` and its product decision remains
   `not-evaluated` (D236).
+- `make test-stated-priority-quality` validates D606's 100-case public-
+  synthetic stated-priority corpus and runs eighteen evaluator tests. Each
+  language has 15 priorities, 15 demotions, 10 unresolved questions, and 10
+  abstentions, split 20 development / 80 sealed evaluation cases; 55 families
+  each live in one split. Validation rejects family leakage, abstain truth with
+  evidence, targets outside their evidence, quotes that do not occur exactly
+  once, and an unadjudicated second-review disagreement. Observations are
+  bound to the fixture digest and split, one per case; an ungrounded claim or
+  invalid probability is refused as `invalid-output`, and every abstention not
+  classified as neutral speech scores as `refused`, never as a correct
+  `abstain`. Scorecards keep raw counts and denominators: the four-by-five
+  confusion, unsafe-promotion and priority-recall Wilson intervals, demotion-
+  and question-to-priority slices, coverage, selective error, target and
+  evidence exactness, per-language/label/tag breakdowns, risk-coverage points
+  when probabilities exist, and every case. `make stated-priority-quality-
+  control` scores the no-proposal control (zero promotions, zero credit);
+  `make stated-priority-quality-compare` pairs two arms case by case without
+  a winner.
 - `make test-commitment-link-quality` validates D245's reproducible 36-case
   cross-meeting fixture and runs thirty-one evaluator/contract tests without a
   model, database, or user library. The corpus is balanced across English,
