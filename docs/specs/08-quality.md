@@ -4376,8 +4376,11 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   text addressed to the assistant, self-correction, supersession, retraction,
   contradiction, double negation, possessive and coordinated non-claims,
   `neither`/`nor`, opinions, irregular and regular past, and a later
-  instruction to the assistant. Each claim is also checked for whole,
-  once-occurring evidence that includes the focal sentence. The suites first
+  instruction to the assistant. Answered-question regressions cover later
+  retraction, named and elided demotion, correction to another target, and
+  assistant-addressed demotion or retraction, within one caption and across
+  captions; they assert the exact ordered evidence. Each claim is also checked
+  for whole, once-occurring evidence that includes the focal sentence. The suites first
   request the Spanish `NLTagger` assets, assert that both languages tag, and
   check that a classifier without them abstains as `runtime-unavailable`.
   `StatedPriorityBaselineBenchmarkTests` checks the options and the sealed-split

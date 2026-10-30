@@ -2636,9 +2636,10 @@ does not split it.
   priority"). Verbs acting on the priority ("lower the
   priority of X") and hold phrases also demote.
 - **Context.** A question with an answering claim in the next sentence takes
-  the answer's label, and an answered or antecedent question joins the
-  evidence. A bare "La prioridad es baja." takes its target from a preceding
-  "¿Y X?". A later claim about the same target supersedes the focal one; a
+  the answer's label, then applies supersession from the sentences after that
+  answer, preserving question and answer as evidence. An answered or antecedent
+  question joins the evidence. A bare "La prioridad es baja." takes its target
+  from a preceding "¿Y X?". A later claim about the same target supersedes the focal one; a
   correction marker or an immediate retraction withdraws it, and a
   self-correction keeps only the final target. A later sentence addressed to
   the assistant supersedes nothing.

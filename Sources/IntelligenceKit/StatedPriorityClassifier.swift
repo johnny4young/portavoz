@@ -137,7 +137,7 @@ public struct StatedPriorityClassifier: Sendable {
             || Self.topic(of: previous).map({ Self.sameTarget($0, target.quote) }) == true {
             evidence.insert(previous.span, at: 0)
         }
-        return superseded(claim.polarity, target: target, evidence: evidence, in: transcript)
+        return superseded(claim.polarity, target: target, evidence: evidence, following: transcript.following)
     }
 
     private enum Choice {
@@ -170,16 +170,16 @@ public struct StatedPriorityClassifier: Sendable {
     /// retraction right after it withdraws it.
     private func superseded(
         _ polarity: StatedPriorityPolarity, target: StatedPrioritySpan, evidence: [StatedPrioritySpan],
-        in transcript: StatedPriorityTranscript
+        following: ArraySlice<StatedPrioritySentence>
     ) -> StatedPriorityReading {
         var polarity = polarity
         var evidence = evidence
-        for (offset, later) in transcript.following.enumerated() where !later.isQuestion {
+        for (offset, later) in following.enumerated() where !later.isQuestion {
+            guard !StatedPriorityGuards.addressesAssistant(later) else { continue }
             if offset == 0, later.contains(anyOf: StatedPriorityLexicon.retractions) {
                 return .abstain(.classifiedNeutral)
             }
-            guard !StatedPriorityGuards.addressesAssistant(later),
-                  StatedPriorityGuards.nonAssertion(later, excluding: nil) == nil,
+            guard StatedPriorityGuards.nonAssertion(later, excluding: nil) == nil,
                   case .claims(let claims) = StatedPriorityClauseParser(later).parse()
             else { continue }
             let corrects = later.contains(anyOf: StatedPriorityLexicon.correctionMarkers)
@@ -236,8 +236,9 @@ public struct StatedPriorityClassifier: Sendable {
                 named ?? topic.map { StatedPrioritySpan(captionID: focal.captionID, quote: $0) }
             }
             if let target {
-                let decision: StatedPriorityDecision = claim.polarity == .priority ? .priority : .demotion
-                return .claim(decision, target: target, evidence: [focal.span, answer.span])
+                return superseded(
+                    claim.polarity, target: target, evidence: [focal.span, answer.span],
+                    following: transcript.following.dropFirst())
             }
         }
         // A bare "And X?" names a topic without asking about its priority.

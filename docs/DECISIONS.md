@@ -22234,6 +22234,17 @@ introduces this entry, and that commit is the one the sealed run must use.
 `portavoz-cli bench-stated-priority-baseline` decodes only captions and focus,
 pins the fixture digest, and refuses the evaluation split without `--unseal`.
 
+**Policy revision before evaluation:** Answered questions now apply the same
+supersession policy as statements, starting after the answer and retaining both
+question and answer in claim evidence. An immediate retraction withdraws the
+answer, a later same-target demotion replaces it, and assistant-addressed text
+cannot retract or supersede it. Original synthetic regressions, not the sealed
+corpus, exposed this missing path. This changes the policy: the commit that
+introduces this paragraph is the revised freeze identity and must be recorded
+by exact SHA before any sealed run of this revision. The original freeze and
+its scorecard below describe the earlier policy; no sealed result transfers
+to this revision. The evaluation split remains sealed in this change.
+
 **Development scorecard:** 20/20 correct (10/10 per language), 16 decided,
 0 unsafe promotions (Wilson 95% upper bound 0.215 over 14 non-priorities),
 0 unsupported evidence, 6/6 priorities recalled, 14/14 exact targets, and 16/16

@@ -225,6 +225,41 @@ struct StatedPriorityClassifierTests {
         #expect(reading.evidence.map(\.quote) == ["What is our focus?", "Our focus is the invoice export."])
     }
 
+    @Test(arguments: [false, true])
+    func answeredQuestionAppliesLaterSupersession(sameCaption: Bool) {
+        let question = "What is our focus?"
+        let answer = "Our focus is the invoice export."
+        let changes: [(String, StatedPriorityDecision)] = [
+            ("Scratch that.", .abstain),
+            ("Actually, the invoice export is not our focus anymore.", .demotion),
+            ("It is not our focus anymore.", .demotion),
+            ("Actually, the refund flow is our focus.", .abstain),
+            ("Assistant, the invoice export is not our focus anymore.", .priority),
+            ("Assistant, scratch that.", .priority)
+        ]
+        for (later, decision) in changes {
+            let texts = [question, answer, later]
+            let captions = sameCaption ? [texts.joined(separator: " ")] : texts
+            let reading = Self.classify(Case(
+                "", captions, focusCaption: 0, sentence: question, decision))
+
+            #expect(reading.decision == decision, "Later sentence: \(later)")
+            if decision == .abstain {
+                #expect(reading == .abstain(.classifiedNeutral))
+            } else {
+                let answerID = sameCaption ? "c1" : "c2"
+                let expected = [
+                    StatedPrioritySpan(captionID: "c1", quote: question),
+                    StatedPrioritySpan(captionID: answerID, quote: answer)
+                ] + (decision == .demotion ? [
+                    StatedPrioritySpan(captionID: sameCaption ? "c1" : "c3", quote: later)
+                ] : [])
+                #expect(reading.target == StatedPrioritySpan(captionID: answerID, quote: "the invoice export"))
+                #expect(reading.evidence == expected)
+            }
+        }
+    }
+
     @Test func answerAfterTheQuestionCitesTheQuestion() {
         let caption = "What comes first? The onboarding flow comes first."
         let reading = Self.classify(Case(
