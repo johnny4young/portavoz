@@ -2089,7 +2089,7 @@ sends acceptance actions only.
 A failed title rename preserves the suggestion and visible error, and requests
 Spotlight reindexing only after persistence succeeds.
 
-Summary detail (D608) is a radio picker in Settings → Intelligence
+Summary detail (D609) is a radio picker in Settings → Intelligence
 (`settings-summary-detail`, UserDefaults `summaryDetail`, Standard by default).
 Post-capture summaries and every Meeting Detail regeneration use it unless the
 Regenerate menu's Detail submenu (`detail-summary-detail-menu`, items
@@ -3023,6 +3023,19 @@ shown once it is current; a translated reading cannot be corrected. Translation
 jobs are left out of the trust section and labelled in the background work
 center. Disposable launches use `MeetingTranslationFixture`, which tags each line
 with its target; `-seed-meeting-translation-missing` reports missing languages.
+
+**Translated export (D608).** `MeetingStore.meetingLibrarySnapshot` reads
+translations with the transcript, and `MeetingLibraryDetail.translations` carries
+them to `MeetingDocumentProjection`. `MeetingDocumentOptions.translationLanguage`
+selects one; the projection requires it to match the transcript revision and the
+correction revision it exports, else `ExportMeetingDocumentError.translationUnavailable`,
+and swaps translated rows in with the target language. `MeetingDocumentContent`
+names the language: Markdown titles the transcript as a translation made on this
+Mac, VTT adds a `NOTE`, and the prepared file name gains ` (<code>)`. The export
+menu shows `detail-export-translation` (`-original`, `-<code>`) only while a
+current translation exists; the choice lives in `MeetingDetailFlowState` and
+returns to Original when that translation goes out of date. Meeting bundles
+ignore it.
 
 Resolution is session override, then exact captured bundle-ID profile, then
 global mode. The destination's existing NSRunningApplication capture supplies
@@ -4155,9 +4168,9 @@ the scoped summary stream remains functional at scale; it does not substitute
 for the unavailable SwiftUI update-cause lane.
 
 The characterization baseline freezes the reviewed interaction surface. The
-current generated `meeting-detail-interaction-contract.json` snapshots 503
+current generated `meeting-detail-interaction-contract.json` snapshots 528
 state/control/presentation/keyboard/identifier/navigation signals across forty-one
-reviewed detail files and assigns all 31 `MeetingDetailUITests` journeys to
+reviewed detail files and assigns all 32 `MeetingDetailUITests` journeys to
 exactly one of sixteen feature owners. Screenshot names derive from test bodies;
 changing a control, route, owner, screenshot, or reviewed evidence digest
 requires an explicit snapshot update.

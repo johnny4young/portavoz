@@ -22197,7 +22197,20 @@ past the end of the audio. Older recordings whose silence was transcribed as
 hallucinated phrases have no trailing gap until Refine (D603) removes those
 rows.
 
-## D608 — Summaries choose a detail level, and renames reach them without a model
+## D608 — A document export may use the current transcript translation
+
+A translated meeting (D595) could be read but not shared. Export's
+"Transcript language" offers Original and every stored translation of the
+current reading; Markdown, PDF, subtitles and Gist then carry the translated
+rows, while rows without a translation keep their original text. The library
+snapshot reads the translations in the same transaction as the transcript, and
+the export is refused when the chosen translation is missing or was made from
+another transcript or correction revision, so a document never mixes readings.
+The file name gains the language code and the transcript is labelled as a
+translation made on this Mac (a VTT note; SRT has no comment syntax). Meeting
+files (`.portavoz`) keep the original transcript only.
+
+## D609 — Summaries choose a detail level, and renames reach them without a model
 
 **Context:** A long meeting summarized on the 4 096-token on-device model can
 come back with a few lines, and the only remedy was the thin-summary chip's

@@ -1112,7 +1112,7 @@ Meeting Detail invokes the existing `RegenerateSummary` workflow with the
 current recipe/output-language policy, producing a new immutable snapshot
 without rewriting history (D47).
 
-`SummaryRequest.detail` (`SummaryDetail`: brief, standard, detailed; D608)
+`SummaryRequest.detail` (`SummaryDetail`: brief, standard, detailed; D609)
 adds one directive to `PromptFactory.summaryInstructions` for every provider.
 Standard adds nothing, so its prompts, `SummaryFingerprint` and cached
 snapshots are unchanged; the other levels join the fingerprint and a

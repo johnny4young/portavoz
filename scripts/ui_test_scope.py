@@ -319,6 +319,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "testATranscriptIsTranslatedOnRequestAndTheOriginalStaysOneClickAway",
         ),
         test_id("MeetingTranscriptTranslationUITests", "testMissingLanguagesPointToTheirDownload"),
+        test_id("MeetingTranscriptTranslationUITests", "testAnExportCanUseTheCurrentTranslation"),
     ),
     "settings-navigation": (
         test_id("SettingsUITests", "testCategoryNavigationRevealsEachPane"),

@@ -1459,7 +1459,7 @@ imported aggregate cannot roll back (D64).
 
 `rewriteCurrentSummary(meetingID:_:)` reads the newest live snapshot, applies
 a deterministic rewrite and inserts the result as that recipe's next version
-in one write (D608). The new row links the original snapshot's generation run,
+in one write (D609). The new row links the original snapshot's generation run,
 so its correction freshness is unchanged, and carries claim feedback over. A
 deleted meeting, no summary or a rewrite that returns nil writes nothing.
 

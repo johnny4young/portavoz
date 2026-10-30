@@ -376,7 +376,8 @@ extension MeetingDetailCoordinator {
 
     private var documentOptions: MeetingDocumentOptions {
         MeetingDocumentOptions(
-            includeCorrectionProvenance: flow.includeCorrectionProvenance)
+            includeCorrectionProvenance: flow.includeCorrectionProvenance,
+            translationLanguage: flow.exportTranslationLanguage)
     }
 
     private func copySummary(
