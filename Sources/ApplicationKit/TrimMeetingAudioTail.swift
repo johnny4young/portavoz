@@ -61,7 +61,7 @@ public enum TrimMeetingAudioTailError: Error, Equatable, Sendable {
     case unavailable
 }
 
-/// Cuts a long silent tail from both channels and the transcript (D606).
+/// Cuts a long silent tail from both channels and the transcript (D608).
 /// Copies are staged and verified first; the transcript commits with a
 /// revision fence; only then are the files swapped. A failed swap leaves extra
 /// silence, never transcript rows past the end of the audio.
