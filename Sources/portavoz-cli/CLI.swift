@@ -81,8 +81,6 @@ public enum PortavozCLI {
             await BenchCommitmentLinkSimilarityCommand.run(arguments)
         case "bench-private-commitment-link-similarity":
             await BenchPrivateLinkSimilarityCommand.run(arguments)
-        case "bench-stated-priority-baseline":
-            BenchStatedPriorityBaselineCommand.run(arguments)
         default:
             printUsage()
         }
@@ -145,10 +143,6 @@ public enum PortavozCLI {
               portavoz-cli bench-private-commitment-link-similarity --fixture <json> --output <json>
                                                                     --build <id> --commit <sha>
                                                                     [--asset-download never|if-needed]
-              portavoz-cli bench-stated-priority-baseline --fixture <json>
-                                                          --split development|evaluation
-                                                          [--output <json>] [--unseal]
-                evaluation is sealed and needs --unseal
               portavoz-cli diarize --file <wav> [--attribute] [--language es] [--models-dir <dir>]
               portavoz-cli summarize --file <wav> [--out-language es] [--glossary a,b,c]
                                      [--byok <endpoint> --byok-model <model>] [--save] [--db <path>]
