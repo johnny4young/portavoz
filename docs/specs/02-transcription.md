@@ -447,7 +447,7 @@ Hardened against 3 REAL WhisperKit failures (all reproduced and verified, Jul 20
    to English and Spanish: a window detected as anything else takes the
    channel's majority supported language; when no window was detected as a
    supported one, Portuguese, Galician, Catalan, Italian and Occitan map to
-   Spanish and anything else to English (D607). Only a window whose detection
+   Spanish and anything else to English (D606). Only a window whose detection
    failed and has no majority stays automatic. The window then decodes
    sequentially with that language fixed, so temperature fallbacks cannot
    resample it. A fixed policy language applies to every window. Segments
