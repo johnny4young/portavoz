@@ -176,6 +176,9 @@ python3 scripts/dictation_search_quality.py verify-public
 python3 -m unittest Tests.Tooling.test_commitment_quality
 python3 scripts/commitment_quality.py validate \
   --fixture Fixtures/CommitmentQuality/public-synthetic-v1.json
+python3 -m unittest Tests.Tooling.test_stated_priority_quality
+python3 scripts/stated_priority_quality.py validate \
+  --fixture Fixtures/StatedPriorityQuality/public-synthetic-v1.json
 python3 -m unittest Tests.Tooling.test_meeting_memory_graph_quality
 python3 -m unittest Tests.Tooling.test_meeting_memory_graph_query_receipt
 python3 scripts/meeting_memory_graph_quality.py verify-public \

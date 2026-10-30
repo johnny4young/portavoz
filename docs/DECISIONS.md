@@ -22148,3 +22148,41 @@ while pauses under 20 s keep their natural length. Without a transcript the
 scrubber stays linear. "Only my voice" generalizes to any speaker; clip marks
 and echo reduction move one click deeper.
 
+## D606 — A stated priority is measured on a sealed bilingual corpus first (Oct 2026)
+
+**Context:** D508 withdrew three deterministic revisions because each was only
+tested on shapes its author had in mind. Research #92 asks whether an
+`NLTagger`/`NLTokenizer` baseline or a local typed-decision model (Liquid AI
+d1-3B) can tell a declared priority from a demotion, a question, or no claim.
+Neither arm can be judged without a corpus and an evaluator that make unsafe
+promotions and refusals visible.
+
+**Decision:** `Fixtures/StatedPriorityQuality/public-synthetic-v1.json` holds
+100 synthetic cases, 50 English and 50 Spanish, each with 15 priorities, 15
+demotions, 10 unresolved questions, and 10 abstentions. Twenty development
+cases are the only tuning data; 80 evaluation cases stay sealed until an arm's
+policy is frozen. Families of minimal pairs and translations never cross a
+split. A blind second annotator, a language model given only captions and
+focus, agreed on all 100 labels; disagreements would be recorded with the
+owner's adjudication, never relabelled.
+
+`scripts/stated_priority_quality.py` scores observations from any arm against
+the fixture digest. A claim without grounded evidence is refused, and only an
+abstention classified as neutral speech earns credit on gold `abstain`, so a
+disabled, timed-out, or low-confidence arm cannot look accurate. Comparison
+pairs cases and names no winner.
+
+Before any model runs, the measurement host is this Apple M3 Pro with 18 GB of
+unified memory on macOS 27.0.1, with ceilings of 250 ms warm p95 per decision
+over at most 1 000 tokens of context, 15 s from process start to the first
+decision, 8 GB of added peak process memory, and 6.5 GB on disk. The proposed
+pilot gates stay those of #92: zero unsafe promotions and zero unsupported
+evidence on the sealed set, at least 9 of 12 priorities recalled per language,
+and a gain over the linguistic baseline at its frozen operating point.
+
+**Consequences:** the no-proposal control scores zero promotions and zero
+credit, the reference every arm must beat. The corpus is a clustered synthetic
+pilot, so a clean sealed run would justify only a larger study, not shipping.
+A pass on this host says nothing about smaller Macs or coexistence with
+capture. GAPS #13 stays open.
+
