@@ -22221,10 +22221,13 @@ full regeneration, which costs minutes and can change the wording.
 **Decision:** `SummaryDetail` (brief, standard, detailed) is a Settings
 default and a Regenerate submenu. Standard keeps today's prompt and
 fingerprint, so cached summaries stay valid; brief and detailed add one
-directive and join the fingerprint. Detailed with no explicit engine runs on
-the embedded MLX model when it is downloaded, because only it reads the whole
-transcript in one pass; Apple Foundation Models keeps richer map notes instead.
-The thin-summary chip offers Detailed. A rename replaces the old shown name as
+directive and join the fingerprint. Every level runs on the engine the user
+selected. Detailed asks for up to six overview sentences and eight bullets per
+section: an open-ended "keep everything" directive ran the embedded 4B model to
+its 16 384-token cap for twelve minutes on a 44-minute meeting and returned
+unparseable output. On Apple Foundation Models, detailed map notes are richer.
+The thin-summary chip offers Detailed once per visit, and a local model that
+cannot finish says so instead of asking for setup. A rename replaces the old shown name as
 a whole word in the current summary and saves it as the next immutable
 version, linked to the original generation run.
 

@@ -16,10 +16,10 @@ public enum SummaryDetail: String, CaseIterable, Codable, Sendable {
         case .standard:
             nil
         case .detailed:
-            "Write a detailed summary: a full overview paragraph, then every distinct "
-                + "topic, decision, number, date, and open question as its own bullet, "
-                + "attributed to its speaker label. Prefer completeness over brevity, "
-                + "but never add anything the material does not say."
+            "Write a detailed summary: an overview of up to six sentences and up to "
+                + "eight bullets per section, each carrying its concrete names, numbers, "
+                + "dates, or owners. Never repeat a point or add anything the material "
+                + "does not say."
         }
     }
 

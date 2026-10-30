@@ -15691,16 +15691,6 @@
         }
       }
     },
-    "The selected local engine could not generate this summary. Open Intelligence Settings to verify its model, then try again.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El motor local seleccionado no pudo generar este resumen. Abre Ajustes de Inteligencia para verificar su modelo y vuelve a intentarlo."
-          }
-        }
-      }
-    },
     "The selected transcript line is no longer available.": {
       "localizations": {
         "es": {
@@ -20927,12 +20917,32 @@
         }
       }
     },
-    "This meeting is long but its summary came out very small. Regenerate a detailed summary with the embedded model — nothing changes unless you click.": {
+    "The local model couldn’t finish this summary. Try again with a shorter detail level, or check its model in Intelligence Settings.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La reunión es larga pero su resumen salió muy pequeño. Regenera un resumen detallado con el modelo integrado — nada cambia a menos que hagas clic."
+            "value": "El modelo local no pudo terminar este resumen. Vuelve a intentarlo con un nivel de detalle más corto o revisa su modelo en Ajustes de Inteligencia."
+          }
+        }
+      }
+    },
+    "Summary couldn’t finish": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El resumen no pudo terminar"
+          }
+        }
+      }
+    },
+    "This meeting is long but its summary came out very small. Regenerate a detailed summary — nothing changes unless you click.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La reunión es larga pero su resumen salió muy pequeño. Regenera un resumen detallado — nada cambia a menos que hagas clic."
           }
         }
       }

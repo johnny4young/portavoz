@@ -1,6 +1,21 @@
 @testable import IntelligenceKit
 import PortavozCore
 import XCTest
+@testable import portavoz_app
+
+final class SummaryFailureCopyTests: XCTestCase {
+    func testAFailedLocalRunSaysItCouldNotFinishInsteadOfAskingForSetup() {
+        XCTAssertEqual(SummarySetupIssue.localEngineFailed.title, "Summary couldn’t finish")
+        XCTAssertTrue(SummarySetupIssue.localEngineFailed.message.contains("shorter detail level"))
+        XCTAssertEqual(SummarySetupIssue.mlxModelNotDownloaded.title, "Summary needs setup")
+    }
+
+    func testDetailedNamesItsBounds() throws {
+        let directive = try XCTUnwrap(SummaryDetail.detailed.summaryDirective)
+        XCTAssertTrue(directive.contains("up to six sentences"))
+        XCTAssertTrue(directive.contains("eight bullets per section"))
+    }
+}
 
 final class SummaryDetailTests: XCTestCase {
     func testStandardKeepsTheHistoricalPrompts() {

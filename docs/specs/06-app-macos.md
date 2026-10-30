@@ -2093,10 +2093,11 @@ Summary detail (D609) is a radio picker in Settings → Intelligence
 (`settings-summary-detail`, UserDefaults `summaryDetail`, Standard by default).
 Post-capture summaries and every Meeting Detail regeneration use it unless the
 Regenerate menu's Detail submenu (`detail-summary-detail-menu`, items
-`detail-summary-detail-<level>`) picks another level. Detailed with no engine
-override uses the embedded MLX model when it is downloaded, because only it
-reads the whole transcript in one pass; otherwise it runs on the configured
-engine. The thin-summary chip now offers a detailed regeneration. A manual
+`detail-summary-detail-<level>`) picks another level. Every level runs on the
+selected engine. The thin-summary chip offers a detailed regeneration; accepting
+or dismissing it retires the chip until Meeting Detail is opened again. A local
+engine that fails to generate shows "Summary couldn’t finish" with a shorter
+detail level as the first suggestion, instead of "Summary needs setup". A manual
 rename or an accepted name or voice suggestion that changes a speaker's shown
 name awaits `ApplySpeakerRenameToSummary` before reindexing; a failed rewrite
 leaves the old name in the summary and never fails the rename.

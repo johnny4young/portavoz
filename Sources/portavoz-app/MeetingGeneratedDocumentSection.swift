@@ -144,13 +144,14 @@ struct MeetingGeneratedDocumentSection: View {
                 acceptAccessibilityIdentifier: "detail-thin-summary-suggestion",
                 dismissAccessibilityIdentifier: "detail-thin-summary-suggestion-dismiss",
                 accept: {
+                    actions.dismissThinSuggestion()
                     actions.regenerateDetail(.detailed)
                 },
                 dismiss: actions.dismissThinSuggestion)
             .help(
                 // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "This meeting is long but its summary came out very small. Regenerate a detailed summary with the embedded model — nothing changes unless you click.")
+                "This meeting is long but its summary came out very small. Regenerate a detailed summary — nothing changes unless you click.")
         }
     }
 

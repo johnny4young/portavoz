@@ -74,6 +74,7 @@ extension MeetingDetailCoordinator {
             dismissRecipeSuggestion: model.dismissSuggestedRecipe,
             dismissThinSuggestion: {
                 model.dismissThinSummarySuggestion(version: summary.version)
+                flow.thinSummarySuggestionSpent = true
             },
             setActionItem: { item, done in
                 Task { await model.send(.setActionItem(item.id, done: done)) }
@@ -136,9 +137,8 @@ extension MeetingDetailCoordinator {
         detail: MeetingReviewReadModel
     ) -> Bool {
         guard !flow.isRegenerating,
+              !flow.thinSummarySuggestionSpent,
               detail.summaryFreshness == .current,
-              sceneValues.summaryEngine != .mlx,
-              sceneValues.mlxDownloaded,
               model.state.dismissedThinSummaryVersion != summary.version,
               let ended = detail.meeting.endedAt
         else { return false }
@@ -207,8 +207,6 @@ extension MeetingDetailCoordinator {
             ?? summary.flatMap { CustomRecipeStore.byID($0.draft.recipeID) }
             ?? .general
         let level = summaryDetail ?? SummaryDetailPreference.current()
-        // Detailed wants the whole transcript in one pass, which only the embedded model takes.
-        let provider = engine ?? (level == .detailed && sceneValues.mlxDownloaded ? .mlx : nil)
         Task {
             defer { flow.isRegenerating = false }
             let request = RegenerateSummaryRequest(
@@ -219,7 +217,7 @@ extension MeetingDetailCoordinator {
                 targetLanguage: language.identifier,
                 sourceTranscriptRevision: material.baseTranscriptRevision,
                 sourceCorrectionRevision: material.correctionRevision,
-                providerOverride: provider,
+                providerOverride: engine,
                 evidenceSourceIDsByGeneratedID: material.sourceSegmentIDsByGeneratedID,
                 detail: level)
             await applyRegenerateResult(await sceneActions.regenerateSummary(request))
