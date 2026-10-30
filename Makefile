@@ -20,9 +20,6 @@ PORTAVOZ_LSREGISTER := /System/Library/Frameworks/CoreServices.framework/Framewo
 	test-meeting-memory-graph-query-receipt meeting-memory-graph-query-receipt \
 	test-retrieval-chunk-evidence retrieval-chunk-evidence \
 	test-commitment-quality commitment-quality-deterministic \
-	test-stated-priority-quality stated-priority-quality-control \
-	stated-priority-quality-score stated-priority-quality-compare \
-	stated-priority-quality-baseline \
 	commitment-quality-model commitment-quality-compare \
 	test-commitment-link-quality commitment-link-quality-control \
 	commitment-link-quality-product commitment-link-similarity-product \
@@ -310,53 +307,6 @@ commitment-quality-compare:
 	@python3 scripts/commitment_quality.py compare \
 		--left "$(PORTAVOZ_COMMITMENT_LEFT)" \
 		--right "$(PORTAVOZ_COMMITMENT_RIGHT)"
-
-## Validate the public bilingual stated-priority corpus and its evaluator
-## without loading a model or user data.
-STATED_PRIORITY_FIXTURE := Fixtures/StatedPriorityQuality/public-synthetic-v1.json
-test-stated-priority-quality:
-	python3 -m unittest Tests.Tooling.test_stated_priority_quality
-	python3 scripts/stated_priority_quality.py validate --fixture $(STATED_PRIORITY_FIXTURE)
-
-## Score the no-proposal control: the zero-promotion, zero-recall reference.
-PORTAVOZ_STATED_PRIORITY_SPLIT ?= development
-stated-priority-quality-control:
-	@python3 scripts/stated_priority_quality.py control \
-		--fixture $(STATED_PRIORITY_FIXTURE) --split $(PORTAVOZ_STATED_PRIORITY_SPLIT) | \
-		python3 scripts/stated_priority_quality.py score \
-		--fixture $(STATED_PRIORITY_FIXTURE) --split $(PORTAVOZ_STATED_PRIORITY_SPLIT) --observations -
-
-## Score one arm's observations. Evaluation runs only after its policy is frozen.
-PORTAVOZ_STATED_PRIORITY_OBSERVATIONS ?=
-stated-priority-quality-score:
-	@test -n "$(PORTAVOZ_STATED_PRIORITY_OBSERVATIONS)" || \
-		(echo "PORTAVOZ_STATED_PRIORITY_OBSERVATIONS is required" >&2; exit 64)
-	@python3 scripts/stated_priority_quality.py score \
-		--fixture $(STATED_PRIORITY_FIXTURE) --split $(PORTAVOZ_STATED_PRIORITY_SPLIT) \
-		--observations "$(PORTAVOZ_STATED_PRIORITY_OBSERVATIONS)"
-
-## Run the NaturalLanguage baseline arm (D607) and score it. The sealed
-## evaluation split also needs PORTAVOZ_STATED_PRIORITY_UNSEAL=1.
-PORTAVOZ_STATED_PRIORITY_UNSEAL ?=
-stated-priority-quality-baseline:
-	@$(XCODE) swift build -c release --product portavoz-cli >&2
-	@"$$($(XCODE) swift build -c release --show-bin-path)/portavoz-cli" bench-stated-priority-baseline \
-		--fixture $(STATED_PRIORITY_FIXTURE) --split $(PORTAVOZ_STATED_PRIORITY_SPLIT) \
-		$(if $(PORTAVOZ_STATED_PRIORITY_UNSEAL),--unseal) | \
-		python3 scripts/stated_priority_quality.py score \
-		--fixture $(STATED_PRIORITY_FIXTURE) --split $(PORTAVOZ_STATED_PRIORITY_SPLIT) --observations -
-
-## Pair two arms case by case. The output never declares a winner.
-PORTAVOZ_STATED_PRIORITY_LEFT ?=
-PORTAVOZ_STATED_PRIORITY_RIGHT ?=
-stated-priority-quality-compare:
-	@test -n "$(PORTAVOZ_STATED_PRIORITY_LEFT)" || \
-		(echo "PORTAVOZ_STATED_PRIORITY_LEFT is required" >&2; exit 64)
-	@test -n "$(PORTAVOZ_STATED_PRIORITY_RIGHT)" || \
-		(echo "PORTAVOZ_STATED_PRIORITY_RIGHT is required" >&2; exit 64)
-	@python3 scripts/stated_priority_quality.py compare \
-		--fixture $(STATED_PRIORITY_FIXTURE) --split $(PORTAVOZ_STATED_PRIORITY_SPLIT) \
-		--left "$(PORTAVOZ_STATED_PRIORITY_LEFT)" --right "$(PORTAVOZ_STATED_PRIORITY_RIGHT)"
 
 ## Validate the public multilingual cross-meeting link fixture and its
 ## adapter-neutral evaluator without querying a model or a meeting library.

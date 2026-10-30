@@ -730,8 +730,6 @@ NO_UI_PREFIXES = (
 NO_UI_FILES = {
     "Fixtures/DictationValidation/README.md",
     "Fixtures/DictationValidation/public-synthetic-v1.json",
-    "Fixtures/StatedPriorityQuality/README.md",
-    "Fixtures/StatedPriorityQuality/public-synthetic-v1.json",
     # Only the headless --bench-live mode and the CLI call it; unit tests own it.
     "Sources/TranscriptionKit/LiveTranscriptionBench.swift",
     ".gitignore",

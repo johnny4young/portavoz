@@ -4342,52 +4342,6 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   `docs/evidence/commitment-quality-research-20260802.json`; its local-model
   result remains `review-required` and its product decision remains
   `not-evaluated` (D236).
-- `make test-stated-priority-quality` validates D606's 100-case public-
-  synthetic stated-priority corpus and runs twenty-three evaluator tests. Each
-  language has 15 priorities, 15 demotions, 10 unresolved questions, and 10
-  abstentions, split 20 development / 80 sealed evaluation cases; 55 families
-  each live in one split. Validation rejects family leakage, abstain truth with
-  evidence, targets outside their evidence, quotes that do not occur exactly
-  once, a focus mention that is not the gold target, and an unadjudicated
-  second-review disagreement. Observations are bound to the fixture digest
-  and split, one per case. A claim whose evidence misses the focal caption or
-  its own target, or any invalid probability, is refused as `invalid-output`,
-  and every abstention not
-  classified as neutral speech scores as `refused`, never as a correct
-  `abstain`. Scorecards keep raw counts and denominators: the four-by-five
-  confusion, unsafe-promotion and priority-recall Wilson intervals, demotion-
-  and question-to-priority slices, coverage, selective error, target and
-  evidence exactness judged apart from the label, decisions that contradict
-  their own probabilities, per-language/label/tag breakdowns, risk-coverage points
-  when probabilities exist, and every case. `make stated-priority-quality-
-  control` scores the no-proposal control (zero promotions, zero credit);
-  `make stated-priority-quality-compare` pairs two arms case by case without
-  a winner.
-- `make stated-priority-quality-baseline` builds `portavoz-cli` in release,
-  runs D608's `linguistic-baseline-v1` arm over one split, and pipes its
-  observations into `score`. The split defaults to development; the sealed
-  evaluation split also needs `PORTAVOZ_STATED_PRIORITY_UNSEAL=1`, and the CLI
-  refuses it without `--unseal`. The CLI pins the fixture's canonical digest and
-  decodes only captions and focus. `StatedPriorityClassifierTests` pins every
-  D508 failure shape with original sentences: negation with straight and curly
-  apostrophes, question and answer in one caption and across captions, a
-  recognizer comma, Spanish `baja` with and without a topic, `lower` as verb
-  and qualifier, reported, quoted, hypothetical, past and future priorities,
-  text addressed to the assistant, self-correction, supersession, retraction,
-  contradiction, double negation, possessive and coordinated non-claims,
-  `neither`/`nor`, opinions, irregular and regular past, and a later
-  instruction to the assistant. Each claim is also checked for whole,
-  once-occurring evidence that includes the focal sentence. The hosted macOS
-  runner has no Spanish `NLTagger` assets and cannot download them, so every
-  Spanish case checks the language's availability first: where it is missing
-  the case must abstain as `runtime-unavailable`, and its linguistic
-  expectations run only on hosts with the assets, including the measurement
-  host. English tagging is asserted everywhere, and an injected unavailable
-  tagger must abstain as `runtime-unavailable`.
-  `StatedPriorityBaselineBenchmarkTests` checks the options and the sealed-split
-  refusal, matches the evaluator's digest on an original document, and runs
-  the development split end to end: one grounded observation per case, null
-  probabilities, and no promotion of a non-priority.
 - `make test-commitment-link-quality` validates D245's reproducible 36-case
   cross-meeting fixture and runs thirty-one evaluator/contract tests without a
   model, database, or user library. The corpus is balanced across English,
