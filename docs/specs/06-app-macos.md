@@ -2107,7 +2107,21 @@ from the transcript on screen, because post-capture processing replaces
 speaker identities after playback has loaded) and an options menu
 (`player-options`) holding Skip silence (`player-skip-silence`), Reduce echo
 (`player-clear-playback`) and Mark clip start/end (`clip-mark-start`,
-`clip-mark-end`); a marked clip shows its length, Export and discard below the
+`clip-mark-end`). A phrase ending exactly at the audio duration remains speech and prevents
+tail trimming. When the last phrase ends at least five minutes before the
+audio of a settled meeting, the same menu offers "Remove … of silence at the
+end…" (`player-trim-silence`), confirmed in a destructive dialog
+(`player-trim-silence-confirm`); the section shows progress
+(`detail-trim-progress`) or the result (`detail-trim-message`) and the player
+is prepared again on the shorter files (D607). A failed file swap attempts to
+restore every original; any backup whose restoration fails remains beside its
+channel for recovery instead of being deleted. Disposable UI qualification can
+pause the ordinary application call before trimming through a bounded temporary-directory handshake; it is admitted only
+with `-use-temp-store` and an explicit fixture argument. If processing is
+pending or running after
+cut copies are staged, the transcript commit rejects the stale admission and
+the application discards those copies without swapping audio. The later
+database-commit-to-file-swap interval is not an exclusive processing reservation. A marked clip shows its length, Export and discard below the
 waveform (`player-waveform`). The application policy
 admits 600 buckets by default and never publishes more than 2,000. The
 AudioPlaybackKit worker reads the complete finalized channels, propagates route
@@ -3001,6 +3015,19 @@ shown once it is current; a translated reading cannot be corrected. Translation
 jobs are left out of the trust section and labelled in the background work
 center. Disposable launches use `MeetingTranslationFixture`, which tags each line
 with its target; `-seed-meeting-translation-missing` reports missing languages.
+
+**Translated export (D608).** `MeetingStore.meetingLibrarySnapshot` reads
+translations with the transcript, and `MeetingLibraryDetail.translations` carries
+them to `MeetingDocumentProjection`. `MeetingDocumentOptions.translationLanguage`
+selects one; the projection requires it to match the transcript revision and the
+correction revision it exports, else `ExportMeetingDocumentError.translationUnavailable`,
+and swaps translated rows in with the target language. `MeetingDocumentContent`
+names the language: Markdown titles the transcript as a translation made on this
+Mac, VTT adds a `NOTE`, and the prepared file name gains ` (<code>)`. The export
+menu shows `detail-export-translation` (`-original`, `-<code>`) only while a
+current translation exists; the choice lives in `MeetingDetailFlowState` and
+returns to Original when that translation goes out of date. Meeting bundles
+ignore it.
 
 Resolution is session override, then exact captured bundle-ID profile, then
 global mode. The destination's existing NSRunningApplication capture supplies
@@ -4133,9 +4160,9 @@ the scoped summary stream remains functional at scale; it does not substitute
 for the unavailable SwiftUI update-cause lane.
 
 The characterization baseline freezes the reviewed interaction surface. The
-current generated `meeting-detail-interaction-contract.json` snapshots 503
+current generated `meeting-detail-interaction-contract.json` snapshots 528
 state/control/presentation/keyboard/identifier/navigation signals across forty-one
-reviewed detail files and assigns all 31 `MeetingDetailUITests` journeys to
+reviewed detail files and assigns all 32 `MeetingDetailUITests` journeys to
 exactly one of sixteen feature owners. Screenshot names derive from test bodies;
 changing a control, route, owner, screenshot, or reviewed evidence digest
 requires an explicit snapshot update.

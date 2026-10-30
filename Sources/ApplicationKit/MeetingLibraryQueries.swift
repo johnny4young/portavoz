@@ -14,6 +14,7 @@ public struct MeetingLibraryDetail: Sendable {
     public let summary: SummaryDraft?
     public let summaryVersion: Int?
     public let summaryCorrectionSource: TranscriptCorrectionArtifactSource
+    public let translations: [TranscriptTranslation]
 
     public init(
         meeting: Meeting,
@@ -24,7 +25,8 @@ public struct MeetingLibraryDetail: Sendable {
         isRefinedTranscript: Bool = false,
         summary: SummaryDraft?,
         summaryVersion: Int?,
-        summaryCorrectionSource: TranscriptCorrectionArtifactSource = .legacyAccepted
+        summaryCorrectionSource: TranscriptCorrectionArtifactSource = .legacyAccepted,
+        translations: [TranscriptTranslation] = []
     ) {
         self.meeting = meeting
         self.speakers = speakers
@@ -37,6 +39,7 @@ public struct MeetingLibraryDetail: Sendable {
         self.summary = summary
         self.summaryVersion = summaryVersion
         self.summaryCorrectionSource = summaryCorrectionSource
+        self.translations = translations
     }
 
     private static func derivedCorrectionRevision(
@@ -152,7 +155,8 @@ private struct LocalMeetingLibraryQueryReader: MeetingLibraryQueryReading {
             isRefinedTranscript: snapshot.isRefinedTranscript,
             summary: snapshot.summary?.draft,
             summaryVersion: snapshot.summary?.version,
-            summaryCorrectionSource: snapshot.summary?.correctionSource ?? .legacyAccepted)
+            summaryCorrectionSource: snapshot.summary?.correctionSource ?? .legacyAccepted,
+            translations: snapshot.translations)
     }
 
     func meetingLibrarySearch(

@@ -20836,6 +20836,76 @@
           }
         }
       }
+    },
+    "Removed %@ of silence.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se quitaron %@ de silencio."
+          }
+        }
+      }
+    },
+    "Remove %@ of silence at the end…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar %@ de silencio al final…"
+          }
+        }
+      }
+    },
+    "Remove the silence at the end?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Quitar el silencio del final?"
+          }
+        }
+      }
+    },
+    "The audio after the last phrase is deleted for good, and transcript edits are reset.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El audio después de la última frase se borra para siempre y se descartan las correcciones de la transcripción."
+          }
+        }
+      }
+    },
+    "Removing silence…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitando silencio…"
+          }
+        }
+      }
+    },
+    "There is no long silence at the end to remove.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay un silencio largo al final para quitar."
+          }
+        }
+      }
+    },
+    "Wait for processing to finish before removing silence.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Espera a que termine el procesamiento antes de quitar el silencio."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

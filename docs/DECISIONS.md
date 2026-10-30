@@ -22148,41 +22148,64 @@ while pauses under 20 s keep their natural length. Without a transcript the
 scrubber stays linear. "Only my voice" generalizes to any speaker; clip marks
 and echo reduction move one click deeper.
 
-## D606 — A stated priority is measured on a sealed bilingual corpus first (Oct 2026)
+## D606 — Refine drops rows stretched over room noise and never leaves English or Spanish
 
-**Context:** D508 withdrew three deterministic revisions because each was only
-tested on shapes its author had in mind. Research #92 asks whether an
-`NLTagger`/`NLTokenizer` baseline or a local typed-decision model (Liquid AI
-d1-3B) can tell a declared priority from a demotion, a question, or no claim.
-Neither arm can be judged without a corpus and an evaluator that make unsafe
-promotions and refusals visible.
+**Context:** A test recording of 26 s of speech followed by 13 minutes of a
+quiet room came back from Refine with "Gracias.", "so" and five "E aí" rows
+labelled Portuguese, so D607 never saw a silent tail. Silero accepted the faint
+room sound as speech, and because no window of the channel was detected as
+English or Spanish, D603 left the language automatic. Those rows sat 1–6 dB
+above the channel's noise floor, about 13 dB below the speaker; real phrases
+said while walking away from the microphone sat at 4–7 dB, so level alone
+cannot separate them.
 
-**Decision:** `Fixtures/StatedPriorityQuality/public-synthetic-v1.json` holds
-100 synthetic cases, 50 English and 50 Spanish, each with 15 priorities, 15
-demotions, 10 unresolved questions, and 10 abstentions. Twenty development
-cases are the only tuning data; 80 evaluation cases stay sealed until an arm's
-policy is frozen. Families of minimal pairs and translations never cross a
-split. A blind second annotator, a language model given only captions and
-focus, agreed on all 100 labels; disagreements would be recorded with the
-owner's adjudication, never relabelled.
+**Decision:** After decoding, `FaintSpeechFilter` drops a row only when it is
+both stretched (at least 3 s with under 0.5 words per second) and faint (its
+loud frames within 10 dB of the channel's noise floor). Their duration no
+longer counts as detected speech, so the Refine loss warning stays honest.
+When no window of a channel is detected as English or Spanish, Romance
+detections decode as Spanish and the rest as English.
 
-`scripts/stated_priority_quality.py` scores observations from any arm against
-the fixture digest. A claim without grounded evidence is refused, and only an
-abstention classified as neutral speech earns credit on gold `abstain`, so a
-disabled, timed-out, or low-confidence arm cannot look accurate. Comparison
-pairs cases and names no winner.
+**Consequences:** On the test recording all eight invented rows go and all
+seven real ones stay; across 982 rows of two real meetings two rows go (a lone
+"." and a faint four-word phrase). Real speech slower than 0.5 words per
+second near the noise floor is lost. A meeting in another language still
+needs a fixed transcription language (D603).
 
-Before any model runs, the measurement host is this Apple M3 Pro with 18 GB of
-unified memory on macOS 27.0.1, with ceilings of 250 ms warm p95 per decision
-over at most 1 000 tokens of context, 15 s from process start to the first
-decision, 8 GB of added peak process memory, and 6.5 GB on disk. The proposed
-pilot gates stay those of #92: zero unsafe promotions and zero unsupported
-evidence on the sealed set, at least 9 of 12 priorities recalled per language,
-and a gain over the linguistic baseline at its frozen operating point.
+## D607 — A long silent tail can be cut from the audio and the transcript
 
-**Consequences:** the no-proposal control scores zero promotions and zero
-credit, the reference every arm must beat. The corpus is a clustered synthetic
-pilot, so a clean sealed run would justify only a larger study, not shipping.
-A pass on this host says nothing about smaller Macs or coexistence with
-capture. GAPS #13 stays open.
+**Context:** D604 limits new forgotten recordings to about eight minutes of
+silence, but recordings made before it can hold hours of it. D605 hides dead
+time while playing, yet the files still take the disk space and the meeting
+still reports the wrong length. D27 treats the audio as the source of truth,
+so removing it must be explicit and safe.
 
+**Decision:** When the last transcribed phrase ends at least five minutes
+before the audio does, the player's options menu offers "Remove … of silence
+at the end…" behind a confirmation. `TrimMeetingAudioTail` keeps 10 s after
+the last phrase. It runs only for a settled meeting (lifecycle ready, no
+pending or running job, the compression owner checks). Cut copies of both
+channels are written and verified first; then one revision-fenced write
+tombstones rows that start after the cut, clips a row that crosses it, moves
+the meeting's end and increments the transcript revision; only then are the
+files swapped, with the originals restored if any swap fails (D112). The
+summary is not regenerated.
+
+**Consequences:** The cut is permanent and retires corrections made at the
+previous revision. A failed swap leaves extra silence, never transcript rows
+past the end of the audio. Older recordings whose silence was transcribed as
+hallucinated phrases have no trailing gap until Refine (D603) removes those
+rows.
+
+## D608 — A document export may use the current transcript translation
+
+A translated meeting (D595) could be read but not shared. Export's
+"Transcript language" offers Original and every stored translation of the
+current reading; Markdown, PDF, subtitles and Gist then carry the translated
+rows, while rows without a translation keep their original text. The library
+snapshot reads the translations in the same transaction as the transcript, and
+the export is refused when the chosen translation is missing or was made from
+another transcript or correction revision, so a document never mixes readings.
+The file name gains the language code and the transcript is labelled as a
+translation made on this Mac (a VTT note; SRT has no comment syntax). Meeting
+files (`.portavoz`) keep the original transcript only.

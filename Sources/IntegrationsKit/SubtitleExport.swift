@@ -22,7 +22,8 @@ public enum SubtitleExport {
         _ format: Format,
         segments: [TranscriptSegment],
         speakers: [Speaker],
-        correctionProvenance: TranscriptCorrectionExportProvenance? = nil
+        correctionProvenance: TranscriptCorrectionExportProvenance? = nil,
+        translationLanguage: String? = nil
     ) -> String {
         let correctedSegmentIDs = correctionProvenance.map {
             Set($0.sourceSegmentIDsByExportedSegmentID.keys)
@@ -46,7 +47,10 @@ public enum SubtitleExport {
                     + "\(timestamp(cue.end, separator: "."))\n"
                     + cue.displayText
             }.joined(separator: "\n\n")
-            let note = provenanceNote.map { $0 + "\n\n" } ?? ""
+            let translationNote = translationLanguage.map {
+                "NOTE Portavoz \(MeetingExporter.languageName($0)) translation, made on this Mac\n\n"
+            } ?? ""
+            let note = translationNote + (provenanceNote.map { $0 + "\n\n" } ?? "")
             return "WEBVTT\n\n" + note + body + "\n"
         }
     }

@@ -56,9 +56,12 @@ public protocol MeetingDocumentRendering: Sendable {
 
 public struct MeetingDocumentOptions: Equatable, Sendable {
     public let includeCorrectionProvenance: Bool
+    /// Exports the stored translation of the current reading instead of the original.
+    public let translationLanguage: String?
 
-    public init(includeCorrectionProvenance: Bool = false) {
+    public init(includeCorrectionProvenance: Bool = false, translationLanguage: String? = nil) {
         self.includeCorrectionProvenance = includeCorrectionProvenance
+        self.translationLanguage = translationLanguage
     }
 }
 
@@ -72,6 +75,8 @@ public struct MeetingDocumentContent: Sendable {
     public let summary: SummaryDraft?
     public let summaryVersion: Int?
     public let correctionProvenance: TranscriptCorrectionExportProvenance?
+    /// The language the transcript rows were translated into; nil for the original.
+    public let translationLanguage: String?
 
     public init(
         meeting: Meeting,
@@ -79,7 +84,8 @@ public struct MeetingDocumentContent: Sendable {
         segments: [TranscriptSegment],
         summary: SummaryDraft?,
         summaryVersion: Int?,
-        correctionProvenance: TranscriptCorrectionExportProvenance?
+        correctionProvenance: TranscriptCorrectionExportProvenance?,
+        translationLanguage: String? = nil
     ) {
         self.meeting = meeting
         self.speakers = speakers
@@ -87,6 +93,7 @@ public struct MeetingDocumentContent: Sendable {
         self.summary = summary
         self.summaryVersion = summaryVersion
         self.correctionProvenance = correctionProvenance
+        self.translationLanguage = translationLanguage
     }
 }
 
@@ -114,6 +121,7 @@ public enum ExportMeetingDocumentError: Error, Equatable, LocalizedError, Sendab
     case meetingNotFound
     case outputFileRequired
     case invalidCorrectionSnapshot
+    case translationUnavailable
 
     public var errorDescription: String? {
         switch self {
@@ -123,6 +131,8 @@ public enum ExportMeetingDocumentError: Error, Equatable, LocalizedError, Sendab
             "this export format requires --out <path>"
         case .invalidCorrectionSnapshot:
             "the corrected transcript could not be exported safely"
+        case .translationUnavailable:
+            "this meeting has no current translation in that language"
         }
     }
 }
@@ -226,13 +236,13 @@ public struct PrepareMeetingDocument: ApplicationUseCase {
             let markdown = try await documents.markdown(from: content)
             return PreparedMeetingDocument(
                 data: Data(markdown.utf8),
-                filename: "\(detail.meeting.title).md",
+                filename: "\(Self.title(detail, request.options)).md",
                 meetingTitle: detail.meeting.title)
         case .pdf:
             let markdown = try await documents.markdown(from: content)
             return PreparedMeetingDocument(
                 data: try await documents.pdf(fromMarkdown: markdown),
-                filename: "\(detail.meeting.title).pdf",
+                filename: "\(Self.title(detail, request.options)).pdf",
                 meetingTitle: detail.meeting.title)
         case .srt, .vtt:
             guard let subtitleFormat = request.format.subtitleFormat else {
@@ -242,9 +252,16 @@ public struct PrepareMeetingDocument: ApplicationUseCase {
                 from: content, format: subtitleFormat)
             return PreparedMeetingDocument(
                 data: Data(subtitles.utf8),
-                filename: "\(detail.meeting.title).\(request.format.filenameExtension)",
+                filename: "\(Self.title(detail, request.options)).\(request.format.filenameExtension)",
                 meetingTitle: detail.meeting.title)
         }
+    }
+}
+
+extension PrepareMeetingDocument {
+    /// A translated document names its language so it never overwrites the original's file.
+    static func title(_ detail: MeetingLibraryDetail, _ options: MeetingDocumentOptions) -> String {
+        options.translationLanguage.map { "\(detail.meeting.title) (\($0))" } ?? detail.meeting.title
     }
 }
 
@@ -340,9 +357,12 @@ private enum MeetingDocumentProjection {
     ) throws -> MeetingDocumentContent {
         let meeting = detail.meeting
         let snapshot = try correctionSnapshot(for: detail)
+        let translation = try currentTranslation(
+            options.translationLanguage, detail: detail, revision: snapshot.revision)
         let segments = exportedSegments(
             from: snapshot.content,
-            meetingID: meeting.id)
+            meetingID: meeting.id,
+            translation: translation)
         let summaryIsCurrent = detail.summaryCorrectionSource.matches(snapshot.revision)
         let provenance = options.includeCorrectionProvenance
             ? correctionProvenance(
@@ -357,7 +377,22 @@ private enum MeetingDocumentProjection {
             segments: segments,
             summary: summaryIsCurrent ? detail.summary : nil,
             summaryVersion: summaryIsCurrent ? detail.summaryVersion : nil,
-            correctionProvenance: provenance)
+            correctionProvenance: provenance,
+            translationLanguage: translation?.targetLanguage)
+    }
+
+    /// Nil exports the original; a requested language must match the reading being exported.
+    private static func currentTranslation(
+        _ language: String?,
+        detail: MeetingLibraryDetail,
+        revision: TranscriptCorrectionRevision
+    ) throws -> TranscriptTranslation? {
+        guard let language else { return nil }
+        guard let translation = detail.translations.first(where: { $0.targetLanguage == language }),
+              translation.isCurrent(
+                  transcriptRevision: detail.meeting.transcriptRevision, correctionRevision: revision)
+        else { throw ExportMeetingDocumentError.translationUnavailable }
+        return translation
     }
 
     private static func correctionSnapshot(
@@ -422,16 +457,18 @@ private enum MeetingDocumentProjection {
 
     private static func exportedSegments(
         from content: MeetingTranscriptContent,
-        meetingID: MeetingID
+        meetingID: MeetingID,
+        translation: TranscriptTranslation?
     ) -> [TranscriptSegment] {
         content.rows.map { row in
-            TranscriptSegment(
+            let translated = translation?.lines[row.id]
+            return TranscriptSegment(
                 id: row.id,
                 meetingID: meetingID,
                 speakerID: row.speakerID,
                 channel: row.channel,
-                text: row.text,
-                language: row.language,
+                text: translated ?? row.text,
+                language: translated == nil ? row.language : translation?.targetLanguage,
                 startTime: row.startTime,
                 endTime: row.endTime,
                 confidence: row.confidence,

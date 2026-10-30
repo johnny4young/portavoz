@@ -268,7 +268,14 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
             self.assertEqual(selection.tests, FEATURE_TESTS["meeting-audio"], path)
             self.assertTrue(
-                all("MeetingDetailUITests" in test for test in selection.tests),
+                all(test.split("/")[1] in {"MeetingDetailUITests", "MeetingAudioTrimUITests"}
+                    for test in selection.tests),
+                path,
+            )
+            self.assertIn(
+                "PortavozUITests/MeetingAudioTrimUITests/"
+                "testSilentTailRequiresConfirmationAndCutsOnlyAfterConfirmation",
+                selection.tests,
                 path,
             )
 

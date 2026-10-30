@@ -142,6 +142,8 @@ final class MeetingDetailFlowState {
     var alert: AlertRoute?
     var export: MeetingDetailExportRoute?
     var includeCorrectionProvenance = false
+    /// Nil exports the original transcript.
+    var exportTranslationLanguage: String?
 
     var renameMeetingTitle = ""
     var transcriptCorrectionTarget: TranscriptCorrectionTarget?

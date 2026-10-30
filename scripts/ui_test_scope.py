@@ -284,6 +284,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("MeetingDetailUITests", "testPlayerExposesSkipAndOnlyMyVoice"),
         test_id("MeetingDetailUITests", "testClipMarkingRevealsExport"),
         test_id("MeetingDetailUITests", "testClickingALineOfTextJumpsThere"),
+        test_id("MeetingAudioTrimUITests", "testSilentTailRequiresConfirmationAndCutsOnlyAfterConfirmation"),
     ),
     "meeting-correction": (
         test_id(
@@ -317,6 +318,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "testATranscriptIsTranslatedOnRequestAndTheOriginalStaysOneClickAway",
         ),
         test_id("MeetingTranscriptTranslationUITests", "testMissingLanguagesPointToTheirDownload"),
+        test_id("MeetingTranscriptTranslationUITests", "testAnExportCanUseTheCurrentTranslation"),
     ),
     "settings-navigation": (
         test_id("SettingsUITests", "testCategoryNavigationRevealsEachPane"),
@@ -730,8 +732,6 @@ NO_UI_PREFIXES = (
 NO_UI_FILES = {
     "Fixtures/DictationValidation/README.md",
     "Fixtures/DictationValidation/public-synthetic-v1.json",
-    "Fixtures/StatedPriorityQuality/README.md",
-    "Fixtures/StatedPriorityQuality/public-synthetic-v1.json",
     # Only the headless --bench-live mode and the CLI call it; unit tests own it.
     "Sources/TranscriptionKit/LiveTranscriptionBench.swift",
     ".gitignore",
