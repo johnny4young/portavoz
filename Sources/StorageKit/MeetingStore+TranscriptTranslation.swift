@@ -57,6 +57,22 @@ extension MeetingStore {
         }
     }
 
+    /// Checks the same live ownership required by publication, without renewing or mutating
+    /// a lease that may have been cancelled or reclaimed. A job purged with its meeting is a
+    /// lost lease too: the work no longer exists.
+    public func validateTranscriptTranslationLease(
+        _ id: ProcessingJobID, owner: String, at timestamp: Date
+    ) async throws {
+        try Self.validateOwner(owner)
+        do {
+            try await database.read { db in
+                _ = try Self.ownedJob(id, owner: owner, at: timestamp, in: db)
+            }
+        } catch StorageError.processingJobNotFound {
+            throw StorageError.processingJobLeaseLost(id)
+        }
+    }
+
     /// Publishes a translation and completes its owned job in one transaction, only while
     /// the transcript revision and correction overlay it read are still current.
     public func completeTranscriptTranslationJob(
