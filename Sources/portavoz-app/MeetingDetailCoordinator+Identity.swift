@@ -106,6 +106,7 @@ extension MeetingDetailCoordinator {
         let effect = await model.send(.acceptVoiceSuggestion(speaker, name: suggestion.name))
         switch effect {
         case .voiceSuggestionAccepted(let renamed):
+            VoiceSuggestionLog.accepted(suggestion)
             offerToRememberPerson(renamed, source: .voiceSuggestion)
         case .operationFailed(let message):
             flow.alert = .failure(message)

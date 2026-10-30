@@ -408,6 +408,37 @@ final class VoiceMatcherTests: XCTestCase {
         let matches = VoiceMatcher.matches(speakers: [("S1", [0, 0])], gallery: gallery)
         XCTAssertTrue(matches.isEmpty)
     }
+
+    func testTwoNearlyEqualNamesSuggestNeither() {
+        let gallery = [
+            RememberedVoice(name: "Marta", embedding: [1, 0]),
+            RememberedVoice(name: "Ilarion", embedding: [0, 1]),
+        ]
+        // Equidistant from both: the pick would be a coin flip.
+        let matches = VoiceMatcher.matches(
+            speakers: [("S1", [1, 1])], gallery: gallery, maxDistance: 1)
+        XCTAssertTrue(matches.isEmpty)
+    }
+
+    func testAClearLeadReportsTheRunnerUp() throws {
+        let gallery = [
+            RememberedVoice(name: "Marta", embedding: [1, 0]),
+            RememberedVoice(name: "Ilarion", embedding: [0, 1]),
+        ]
+        let match = try XCTUnwrap(VoiceMatcher.matches(
+            speakers: [("S1", [0.95, 0.05])], gallery: gallery).first)
+        let runnerUp = try XCTUnwrap(match.runnerUpDistance)
+
+        XCTAssertEqual(match.name, "Marta")
+        XCTAssertGreaterThanOrEqual(runnerUp - match.distance, VoiceMatcher.minimumMargin)
+    }
+
+    func testOnlyOneRememberedNameHasNoRunnerUp() throws {
+        let gallery = [RememberedVoice(name: "Marta", embedding: [1, 0])]
+        let match = try XCTUnwrap(VoiceMatcher.matches(
+            speakers: [("S1", [0.95, 0.05])], gallery: gallery).first)
+        XCTAssertNil(match.runnerUpDistance)
+    }
 }
 
 // MARK: - "Me" via voiceprint in attribution
