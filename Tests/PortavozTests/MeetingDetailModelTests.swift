@@ -1540,6 +1540,12 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
         return compressionResult
     }
 
+    func trimMeetingDetailAudioTail(_ request: TrimMeetingAudioTailRequest) throws -> TimeInterval {
+        calls.append(.trimAudio(request.relativeAudioDirectory, revision: request.transcriptRevision))
+        try fail(.trimAudio)
+        return request.duration - (TrailingSilence.cutoff(segments: request.segments, duration: request.duration) ?? 0)
+    }
+
     func canCompressMeetingDetailAudio(relativeAudioDirectory: String) async throws -> Bool {
         if let audioCompressionCheckOverride { return try await audioCompressionCheckOverride() }
         if audioCompressionCheckFailure { throw MeetingAudioCompressionError.unavailable }
@@ -1667,6 +1673,40 @@ struct MeetingDetailCompressionPermissionTests {
         #expect(client.calls.filter { if case .preparePlayback = $0 { return true }; return false }.count == 1)
     }
 
+    @Test(.timeLimit(.minutes(1)))
+    func longSilentTailIsOfferedAndTrimmedThenPlaybackReloads() async throws {
+        let fixture = MeetingDetailModelFixture()
+        var meeting = fixture.meeting
+        meeting.audioDirectory = "Audio/imported"
+        let segments = [TranscriptSegment(
+            meetingID: meeting.id, channel: .system, text: "Bye", startTime: 0, endTime: 30, isFinal: true)]
+        let busy = ProcessingJob(meetingID: meeting.id, kind: .audioImport, inputFingerprint: "fixture")
+        let client = MeetingDetailModelClientFake(updates: [
+            .core(MeetingReviewCore(meeting: meeting, speakers: [], segments: segments)), .processingJobs([busy])
+        ])
+        let (prepared, file) = try await makePreparedPlayback(sampleRate: 8_000, frames: 2_880_000)
+        defer { prepared.session.invalidate(); try? FileManager.default.removeItem(at: file) }
+        client.preparedPlaybackResult = prepared
+        let model = MeetingDetailModel(meetingID: meeting.id, client: client)
+        await model.observe()
+        await model.send(.loadPlayback)
+        #expect(MeetingDetailAudioTrimState.trailingSilence(for: model.state) == nil)
+        #expect(await model.send(.trimTrailingSilence) == nil)
+
+        client.updates = [.processingJobs([])]
+        await model.observe()
+        #expect(MeetingDetailAudioTrimState.trailingSilence(for: model.state) == 320)
+        guard case .audioTrimmed(let removed) = await model.send(.trimTrailingSilence) else {
+            Issue.record("trim did not report removed audio")
+            return
+        }
+        #expect(removed == 320)
+        #expect(client.calls.contains(.trimAudio("Audio/imported", revision: 0)))
+        #expect(client.calls.filter { if case .preparePlayback = $0 { return true }; return false }.count == 2)
+        #expect(model.state.audioTrimMessage != nil)
+        #expect(model.state.isTrimmingAudio == false)
+    }
+
     @Test func sameDirectoryImportCompletionRefreshesCompressionWithoutReplacingPlayback() async throws {
         let fixture = MeetingDetailModelFixture()
         var meeting = fixture.meeting
@@ -1760,11 +1800,13 @@ struct MeetingDetailCompressionPermissionTests {
         }
     }
 
-    private func makePreparedPlayback() async throws -> (PreparedMeetingPlayback, URL) {
+    private func makePreparedPlayback(
+        sampleRate: Double = 16_000, frames: AVAudioFrameCount = 3_200
+    ) async throws -> (PreparedMeetingPlayback, URL) {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("permission-\(UUID().uuidString).wav")
         do {
-            let format = try #require(AVAudioFormat(standardFormatWithSampleRate: 16_000, channels: 1))
-            let buffer = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 3_200))
+            let format = try #require(AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1))
+            let buffer = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames))
             buffer.frameLength = buffer.frameCapacity
             let samples = try #require(buffer.floatChannelData?[0])
             for index in 0..<Int(buffer.frameLength) { samples[index] = 0.1 }
@@ -1827,6 +1869,7 @@ private enum MeetingDetailModelFailure: String, CaseIterable, Error, LocalizedEr
     case loadMetadataSuggestions
     case preparePlayback
     case compressAudio
+    case trimAudio
     case exportAudioClip
     case rememberVoice
 
@@ -1858,6 +1901,7 @@ private enum MeetingDetailModelCall: Equatable {
         titledChapterStarts: Set<TimeInterval>)
     case preparePlayback(String)
     case compressAudio(String)
+    case trimAudio(String, revision: Int)
     case exportAudioClip(String, ClosedRange<TimeInterval>, URL)
     case checkVoiceMemoryOffer(String)
     case rememberVoice(MeetingID, SpeakerID)

@@ -72,6 +72,7 @@ extension MeetingDetailModel {
         case loadPlayback
         case refreshCompressionPermission
         case compressAudio
+        case trimTrailingSilence
         case exportAudioClip(ClosedRange<TimeInterval>, to: URL)
         case checkVoiceMemoryOffer(name: String)
         case rememberVoice(SpeakerID)
@@ -250,6 +251,7 @@ extension MeetingDetailModel {
         static var loadPlayback: Self { .review(.audio(.loadPlayback)) }
         static var refreshAudioCompressionPermission: Self { .review(.audio(.refreshCompressionPermission)) }
         static var compressAudio: Self { .review(.audio(.compressAudio)) }
+        static var trimTrailingSilence: Self { .review(.audio(.trimTrailingSilence)) }
 
         static func exportAudioClip(
             _ range: ClosedRange<TimeInterval>,
@@ -295,6 +297,7 @@ extension MeetingDetailModel {
         case voiceRemembered
         case voiceMemoryInsufficientAudio
         case audioCompressed(Int64)
+        case audioTrimmed(TimeInterval)
         case audioClipExported(URL)
         case operationFailed(String)
     }

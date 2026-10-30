@@ -32,6 +32,7 @@ extension ArchitectureDependencyTests {
         try [
             "Sources/portavoz-app/MeetingDetailModel.swift",
             "Sources/portavoz-app/MeetingDetailModel+Actions.swift",
+            "Sources/portavoz-app/MeetingDetailModel+AudioEffects.swift",
             "Sources/portavoz-app/MeetingDetailReviewAccumulator.swift",
             "Sources/portavoz-app/MeetingDetailMetadataSuggestionState.swift",
             "Sources/portavoz-app/MeetingDetailPerformanceTrace.swift",

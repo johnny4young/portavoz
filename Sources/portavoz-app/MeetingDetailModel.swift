@@ -25,6 +25,8 @@ final class MeetingDetailModel {
         fileprivate(set) var playback: PreparedMeetingPlayback?
         fileprivate(set) var isCompressingAudio = false
         fileprivate(set) var audioCompressionMessage: String?
+        fileprivate(set) var isTrimmingAudio = false
+        fileprivate(set) var audioTrimMessage: String?
         fileprivate(set) var revision = 0
         fileprivate(set) var lastActionError: String?
         fileprivate(set) var decisionConfirmations:
@@ -241,6 +243,8 @@ final class MeetingDetailModel {
             return nil
         case .compressAudio:
             return await compressAudio()
+        case .trimTrailingSilence:
+            return await trimTrailingSilence()
         case .exportAudioClip(let range, let destination):
             return await exportAudioClip(range, to: destination)
         case .checkVoiceMemoryOffer(let name):
@@ -711,11 +715,7 @@ private extension MeetingDetailModel {
 
         do {
             let result = try await client.compressMeetingDetailAudio(request)
-            let previous = state.playback
-            state.playback = nil
-            playbackDirectoryAttempt = nil
-            previous?.session.invalidate()
-            await loadPlayback()
+            await reloadPlayback()
             state.audioCompressionMessage = MeetingDetailAudioCompressionState.message(bytesFreed: result.bytesFreed)
             return .audioCompressed(result.bytesFreed)
         } catch is CancellationError {
@@ -727,44 +727,33 @@ private extension MeetingDetailModel {
         }
     }
 
-    func exportAudioClip(
-        _ range: ClosedRange<TimeInterval>,
-        to destination: URL
-    ) async -> Effect {
-        guard let relative = state.readModel?.meeting.audioDirectory else {
-            return .operationFailed(L10n.text("The meeting has no audio to trim."))
-        }
+    func trimTrailingSilence() async -> Effect? {
+        guard let request = MeetingDetailAudioTrimState.trimRequest(for: state) else { return nil }
+        state.isTrimmingAudio = true
+        state.audioTrimMessage = nil
+        defer { state.isTrimmingAudio = false }
+
         do {
-            try await client.exportMeetingDetailAudioClip(
-                ExportMeetingAudioClipRequest(
-                    relativeAudioDirectory: relative,
-                    range: range,
-                    destination: destination,
-                    segments: state.readModel?.segments ?? [],
-                    clearPlayback: state.playback?.session.clearPlayback ?? true))
-            return .audioClipExported(destination)
+            let removed = try await client.trimMeetingDetailAudioTail(request)
+            await reloadPlayback()
+            state.audioTrimMessage = MeetingDetailAudioTrimState.message(removed: removed)
+            return .audioTrimmed(removed)
+        } catch is CancellationError {
+            return nil
         } catch {
-            return .operationFailed(error.localizedDescription)
+            let message = UseCaseErrorMessages.describe(error)
+            state.audioTrimMessage = message
+            return .operationFailed(message)
         }
     }
 
-    func rememberVoice(_ speakerID: SpeakerID) async -> Effect {
-        do {
-            switch try await client.rememberMeetingDetailVoice(
-                meetingID: meetingID,
-                speakerID: speakerID) {
-            case .remembered:
-                return .voiceRemembered
-            case .insufficientAudio:
-                return .voiceMemoryInsufficientAudio
-            case .suggestions, .canRemember:
-                return .operationFailed(L10n.text("Could not remember the voice."))
-            }
-        } catch {
-            return .operationFailed(L10n.format(
-                "Could not remember the voice: %@",
-                UseCaseErrorMessages.describe(error)))
-        }
+    /// The audio files changed under the session; prepare them again.
+    func reloadPlayback() async {
+        let previous = state.playback
+        state.playback = nil
+        playbackDirectoryAttempt = nil
+        previous?.session.invalidate()
+        await loadPlayback()
     }
 }
 

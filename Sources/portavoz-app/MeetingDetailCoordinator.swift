@@ -55,6 +55,10 @@ struct MeetingDetailCoordinator {
         await model.send(.compressAudio)
     }
 
+    func trimTrailingSilence() async {
+        await model.send(.trimTrailingSilence)
+    }
+
     func correctTranscript(
         _ original: MeetingTranscriptContent.Row,
         text: String,

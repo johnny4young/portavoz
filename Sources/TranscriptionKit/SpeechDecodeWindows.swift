@@ -40,9 +40,13 @@ public enum SpeechDecodeWindows {
         return windows
     }
 
+    /// Romance languages Whisper confuses with Spanish on far or quiet speech.
+    static let closeToSpanish: Set<String> = ["pt", "gl", "ca", "it", "oc"]
+
     /// Each window's decoding language. Automatic detection is limited to the
     /// languages Portavoz supports; a window detected outside them (silence
-    /// labelled Japanese, English labelled German) takes the channel majority.
+    /// labelled Japanese, English labelled German) takes the channel majority,
+    /// or the closest supported language when no window has one.
     public static func languages(
         detected: [String?],
         allowed: Set<String>
@@ -55,8 +59,14 @@ public enum SpeechDecodeWindows {
             lhs.value == rhs.value ? lhs.key > rhs.key : lhs.value < rhs.value
         }?.key
         return detected.map { language in
-            guard let language, allowed.contains(language) else { return majority }
-            return language
+            guard let language else { return majority }
+            if allowed.contains(language) { return language }
+            return majority ?? closestSupported(to: language, allowed: allowed)
         }
+    }
+
+    static func closestSupported(to language: String, allowed: Set<String>) -> String? {
+        if closeToSpanish.contains(language), allowed.contains("es") { return "es" }
+        return allowed.contains("en") ? "en" : allowed.min()
     }
 }

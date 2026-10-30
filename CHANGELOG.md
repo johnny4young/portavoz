@@ -29,7 +29,15 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## October 30, 2026
+
+- **🛑 Wait for background work** — removing a silent tail stops safely if another processing job starts while its audio copies are being prepared.
+- **🛟 Keep a recovery copy** — removing a silent tail preserves the original audio backup if a disk error also prevents restoration.
+
 ## October 29, 2026
+
+- **🧹 Refine stops inventing words in a quiet room** — faint room noise no longer turns into "Gracias." or Portuguese phrases, and every passage stays in English or Spanish.
+- **✂️ Cut the silence after the call** — if a recording kept running long after everyone left, the player's ⋯ menu offers to remove that quiet tail from the audio and the transcript, freeing the space and fixing the meeting's length.
 
 - **🔚 Echo sorted right up to Stop** — the other side's voice your microphone picked up as the recording stops now goes to them too.
 - **🎙️ Keep your final words** — microphone speech that extends past the measured speaker echo stays yours, even when the other audio channel ends early.

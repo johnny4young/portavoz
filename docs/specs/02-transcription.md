@@ -445,11 +445,18 @@ Hardened against 3 REAL WhisperKit failures (all reproduced and verified, Jul 20
    Silence between windows never reaches the decoder. In automatic mode each
    window's language comes from WhisperKit's temperature-0 detection, limited
    to English and Spanish: a window detected as anything else takes the
-   channel's majority supported language, and stays automatic only when no
-   window was detected as a supported one. The window then decodes
+   channel's majority supported language; when no window was detected as a
+   supported one, Portuguese, Galician, Catalan, Italian and Occitan map to
+   Spanish and anything else to English (D606). Only a window whose detection
+   failed and has no majority stays automatic. The window then decodes
    sequentially with that language fixed, so temperature fallbacks cannot
    resample it. A fixed policy language applies to every window. Segments
-   are shifted back to file time and pass the same hygiene as before. A
+   are shifted back to file time and pass the same hygiene as before.
+   `FaintSpeechFilter` (both paths) then drops a row that lasts at least 3 s,
+   holds under 0.5 words per second and whose 90th-percentile level over
+   0.1 s frames stays within 10 dB of the channel's noise floor (the 10th
+   percentile of those frames); the dropped seconds are subtracted from the
+   detected speech. A
    missing model or a detection failure keeps the whole-file path above,
    including its coverage retry. `FileTranscription.detectedSpeechSeconds`
    carries the detected speech, and the Refine review warns that a draft

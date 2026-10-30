@@ -164,12 +164,16 @@ private extension MeetingDetailView {
                 voices: detail.map {
                     MeetingPlaybackVoice.voices(speakers: $0.speakers, segments: $0.segments)
                 } ?? [],
-                canCompressAudio: canCompressAudio,
+                canCompressAudio: MeetingDetailAudioCompressionState.canCompress(model.state),
                 isCompressingAudio: model.state.isCompressingAudio,
-                compressionMessage: model.state.audioCompressionMessage),
+                compressionMessage: model.state.audioCompressionMessage,
+                trailingSilence: MeetingDetailAudioTrimState.trailingSilence(for: model.state),
+                isTrimmingAudio: model.state.isTrimmingAudio,
+                trimMessage: model.state.audioTrimMessage),
             actions: MeetingDetailPlayerActions(
                 exportClip: coordinator.exportClip,
-                compressAudio: compressAudio))
+                compressAudio: { changeAudio(coordinator.compressAudio) },
+                trimSilence: { changeAudio(coordinator.trimTrailingSilence) }))
     }
 
     private func detailRail(
@@ -474,14 +478,9 @@ private extension MeetingDetailView {
             player: player)
     }
 
-    private var canCompressAudio: Bool {
-        !model.state.isCompressingAudio
-            && model.state.playback?.canCompressAudio == true
-    }
-
-    private func compressAudio() {
+    private func changeAudio(_ change: @escaping @MainActor () async -> Void) {
         Task {
-            await coordinator.compressAudio()
+            await change()
             playbackNavigation.applyPendingSeek(to: player)
         }
     }

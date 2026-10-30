@@ -2048,6 +2048,20 @@ admission query still rejects them. Query-plan regression uses the production
 request and requires indexed search rather than a full Library scan. This is
 access-path evidence, not a measured UI latency claim.
 
+Trimming a silent tail (D607) is stricter: `canTrimMeetingAudio` adds to the
+compression admission a live meeting that owns the directory, lifecycle
+`ready` and no pending or running processing job. `trimMeetingTail` is one
+write fenced on the expected transcript revision (`staleRefineDraft` on a
+mismatch). The same write rechecks lifecycle `ready` and absence of pending or
+running jobs after asynchronous audio staging; a changed admission fails with
+`audioTrimUnavailable` before any transcript mutation. This closes work
+queued during staging, but does not reserve exclusive audio ownership between
+the completed database write and the subsequent file swap. The write tombstones rows with `startTime >= cutoff`, clips rows whose
+`endTime` crosses it while keeping their identity, sets
+`endedAt = startedAt + cutoff`, increments `transcriptRevision` and refreshes
+the correction search projection. A non-positive or non-finite cutoff is
+`invalidTrimCutoff`.
+
 The external bookmark does not outlive an import that can no longer use it.
 `cancelAudioImport` retires it in the cancelling transaction when no owned copy
 was published, and the worker calls `retireFailedAudioImportSource` after a

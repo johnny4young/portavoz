@@ -22148,3 +22148,51 @@ while pauses under 20 s keep their natural length. Without a transcript the
 scrubber stays linear. "Only my voice" generalizes to any speaker; clip marks
 and echo reduction move one click deeper.
 
+## D606 — Refine drops rows stretched over room noise and never leaves English or Spanish
+
+**Context:** A test recording of 26 s of speech followed by 13 minutes of a
+quiet room came back from Refine with "Gracias.", "so" and five "E aí" rows
+labelled Portuguese, so D607 never saw a silent tail. Silero accepted the faint
+room sound as speech, and because no window of the channel was detected as
+English or Spanish, D603 left the language automatic. Those rows sat 1–6 dB
+above the channel's noise floor, about 13 dB below the speaker; real phrases
+said while walking away from the microphone sat at 4–7 dB, so level alone
+cannot separate them.
+
+**Decision:** After decoding, `FaintSpeechFilter` drops a row only when it is
+both stretched (at least 3 s with under 0.5 words per second) and faint (its
+loud frames within 10 dB of the channel's noise floor). Their duration no
+longer counts as detected speech, so the Refine loss warning stays honest.
+When no window of a channel is detected as English or Spanish, Romance
+detections decode as Spanish and the rest as English.
+
+**Consequences:** On the test recording all eight invented rows go and all
+seven real ones stay; across 982 rows of two real meetings two rows go (a lone
+"." and a faint four-word phrase). Real speech slower than 0.5 words per
+second near the noise floor is lost. A meeting in another language still
+needs a fixed transcription language (D603).
+
+## D607 — A long silent tail can be cut from the audio and the transcript
+
+**Context:** D604 limits new forgotten recordings to about eight minutes of
+silence, but recordings made before it can hold hours of it. D605 hides dead
+time while playing, yet the files still take the disk space and the meeting
+still reports the wrong length. D27 treats the audio as the source of truth,
+so removing it must be explicit and safe.
+
+**Decision:** When the last transcribed phrase ends at least five minutes
+before the audio does, the player's options menu offers "Remove … of silence
+at the end…" behind a confirmation. `TrimMeetingAudioTail` keeps 10 s after
+the last phrase. It runs only for a settled meeting (lifecycle ready, no
+pending or running job, the compression owner checks). Cut copies of both
+channels are written and verified first; then one revision-fenced write
+tombstones rows that start after the cut, clips a row that crosses it, moves
+the meeting's end and increments the transcript revision; only then are the
+files swapped, with the originals restored if any swap fails (D112). The
+summary is not regenerated.
+
+**Consequences:** The cut is permanent and retires corrections made at the
+previous revision. A failed swap leaves extra silence, never transcript rows
+past the end of the audio. Older recordings whose silence was transcribed as
+hallucinated phrases have no trailing gap until Refine (D603) removes those
+rows.
