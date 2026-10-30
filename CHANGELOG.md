@@ -29,6 +29,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## October 30, 2026
+
+- **🔒 Recording notifications stay with their call** — a withdrawn call-ended question stays dismissed, and an old notification cannot stop a newer recording.
+
 ## October 29, 2026
 
 - **🔚 Echo sorted right up to Stop** — the other side's voice your microphone picked up as the recording stops now goes to them too.

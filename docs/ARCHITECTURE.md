@@ -62,6 +62,11 @@ recursive tree/byte equality, and symlinks or divergent copies fail closed.
 Verified duplicates retain their original source even after commit; pre-existing
 copies are never treated as transaction-owned cleanup. The app adapter owns progress delivery and error translation.
 
+Call-ended notifications are fenced by their meeting and question identities.
+The main-actor adapter invalidates them on withdrawal and when capture leaves
+recording; delayed notification work removes only its own request. Actions
+from retired questions cannot control a later recording.
+
 ## Current module graph
 
 `portavoz-app` and `portavoz-cli` are the current composition roots. They link

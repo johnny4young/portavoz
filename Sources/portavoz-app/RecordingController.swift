@@ -23,6 +23,7 @@ final class RecordingController {
     private(set) var phase: RecordingPhase = .idle {
         didSet {
             processActivity.update(for: phase)
+            if phase != .recording { AppCallEndedNotification.withdraw() }
             services?.recordingPhaseDidChange(phase)
         }
     }
@@ -1185,7 +1186,8 @@ extension RecordingController {
         callEnd = next
         switch next {
         case .asking(let secondsUntilStop):
-            if !wasAsking { AppCallEndedNotification.post(secondsUntilStop: secondsUntilStop) }
+            if !wasAsking { AppCallEndedNotification.post(
+                secondsUntilStop: secondsUntilStop, sessionID: meetingID.rawValue) }
         case .listening:
             if wasAsking { AppCallEndedNotification.withdraw() }
         case .stopping:
