@@ -2592,3 +2592,11 @@ should be built on `NLTagger(.lexicalClass, .lemma)` and
 `lower`/verb, to lemmatize contractions to `not`, and to segment the anchor's
 sentence — which removes the hand-kept vocabularies and token windows that
 failed three times.
+
+Any fourth attempt is measured first (D606). `Fixtures/StatedPriorityQuality/`
+holds 100 public synthetic English/Spanish cases, each one focal target labeled
+`priority`, `demotion`, `question`, or `abstain` with exact whole-sentence
+evidence; every D508 failure is a case. `scripts/stated_priority_quality.py`
+scores any arm's observations against it and ships only the no-proposal
+control. No detector, model, or serving path exists, and nothing writes into
+objectives or summaries.
