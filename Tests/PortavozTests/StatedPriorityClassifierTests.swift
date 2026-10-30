@@ -1,15 +1,12 @@
-import NaturalLanguage
 import Testing
 @testable import IntelligenceKit
 
-/// Spanish lexical classes are an OS asset a fresh runner may lack, so the
-/// suites request it once before classifying anything.
+/// Spanish lexical classes are an OS asset the hosted runner lacks and cannot
+/// download. Where they are missing, a Spanish case must abstain as
+/// `runtime-unavailable`; its linguistic expectations run on hosts that have them.
 enum StatedPriorityTaggerAssets {
-    static let ready = Task { () -> Bool in
-        for scheme in [NLTagScheme.lexicalClass, .lemma] {
-            _ = try? await NLTagger.requestAssets(for: .spanish, tagScheme: scheme)
-        }
-        return StatedPriorityText.isTaggerAvailable(.english) && StatedPriorityText.isTaggerAvailable(.spanish)
+    static func available(for captions: [StatedPriorityCaption]) -> Bool {
+        StatedPriorityText.isTaggerAvailable(StatedPriorityText.language(of: captions))
     }
 }
 
@@ -181,8 +178,8 @@ struct StatedPriorityClassifierTests {
              mention: "the export", .abstain, reason: .classifiedNeutral)
     ]
 
-    @Test func taggerAssetsAreInstalledForBothLanguages() async {
-        #expect(await StatedPriorityTaggerAssets.ready.value, "NLTagger lacks English or Spanish lexical classes")
+    @Test func englishTaggerAssetsAreInstalled() {
+        #expect(StatedPriorityText.isTaggerAvailable(.english))
     }
 
     @Test func missingTaggerAssetsAbstainAsRuntimeUnavailable() {
@@ -194,9 +191,9 @@ struct StatedPriorityClassifierTests {
     }
 
     @Test(arguments: priorities + demotions + questions + abstentions)
-    func classifiesShape(_ shape: Case) async {
-        _ = await StatedPriorityTaggerAssets.ready.value
+    func classifiesShape(_ shape: Case) {
         let reading = Self.classify(shape)
+        guard Self.taggable(shape) else { return #expect(reading == .abstain(.runtimeUnavailable)) }
 
         #expect(reading.decision == shape.decision)
         #expect(reading.abstention == shape.reason)
@@ -204,9 +201,9 @@ struct StatedPriorityClassifierTests {
     }
 
     @Test(arguments: priorities + demotions + questions)
-    func claimsQuoteWholeSentencesIncludingTheFocalOne(_ shape: Case) async {
-        _ = await StatedPriorityTaggerAssets.ready.value
+    func claimsQuoteWholeSentencesIncludingTheFocalOne(_ shape: Case) {
         let reading = Self.classify(shape)
+        guard Self.taggable(shape) else { return #expect(reading == .abstain(.runtimeUnavailable)) }
         let captions = Dictionary(uniqueKeysWithValues: Self.captions(shape).map { ($0.id, $0.text) })
 
         #expect(reading.evidence.contains(StatedPrioritySpan(captionID: "c\(shape.focusCaption + 1)",
@@ -234,19 +231,21 @@ struct StatedPriorityClassifierTests {
         #expect(reading.evidence.map(\.quote) == ["What comes first?", "The onboarding flow comes first."])
     }
 
-    @Test func answerInTheNextCaptionResolvesAnOpenQuestion() async {
-        _ = await StatedPriorityTaggerAssets.ready.value
-        let reading = Self.classify(Case(
-            "", ["¿Cuál es la prioridad?", "La prioridad es el módulo de facturas."], focusCaption: 0, .priority))
+    @Test func answerInTheNextCaptionResolvesAnOpenQuestion() {
+        let shape = Case(
+            "", ["¿Cuál es la prioridad?", "La prioridad es el módulo de facturas."], focusCaption: 0, .priority)
+        let reading = Self.classify(shape)
+        guard Self.taggable(shape) else { return #expect(reading == .abstain(.runtimeUnavailable)) }
 
         #expect(reading.decision == .priority)
         #expect(reading.target == StatedPrioritySpan(captionID: "c2", quote: "el módulo de facturas"))
         #expect(reading.evidence.map(\.captionID) == ["c1", "c2"])
     }
 
-    @Test func spanishDemotionCitesTheCaptionThatNamedTheTarget() async {
-        _ = await StatedPriorityTaggerAssets.ready.value
-        let reading = Self.classify(Case("", ["¿Y la app de facturación?", "La prioridad es baja."], .demotion))
+    @Test func spanishDemotionCitesTheCaptionThatNamedTheTarget() {
+        let shape = Case("", ["¿Y la app de facturación?", "La prioridad es baja."], .demotion)
+        let reading = Self.classify(shape)
+        guard Self.taggable(shape) else { return #expect(reading == .abstain(.runtimeUnavailable)) }
 
         #expect(reading.target == StatedPrioritySpan(captionID: "c1", quote: "la app de facturación"))
         #expect(reading.evidence == [
@@ -271,6 +270,10 @@ struct StatedPriorityClassifierTests {
         #expect(reading.decision == .abstain)
         #expect(reading.abstention == .missingContext)
         #expect(reading.evidence.isEmpty)
+    }
+
+    private static func taggable(_ shape: Case) -> Bool {
+        StatedPriorityTaggerAssets.available(for: captions(shape))
     }
 
     private static func captions(_ shape: Case) -> [StatedPriorityCaption] {

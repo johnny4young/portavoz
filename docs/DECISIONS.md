@@ -22226,7 +22226,10 @@ neutral, which the evaluator would have credited on gold abstentions. The
 arm now checks that the language's schemes are listed and tag a probe verb,
 and otherwise abstains as `runtime-unavailable`. The evaluator scores that,
 like `missing-context` and `low-confidence`, as a refusal, so a degraded host
-cannot look accurate. The tests request the assets before classifying.
+cannot look accurate. The runner cannot download the assets either (a request
+fails after about five minutes). Hosted CI therefore checks only that Spanish
+cases abstain as `runtime-unavailable`; their linguistic expectations run on
+hosts with the assets, and the sealed run must use one.
 
 The policy was tuned only on the 20 development cases and on original
 sentences in `StatedPriorityClassifierTests`. It is frozen at the commit that
