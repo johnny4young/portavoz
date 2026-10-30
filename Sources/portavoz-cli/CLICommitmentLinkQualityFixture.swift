@@ -1,5 +1,4 @@
 import ApplicationKit
-import CryptoKit
 import Foundation
 import PortavozCore
 import StorageKit
@@ -65,25 +64,11 @@ struct CommitmentLinkQualityFixture: Decodable, Sendable {
     }
 
     fileprivate static func canonicalDigest(for data: Data) throws -> String {
-        let object: Any
-        do {
-            object = try JSONSerialization.jsonObject(with: data)
-        } catch {
+        guard let digest = CLIPublicFixtureDigest.sha256(of: data) else {
             throw CommitmentLinkQualityBenchmarkError.invalidFixture(
                 "fixture is not valid JSON")
         }
-        let canonical: Data
-        do {
-            canonical = try JSONSerialization.data(
-                withJSONObject: object,
-                options: [.sortedKeys, .withoutEscapingSlashes])
-        } catch {
-            throw CommitmentLinkQualityBenchmarkError.invalidFixture(
-                "fixture cannot be canonicalized")
-        }
-        return SHA256.hash(data: canonical)
-            .map { String(format: "%02x", $0) }
-            .joined()
+        return digest
     }
 
     fileprivate func validate() throws {
