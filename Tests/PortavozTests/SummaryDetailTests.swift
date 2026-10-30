@@ -10,10 +10,19 @@ final class SummaryFailureCopyTests: XCTestCase {
         XCTAssertEqual(SummarySetupIssue.mlxModelNotDownloaded.title, "Summary needs setup")
     }
 
-    func testDetailedNamesItsBounds() throws {
+    func testDetailedAsksToStopInsteadOfEnumerating() throws {
         let directive = try XCTUnwrap(SummaryDetail.detailed.summaryDirective)
-        XCTAssertTrue(directive.contains("up to six sentences"))
-        XCTAssertTrue(directive.contains("eight bullets per section"))
+        XCTAssertTrue(directive.contains("Never repeat a point"))
+        XCTAssertTrue(directive.contains("stop once the material is covered"))
+    }
+
+    func testSummaryWithoutTheActionItemsKeyStillParses() throws {
+        let summary = try OpenAICompatibleSummaryProvider.parseStructured(
+            #"{"overview": "Ship it.", "sections": [{"heading": "Decisions", "bullets": ["Ship Friday"]}]}"#)
+
+        XCTAssertEqual(summary.overview, "Ship it.")
+        XCTAssertEqual(summary.sections.first?.bullets, ["Ship Friday"])
+        XCTAssertTrue(summary.actionItems.isEmpty)
     }
 }
 

@@ -22222,17 +22222,26 @@ full regeneration, which costs minutes and can change the wording.
 default and a Regenerate submenu. Standard keeps today's prompt and
 fingerprint, so cached summaries stay valid; brief and detailed add one
 directive and join the fingerprint. Every level runs on the engine the user
-selected. Detailed asks for up to six overview sentences and eight bullets per
-section: an open-ended "keep everything" directive ran the embedded 4B model to
-its 16 384-token cap for twelve minutes on a 44-minute meeting and returned
-unparseable output. On Apple Foundation Models, detailed map notes are richer.
-The thin-summary chip offers Detailed once per visit, and a local model that
-cannot finish says so instead of asking for setup. A rename replaces the old shown name as
+selected. Concise asks for only the points that matter most and Detailed for
+every topic once; both end with "never repeat a point, and stop". On a
+44-minute meeting the embedded 4B model under greedy decoding looped on "keep
+every point" and on counted-bullet phrasings for both levels, enumerating
+1 141 evidence tags and cycling the same questions until its 16 384-token cap.
+Standard finished in 38 s; the shipped Detailed phrasing in 26–35 s with half
+again as much text, and in Spanish in 58 s. A
+structured summary without `actionItems` now decodes with none, because the
+same model sometimes folds commitments into a section. On Apple Foundation
+Models, detailed map notes are richer. The thin-summary chip offers Detailed
+once per visit, and a local model that cannot finish says so instead of asking
+for setup. A rename replaces the old shown name as
 a whole word in the current summary and saves it as the next immutable
 version, linked to the original generation run.
 
 **Consequences:** Detailed on Apple Foundation Models is still bounded by its
-context window. The rename rewrite is literal: a name that is also a common
+context window, and one field run came back shorter than Standard. On the
+embedded model Concise is about Standard's length, because the counts that
+would shorten it trigger loops. When that model folds commitments into a
+section, they render as text without checkboxes. The rename rewrite is literal: a name that is also a common
 word, or grammar that depended on the old label, is not adjusted, and
 regenerating remains the way to reword. A failed rewrite keeps the old name and
 never fails the rename.

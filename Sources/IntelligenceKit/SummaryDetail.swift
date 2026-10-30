@@ -8,18 +8,20 @@ public enum SummaryDetail: String, CaseIterable, Codable, Sendable {
     case detailed
 
     /// The extra instruction for the final pass; nil keeps the standard prompt.
+    /// Counted or "keep everything" phrasing sent the embedded 4B model into
+    /// repetition loops; naming the scope and asking it to stop does not.
     var summaryDirective: String? {
         switch self {
         case .brief:
-            "Keep the summary brief: a two-sentence overview and at most three "
-                + "bullets per section, only the points that matter most."
+            "Write a short summary: only the points that matter most, in as few "
+                + "bullets as possible. Never repeat a point, and stop once those "
+                + "points are covered."
         case .standard:
             nil
         case .detailed:
-            "Write a detailed summary: an overview of up to six sentences and up to "
-                + "eight bullets per section, each carrying its concrete names, numbers, "
-                + "dates, or owners. Never repeat a point or add anything the material "
-                + "does not say."
+            "Write a fuller summary than usual: cover every topic the meeting "
+                + "discussed, one short bullet per distinct point. Never repeat a point, "
+                + "and stop once the material is covered."
         }
     }
 

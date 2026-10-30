@@ -1116,9 +1116,12 @@ without rewriting history (D47).
 adds one directive to `PromptFactory.summaryInstructions` for every provider.
 Standard adds nothing, so its prompts, `SummaryFingerprint` and cached
 snapshots are unchanged; the other levels join the fingerprint and a
-manual run's `configJSON` as `detail`. Brief and detailed name explicit bounds
-(three bullets per section; six overview sentences and eight bullets per
-section) so a greedy local model cannot run to its output cap. On Apple Foundation Models, detailed
+manual run's `configJSON` as `detail`. Brief asks for only the points that
+matter most; detailed asks to cover every topic once. Both end with "never
+repeat a point, and stop", because counted or "keep everything" phrasing sent
+the embedded model into repetition loops.
+`StructuredSummary` decodes a response without `actionItems` as having none.
+On Apple Foundation Models, detailed
 map notes may hold 14 bullets and 350 tokens instead of 10 and 250. Post-capture
 summaries take the level from `PostCaptureSummaryPreferences`; manual
 regeneration takes it from `RegenerateSummaryRequest`.
