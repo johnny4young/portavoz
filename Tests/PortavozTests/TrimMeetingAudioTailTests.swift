@@ -126,6 +126,39 @@ struct AudioTailTrimmerTests {
     }
 
     @Test
+    func failedRestoreKeepsTheOriginalBackup() throws {
+        let manager = FileManager.default
+        let directory = try temporaryDirectory()
+        defer { try? manager.removeItem(at: directory) }
+        let originals = ["system.caf", "microphone.caf"].map { directory.appendingPathComponent($0) }
+        let staged = ["system.trim.caf", "microphone.trim.caf"].map { directory.appendingPathComponent($0) }
+        let originalBytes = Data("original audio".utf8)
+        let trimmedBytes = Data("trimmed audio".utf8)
+        for file in originals { try originalBytes.write(to: file) }
+        for file in staged { try trimmedBytes.write(to: file) }
+        var replacements = 0
+
+        #expect(throws: CocoaError(.fileWriteUnknown)) {
+            try AudioTailTrimmer.commit(originals: originals, staged: staged) { original, copy in
+                replacements += 1
+                if replacements == 2 { throw CocoaError(.fileWriteUnknown) }
+                if replacements == 3 { throw CocoaError(.fileWriteNoPermission) }
+                _ = try manager.replaceItemAt(original, withItemAt: copy)
+            }
+        }
+
+        #expect(replacements == 4)
+        #expect(try Data(contentsOf: originals[0]) == trimmedBytes)
+        #expect(try Data(contentsOf: originals[1]) == originalBytes)
+        let backups = try manager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+            .filter { $0.lastPathComponent.contains(".trim-backup-") }
+        let backup = try #require(backups.count == 1 ? backups.first : nil)
+        #expect(backup.lastPathComponent.hasPrefix("system.caf.trim-backup-"))
+        #expect(try Data(contentsOf: backup) == originalBytes)
+        #expect(staged.allSatisfy { !manager.fileExists(atPath: $0.path) })
+    }
+
+    @Test
     func unsupportedFormatsLeaveNothingBehind() async throws {
         let directory = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

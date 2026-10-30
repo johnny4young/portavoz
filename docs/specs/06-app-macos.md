@@ -2113,7 +2113,9 @@ audio of a settled meeting, the same menu offers "Remove … of silence at the
 end…" (`player-trim-silence`), confirmed in a destructive dialog
 (`player-trim-silence-confirm`); the section shows progress
 (`detail-trim-progress`) or the result (`detail-trim-message`) and the player
-is prepared again on the shorter files (D606). A marked clip shows its length, Export and discard below the
+is prepared again on the shorter files (D606). A failed file swap attempts to
+restore every original; any backup whose restoration fails remains beside its
+channel for recovery instead of being deleted. A marked clip shows its length, Export and discard below the
 waveform (`player-waveform`). The application policy
 admits 600 buckets by default and never publishes more than 2,000. The
 AudioPlaybackKit worker reads the complete finalized channels, propagates route

@@ -224,7 +224,9 @@ Trimming a long silent tail goes through the same channel resolver.
 `TrimMeetingAudioTail` stages verified cut copies through AudioPlaybackKit,
 commits the transcript through a revision-fenced StorageKit write, and only
 then swaps the files; a failed transcript write discards the copies and a
-failed swap restores the originals.
+failed swap attempts to restore the originals. If a restore also fails, its
+`.trim-backup-` copy remains beside the channel for recovery; staged cut copies
+are discarded and the original swap error is propagated.
 
 The model's focused skill-preview extension retains the existing read-only
 client request and routes preview failure through its explicit error mutation.

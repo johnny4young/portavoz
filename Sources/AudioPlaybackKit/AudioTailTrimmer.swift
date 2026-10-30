@@ -38,8 +38,17 @@ public enum AudioTailTrimmer {
         }
     }
 
-    /// Swaps every original for its copy, restoring the originals if any swap fails.
+    /// Swaps every original for its copy, attempting to restore them if any swap fails.
+    /// A backup remains beside its original if restoration also fails.
     public static func commit(originals: [URL], staged: [URL]) throws {
+        try commit(originals: originals, staged: staged) { original, copy in
+            _ = try FileManager.default.replaceItemAt(original, withItemAt: copy)
+        }
+    }
+
+    static func commit(
+        originals: [URL], staged: [URL], replaceItem: (URL, URL) throws -> Void
+    ) throws {
         precondition(originals.count == staged.count)
         let manager = FileManager.default
         var backups: [(original: URL, backup: URL)] = []
@@ -49,13 +58,14 @@ public enum AudioTailTrimmer {
                     "\(original.lastPathComponent).trim-backup-\(UUID().uuidString)")
                 try manager.copyItem(at: original, to: backup)
                 backups.append((original, backup))
-                _ = try manager.replaceItemAt(original, withItemAt: copy)
+                try replaceItem(original, copy)
             }
         } catch {
             for (original, backup) in backups {
-                _ = try? manager.replaceItemAt(original, withItemAt: backup)
+                try? replaceItem(original, backup)
             }
-            discard(staged + backups.map(\.backup))
+            // A successful restore consumes its backup. Keep any backup whose restore failed.
+            discard(staged)
             throw error
         }
         discard(backups.map(\.backup))
