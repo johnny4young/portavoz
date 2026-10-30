@@ -987,9 +987,9 @@ The 2026-10-30 source and resolver evaluation leaves the serving graph intact:
 
 | Candidate | MLX requirement | Result |
 | --- | --- | --- |
-| Serving LM 3.31.4 (`bd4b7434e6bd`) | `0.31.4..<0.32.0`; lock resolves 0.31.6 | Baseline; adding exact 0.33.0 fails resolution |
+| Serving LM 3.31.4 (`bd4b7434e6bd`) | `0.31.4..<0.32.0`; lock resolves 0.31.6 | Minimal 3.31.4/0.31.6 control resolves; adding exact 0.33.0 fails resolution |
 | Published LM 3.32.3 (`3b339ad6e3b3`) | `0.32.3..<0.33.0` | Adding exact 0.33.0 fails resolution |
-| Upstream LM main (`f5b0677f6b52`) | `0.33.0..<0.34.0` | Dependency range includes 0.33.0; unreleased and not built or runtime-qualified here |
+| Upstream LM main (`f5b0677f6b52`) | `0.33.0..<0.34.0` | Minimal revision/0.33.0 probe resolves; unreleased and not built or runtime-qualified here |
 
 MLX 0.33.0 is commit `7ede4fd6d05f63305c1c0ebf4f8c1909a637c574`.
 The full upstream main snapshot inspected above is
@@ -1040,7 +1040,7 @@ checked again for a different LM revision.
 **Reproducible range check:** in an empty temporary directory create this
 manifest and run `swift package resolve`. It performs dependency resolution
 only, without building the application, executing its macros or downloading
-model weights. Repeat with LM 3.32.3. Both must reject the incompatible
+model weights. Repeat with LM 3.32.3. Both reject the incompatible
 requirements; removing the conflict is not permission to bypass validation.
 
 ```swift
@@ -1051,6 +1051,15 @@ let package = Package(name: "MLXCompatibilityProbe", dependencies: [
     .package(url: "https://github.com/ml-explore/mlx-swift", exact: "0.33.0"),
 ])
 ```
+
+For a positive control, replace core `exact: "0.33.0"` with
+`exact: "0.31.6"`. To reproduce the unreleased candidate's resolution,
+keep core 0.33.0 and replace LM `exact: "3.31.4"` with
+`revision: "f5b0677f6b52b81d068871611cfcb82d1e7a0005"`. Both probes
+resolved successfully. The minimal graph selects `swift-syntax` 603.0.2
+and `swift-numerics` 1.1.1 in both cases; the baseline also selects
+`swift-argument-parser` 1.8.2. This does not resolve or compile the full
+Portavoz/tokenizer graph and does not approve adopting an unreleased LM.
 
 **Qualification still required after selecting a compatible immutable LM:**
 
@@ -1063,8 +1072,9 @@ let package = Package(name: "MLXCompatibilityProbe", dependencies: [
 | Ownership and resources | Provider injection, scheduler serialization/priority/cancellation and residency/delete/idle regressions; stress concurrent callers without sharing mutable MLX state. Compare cold/warm latency and peak RSS on the same host, preserving the 20 MiB buffer-cache limit. |
 | Packaged runtime | Rebuild and bundle the metallib for the exact new core version with validated macros/plugins, then run the synthetic `--mlx-smoke` path in a disposable app environment. That command can download the catalog model: check verified local availability and resource headroom first; never add `real` for this qualification. Dependency/build changes also require the full English UI selection. |
 
-Only source inspection and the two expected resolver failures were executed
-for this evaluation. No baseline/candidate inference comparison, macro
+Source inspection, the two expected resolver failures and the two successful
+minimal resolution controls were executed for this evaluation. No
+baseline/candidate inference comparison, macro
 execution, Metal build, model download, performance pass or UI pass is
 claimed. Runtime qualification remains open in [GAPS](../GAPS.md#embedded-mlx-dependency-qualification).
 
