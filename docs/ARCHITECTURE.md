@@ -5682,9 +5682,10 @@ thermal or battery behavior, physical devices, or two-device convergence.
   drained before their owning workflow returns.
 - Durable jobs are idempotent, fingerprinted, owner-leased, heartbeat-driven,
   and retryable without polling.
-- Transcript translation checks its persisted ownership before each row and
-  after each translator call. Lease loss yields to the next serial job without
-  changing cancellation or another owner's work; publication remains atomic.
+- Transcript translation checks its persisted ownership before each translator
+  call. Lease loss, including a job purged with its meeting, yields to the next
+  serial job without changing cancellation or another owner's work; publication
+  remains atomic.
 - Compiler-dense deterministic collections, including operation fingerprints
   and high-cardinality characterization fixtures, are assembled in explicitly
   typed steps. This preserves order and coverage while keeping compile time

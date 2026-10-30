@@ -57,14 +57,19 @@ extension MeetingStore {
         }
     }
 
-    /// Row boundaries check the same live ownership required by publication, without
-    /// renewing or mutating a lease that may have been cancelled or reclaimed.
+    /// Checks the same live ownership required by publication, without renewing or mutating
+    /// a lease that may have been cancelled or reclaimed. A job purged with its meeting is a
+    /// lost lease too: the work no longer exists.
     public func validateTranscriptTranslationLease(
         _ id: ProcessingJobID, owner: String, at timestamp: Date
     ) async throws {
         try Self.validateOwner(owner)
-        try await database.read { db in
-            _ = try Self.ownedJob(id, owner: owner, at: timestamp, in: db)
+        do {
+            try await database.read { db in
+                _ = try Self.ownedJob(id, owner: owner, at: timestamp, in: db)
+            }
+        } catch StorageError.processingJobNotFound {
+            throw StorageError.processingJobLeaseLost(id)
         }
     }
 

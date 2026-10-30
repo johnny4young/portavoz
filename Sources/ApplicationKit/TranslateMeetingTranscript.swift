@@ -93,13 +93,11 @@ public struct TranscriptTranslationWorker: Sendable {
         var lines: [UUID: String] = [:]
         for row in rows {
             try Task.checkCancellation()
-            try await store.validateTranscriptTranslationLease(job.id, owner: owner, at: now())
             let text = row.text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard let source = Self.language(of: row, text: text), source != target else { continue }
-            let outcome = await translate(text, source: source, target: target)
-            try Task.checkCancellation()
+            // Rows kept as spoken cost no read; publication fences the last call's result.
             try await store.validateTranscriptTranslationLease(job.id, owner: owner, at: now())
-            switch outcome {
+            switch await translate(text, source: source, target: target) {
             case .translated(let translated):
                 lines[row.id] = String(translated.prefix(TranscriptTranslation.maximumLineLength))
             case .kept(.notInstalled):

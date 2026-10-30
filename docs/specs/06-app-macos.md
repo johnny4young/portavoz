@@ -2997,10 +2997,10 @@ revision and kicks post-capture processing. `ProcessPostCaptureJobs` claims
 which recomputes the fingerprint for each language against the current reading
 (no match cancels it as superseded), translates each row whose recognized or
 detected language is the other one through `TranslateDictation`, and publishes.
-The worker validates its persisted lease before each row and after each translation
-call. Cancellation or lease reclamation stops it at that boundary, discards the
-in-flight result and lets the serial drain claim the next job. The current call
-must return before this check; publication retains its atomic ownership fence.
+The worker validates its persisted lease before each translator call; rows kept as
+spoken need no read. Cancellation, lease reclamation or a purged meeting stops it at
+the next call and lets the serial drain claim the next job. The current call must
+return first, and publication's atomic ownership fence rejects its result.
 Missing languages or an unsupported pair cancel the job with
 `translation.languages-missing` or `translation.unsupported`; a timed-out or failed
 line fails it for one retry. Meeting Detail observes translations as their own
