@@ -4374,8 +4374,12 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   recognizer comma, Spanish `baja` with and without a topic, `lower` as verb
   and qualifier, reported, quoted, hypothetical, past and future priorities,
   text addressed to the assistant, self-correction, supersession, retraction,
-  contradiction, and double negation. Each claim is also checked for whole,
-  once-occurring evidence that includes the focal sentence.
+  contradiction, double negation, possessive and coordinated non-claims,
+  `neither`/`nor`, opinions, irregular and regular past, and a later
+  instruction to the assistant. Each claim is also checked for whole,
+  once-occurring evidence that includes the focal sentence. The suites first
+  request the Spanish `NLTagger` assets, assert that both languages tag, and
+  check that a classifier without them abstains as `runtime-unavailable`.
   `StatedPriorityBaselineBenchmarkTests` checks the options and the sealed-split
   refusal, matches the evaluator's digest on an original document, and runs
   the development split end to end: one grounded observation per case, null

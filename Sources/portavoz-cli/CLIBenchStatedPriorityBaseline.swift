@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 import IntelligenceKit
 
@@ -147,15 +146,11 @@ struct StatedPriorityQualityFixture: Decodable, Sendable {
         return fixture
     }
 
-    /// The evaluator's digest: sorted keys, compact, non-ASCII kept verbatim.
     static func canonicalDigest(for data: Data) throws -> String {
-        guard let object = try? JSONSerialization.jsonObject(with: data),
-              let canonical = try? JSONSerialization.data(
-                withJSONObject: object, options: [.sortedKeys, .withoutEscapingSlashes])
-        else {
+        guard let digest = CLIPublicFixtureDigest.sha256(of: data) else {
             throw StatedPriorityBaselineError.invalidFixture("fixture is not valid JSON")
         }
-        return SHA256.hash(data: canonical).map { String(format: "%02x", $0) }.joined()
+        return digest
     }
 }
 

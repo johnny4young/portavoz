@@ -1,4 +1,5 @@
 import Foundation
+import NaturalLanguage
 
 public enum StatedPriorityDecision: String, Equatable, Sendable {
     case priority
@@ -13,6 +14,8 @@ public enum StatedPriorityAbstention: String, Equatable, Sendable {
     case classifiedNeutral = "classified-neutral"
     case lowConfidence = "low-confidence"
     case missingContext = "missing-context"
+    /// The tagger has no lexical-class or lemma assets for the captions' language.
+    case runtimeUnavailable = "runtime-unavailable"
 }
 
 public struct StatedPrioritySpan: Hashable, Sendable {
@@ -72,10 +75,20 @@ public struct StatedPriorityReading: Equatable, Sendable {
 public struct StatedPriorityClassifier: Sendable {
     public static let arm = "linguistic-baseline-v1"
 
-    public init() {}
+    private let isTaggerAvailable: @Sendable (NLLanguage) -> Bool
+
+    public init() {
+        self.init(isTaggerAvailable: { StatedPriorityText.isTaggerAvailable($0) })
+    }
+
+    init(isTaggerAvailable: @escaping @Sendable (NLLanguage) -> Bool) {
+        self.isTaggerAvailable = isTaggerAvailable
+    }
 
     public func classify(captions: [StatedPriorityCaption], focus: StatedPriorityFocus) -> StatedPriorityReading {
         let language = StatedPriorityText.language(of: captions)
+        // Without tags every sentence reads as verbless, which would pass for neutral speech.
+        guard isTaggerAvailable(language) else { return .abstain(.runtimeUnavailable) }
         guard let transcript = StatedPriorityTranscript(captions: captions, focus: focus, language: language) else {
             return .abstain(.missingContext)
         }
@@ -165,7 +178,8 @@ public struct StatedPriorityClassifier: Sendable {
             if offset == 0, later.contains(anyOf: StatedPriorityLexicon.retractions) {
                 return .abstain(.classifiedNeutral)
             }
-            guard StatedPriorityGuards.nonAssertion(later, excluding: nil) == nil,
+            guard !StatedPriorityGuards.addressesAssistant(later),
+                  StatedPriorityGuards.nonAssertion(later, excluding: nil) == nil,
                   case .claims(let claims) = StatedPriorityClauseParser(later).parse()
             else { continue }
             let corrects = later.contains(anyOf: StatedPriorityLexicon.correctionMarkers)
@@ -214,7 +228,7 @@ public struct StatedPriorityClassifier: Sendable {
            !StatedPriorityGuards.addressesAssistant(answer),
            StatedPriorityGuards.nonAssertion(answer, excluding: nil) == nil,
            case .claims(let claims) = StatedPriorityClauseParser(answer).parse(),
-           let claim = claims.first(where: { !$0.retracted }), claim.polarity != .ambiguous {
+           let claim = Self.answering(claims, in: answer, mention: mention?.quote) {
             let named = claim.target.map { StatedPrioritySpan(captionID: answer.captionID, quote: answer.quote($0)) }
             let target: StatedPrioritySpan? = if let mention {
                 named.map { Self.sameTarget($0.quote, mention.quote) } ?? true ? mention : nil
@@ -229,6 +243,17 @@ public struct StatedPriorityClassifier: Sendable {
         // A bare "And X?" names a topic without asking about its priority.
         guard asksPriority else { return .abstain(.classifiedNeutral) }
         return .claim(.question, target: mention, evidence: [focal.span])
+    }
+
+    /// The answer's claim about the mention when it names one, else its first claim.
+    private static func answering(
+        _ claims: [StatedPriorityClaim], in answer: StatedPrioritySentence, mention: String?
+    ) -> StatedPriorityClaim? {
+        let live = claims.filter { !$0.retracted && $0.polarity != .ambiguous }
+        let named = mention.flatMap { mention in
+            live.first { claim in claim.target.map { sameTarget(answer.quote($0), mention) } ?? false }
+        }
+        return named ?? live.first
     }
 
     /// The noun phrase of "And X?", "What about X?", or their Spanish forms.

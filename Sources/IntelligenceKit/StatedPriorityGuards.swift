@@ -35,12 +35,22 @@ enum StatedPriorityGuards {
         let irrealis = outside.contains {
             $0.text.lowercased() == "si" || Lexicon.hypotheticalWords.contains($0.word)
                 || Lexicon.futureWords.contains($0.word) || Lexicon.pastWords.contains($0.word)
+                || isRegularPast($0)
         }
         if irrealis || sentence.contains(anyOf: Lexicon.hypotheticalPhrases + Lexicon.futurePhrases) {
             return .classifiedNeutral
         }
         // Counted over the whole sentence: "It's not that X isn't a priority" hides one inside the subject.
         return negations(in: sentence.tokens) >= 2 ? .lowConfidence : nil
+    }
+
+    private static let pastSensitiveVerbs = Lexicon.subjectVerbs.union(Lexicon.prioritizingVerbs)
+        .union(Lexicon.deprioritizingVerbs).union(Lexicon.firstVerbs)
+
+    /// "remained", "prioritized": the English regular past of a verb that links or ranks.
+    private static func isRegularPast(_ token: StatedPriorityToken) -> Bool {
+        token.isVerb && token.word.hasSuffix("ed") && token.word != token.lemma
+            && pastSensitiveVerbs.contains(token.lemma)
     }
 
     /// Spoken doubt or reversal ("not sure", "or not", and their Spanish forms) leaves the claim open.

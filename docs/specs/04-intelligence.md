@@ -2605,7 +2605,11 @@ IntelligenceKit is a pure, `Sendable` reader of one focal sentence plus its
 ordered captions. It detects the captions' language with
 `NLLanguageRecognizer` (English or Spanish only), segments every caption with
 `NLTokenizer(unit: .sentence)` while keeping the focal sentence whole, and tags
-each sentence with `NLTagger(.lexicalClass, .lemma)`. A clause ends at a
+each sentence with `NLTagger(.lexicalClass, .lemma)`. Those Spanish tags are
+an OS asset a fresh machine may lack; without them every sentence would read
+as verbless and pass for neutral speech. So the classifier first checks that
+both schemes are listed for the language and that a probe sentence yields a
+verb, and otherwise abstains as `runtime-unavailable`. A clause ends at a
 semicolon, never at a comma, so a recognizer comma between subject and verb
 does not split it.
 
@@ -2617,24 +2621,31 @@ does not split it.
 - **Constructions.** If the verb before the anchor joins a subject, the
   subject is the target ("X is the priority", "X comes first", "X, eso es lo
   prioritario"). Its last comma piece wins and a demonstrative resolves to the
-  piece before it. Otherwise a linking verb or colon after the anchor makes
-  the complement the target ("The priority is X"). Leading `to`, temporal
-  adjuncts, and a comparison ("over Y") are trimmed off.
+  piece before it. A personal pronoun ("We") is never the target, and after
+  `have`/`take`/`tener` only a bare anchor counts ("X takes precedence", not
+  "We have several priorities"). Otherwise a linking verb or colon after the
+  anchor, before any coordinator, makes the complement the target ("The
+  priority is X"). Leading `to`, temporal adjuncts, and a comparison
+  ("over Y") are trimmed off.
 - **Polarity** counts demoting signals in the link between target and anchor:
-  a negation lemma (so `n’t` and `n't` both read as `not`), a qualifier such as
-  `lower`/`baja` whose lexical class is not a verb, `dejar de`/`stop being`,
-  or `least important`. Zero signals is a priority and one is a demotion; two
-  cancel into an ambiguous reading. Verbs acting on the priority ("lower the
+  a negation lemma (so `n’t` and `n't` both read as `not`), an adjective or
+  adverb qualifier such as `lower`/`baja` that does not date a temporal noun
+  ("since last week"), `dejar de`/`stop being`, or `least important`. Zero
+  signals is a priority and one is a demotion; two cancel into an ambiguous
+  reading, as does a subject that negates itself ("Nothing is the
+  priority"). Verbs acting on the priority ("lower the
   priority of X") and hold phrases also demote.
 - **Context.** A question with an answering claim in the next sentence takes
   the answer's label, and an answered or antecedent question joins the
   evidence. A bare "La prioridad es baja." takes its target from a preceding
   "¿Y X?". A later claim about the same target supersedes the focal one; a
   correction marker or an immediate retraction withdraws it, and a
-  self-correction keeps only the final target.
+  self-correction keeps only the final target. A later sentence addressed to
+  the assistant supersedes nothing.
 - **Abstention.** Neutral (`classified-neutral`) covers no anchor, a topic
-  mention, and reported, quoted, hypothetical, past, future, uncertain, or
-  assistant-addressed speech. A pronoun with no antecedent is
+  mention, and reported (including someone's opinion or belief), quoted,
+  hypothetical, past, future, uncertain, or assistant-addressed speech. A
+  pronoun with no antecedent is
   `missing-context`. Two negations in the sentence, a reading that disagrees
   between claims, or a mention that no claim names is `low-confidence`.
 

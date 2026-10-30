@@ -59,7 +59,8 @@ struct StatedPriorityBaselineBenchmarkTests {
             == "a6580d3516c4575713ad79183bf384adf7846bd815babb01a1985fef2a08dc4e")
     }
 
-    @Test func developmentRoundTripEmitsGroundedObservations() throws {
+    @Test func developmentRoundTripEmitsGroundedObservations() async throws {
+        _ = await StatedPriorityTaggerAssets.ready.value
         let fixture = try StatedPriorityQualityFixture.load(from: Self.fixtureURL)
         let document = StatedPriorityBaselineBenchmark.observations(fixture: fixture, split: "development")
         let development = try Self.developmentCases()
@@ -71,6 +72,7 @@ struct StatedPriorityBaselineBenchmarkTests {
             let texts = Dictionary(uniqueKeysWithValues: raw.captions.map { ($0.id, $0.text) })
             if observation.decision == "abstain" {
                 #expect(observation.reason != nil && observation.target == nil && observation.evidence.isEmpty)
+                #expect(observation.reason != "runtime-unavailable", "\(raw.id) ran without tagger assets")
                 continue
             }
             #expect(observation.reason == nil)

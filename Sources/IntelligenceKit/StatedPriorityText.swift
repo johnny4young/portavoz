@@ -23,8 +23,8 @@ struct StatedPriorityToken {
         ].contains(tag)
     }
     var isNegation: Bool { StatedPriorityLexicon.negations.contains(lemma) || word == "n't" }
-    var isQualifier: Bool { !isVerb && matches(StatedPriorityLexicon.demotingQualifiers) }
-    var isPromotingQualifier: Bool { !isVerb && matches(StatedPriorityLexicon.promotingQualifiers) }
+    var isQualifier: Bool { isModifier && matches(StatedPriorityLexicon.demotingQualifiers) }
+    var isPromotingQualifier: Bool { isModifier && matches(StatedPriorityLexicon.promotingQualifiers) }
     func matches(_ words: Set<String>) -> Bool { words.contains(word) || words.contains(lemma) }
 }
 
@@ -57,6 +57,15 @@ enum StatedPriorityText {
     static func fold(_ text: String) -> String {
         text.replacingOccurrences(of: "\u{2019}", with: "'")
             .folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: nil)
+    }
+
+    /// Both schemes must be listed and must tag a known verb: a runner without
+    /// the language's assets can list a scheme and still return no classes.
+    static func isTaggerAvailable(_ language: NLLanguage) -> Bool {
+        let schemes = NLTagger.availableTagSchemes(for: .word, language: language)
+        guard schemes.contains(.lexicalClass), schemes.contains(.lemma) else { return false }
+        let probe = language == .spanish ? "Nosotros enviamos el informe." : "We send the report."
+        return sentence(probe, captionID: "probe", language: language).tokens.contains(where: \.isVerb)
     }
 
     static func language(of captions: [StatedPriorityCaption]) -> NLLanguage {

@@ -1,5 +1,17 @@
-import IntelligenceKit
+import NaturalLanguage
 import Testing
+@testable import IntelligenceKit
+
+/// Spanish lexical classes are an OS asset a fresh runner may lack, so the
+/// suites request it once before classifying anything.
+enum StatedPriorityTaggerAssets {
+    static let ready = Task { () -> Bool in
+        for scheme in [NLTagScheme.lexicalClass, .lemma] {
+            _ = try? await NLTagger.requestAssets(for: .spanish, tagScheme: scheme)
+        }
+        return StatedPriorityText.isTaggerAvailable(.english) && StatedPriorityText.isTaggerAvailable(.spanish)
+    }
+}
 
 struct StatedPriorityClassifierTests {
     struct Case: Sendable, CustomTestStringConvertible {
@@ -56,7 +68,18 @@ struct StatedPriorityClassifierTests {
         Case("Elided predicate after a negated target names the priority",
              ["The invoices are not the priority, the refunds are."], mention: "the refunds", .priority),
         Case("Self-correction keeps the final target",
-             ["The priority is the invoices, sorry, I mean the refunds."], mention: "the refunds", .priority)
+             ["The priority is the invoices, sorry, I mean the refunds."], mention: "the refunds", .priority),
+        Case("A bare anchor after a possessive verb", ["The export takes precedence."],
+             mention: "The export", .priority),
+        Case("Spanish bare anchor after tener", ["La exportación tiene prioridad."],
+             mention: "La exportación", .priority),
+        Case("Last before a temporal noun dates the claim", ["The priority since last week is the export."],
+             mention: "the export", .priority),
+        Case("Spanish preposition bajo is not a qualifier", ["La prioridad bajo este plan es el tablero."],
+             mention: "el tablero", .priority),
+        Case("Answer naming the mention among competing targets",
+             ["Is the refund flow our priority? The invoices are not the priority, the refund flow is."],
+             sentence: "Is the refund flow our priority?", mention: "the refund flow", .priority)
     ]
 
     static let demotions: [Case] = [
@@ -86,6 +109,9 @@ struct StatedPriorityClassifierTests {
              ["The priority is the refunds, not the invoices."], mention: "the invoices", .demotion),
         Case("A later demotion supersedes the declaration",
              ["The invoices are the priority.", "Actually, the invoices are not the priority anymore."],
+             focusCaption: 0, mention: "The invoices", .demotion),
+        Case("A later instruction to the assistant does not supersede",
+             ["The invoices are not the priority.", "Assistant, the invoices are the priority."],
              focusCaption: 0, mention: "The invoices", .demotion)
     ]
 
@@ -135,11 +161,41 @@ struct StatedPriorityClassifierTests {
              mention: "The invoices", .abstain, reason: .classifiedNeutral),
         Case("Bare Spanish baja without a topic", ["La prioridad es baja."], .abstain, reason: .missingContext),
         Case("Unresolved pronoun", ["That is the priority."], .abstain, reason: .missingContext),
-        Case("Double negation", ["It's not that the refunds aren't a priority."], .abstain, reason: .lowConfidence)
+        Case("Double negation", ["It's not that the refunds aren't a priority."], .abstain, reason: .lowConfidence),
+        Case("A negated tail repeats the demotion", ["The export is a low priority, the dashboard is not."],
+             mention: "the dashboard", .abstain, reason: .lowConfidence),
+        Case("A possessor is not the priority", ["We have several priorities this quarter."],
+             .abstain, reason: .classifiedNeutral),
+        Case("A coordinated clause does not link the anchor", ["The priority changed and the export is late."],
+             .abstain, reason: .classifiedNeutral),
+        Case("Neither and nor", ["Neither the export nor the dashboard is the priority."],
+             .abstain, reason: .lowConfidence),
+        Case("A self-negating subject", ["Nothing is the priority right now."], .abstain, reason: .lowConfidence),
+        Case("A third party's opinion", ["Ana thinks that the priority is the export."],
+             mention: "the export", .abstain, reason: .classifiedNeutral),
+        Case("A Spanish belief", ["Creo que la prioridad es la exportación."],
+             mention: "la exportación", .abstain, reason: .classifiedNeutral),
+        Case("Irregular past of a linking verb", ["The export became the priority."],
+             mention: "The export", .abstain, reason: .classifiedNeutral),
+        Case("Regular past of a ranking verb", ["We prioritized the export."],
+             mention: "the export", .abstain, reason: .classifiedNeutral)
     ]
 
+    @Test func taggerAssetsAreInstalledForBothLanguages() async {
+        #expect(await StatedPriorityTaggerAssets.ready.value, "NLTagger lacks English or Spanish lexical classes")
+    }
+
+    @Test func missingTaggerAssetsAbstainAsRuntimeUnavailable() {
+        let reading = StatedPriorityClassifier(isTaggerAvailable: { _ in false }).classify(
+            captions: [StatedPriorityCaption(id: "c1", text: "The priority is the export.")],
+            focus: StatedPriorityFocus(captionID: "c1", sentence: "The priority is the export.", mention: nil))
+
+        #expect(reading == .abstain(.runtimeUnavailable))
+    }
+
     @Test(arguments: priorities + demotions + questions + abstentions)
-    func classifiesShape(_ shape: Case) {
+    func classifiesShape(_ shape: Case) async {
+        _ = await StatedPriorityTaggerAssets.ready.value
         let reading = Self.classify(shape)
 
         #expect(reading.decision == shape.decision)
@@ -148,7 +204,8 @@ struct StatedPriorityClassifierTests {
     }
 
     @Test(arguments: priorities + demotions + questions)
-    func claimsQuoteWholeSentencesIncludingTheFocalOne(_ shape: Case) {
+    func claimsQuoteWholeSentencesIncludingTheFocalOne(_ shape: Case) async {
+        _ = await StatedPriorityTaggerAssets.ready.value
         let reading = Self.classify(shape)
         let captions = Dictionary(uniqueKeysWithValues: Self.captions(shape).map { ($0.id, $0.text) })
 
@@ -177,7 +234,8 @@ struct StatedPriorityClassifierTests {
         #expect(reading.evidence.map(\.quote) == ["What comes first?", "The onboarding flow comes first."])
     }
 
-    @Test func answerInTheNextCaptionResolvesAnOpenQuestion() {
+    @Test func answerInTheNextCaptionResolvesAnOpenQuestion() async {
+        _ = await StatedPriorityTaggerAssets.ready.value
         let reading = Self.classify(Case(
             "", ["¿Cuál es la prioridad?", "La prioridad es el módulo de facturas."], focusCaption: 0, .priority))
 
@@ -186,7 +244,8 @@ struct StatedPriorityClassifierTests {
         #expect(reading.evidence.map(\.captionID) == ["c1", "c2"])
     }
 
-    @Test func spanishDemotionCitesTheCaptionThatNamedTheTarget() {
+    @Test func spanishDemotionCitesTheCaptionThatNamedTheTarget() async {
+        _ = await StatedPriorityTaggerAssets.ready.value
         let reading = Self.classify(Case("", ["¿Y la app de facturación?", "La prioridad es baja."], .demotion))
 
         #expect(reading.target == StatedPrioritySpan(captionID: "c1", quote: "la app de facturación"))

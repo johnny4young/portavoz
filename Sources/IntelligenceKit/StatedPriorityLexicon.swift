@@ -22,6 +22,14 @@ enum StatedPriorityLexicon {
 
     static let linkingVerbs: Set<String> = ["be", "ser"]
     /// Verbs that may join a subject to a following anchor noun.
+    /// "X has priority", "X takes precedence": only a bare anchor makes X the target,
+    /// so "We have several priorities" names no priority.
+    static let possessiveVerbs: Set<String> = ["take", "have", "get", "tener", "llevar"]
+    static let personalPronouns: Set<String> = [
+        "i", "we", "you", "they", "he", "she", "us", "yo", "nosotros", "nosotras", "ustedes", "ellos",
+        "ellas", "vosotros"
+    ]
+    static let coordinators: Set<String> = ["and", "but", "or", "y", "pero", "o"]
     static let subjectVerbs: Set<String> = [
         "be", "ser", "take", "have", "get", "become", "remain", "stay", "tener", "llevar",
         "convertir", "seguir", "continuar"
@@ -35,8 +43,11 @@ enum StatedPriorityLexicon {
     ]
 
     static let negations: Set<String> = [
-        "not", "no", "never", "nunca", "jamas", "ni", "ningun", "ninguno", "ninguna"
+        "not", "no", "never", "neither", "nor", "none", "nothing", "nobody", "nunca", "jamas", "ni",
+        "ningun", "ninguno", "ninguna", "nada", "nadie", "tampoco"
     ]
+    /// Negators that are themselves a subject ("Nothing is…"), never its tail.
+    static let negativeSubjects: Set<String> = ["nothing", "nobody", "none", "neither", "nada", "nadie"]
     /// "stops being": a negation spelled as a verb of ceasing.
     static let ceasingVerbs: Set<String> = ["stop", "cease"]
     static let demotingQualifiers: Set<String> = [
@@ -95,8 +106,10 @@ enum StatedPriorityLexicon {
     ]
 
     static let reportingWords: Set<String> = [
-        "say", "tell", "claim", "mention", "write", "according", "decir", "comentar", "opinar",
-        "afirmar", "escribir", "segun"
+        "say", "tell", "claim", "mention", "write", "according", "think", "believe", "reckon", "decir",
+        "comentar", "opinar", "afirmar", "escribir", "segun", "creer", "pensar",
+        // The tagger lemmatizes "creo" as crear, so the belief forms are listed as words.
+        "creo", "cree", "creemos", "creen"
     ]
     static let hypotheticalWords: Set<String> = [
         "if", "unless", "suppose", "supposing", "imagine", "would", "'d", "could", "might",
@@ -110,8 +123,9 @@ enum StatedPriorityLexicon {
     ]
     static let futurePhrases: [[String]] = [["going", "to"], ["va", "a", "ser"], ["van", "a", "ser"]]
     static let pastWords: Set<String> = [
-        "was", "were", "been", "used", "came", "went", "took", "had", "fue", "fueron", "era",
-        "eran", "sido", "tuvo", "tenia", "iba", "vino"
+        "was", "were", "been", "used", "came", "went", "took", "had", "became", "remained", "stayed",
+        "got", "fue", "fueron", "era", "eran", "sido", "tuvo", "tenia", "iba", "vino", "convirtio",
+        "siguio", "continuo"
     ]
     static let uncertaintyWords: Set<String> = [
         "know", "sure", "certain", "saber", "seguro", "segura", "cierto"

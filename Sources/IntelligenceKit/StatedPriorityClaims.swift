@@ -136,11 +136,19 @@ struct StatedPriorityClauseParser {
             return demotingVerbClaims(anchor, verb: determiner - 1, in: clause)
         }
         if let verb = head(before: anchor.index, in: clause), tokens[verb].isVerb {
+            if tokens[verb].matches(Lexicon.possessiveVerbs) {
+                let bare = (verb + 1..<anchor.index).allSatisfy {
+                    tokens[$0].isNegation || tokens[$0].isQualifier || tokens[$0].isPromotingQualifier
+                }
+                return bare ? subjectClaims(anchor, verb: verb, in: clause) : []
+            }
             if tokens[verb].matches(Lexicon.subjectVerbs) { return subjectClaims(anchor, verb: verb, in: clause) }
             if tokens[verb].matches(Lexicon.demotingVerbs) { return demotingVerbClaims(anchor, verb: verb, in: clause) }
             return []
         }
-        let link = (anchor.end..<clause.upperBound).first {
+        // A coordinator starts another clause: "Priorities shift and the export is late."
+        let end = (anchor.end..<clause.upperBound).first { tokens[$0].matches(Lexicon.coordinators) }
+        let link = (anchor.end..<(end ?? clause.upperBound)).first {
             (tokens[$0].isVerb && tokens[$0].matches(Lexicon.linkingVerbs)) || tokens[$0].word == ":"
         }
         guard let link else { return [] }
@@ -172,13 +180,24 @@ struct StatedPriorityClauseParser {
         while attachedEnd < clause.upperBound, tokens[attachedEnd].isModifier { attachedEnd += 1 }
         let link = Array(subjectEnd..<anchor.index) + Array(anchor.end..<attachedEnd)
         let polarity = polarity(of: link, anchor: anchor)
-        return subjectTargets(clause.lowerBound..<subjectEnd).map {
-            StatedPriorityClaim(polarity: polarity, target: $0.range, retracted: $0.retracted)
-        } + tailContrast(from: attachedEnd, in: clause, primary: polarity)
+        let claims: [StatedPriorityClaim] = subjectTargets(clause.lowerBound..<subjectEnd).compactMap { subject in
+            guard let range = subject.range else {
+                return StatedPriorityClaim(polarity: polarity, target: nil, retracted: subject.retracted)
+            }
+            // "We", "nosotros": a possessor or the speakers, never the thing ranked.
+            if range.count == 1, tokens[range.lowerBound].matches(Lexicon.personalPronouns) { return nil }
+            // "Nothing is the priority", "Neither X nor Y is…": the subject negates itself.
+            let negated = tokens[range.lowerBound].isNegation
+            return StatedPriorityClaim(
+                polarity: negated ? .ambiguous : polarity, target: range, retracted: subject.retracted)
+        }
+        guard !claims.isEmpty else { return [] }
+        return claims + tailContrast(from: attachedEnd, in: clause, primary: polarity)
     }
 
     private func isSubjectTail(_ index: Int) -> Bool {
         let token = tokens[index]
+        if token.matches(Lexicon.negativeSubjects) { return false }
         return token.isNegation || token.tag == .adverb || token.word == "de" || isCeasing(index)
             || (token.isVerb && token.matches(Lexicon.auxiliaries))
     }
@@ -226,7 +245,8 @@ struct StatedPriorityClauseParser {
             guard let target = trimmedTarget(cursor + 1..<clause.upperBound) else { return [] }
             return [StatedPriorityClaim(polarity: .demotion, target: target)]
         }
-        guard primary == .demotion,
+        // "…, Y is not either" repeats the demotion rather than contrasting it.
+        guard primary == .demotion, !(cursor..<clause.upperBound).contains(where: { tokens[$0].isNegation }),
               let close = (cursor..<clause.upperBound).first(where: { isElidedPredicate(tokens[$0]) }),
               let target = trimmedTarget(cursor..<close)
         else { return [] }
@@ -375,13 +395,18 @@ struct StatedPriorityClauseParser {
 
     private func polarity(of indices: [Int], anchor: StatedPriorityAnchor) -> StatedPriorityPolarity {
         let signals = indices.filter {
-            tokens[$0].isNegation || tokens[$0].isQualifier || isCeasing($0)
+            tokens[$0].isNegation || isCeasing($0) || (tokens[$0].isQualifier && !isTemporalModifier($0))
         }.count + (anchor.kind == .leastImportant ? 1 : 0)
         switch signals {
         case 0: return .priority
         case 1: return .demotion
         default: return .ambiguous
         }
+    }
+
+    /// "last" in "since last week" dates the claim rather than ranking it.
+    private func isTemporalModifier(_ index: Int) -> Bool {
+        index + 1 < tokens.count && tokens[index + 1].matches(Lexicon.temporalWords)
     }
 
     /// End index of a correction marker ("I mean", "mejor dicho") starting at `index`.

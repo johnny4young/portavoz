@@ -22215,11 +22215,18 @@ temporal noun ("priority today") is not a compound.
 
 Abstentions are honest about their cause. `classified-neutral` means the arm
 recognized speech that states no current priority: no anchor, a topic
-mention, or reported, quoted, hypothetical, past, future, uncertain,
-contradicted, retracted, or assistant-addressed speech. An unresolved pronoun
-is `missing-context`, and a double negation, conflicting claims, or a mention
-no claim names is `low-confidence`. The evaluator scores both of those as
-refusals.
+mention, or reported (including opinion), quoted, hypothetical, past, future,
+uncertain, contradicted, retracted, or assistant-addressed speech. An
+unresolved pronoun is `missing-context`, and a double negation, conflicting
+claims, or a mention no claim names is `low-confidence`.
+
+Spanish lexical classes are an OS asset, and the first hosted run showed a
+runner without them: every Spanish sentence lost its verbs and abstained as
+neutral, which the evaluator would have credited on gold abstentions. The
+arm now checks that the language's schemes are listed and tag a probe verb,
+and otherwise abstains as `runtime-unavailable`. The evaluator scores that,
+like `missing-context` and `low-confidence`, as a refusal, so a degraded host
+cannot look accurate. The tests request the assets before classifying.
 
 The policy was tuned only on the 20 development cases and on original
 sentences in `StatedPriorityClassifierTests`. It is frozen at the commit that
