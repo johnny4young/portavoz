@@ -46,7 +46,9 @@ public enum MicrophoneEchoAnalysis {
         return MicrophoneEchoProfile(
             frameDuration: Double(hopLength) / sampleRate,
             microphoneEnergy: microphoneEnergy,
-            nearEndEnergy: nearEndEnergy)
+            nearEndEnergy: nearEndEnergy,
+            measuredDuration: Double((microphoneEnergy.count - 1) * hopLength + frameLength)
+                / sampleRate)
     }
 }
 

@@ -55,12 +55,26 @@ final class MicrophoneEchoAnalysisTests: XCTestCase {
 
         let profile = try XCTUnwrap(
             MicrophoneEchoAnalysis.profile(microphone: urls[0], system: urls[1]))
-        let measuredEnd = Double(profile.microphoneEnergy.count) * profile.frameDuration
+        let measuredEnd = profile.measuredDuration
 
-        XCTAssertLessThan(measuredEnd, 30)
+        XCTAssertLessThanOrEqual(measuredEnd, 30)
         XCTAssertGreaterThan(measuredEnd, 29)
         XCTAssertNotNil(profile.echoAttenuationDB(from: 29, to: measuredEnd))
         XCTAssertNil(profile.echoAttenuationDB(from: 29, to: 32))
+    }
+
+    func testEchoEndingWithEqualLengthFilesIsStillMeasured() throws {
+        let remote = Self.speech(seed: 1, active: { _ in true })
+        let urls = try write(microphone: remote.map { 0.2 * tanh(3 * $0) }, system: remote)
+        defer { urls.forEach { try? FileManager.default.removeItem(at: $0) } }
+
+        let profile = try XCTUnwrap(
+            MicrophoneEchoAnalysis.profile(microphone: urls[0], system: urls[1]))
+        let end = Double(Self.seconds)
+
+        XCTAssertGreaterThanOrEqual(
+            try XCTUnwrap(profile.echoAttenuationDB(from: end - 2, to: end)), 10)
+        XCTAssertNil(profile.echoAttenuationDB(from: end - 2, to: end + 0.1))
     }
 
     func testSilentRemoteSideProducesNoProfile() throws {
