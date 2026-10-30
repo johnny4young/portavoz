@@ -1315,7 +1315,8 @@ caret spacing join.
 A meeting transcript can be translated on request: a durable
 `transcript-translation` job, claimed by the post-capture runner only when a
 translator is composed, stores a per-language overlay fenced to the transcript and
-correction revision, and never changes the meeting lifecycle.
+correction revision, and never changes the meeting lifecycle. A document export
+can swap in the current translation; a stale or missing one is refused.
 The app resolves explicit Literal/Clean/Polish mode by session choice, captured bundle-ID
 profile, then global preference. The existing destination capture supplies identity;
 no profile recaptures focus or grants insertion authority. Missing preferences

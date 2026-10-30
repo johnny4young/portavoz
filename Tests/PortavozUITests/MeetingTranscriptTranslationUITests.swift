@@ -22,6 +22,31 @@ final class MeetingTranscriptTranslationUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testAnExportCanUseTheCurrentTranslation() throws {
+        let app = try launchOnSeededMeeting()
+        defer { finishUITestApplication(app) }
+        let menu = app.control(withIdentifier: "detail-export-menu")
+        XCTAssertTrue(menu.waitForExistenceFast(timeout: 10))
+        menu.click()
+        XCTAssertTrue(app.menuItems["detail-export-srt"].waitForExistenceFast(timeout: 5))
+        XCTAssertFalse(app.menuItems["detail-export-translation-original"].exists,
+                       "Without a translation, the export offers no transcript language")
+        typeKey(.escape, modifierFlags: [], in: app)
+
+        requestTranslation(into: "en", in: app)
+        XCTAssertTrue(app.control(withIdentifier: "detail-transcript-language").waitForExistenceFast(timeout: 20))
+        menu.click()
+        let languages = app.menuItems["detail-export-translation"]
+        XCTAssertTrue(languages.waitForExistenceFast(timeout: 5))
+        languages.hover()
+        XCTAssertTrue(app.menuItems["detail-export-translation-original"].waitForExistenceFast(timeout: 5))
+        let english = app.menuItems["detail-export-translation-en"]
+        XCTAssertTrue(english.waitForExistenceFast(timeout: 5))
+        english.click()
+        // The save panel is native UI; the use case tests own the exported bytes.
+    }
+
+    @MainActor
     func testMissingLanguagesPointToTheirDownload() throws {
         let app = try launchOnSeededMeeting("-seed-meeting-translation-missing")
         defer { finishUITestApplication(app) }

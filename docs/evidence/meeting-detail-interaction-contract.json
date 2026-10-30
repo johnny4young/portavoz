@@ -718,6 +718,12 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
       "category": "control",
+      "source": "Button {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
       "source": "Button(\"Export Markdown…\") { actions.export(.markdown) }",
       "occurrences": 1
     },
@@ -796,6 +802,12 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
       "category": "control",
+      "source": "Menu(\"Transcript language\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
       "source": "Toggle(",
       "occurrences": 1
     },
@@ -826,6 +838,12 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
       "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-export-translation\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "identifier",
       "source": ".accessibilityIdentifier(\"detail-export-vtt\")",
       "occurrences": 1
     },
@@ -839,6 +857,12 @@
       "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"detail-share-recap\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(identifier)",
       "occurrences": 1
     },
     {

@@ -85,6 +85,17 @@ final class TranscriptTranslationPersistenceTests: XCTestCase {
         XCTAssertEqual(state, .ready)
     }
 
+    func testTheLibrarySnapshotCarriesTranslationsForExport() async throws {
+        let (store, meeting, segment) = try await seeded()
+        _ = try await store.requestTranscriptTranslation(for: meeting.id, fingerprint: fingerprint(meeting), at: now)
+        let job = try await claim(store)
+        _ = try await store.completeTranscriptTranslationJob(
+            job.id, owner: "worker", artifact: artifact(meeting, segment: segment), at: now)
+        let snapshot = try await store.meetingLibrarySnapshot(meeting.id)
+        XCTAssertEqual(snapshot?.translations.map(\.targetLanguage), ["en"])
+        XCTAssertEqual(snapshot?.translations.first?.lines[segment.id], "Welcome to the meeting")
+    }
+
     func testAChangedTranscriptOrCorrectionRejectsThePublication() async throws {
         let (store, meeting, segment) = try await seeded()
         _ = try await store.requestTranscriptTranslation(for: meeting.id, fingerprint: fingerprint(meeting), at: now)
