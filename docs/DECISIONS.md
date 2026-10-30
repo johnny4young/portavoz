@@ -22186,3 +22186,54 @@ pilot, so a clean sealed run would justify only a larger study, not shipping.
 A pass on this host says nothing about smaller Macs or coexistence with
 capture. GAPS #13 stays open.
 
+## D608 — The linguistic baseline arm is frozen before its sealed run (Oct 2026)
+
+**Context:** D606 built the corpus and evaluator for research #92 but no arm
+beyond the no-proposal control. D508 named the substrate a fourth attempt
+should use: `NLTokenizer(unit: .sentence)` and
+`NLTagger(.lexicalClass, .lemma)`. The baseline is the reference a model arm
+must beat, so it has to exist, and be frozen, before any model is compared.
+
+**Decision:** `StatedPriorityClassifier` (IntelligenceKit, arm
+`linguistic-baseline-v1`) reads one focal sentence and its ordered captions.
+It finds anchors by folded lemma, chooses a subject or predicate construction
+from the verb around the anchor, and counts demoting signals only in the link
+between target and anchor. Negation lemmas, non-verb `lower`/`baja`
+qualifiers, and `dejar de`/`stop being` each count as one signal, and two
+cancel into an abstention. It resolves an answered question, a "¿Y X?"
+antecedent, supersession, retraction, and self-correction from neighbouring
+sentences. Evidence is whole sentences, quoted exactly; `probabilities` is
+null because nothing here is calibrated. It is not wired into the app and
+writes nothing.
+
+Where the tagger's class is wrong, the frame decides instead. A
+sentence-medial `deja` comes back as an adjective and `dejamos` as a noun, so
+`dejar de + ser` and the `dejar` lemma are read regardless of class. In
+"lower the priority" the tagger calls `lower` an adverb, so the determiner's
+position separates it from "a lower priority". A priority noun before a
+temporal noun ("priority today") is not a compound.
+
+Abstentions are honest about their cause. `classified-neutral` means the arm
+recognized speech that states no current priority: no anchor, a topic
+mention, or reported, quoted, hypothetical, past, future, uncertain,
+contradicted, retracted, or assistant-addressed speech. An unresolved pronoun
+is `missing-context`, and a double negation, conflicting claims, or a mention
+no claim names is `low-confidence`. The evaluator scores both of those as
+refusals.
+
+The policy was tuned only on the 20 development cases and on original
+sentences in `StatedPriorityClassifierTests`. It is frozen at the commit that
+introduces this entry, and that commit is the one the sealed run must use.
+`portavoz-cli bench-stated-priority-baseline` decodes only captions and focus,
+pins the fixture digest, and refuses the evaluation split without `--unseal`.
+
+**Development scorecard:** 20/20 correct (10/10 per language), 16 decided,
+0 unsafe promotions (Wilson 95% upper bound 0.215 over 14 non-priorities),
+0 unsupported evidence, 6/6 priorities recalled, 14/14 exact targets, and 16/16
+exact evidence sets. The four abstentions are all `classified-neutral`.
+
+**Consequences:** a perfect score on data the policy was tuned on is a sanity
+check, not evidence of quality. Twenty cases in twelve families cannot show a
+low error rate, and the closed vocabularies will miss phrasings neither split
+contains. The sealed evaluation run is a separate step against this frozen
+policy; any fix it motivates is a new, unmeasured policy. GAPS #13 stays open.

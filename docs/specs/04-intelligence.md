@@ -2575,7 +2575,7 @@ See spec 03 (SpeakerNamer + NamingExcerpt + never-trust-verify filter).
 
 BYOK summaries from the app (the Keychain plumbing already exists; the provider selector in the detail is missing — M12).
 
-## Stated priority — withdrawn (Sep 2026, D505–D508)
+## Stated priority — withdrawn (Sep 2026, D505–D508; research baseline D608)
 
 A deterministic detector for a priority somebody declares out loud shipped in
 D505, was widened in D506 and corrected in D507. A second max-effort review
@@ -2597,6 +2597,50 @@ Any fourth attempt is measured first (D606). `Fixtures/StatedPriorityQuality/`
 holds 100 public synthetic English/Spanish cases, each one focal target labeled
 `priority`, `demotion`, `question`, or `abstain` with exact whole-sentence
 evidence; every D508 failure is a case. `scripts/stated_priority_quality.py`
-scores any arm's observations against it and ships only the no-proposal
-control. No detector, model, or serving path exists, and nothing writes into
-objectives or summaries.
+scores any arm's observations against it, starting with the no-proposal
+control.
+
+**Linguistic baseline (D608, research only).** `StatedPriorityClassifier` in
+IntelligenceKit is a pure, `Sendable` reader of one focal sentence plus its
+ordered captions. It detects the captions' language with
+`NLLanguageRecognizer` (English or Spanish only), segments every caption with
+`NLTokenizer(unit: .sentence)` while keeping the focal sentence whole, and tags
+each sentence with `NLTagger(.lexicalClass, .lemma)`. A clause ends at a
+semicolon, never at a comma, so a recognizer comma between subject and verb
+does not split it.
+
+- **Anchors** are folded lemmas from small closed sets: the priority nouns,
+  `first`/`primero` after `come`/`go`/`ir`/`venir`, `most important` and
+  `lo más importante`, and the `prioritize`/`deprioritize`/hold verbs and phrases. A
+  priority noun directly before another noun ("priority list") or after
+  "lista de" is a compound, not an anchor.
+- **Constructions.** If the verb before the anchor joins a subject, the
+  subject is the target ("X is the priority", "X comes first", "X, eso es lo
+  prioritario"). Its last comma piece wins and a demonstrative resolves to the
+  piece before it. Otherwise a linking verb or colon after the anchor makes
+  the complement the target ("The priority is X"). Leading `to`, temporal
+  adjuncts, and a comparison ("over Y") are trimmed off.
+- **Polarity** counts demoting signals in the link between target and anchor:
+  a negation lemma (so `n’t` and `n't` both read as `not`), a qualifier such as
+  `lower`/`baja` whose lexical class is not a verb, `dejar de`/`stop being`,
+  or `least important`. Zero signals is a priority and one is a demotion; two
+  cancel into an ambiguous reading. Verbs acting on the priority ("lower the
+  priority of X") and hold phrases also demote.
+- **Context.** A question with an answering claim in the next sentence takes
+  the answer's label, and an answered or antecedent question joins the
+  evidence. A bare "La prioridad es baja." takes its target from a preceding
+  "¿Y X?". A later claim about the same target supersedes the focal one; a
+  correction marker or an immediate retraction withdraws it, and a
+  self-correction keeps only the final target.
+- **Abstention.** Neutral (`classified-neutral`) covers no anchor, a topic
+  mention, and reported, quoted, hypothetical, past, future, uncertain, or
+  assistant-addressed speech. A pronoun with no antecedent is
+  `missing-context`. Two negations in the sentence, a reading that disagrees
+  between claims, or a mention that no claim names is `low-confidence`.
+
+Every claim quotes whole sentences that occur once in their caption, includes
+the focal sentence, and keeps its target inside that evidence, or it abstains.
+`portavoz-cli bench-stated-priority-baseline` reads only captions and focus
+from the fixture, never gold labels, and emits observations for one split. The
+sealed evaluation split is refused without `--unseal`. The classifier is not
+referenced by the app and nothing writes into objectives or summaries.

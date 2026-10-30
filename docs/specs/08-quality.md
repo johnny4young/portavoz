@@ -4363,6 +4363,23 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   control` scores the no-proposal control (zero promotions, zero credit);
   `make stated-priority-quality-compare` pairs two arms case by case without
   a winner.
+- `make stated-priority-quality-baseline` builds `portavoz-cli` in release,
+  runs D608's `linguistic-baseline-v1` arm over one split, and pipes its
+  observations into `score`. The split defaults to development; the sealed
+  evaluation split also needs `PORTAVOZ_STATED_PRIORITY_UNSEAL=1`, and the CLI
+  refuses it without `--unseal`. The CLI pins the fixture's canonical digest and
+  decodes only captions and focus. `StatedPriorityClassifierTests` pins every
+  D508 failure shape with original sentences: negation with straight and curly
+  apostrophes, question and answer in one caption and across captions, a
+  recognizer comma, Spanish `baja` with and without a topic, `lower` as verb
+  and qualifier, reported, quoted, hypothetical, past and future priorities,
+  text addressed to the assistant, self-correction, supersession, retraction,
+  contradiction, and double negation. Each claim is also checked for whole,
+  once-occurring evidence that includes the focal sentence.
+  `StatedPriorityBaselineBenchmarkTests` checks the options and the sealed-split
+  refusal, matches the evaluator's digest on an original document, and runs
+  the development split end to end: one grounded observation per case, null
+  probabilities, and no promotion of a non-priority.
 - `make test-commitment-link-quality` validates D245's reproducible 36-case
   cross-meeting fixture and runs thirty-one evaluator/contract tests without a
   model, database, or user library. The corpus is balanced across English,
