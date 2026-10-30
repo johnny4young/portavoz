@@ -10,6 +10,14 @@ The existing persistence suite also admits an already-due retry in its
 capability-filtered scheduling test. These regressions establish storage
 behavior, not application-timer, process-kill or hardware performance evidence.
 
+`TranscriptTranslationWorkerTests` holds a fake translator's first response,
+cancels the persisted job, then releases it. The worker must skip the next row,
+preserve the cancellation without retry or meeting-lifecycle changes, publish no
+cancelled artifact, and drain the next meeting's translation. Lease reclamation
+by another owner and a meeting purged mid-translation also stop it without a
+processing issue. It uses an in-memory store and no real audio, UI, models or
+translation service.
+
 `ProcessingWakeScheduleTests` checks the shared drain-failure retry against
 explicit timestamps: five seconds, doubling per consecutive failure up to one
 minute. `AudioImportQueueModelTests` proves a failed drain retries without

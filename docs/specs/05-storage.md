@@ -2237,6 +2237,10 @@ or a 64-character digest, `createdAt`; cascades from `meeting`) and
 reading fingerprint without reconciling the meeting lifecycle, returns an active
 job as is and resets a settled one; `cancelTranscriptTranslation` cancels pending
 and running ones, so a running worker loses its lease.
+`validateTranscriptTranslationLease` reads the same running-state, owner and
+expiry fence used by publication before each translator call without renewing or
+mutating the job, and reports a job purged with its meeting as a lost lease. Lease
+loss leaves cancellation or a replacement owner's work intact.
 `completeTranscriptTranslationJob` requires the owned lease, the job's kind,
 meeting and fingerprint, the current `transcriptRevision`, and the current
 correction revision, then replaces that language's translation and succeeds the
