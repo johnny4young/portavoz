@@ -1457,6 +1457,12 @@ terminal run, immutable snapshot, and action items. A provider or publish
 failure stores one standalone failed/cancelled run best effort, while the prior
 imported aggregate cannot roll back (D64).
 
+`rewriteCurrentSummary(meetingID:_:)` reads the newest live snapshot, applies
+a deterministic rewrite and inserts the result as that recipe's next version
+in one write (D608). The new row links the original snapshot's generation run,
+so its correction freshness is unchanged, and carries claim feedback over. A
+deleted meeting, no summary or a rewrite that returns nil writes nothing.
+
 Meeting-bundle import uses the superset
 `saveImportedMeetingBundle(_:at:)` Unit of Work (D51). Before writing it
 validates the relative audio directory; unique speaker/segment/note/card/action

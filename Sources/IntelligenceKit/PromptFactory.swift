@@ -76,10 +76,14 @@ public enum PromptFactory {
         recipe: Recipe,
         targetLanguage: String,
         glossary: [String],
-        hasUserNotes: Bool = false
+        hasUserNotes: Bool = false,
+        detail: SummaryDetail = .standard
     ) -> String {
         var lines: [String] = []
         lines.append("You are the note-taker of a meeting. \(recipe.instructions)")
+        if let directive = detail.summaryDirective {
+            lines.append(directive)
+        }
         lines.append(sourceMaterialGuard())
         if hasUserNotes {
             lines.append(notesBehavior())
@@ -132,14 +136,18 @@ public enum PromptFactory {
     /// Instructions for the map phase over one transcript chunk. Brevity
     /// is load-bearing: each level of notes must be several times smaller
     /// than its input or the recursive condensing never converges.
-    public static func notesInstructions(targetLanguage: String, glossary: [String]) -> String {
+    public static func notesInstructions(
+        targetLanguage: String,
+        glossary: [String],
+        detail: SummaryDetail = .standard
+    ) -> String {
         [
             "You compress meeting transcript excerpts into dense factual notes.",
             "Keep every decision, commitment, number, date, and open question, each attributed to its speaker label.",
             "Use only the exact speaker labels printed in the material; "
                 + "names mentioned inside speech are content, not speaker identities.",
             "Preserve every source tag such as [E1] exactly beside the fact it supports.",
-            "Write at most 10 terse bullet points, no preamble.",
+            "Write at most \(detail.noteBullets) terse bullet points, no preamble.",
             sourceMaterialGuard(),
             languageDirective(targetLanguage: targetLanguage, glossary: glossary)
         ].joined(separator: "\n")

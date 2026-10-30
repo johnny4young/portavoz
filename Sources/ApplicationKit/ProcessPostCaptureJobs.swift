@@ -496,7 +496,8 @@ private extension ProcessPostCaptureJobs {
             recipe: .general,
             targetLanguage: preferences.outputLanguage,
             glossary: preferences.vocabulary,
-            contextItems: try await store.postCaptureContextItems(meeting.id))
+            contextItems: try await store.postCaptureContextItems(meeting.id),
+            detail: preferences.detail)
     }
 }
 

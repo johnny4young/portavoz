@@ -69,6 +69,7 @@ extension MeetingDetailCoordinator {
                     detail: detail,
                     summary: summary)
             },
+            regenerateDetail: { regenerate(level: $0, detail: detail, summary: summary) },
             createStructure: { flow.sheet = .newStructure },
             dismissRecipeSuggestion: model.dismissSuggestedRecipe,
             dismissThinSuggestion: {
@@ -183,7 +184,8 @@ extension MeetingDetailCoordinator {
         summary: MeetingReviewSummary?,
         segments: [TranscriptSegment]? = nil,
         speakers: [Speaker]? = nil,
-        sourceTranscriptRevision: Int? = nil
+        sourceTranscriptRevision: Int? = nil,
+        summaryDetail: SummaryDetail? = nil
     ) {
         guard !flow.isRegenerating else { return }
         model.dismissSuggestedRecipe()
@@ -204,6 +206,9 @@ extension MeetingDetailCoordinator {
         let activeRecipe = recipe
             ?? summary.flatMap { CustomRecipeStore.byID($0.draft.recipeID) }
             ?? .general
+        let level = summaryDetail ?? SummaryDetailPreference.current()
+        // Detailed wants the whole transcript in one pass, which only the embedded model takes.
+        let provider = engine ?? (level == .detailed && sceneValues.mlxDownloaded ? .mlx : nil)
         Task {
             defer { flow.isRegenerating = false }
             let request = RegenerateSummaryRequest(
@@ -214,10 +219,23 @@ extension MeetingDetailCoordinator {
                 targetLanguage: language.identifier,
                 sourceTranscriptRevision: material.baseTranscriptRevision,
                 sourceCorrectionRevision: material.correctionRevision,
-                providerOverride: engine,
-                evidenceSourceIDsByGeneratedID: material.sourceSegmentIDsByGeneratedID)
+                providerOverride: provider,
+                evidenceSourceIDsByGeneratedID: material.sourceSegmentIDsByGeneratedID,
+                detail: level)
             await applyRegenerateResult(await sceneActions.regenerateSummary(request))
         }
+    }
+
+    private func regenerate(
+        level: SummaryDetail,
+        detail: MeetingReviewReadModel,
+        summary: MeetingReviewSummary
+    ) {
+        regenerate(
+            language: summaryLanguage(summary.draft.language, spokenLanguage: nil),
+            detail: detail,
+            summary: summary,
+            summaryDetail: level)
     }
 
     func enhanceNotes(

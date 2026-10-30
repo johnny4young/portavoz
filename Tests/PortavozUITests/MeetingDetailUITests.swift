@@ -2015,6 +2015,32 @@ final class MeetingDetailUITests: PortavozUITestCase {
         typeKey(.escape, modifierFlags: [], in: app)
     }
 
+    @MainActor
+    func testRegenerateMenuOffersEveryDetailLevel() throws {
+        let app = try launchOnSeededMeeting()
+        defer { finishUITestApplication(app) }
+        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
+
+        let menu = app.control(withIdentifier: "detail-regenerate-menu")
+        XCTAssertTrue(menu.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(app.prepareForInteraction())
+        XCTAssertTrue(menu.waitForStableFrame(timeout: 5))
+        menu.click()
+        let detail = app.menuItems["detail-summary-detail-menu"]
+        guard detail.waitForExistenceFast(timeout: 5) else {
+            XCTFail("the regenerate menu must offer the Detail submenu")
+            return
+        }
+        detail.click()
+        for level in ["brief", "standard", "detailed"] {
+            XCTAssertTrue(
+                app.menuItems["detail-summary-detail-\(level)"].waitForExistenceFast(timeout: 5),
+                "the Detail submenu must offer \(level)")
+        }
+        typeKey(.escape, modifierFlags: [], in: app)
+        typeKey(.escape, modifierFlags: [], in: app)
+    }
+
     /// Mark a valid range through the real menu while the fresh player stays
     /// paused; the waveform supplies an interior position without racing EOF.
     @MainActor

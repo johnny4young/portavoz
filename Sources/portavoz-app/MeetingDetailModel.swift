@@ -285,6 +285,7 @@ private extension MeetingDetailModel {
         }
         state.lastActionError = nil
         state.nameSuggestions.removeAll { $0.label == original.label }
+        await carrySpeakerRenameIntoSummary(from: original, to: speaker)
         client.requestMeetingDetailSearchReindex()
         return .nameSuggestionAccepted(speaker)
     }
@@ -301,6 +302,7 @@ private extension MeetingDetailModel {
         }
         state.lastActionError = nil
         state.voiceSuggestions.removeAll { $0.speakerLabel == original.label }
+        await carrySpeakerRenameIntoSummary(from: original, to: speaker)
         client.requestMeetingDetailSearchReindex()
         return .voiceSuggestionAccepted(speaker)
     }
@@ -316,6 +318,7 @@ private extension MeetingDetailModel {
                 error.localizedDescription)
             return nil
         }
+        await carrySpeakerRenameIntoSummary(from: original, to: speaker)
         client.requestMeetingDetailSearchReindex()
         return .speakerRenamed(speaker)
     }

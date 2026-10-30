@@ -66,6 +66,13 @@ extension AppServices: MeetingDetailModelClient {
         try await store.save([speaker])
     }
 
+    func applyMeetingDetailSpeakerRenameToSummary(
+        meetingID: MeetingID, from oldName: String, to newName: String
+    ) async throws -> Int? {
+        try await ApplySpeakerRenameToSummary(store: store)
+            .execute(meetingID: meetingID, from: oldName, to: newName)
+    }
+
     func correctMeetingDetailTranscript(
         _ request: CorrectMeetingTranscriptRequest
     ) async throws -> CorrectMeetingTranscriptResult {

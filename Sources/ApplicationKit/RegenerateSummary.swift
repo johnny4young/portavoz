@@ -167,6 +167,7 @@ public struct RegenerateSummaryRequest: Sendable {
     public let sourceTranscriptRevision: Int
     public let sourceCorrectionRevision: TranscriptCorrectionRevision
     public let evidenceSourceIDsByGeneratedID: [UUID: [UUID]]
+    public let detail: SummaryDetail
 
     public init(
         meetingID: MeetingID,
@@ -177,7 +178,8 @@ public struct RegenerateSummaryRequest: Sendable {
         sourceTranscriptRevision: Int,
         sourceCorrectionRevision: TranscriptCorrectionRevision,
         providerOverride: SummaryEngine? = nil,
-        evidenceSourceIDsByGeneratedID: [UUID: [UUID]] = [:]
+        evidenceSourceIDsByGeneratedID: [UUID: [UUID]] = [:],
+        detail: SummaryDetail = .standard
     ) {
         self.meetingID = meetingID
         self.segments = segments
@@ -188,6 +190,7 @@ public struct RegenerateSummaryRequest: Sendable {
         self.sourceTranscriptRevision = sourceTranscriptRevision
         self.sourceCorrectionRevision = sourceCorrectionRevision
         self.evidenceSourceIDsByGeneratedID = evidenceSourceIDsByGeneratedID
+        self.detail = detail
     }
 }
 
@@ -236,7 +239,8 @@ public struct RegenerateSummary: ApplicationUseCase {
             recipe: request.recipe,
             targetLanguage: request.targetLanguage,
             glossary: glossary,
-            contextItems: contextItems)
+            contextItems: contextItems,
+            detail: request.detail)
 
         switch await providers.resolve(override: request.providerOverride) {
         case .unavailable(let reason):
@@ -391,7 +395,19 @@ public struct RegenerateSummary: ApplicationUseCase {
         outcome: GenerationRunOutcome,
         draft: SummaryDraft?
     ) -> GenerationRun {
-        GenerationRun(
+        var config: [String: Any] = [
+            "operation": attempt.operation.rawValue,
+            "recipeID": attempt.request.recipe.id,
+            "reusePolicy": attempt.reusePolicy.rawValue,
+            "sourceCorrectionRevision": attempt.sourceCorrectionRevision.rawValue,
+            "sourceTranscriptRevision": attempt.sourceTranscriptRevision,
+            "workflow": "manual-regeneration"
+        ]
+        // Absent means standard, matching runs recorded before detail levels existed.
+        if attempt.request.detail != .standard {
+            config["detail"] = attempt.request.detail.rawValue
+        }
+        return GenerationRun(
             id: makeGenerationRunID(),
             meetingID: attempt.request.meetingID,
             kind: .summary,
@@ -399,14 +415,7 @@ public struct RegenerateSummary: ApplicationUseCase {
             modelID: attempt.modelID,
             modelRevision: attempt.modelRevision,
             inputFingerprint: attempt.fingerprint,
-            configJSON: Self.json([
-                "operation": attempt.operation.rawValue,
-                "recipeID": attempt.request.recipe.id,
-                "reusePolicy": attempt.reusePolicy.rawValue,
-                "sourceCorrectionRevision": attempt.sourceCorrectionRevision.rawValue,
-                "sourceTranscriptRevision": attempt.sourceTranscriptRevision,
-                "workflow": "manual-regeneration"
-            ]),
+            configJSON: Self.json(config),
             outputLanguage: attempt.request.targetLanguage,
             startedAt: attempt.startedAt,
             finishedAt: now(),

@@ -311,6 +311,8 @@ final class MeetingDetailModelTests: XCTestCase {
             .deleteMeeting(fixture.meeting.id),
             .retryProcessing(fixture.meeting.id),
         ])
+        // Accepting the name it already has leaves the summary alone.
+        XCTAssertEqual(client.summaryRenames, [["Ana", "Bea"], ["Ana", "Carla"]])
         XCTAssertEqual(client.searchReindexRequests, 8)
         XCTAssertEqual(effectSpeakerName(nameEffect), "Ana")
         XCTAssertEqual(effectSpeakerName(voiceEffect), "Bea")
@@ -1216,6 +1218,7 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     var calls: [MeetingDetailModelCall] = []
     var failures: Set<MeetingDetailModelFailure> = []
     var searchReindexRequests = 0
+    var summaryRenames: [[String]] = []
     var memoryGraphReindexRequests = 0
     var canRememberVoiceResult = true
     var rememberVoiceResult: ManageMeetingVoiceMemoryResult = .remembered
@@ -1282,6 +1285,13 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     func renameMeetingDetailSpeaker(_ speaker: Speaker) throws {
         calls.append(.renameSpeaker(speaker.displayName))
         try fail(.renameSpeaker)
+    }
+
+    func applyMeetingDetailSpeakerRenameToSummary(
+        meetingID: MeetingID, from oldName: String, to newName: String
+    ) throws -> Int? {
+        summaryRenames.append([oldName, newName])
+        return nil
     }
 
     func correctMeetingDetailTranscript(

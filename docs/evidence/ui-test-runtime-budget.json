@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 188
+    "expectedCaseCount": 189
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -124,6 +124,7 @@
     "MeetingDetailUITests/testNoAppleIntelligenceApuntadorRefreshPreservesStaleAnswers()": 20.0,
     "MeetingDetailUITests/testNoAppleIntelligenceSummaryFailureOpensExactSetupAndExplainsApuntador()": 20.0,
     "MeetingDetailUITests/testSkillProposalJourneyFromBannerToReceipt()": 30.848,
+    "MeetingDetailUITests/testRegenerateMenuOffersEveryDetailLevel()": 20.0,
     "MeetingDetailUITests/testStructureMenuOffersSeededTemplates()": 20.0,
     "MeetingDetailUITests/testSummaryFeedbackIsExplicitReversibleAndLocal()": 20.0,
     "MeetingDetailUITests/testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo()": 23.101,

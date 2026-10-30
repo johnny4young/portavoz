@@ -22196,3 +22196,27 @@ previous revision. A failed swap leaves extra silence, never transcript rows
 past the end of the audio. Older recordings whose silence was transcribed as
 hallucinated phrases have no trailing gap until Refine (D603) removes those
 rows.
+
+## D608 — Summaries choose a detail level, and renames reach them without a model
+
+**Context:** A long meeting summarized on the 4 096-token on-device model can
+come back with a few lines, and the only remedy was the thin-summary chip's
+retry on the embedded model. A summary also keeps the speaker labels it was
+written with: renaming "Speaker 2" left the old label in the summary until a
+full regeneration, which costs minutes and can change the wording.
+
+**Decision:** `SummaryDetail` (brief, standard, detailed) is a Settings
+default and a Regenerate submenu. Standard keeps today's prompt and
+fingerprint, so cached summaries stay valid; brief and detailed add one
+directive and join the fingerprint. Detailed with no explicit engine runs on
+the embedded MLX model when it is downloaded, because only it reads the whole
+transcript in one pass; Apple Foundation Models keeps richer map notes instead.
+The thin-summary chip offers Detailed. A rename replaces the old shown name as
+a whole word in the current summary and saves it as the next immutable
+version, linked to the original generation run.
+
+**Consequences:** Detailed on Apple Foundation Models is still bounded by its
+context window. The rename rewrite is literal: a name that is also a common
+word, or grammar that depended on the old label, is not adjusted, and
+regenerating remains the way to reword. A failed rewrite keeps the old name and
+never fails the rename.
