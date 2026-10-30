@@ -2579,9 +2579,22 @@ success, child failure, interruption and scratch cleanup assertions remain.
 The interrupt helper waits for a live positive worker PID, atomically published
 by the worker after both synthetic shells install their signal traps, rather
 than treating the earlier Swift argument log as readiness. A delayed worker
-startup regression covers interruption after readiness. Process-group release
-is awaited within a bounded deadline because macOS reports EPERM, not ESRCH,
-while an exited member awaits reaping.
+startup regression covers interruption after readiness, and a delayed
+readiness-timeout regression covers interruption while the Swift child is still
+starting. Process-group release is awaited within a bounded deadline because
+macOS reports EPERM, not ESRCH, while an exited member awaits reaping; the
+helper's TERM and KILL fallbacks tolerate the same EPERM, so it never replaces
+the original failure.
+
+The launcher holds HUP, INT and TERM between each fork and its PID assignment,
+then honors a held signal, so an interrupt at any point reaches the fixture and
+the Swift process group. While it waits for that group to drain, it re-sends
+TERM every 0.5 s before the 5 s KILL fallback: a child forked while the first
+TERM was in flight never received it. A synthetic `swift` that forks a child
+from its own TERM trap proves the launcher exits within 3 s of that late fork;
+the previous single TERM left it running until the KILL fallback, past the
+helper's 3 s budget, which then orphaned it. EPERM from the drain probe means
+only unreaped members remain, so it ends the wait like ESRCH.
 Their normal readiness/completion budgets are unchanged; failure is not turned
 into success by cleanup or by an automatic rerun.
 
