@@ -44,7 +44,7 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 
 ## Status
 
-**Current release: 1.2.0. Shipping and self-updating on macOS 26 Tahoe.** Releases after 1.2.0 require macOS 26 Tahoe; Macs on macOS 15 Sequoia or earlier keep 1.2.0, and neither Sparkle nor Homebrew offers them a newer version. Install with Homebrew or grab the notarized DMG from [Releases](https://github.com/johnny4young/portavoz/releases); updates arrive automatically via Sparkle:
+**Current release: 1.3.0. Shipping and self-updating on macOS 26 Tahoe.** Releases after 1.2.0 require macOS 26 Tahoe; Macs on macOS 15 Sequoia or earlier keep 1.2.0, and neither Sparkle nor Homebrew offers them a newer version. Install with Homebrew or grab the notarized DMG from [Releases](https://github.com/johnny4young/portavoz/releases); updates arrive automatically via Sparkle:
 
 ```sh
 brew install --cask johnny4young/tap/portavoz
