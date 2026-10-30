@@ -2048,7 +2048,7 @@ admission query still rejects them. Query-plan regression uses the production
 request and requires indexed search rather than a full Library scan. This is
 access-path evidence, not a measured UI latency claim.
 
-Trimming a silent tail (D606) is stricter: `canTrimMeetingAudio` adds to the
+Trimming a silent tail (D608) is stricter: `canTrimMeetingAudio` adds to the
 compression admission a live meeting that owns the directory, lifecycle
 `ready` and no pending or running processing job. `trimMeetingTail` is one
 write fenced on the expected transcript revision (`staleRefineDraft` on a

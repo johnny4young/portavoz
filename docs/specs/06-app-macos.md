@@ -2113,7 +2113,7 @@ audio of a settled meeting, the same menu offers "Remove … of silence at the
 end…" (`player-trim-silence`), confirmed in a destructive dialog
 (`player-trim-silence-confirm`); the section shows progress
 (`detail-trim-progress`) or the result (`detail-trim-message`) and the player
-is prepared again on the shorter files (D606). A failed file swap attempts to
+is prepared again on the shorter files (D608). A failed file swap attempts to
 restore every original; any backup whose restoration fails remains beside its
 channel for recovery instead of being deleted. If processing is pending or running after
 cut copies are staged, the transcript commit rejects the stale admission and
