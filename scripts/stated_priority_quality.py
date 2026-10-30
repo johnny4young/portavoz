@@ -74,6 +74,8 @@ def load_json(path, label, maximum_bytes=2 * 1024 * 1024):
             path = Path(path).expanduser()
             if not path.is_file():
                 raise StatedPriorityQualityError(f"{label} not found: {path}")
+            if path.stat().st_size > maximum_bytes:
+                raise StatedPriorityQualityError(f"{label} exceeds the size limit")
             raw = path.read_bytes()
         if len(raw) > maximum_bytes:
             raise StatedPriorityQualityError(f"{label} exceeds the size limit")
@@ -202,6 +204,10 @@ def validate_case(case, path):
             for span in evidence
         ):
             raise StatedPriorityQualityError(f"{path}.gold.target must lie inside its evidence")
+        if focus["mention"] is not None and target != {
+            "captionID": focus["captionID"], "quote": focus["mention"]
+        }:
+            raise StatedPriorityQualityError(f"{path}.focus mention must be the gold target")
 
     annotation = exact_object(
         case["annotation"], f"{path}.annotation", {"rationale", "ambiguity", "secondReview"}
@@ -363,23 +369,31 @@ def valid_probabilities(probabilities):
 
 
 def admit(case, value):
-    """Return the admitted decision, reason, and whether the claim was unsupported."""
+    """Return the admitted decision, reason, and whether a claim lacked grounded evidence.
+
+    A claim must meet the gold invariants: evidence quoted from the captions,
+    some of it in the focal caption, and any target inside that evidence.
+    """
+    probabilities_valid = valid_probabilities(value["probabilities"])
     if value["decision"] == "abstain":
-        return "abstain", value["reason"], False
-    captions = {caption["id"]: caption for caption in case["captions"]}
+        return "abstain", value["reason"] if probabilities_valid else "invalid-output", False
+    captions = {caption["id"]: caption["text"] for caption in case["captions"]}
+    evidence = value["evidence"]
     target = value["target"]
     grounded = (
-        bool(value["evidence"])
-        and all(span["captionID"] in captions and span["quote"] in captions[span["captionID"]]["text"]
-                for span in value["evidence"])
+        bool(evidence)
+        and all(span["quote"] in captions.get(span["captionID"], "") for span in evidence)
+        and any(span["captionID"] == case["focus"]["captionID"] for span in evidence)
         and (target is not None or value["decision"] == "question")
-        and (target is None or (
-            target["captionID"] in captions and target["quote"] in captions[target["captionID"]]["text"]
+        and (target is None or any(
+            span["captionID"] == target["captionID"] and target["quote"] in span["quote"]
+            for span in evidence
         ))
-        and valid_probabilities(value["probabilities"])
     )
     if not grounded:
         return "abstain", "invalid-output", True
+    if not probabilities_valid:
+        return "abstain", "invalid-output", False
     return value["decision"], None, False
 
 
@@ -422,7 +436,6 @@ def summarize(rows):
     gold_other = [row for row in rows if row["gold"] != "priority"]
     decided = [row for row in rows if row["decision"] != "abstain"]
     return {
-        "cases": len(rows),
         "accuracy": fraction(sum(row["correct"] for row in rows), len(rows)),
         "coverage": fraction(len(decided), len(rows)),
         "priorityRecall": fraction(
@@ -462,10 +475,9 @@ def case_rows(fixture, split, document):
         outcome = "refused" if reason not in (None, "classified-neutral") else decision
         correct = outcome == gold["label"]
         probabilities = value["probabilities"]
-        confidence = (
-            round(max(probabilities.values()), 6)
-            if probabilities is not None and not unsupported else None
-        )
+        scored = probabilities is not None and valid_probabilities(probabilities)
+        confidence = round(max(probabilities.values()), 6) if scored else None
+        claimed = decision != "abstain"
         evidence_keys = {(span["captionID"], span["quote"]) for span in value["evidence"]}
         rows.append({
             "id": case["id"],
@@ -481,11 +493,15 @@ def case_rows(fixture, split, document):
             "hasTarget": gold["target"] is not None,
             "unsupportedEvidence": unsupported,
             "confidence": confidence,
-            "targetExact": correct and gold["target"] is not None and value["target"] == gold["target"],
-            "evidenceExact": correct and decision != "abstain" and evidence_keys == {
+            "probabilityDisagreement": claimed and scored
+                and probabilities[decision] < max(probabilities.values()),
+            # Exactness is judged apart from the label, so evidence selection
+            # and classification errors stay distinguishable.
+            "targetExact": claimed and gold["target"] is not None and value["target"] == gold["target"],
+            "evidenceExact": claimed and evidence_keys == {
                 (span["captionID"], span["quote"]) for span in gold["evidence"]
             },
-            "evidenceCaptionExact": correct and decision != "abstain" and {
+            "evidenceCaptionExact": claimed and {
                 span["captionID"] for span in value["evidence"]
             } == {span["captionID"] for span in gold["evidence"]},
         })
@@ -527,6 +543,7 @@ def score(fixture, split, document):
             "unsupportedEvidence": sum(row["unsupportedEvidence"] for row in rows),
             "technicalFailures": sum(count for reason, count in reasons.items() if reason in TECHNICAL_REASONS),
             "unsafePromotions": sum(row["unsafePromotion"] for row in rows),
+            "probabilityDisagreements": sum(row["probabilityDisagreement"] for row in rows),
             "demotionToPriority": confusion["demotion"]["priority"],
             "questionToPriority": confusion["question"]["priority"],
         },
@@ -546,8 +563,9 @@ def score(fixture, split, document):
             ),
         },
         "byLanguage": {
-            language: summarize([row for row in rows if row["language"] == language])
+            language: {"cases": len(subset), **summarize(subset)}
             for language in LANGUAGES
+            for subset in [[row for row in rows if row["language"] == language]]
         },
         "byLabel": {
             label: {

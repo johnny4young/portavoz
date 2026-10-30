@@ -127,12 +127,27 @@ class StatedPriorityQualityTests(unittest.TestCase):
         with self.assertRaisesRegex(Error, "target must lie inside its evidence"):
             quality.validate_fixture(broken)
 
+    def test_fixture_rejects_a_focus_mention_that_is_not_the_gold_target(self):
+        broken = copy.deepcopy(self.fixture())
+        retracted = next(
+            case for case in broken["cases"]
+            if case["gold"]["label"] == "abstain" and "self-correction" in case["tags"]
+        )
+        declared = next(
+            case for case in broken["cases"]
+            if case["family"] == retracted["family"] and case["gold"]["label"] == "priority"
+        )
+        declared["focus"]["mention"] = retracted["focus"]["mention"]
+
+        with self.assertRaisesRegex(Error, "focus mention must be the gold target"):
+            quality.validate_fixture(broken)
+
     def test_fixture_rejects_a_disagreement_without_adjudication(self):
         broken = copy.deepcopy(self.fixture())
         case = self.case_with_label(broken, "evaluation", "demotion")
         case["annotation"]["secondReview"]["label"] = "priority"
 
-        with self.assertRaises(Error):
+        with self.assertRaisesRegex(Error, "secondReview.adjudication"):
             quality.validate_fixture(broken)
         case["annotation"]["secondReview"]["adjudication"] = "Owner kept demotion."
         quality.validate_fixture(broken)
@@ -201,6 +216,65 @@ class StatedPriorityQualityTests(unittest.TestCase):
         self.assertTrue(row["unsupportedEvidence"])
         self.assertEqual(scorecard["counts"]["unsafePromotions"], 0)
         self.assertEqual(scorecard["counts"]["technicalFailures"], 1)
+
+    def test_claim_whose_evidence_misses_the_focus_or_the_target_is_refused(self):
+        fixture = self.fixture()
+        case = next(
+            case for case in quality.split_cases(fixture, "evaluation")
+            if case["gold"]["label"] == "demotion" and case["focus"]["mention"] is None
+        )
+        target = case["gold"]["target"]
+        context_only = [span for span in case["gold"]["evidence"] if span["captionID"] == target["captionID"]]
+        focus_only = [span for span in case["gold"]["evidence"] if span["captionID"] == case["focus"]["captionID"]]
+        self.assertNotEqual(target["captionID"], case["focus"]["captionID"])
+
+        for name, evidence in {"misses the focus": context_only, "misses the target": focus_only}.items():
+            document = self.replace(self.echo_document(fixture, "evaluation"), quality.observation(
+                case["id"], "demotion", target=target, evidence=evidence,
+            ))
+            row = next(item for item in quality.score(fixture, "evaluation", document)["cases"]
+                       if item["id"] == case["id"])
+            with self.subTest(name):
+                self.assertEqual((row["reason"], row["unsupportedEvidence"]), ("invalid-output", True))
+
+    def test_abstention_with_malformed_probabilities_fails_closed(self):
+        fixture = self.fixture()
+        case = self.case_with_label(fixture, "evaluation", "abstain")
+        malformed = {label: "high" for label in quality.LABELS}
+        document = self.replace(
+            self.echo_document(fixture, "evaluation"),
+            quality.observation(case["id"], "abstain", "low-confidence", probabilities=malformed),
+        )
+
+        scorecard = quality.score(fixture, "evaluation", document)
+
+        row = next(item for item in scorecard["cases"] if item["id"] == case["id"])
+        self.assertEqual((row["reason"], row["outcome"], row["confidence"]), ("invalid-output", "refused", None))
+        self.assertEqual(scorecard["counts"]["technicalFailures"], 1)
+
+    def test_target_and_evidence_exactness_are_judged_apart_from_the_label(self):
+        fixture = self.fixture()
+        case = self.case_with_label(fixture, "evaluation", "demotion")
+        document = self.replace(self.echo_document(fixture, "evaluation"), quality.observation(
+            case["id"], "question", target=case["gold"]["target"], evidence=case["gold"]["evidence"],
+        ))
+
+        metrics = quality.score(fixture, "evaluation", document)["metrics"]
+
+        self.assertEqual(metrics["accuracy"]["count"], 79)
+        self.assertEqual(metrics["targetExact"]["rate"], 1.0)
+        self.assertEqual(metrics["evidenceExact"]["rate"], 1.0)
+
+    def test_decision_that_contradicts_its_probabilities_is_counted(self):
+        fixture = self.fixture()
+        case = self.case_with_label(fixture, "evaluation", "priority")
+        document = self.replace(
+            self.echo_document(fixture, "evaluation"), gold_echo(case, peaked("abstain", 0.7)),
+        )
+
+        counts = quality.score(fixture, "evaluation", document)["counts"]
+
+        self.assertEqual(counts["probabilityDisagreements"], 1)
 
     def test_probabilities_that_do_not_sum_to_one_are_refused(self):
         fixture = self.fixture()
