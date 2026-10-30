@@ -410,6 +410,10 @@ smoothing) and its 3 + 5 minute timing come from one MacBook meeting. Field
 evidence is still needed for long screen-share silences, hold music, a noisy
 room that keeps the microphone above the threshold, and the notification
 actions while the app is hidden or the Mac is locked.
+Meeting/question identity fences now reject withdrawn or stale actions;
+deterministic in-memory notification adapters cover delayed authorization and
+publication across questions. Actual operating-system delivery, withdrawal and
+action timing across recording sessions still require integrated qualification.
 
 ### Speaker echo thresholds need more rooms and devices
 
