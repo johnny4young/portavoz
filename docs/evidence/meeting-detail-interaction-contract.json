@@ -2044,6 +2044,12 @@
     {
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
       "category": "identifier",
+      "source": ".accessibilityIdentifier(\"player-trim-silence-cancel\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "identifier",
       "source": ".accessibilityIdentifier(\"player-trim-silence-confirm\")",
       "occurrences": 1
     },
@@ -3369,6 +3375,7 @@
         }
       ],
       "screenshots": [
+        "clip-paused-export",
         "meeting-detail-waveform"
       ]
     },

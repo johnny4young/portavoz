@@ -9383,3 +9383,25 @@ never overwritten. `DictationSearchBenchmarkTests` exercise the observer with a
 deterministic bag-of-words embedding and no rewrites; the real run needs
 installed embedding assets and Apple Intelligence and is not part of CI.
 
+
+### Disposable silent-tail UI journey
+
+The positive silent-tail journey writes two synthetic 600-second WAV channels
+inside its registered app audio root before launch. It observes Cancel without
+changing their hashes, then confirms the real trim to 215 seconds and verifies
+the retained transcript, result and updated player duration. A finite
+`-use-temp-store`-only handshake at the application boundary makes progress
+observable without replacing the real trimmer. Attachments show only the seeded
+app. The test never opens the live SQLite database; native storage tests own
+revision, admission and transcript mutation assertions. Its initial 30-second
+budget follows the existing target for related audio-import journeys and the
+full-suite p95 target. A focused English local run completed in 24.789 seconds;
+its exact success message is exposed through the macOS static-text value rather
+than its empty label. No existing threshold changes. This one run is not a
+performance qualification.
+
+The clip-export menu journey marks Start on a fresh paused six-second recording,
+seeks through the identified waveform to an interior End, and verifies the
+cursor remains fixed while opening the menu. It requires that ordered range
+before asserting Export. Playback and rewind remain covered by the separate
+player journey; this paused case does not qualify marking during playback.

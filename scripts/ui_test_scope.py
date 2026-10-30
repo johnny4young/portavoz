@@ -284,6 +284,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("MeetingDetailUITests", "testPlayerExposesSkipAndOnlyMyVoice"),
         test_id("MeetingDetailUITests", "testClipMarkingRevealsExport"),
         test_id("MeetingDetailUITests", "testClickingALineOfTextJumpsThere"),
+        test_id("MeetingAudioTrimUITests", "testSilentTailRequiresConfirmationAndCutsOnlyAfterConfirmation"),
     ),
     "meeting-correction": (
         test_id(

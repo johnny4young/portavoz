@@ -88,6 +88,7 @@ struct MeetingPlayerBar: View {
             Button("Remove", role: .destructive, action: trimSilence)
                 .accessibilityIdentifier("player-trim-silence-confirm")
             Button("Cancel", role: .cancel) {}
+                .accessibilityIdentifier("player-trim-silence-cancel")
         } message: {
             Text("The audio after the last phrase is deleted for good, and transcript edits are reset.")
         }

@@ -2115,7 +2115,10 @@ end…" (`player-trim-silence`), confirmed in a destructive dialog
 (`detail-trim-progress`) or the result (`detail-trim-message`) and the player
 is prepared again on the shorter files (D608). A failed file swap attempts to
 restore every original; any backup whose restoration fails remains beside its
-channel for recovery instead of being deleted. If processing is pending or running after
+channel for recovery instead of being deleted. Disposable UI qualification can
+pause the ordinary application call before trimming through a bounded temporary-directory handshake; it is admitted only
+with `-use-temp-store` and an explicit fixture argument. If processing is
+pending or running after
 cut copies are staged, the transcript commit rejects the stale admission and
 the application discards those copies without swapping audio. The later
 database-commit-to-file-swap interval is not an exclusive processing reservation. A marked clip shows its length, Export and discard below the

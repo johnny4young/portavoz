@@ -31,7 +31,13 @@ extension AppServices {
     func trimMeetingDetailAudioTail(
         _ request: TrimMeetingAudioTailRequest
     ) async throws -> TimeInterval {
-        try await TrimMeetingAudioTail(
+        if ProcessInfo.processInfo.arguments.contains("-use-temp-store") {
+            try await UITestFeatureHandshake.pauseIfRequested(
+                argument: "-simulate-audio-trim-handshake",
+                readyEnvironmentKey: "PORTAVOZ_UI_TEST_AUDIO_TRIM_READY_PATH",
+                continueEnvironmentKey: "PORTAVOZ_UI_TEST_AUDIO_TRIM_CONTINUE_PATH")
+        }
+        return try await TrimMeetingAudioTail(
             resolver: AppMeetingAudioChannelResolver(),
             trimmer: AudioFileTailTrimmer(),
             store: store).execute(request)
