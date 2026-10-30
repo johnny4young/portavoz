@@ -334,8 +334,11 @@ final class PortavozAppDelegate:
         if response.notification.request.content.categoryIdentifier
             == AppCallEndedNotification.categoryIdentifier {
             let reply = AppCallEndedNotification.response(for: response.actionIdentifier)
+            let identifier = response.notification.request.identifier
+            let sessionID = (response.notification.request.content.userInfo[AppCallEndedNotification.sessionKey]
+                as? String).flatMap(UUID.init(uuidString:))
             completionHandler()
-            Task { @MainActor in Self.handleCallEnded(reply) }
+            Task { @MainActor in Self.handleCallEnded(reply, identifier: identifier, sessionID: sessionID) }
             return
         }
         guard let record = reminderRecord(from: response.notification) else {
@@ -372,13 +375,26 @@ final class PortavozAppDelegate:
 
 private extension PortavozAppDelegate {
     @MainActor
-    static func handleCallEnded(_ reply: AppCallEndedNotification.Response?) {
-        guard let reply, let services, services.recording.phase == .recording else { return }
+    static func handleCallEnded(
+        _ reply: AppCallEndedNotification.Response?, identifier: String, sessionID: UUID?
+    ) {
+        guard let reply, let services, let sessionID,
+            sessionID == services.recording.meetingID.rawValue,
+            AppCallEndedNotification.accepts(
+                identifier: identifier, sessionID: sessionID, isRecording: services.recording.phase == .recording)
+        else { return }
         switch reply {
         case .stop:
             services.pendingRoute = .recording(nil)
             NSApp.activate(ignoringOtherApps: true)
-            Task { await services.recording.stop(services: services) }
+            Task {
+                guard sessionID == services.recording.meetingID.rawValue,
+                    AppCallEndedNotification.accepts(
+                        identifier: identifier, sessionID: sessionID,
+                        isRecording: services.recording.phase == .recording)
+                else { return }
+                await services.recording.stop(services: services)
+            }
         case .keepRecording:
             services.recording.keepRecordingAfterCallEnded()
         case .open:
