@@ -34,6 +34,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **🧹 Refine stops inventing words in a quiet room** — faint room noise no longer turns into "Gracias." or Portuguese phrases, and every passage stays in English or Spanish.
 - **✂️ Cut the silence after the call** — if a recording kept running long after everyone left, the player's ⋯ menu offers to remove that quiet tail from the audio and the transcript, freeing the space and fixing the meeting's length.
 
+- **🔚 Echo sorted right up to Stop** — the other side's voice your microphone picked up as the recording stops now goes to them too.
 - **🎙️ Keep your final words** — microphone speech that extends past the measured speaker echo stays yours, even when the other audio channel ends early.
 - **👆 Click the words to jump there** — in a meeting with audio, clicking anywhere on a transcript line now plays from that moment, not only its time.
 

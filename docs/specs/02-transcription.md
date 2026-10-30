@@ -602,10 +602,12 @@ level-dependent; a linear canceller reached only ~4 dB on field audio.
 energy is predicted echo (10 dB). An echo row is dropped when system rows cover
 at least half of it, otherwise it moves to the system channel with the same
 identity so diarization attributes it to the remote speaker. A row must lie
-entirely within the measured interval, from zero through the frame count times
-the frame duration; the exact end is included. Analysis stops at the shorter
-channel's last complete window, so a row crossing that measured end receives
-no attenuation estimate and retains its microphone identity, channel and text.
+entirely within the measured interval, from zero through the end of the last
+analysis window; the exact end is included. Each 512-sample window advances 256
+samples, so that end lies one hop past the frame count times the frame
+duration. Analysis stops at the shorter channel's last complete window, so a
+row crossing that measured end receives no attenuation estimate and retains its
+microphone identity, channel and text.
 Rows outside the measurement, and every row when the profile is nil or
 unavailable, stay with the user. The analysis never writes audio; capture files remain raw. Required preparation/transcription errors
 propagate; diarization degrades to honest unattributed segments; cancellation
