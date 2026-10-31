@@ -1,9 +1,8 @@
 import Foundation
 
 /// Pure matching of a meeting's speaker embeddings against the gallery of
-/// remembered voices. Produces SUGGESTIONS only — the UI presents them as
-/// chips and nothing is ever applied by itself (same contract as the
-/// transcript-evidence name suggestions, D21).
+/// remembered voices. Matches are suggestions; only one that clears the
+/// stricter auto-assign bar may be applied without a tap, and stays undoable.
 public enum VoiceMatcher {
     /// Same yardstick as the diarizer's effective clustering distance
     /// (0.45 × FluidAudio's internal ×1.2): if the clusterer would call two
@@ -14,6 +13,23 @@ public enum VoiceMatcher {
     public static let maxCosineDistance: Float = 0.54
     /// A second remembered voice this close behind makes the pick a coin flip.
     public static let minimumMargin: Float = 0.05
+    /// Auto-assign bar: close, clearly ahead of any other name, and judged on
+    /// enough speech that one noisy window cannot carry it.
+    public static let autoAssignMaxDistance: Float = 0.35
+    public static let autoAssignMinimumMargin: Float = 0.10
+    public static let autoAssignMinimumSpeechSeconds: Double = 10
+
+    /// True when a match is strong enough to name the speaker without a tap.
+    /// With a single remembered name there is no runner-up to confuse it with.
+    public static func isAutoAssignable(
+        distance: Float, runnerUpDistance: Float?, speechSeconds: Double
+    ) -> Bool {
+        guard distance <= autoAssignMaxDistance,
+              speechSeconds >= autoAssignMinimumSpeechSeconds
+        else { return false }
+        guard let runnerUpDistance else { return true }
+        return runnerUpDistance - distance >= autoAssignMinimumMargin
+    }
 
     public struct Match: Equatable, Sendable {
         public let voiceLabel: String

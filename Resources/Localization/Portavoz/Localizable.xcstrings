@@ -31,6 +31,16 @@
         }
       }
     },
+    "%@ · by voice": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · por voz"
+          }
+        }
+      }
+    },
     "%@ — completed": {
       "localizations": {
         "es": {
@@ -6965,6 +6975,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Limita cada objetivo a %d caracteres o menos."
+          }
+        }
+      }
+    },
+    "Keep name": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conservar nombre"
           }
         }
       }
@@ -16857,6 +16877,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sin cambios"
+          }
+        }
+      }
+    },
+    "Undo": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deshacer"
           }
         }
       }

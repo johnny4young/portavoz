@@ -26,6 +26,7 @@ extension MeetingDetailModel {
         case acceptNameSuggestion(Speaker, name: String)
         case acceptVoiceSuggestion(Speaker, name: String)
         case renameSpeaker(Speaker, name: String)
+        case undoVoiceAutoAssign(speakerLabel: String)
         case correctTranscript(CorrectMeetingTranscriptRequest)
         case restructureTranscript(RestructureMeetingTranscriptRequest)
         case findCanonicalPeople(Speaker, source: PersonAliasSource)
@@ -103,6 +104,10 @@ extension MeetingDetailModel {
 
         static func renameSpeaker(_ speaker: Speaker, name: String) -> Self {
             .content(.editing(.renameSpeaker(speaker, name: name)))
+        }
+
+        static func undoVoiceAutoAssign(speakerLabel: String) -> Self {
+            .content(.editing(.undoVoiceAutoAssign(speakerLabel: speakerLabel)))
         }
 
         static func correctTranscript(

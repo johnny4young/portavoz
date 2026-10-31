@@ -466,8 +466,9 @@ The implemented application workflows include:
   lead window, session deduplication, and an injected upcoming-event source;
 - crash-safe standing pre-meeting brief execution with exact-event admission,
   bounded daily accounting, local artifact publication, and relaunch recovery;
-- degradable participant-voice suggestions, duplicate-offer admission, and
-  explicit remembered-voice persistence without automatic speaker mutation;
+- degradable participant-voice suggestions with their auto-assign verdict,
+  duplicate-offer admission, and explicit remembered-voice persistence; the
+  use case never renames a speaker itself;
 - asynchronous user-managed secret reads, writes, presence checks, and deletion
   over an injected device-local storage port;
 - scoped Library, Insights, Meeting Detail, and resident menu-bar read contracts;

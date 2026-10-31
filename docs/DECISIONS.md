@@ -22258,6 +22258,27 @@ catalog validation refuses a total below the catalogue at that rate, so a
 change that adds journeys raises it in the same commit.
 
 
+## D611 — A clear voice match names the speaker, with one Undo
+
+D105 kept every remembered-voice match a chip the user had to tap. Remembered
+voices exist only because the user asked for them, so tapping an unmistakable
+match each time is busywork. A match now names the speaker without a tap
+when three things hold: cosine distance is at most 0.35 (the suggestion bar
+stays at 0.54), the next remembered name is at least 0.10 further away, and
+the speaker has at least 10 seconds of remote-channel speech. With a single
+remembered name there is no runner-up to rule out. Anything short of that
+stays a chip.
+
+`ManageMeetingVoiceMemory` still never renames a speaker. It reports each
+match's speech and whether it clears the bar. Meeting Detail applies it
+through the ordinary rename path, so the summary and search follow, but only
+when the meeting is `ready`, because speakers are replaced after capture. The
+header shows "Name · by voice" with Undo and a keep cross. Undo restores the
+label and retires that match for the open meeting; a failed rename falls back
+to the chip. The mark lasts only while the meeting stays open; once applied,
+the name is an ordinary name. Numeric-only logs record each automatic
+assignment and undo for calibration (D76).
+
 ## D612 — Ultra becomes the dictation default only on a rule fixed before field data
 
 D565 kept Ultra opt-in because its gains come from synthetic speech and its

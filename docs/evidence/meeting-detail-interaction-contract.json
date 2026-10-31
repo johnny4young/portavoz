@@ -76,6 +76,12 @@
     {
       "path": "Sources/portavoz-app/ChipLabel.swift",
       "category": "control",
+      "source": "Button(L10n.text(\"Undo\"), action: undo)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/ChipLabel.swift",
+      "category": "control",
       "source": "Button(action: accept) {",
       "occurrences": 1
     },
@@ -83,6 +89,12 @@
       "path": "Sources/portavoz-app/ChipLabel.swift",
       "category": "control",
       "source": "Button(action: dismiss) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/ChipLabel.swift",
+      "category": "control",
+      "source": "Button(action: keep) {",
       "occurrences": 1
     },
     {
@@ -101,6 +113,18 @@
       "path": "Sources/portavoz-app/ChipLabel.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(dismissAccessibilityIdentifier)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/ChipLabel.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(keepAccessibilityIdentifier)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/ChipLabel.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(undoAccessibilityIdentifier)",
       "occurrences": 1
     },
     {
@@ -1313,6 +1337,12 @@
       "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"detail-suggestions-row\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-voice-auto-\\(voice.speakerLabel)\")",
       "occurrences": 1
     },
     {
@@ -3546,6 +3576,7 @@
     {
       "feature": "speaker-identity",
       "tests": [
+        "testAConfidentVoiceMatchNamesTheSpeakerAndCanBeUndone",
         "testNamedSpeakerCanBeRememberedAsCanonicalPerson",
         "testUnnamedSpeakerOffersExplicitNameSuggestions"
       ],
@@ -3557,6 +3588,10 @@
         {
           "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
           "anchor": "\"detail-suggest-names\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+          "anchor": "\"detail-voice-auto-undo-"
         },
         {
           "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",

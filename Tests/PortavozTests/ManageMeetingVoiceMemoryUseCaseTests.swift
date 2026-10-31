@@ -26,6 +26,22 @@ final class ManageMeetingVoiceMemoryUseCaseTests: XCTestCase {
         XCTAssertEqual(requestedLabels, [["S1"]])
     }
 
+    func testSuggestionsCarryTheSpeakersRemoteSpeechForTheAutoAssignBar() async throws {
+        // Microphone and zero-length rows do not count toward the speaker's voice.
+        let fixture = MeetingVoiceFixture(remoteSegments: [
+            (.system, 0, 6), (.system, 10, 16), (.microphone, 20, 40), (.system, 50, 50)
+        ])
+        let useCase = fixture.useCase(
+            memory: MeetingVoiceMemoryFake(voices: [RememberedVoice(name: "Ana", embedding: [1, 0])]),
+            extractor: MeetingVoiceExtractorFake(prints: ["S1": Voiceprint(embedding: [1, 0])]))
+
+        let result = try await useCase.execute(.init(action: .suggestions(meetingID: fixture.meetingID)))
+
+        guard case .suggestions(let suggestions) = result else { return XCTFail("expected suggestions") }
+        XCTAssertEqual(suggestions.map(\.speechSeconds), [12])
+        XCTAssertTrue(suggestions[0].isAutoAssignable)
+    }
+
     func testSuggestionsDegradeWithoutGalleryOrExtraction() async throws {
         let fixture = MeetingVoiceFixture()
         let extractor = MeetingVoiceExtractorFake(prints: [:])
@@ -147,11 +163,15 @@ private struct MeetingVoiceFixture {
     let meSpeaker: Speaker
     let detail: MeetingLibraryDetail
 
-    init(remoteName: String? = nil) {
+    init(
+        remoteName: String? = nil,
+        remoteSegments: [(AudioChannel, TimeInterval, TimeInterval)] = []
+    ) {
         remoteSpeaker = Speaker(
             meetingID: meetingID,
             label: "S1",
             displayName: remoteName)
+        let remoteID = remoteSpeaker.id
         let namedRemote = Speaker(
             meetingID: meetingID,
             label: "S2",
@@ -171,7 +191,11 @@ private struct MeetingVoiceFixture {
                 namedRemote,
                 meSpeaker
             ],
-            segments: [],
+            segments: remoteSegments.map { [meetingID] row in
+                TranscriptSegment(
+                    meetingID: meetingID, speakerID: remoteID,
+                    channel: row.0, text: "Hola.", startTime: row.1, endTime: row.2, isFinal: true)
+            },
             summary: nil,
             summaryVersion: nil)
     }

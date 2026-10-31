@@ -409,6 +409,21 @@ final class VoiceMatcherTests: XCTestCase {
         XCTAssertTrue(matches.isEmpty)
     }
 
+    func testOnlyACloseClearAndWellHeardMatchIsAutoAssigned() {
+        let bar = VoiceMatcher.self
+        let speech = bar.autoAssignMinimumSpeechSeconds
+        XCTAssertTrue(bar.isAutoAssignable(distance: 0.2, runnerUpDistance: nil, speechSeconds: speech))
+        XCTAssertTrue(bar.isAutoAssignable(distance: 0.2, runnerUpDistance: 0.5, speechSeconds: speech))
+        XCTAssertFalse(bar.isAutoAssignable(
+            distance: bar.autoAssignMaxDistance + 0.01, runnerUpDistance: nil, speechSeconds: speech),
+            "a suggestion-grade distance stays a chip")
+        XCTAssertFalse(bar.isAutoAssignable(
+            distance: 0.2, runnerUpDistance: 0.2 + bar.autoAssignMinimumMargin / 2, speechSeconds: speech),
+            "a runner-up inside the margin stays a chip")
+        XCTAssertFalse(bar.isAutoAssignable(distance: 0.2, runnerUpDistance: nil, speechSeconds: speech - 1),
+                       "too little speech stays a chip")
+    }
+
     func testTwoNearlyEqualNamesSuggestNeither() {
         let gallery = [
             RememberedVoice(name: "Marta", embedding: [1, 0]),
