@@ -1941,6 +1941,16 @@
         }
       }
     },
+    "Download Parakeet Ultra (more accurate, 613 MB)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar Parakeet Ultra (más preciso, 613 MB)"
+          }
+        }
+      }
+    },
     "Download languages": {
       "localizations": {
         "es": {

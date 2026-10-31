@@ -3647,10 +3647,15 @@ still mix; the setting mainly keeps out other writing systems) through
 `TranscriptSegment.language` remains the requested hint, not a measured language
 classification. The language default stays automatic, and this dictation-language setting does not change the meeting-language preference.
 
-**Parakeet Ultra for dictation (D565):** the dictation picker also offers
-"Parakeet Ultra (more accurate, 613 MB)" (`parakeetUltra`); the meeting picker
-does not, and a stored meeting value resolves to Parakeet. Choosing it is the
-consent for the pinned download through `modelLifecycle.install`, with progress,
+**Parakeet Ultra for dictation (D565, D613):** the dictation picker also offers
+"Parakeet Ultra (more accurate, 613 MB)" (`parakeetUltra`), and it is the
+dictation default when no engine is stored (`LiveSpeechSelection.dictationDefault`);
+an explicit Parakeet or Apple Speech choice is kept. The meeting picker does not
+offer it, and a stored meeting value resolves to Parakeet. The default never
+downloads: choosing Ultra in the picker, Download in Settings, or the optional
+onboarding button (`onboarding-dictation-ultra`, shown once Parakeet is ready,
+with `onboarding-dictation-ultra-progress` while downloading) is the consent for
+the pinned download through `modelLifecycle.install`, with progress,
 Download (`settings-dictation-live-ultra-install`), Retry (`-ultra-retry`),
 Cancel while it downloads (`-ultra-cancel`) and status
 (`settings-dictation-live-ultra-status`). Cancelling, or choosing another engine,
@@ -3661,8 +3666,9 @@ download for XCUITest. Until it is verified,
 downloads it at session start. Pre-warm loads the selected checkpoint.
 
 **Optional Apple live speech (D554):** `meetingLiveSpeechEngine` and
-`dictationLiveSpeechEngine` are independent app preferences and both default
-to Parakeet; unknown stored values also resolve to Parakeet. The Settings
+`dictationLiveSpeechEngine` are independent app preferences. Meetings default
+to Parakeet and dictation to Parakeet Ultra (D613); unknown stored values
+resolve to those defaults. The Settings
 picker enables Apple Speech only on macOS 26+, explains that it needs a fixed
 English or Spanish language, and inspects installed OS assets without
 requesting an asset download. The separate Prepare button may download through
