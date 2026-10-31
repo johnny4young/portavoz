@@ -8,6 +8,7 @@ public struct OwnProcessResourceUsage: Equatable, Sendable {
     public let energyNanojoules: UInt64?
     public let diskReadBytes: UInt64?
     public let diskWrittenBytes: UInt64?
+    public let lifetimeMaxPhysicalFootprintBytes: UInt64?
 
     public enum ReadError: Error { case unavailable }
 
@@ -27,7 +28,8 @@ public struct OwnProcessResourceUsage: Equatable, Sendable {
             physicalFootprintBytes: usage.ri_phys_footprint,
             energyNanojoules: extendedCounters ? usage.ri_energy_nj : nil,
             diskReadBytes: extendedCounters ? usage.ri_diskio_bytesread : nil,
-            diskWrittenBytes: extendedCounters ? usage.ri_diskio_byteswritten : nil)
+            diskWrittenBytes: extendedCounters ? usage.ri_diskio_byteswritten : nil,
+            lifetimeMaxPhysicalFootprintBytes: extendedCounters ? usage.ri_lifetime_max_phys_footprint : nil)
     }
 
     public var cpuSeconds: Double? {

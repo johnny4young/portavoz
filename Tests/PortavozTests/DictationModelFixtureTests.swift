@@ -79,7 +79,36 @@ final class DictationModelFixtureTests: XCTestCase {
         }
     }
 
-    private func makeFixture(floatPCM: Bool = false, samples: [Int16] = [0, 0]) throws -> URL {
+    func testFieldManifestAdmitsOneRecordingPerSpeechFamilyOnly() throws {
+        let root = try makeFixture(microphone: "built-in")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let id = "en-payment-negation.field"
+        let fixture = try DictationModelFixture(audioRoot: root, selectedIDs: [id])
+        XCTAssertEqual(fixture.corpus, .fieldMicrophone)
+        XCTAssertEqual(fixture.manifest.entries.count, 56)
+        XCTAssertEqual(try fixture.sequence(id, repetitions: 1).references,
+                       ["Do not authorize the payment until I confirm it."])
+        for selected in [["en-payment-negation.clean"], ["non-speech-silence.field"]] {
+            XCTAssertThrowsError(try DictationModelFixture(audioRoot: root, selectedIDs: selected))
+        }
+    }
+
+    func testFieldManifestRejectsSyntheticProvenanceAndUnknownMicrophones() throws {
+        for (microphone, recipe) in [("built-in", true), ("studio", false), ("", false)] {
+            let root = try makeFixture(microphone: microphone, fieldRecipe: recipe)
+            defer { try? FileManager.default.removeItem(at: root) }
+            XCTAssertThrowsError(try DictationModelFixture(
+                audioRoot: root, selectedIDs: ["en-payment-negation.field"]))
+        }
+        let synthetic = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: synthetic) }
+        XCTAssertEqual(try DictationModelFixture(
+            audioRoot: synthetic, selectedIDs: ["en-payment-negation.clean"]).corpus, .publicSynthetic)
+    }
+
+    private func makeFixture(
+        floatPCM: Bool = false, samples: [Int16] = [0, 0], microphone: String? = nil, fieldRecipe: Bool = false
+    ) throws -> URL {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false)
         do {
@@ -102,20 +131,23 @@ final class DictationModelFixtureTests: XCTestCase {
             } else {
                 for sample in samples { append(Int(UInt16(bitPattern: sample)), bytes: 2, to: &data) }
             }
-            try data.write(to: root.appendingPathComponent("en-payment-negation.clean.wav"))
+            let profile = microphone == nil ? "clean" : DictationModelFixture.Corpus.fieldProfile
+            try data.write(to: root.appendingPathComponent("en-payment-negation.\(profile).wav"))
             let sourceURL = DictationModelFixture.root
                 .appendingPathComponent("Fixtures/DictationValidation/public-synthetic-v1.json")
             let source = try JSONDecoder().decode(DictationModelFixture.Source.self, from: Data(contentsOf: sourceURL))
-            let entries: [[String: Any]] = source.families.flatMap { family in
-                source.profiles.map { profile in
-                    ["caseID": family.id + "." + profile.id, "audioSHA256": DictationModelFixture.digest(data),
-                     "frames": samples.count, "sampleRate": 16_000, "channels": 1, "sampleWidth": 2]
-                }
+            let caseIDs = microphone == nil
+                ? source.families.flatMap { family in source.profiles.map { family.id + "." + $0.id } }
+                : source.families.filter { $0.audioKind == "speech" }.map { $0.id + "." + profile }
+            let entries: [[String: Any]] = caseIDs.map {
+                ["caseID": $0, "audioSHA256": DictationModelFixture.digest(data),
+                 "frames": samples.count, "sampleRate": 16_000, "channels": 1, "sampleWidth": 2]
             }
-            let manifest: [String: Any] = [
-                "kind": "dictation-audio-manifest", "schemaVersion": 1,
-                "corpusSHA256": DictationModelFixture.sourceDigest, "recipeSHA256": String(repeating: "a", count: 64),
-                "entries": entries]
+            var manifest: [String: Any] = [
+                "kind": microphone == nil ? "dictation-audio-manifest" : "dictation-field-audio-manifest",
+                "schemaVersion": 1, "corpusSHA256": DictationModelFixture.sourceDigest, "entries": entries]
+            if microphone == nil || fieldRecipe { manifest["recipeSHA256"] = String(repeating: "a", count: 64) }
+            if let microphone { manifest["microphone"] = microphone }
             try JSONSerialization.data(withJSONObject: manifest).write(to: root.appendingPathComponent("manifest.json"))
             return root
         } catch {

@@ -15,6 +15,7 @@ struct DictationModelFixture {
             let cohort: String
             let shape: String
             let split: String
+            let audioKind: String
             let acceptedTexts: [String]
             let critical: Bool
         }
@@ -35,8 +36,18 @@ struct DictationModelFixture {
         let kind: String
         let schemaVersion: Int
         let corpusSHA256: String
-        let recipeSHA256: String
+        let recipeSHA256: String?
+        let microphone: String?
         let entries: [Entry]
+    }
+
+    /// Synthetic voices render every family in eight profiles; a field recording is one
+    /// person reading each speech family once into a real microphone.
+    enum Corpus: String, Encodable {
+        case publicSynthetic = "public-synthetic"
+        case fieldMicrophone = "field-microphone"
+
+        static let fieldProfile = "field"
     }
 
     let audioRoot: URL
@@ -44,6 +55,7 @@ struct DictationModelFixture {
     let manifestDigest: String
     let source: Source
     let selectedIDs: [String]
+    let corpus: Corpus
 
     init(audioRoot: URL, selectedIDs: [String]) throws {
         let sourceData = try Self.boundedRegularData(
@@ -53,11 +65,28 @@ struct DictationModelFixture {
         let source = try JSONDecoder().decode(Source.self, from: sourceData)
         let manifestData = try Self.boundedRegularData(audioRoot.appendingPathComponent("manifest.json"), limit: 2_000_000)
         let manifest = try JSONDecoder().decode(Manifest.self, from: manifestData)
-        let canonical = Set(source.families.flatMap { family in source.profiles.map { family.id + "." + $0.id } })
+        let corpus: Corpus
+        let canonical: Set<String>
+        switch manifest.kind {
+        case "dictation-audio-manifest":
+            guard manifest.recipeSHA256?.count == 64, manifest.microphone == nil else {
+                throw DictationModelProbe.Failure.invalidInput
+            }
+            corpus = .publicSynthetic
+            canonical = Set(source.families.flatMap { family in source.profiles.map { family.id + "." + $0.id } })
+        case "dictation-field-audio-manifest":
+            guard manifest.recipeSHA256 == nil, ["built-in", "external"].contains(manifest.microphone) else {
+                throw DictationModelProbe.Failure.invalidInput
+            }
+            corpus = .fieldMicrophone
+            canonical = Set(source.families.filter { $0.audioKind == "speech" }
+                .map { $0.id + "." + Corpus.fieldProfile })
+        default:
+            throw DictationModelProbe.Failure.invalidInput
+        }
         guard !selectedIDs.isEmpty, selectedIDs.count <= canonical.count,
               Set(selectedIDs).count == selectedIDs.count, Set(selectedIDs).isSubset(of: canonical),
-              manifest.kind == "dictation-audio-manifest", manifest.schemaVersion == 1,
-              manifest.corpusSHA256 == Self.sourceDigest, manifest.recipeSHA256.count == 64,
+              manifest.schemaVersion == 1, manifest.corpusSHA256 == Self.sourceDigest,
               manifest.entries.count == canonical.count,
               Set(manifest.entries.map(\.caseID)) == canonical
         else { throw DictationModelProbe.Failure.invalidInput }
@@ -66,6 +95,7 @@ struct DictationModelFixture {
         self.manifestDigest = Self.digest(manifestData)
         self.source = source
         self.selectedIDs = selectedIDs
+        self.corpus = corpus
     }
 
     struct Sequence {

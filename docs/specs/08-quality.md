@@ -276,6 +276,26 @@ concurrent replacement cannot retain a prelaunch digest as admitted evidence.
 Binary identity remains separate from source/commit qualification. Commands and limitations
 live in the corpus README.
 
+**Parakeet v3 and Ultra comparison with field recordings.**
+`DictationModelComparisonTests` runs v3 or Ultra, one model per process when
+`PORTAVOZ_ASR_COMPARE_MODEL` is set, through the installed-model feed and scoring.
+Receipt schema 2 adds the physical footprint before load, after load, after the
+cells and at the process peak; the runner precedes each measured process with a
+one-cell warm-up process, so the measured load is the warm one. The fixture also admits
+a `dictation-field-audio-manifest`: one real-microphone reading of each of the 56
+speech families (`<family>.field`), recorded by
+`scripts/record-dictation-field-corpus.swift` and admitted by
+`scripts/dictation_field_corpus.py`. Field audio is personal and never committed.
+`scripts/run_dictation_model_comparison.py` validates both receipts and writes a
+content-free report with reference-weighted WER per cohort, failed and critical
+cells, loads, footprints and the pre-registered T38 rule (D611). Synthetic
+evidence can never promote Ultra. Core ML maps the weights outside the process
+footprint: on the Mac that ran the first smoke both models stayed near 28 MB after
+load and the peak mostly reflects loading, so a Dev-app diagnostics snapshot
+during an Ultra dictation confirms the in-app number. `Tests.Tooling.test_dictation_field_corpus`
+covers admission, the rule and the per-model launches with generated audio; it
+measures no model.
+
 The separately versioned offline `dictation_benchmark.py` adapter validates a
 frozen configuration/dataset/run plan and explicit content-free edit counts,
 phase offsets and receiver declarations. It reports per-split/stratum micro and
