@@ -2109,7 +2109,9 @@ through that same rename path instead of showing a chip. The header shows
 (`detail-voice-auto-undo-<label>`), which restores the label and keeps that match
 from returning while the meeting is open, and a keep cross
 (`detail-voice-auto-keep-<label>`). A failed rename shows the ordinary chip
-instead. A different manual name retires the mark. Disposable launches with
+instead. A different manual name retires the mark. A speaker is evaluated once
+per open meeting, so that pass and any rename it applies finish even when a
+newer projection restarts the view's suggestion task. Disposable launches with
 `-seed-voice-match` match the seeded remote speaker without a gallery, Keychain
 or model.
 

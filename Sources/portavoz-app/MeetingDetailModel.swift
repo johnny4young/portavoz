@@ -602,6 +602,11 @@ private extension MeetingDetailModel {
         guard let speakers = state.readModel?.speakers,
               state.voice.begin(speakers: speakers)
         else { return }
+        // Speakers just marked evaluated must finish even when a newer revision cancels the caller.
+        await Task { await evaluateVoiceSuggestions() }.value
+    }
+
+    private func evaluateVoiceSuggestions() async {
         let loaded = (try? await client.meetingDetailVoiceSuggestions(meetingID)) ?? []
         // Speakers are replaced after capture; only a settled meeting is named for the user.
         let automatic = state.voice.receive(

@@ -842,6 +842,23 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertEqual(client.summaryRenames, [["S1", "Ana"], ["Ana", "S1"]])
     }
 
+    func testANewerRevisionCancellingTheLoadDoesNotLoseTheVoiceMatch() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [.core(fixture.unnamedCore)])
+        client.voiceSuggestionsResult = [
+            MeetingVoiceSuggestion(speakerLabel: "S1", name: "Ana", distance: 0.2, speechSeconds: 12),
+        ]
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        await model.observe()
+
+        let load = Task { await model.send(.loadVoiceSuggestions) }
+        load.cancel()
+        _ = await load.value
+
+        XCTAssertEqual(model.state.autoAssignedVoices.map(\.name), ["Ana"])
+        XCTAssertEqual(client.summaryRenames, [["S1", "Ana"]])
+    }
+
     func testVoiceMatchesBelowTheBarOrBeforeTheMeetingSettlesStayChips() async {
         let fixture = MeetingDetailModelFixture()
         var processing = fixture.meeting
@@ -1643,6 +1660,7 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     ) throws -> [MeetingVoiceSuggestion] {
         calls.append(.loadVoiceSuggestions(meetingID))
         try fail(.loadVoiceSuggestions)
+        try Task.checkCancellation()
         return voiceSuggestionsResult
     }
 
