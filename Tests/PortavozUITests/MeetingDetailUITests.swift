@@ -169,7 +169,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
         summaryEngine: String? = nil,
         compactWindow: Bool = false,
         minimumWindow: Bool = false,
-        recapPasteboardName: String? = nil
+        recapPasteboardName: String? = nil,
+        extraArguments: [String] = []
     ) throws -> XCUIApplication {
         let app = try XCUIApplication.portavoz(
             seedDemo: true,
@@ -197,6 +198,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         if aiSuggestions {
             app.launchArguments.append("-seed-ai-suggestions")
         }
+        app.launchArguments += extraArguments
         if abandonedSummary {
             app.launchArguments.append("-seed-abandoned-summary")
         }
@@ -667,6 +669,27 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 .waitForStableFrame(timeout: 5),
             "the detail header must finish its navigation transition")
         attachScreenshot(of: app, named: "meeting-name-suggestions")
+    }
+
+    @MainActor
+    func testAConfidentVoiceMatchNamesTheSpeakerAndCanBeUndone() throws {
+        let app = try launchOnSeededMeeting(extraArguments: ["-seed-voice-match"])
+        defer { finishUITestApplication(app) }
+        let pill = app.control(withIdentifier: "cast-speaker-S1")
+        let pillShowsMarta = { "\(pill.label) \(pill.value as? String ?? "")".contains("Marta") }
+
+        let chip = app.control(withIdentifier: "detail-voice-auto-S1")
+        XCTAssertTrue(chip.waitForExistenceFast(timeout: 20), "a confident voice match names the speaker without a tap")
+        XCTAssertTrue(waitForUITestCondition(timeout: 10, pillShowsMarta), "the cast shows the recognized name")
+        XCTAssertTrue(app.control(withIdentifier: "detail-voice-auto-keep-S1").exists)
+        let undo = app.control(withIdentifier: "detail-voice-auto-undo-S1")
+        XCTAssertTrue(undo.waitForHittable(timeout: 5))
+        undo.click()
+
+        XCTAssertTrue(chip.waitForDisappearance(timeout: 10))
+        XCTAssertTrue(waitForUITestCondition(timeout: 10) { !pillShowsMarta() }, "Undo clears the name")
+        XCTAssertFalse(app.control(withIdentifier: "detail-voice-suggestion-S1").exists,
+                       "an undone match is not offered again")
     }
 
     @MainActor

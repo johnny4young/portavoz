@@ -31,7 +31,9 @@ struct MeetingDetailCoordinator {
     func loadPresentationSuggestions() async {
         await model.send(.loadMetadataSuggestions)
         guard !Task.isCancelled else { return }
+        let before = model.state.autoAssignedVoices
         await model.send(.loadVoiceSuggestions)
+        VoiceSuggestionLog.autoAssigned(model.state.autoAssignedVoices.filter { !before.contains($0) })
     }
 
     func loadPlayback() async {

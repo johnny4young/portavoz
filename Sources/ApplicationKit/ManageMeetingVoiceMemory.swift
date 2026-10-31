@@ -7,12 +7,24 @@ public struct MeetingVoiceSuggestion: Equatable, Sendable {
     public let name: String
     public let distance: Float
     public let runnerUpDistance: Float?
+    /// Remote-channel speech the speaker contributed to this meeting.
+    public let speechSeconds: Double
 
-    public init(speakerLabel: String, name: String, distance: Float, runnerUpDistance: Float? = nil) {
+    public init(
+        speakerLabel: String, name: String, distance: Float,
+        runnerUpDistance: Float? = nil, speechSeconds: Double = 0
+    ) {
         self.speakerLabel = speakerLabel
         self.name = name
         self.distance = distance
         self.runnerUpDistance = runnerUpDistance
+        self.speechSeconds = speechSeconds
+    }
+
+    /// Clears the stricter bar for naming the speaker without a tap.
+    public var isAutoAssignable: Bool {
+        VoiceMatcher.isAutoAssignable(
+            distance: distance, runnerUpDistance: runnerUpDistance, speechSeconds: speechSeconds)
     }
 }
 
@@ -65,7 +77,7 @@ public enum ManageMeetingVoiceMemoryError: Error, Equatable, LocalizedError, Sen
 
 /// Owns cross-meeting voice suggestion and explicit memory policy. The
 /// concrete encrypted gallery, recording paths, and diarization model remain
-/// outer adapters; no match mutates a speaker automatically.
+/// outer adapters; this use case never mutates a speaker itself.
 public struct ManageMeetingVoiceMemory: ApplicationUseCase {
     private let library: QueryMeetingLibrary
     private let memory: any RememberedVoiceMemory
@@ -124,13 +136,26 @@ private extension ManageMeetingVoiceMemory {
         let matches = VoiceMatcher.matches(
             speakers: prints.map { ($0.key, $0.value.embedding) },
             gallery: voices)
+        let speech = Self.remoteSpeechSeconds(in: detail)
         return .suggestions(matches.map {
             MeetingVoiceSuggestion(
                 speakerLabel: $0.voiceLabel,
                 name: $0.name,
                 distance: $0.distance,
-                runnerUpDistance: $0.runnerUpDistance)
+                runnerUpDistance: $0.runnerUpDistance,
+                speechSeconds: speech[$0.voiceLabel] ?? 0)
         })
+    }
+
+    /// Same rows the voiceprint is extracted from: remote channel only.
+    static func remoteSpeechSeconds(in detail: MeetingLibraryDetail) -> [String: Double] {
+        let labels = Dictionary(uniqueKeysWithValues: detail.speakers.map { ($0.id, $0.label) })
+        var seconds: [String: Double] = [:]
+        for segment in detail.segments where segment.channel == .system && segment.endTime > segment.startTime {
+            guard let id = segment.speakerID, let label = labels[id] else { continue }
+            seconds[label, default: 0] += segment.endTime - segment.startTime
+        }
+        return seconds
     }
 
     func remember(

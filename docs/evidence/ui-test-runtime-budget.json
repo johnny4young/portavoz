@@ -1,10 +1,10 @@
 {
   "catalog": {
-    "expectedCaseCount": 190
+    "expectedCaseCount": 191
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
-    "maximumTestDurationSecondsPerLocale": 2010.0
+    "maximumTestDurationSecondsPerLocale": 2020.0
   },
   "historicalBaseline": {
     "caseCount": 109,
@@ -117,6 +117,7 @@
     "MeetingDetailUITests/testFreshQualifyingMeetingShowsThePostMeetingMirror()": 20.0,
     "MeetingDetailUITests/testMeetingReviewSurfacesRemainCompleteAndActionable()": 20.0,
     "MeetingDetailUITests/testMostRecentRecipeRemainsVisibleAfterReload()": 20.0,
+    "MeetingDetailUITests/testAConfidentVoiceMatchNamesTheSpeakerAndCanBeUndone()": 20.0,
     "MeetingDetailUITests/testNamedSpeakerCanBeRememberedAsCanonicalPerson()": 20.0,
     "MeetingDetailUITests/testPlayerExposesSkipAndOnlyMyVoice()": 20.0,
     "MeetingDetailUITests/testRecapSheetDraftsFromTheSummaryWithoutTheTranscript()": 20.0,
