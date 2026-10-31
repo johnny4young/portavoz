@@ -288,7 +288,7 @@ speech families (`<family>.field`), recorded by
 `scripts/dictation_field_corpus.py`. Field audio is personal and never committed.
 `scripts/run_dictation_model_comparison.py` validates both receipts and writes a
 content-free report with reference-weighted WER per cohort, failed and critical
-cells, loads, footprints and the pre-registered T38 rule (D611). Synthetic
+cells, loads, footprints and the pre-registered T38 rule (D612). Synthetic
 evidence can never promote Ultra. Core ML maps the weights outside the process
 footprint: on the Mac that ran the first smoke both models stayed near 28 MB after
 load and the peak mostly reflects loading, so a Dev-app diagnostics snapshot

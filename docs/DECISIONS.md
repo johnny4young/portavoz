@@ -22258,7 +22258,7 @@ catalog validation refuses a total below the catalogue at that rate, so a
 change that adds journeys raises it in the same commit.
 
 
-## D611 — Ultra becomes the dictation default only on a rule fixed before field data
+## D612 — Ultra becomes the dictation default only on a rule fixed before field data
 
 D565 kept Ultra opt-in because its gains come from synthetic speech and its
 memory was unmeasured. The comparison lane now runs one model per process, so

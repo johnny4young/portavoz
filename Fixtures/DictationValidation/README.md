@@ -469,7 +469,7 @@ The report gives each model's reference-weighted WER, overall and per cohort,
 exact matches, failed cells, critical cells with errors, load times and
 footprints, plus the cells where Ultra is better or worse. A failed cell counts
 every reference word as an error. On a field manifest it also applies the rule
-fixed before any field data was seen (D611): Ultra becomes the dictation default
+fixed before any field data was seen (D612): Ultra becomes the dictation default
 only if it cuts WER by at least 15% relative in English, Spanish and mixed, has no
 more critical cells with errors than v3, peaks at most 150 MiB above v3 and warm
 loads at most 1 s slower. Synthetic evidence always reports `not-applicable`.
