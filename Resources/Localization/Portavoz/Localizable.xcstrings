@@ -6979,16 +6979,6 @@
         }
       }
     },
-    "Keeps an encrypted voiceprint so future meetings can suggest this name. Removable in Settings.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Guarda una huella de voz cifrada para sugerir este nombre en futuras reuniones. Se puede quitar en Ajustes."
-          }
-        }
-      }
-    },
     "Keeps meetings, people, and commitments findable in macOS.": {
       "localizations": {
         "es": {
@@ -11875,16 +11865,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "¿Recordar a %@ como persona?"
-          }
-        }
-      }
-    },
-    "Remember %@’s voice?": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "¿Recordar la voz de %@?"
           }
         }
       }
@@ -20943,6 +20923,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "La reunión es larga pero su resumen salió muy pequeño. Regenera un resumen detallado — nada cambia a menos que hagas clic."
+          }
+        }
+      }
+    },
+    "Recognize %@ in future meetings?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Reconocer a %@ en próximas reuniones?"
+          }
+        }
+      }
+    },
+    "Suggests this name when the voice is heard again. The voiceprint stays encrypted on this Mac; remove it in Settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugiere este nombre cuando vuelva a escucharse esta voz. La huella de voz queda cifrada en esta Mac; puedes borrarla en Ajustes."
           }
         }
       }

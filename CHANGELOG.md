@@ -45,6 +45,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 30, 2026
 
+- **🗣️ Voice suggestions you can trust** — speakers found after you open a meeting get suggested too, named speakers lose their chip, and two remembered voices that sound alike stay quiet instead of guessing.
 - **📏 Summaries as short or as long as you need** — pick Concise, Standard or Detailed in Settings or from Regenerate → Detail, on whichever engine you use.
 - **🏷️ Names follow you into the summary** — rename a speaker and the summary updates to the new name right away, no regeneration needed.
 - **⏹️ Cancel translation** — stops after the current line so the next background job can continue.

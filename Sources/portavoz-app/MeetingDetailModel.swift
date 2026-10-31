@@ -43,7 +43,7 @@ final class MeetingDetailModel {
     private let firstContentTrace: MeetingDetailFirstContentTrace
     private var reviewAccumulator = MeetingDetailReviewAccumulator()
     private var metadataSuggestionState = MeetingDetailMetadataSuggestionState()
-    private var didLoadVoiceSuggestions = false
+    private var voiceSuggestionGate = MeetingDetailVoiceSuggestionGate()
     private var playbackDirectoryAttempt: String?
     private let audioCompressionAdmission = MeetingDetailAudioCompressionState()
 
@@ -72,6 +72,7 @@ final class MeetingDetailModel {
     func dismissNameSuggestion(label: String) { state.nameSuggestions.removeAll { $0.label == label } }
 
     func dismissVoiceSuggestion(speakerLabel: String) {
+        voiceSuggestionGate.dismiss(speakerLabel)
         state.voiceSuggestions.removeAll { $0.speakerLabel == speakerLabel }
     }
 
@@ -620,10 +621,12 @@ private extension MeetingDetailModel {
     }
 
     func loadVoiceSuggestions() async {
-        guard !didLoadVoiceSuggestions else { return }
-        didLoadVoiceSuggestions = true
-        state.voiceSuggestions = (try? await client.meetingDetailVoiceSuggestions(
-            meetingID)) ?? []
+        guard let speakers = state.readModel?.speakers,
+              voiceSuggestionGate.begin(speakers: speakers)
+        else { return }
+        let loaded = (try? await client.meetingDetailVoiceSuggestions(meetingID)) ?? []
+        state.voiceSuggestions = voiceSuggestionGate.visible(
+            loaded, speakers: state.readModel?.speakers ?? [])
         reconcileSuggestionSources()
     }
 
@@ -774,6 +777,8 @@ private extension MeetingDetailModel {
         }
         var next = state
         next.readModel = transition.readModel
+        next.voiceSuggestions = voiceSuggestionGate.visible(
+            next.voiceSuggestions, speakers: transition.readModel?.speakers ?? [])
         if case .core = update {
             // Every delivered core is authoritative, even if its revision ID
             // matches: refinement, rows or speakers may still have changed.
