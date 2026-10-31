@@ -82,7 +82,10 @@ public extension MeetingReviewReadModel {
             baseTranscriptRevision: meeting.transcriptRevision,
             segments: segments,
             chapterTitles: chapterTitles,
-            baseMaterial: core.isRefinedTranscript ? .refined : .raw)
+            baseMaterial: core.isRefinedTranscript ? .refined : .raw,
+            keepingSegmentIDs: Set(corrections
+                .filter { $0.baseTranscriptRevision == meeting.transcriptRevision }
+                .flatMap(\.targetSegmentIDs)))
     }
 
     /// Precomputes structural editor state once for one Meeting Detail

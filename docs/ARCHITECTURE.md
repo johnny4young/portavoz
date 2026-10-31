@@ -4196,12 +4196,15 @@ asynchronous sequence arrives, and the UI renders them in a labeled indigo rail
 rather than as another spoken transcript row.
 
 `TranscriptContentPolicy` is the channel-neutral minimum boundary: text with no
-letter or digit is not speech. Whisper applies it while mapping model output;
+letter or digit is not speech. Whisper and Parakeet batch mapping apply it to
+model output; post-capture transcription applies it to the system channel;
 ApplicationKit applies it again to both Refine channels before microphone-only
 confidence and bleed rules; StorageKit rejects any accepted Refine aggregate
 that still contains a nonlexical row. Intelligence formatting independently
 filters legacy rows and assigns contiguous evidence tags only to admitted
-speech. This defense in depth prevents punctuation-only rows from becoming UI
+speech. `TranscriptContentPolicy.readableSegments` hides legacy nonlexical rows
+from the accepted and composed readings, keeping any row a current correction
+targets so stored corrections still compose. This defense in depth prevents punctuation-only rows from becoming UI
 noise, search material, generated facts, or navigable evidence without using a
 language-specific word list.
 

@@ -15,4 +15,13 @@ public enum TranscriptContentPolicy {
     ) -> [TranscriptSegment] {
         segments.filter { hasLexicalContent($0.text) }
     }
+
+    /// Reading view over stored rows: older transcripts can still hold
+    /// punctuation-only rows, which stay only while a correction targets them.
+    public static func readableSegments(
+        _ segments: [TranscriptSegment],
+        keeping targetedIDs: Set<UUID>
+    ) -> [TranscriptSegment] {
+        segments.filter { targetedIDs.contains($0.id) || hasLexicalContent($0.text) }
+    }
 }

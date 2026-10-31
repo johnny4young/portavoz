@@ -45,6 +45,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 31, 2026
 
+- **❓ Questions keep their question mark** — the other side's sentences keep their closing “?” and “.”, and the stray rows holding only a dot are gone, in old meetings too.
 - **🎙️ Names from voices you know** — when a remembered voice is an unmistakable match, the speaker is named as you open the meeting, marked "Marta · by voice", and one Undo clears it.
 
 ## October 30, 2026
