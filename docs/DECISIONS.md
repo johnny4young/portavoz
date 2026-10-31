@@ -22209,3 +22209,15 @@ another transcript or correction revision, so a document never mixes readings.
 The file name gains the language code and the transcript is labelled as a
 translation made on this Mac (a VTT note; SRT has no comment syntax). Meeting
 files (`.portavoz`) keep the original transcript only.
+
+## D610 — The full UI suite total scales with the catalogue it measures
+
+The 1,300-second per-locale total was set at 1.0 for 105 journeys that took
+1,108 seconds (10.55 seconds each). The catalogue has since grown to 189 while
+the total stayed fixed, so the 1.3.0 candidate failed it at 1,701 seconds even
+though every journey met its own ceiling, p95 was 20.2 seconds and the mean
+fell to 9.0 seconds. The total becomes 2,000 seconds: 189 journeys at the
+qualified 1.0 rate. Per-journey ceilings and the 30-second p95 are unchanged;
+catalog validation refuses a total below the catalogue at that rate, so a
+change that adds journeys raises it in the same commit.
+

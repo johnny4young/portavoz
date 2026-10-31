@@ -4,7 +4,7 @@
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
-    "maximumTestDurationSecondsPerLocale": 1300.0
+    "maximumTestDurationSecondsPerLocale": 2000.0
   },
   "historicalBaseline": {
     "caseCount": 109,
