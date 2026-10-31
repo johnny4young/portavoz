@@ -92,10 +92,12 @@ public struct PostCaptureSummaryProviderSelection: Sendable {
 public struct PostCaptureSummaryPreferences: Sendable {
     public let outputLanguage: String
     public let vocabulary: [String]
+    public let detail: SummaryDetail
 
-    public init(outputLanguage: String, vocabulary: [String]) {
+    public init(outputLanguage: String, vocabulary: [String], detail: SummaryDetail = .standard) {
         self.outputLanguage = outputLanguage
         self.vocabulary = vocabulary
+        self.detail = detail
     }
 }
 

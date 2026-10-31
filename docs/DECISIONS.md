@@ -22210,6 +22210,42 @@ The file name gains the language code and the transcript is labelled as a
 translation made on this Mac (a VTT note; SRT has no comment syntax). Meeting
 files (`.portavoz`) keep the original transcript only.
 
+## D609 — Summaries choose a detail level, and renames reach them without a model
+
+**Context:** A long meeting summarized on the 4 096-token on-device model can
+come back with a few lines, and the only remedy was the thin-summary chip's
+retry on the embedded model. A summary also keeps the speaker labels it was
+written with: renaming "Speaker 2" left the old label in the summary until a
+full regeneration, which costs minutes and can change the wording.
+
+**Decision:** `SummaryDetail` (brief, standard, detailed) is a Settings
+default and a Regenerate submenu. Standard keeps today's prompt and
+fingerprint, so cached summaries stay valid; brief and detailed add one
+directive and join the fingerprint. Every level runs on the engine the user
+selected. Concise asks for only the points that matter most and Detailed for
+every topic once; both end with "never repeat a point, and stop". On a
+44-minute meeting the embedded 4B model under greedy decoding looped on "keep
+every point" and on counted-bullet phrasings for both levels, enumerating
+1 141 evidence tags and cycling the same questions until its 16 384-token cap.
+Standard finished in 38 s; the shipped Detailed phrasing in 26–35 s with half
+again as much text, and in Spanish in 58 s. A
+structured summary without `actionItems` now decodes with none, because the
+same model sometimes folds commitments into a section. On Apple Foundation
+Models, detailed map notes are richer. The thin-summary chip offers Detailed
+once per visit, measures the meeting only up to where speech ends, and a local model that cannot finish says so instead of asking
+for setup. A rename replaces the old shown name as
+a whole word in the current summary and saves it as the next immutable
+version, linked to the original generation run.
+
+**Consequences:** Detailed on Apple Foundation Models is still bounded by its
+context window, and one field run came back shorter than Standard. On the
+embedded model Concise is about Standard's length, because the counts that
+would shorten it trigger loops. When that model folds commitments into a
+section, they render as text without checkboxes. The rename rewrite is literal: a name that is also a common
+word, or grammar that depended on the old label, is not adjusted, and
+regenerating remains the way to reword. A failed rewrite keeps the old name and
+never fails the rename.
+
 ## D610 — The full UI suite total scales with the catalogue it measures
 
 The 1,300-second per-locale total was set at 1.0 for 105 journeys that took

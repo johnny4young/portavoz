@@ -69,10 +69,12 @@ extension MeetingDetailCoordinator {
                     detail: detail,
                     summary: summary)
             },
+            regenerateDetail: { regenerate(level: $0, detail: detail, summary: summary) },
             createStructure: { flow.sheet = .newStructure },
             dismissRecipeSuggestion: model.dismissSuggestedRecipe,
             dismissThinSuggestion: {
                 model.dismissThinSummarySuggestion(version: summary.version)
+                flow.thinSummarySuggestionSpent = true
             },
             setActionItem: { item, done in
                 Task { await model.send(.setActionItem(item.id, done: done)) }
@@ -135,16 +137,17 @@ extension MeetingDetailCoordinator {
         detail: MeetingReviewReadModel
     ) -> Bool {
         guard !flow.isRegenerating,
+              !flow.thinSummarySuggestionSpent,
               detail.summaryFreshness == .current,
-              sceneValues.summaryEngine != .mlx,
-              sceneValues.mlxDownloaded,
               model.state.dismissedThinSummaryVersion != summary.version,
               let ended = detail.meeting.endedAt
         else { return false }
         return ThinSummaryPolicy.isThin(
             summaryCharacters: summary.draft.markdown.count,
             actionItems: summary.draft.actionItems.count,
-            meetingSeconds: ended.timeIntervalSince(detail.meeting.startedAt))
+            meetingSeconds: ThinSummaryPolicy.meetingSeconds(
+                wallClock: ended.timeIntervalSince(detail.meeting.startedAt),
+                lastSpeechEnd: detail.segments.map(\.endTime).max()))
     }
 
     var alternateEngine: MeetingGeneratedDocumentAlternateEngine? {
@@ -183,7 +186,8 @@ extension MeetingDetailCoordinator {
         summary: MeetingReviewSummary?,
         segments: [TranscriptSegment]? = nil,
         speakers: [Speaker]? = nil,
-        sourceTranscriptRevision: Int? = nil
+        sourceTranscriptRevision: Int? = nil,
+        summaryDetail: SummaryDetail? = nil
     ) {
         guard !flow.isRegenerating else { return }
         model.dismissSuggestedRecipe()
@@ -204,6 +208,7 @@ extension MeetingDetailCoordinator {
         let activeRecipe = recipe
             ?? summary.flatMap { CustomRecipeStore.byID($0.draft.recipeID) }
             ?? .general
+        let level = summaryDetail ?? SummaryDetailPreference.current()
         Task {
             defer { flow.isRegenerating = false }
             let request = RegenerateSummaryRequest(
@@ -215,9 +220,22 @@ extension MeetingDetailCoordinator {
                 sourceTranscriptRevision: material.baseTranscriptRevision,
                 sourceCorrectionRevision: material.correctionRevision,
                 providerOverride: engine,
-                evidenceSourceIDsByGeneratedID: material.sourceSegmentIDsByGeneratedID)
+                evidenceSourceIDsByGeneratedID: material.sourceSegmentIDsByGeneratedID,
+                detail: level)
             await applyRegenerateResult(await sceneActions.regenerateSummary(request))
         }
+    }
+
+    private func regenerate(
+        level: SummaryDetail,
+        detail: MeetingReviewReadModel,
+        summary: MeetingReviewSummary
+    ) {
+        regenerate(
+            language: summaryLanguage(summary.draft.language, spokenLanguage: nil),
+            detail: detail,
+            summary: summary,
+            summaryDetail: level)
     }
 
     func enhanceNotes(

@@ -23,8 +23,14 @@ enum SummarySetupIssue: Equatable {
                 "The Built-in summary model has not been downloaded. Open Intelligence Settings and download it once (about 3 GB).")
         case .localEngineFailed:
             return L10n.text(
-                "The selected local engine could not generate this summary. Open Intelligence Settings to verify its model, then try again.")
+                "The local model couldn’t finish this summary. Try again with a shorter detail level, or check its model in Intelligence Settings.")
         }
+    }
+
+    var title: String {
+        self == .localEngineFailed
+            ? L10n.text("Summary couldn’t finish")
+            : L10n.text("Summary needs setup")
     }
     // swiftlint:enable line_length
 }

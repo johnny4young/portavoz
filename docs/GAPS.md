@@ -537,10 +537,10 @@ desktop that preserves its interaction context; any lifecycle change must first
 reproduce the problem at the actual window attachment/presentation boundary.
 Hosted CI and a local interactive run remain distinct evidence.
 
-The current unattended catalogue contains 189 journeys with 189 individual
+The current unattended catalogue contains 190 journeys with 190 individual
 ceilings. The budget's retained 109-case historical and 105-case D382 comparison
 summaries are historical calibration, not a matched qualification of that
-catalogue. The 2,000-second total (D610) and 30-second p95 remain blocking by
+catalogue. The 2,010-second total (D610) and 30-second p95 remain blocking by
 default for local/stable-Mac integration and release runs; the hosted workflow explicitly
 makes wall-clock drift advisory after complete functional success. A green
 hosted result therefore does not certify those local timing gates.

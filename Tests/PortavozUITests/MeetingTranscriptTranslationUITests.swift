@@ -38,10 +38,10 @@ final class MeetingTranscriptTranslationUITests: PortavozUITestCase {
         menu.click()
         let languages = app.menuItems["detail-export-translation"]
         XCTAssertTrue(languages.waitForExistenceFast(timeout: 5))
-        languages.hover()
         XCTAssertTrue(app.menuItems["detail-export-translation-original"].waitForExistenceFast(timeout: 5))
         let english = app.menuItems["detail-export-translation-en"]
         XCTAssertTrue(english.waitForExistenceFast(timeout: 5))
+        // XCUITest opens the submenu path itself; a manual hover races its animation.
         english.click()
         // The save panel is native UI; the use case tests own the exported bytes.
     }

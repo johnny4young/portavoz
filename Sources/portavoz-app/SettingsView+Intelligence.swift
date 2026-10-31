@@ -1,5 +1,20 @@
+import IntelligenceKit
 import PortavozCore
 import SwiftUI
+
+private struct SummaryDetailSetting: View {
+    @AppStorage(SummaryDetailPreference.key) private var detail = SummaryDetail.standard.rawValue
+
+    var body: some View {
+        Picker("Detail", selection: $detail) {
+            ForEach(SummaryDetail.allCases, id: \.self) { level in
+                Text(level.title).tag(level.rawValue)
+            }
+        }
+        .pickerStyle(.radioGroup)
+        .accessibilityIdentifier("settings-summary-detail")
+    }
+}
 
 // The Intelligence pane's transcript/output language policies and the
 // custom-structure manager — split out to keep SettingsView.swift small.
@@ -79,6 +94,7 @@ extension SettingsView {
             }
             .pickerStyle(.radioGroup)
             .accessibilityIdentifier("settings-summary-language")
+            SummaryDetailSetting()
             Text(
                 // One-line UI help.
                 // swiftlint:disable:next line_length

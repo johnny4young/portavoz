@@ -66,6 +66,29 @@ final class SummaryRegenerationUseCaseTests: XCTestCase {
             #"{"actionItemCount":0,"outputUTF8Bytes":8}"#)
     }
 
+    func testDetailLevelReachesProviderFingerprintAndRunConfig() async {
+        let fixture = Fixture(override: .mlx, detail: .detailed)
+        let store = SummaryRegenerationStoreSpy()
+        let provider = SummaryRegenerationProviderSpy(summaryDraft: fixture.draft())
+        let useCase = RegenerateSummary(
+            store: store,
+            preferences: SummaryRegenerationPreferencesStub(),
+            providers: SummaryRegenerationProviderResolverSpy(
+                resolution: .available(provider)))
+
+        _ = await useCase.execute(fixture.request)
+
+        let requests = await provider.recordedSummaryRequests()
+        let runs = await store.recordedSummaryRuns()
+        XCTAssertEqual(requests.first?.detail, .detailed)
+        XCTAssertEqual(
+            runs.first?.inputFingerprint,
+            requests.first.map {
+                SummaryFingerprint.compute(request: $0, providerID: "direct-test")
+            })
+        XCTAssertTrue(runs.first?.configJSON.contains(#""detail":"detailed""#) ?? false)
+    }
+
     func testDirectProviderFailureKeepsVisibleLocalModelPolicy() async {
         let fixture = Fixture()
         let store = SummaryRegenerationStoreSpy()
@@ -442,6 +465,30 @@ final class SummaryRegenerationUseCaseTests: XCTestCase {
         XCTAssertEqual(linked?.outcome, .succeeded)
     }
 
+    func testSpeakerRenameVersionKeepsTheGenerationRunAndFreshness() async throws {
+        let fixture = Fixture()
+        let store = try MeetingStore.inMemory()
+        try await store.save(Meeting(id: fixture.meetingID, title: "Summary", startedAt: Date()))
+        let useCase = RegenerateSummary(
+            store: store,
+            preferences: SummaryRegenerationPreferencesStub(),
+            providers: SummaryRegenerationProviderResolverSpy(
+                resolution: .available(SummaryRegenerationProviderSpy(
+                    summaryDraft: fixture.draft(markdown: "Ana shipped the rollout")))))
+        _ = await useCase.execute(fixture.request)
+        let run = try await store.generationRun(forSummary: fixture.meetingID)
+
+        let version = try await ApplySpeakerRenameToSummary(store: store)
+            .execute(meetingID: fixture.meetingID, from: "Ana", to: "Bea")
+
+        let linked = try await store.generationRun(forSummary: fixture.meetingID, version: version)
+        let stored = try await store.summary(fixture.meetingID)
+        XCTAssertEqual(version, 2)
+        XCTAssertEqual(stored?.draft.markdown, "Bea shipped the rollout")
+        XCTAssertNotNil(run)
+        XCTAssertEqual(linked, run)
+    }
+
     func testRealStoreCacheRequiresMatchingTranscriptAndCorrectionLineage() async throws {
         let fixture = Fixture()
         let store = try MeetingStore.inMemory()
@@ -636,11 +683,13 @@ private struct Fixture {
     let recipe: Recipe
     let targetLanguage: String
     let override: SummaryEngine?
+    let detail: SummaryDetail
 
     init(
         recipe: Recipe = .general,
         targetLanguage: String = "en",
-        override: SummaryEngine? = nil
+        override: SummaryEngine? = nil,
+        detail: SummaryDetail = .standard
     ) {
         let meetingID = self.meetingID
         let speaker = Speaker(meetingID: meetingID, label: "S1", displayName: "Ana")
@@ -657,6 +706,7 @@ private struct Fixture {
         self.recipe = recipe
         self.targetLanguage = targetLanguage
         self.override = override
+        self.detail = detail
     }
 
     var request: RegenerateSummaryRequest {
@@ -668,7 +718,8 @@ private struct Fixture {
             targetLanguage: targetLanguage,
             sourceTranscriptRevision: 0,
             sourceCorrectionRevision: .accepted,
-            providerOverride: override)
+            providerOverride: override,
+            detail: detail)
     }
 
     func summaryRequest(

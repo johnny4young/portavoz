@@ -390,6 +390,7 @@ DEFAULT_FEATURE_OWNERSHIP = (
         "tests": [
             "testMostRecentRecipeRemainsVisibleAfterReload",
             "testNoAppleIntelligenceSummaryFailureOpensExactSetupAndExplainsApuntador",
+            "testRegenerateMenuOffersEveryDetailLevel",
             "testStructureMenuOffersSeededTemplates",
         ],
         "sourceAnchors": [
@@ -400,6 +401,10 @@ DEFAULT_FEATURE_OWNERSHIP = (
             {
                 "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
                 "anchor": '"detail-structure-menu"',
+            },
+            {
+                "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+                "anchor": '"detail-summary-detail-menu"',
             },
         ],
     },

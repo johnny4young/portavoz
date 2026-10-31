@@ -1112,6 +1112,26 @@ Meeting Detail invokes the existing `RegenerateSummary` workflow with the
 current recipe/output-language policy, producing a new immutable snapshot
 without rewriting history (D47).
 
+`SummaryRequest.detail` (`SummaryDetail`: brief, standard, detailed; D609)
+adds one directive to `PromptFactory.summaryInstructions` for every provider.
+Standard adds nothing, so its prompts, `SummaryFingerprint` and cached
+snapshots are unchanged; the other levels join the fingerprint and a
+manual run's `configJSON` as `detail`. Brief asks for only the points that
+matter most; detailed asks to cover every topic once. Both end with "never
+repeat a point, and stop", because counted or "keep everything" phrasing sent
+the embedded model into repetition loops.
+`StructuredSummary` decodes a response without `actionItems` as having none.
+On Apple Foundation Models, detailed
+map notes may hold 14 bullets and 350 tokens instead of 10 and 250. Post-capture
+summaries take the level from `PostCaptureSummaryPreferences`; manual
+regeneration takes it from `RegenerateSummaryRequest`.
+
+`ApplySpeakerRenameToSummary` carries a speaker rename into the current
+summary without a model. `SummarySpeakerRename` replaces the old name only as
+a whole word, case-sensitively, in the Markdown and action-item text, and
+returns nil when nothing changes. The rewrite gets fresh row identities and no
+fingerprint, and keeps action-item completion, claim feedback and evidence.
+
 Meeting Detail's optional title, summary-structure, and chapter-label pass now
 enters `ApplicationKit.SuggestMeetingReviewMetadata` over one
 storage-independent review projection (D111). The workflow admits only a

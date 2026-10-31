@@ -236,6 +236,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id("MeetingDetailUITests", "testMostRecentRecipeRemainsVisibleAfterReload"),
         test_id("MeetingDetailUITests", "testStructureMenuOffersSeededTemplates"),
+        test_id("MeetingDetailUITests", "testRegenerateMenuOffersEveryDetailLevel"),
     ),
     "meeting-evidence": (
         test_id(

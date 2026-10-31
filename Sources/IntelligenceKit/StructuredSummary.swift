@@ -56,6 +56,19 @@ public struct StructuredSummary: Codable, Sendable, Equatable {
         self.actionItems = actionItems
         self.overviewEvidence = overviewEvidence
     }
+
+    private enum CodingKeys: String, CodingKey {
+        case overview, sections, actionItems, overviewEvidence
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        overview = try container.decode(String.self, forKey: .overview)
+        sections = try container.decode([Section].self, forKey: .sections)
+        // Small local models sometimes fold commitments into a section and drop this key.
+        actionItems = try container.decodeIfPresent([Item].self, forKey: .actionItems) ?? []
+        overviewEvidence = try container.decodeIfPresent([String].self, forKey: .overviewEvidence)
+    }
 }
 
 extension StructuredSummary {

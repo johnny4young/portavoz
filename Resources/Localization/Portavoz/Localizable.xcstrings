@@ -14751,16 +14751,6 @@
         }
       }
     },
-    "Summary looks thin — retry with Built-in?": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El resumen quedó corto — ¿reintentar con el Integrado?"
-          }
-        }
-      }
-    },
     "Summary material": {
       "localizations": {
         "es": {
@@ -15681,16 +15671,6 @@
         }
       }
     },
-    "The selected local engine could not generate this summary. Open Intelligence Settings to verify its model, then try again.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El motor local seleccionado no pudo generar este resumen. Abre Ajustes de Inteligencia para verificar su modelo y vuelve a intentarlo."
-          }
-        }
-      }
-    },
     "The selected transcript line is no longer available.": {
       "localizations": {
         "es": {
@@ -16237,16 +16217,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Esta reunión no tiene audio guardado."
-          }
-        }
-      }
-    },
-    "This meeting is long but its summary came out very small. Regenerate with the embedded model — nothing changes unless you click.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La reunión es larga pero su resumen salió muy pequeño. Regenera con el modelo integrado: nada cambia si no haces clic."
           }
         }
       }
@@ -20883,6 +20853,76 @@
           "stringUnit": {
             "state": "translated",
             "value": "Espera a que termine el procesamiento antes de quitar el silencio."
+          }
+        }
+      }
+    },
+    "Standard": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estándar"
+          }
+        }
+      }
+    },
+    "Detailed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detallado"
+          }
+        }
+      }
+    },
+    "Detail": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detalle"
+          }
+        }
+      }
+    },
+    "Summary looks thin — make it detailed?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El resumen quedó corto — ¿hacerlo detallado?"
+          }
+        }
+      }
+    },
+    "The local model couldn’t finish this summary. Try again with a shorter detail level, or check its model in Intelligence Settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El modelo local no pudo terminar este resumen. Vuelve a intentarlo con un nivel de detalle más corto o revisa su modelo en Ajustes de Inteligencia."
+          }
+        }
+      }
+    },
+    "Summary couldn’t finish": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El resumen no pudo terminar"
+          }
+        }
+      }
+    },
+    "This meeting is long but its summary came out very small. Regenerate a detailed summary — nothing changes unless you click.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La reunión es larga pero su resumen salió muy pequeño. Regenera un resumen detallado — nada cambia a menos que hagas clic."
           }
         }
       }

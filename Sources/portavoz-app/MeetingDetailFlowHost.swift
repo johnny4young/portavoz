@@ -355,7 +355,7 @@ struct MeetingDetailFlowHost<Content: View>: View {
         switch flow.alert {
         case .gistPublished: L10n.text("Gist published")
         case .summaryNotice: L10n.text("Summary")
-        case .summarySetup: L10n.text("Summary needs setup")
+        case .summarySetup(let issue): issue.title
         case .failure: L10n.text("Couldn’t complete")
         case .renameSpeaker: L10n.text("Rename speaker")
         case nil: ""

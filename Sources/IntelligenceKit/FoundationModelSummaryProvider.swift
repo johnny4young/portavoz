@@ -360,6 +360,7 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
         let notesBlock = PromptFactory.notesBlock(request.contextItems)
         let condensed = try await condense(
             material, targetLanguage: request.targetLanguage, glossary: request.glossary,
+            detail: request.detail,
             priority: priority,
             reduceBudget: TranscriptFormatter.onDeviceReduceBudget - notesBlock.count)
 
@@ -368,7 +369,8 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
                 recipe: request.recipe,
                 targetLanguage: request.targetLanguage,
                 glossary: request.glossary,
-                hasUserNotes: !notesBlock.isEmpty))
+                hasUserNotes: !notesBlock.isEmpty,
+                detail: request.detail))
         // Greedy decoding: summaries want faithfulness, not creativity —
         // sampled decoding made the 3B model invent action items. The draft
         // is built INSIDE the slot because Response<T> isn't Sendable.
@@ -391,6 +393,7 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
     /// is long enough that even its notes overflow.
     private func condense(
         _ text: String, targetLanguage: String, glossary: [String],
+        detail: SummaryDetail = .standard,
         priority: IntelligenceScheduler.Priority,
         reduceBudget: Int = TranscriptFormatter.onDeviceReduceBudget,
         depth: Int = 0
@@ -410,11 +413,12 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
                 total: chunks.count,
                 targetLanguage: targetLanguage,
                 glossary: glossary,
+                detail: detail,
                 priority: priority))
         }
         return try await condense(
             notes.joined(separator: "\n"),
-            targetLanguage: targetLanguage, glossary: glossary,
+            targetLanguage: targetLanguage, glossary: glossary, detail: detail,
             priority: priority, reduceBudget: reduceBudget, depth: depth + 1)
     }
 
@@ -429,20 +433,21 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
         total: Int,
         targetLanguage: String,
         glossary: [String],
+        detail: SummaryDetail = .standard,
         priority: IntelligenceScheduler.Priority
     ) async throws -> [String] {
         do {
             // Fresh sessions do not accumulate earlier map prompts.
             let session = LanguageModelSession(
                 instructions: PromptFactory.notesInstructions(
-                    targetLanguage: targetLanguage, glossary: glossary))
-            // 250 tokens (~1000 chars) from a 4000-char normal chunk keeps
+                    targetLanguage: targetLanguage, glossary: glossary, detail: detail))
+            // 250 tokens (~1000 chars; 350 when detailed) from a 4000-char chunk keeps
             // recursive reduction convergent.
             let note = try await IntelligenceScheduler.shared.run(priority) {
                 try await session.respond(
                     to: PromptFactory.notesPrompt(
                         chunk: chunk, index: index, total: total),
-                    options: .greedy(maximumResponseTokens: 250)
+                    options: .greedy(maximumResponseTokens: detail.noteTokens)
                 ).content
             }
             return [note]
@@ -466,6 +471,7 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
                     total: retryChunks.count,
                     targetLanguage: targetLanguage,
                     glossary: glossary,
+                    detail: detail,
                     priority: priority))
             }
             return notes

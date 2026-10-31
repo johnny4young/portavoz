@@ -1798,6 +1798,12 @@
     {
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "control",
+      "source": "Button(level.title) { actions.regenerateDetail(level) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "control",
       "source": "DismissibleSuggestionChip(",
       "occurrences": 2
     },
@@ -1806,6 +1812,12 @@
       "category": "control",
       "source": "Menu {",
       "occurrences": 3
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "control",
+      "source": "Menu(\"Detail\") {",
+      "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
@@ -1883,6 +1895,18 @@
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"detail-structure-menu\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-summary-detail-\\(level.rawValue)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-summary-detail-menu\")",
       "occurrences": 1
     },
     {
@@ -3549,6 +3573,7 @@
       "tests": [
         "testMostRecentRecipeRemainsVisibleAfterReload",
         "testNoAppleIntelligenceSummaryFailureOpensExactSetupAndExplainsApuntador",
+        "testRegenerateMenuOffersEveryDetailLevel",
         "testStructureMenuOffersSeededTemplates"
       ],
       "sourceAnchors": [
@@ -3559,6 +3584,10 @@
         {
           "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
           "anchor": "\"detail-structure-menu\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+          "anchor": "\"detail-summary-detail-menu\""
         }
       ],
       "screenshots": [

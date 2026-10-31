@@ -152,6 +152,8 @@ final class MeetingDetailFlowState {
     var githubIssueTarget: GitHubIssueTarget?
     var renameSpeakerName = ""
     var isRegenerating = false
+    /// Accepting or dismissing the thin-summary chip retires it for this visit.
+    var thinSummarySuggestionSpent = false
     var isRefreshingCompanion = false
     var isEnhancingNotes = false
     var notesNotice: String?
