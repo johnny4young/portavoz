@@ -22278,3 +22278,17 @@ label and retires that match for the open meeting; a failed rename falls back
 to the chip. The mark lasts only while the meeting stays open; once applied,
 the name is an ordinary name. Numeric-only logs record each automatic
 assignment and undo for calibration (D76).
+
+## D612 — Ultra becomes the dictation default only on a rule fixed before field data
+
+D565 kept Ultra opt-in because its gains come from synthetic speech and its
+memory was unmeasured. The comparison lane now runs one model per process, so
+each footprint and load time is its own, and it admits one person reading the 56
+speech families into a real microphone. The rule is written down before any of
+those recordings exist: on field audio Ultra must cut reference-weighted WER by
+at least 15% relative in English, Spanish and mixed, have no more critical cells
+with errors than v3, peak at most 150 MiB above v3 and warm load at most 1 s
+slower. Passing makes it the dictation default with v3 as fallback until it is
+installed; meetings keep v3 (D565). Failing keeps it opt-in with the numbers in
+GAPS T38. Synthetic evidence never qualifies, and the recordings stay local.
+||||||| 2ad2a967

@@ -169,7 +169,7 @@ bash -n scripts/run-commitment-radar-benchmark.sh
 python3 -m unittest Tests.Tooling.test_dictation_corpus \
   Tests.Tooling.test_dictation_materialization Tests.Tooling.test_dictation_model_runner \
   Tests.Tooling.test_dictation_controller_runner Tests.Tooling.test_dictation_controller_matrix \
-  Tests.Tooling.test_dictation_benchmark
+  Tests.Tooling.test_dictation_benchmark Tests.Tooling.test_dictation_field_corpus
 python3 scripts/dictation_corpus.py verify-public
 python3 -m unittest Tests.Tooling.test_dictation_search_quality
 python3 scripts/dictation_search_quality.py verify-public

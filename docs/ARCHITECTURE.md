@@ -312,6 +312,8 @@ PlatformKit owns `OwnProcessResourceUsage`: one read of the calling process,
 without process identities or paths. Normal support requests use the stable
 V0 resource prefix; the existing benchmark explicitly requests current extended
 counters through that same bridge and retains failure on unsupported counters.
+Those extended counters include the process's lifetime peak footprint, which the
+v3/Ultra comparison reads with one model per process.
 CPU time is cumulative process work in seconds, not gesture latency or elapsed
 meeting time. A failed read stays unavailable. Per-family memory remains an
 optional owner measurement; process memory is never apportioned among models.
