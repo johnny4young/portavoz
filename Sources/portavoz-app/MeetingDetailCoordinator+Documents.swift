@@ -145,7 +145,9 @@ extension MeetingDetailCoordinator {
         return ThinSummaryPolicy.isThin(
             summaryCharacters: summary.draft.markdown.count,
             actionItems: summary.draft.actionItems.count,
-            meetingSeconds: ended.timeIntervalSince(detail.meeting.startedAt))
+            meetingSeconds: ThinSummaryPolicy.meetingSeconds(
+                wallClock: ended.timeIntervalSince(detail.meeting.startedAt),
+                lastSpeechEnd: detail.segments.map(\.endTime).max()))
     }
 
     var alternateEngine: MeetingGeneratedDocumentAlternateEngine? {

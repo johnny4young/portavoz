@@ -22232,7 +22232,7 @@ again as much text, and in Spanish in 58 s. A
 structured summary without `actionItems` now decodes with none, because the
 same model sometimes folds commitments into a section. On Apple Foundation
 Models, detailed map notes are richer. The thin-summary chip offers Detailed
-once per visit, and a local model that cannot finish says so instead of asking
+once per visit, measures the meeting only up to where speech ends, and a local model that cannot finish says so instead of asking
 for setup. A rename replaces the old shown name as
 a whole word in the current summary and saves it as the next immutable
 version, linked to the original generation run.
