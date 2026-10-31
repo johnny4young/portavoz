@@ -5812,7 +5812,8 @@ ancestor, and an unavailable default-branch ref fails selection. Manual integrat
 catalogue runs. Every feature scope names a checked-in
 production owner, and
 catalog validation rejects unscoped tests, empty or orphaned scopes, duplicate
-selectors, retired overlapping journeys, and missing or stale runtime budgets.
+selectors, retired overlapping journeys, missing or stale runtime budgets, and
+a full-suite total below the catalogue at the qualified per-case rate.
 `RecordingToolbar` maps specifically to the external-recording geometry
 case plus the live recording-control/recovery cases, without paying for
 unrelated Library grouping or Meeting Detail. The local selector compares the

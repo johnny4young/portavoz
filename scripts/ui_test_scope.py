@@ -1553,6 +1553,8 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
                 runtime_budget_errors.append(
                     f"runtime budget count {budget_count!r} != {len(ALL_TESTS)}"
                 )
+            if (total_error := full_suite_total_error(budget, len(ALL_TESTS))) is not None:
+                runtime_budget_errors.append(total_error)
 
         native_budget_path = root / "docs/evidence/ui-test-native-dictation-runtime-budget.json"
         if not native_budget_path.is_file():
@@ -1615,6 +1617,17 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
 
 def runtime_budget_key(selector: str) -> str:
     return "/".join(selector.split("/")[1:]) + "()"
+
+
+def full_suite_total_error(budget: dict, case_count: int) -> str | None:
+    """A fixed aggregate goes stale as journeys are added; it must cover the qualified per-case rate."""
+    qualified = budget.get("qualifiedCandidate", {})
+    rate = qualified.get("englishTestDurationSeconds", 0) / max(qualified.get("caseCount", 0), 1)
+    total = budget.get("fullSuite", {}).get("maximumTestDurationSecondsPerLocale", 0)
+    required = case_count * rate
+    if total < required:
+        return f"full-suite total {total}s is below {case_count} cases at the qualified {rate:.2f}s per case ({required:.0f}s)"
+    return None
 
 
 def shard_tests(root: Path, index: int, count: int) -> tuple[str, ...]:
