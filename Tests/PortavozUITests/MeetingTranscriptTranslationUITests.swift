@@ -41,7 +41,9 @@ final class MeetingTranscriptTranslationUITests: PortavozUITestCase {
         languages.hover()
         XCTAssertTrue(app.menuItems["detail-export-translation-original"].waitForExistenceFast(timeout: 5))
         let english = app.menuItems["detail-export-translation-en"]
-        XCTAssertTrue(english.waitForExistenceFast(timeout: 5))
+        // Submenu items exist before the submenu opens, and hover alone sometimes leaves it closed.
+        if !english.waitForHittable(timeout: 2) { languages.click() }
+        XCTAssertTrue(english.waitForHittable(timeout: 5))
         english.click()
         // The save panel is native UI; the use case tests own the exported bytes.
     }
