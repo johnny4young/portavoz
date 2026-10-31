@@ -12,6 +12,8 @@ public enum VoiceMatcher {
     /// leans permissive — acceptable because a match is only ever a chip
     /// the user can ignore. Pending field calibration.
     public static let maxCosineDistance: Float = 0.54
+    /// A second remembered voice this close behind makes the pick a coin flip.
+    public static let minimumMargin: Float = 0.05
 
     public struct Match: Equatable, Sendable {
         public let voiceLabel: String
@@ -19,32 +21,42 @@ public enum VoiceMatcher {
         /// Cosine distance (lower = closer); shown in the chip's tooltip so
         /// the user sees the evidence, mirroring the transcript chips.
         public let distance: Float
+        /// Distance to the closest other remembered name; nil with one name.
+        public let runnerUpDistance: Float?
+
+        public init(voiceLabel: String, name: String, distance: Float, runnerUpDistance: Float? = nil) {
+            self.voiceLabel = voiceLabel
+            self.name = name
+            self.distance = distance
+            self.runnerUpDistance = runnerUpDistance
+        }
     }
 
     /// Matches each unnamed speaker's embedding against the gallery.
     /// Each speaker gets at most its single closest gallery voice, and each
     /// gallery voice is suggested for at most one speaker (the closest) —
-    /// two speakers in one meeting can't both be "Marta".
+    /// two speakers in one meeting can't both be "Marta". A speaker whose
+    /// closest name leads the next one by less than `minimumMargin` gets none.
     public static func matches(
         speakers: [(voiceLabel: String, embedding: [Float])],
         gallery: [RememberedVoice],
-        maxDistance: Float = maxCosineDistance
+        maxDistance: Float = maxCosineDistance,
+        minimumMargin: Float = minimumMargin
     ) -> [Match] {
         var candidates: [Match] = []
         for speaker in speakers {
-            var best: (name: String, distance: Float)?
+            var closestByName: [String: Float] = [:]
             for voice in gallery {
-                guard let distance = cosineDistance(speaker.embedding, voice.embedding),
-                    distance <= maxDistance
-                else { continue }
-                if best == nil || distance < best!.distance {
-                    best = (voice.name, distance)
-                }
+                guard let distance = cosineDistance(speaker.embedding, voice.embedding) else { continue }
+                closestByName[voice.name] = min(distance, closestByName[voice.name] ?? .infinity)
             }
-            if let best {
-                candidates.append(
-                    Match(voiceLabel: speaker.voiceLabel, name: best.name, distance: best.distance))
-            }
+            let ranked = closestByName.sorted { $0.value < $1.value }
+            guard let best = ranked.first, best.value <= maxDistance else { continue }
+            let runnerUp = ranked.dropFirst().first?.value
+            if let runnerUp, runnerUp - best.value < minimumMargin { continue }
+            candidates.append(Match(
+                voiceLabel: speaker.voiceLabel, name: best.key,
+                distance: best.value, runnerUpDistance: runnerUp))
         }
         // One suggestion per gallery voice: keep the closest speaker.
         var byName: [String: Match] = [:]

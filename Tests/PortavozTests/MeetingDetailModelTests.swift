@@ -681,8 +681,9 @@ final class MeetingDetailModelTests: XCTestCase {
 
     func testDocumentNameAndVoiceActionsStayBehindTheFeatureOwner() async {
         let fixture = MeetingDetailModelFixture()
-        let client = MeetingDetailModelClientFake(updates: [])
+        let client = MeetingDetailModelClientFake(updates: [.core(fixture.unnamedCore)])
         let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        await model.observe()
 
         let document = await model.send(.prepareDocument(.markdown))
         let gist = await model.send(.publishGist)
@@ -719,6 +720,7 @@ final class MeetingDetailModelTests: XCTestCase {
         }
         XCTAssertTrue(model.state.voiceSuggestions.isEmpty)
         XCTAssertEqual(client.calls, [
+            .observe(fixture.meeting.id),
             .prepareDocument(fixture.meeting.id, .markdown),
             .publishGist(fixture.meeting.id),
             .loadNameSuggestions(fixture.meeting.id),
@@ -731,8 +733,9 @@ final class MeetingDetailModelTests: XCTestCase {
 
     func testVoiceSuggestionKeepsNameLookupSuccessfulWhenItSuppressesText() async {
         let fixture = MeetingDetailModelFixture()
-        let client = MeetingDetailModelClientFake(updates: [])
+        let client = MeetingDetailModelClientFake(updates: [.core(fixture.unnamedCore)])
         let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        await model.observe()
 
         await model.send(.loadVoiceSuggestions)
         let effect = await model.send(.loadNameSuggestions)
@@ -745,9 +748,66 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertEqual(model.state.voiceSuggestions.map(\.name), ["Ana"])
         XCTAssertNil(model.state.lastActionError)
         XCTAssertEqual(client.calls, [
+            .observe(fixture.meeting.id),
             .loadVoiceSuggestions(fixture.meeting.id),
             .loadNameSuggestions(fixture.meeting.id),
         ])
+    }
+
+    func testVoiceSuggestionsFollowTheSpeakersThatAppearAndGetNamed() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        client.voiceSuggestionsResult = [
+            MeetingVoiceSuggestion(speakerLabel: "S1", name: "Ana", distance: 0.2),
+            MeetingVoiceSuggestion(speakerLabel: "S2", name: "Bea", distance: 0.3),
+        ]
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        let second = Speaker(meetingID: fixture.meeting.id, label: "S2")
+
+        // Before diarization there is no cast, so nothing is evaluated or latched.
+        await model.send(.loadVoiceSuggestions)
+        client.updates = [.core(fixture.unnamedCore)]
+        await model.observe()
+        await model.send(.loadVoiceSuggestions)
+        await model.send(.loadVoiceSuggestions)
+        client.updates = [.core(MeetingReviewCore(
+            meeting: fixture.meeting,
+            speakers: [fixture.unnamedSpeaker, second],
+            segments: [fixture.segment]))]
+        await model.observe()
+        await model.send(.loadVoiceSuggestions)
+        let bothShown = model.state.voiceSuggestions.map(\.speakerLabel)
+        client.updates = [.core(MeetingReviewCore(
+            meeting: fixture.meeting,
+            speakers: [fixture.speaker, second],
+            segments: [fixture.segment]))]
+        await model.observe()
+
+        XCTAssertEqual(bothShown, ["S1", "S2"])
+        XCTAssertEqual(model.state.voiceSuggestions.map(\.speakerLabel), ["S2"])
+        XCTAssertEqual(client.calls.filter { $0 == .loadVoiceSuggestions(fixture.meeting.id) }.count, 2)
+    }
+
+    func testADismissedVoiceChipStaysAwayWhenAnotherSpeakerAppears() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        client.voiceSuggestionsResult = [
+            MeetingVoiceSuggestion(speakerLabel: "S1", name: "Ana", distance: 0.2),
+        ]
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        client.updates = [.core(fixture.unnamedCore)]
+        await model.observe()
+        await model.send(.loadVoiceSuggestions)
+        model.dismissVoiceSuggestion(speakerLabel: "S1")
+
+        client.updates = [.core(MeetingReviewCore(
+            meeting: fixture.meeting,
+            speakers: [fixture.unnamedSpeaker, Speaker(meetingID: fixture.meeting.id, label: "S2")],
+            segments: [fixture.segment]))]
+        await model.observe()
+        await model.send(.loadVoiceSuggestions)
+
+        XCTAssertTrue(model.state.voiceSuggestions.isEmpty)
     }
 
     func testOptionalSuggestionsCanBeDismissedWithoutMutatingMeetingContent() async {
@@ -899,8 +959,9 @@ final class MeetingDetailModelTests: XCTestCase {
 
     func testMutationFailuresPreserveSilentAndVisiblePolicies() async {
         let fixture = MeetingDetailModelFixture()
-        let client = MeetingDetailModelClientFake(updates: [])
+        let client = MeetingDetailModelClientFake(updates: [.core(fixture.unnamedCore)])
         let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        await model.observe()
         _ = await model.send(.loadNameSuggestions)
         await model.send(.loadVoiceSuggestions)
         client.failures = Set(MeetingDetailModelFailure.allCases)
@@ -1177,6 +1238,16 @@ private struct MeetingDetailModelFixture {
             meeting: meeting,
             speakers: [speaker],
             segments: [segment])
+    }
+
+    var unnamedSpeaker: Speaker {
+        var unnamed = speaker
+        unnamed.displayName = nil
+        return unnamed
+    }
+
+    var unnamedCore: MeetingReviewCore {
+        MeetingReviewCore(meeting: meeting, speakers: [unnamedSpeaker], segments: [segment])
     }
 
     var summary: MeetingReviewSummary {

@@ -11,6 +11,7 @@ extension AppServices {
         guard case .suggestions(let suggestions) = try await meetingVoiceMemory.execute(
             .init(action: .suggestions(meetingID: meetingID)))
         else { return [] }
+        VoiceSuggestionLog.shown(suggestions)
         return suggestions
     }
 

@@ -6,11 +6,13 @@ public struct MeetingVoiceSuggestion: Equatable, Sendable {
     public let speakerLabel: String
     public let name: String
     public let distance: Float
+    public let runnerUpDistance: Float?
 
-    public init(speakerLabel: String, name: String, distance: Float) {
+    public init(speakerLabel: String, name: String, distance: Float, runnerUpDistance: Float? = nil) {
         self.speakerLabel = speakerLabel
         self.name = name
         self.distance = distance
+        self.runnerUpDistance = runnerUpDistance
     }
 }
 
@@ -126,7 +128,8 @@ private extension ManageMeetingVoiceMemory {
             MeetingVoiceSuggestion(
                 speakerLabel: $0.voiceLabel,
                 name: $0.name,
-                distance: $0.distance)
+                distance: $0.distance,
+                runnerUpDistance: $0.runnerUpDistance)
         })
     }
 

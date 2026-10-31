@@ -237,7 +237,7 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
             rememberOffer(
                 offer,
                 presentation: MeetingDetailRememberOfferPresentation(
-                    label: L10n.format("Remember %@’s voice?", offer.name),
+                    label: L10n.format("Recognize %@ in future meetings?", offer.name),
                     systemImage: "person.wave.2",
                     acceptIdentifier: "voice-remember-offer",
                     dismissLabel: L10n.text("Dismiss voice offer"),
@@ -245,7 +245,7 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
                     help: L10n.text(
                         // One-line UI help text.
                         // swiftlint:disable:next line_length
-                        "Keeps an encrypted voiceprint so future meetings can suggest this name. Removable in Settings.")),
+                        "Suggests this name when the voice is heard again. The voiceprint stays encrypted on this Mac; remove it in Settings.")),
                 accept: actions.acceptVoiceOffer,
                 dismiss: actions.dismissVoiceOffer)
         }
