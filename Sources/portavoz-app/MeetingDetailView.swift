@@ -299,10 +299,10 @@ private extension MeetingDetailView {
                     coordinator.acceptNameSuggestion($0, in: detail)
                 },
                 dismissNameSuggestion: coordinator.dismissNameSuggestion,
-                acceptVoiceSuggestion: {
-                    coordinator.acceptVoiceSuggestion($0, in: detail)
-                },
+                acceptVoiceSuggestion: { coordinator.acceptVoiceSuggestion($0, in: detail) },
                 dismissVoiceSuggestion: coordinator.dismissVoiceSuggestion,
+                undoVoiceAutoAssign: coordinator.undoVoiceAutoAssign,
+                keepVoiceAutoAssign: coordinator.keepVoiceAutoAssign,
                 acceptPersonOffer: acceptPersonOffer,
                 dismissPersonOffer: { flow.personOffer = nil },
                 acceptVoiceOffer: acceptVoiceOffer,
@@ -323,10 +323,9 @@ private extension MeetingDetailView {
             isSuggestingNames: model.state.isSuggestingNames,
             nameSuggestions: model.state.nameSuggestions,
             voiceSuggestions: model.state.voiceSuggestions,
+            autoAssignedVoices: model.state.autoAssignedVoices,
             personOffer: flow.personOffer.flatMap { offer in
-                offer.speaker.displayName.map {
-                    MeetingDetailRememberOffer(name: $0, isBusy: flow.isFindingPerson)
-                }
+                offer.speaker.displayName.map { MeetingDetailRememberOffer(name: $0, isBusy: flow.isFindingPerson) }
             },
             voiceOffer: flow.rememberedVoiceOffer.flatMap { offer in
                 offer.displayName.map {

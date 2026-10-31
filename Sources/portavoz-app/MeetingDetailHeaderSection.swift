@@ -12,11 +12,12 @@ struct MeetingDetailHeaderValues {
     let isSuggestingNames: Bool
     let nameSuggestions: [MeetingNameSuggestion]
     let voiceSuggestions: [MeetingVoiceSuggestion]
+    let autoAssignedVoices: [MeetingVoiceSuggestion]
     let personOffer: MeetingDetailRememberOffer?
     let voiceOffer: MeetingDetailRememberOffer?
 
     var hasSuggestions: Bool {
-        !nameSuggestions.isEmpty || !voiceSuggestions.isEmpty
+        !nameSuggestions.isEmpty || !voiceSuggestions.isEmpty || !autoAssignedVoices.isEmpty
             || personOffer != nil || voiceOffer != nil
     }
 }
@@ -45,6 +46,8 @@ struct MeetingDetailHeaderActions {
     let dismissNameSuggestion: @MainActor (String) -> Void
     let acceptVoiceSuggestion: @MainActor (MeetingVoiceSuggestion) -> Void
     let dismissVoiceSuggestion: @MainActor (String) -> Void
+    let undoVoiceAutoAssign: @MainActor (MeetingVoiceSuggestion) -> Void
+    let keepVoiceAutoAssign: @MainActor (MeetingVoiceSuggestion) -> Void
     let acceptPersonOffer: @MainActor () -> Void
     let dismissPersonOffer: @MainActor () -> Void
     let acceptVoiceOffer: @MainActor () -> Void
@@ -140,6 +143,7 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
         if values.hasSuggestions {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
+                    autoAssignedVoiceChips
                     nameSuggestionChips
                     voiceSuggestionChips
                     rememberPersonOffer
@@ -201,6 +205,24 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
             .help(L10n.format(
                 "Matches “%@” from your remembered voices",
                 suggestion.name))
+        }
+    }
+
+    @ViewBuilder
+    private var autoAssignedVoiceChips: some View {
+        ForEach(values.autoAssignedVoices, id: \.speakerLabel) { voice in
+            UndoableAppliedChip(
+                kind: .voice,
+                text: L10n.format("%@ · by voice", voice.name),
+                undoAccessibilityIdentifier: "detail-voice-auto-undo-\(voice.speakerLabel)",
+                keepAccessibilityLabel: L10n.text("Keep name"),
+                keepAccessibilityIdentifier: "detail-voice-auto-keep-\(voice.speakerLabel)",
+                undo: { actions.undoVoiceAutoAssign(voice) },
+                keep: { actions.keepVoiceAutoAssign(voice) })
+            .fixedSize()
+            .help(L10n.format("Matches “%@” from your remembered voices", voice.name))
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("detail-voice-auto-\(voice.speakerLabel)")
         }
     }
 

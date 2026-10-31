@@ -2103,6 +2103,16 @@ rename or an accepted name or voice suggestion that changes a speaker's shown
 name awaits `ApplySpeakerRenameToSummary` before reindexing; a failed rewrite
 leaves the old name in the summary and never fails the rename.
 
+On a `ready` meeting, a voice match that clears the auto-assign bar is applied
+through that same rename path instead of showing a chip. The header shows
+"Name · by voice" (`detail-voice-auto-<label>`) with Undo
+(`detail-voice-auto-undo-<label>`), which restores the label and keeps that match
+from returning while the meeting is open, and a keep cross
+(`detail-voice-auto-keep-<label>`). A failed rename shows the ordinary chip
+instead. A different manual name retires the mark. Disposable launches with
+`-seed-voice-match` match the seeded remote speaker without a gallery, Keychain
+or model.
+
 Meeting Detail audio enters ApplicationKit (D112/D144). Playback preparation
 resolves the current canonical system and microphone files through an injected
 port, constructs one synchronized observable application facade, derives a

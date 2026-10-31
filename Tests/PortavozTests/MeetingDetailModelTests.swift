@@ -812,6 +812,66 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertTrue(model.state.voiceSuggestions.isEmpty)
     }
 
+    func testAConfidentVoiceMatchNamesTheSpeakerAndUndoClearsIt() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [.core(fixture.unnamedCore)])
+        client.voiceSuggestionsResult = [
+            MeetingVoiceSuggestion(speakerLabel: "S1", name: "Ana", distance: 0.2, speechSeconds: 12),
+        ]
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        await model.observe()
+
+        await model.send(.loadVoiceSuggestions)
+        XCTAssertEqual(model.state.autoAssignedVoices.map(\.name), ["Ana"])
+        XCTAssertTrue(model.state.voiceSuggestions.isEmpty)
+        XCTAssertEqual(client.summaryRenames, [["S1", "Ana"]])
+        client.updates = [.core(fixture.core)]
+        await model.observe()
+        XCTAssertEqual(model.state.autoAssignedVoices.map(\.name), ["Ana"], "the projection confirms the name")
+
+        await model.send(.undoVoiceAutoAssign(speakerLabel: "S1"))
+        client.updates = [.core(fixture.unnamedCore)]
+        await model.observe()
+        await model.send(.loadVoiceSuggestions)
+
+        XCTAssertTrue(model.state.autoAssignedVoices.isEmpty)
+        XCTAssertTrue(model.state.voiceSuggestions.isEmpty, "an undone match is not offered again")
+        XCTAssertEqual(client.calls.filter { if case .renameSpeaker = $0 { true } else { false } }, [
+            .renameSpeaker("Ana"), .renameSpeaker(nil),
+        ])
+        XCTAssertEqual(client.summaryRenames, [["S1", "Ana"], ["Ana", "S1"]])
+    }
+
+    func testVoiceMatchesBelowTheBarOrBeforeTheMeetingSettlesStayChips() async {
+        let fixture = MeetingDetailModelFixture()
+        var processing = fixture.meeting
+        processing.lifecycleState = .processing
+        let weak = MeetingDetailModelClientFake(updates: [.core(fixture.unnamedCore)])
+        weak.voiceSuggestionsResult = [
+            MeetingVoiceSuggestion(speakerLabel: "S1", name: "Ana", distance: 0.2, speechSeconds: 4),
+        ]
+        let early = MeetingDetailModelClientFake(updates: [.core(MeetingReviewCore(
+            meeting: processing, speakers: [fixture.unnamedSpeaker], segments: [fixture.segment]))])
+        early.voiceSuggestionsResult = [
+            MeetingVoiceSuggestion(speakerLabel: "S1", name: "Ana", distance: 0.2, speechSeconds: 12),
+        ]
+        let failing = MeetingDetailModelClientFake(updates: [.core(fixture.unnamedCore)])
+        failing.voiceSuggestionsResult = early.voiceSuggestionsResult
+        failing.failures = [.renameSpeaker]
+
+        for client in [weak, early, failing] {
+            let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+            await model.observe()
+            await model.send(.loadVoiceSuggestions)
+
+            XCTAssertEqual(model.state.voiceSuggestions.map(\.name), ["Ana"])
+            XCTAssertTrue(model.state.autoAssignedVoices.isEmpty)
+            XCTAssertNil(model.state.lastActionError)
+        }
+        XCTAssertFalse(weak.calls.contains(.renameSpeaker("Ana")))
+        XCTAssertFalse(early.calls.contains(.renameSpeaker("Ana")))
+    }
+
     func testOptionalSuggestionsCanBeDismissedWithoutMutatingMeetingContent() async {
         let fixture = MeetingDetailModelFixture()
         let client = MeetingDetailModelClientFake(

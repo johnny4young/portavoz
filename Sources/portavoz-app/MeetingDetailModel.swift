@@ -17,7 +17,9 @@ final class MeetingDetailModel {
         var transcriptPresentation: MeetingDetailTranscriptPresentation? { transcriptPresentationState.presentation }
         fileprivate(set) var nameSuggestions: [MeetingNameSuggestion] = []
         fileprivate(set) var isSuggestingNames = false
-        fileprivate(set) var voiceSuggestions: [MeetingVoiceSuggestion] = []
+        fileprivate(set) var voice = MeetingDetailVoiceSuggestions()
+        var voiceSuggestions: [MeetingVoiceSuggestion] { voice.offered }
+        var autoAssignedVoices: [MeetingVoiceSuggestion] { voice.autoAssigned }
         var chapterTitles: [TimeInterval: String] { transcriptPresentationState.chapterTitles }
         fileprivate(set) var suggestedTitle: String?
         fileprivate(set) var suggestedRecipe: Recipe?
@@ -43,7 +45,6 @@ final class MeetingDetailModel {
     private let firstContentTrace: MeetingDetailFirstContentTrace
     private var reviewAccumulator = MeetingDetailReviewAccumulator()
     private var metadataSuggestionState = MeetingDetailMetadataSuggestionState()
-    private var voiceSuggestionGate = MeetingDetailVoiceSuggestionGate()
     private var playbackDirectoryAttempt: String?
     private let audioCompressionAdmission = MeetingDetailAudioCompressionState()
 
@@ -71,10 +72,9 @@ final class MeetingDetailModel {
 
     func dismissNameSuggestion(label: String) { state.nameSuggestions.removeAll { $0.label == label } }
 
-    func dismissVoiceSuggestion(speakerLabel: String) {
-        voiceSuggestionGate.dismiss(speakerLabel)
-        state.voiceSuggestions.removeAll { $0.speakerLabel == speakerLabel }
-    }
+    func dismissVoiceSuggestion(speakerLabel: String) { state.voice.dismiss(speakerLabel) }
+
+    func keepAutoAssignedVoice(speakerLabel: String) { state.voice.keep(speakerLabel) }
 
     func dismissThinSummarySuggestion(version: Int) { state.dismissedThinSummaryVersion = version }
 
@@ -136,6 +136,8 @@ final class MeetingDetailModel {
             return await acceptVoiceSuggestion(speaker, name: name)
         case .renameSpeaker(let speaker, let name):
             return await renameSpeaker(speaker, name: name)
+        case .undoVoiceAutoAssign(let speakerLabel):
+            return await undoVoiceAutoAssign(speakerLabel: speakerLabel)
         case .correctTranscript(let request):
             return await correctTranscript(request)
         case .restructureTranscript(let request):
@@ -302,7 +304,7 @@ private extension MeetingDetailModel {
             return .operationFailed(message)
         }
         state.lastActionError = nil
-        state.voiceSuggestions.removeAll { $0.speakerLabel == original.label }
+        state.voice.accepted(original.label)
         await carrySpeakerRenameIntoSummary(from: original, to: speaker)
         client.requestMeetingDetailSearchReindex()
         return .voiceSuggestionAccepted(speaker)
@@ -578,30 +580,6 @@ private extension MeetingDetailModel {
         }
     }
 
-    func prepareDocument(
-        _ format: MeetingDocumentFormat,
-        options: MeetingDocumentOptions
-    ) async -> Effect {
-        do {
-            return .documentPrepared(try await client.prepareMeetingDetailDocument(
-                meetingID,
-                format: format,
-                options: options))
-        } catch {
-            return .operationFailed(UseCaseErrorMessages.describe(error))
-        }
-    }
-
-    func publishGist(options: MeetingDocumentOptions) async -> Effect {
-        do {
-            return .gistPublished(try await client.publishMeetingDetailGist(
-                meetingID,
-                options: options))
-        } catch {
-            return .operationFailed(UseCaseErrorMessages.describe(error))
-        }
-    }
-
     func loadNameSuggestions() async -> Effect? {
         guard !state.isSuggestingNames else { return nil }
         state.isSuggestingNames = true
@@ -622,12 +600,41 @@ private extension MeetingDetailModel {
 
     func loadVoiceSuggestions() async {
         guard let speakers = state.readModel?.speakers,
-              voiceSuggestionGate.begin(speakers: speakers)
+              state.voice.begin(speakers: speakers)
         else { return }
         let loaded = (try? await client.meetingDetailVoiceSuggestions(meetingID)) ?? []
-        state.voiceSuggestions = voiceSuggestionGate.visible(
-            loaded, speakers: state.readModel?.speakers ?? [])
+        // Speakers are replaced after capture; only a settled meeting is named for the user.
+        let automatic = state.voice.receive(
+            loaded, speakers: state.readModel?.speakers ?? [],
+            canAutoAssign: state.readModel?.meeting.lifecycleState == .ready)
         reconcileSuggestionSources()
+        for suggestion in automatic {
+            await autoAssign(suggestion)
+        }
+    }
+
+    private func autoAssign(_ suggestion: MeetingVoiceSuggestion) async {
+        guard let speaker = state.readModel?.speakers.first(where: {
+            $0.label == suggestion.speakerLabel && $0.displayName == nil
+        }) else { return }
+        guard case .voiceSuggestionAccepted = await acceptVoiceSuggestion(speaker, name: suggestion.name) else {
+            // Fall back to the tap-to-accept chip rather than an unprompted error.
+            state.lastActionError = nil
+            state.voice.offer(suggestion)
+            return
+        }
+        state.nameSuggestions.removeAll { $0.label == suggestion.speakerLabel }
+        state.voice.assigned(suggestion)
+    }
+
+    func undoVoiceAutoAssign(speakerLabel: String) async -> Effect? {
+        guard let assigned = state.voice.undo(speakerLabel) else { return nil }
+        // The projection may not show the name yet; a different name is the user's own rename.
+        guard var speaker = state.readModel?.speakers.first(where: { $0.label == speakerLabel }),
+              speaker.displayName == nil || speaker.displayName == assigned.name
+        else { return nil }
+        speaker.displayName = assigned.name
+        return await renameSpeaker(speaker, name: "")
     }
 
     /// Voice evidence outranks a text proposal for the same speaker: the
@@ -777,8 +784,7 @@ private extension MeetingDetailModel {
         }
         var next = state
         next.readModel = transition.readModel
-        next.voiceSuggestions = voiceSuggestionGate.visible(
-            next.voiceSuggestions, speakers: transition.readModel?.speakers ?? [])
+        next.voice.follow(speakers: transition.readModel?.speakers ?? [])
         if case .core = update {
             // Every delivered core is authoritative, even if its revision ID
             // matches: refinement, rows or speakers may still have changed.

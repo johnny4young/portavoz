@@ -27,9 +27,7 @@ extension AppServices {
         let ana = Speaker(
             meetingID: meeting.id,
             label: "S1",
-            displayName: ProcessInfo.processInfo.arguments.contains("-seed-unnamed-speaker")
-                ? nil
-                : "Ana")
+            displayName: Self.seedsUnnamedRemoteSpeaker ? nil : "Ana")
         try? await store.save([me, ana])
         let canonicalPersonID = await seedCanonicalPersonIfNeeded(ana)
         let citedSegmentID = UUID(uuidString: "B5B00000-0000-4000-8000-000000000002")!
@@ -42,6 +40,7 @@ extension AppServices {
             citedSegmentID: citedSegmentID,
             companionQuestionID: companionQuestionID)
         try? await store.save(seedSegments)
+        await seedVoiceMatchSpeechIfRequested(meetingID: meeting.id, speakerID: ana.id)
         await seedSummaryIfRequested(
             meetingID: meeting.id,
             ownerID: ana.id,
@@ -79,6 +78,19 @@ extension AppServices {
             kind: .note,
             content: "revisar budget Q3",
             timestamp: 12)])
+    }
+
+    private static var seedsUnnamedRemoteSpeaker: Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        return arguments.contains("-seed-unnamed-speaker") || arguments.contains(MeetingVoiceMatchFixture.argument)
+    }
+
+    /// Enough remote speech for the voice auto-assign bar.
+    private func seedVoiceMatchSpeechIfRequested(meetingID: MeetingID, speakerID: SpeakerID) async {
+        guard ProcessInfo.processInfo.arguments.contains(MeetingVoiceMatchFixture.argument) else { return }
+        try? await store.save([TranscriptSegment(
+            meetingID: meetingID, speakerID: speakerID, channel: .system,
+            text: "Comparto la pantalla con el tablero.", startTime: 210, endTime: 222, isFinal: true)])
     }
 
     private static func seedDemoTranscript(
