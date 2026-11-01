@@ -667,6 +667,31 @@ final class TranscriptCorrectionCompositionTests: XCTestCase {
         XCTAssertEqual(terminalTombstone, .accepted)
     }
 
+    func testLegacyPunctuationRowsAreHiddenUnlessACorrectionTargetsThem() throws {
+        let segments = [
+            segment(1, text: "Is there one here", start: 0, end: 4),
+            segment(2, text: "?", start: 4.5, end: 4.8),
+            segment(3, text: "Yes", start: 5, end: 6),
+            segment(4, text: ".", start: 7, end: 7.2)
+        ]
+        let merge = edit(
+            101,
+            targets: [segments[0].id, segments[2].id],
+            kind: .merge(replacementText: nil, language: nil))
+        let rewrite = edit(
+            102,
+            targets: [segments[3].id],
+            kind: .replaceText(text: "Thanks", language: nil))
+
+        let plain = try compose(segments: segments, corrections: [])
+        XCTAssertEqual(plain.accepted.rows.map(\.text), ["Is there one here", "Yes"])
+        XCTAssertEqual(plain.composed.rows.map(\.text), ["Is there one here", "Yes"])
+
+        let corrected = try compose(segments: segments, corrections: [merge, rewrite])
+        XCTAssertEqual(corrected.accepted.rows.map(\.id), [segments[0].id, segments[2].id, segments[3].id])
+        XCTAssertEqual(corrected.composed.rows.map(\.text), ["Is there one here Yes", "Thanks"])
+    }
+
     private func compose<S: Sequence, C: Sequence>(
         material: MeetingTranscriptBaseMaterial = .raw,
         segments: S,
