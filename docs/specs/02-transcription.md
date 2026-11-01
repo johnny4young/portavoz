@@ -264,7 +264,7 @@ concurrency without treating that one fixture as universal accuracy evidence.
   state. Completion drains buffered updates; failed/cancelled jobs cancel and
   join their consumer before native cleanup. Output termination remains an
   asynchronous cancellation request, not an awaitable quiescence contract.
-- Batch: long-form disk-backed `AsrManager`, `parallelChunkConcurrency: 1` (courtesy to the live slot), `melChunkContext: false` (recommended for multilingual v3). Sentence segments by punctuation (TDT timings contain no gaps: pause splitting almost never triggers; `sentenceTerminators` + 0.5 s pauseSplit + 15 s max).
+- Batch: long-form disk-backed `AsrManager`, `parallelChunkConcurrency: 1` (courtesy to the live slot), `melChunkContext: false` (recommended for multilingual v3). Sentence segments by punctuation (TDT timings contain no gaps: pause splitting almost never triggers; `sentenceTerminators` + 0.5 s pauseSplit + 15 s max). TDT often times a closing mark after a pause, so a punctuation-only piece joins the open sentence instead of starting a row, an opening mark (`¿`, `¡`, quotes, brackets) never ends one, and a row's span covers only its lexical pieces; a group with no letter or digit is dropped.
 - `TranscriptionScheduler` (D7): immediate live lane; serial FIFO batch slot in
   `Task.detached(priority: .utility)`. Queued batch callers carry identified
   throwing continuations and are removed immediately on cancellation,
@@ -577,8 +577,11 @@ readable. The reachable inputs arrive from elsewhere —
 read that fails because the recordings volume went away mid-scan.
 `TranscriptContentPolicy`
 removes rows with no letter or digit from both system and microphone results;
-Whisper mapping, the ApplicationKit Refine boundary, accepted-aggregate storage,
-and intelligence formatting independently enforce the same minimum. Microphone
+Whisper mapping, Parakeet batch mapping, the post-capture and Refine boundaries
+in ApplicationKit, accepted-aggregate storage, and intelligence formatting
+independently enforce the same minimum. Transcripts stored before the
+post-capture boundary existed can still hold such rows; the accepted and
+composed readings hide them unless a correction targets one. Microphone
 results then pass through `TranscriptNoiseFilter`, `SpeakerEchoFilter` and
 `MicBleedFilter`, preserving the released anti-hallucination and echo behavior.
 

@@ -45,6 +45,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 31, 2026
 
+- **❓ Questions keep their question mark** — the other side's sentences keep their closing “?” and “.”, and the stray rows holding only a dot are gone, in old meetings too.
 - **🎯 Parakeet Ultra is the dictation default** — your dictation uses the more accurate model as soon as you download it from Settings or onboarding; nothing downloads on its own.
 - **🎙️ Names from voices you know** — when a remembered voice is an unmistakable match, the speaker is named as you open the meeting, marked "Marta · by voice", and one Undo clears it.
 
