@@ -21,6 +21,13 @@ if [[ -n "$tracked_ignored" ]]; then
   failures=1
 fi
 
+conflict_markers="$(git grep -nEI '^(<{7}|\|{7}|>{7})( |$)' -- . 2>/dev/null || true)"
+if [[ -n "$conflict_markers" ]]; then
+  echo "Unresolved merge-conflict markers in tracked files:" >&2
+  echo "$conflict_markers" >&2
+  failures=1
+fi
+
 # Ticket keys and local execution-band identifiers belong in private planning,
 # not tracked repository files. Durable public architecture references such as
 # D116 and Band 6 are intentionally not ticket keys and remain valid project

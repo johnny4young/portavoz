@@ -45,6 +45,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 31, 2026
 
+- **🎯 Parakeet Ultra is the dictation default** — your dictation uses the more accurate model as soon as you download it from Settings or onboarding; nothing downloads on its own.
 - **🎙️ Names from voices you know** — when a remembered voice is an unmistakable match, the speaker is named as you open the meeting, marked "Marta · by voice", and one Undo clears it.
 
 ## October 30, 2026
