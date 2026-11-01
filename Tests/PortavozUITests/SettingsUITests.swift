@@ -60,8 +60,8 @@ final class SettingsUITests: PortavozUITestCase {
     @MainActor
     func testParakeetUltraIsAnExplicitDictationOnlyDownload() throws {
         let app = try XCUIApplication.portavoz(openSettings: true)
-        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
-            #"{"globalDictationEnabled":true,"dictationLiveSpeechEngine":"parakeetUltra"}"#
+        // No engine preference: Ultra is the dictation default (D613).
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
         app.launchPortavoz()
         defer { finishUITestApplication(app) }
 

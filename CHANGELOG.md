@@ -4,16 +4,18 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
-## 1.3.0 — October 30, 2026
+## 1.3.0 — October 31, 2026
 
 **Dictation that writes it the way you mean it.**
 
 - **✨ Polish and recipes** — a Polish text mode fixes grammar, punctuation and false starts with your summary engine on this Mac, and recipes shape it: Formal, Friendly, Bullet list, Concise or your own.
 - **🪄 Rewrite anything you select** — select text in any app, pick Polish or a recipe from the menu bar or with ⌃⌥⌘R, or just say how, then check the preview and press Return.
 - **✏️ Fix it by voice, once** — start a dictation with “change Friday to Monday” to correct only what Portavoz just pasted, and press Always write so it spells that word your way from then on.
+- **🎯 Parakeet Ultra by default** — dictation switches to the more accurate model as soon as you download it from Settings or onboarding; nothing downloads on its own.
 - **🌐 English ↔ Spanish, on your Mac** — translate a dictation as it pastes, read a meeting's transcript in the other language, and export it translated.
 - **🗂️ Your dictations, if you want them** — an opt-in private history you can search, ask about in either language, add to a meeting's notes, share with local agents, count in statistics and drive from Shortcuts.
-- **🔈 Cleaner meetings** — speaker echo stays out of your microphone, Refine skips silence and stops inventing words, a quiet call asks whether it ended, and the player skips dead air, jumps where you click and can cut a silent tail.
+- **🎙️ Meetings that know who spoke** — a remembered voice that clearly matches names the speaker (one Undo clears it), lookalike voices stay quiet, and summaries come Concise, Standard or Detailed with renames applied right away.
+- **🔈 Cleaner meetings** — speaker echo stays out of your microphone, Refine skips silence and stops inventing words, a quiet call asks whether it ended, transcripts keep their question marks, and the player skips dead air, jumps where you click and can cut a silent tail.
 - **📥 Also** — the command-line tool and MCP server ship inside the app, capitals that fit the sentence, and Spanish all the way.
 
 1.3.0 requires macOS 26 Tahoe. Macs on macOS 15 Sequoia or earlier keep 1.2.0.
@@ -45,6 +47,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## October 31, 2026
 
+- **❓ Questions keep their question mark** — the other side's sentences keep their closing “?” and “.”, and the stray rows holding only a dot are gone, in old meetings too.
+- **🎯 Parakeet Ultra is the dictation default** — your dictation uses the more accurate model as soon as you download it from Settings or onboarding; nothing downloads on its own.
 - **🎙️ Names from voices you know** — when a remembered voice is an unmistakable match, the speaker is named as you open the meeting, marked "Marta · by voice", and one Undo clears it.
 
 ## October 30, 2026

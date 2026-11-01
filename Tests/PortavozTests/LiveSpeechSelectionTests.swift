@@ -6,16 +6,29 @@ import XCTest
 
 @MainActor
 final class LiveSpeechSelectionTests: XCTestCase {
-    func testCorruptAndAbsentPreferencesKeepParakeetDefault() async throws {
+    func testAbsentOrCorruptPreferencesDefaultMeetingsToParakeetAndDictationToUltra() async throws {
         let suite = "live-speech-selection-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         XCTAssertEqual(LiveSpeechSelection.meeting(defaults: defaults), .parakeet)
-        XCTAssertEqual(LiveSpeechSelection.dictation(defaults: defaults), .parakeet)
+        XCTAssertEqual(LiveSpeechSelection.dictation(defaults: defaults), .parakeetUltra)
         defaults.set("unknown-engine", forKey: LiveSpeechSelection.meetingKey)
         defaults.set("", forKey: LiveSpeechSelection.dictationKey)
         XCTAssertEqual(LiveSpeechSelection.meeting(defaults: defaults), .parakeet)
-        XCTAssertEqual(LiveSpeechSelection.dictation(defaults: defaults), .parakeet)
+        XCTAssertEqual(LiveSpeechSelection.dictation(defaults: defaults), .parakeetUltra)
+        defaults.set(LiveSpeechSelection.parakeet.rawValue, forKey: LiveSpeechSelection.dictationKey)
+        XCTAssertEqual(LiveSpeechSelection.dictation(defaults: defaults), .parakeet,
+                       "an explicit Parakeet choice survives the new default")
+    }
+
+    func testTheDefaultUltraNeitherDownloadsNorBlocksDictation() async throws {
+        let suite = "live-speech-ultra-default-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let services = try AppServices(arguments: ["-use-temp-store"], environment: [:], defaults: defaults)
+        let checkpoint = await services.dictationCheckpoint()
+        XCTAssertEqual(checkpoint, .v3, "dictation keeps Parakeet until Ultra is downloaded")
+        XCTAssertNil(services.parakeetUltraDownload, "a default is not consent to download 613 MB")
     }
 
     func testSelectedAppleWithAutomaticLanguageNeverStartsAModelLoad() async throws {
