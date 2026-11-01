@@ -15,7 +15,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **🌐 English ↔ Spanish, on your Mac** — translate a dictation as it pastes, read a meeting's transcript in the other language, and export it translated.
 - **🗂️ Your dictations, if you want them** — an opt-in private history you can search, ask about in either language, add to a meeting's notes, share with local agents, count in statistics and drive from Shortcuts.
 - **🎙️ Meetings that know who spoke** — a remembered voice that clearly matches names the speaker (one Undo clears it), lookalike voices stay quiet, and summaries come Concise, Standard or Detailed with renames applied right away.
-- **🔈 Cleaner meetings** — speaker echo stays out of your microphone, Refine skips silence and stops inventing words, a quiet call asks whether it ended, and the player skips dead air, jumps where you click and can cut a silent tail.
+- **🔈 Cleaner meetings** — speaker echo stays out of your microphone, Refine skips silence and stops inventing words, a quiet call asks whether it ended, transcripts keep their question marks, and the player skips dead air, jumps where you click and can cut a silent tail.
 - **📥 Also** — the command-line tool and MCP server ship inside the app, capitals that fit the sentence, and Spanish all the way.
 
 1.3.0 requires macOS 26 Tahoe. Macs on macOS 15 Sequoia or earlier keep 1.2.0.
