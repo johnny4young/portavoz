@@ -111,12 +111,15 @@ public struct ComposeTranscript: Sendable {
             throw ComposeTranscriptError.unspecifiedBaseMaterial
         }
 
-        let orderedSegments = try validateAndOrder(segments)
+        let targetedIDs = Set(corrections.flatMap(\.targetSegmentIDs))
+        let orderedSegments = try validateAndOrder(
+            TranscriptContentPolicy.readableSegments(segments, keeping: targetedIDs))
         let accepted = MeetingTranscriptContent.accepted(
             baseTranscriptRevision: baseTranscriptRevision,
             segments: orderedSegments,
             chapterTitles: chapterTitles,
-            baseMaterial: baseMaterial)
+            baseMaterial: baseMaterial,
+            keepingSegmentIDs: targetedIDs)
         let correctionState = try validatedCorrectionState(
             corrections,
             baseTranscriptRevision: baseTranscriptRevision,

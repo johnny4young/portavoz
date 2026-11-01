@@ -24,6 +24,8 @@ final class ProcessPostCaptureJobsUseCaseTests: XCTestCase {
         let job = fixture.job(kind: .transcription, fingerprint: fingerprint)
         let system = fixture.segment(
             channel: .system, text: "Hello", language: "en", start: 0)
+        let systemMark = fixture.segment(
+            channel: .system, text: "?", language: "en", start: 0.5)
         let noise = fixture.segment(
             channel: .microphone, text: ".", language: "es", start: 1)
         let microphone = fixture.segment(
@@ -34,7 +36,7 @@ final class ProcessPostCaptureJobsUseCaseTests: XCTestCase {
             assets: [fixture.meeting.id: assets])
         let capabilities = WorkflowCapabilitiesFake(
             transcriptions: [
-                .system: fixture.transcription([system]),
+                .system: fixture.transcription([system, systemMark]),
                 .microphone: fixture.transcription([noise, microphone])
             ])
         let events = EventRecorder()
@@ -54,6 +56,7 @@ final class ProcessPostCaptureJobsUseCaseTests: XCTestCase {
         let storedPublication = await store.transcriptionPublication()
         let publication = try XCTUnwrap(storedPublication)
         XCTAssertEqual(publication.artifact.language, nil)
+        // Punctuation-only rows are dropped on both channels.
         XCTAssertEqual(publication.artifact.segments.map(\.text), ["Hello", "Gracias"])
         XCTAssertEqual(publication.artifact.segments.map(\.language), ["en", "es"])
         XCTAssertEqual(publication.followUps.count, 1)

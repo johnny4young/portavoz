@@ -23,6 +23,7 @@ final class DictationPracticeUITests: PortavozUITestCase {
 
         // The microphone stays off until the model is ready; a failed attempt can retry.
         XCTAssertFalse(app.control(withIdentifier: "onboarding-dictation-practice-start").exists)
+        XCTAssertFalse(app.buttons["onboarding-dictation-ultra"].exists, "Ultra waits for Parakeet")
         let prepare = app.buttons["onboarding-dictation-practice-prepare"]
         prepare.click()
         let expectedFailure = UITestLocale.environmentLocale == "es"
@@ -33,6 +34,8 @@ final class DictationPracticeUITests: PortavozUITestCase {
         prepare.click()
 
         practice(in: app, prefix: "onboarding-dictation")
+        XCTAssertTrue(app.buttons["onboarding-dictation-ultra"].waitForExistenceFast(timeout: 5),
+                      "once Parakeet is ready the step offers the optional Ultra download")
         attachScreenshot(of: app, named: "onboarding-dictation-practice")
         app.control(withIdentifier: "onboarding-continue").click()
         XCTAssertTrue(app.control(withIdentifier: "onboarding-voice-enroll").waitForExistenceFast(timeout: 5))

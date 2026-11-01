@@ -10,7 +10,7 @@ struct DictationSection: View {
     @AppStorage(DictationController.defaultsKey) private var enabled = false
     @AppStorage(DictationController.languageKey) private var language = "auto"
     @AppStorage(LiveSpeechSelection.dictationKey) private var liveEngine =
-        LiveSpeechSelection.parakeet.rawValue
+        LiveSpeechSelection.dictationDefault.rawValue
     @AppStorage(DictationController.fillerFilterKey) private var filterFillers = true
     @AppStorage(DictationSoundCue.defaultsKey) private var playsSounds = false
     @AppStorage(DictationCompactIndicator.defaultsKey) private var compactIndicator = false

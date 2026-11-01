@@ -22291,4 +22291,14 @@ with errors than v3, peak at most 150 MiB above v3 and warm load at most 1 s
 slower. Passing makes it the dictation default with v3 as fallback until it is
 installed; meetings keep v3 (D565). Failing keeps it opt-in with the numbers in
 GAPS T38. Synthetic evidence never qualifies, and the recordings stay local.
-||||||| 2ad2a967
+
+## D613 — Parakeet Ultra is the dictation default, downloaded only on request
+
+The first field comparison passed every D612 criterion, so dictation now
+defaults to Ultra when no engine is stored. A default is not consent to download
+613 MB: until someone presses Download in Settings or the optional onboarding
+button, or picks Ultra in the picker, dictation keeps running on v3 exactly as
+before, and Settings shows Ultra as not downloaded yet. An explicit Parakeet or
+Apple Speech choice is kept, and meetings stay on v3 (D565). The English and
+peak-memory margins were thin and came from one speaker, so a second field run
+stays open in GAPS T38.

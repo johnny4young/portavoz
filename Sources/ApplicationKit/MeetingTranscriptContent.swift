@@ -142,8 +142,10 @@ public struct MeetingTranscriptContent: Sendable, Equatable {
         baseTranscriptRevision: Int,
         segments: [TranscriptSegment],
         chapterTitles: [TimeInterval: String],
-        baseMaterial: MeetingTranscriptBaseMaterial = .unspecified
+        baseMaterial: MeetingTranscriptBaseMaterial = .unspecified,
+        keepingSegmentIDs: Set<UUID> = []
     ) -> MeetingTranscriptContent {
+        let segments = TranscriptContentPolicy.readableSegments(segments, keeping: keepingSegmentIDs)
         let rows = segments.map { segment in
             Row(
                 id: segment.id,
