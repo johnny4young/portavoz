@@ -1,14 +1,5 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-The UI scope catalog comparison uses effective English values from both
-revisions, following `export-localizations.py`'s nonempty English override or
-source-key fallback. Added, removed or changed values select journeys quoting
-the key or either value, plus the smoke canaries. `test_ui_test_scope` exercises
-stable-key override additions, edits and removals against synthetic Git
-revisions and the working file, old/new literal owners, exporter-equivalent
-fallbacks, Spanish-only changes without UI, and malformed English data selecting
-the complete English suite. These are selector contracts, not real-app UI runs.
-
 `ProcessingJobSchedulingTests` exercises real in-memory StorageKit scheduling
 with explicit timestamps, without sleeping or using models. It covers retry
 and lease deadlines equal to or earlier than the scheduling read, deadlines
@@ -569,6 +560,15 @@ is stale. `SettingsUITests/testLanguageToggleSwitchesVisibleTextWithoutRelaunch`
 still switches the running app to Spanish inside the English run.
 `make test-ui-es` remains a manual pass that no gate requires. Earlier
 bilingual receipts below are history.
+
+A string-catalog change compares each key's English copy as Xcode compiles it
+into the app under test: an empty value stays empty, a missing value shows the
+key. Added, removed or changed copy selects the journeys quoting the key or
+either value, matched in Swift string-literal form, plus the smoke canaries.
+A changed plural, substitution or unshipped-state English entry, or an
+unreadable catalog, selects the complete English suite. `test_ui_test_scope`
+covers these cases against synthetic Git revisions and an uncommitted working
+file. They are selector contracts, not real-app UI runs.
 
 `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates macOS UI runners only when product presentation is
