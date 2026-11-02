@@ -10,6 +10,7 @@ struct CallEndedNotifierTests {
         let center = HeldCenter(holdAuthorization: true)
         let notifier = CallEndedNotifier(center: center)
         let publication = notifier.post(title: "t", body: "b", sessionID: UUID())
+        for await _ in center.authorizationStarted.stream { break }
         notifier.withdraw()
         center.authorization.continuation.yield()
         await publication.value
@@ -31,6 +32,9 @@ struct CallEndedNotifierTests {
         await stale.value
         #expect(center.removed.filter { $0 == staleID }.count == 2)
         #expect(!notifier.accepts(identifier: staleID, sessionID: session))
+        let fresh = try #require(center.added.last)
+        #expect(!center.removed.contains(fresh))
+        #expect(notifier.accepts(identifier: fresh, sessionID: session))
     }
 
     @Test
@@ -50,12 +54,15 @@ struct CallEndedNotifierTests {
 
     @Test
     func launchRemovesQuestionsLeftByAnEarlierProcess() async {
-        let center = HeldCenter()
+        let center = HeldCenter(holdDelivered: true)
         let notifier = CallEndedNotifier(center: center)
+        let cleanup = Task { await notifier.removeOrphans() }
+        for await _ in center.deliveredStarted.stream { break }
         await notifier.post(title: "t", body: "b", sessionID: UUID()).value
         let current = center.added[0]
         center.delivered = ["portavoz.call-ended", "portavoz.call-ended.old", current]
-        await notifier.removeOrphans()
+        center.deliveredRelease.continuation.yield()
+        await cleanup.value
         #expect(center.removed == ["portavoz.call-ended", "portavoz.call-ended.old"])
     }
 }
@@ -63,21 +70,28 @@ struct CallEndedNotifierTests {
 @MainActor
 private final class HeldCenter: CallEndedNotificationCenter {
     let authorization = AsyncStream<Void>.makeStream()
+    let authorizationStarted = AsyncStream<Void>.makeStream()
+    let deliveredStarted = AsyncStream<Void>.makeStream()
+    let deliveredRelease = AsyncStream<Void>.makeStream()
     let addStarted = AsyncStream<Void>.makeStream()
     let addRelease = AsyncStream<Void>.makeStream()
     var holdAuthorization: Bool
     var holdAdd: Bool
+    let holdDelivered: Bool
     var added: [String] = []
     var removed: [String] = []
     var delivered: [String] = []
 
-    init(holdAuthorization: Bool = false, holdAdd: Bool = false) {
+    init(holdAuthorization: Bool = false, holdAdd: Bool = false, holdDelivered: Bool = false) {
         self.holdAuthorization = holdAuthorization
         self.holdAdd = holdAdd
+        self.holdDelivered = holdDelivered
     }
 
     func canPost() async -> Bool {
-        if holdAuthorization { for await _ in authorization.stream { break } }
+        guard holdAuthorization else { return true }
+        authorizationStarted.continuation.yield()
+        for await _ in authorization.stream { break }
         return true
     }
 
@@ -93,6 +107,10 @@ private final class HeldCenter: CallEndedNotificationCenter {
     }
 
     func deliveredIdentifiers() async -> [String] {
-        delivered
+        if holdDelivered {
+            deliveredStarted.continuation.yield()
+            for await _ in deliveredRelease.stream { break }
+        }
+        return delivered
     }
 }
