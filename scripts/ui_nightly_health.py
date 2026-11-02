@@ -21,7 +21,7 @@ MAX_AGE_HOURS = 48
 UNVERIFIED_TITLE = "Nightly UI is not verified"
 STALE_TITLE = "Nightly UI evidence is stale"
 # Issues this workflow owns; anyone can open another with the same title.
-ISSUE_AUTHOR = "app/github-actions"
+ISSUE_AUTHOR = "github-actions[bot]"
 VERIFIED_EVENTS = frozenset({"schedule", "workflow_dispatch"})
 
 

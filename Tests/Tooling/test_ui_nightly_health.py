@@ -152,7 +152,7 @@ class FreshnessTests(unittest.TestCase):
         alert(needs(build="failure"), fake)
 
         listing = next(call for call in fake.calls if call[:2] == ("issue", "list"))
-        self.assertEqual(listing[listing.index("--author") + 1], "app/github-actions")
+        self.assertEqual(listing[listing.index("--author") + 1], "github-actions[bot]")
 
 
 class CommandLineTests(unittest.TestCase):
