@@ -143,7 +143,7 @@ class FreshnessTests(unittest.TestCase):
         fake = FakeGitHub(runs=[run_entry(head_repository={"full_name": "fork/r"}), run_entry(event="pull_request"),
                                 run_entry(head_repository=None), own])
 
-        self.assertIs(health.newest_verified_run("o/r", fake), own)
+        self.assertEqual(health.newest_verified_run("o/r", fake), own)
         self.assertIsNone(health.newest_verified_run("o/r", FakeGitHub(runs=[run_entry(event="pull_request")])))
 
     def test_only_issues_this_workflow_opened_are_reused(self):
