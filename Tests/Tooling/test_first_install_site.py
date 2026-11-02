@@ -1,5 +1,6 @@
 """Keep the first installation choice explicit and release-scoped."""
 import os
+import re
 from html.parser import HTMLParser
 from pathlib import Path
 import unittest
@@ -40,6 +41,12 @@ class FirstInstallSiteTests(unittest.TestCase):
     def test_both_languages_point_sequoia_to_its_last_release(self):
         html = (ROOT / "site/index.html").read_text()
         self.assertEqual(html.count('href="https://github.com/johnny4young/portavoz/releases/tag/v1.2.0"'), 2)
+
+    def test_release_kicker_names_the_latest_changelog_release(self):
+        html = (ROOT / "site/index.html").read_text()
+        kicker = re.search(r'class="release-kicker".*?</a>', html, re.S).group(0)
+        latest = re.search(r"^## (\d+\.\d+\.\d+) ", (ROOT / "CHANGELOG.md").read_text(), re.M).group(1)
+        self.assertEqual(re.findall(r"Portavoz (\d+\.\d+\.\d+)", kicker), [latest, latest])
 
     def test_readme_states_the_macos_26_floor(self):
         readme = (ROOT / "README.md").read_text()
