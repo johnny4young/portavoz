@@ -244,7 +244,7 @@ confirms every suggestion.
 
 **Context:** D25 called for a 100% local summary engine for Macs with neither Apple Intelligence NOR Ollama. The embedded provider needs the prompt/parsing stack (`PromptFactory`, `StructuredSummary`, `SummaryFingerprint`) that lives in IntelligenceKit; a separate Kit would have forced all of that into Core.
 
-**Decision:** `mlx-swift-lm` (MIT, pinned exactly to 3.31.4 — official successor to `mlx-swift-examples`, which was frozen in Oct 2025; the migration was made in Jul 2026 to support `qwen3_5`) is a direct IntelligenceKit dependency, together with `swift-transformers` (the new package decoupled the tokenizer: the app provides it through the `MLXHuggingFace` macros), and `MLXSummaryProvider` lives there, reusing the OpenAI-compatible provider's prompt/JSON contract (changing engines never changes the summary's shape). The shipped default is **Qwen3.5-4B MLX 4-bit** (Apache-2.0, ungated, ~3 GB), sha256-pinned as `ModelCatalog.mlxQwen35`; Qwen3-4B-Instruct-2507 remains in the catalog as the explicit A/B alternative. Generation runs on GPU through `ModelContainer.perform`; D151 later makes its single-flight policy explicit through an independent MLX scheduler lane rather than treating the async cache actor as that policy. Accepted cost: mlx compiles C++/Metal on the first build (~10 min) and increases the binary size; the model downloads only if the user selects the "Built-in (MLX)" engine.
+**Decision:** `mlx-swift-lm` (MIT, pinned exactly to 3.32.3 with its default traits disabled, so the FoundationModels adapter and its vendored grammar engine stay out of the app — official successor to `mlx-swift-examples`, which was frozen in Oct 2025; the migration was made in Jul 2026 to support `qwen3_5`) is a direct IntelligenceKit dependency, together with `swift-transformers` (the new package decoupled the tokenizer: the app provides it through the `MLXHuggingFace` macros), and `MLXSummaryProvider` lives there, reusing the OpenAI-compatible provider's prompt/JSON contract (changing engines never changes the summary's shape). The shipped default is **Qwen3.5-4B MLX 4-bit** (Apache-2.0, ungated, ~3 GB), sha256-pinned as `ModelCatalog.mlxQwen35`; Qwen3-4B-Instruct-2507 remains in the catalog as the explicit A/B alternative. Generation runs on GPU through `ModelContainer.perform`; D151 later makes its single-flight policy explicit through an independent MLX scheduler lane rather than treating the async cache actor as that policy. Accepted cost: mlx compiles C++/Metal on the first build (~10 min) and increases the binary size; the model downloads only if the user selects the "Built-in (MLX)" engine.
 
 **Shipping and verification:** the SwiftPM CLI cannot compile Metal shaders (limitation documented in the mlx-swift README): `swift build` never produces `default.metallib`, so no test under `swift test` can exercise generation. The metallib comes from a one-time xcodebuild pass that `scripts/build-mlx-metallib.sh` caches in `.build/mlx/` (cache keyed by the resolved mlx-swift version; requires the Xcode 26 Metal Toolchain: `xcodebuild -downloadComponent MetalToolchain`); `make-app.sh` copies `mlx-swift_Cmlx.bundle` to `Contents/Resources`, where the mlx loader resolves it through NSBundle. E2E verification is in-app — `Portavoz.app/Contents/MacOS/portavoz-app --mlx-smoke` (same pattern as `--bench-live`): synthetic ES meeting → structured summary with correct decision and action item in ~5 s (M-series, model already downloaded).
 
@@ -22148,3 +22148,174 @@ while pauses under 20 s keep their natural length. Without a transcript the
 scrubber stays linear. "Only my voice" generalizes to any speaker; clip marks
 and echo reduction move one click deeper.
 
+## D606 — Refine drops rows stretched over room noise and never leaves English or Spanish
+
+**Context:** A test recording of 26 s of speech followed by 13 minutes of a
+quiet room came back from Refine with "Gracias.", "so" and five "E aí" rows
+labelled Portuguese, so D607 never saw a silent tail. Silero accepted the faint
+room sound as speech, and because no window of the channel was detected as
+English or Spanish, D603 left the language automatic. Those rows sat 1–6 dB
+above the channel's noise floor, about 13 dB below the speaker; real phrases
+said while walking away from the microphone sat at 4–7 dB, so level alone
+cannot separate them.
+
+**Decision:** After decoding, `FaintSpeechFilter` drops a row only when it is
+both stretched (at least 3 s with under 0.5 words per second) and faint (its
+loud frames within 10 dB of the channel's noise floor). Their duration no
+longer counts as detected speech, so the Refine loss warning stays honest.
+When no window of a channel is detected as English or Spanish, Romance
+detections decode as Spanish and the rest as English.
+
+**Consequences:** On the test recording all eight invented rows go and all
+seven real ones stay; across 982 rows of two real meetings two rows go (a lone
+"." and a faint four-word phrase). Real speech slower than 0.5 words per
+second near the noise floor is lost. A meeting in another language still
+needs a fixed transcription language (D603).
+
+## D607 — A long silent tail can be cut from the audio and the transcript
+
+**Context:** D604 limits new forgotten recordings to about eight minutes of
+silence, but recordings made before it can hold hours of it. D605 hides dead
+time while playing, yet the files still take the disk space and the meeting
+still reports the wrong length. D27 treats the audio as the source of truth,
+so removing it must be explicit and safe.
+
+**Decision:** When the last transcribed phrase ends at least five minutes
+before the audio does, the player's options menu offers "Remove … of silence
+at the end…" behind a confirmation. `TrimMeetingAudioTail` keeps 10 s after
+the last phrase. It runs only for a settled meeting (lifecycle ready, no
+pending or running job, the compression owner checks). Cut copies of both
+channels are written and verified first; then one revision-fenced write
+tombstones rows that start after the cut, clips a row that crosses it, moves
+the meeting's end and increments the transcript revision; only then are the
+files swapped, with the originals restored if any swap fails (D112). The
+summary is not regenerated.
+
+**Consequences:** The cut is permanent and retires corrections made at the
+previous revision. A failed swap leaves extra silence, never transcript rows
+past the end of the audio. Older recordings whose silence was transcribed as
+hallucinated phrases have no trailing gap until Refine (D603) removes those
+rows.
+
+## D608 — A document export may use the current transcript translation
+
+A translated meeting (D595) could be read but not shared. Export's
+"Transcript language" offers Original and every stored translation of the
+current reading; Markdown, PDF, subtitles and Gist then carry the translated
+rows, while rows without a translation keep their original text. The library
+snapshot reads the translations in the same transaction as the transcript, and
+the export is refused when the chosen translation is missing or was made from
+another transcript or correction revision, so a document never mixes readings.
+The file name gains the language code and the transcript is labelled as a
+translation made on this Mac (a VTT note; SRT has no comment syntax). Meeting
+files (`.portavoz`) keep the original transcript only.
+
+## D609 — Summaries choose a detail level, and renames reach them without a model
+
+**Context:** A long meeting summarized on the 4 096-token on-device model can
+come back with a few lines, and the only remedy was the thin-summary chip's
+retry on the embedded model. A summary also keeps the speaker labels it was
+written with: renaming "Speaker 2" left the old label in the summary until a
+full regeneration, which costs minutes and can change the wording.
+
+**Decision:** `SummaryDetail` (brief, standard, detailed) is a Settings
+default and a Regenerate submenu. Standard keeps today's prompt and
+fingerprint, so cached summaries stay valid; brief and detailed add one
+directive and join the fingerprint. Every level runs on the engine the user
+selected. Concise asks for only the points that matter most and Detailed for
+every topic once; both end with "never repeat a point, and stop". On a
+44-minute meeting the embedded 4B model under greedy decoding looped on "keep
+every point" and on counted-bullet phrasings for both levels, enumerating
+1 141 evidence tags and cycling the same questions until its 16 384-token cap.
+Standard finished in 38 s; the shipped Detailed phrasing in 26–35 s with half
+again as much text, and in Spanish in 58 s. A
+structured summary without `actionItems` now decodes with none, because the
+same model sometimes folds commitments into a section. On Apple Foundation
+Models, detailed map notes are richer. The thin-summary chip offers Detailed
+once per visit, measures the meeting only up to where speech ends, and a local model that cannot finish says so instead of asking
+for setup. A rename replaces the old shown name as
+a whole word in the current summary and saves it as the next immutable
+version, linked to the original generation run.
+
+**Consequences:** Detailed on Apple Foundation Models is still bounded by its
+context window, and one field run came back shorter than Standard. On the
+embedded model Concise is about Standard's length, because the counts that
+would shorten it trigger loops. When that model folds commitments into a
+section, they render as text without checkboxes. The rename rewrite is literal: a name that is also a common
+word, or grammar that depended on the old label, is not adjusted, and
+regenerating remains the way to reword. A failed rewrite keeps the old name and
+never fails the rename.
+
+## D610 — The full UI suite total scales with the catalogue it measures
+
+The 1,300-second per-locale total was set at 1.0 for 105 journeys that took
+1,108 seconds (10.55 seconds each). The catalogue has since grown to 189 while
+the total stayed fixed, so the 1.3.0 candidate failed it at 1,701 seconds even
+though every journey met its own ceiling, p95 was 20.2 seconds and the mean
+fell to 9.0 seconds. The total becomes 2,000 seconds: 189 journeys at the
+qualified 1.0 rate. Per-journey ceilings and the 30-second p95 are unchanged;
+catalog validation refuses a total below the catalogue at that rate, so a
+change that adds journeys raises it in the same commit.
+
+
+## D611 — A clear voice match names the speaker, with one Undo
+
+D105 kept every remembered-voice match a chip the user had to tap. Remembered
+voices exist only because the user asked for them, so tapping an unmistakable
+match each time is busywork. A match now names the speaker without a tap
+when three things hold: cosine distance is at most 0.35 (the suggestion bar
+stays at 0.54), the next remembered name is at least 0.10 further away, and
+the speaker has at least 10 seconds of remote-channel speech. With a single
+remembered name there is no runner-up to rule out. Anything short of that
+stays a chip.
+
+`ManageMeetingVoiceMemory` still never renames a speaker. It reports each
+match's speech and whether it clears the bar. Meeting Detail applies it
+through the ordinary rename path, so the summary and search follow, but only
+when the meeting is `ready`, because speakers are replaced after capture. The
+header shows "Name · by voice" with Undo and a keep cross. Undo restores the
+label and retires that match for the open meeting; a failed rename falls back
+to the chip. The mark lasts only while the meeting stays open; once applied,
+the name is an ordinary name. Numeric-only logs record each automatic
+assignment and undo for calibration (D76).
+
+## D612 — Ultra becomes the dictation default only on a rule fixed before field data
+
+D565 kept Ultra opt-in because its gains come from synthetic speech and its
+memory was unmeasured. The comparison lane now runs one model per process, so
+each footprint and load time is its own, and it admits one person reading the 56
+speech families into a real microphone. The rule is written down before any of
+those recordings exist: on field audio Ultra must cut reference-weighted WER by
+at least 15% relative in English, Spanish and mixed, have no more critical cells
+with errors than v3, peak at most 150 MiB above v3 and warm load at most 1 s
+slower. Passing makes it the dictation default with v3 as fallback until it is
+installed; meetings keep v3 (D565). Failing keeps it opt-in with the numbers in
+GAPS T38. Synthetic evidence never qualifies, and the recordings stay local.
+
+## D613 — Parakeet Ultra is the dictation default, downloaded only on request
+
+The first field comparison passed every D612 criterion, so dictation now
+defaults to Ultra when no engine is stored. A default is not consent to download
+613 MB: until someone presses Download in Settings or the optional onboarding
+button, or picks Ultra in the picker, dictation keeps running on v3 exactly as
+before, and Settings shows Ultra as not downloaded yet. An explicit Parakeet or
+Apple Speech choice is kept, and meetings stay on v3 (D565). The English and
+peak-memory margins were thin and came from one speaker, so a second field run
+stays open in GAPS T38.
+
+## D614 — MLX 3.32.3 keeps legacy prefill chunking and no default traits
+
+mlx-swift-lm 3.32.3 and mlx-swift 0.32.3 change greedy output for the same
+prompt, and no test under `swift test` can see it because generation needs the
+bundled metallib. `--mlx-smoke` on one synthetic meeting and copies of the ten
+newest real meetings produced these valid summaries: 3.31.4 8/11, 3.32.3 with
+its default balanced chunking 6/11, and 3.32.3 with `.remainder` 9/11. The
+provider therefore sets `.remainder`, which also lowered the highest peak
+footprint from 5.29 GB to 4.44 GB. It does not restore 3.31.4 output byte for
+byte, and eleven prompts cannot rank small differences. Peak footprint and
+timing come from a host with other work running.
+
+The dependency also disables default traits, so the FoundationModels adapter
+and its vendored grammar engine stay out of the app. mlx-swift 0.32.3 declares
+tools 6.3, which raises the source build floor to the Xcode 26.6 toolchain that
+CI pins.

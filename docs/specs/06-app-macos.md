@@ -2089,6 +2089,32 @@ sends acceptance actions only.
 A failed title rename preserves the suggestion and visible error, and requests
 Spotlight reindexing only after persistence succeeds.
 
+Summary detail (D609) is a radio picker in Settings → Intelligence
+(`settings-summary-detail`, UserDefaults `summaryDetail`, Standard by default).
+Post-capture summaries and every Meeting Detail regeneration use it unless the
+Regenerate menu's Detail submenu (`detail-summary-detail-menu`, items
+`detail-summary-detail-<level>`) picks another level. Every level runs on the
+selected engine. The thin-summary chip offers a detailed regeneration and
+measures the meeting by wall-clock time capped where speech ends; accepting
+or dismissing it retires the chip until Meeting Detail is opened again. A local
+engine that fails to generate shows "Summary couldn’t finish" with a shorter
+detail level as the first suggestion, instead of "Summary needs setup". A manual
+rename or an accepted name or voice suggestion that changes a speaker's shown
+name awaits `ApplySpeakerRenameToSummary` before reindexing; a failed rewrite
+leaves the old name in the summary and never fails the rename.
+
+On a `ready` meeting, a voice match that clears the auto-assign bar is applied
+through that same rename path instead of showing a chip. The header shows
+"Name · by voice" (`detail-voice-auto-<label>`) with Undo
+(`detail-voice-auto-undo-<label>`), which restores the label and keeps that match
+from returning while the meeting is open, and a keep cross
+(`detail-voice-auto-keep-<label>`). A failed rename shows the ordinary chip
+instead. A different manual name retires the mark. A speaker is evaluated once
+per open meeting, so that pass and any rename it applies finish even when a
+newer projection restarts the view's suggestion task. Disposable launches with
+`-seed-voice-match` match the seeded remote speaker without a gallery, Keychain
+or model.
+
 Meeting Detail audio enters ApplicationKit (D112/D144). Playback preparation
 resolves the current canonical system and microphone files through an injected
 port, constructs one synchronized observable application facade, derives a
@@ -2107,7 +2133,21 @@ from the transcript on screen, because post-capture processing replaces
 speaker identities after playback has loaded) and an options menu
 (`player-options`) holding Skip silence (`player-skip-silence`), Reduce echo
 (`player-clear-playback`) and Mark clip start/end (`clip-mark-start`,
-`clip-mark-end`); a marked clip shows its length, Export and discard below the
+`clip-mark-end`). A phrase ending exactly at the audio duration remains speech and prevents
+tail trimming. When the last phrase ends at least five minutes before the
+audio of a settled meeting, the same menu offers "Remove … of silence at the
+end…" (`player-trim-silence`), confirmed in a destructive dialog
+(`player-trim-silence-confirm`); the section shows progress
+(`detail-trim-progress`) or the result (`detail-trim-message`) and the player
+is prepared again on the shorter files (D607). A failed file swap attempts to
+restore every original; any backup whose restoration fails remains beside its
+channel for recovery instead of being deleted. Disposable UI qualification can
+pause the ordinary application call before trimming through a bounded temporary-directory handshake; it is admitted only
+with `-use-temp-store` and an explicit fixture argument. If processing is
+pending or running after
+cut copies are staged, the transcript commit rejects the stale admission and
+the application discards those copies without swapping audio. The later
+database-commit-to-file-swap interval is not an exclusive processing reservation. A marked clip shows its length, Export and discard below the
 waveform (`player-waveform`). The application policy
 admits 600 buckets by default and never publishes more than 2,000. The
 AudioPlaybackKit worker reads the complete finalized channels, propagates route
@@ -2983,6 +3023,10 @@ revision and kicks post-capture processing. `ProcessPostCaptureJobs` claims
 which recomputes the fingerprint for each language against the current reading
 (no match cancels it as superseded), translates each row whose recognized or
 detected language is the other one through `TranslateDictation`, and publishes.
+The worker validates its persisted lease before each translator call; rows kept as
+spoken need no read. Cancellation, lease reclamation or a purged meeting stops it at
+the next call and lets the serial drain claim the next job. The current call must
+return first, and publication's atomic ownership fence rejects its result.
 Missing languages or an unsupported pair cancel the job with
 `translation.languages-missing` or `translation.unsupported`; a timed-out or failed
 line fails it for one retry. Meeting Detail observes translations as their own
@@ -2997,6 +3041,19 @@ shown once it is current; a translated reading cannot be corrected. Translation
 jobs are left out of the trust section and labelled in the background work
 center. Disposable launches use `MeetingTranslationFixture`, which tags each line
 with its target; `-seed-meeting-translation-missing` reports missing languages.
+
+**Translated export (D608).** `MeetingStore.meetingLibrarySnapshot` reads
+translations with the transcript, and `MeetingLibraryDetail.translations` carries
+them to `MeetingDocumentProjection`. `MeetingDocumentOptions.translationLanguage`
+selects one; the projection requires it to match the transcript revision and the
+correction revision it exports, else `ExportMeetingDocumentError.translationUnavailable`,
+and swaps translated rows in with the target language. `MeetingDocumentContent`
+names the language: Markdown titles the transcript as a translation made on this
+Mac, VTT adds a `NOTE`, and the prepared file name gains ` (<code>)`. The export
+menu shows `detail-export-translation` (`-original`, `-<code>`) only while a
+current translation exists; the choice lives in `MeetingDetailFlowState` and
+returns to Original when that translation goes out of date. Meeting bundles
+ignore it.
 
 Resolution is session override, then exact captured bundle-ID profile, then
 global mode. The destination's existing NSRunningApplication capture supplies
@@ -3225,6 +3282,13 @@ only after the call-ended question (D604): `recording-call-ended` with
 `recording-call-ended-keep` / `recording-call-ended-stop`, the HUD label
 `recording-hud-call-ended`, and the `portavoz.call-ended` notification
 category; an unanswered question stops the recording after five minutes.
+Each notification question carries its meeting identity and a unique request
+identity, and is posted only while recording. Withdrawal or leaving recording
+invalidates the question before removing it; delayed authorization/publication
+completions cannot revive it. Notification actions require the current
+question and recording identity, and Stop checks again before it routes,
+activates and stops. Launch removes call-ended notifications left by an
+earlier process.
 
 **Opt-in controller phase measurements.** A session dependency may supply a
 content-free measurement sink and monotonic clock. Ordinary composition supplies
@@ -3602,10 +3666,15 @@ still mix; the setting mainly keeps out other writing systems) through
 `TranscriptSegment.language` remains the requested hint, not a measured language
 classification. The language default stays automatic, and this dictation-language setting does not change the meeting-language preference.
 
-**Parakeet Ultra for dictation (D565):** the dictation picker also offers
-"Parakeet Ultra (more accurate, 613 MB)" (`parakeetUltra`); the meeting picker
-does not, and a stored meeting value resolves to Parakeet. Choosing it is the
-consent for the pinned download through `modelLifecycle.install`, with progress,
+**Parakeet Ultra for dictation (D565, D613):** the dictation picker also offers
+"Parakeet Ultra (more accurate, 613 MB)" (`parakeetUltra`), and it is the
+dictation default when no engine is stored (`LiveSpeechSelection.dictationDefault`);
+an explicit Parakeet or Apple Speech choice is kept. The meeting picker does not
+offer it, and a stored meeting value resolves to Parakeet. The default never
+downloads: choosing Ultra in the picker, Download in Settings, or the optional
+onboarding button (`onboarding-dictation-ultra`, shown once Parakeet is ready,
+with `onboarding-dictation-ultra-progress` while downloading) is the consent for
+the pinned download through `modelLifecycle.install`, with progress,
 Download (`settings-dictation-live-ultra-install`), Retry (`-ultra-retry`),
 Cancel while it downloads (`-ultra-cancel`) and status
 (`settings-dictation-live-ultra-status`). Cancelling, or choosing another engine,
@@ -3616,8 +3685,9 @@ download for XCUITest. Until it is verified,
 downloads it at session start. Pre-warm loads the selected checkpoint.
 
 **Optional Apple live speech (D554):** `meetingLiveSpeechEngine` and
-`dictationLiveSpeechEngine` are independent app preferences and both default
-to Parakeet; unknown stored values also resolve to Parakeet. The Settings
+`dictationLiveSpeechEngine` are independent app preferences. Meetings default
+to Parakeet and dictation to Parakeet Ultra (D613); unknown stored values
+resolve to those defaults. The Settings
 picker enables Apple Speech only on macOS 26+, explains that it needs a fixed
 English or Spanish language, and inspects installed OS assets without
 requesting an asset download. The separate Prepare button may download through
@@ -3941,7 +4011,7 @@ exercises this same production path in the durable-resume XCUITest (D63).
   and requires a new confirmation for fresh Refine speakers. Existing
   VoiceGallery checks run off MainActor; disposable UI launches treat that
   sensitive store as empty rather than reading the host file or Keychain.
-- **Refine (D7/D35/D47/D73/D130 in-app)**: `ApplicationKit.RefineMeeting` prepares only required Whisper and re-transcribes retained non-silent channels (+vocabulary), then applies microphone noise/bleed filtering and requests only best-effort pyannote diarization; live Parakeet is never a prerequisite. `TranscriptLanguagePolicy.automatic` never supplies a complete-channel hint, even when previous aggregate metadata appears homogeneous, so every actor/segment keeps the language Whisper recognizes. The per-meeting "Re-transcribe in Spanish/English" choices are explicit fixed recovery operations, and neither stale meeting metadata, app UI, nor summary language is ever a transcript fallback. The use case returns a **DRAFT with comparison sheet** (segments/speakers/speech coverage/sample + red warning if it covers < 50% of current speech) and its source revision — **nothing is applied without "Apply"**. The running control becomes an explicit cancel action; cancellation leaves the current transcript untouched and does not permit a replacement heavy run until the old engine exits. `RefineService` is keyed by MeetingID outside the view hierarchy, so switching meetings does not lose a running pass or draft, and run IDs prevent stale completion from overwriting newer state. The app freezes the selected Whisper descriptor for the run and derives content evidence from finalized v6 checksums after a size check or by locally hashing legacy audio. One content-free composite transcript attempt covers every non-silent channel. On acceptance, `ApplyRefinedMeeting` atomically installs that successful run, links every new segment, installs homogeneous language (including `nil` for mixed/unknown), cast, transcript, and next revision; a stale/discarded draft creates no success record. Begun transcription failure/cancellation is standalone best-effort provenance. Apuntador refresh runs only afterward with the accepted revision. It derives per-turn language, creates exact card/run artifacts, persists current terminal attempts best effort, preserves prior cards on incomplete work, and replaces a complete snapshot plus links atomically; persistence failure warns without failing the transcript. Meeting Detail submits the accepted draft's exact speakers/segments to the existing `RegenerateSummary` use case under the independent current recipe/output policy, while scoped observations publish the committed transcript and preserve older immutable summaries. **Chip "Summary looks thin"** (`ThinSummaryPolicy`, pure): meeting ≥ 20 min with summary < 900 chars, or ≥ 40 min with 0 action items → offers regeneration with MLX in one click (only if MLX is downloaded and was not the generator; FM contract: suggestion, never automatic).
+- **Refine (D7/D35/D47/D73/D130 in-app)**: `ApplicationKit.RefineMeeting` prepares only required Whisper and re-transcribes retained non-silent channels (+vocabulary), then applies microphone noise/bleed filtering and requests only best-effort pyannote diarization; live Parakeet is never a prerequisite. `TranscriptLanguagePolicy.automatic` never supplies a complete-channel hint, even when previous aggregate metadata appears homogeneous, so every actor/segment keeps the language Whisper recognizes. The per-meeting "Re-transcribe in Spanish/English" choices are explicit fixed recovery operations, and neither stale meeting metadata, app UI, nor summary language is ever a transcript fallback. The use case returns a **DRAFT with comparison sheet** (segments/speakers/speech coverage/sample + red warning if it covers < 50% of current speech) and its source revision — **nothing is applied without "Apply"**. The running control becomes an explicit cancel action; cancellation leaves the current transcript untouched and does not permit a replacement heavy run until the old engine exits. `RefineService` is keyed by MeetingID outside the view hierarchy, so switching meetings does not lose a running pass or draft, and run IDs prevent stale completion from overwriting newer state. The app freezes the selected Whisper descriptor for the run and derives content evidence from finalized v6 checksums after a size check or by locally hashing legacy audio. One content-free composite transcript attempt covers every non-silent channel. On acceptance, `ApplyRefinedMeeting` atomically installs that successful run, links every new segment, installs homogeneous language (including `nil` for mixed/unknown), cast, transcript, and next revision; a stale/discarded draft creates no success record. Begun transcription failure/cancellation is standalone best-effort provenance. Apuntador refresh runs only afterward with the accepted revision. It derives per-turn language, creates exact card/run artifacts, persists current terminal attempts best effort, preserves prior cards on incomplete work, and replaces a complete snapshot plus links atomically; persistence failure warns without failing the transcript. Meeting Detail submits the accepted draft's exact speakers/segments to the existing `RegenerateSummary` use case under the independent current recipe/output policy, while scoped observations publish the committed transcript and preserve older immutable summaries. **Chip "Summary looks thin"** (`ThinSummaryPolicy`, pure): meeting ≥ 20 min with summary < 900 chars, or ≥ 40 min with 0 action items, where the length is wall-clock time capped at the end of the last transcript segment → offers a Detailed regeneration on the selected engine in one click (FM contract: suggestion, never automatic).
 - **Share a recap** (FEATURE-003/D136): the first item of the export menu,
   enabled only with a summary. `ApplicationKit.RecapComposer` builds the
   draft purely from meeting, cast, and summary — it never receives transcript
@@ -4129,9 +4199,9 @@ the scoped summary stream remains functional at scale; it does not substitute
 for the unavailable SwiftUI update-cause lane.
 
 The characterization baseline freezes the reviewed interaction surface. The
-current generated `meeting-detail-interaction-contract.json` snapshots 503
+current generated `meeting-detail-interaction-contract.json` snapshots 528
 state/control/presentation/keyboard/identifier/navigation signals across forty-one
-reviewed detail files and assigns all 31 `MeetingDetailUITests` journeys to
+reviewed detail files and assigns all 32 `MeetingDetailUITests` journeys to
 exactly one of sixteen feature owners. Screenshot names derive from test bodies;
 changing a control, route, owner, screenshot, or reviewed evidence digest
 requires an explicit snapshot update.

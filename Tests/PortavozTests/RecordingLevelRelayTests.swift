@@ -193,16 +193,14 @@ final class RecordingLevelRelayTests: XCTestCase {
 @MainActor
 private final class RecordingLevelDeliveryProbe {
     private(set) var snapshots: [RecordingLevelSnapshot] = []
+    private let events = MainActorTestEvents()
 
     func record(_ snapshot: RecordingLevelSnapshot) {
         snapshots.append(snapshot)
+        events.signal()
     }
 
     func waitUntilSnapshotCount(_ expected: Int) async -> Bool {
-        for _ in 0..<20_000 {
-            if snapshots.count >= expected { return true }
-            await Task.yield()
-        }
-        return false
+        await events.waitUntil { snapshots.count >= expected }
     }
 }

@@ -552,6 +552,9 @@ gh workflow run update-cask.yml -f tag=v<version>      # bumps johnny4young/home
   tag (`git log v<prev>..HEAD`). A "Highlights" list, then "Also in this
   release", ending with *"runs 100% on your Mac. Update from within Portavoz, or
   `brew upgrade --cask portavoz`."*
+- **Site kicker**: point both language spans of `release-kicker` in
+  `site/index.html` at the new version and title. Hygiene fails while it names
+  a version other than the top release heading in `CHANGELOG.md`.
 
 ### Title format — keep it consistent
 

@@ -22,6 +22,9 @@ protocol MeetingDetailModelClient: AnyObject {
 
     func renameMeetingDetailMeeting(_ meeting: Meeting) async throws
     func renameMeetingDetailSpeaker(_ speaker: Speaker) async throws
+    func applyMeetingDetailSpeakerRenameToSummary(
+        meetingID: MeetingID, from oldName: String, to newName: String
+    ) async throws -> Int?
     func correctMeetingDetailTranscript(
         _ request: CorrectMeetingTranscriptRequest
     ) async throws -> CorrectMeetingTranscriptResult
@@ -109,6 +112,9 @@ protocol MeetingDetailModelClient: AnyObject {
     func compressMeetingDetailAudio(
         _ request: CompressMeetingAudioRequest
     ) async throws -> MeetingAudioCompressionResult
+    func trimMeetingDetailAudioTail(
+        _ request: TrimMeetingAudioTailRequest
+    ) async throws -> TimeInterval
     func exportMeetingDetailAudioClip(
         _ request: ExportMeetingAudioClipRequest
     ) async throws

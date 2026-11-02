@@ -1,5 +1,6 @@
 """Keep the first installation choice explicit and release-scoped."""
 import os
+import re
 from html.parser import HTMLParser
 from pathlib import Path
 import unittest
@@ -37,10 +38,25 @@ class FirstInstallSiteTests(unittest.TestCase):
         self.assertIn("Open the DMG and drag Portavoz to Applications.", html)
         self.assertIn("Abre el DMG y arrastra Portavoz a Aplicaciones.", html)
 
+    def test_each_language_links_older_macos_to_the_last_release_that_runs_there(self):
+        html = (ROOT / "site/index.html").read_text()
+        platform = re.search(r'<p class="platform">(.*?)</p>', html, re.S).group(1)
+        dmg = "https://github.com/johnny4young/portavoz/releases/download/v1.2.0/Portavoz-1.2.0.dmg"
+        for language in ("es", "en"):
+            span = re.search(rf'<span class="{language}">(.*?)</span>', platform, re.S).group(1)
+            self.assertIn(f'<a href="{dmg}">', span, language)
+            self.assertIn("macOS 14.4–15", span, language)
+
+    def test_release_kicker_names_the_latest_changelog_release(self):
+        html = (ROOT / "site/index.html").read_text()
+        kicker = re.search(r'class="release-kicker".*?</a>', html, re.S).group(0)
+        latest = re.search(r"^## (\d+\.\d+\.\d+) ", (ROOT / "CHANGELOG.md").read_text(), re.M).group(1)
+        self.assertEqual(re.findall(r"Portavoz (\d+\.\d+\.\d+)", kicker), [latest, latest])
+
     def test_readme_states_the_macos_26_floor(self):
         readme = (ROOT / "README.md").read_text()
         self.assertIn("Releases after 1.2.0 require macOS 26 Tahoe", readme)
-        self.assertIn("Swift 6.2 on macOS 26+", readme)
+        self.assertIn("Swift 6.3 on macOS 26+", readme)
         self.assertNotIn("macOS 14.4+**", readme)
 
 

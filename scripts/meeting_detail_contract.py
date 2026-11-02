@@ -367,6 +367,7 @@ DEFAULT_FEATURE_OWNERSHIP = (
     {
         "feature": "speaker-identity",
         "tests": [
+            "testAConfidentVoiceMatchNamesTheSpeakerAndCanBeUndone",
             "testNamedSpeakerCanBeRememberedAsCanonicalPerson",
             "testUnnamedSpeakerOffersExplicitNameSuggestions",
         ],
@@ -383,6 +384,10 @@ DEFAULT_FEATURE_OWNERSHIP = (
                 "path": "Sources/portavoz-app/MeetingDetailCoordinator+Identity.swift",
                 "anchor": "func acceptNameSuggestion(",
             },
+            {
+                "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+                "anchor": '"detail-voice-auto-undo-',
+            },
         ],
     },
     {
@@ -390,6 +395,7 @@ DEFAULT_FEATURE_OWNERSHIP = (
         "tests": [
             "testMostRecentRecipeRemainsVisibleAfterReload",
             "testNoAppleIntelligenceSummaryFailureOpensExactSetupAndExplainsApuntador",
+            "testRegenerateMenuOffersEveryDetailLevel",
             "testStructureMenuOffersSeededTemplates",
         ],
         "sourceAnchors": [
@@ -400,6 +406,10 @@ DEFAULT_FEATURE_OWNERSHIP = (
             {
                 "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
                 "anchor": '"detail-structure-menu"',
+            },
+            {
+                "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+                "anchor": '"detail-summary-detail-menu"',
             },
         ],
     },

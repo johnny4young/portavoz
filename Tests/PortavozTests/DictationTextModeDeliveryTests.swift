@@ -8,7 +8,7 @@ import Testing
 /// Recognition is scripted, but every case enters the real session and final delivery.
 // The existing controller harness overrides process-wide NSArgumentDomain.
 // Serialize that fixture owner, not the production dictation implementation.
-@Suite(.serialized, .timeLimit(.minutes(1)))
+@Suite(.serialized, .exclusiveArgumentDomain, .timeLimit(.minutes(1)))
 @MainActor
 struct DictationTextModeDeliveryTests {
     struct Example: Sendable {
@@ -194,10 +194,7 @@ struct DictationTextModeDeliveryTests {
     }
 
     private func eventually(_ condition: @MainActor () -> Bool) async throws {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
-        while !condition(), ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(5))
-        }
+        _ = await TestPolling.until(condition)
         try #require(condition(), "The real controller must reach the asserted lifecycle boundary")
     }
 }

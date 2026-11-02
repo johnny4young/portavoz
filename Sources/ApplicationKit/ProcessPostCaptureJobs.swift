@@ -262,10 +262,11 @@ private extension ProcessPostCaptureJobs {
         let hints = TranscriptionHints(meetingID: meetingID)
         var systemSegments: [TranscriptSegment] = []
         if let system = current[.system], Self.isTranscribable(system) {
-            systemSegments = try await audio.transcribePostCaptureAudio(
-                system,
-                channel: .system,
-                hints: hints).segments
+            systemSegments = TranscriptContentPolicy.retainLexicalSegments(
+                try await audio.transcribePostCaptureAudio(
+                    system,
+                    channel: .system,
+                    hints: hints).segments)
         }
 
         var microphoneSegments: [TranscriptSegment] = []
@@ -496,7 +497,8 @@ private extension ProcessPostCaptureJobs {
             recipe: .general,
             targetLanguage: preferences.outputLanguage,
             glossary: preferences.vocabulary,
-            contextItems: try await store.postCaptureContextItems(meeting.id))
+            contextItems: try await store.postCaptureContextItems(meeting.id),
+            detail: preferences.detail)
     }
 }
 

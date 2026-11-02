@@ -160,9 +160,12 @@ public actor MLXSummaryRuntime: MLXSummaryRuntimeClient {
             // hold the GPU indefinitely): a refined 56-min meeting produced
             // a legitimate 34k-character Spanish summary, so the cap leaves
             // real generations room and still bounds the worst case.
+            var parameters = GenerateParameters(maxTokens: maxTokens, temperature: 0)
+            // Balanced chunking, the library default, returned more invalid JSON (D614).
+            parameters.prefill.chunking = .remainder
             let stream = try MLXLMCommon.generate(
                 input: input,
-                parameters: GenerateParameters(maxTokens: maxTokens, temperature: 0),
+                parameters: parameters,
                 context: context)
             var text = ""
             for await item in stream {

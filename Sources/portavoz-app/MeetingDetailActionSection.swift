@@ -1,6 +1,23 @@
 import ApplicationKit
 import SwiftUI
 
+/// The current translations an export may use, and the one it will.
+struct MeetingDetailExportTranslation {
+    let languages: [String]
+    let chosen: String?
+    let choose: @MainActor (String?) -> Void
+}
+
+extension MeetingDetailFlowState {
+    func exportTranslation(for detail: MeetingReviewReadModel) -> MeetingDetailExportTranslation {
+        let state = MeetingTranscriptTranslationState(detail)
+        return MeetingDetailExportTranslation(
+            languages: state.languages.filter(state.isCurrent),
+            chosen: exportTranslationLanguage,
+            choose: { [weak self] in self?.exportTranslationLanguage = $0 })
+    }
+}
+
 enum MeetingDetailExportAction {
     case recap
     case markdown
@@ -17,6 +34,7 @@ struct MeetingDetailActionValues {
     let hasSummary: Bool
     let hasCorrections: Bool
     let includeCorrectionProvenance: Bool
+    let exportTranslation: MeetingDetailExportTranslation
     let skillOffers: [MeetingSkillOffer]
 }
 
@@ -55,6 +73,12 @@ struct MeetingDetailActionSection: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-actions")
+        // A translation that goes out of date stops being what the export sends.
+        .onChange(of: values.exportTranslation.languages) { _, current in
+            if let chosen = values.exportTranslation.chosen, !current.contains(chosen) {
+                values.exportTranslation.choose(nil)
+            }
+        }
     }
 
     @ViewBuilder
@@ -115,6 +139,9 @@ struct MeetingDetailActionSection: View {
                         : "detail-export-correction-provenance-off")
                 .accessibilityLabel(Text("Include edit history"))
                 .accessibilityValue(values.includeCorrectionProvenance ? Text("On") : Text("Off"))
+            if !values.exportTranslation.languages.isEmpty {
+                transcriptLanguageMenu
+            }
             Button("Export meeting file (.portavoz)…") {
                 actions.export(.meetingBundle(includeAudio: false))
             }
@@ -135,6 +162,32 @@ struct MeetingDetailActionSection: View {
         .fixedSize()
         .accessibilityIdentifier("detail-export-menu")
         .help(L10n.text("Export or share this meeting"))
+    }
+
+    /// Applies to Markdown, PDF, subtitles and Gist; meeting files keep the original.
+    private var transcriptLanguageMenu: some View {
+        Menu("Transcript language") {
+            languageButton(nil, title: L10n.text("Original"), identifier: "detail-export-translation-original")
+            ForEach(values.exportTranslation.languages, id: \.self) { code in
+                languageButton(
+                    code, title: MeetingTranscriptTranslationControls.name(code),
+                    identifier: "detail-export-translation-\(code)")
+            }
+        }
+        .accessibilityIdentifier("detail-export-translation")
+    }
+
+    private func languageButton(_ code: String?, title: String, identifier: String) -> some View {
+        Button {
+            values.exportTranslation.choose(code)
+        } label: {
+            if values.exportTranslation.chosen == code {
+                Label(title, systemImage: "checkmark")
+            } else {
+                Text(title)
+            }
+        }
+        .accessibilityIdentifier(identifier)
     }
 
     private var deleteButton: some View {

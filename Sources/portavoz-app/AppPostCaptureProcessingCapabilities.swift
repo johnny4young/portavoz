@@ -100,7 +100,8 @@ final class AppPostCaptureProcessingCapabilities:
             outputLanguage: MeetingLanguagePreferences.resolvedSummaryLanguage(
                 spokenLanguage: spokenLanguage).identifier,
             vocabulary: VocabularyPrompt.parse(
-                UserDefaults.standard.string(forKey: "customVocabulary") ?? ""))
+                UserDefaults.standard.string(forKey: "customVocabulary") ?? ""),
+            detail: SummaryDetailPreference.current())
     }
 
     func runPostMeetingAction(for meetingID: MeetingID) async {

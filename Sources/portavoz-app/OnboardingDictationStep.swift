@@ -5,6 +5,8 @@ import SwiftUI
 struct OnboardingDictationStep: View {
     @Environment(AppServices.self) private var services
     @AppStorage(DictationController.defaultsKey) private var enabled = false
+    @AppStorage(LiveSpeechSelection.dictationKey) private var liveEngine =
+        LiveSpeechSelection.dictationDefault.rawValue
     let modelPhase: OnboardingModelPreparation.Phase
     let prepareModels: () -> Void
 
@@ -35,7 +37,28 @@ struct OnboardingDictationStep: View {
                     identifierPrefix: "onboarding-dictation",
                     readiness: readiness,
                     prepareModel: prepareModels)
+                if modelPhase == .ready, liveEngine == LiveSpeechSelection.parakeetUltra.rawValue {
+                    ultraOffer
+                }
             }
+        }
+        .task { await services.refreshParakeetUltraModel() }
+    }
+
+    /// Optional: the button is the consent for the download, and dictation
+    /// keeps using Parakeet until it finishes.
+    @ViewBuilder private var ultraOffer: some View {
+        switch services.parakeetUltraModel {
+        case .missing, .failed:
+            Button("Download Parakeet Ultra (more accurate, 613 MB)") { services.startParakeetUltraDownload() }
+                .accessibilityIdentifier("onboarding-dictation-ultra")
+        case .downloading(let percent):
+            Text(L10n.format("Downloading Parakeet Ultra (613 MB)… %d%%", percent))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("onboarding-dictation-ultra-progress")
+        case .ready, .unknown:
+            EmptyView()
         }
     }
 

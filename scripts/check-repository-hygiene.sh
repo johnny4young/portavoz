@@ -21,6 +21,13 @@ if [[ -n "$tracked_ignored" ]]; then
   failures=1
 fi
 
+conflict_markers="$(git grep -nEI '^(<{7}|\|{7}|>{7})( |$)' -- . 2>/dev/null || true)"
+if [[ -n "$conflict_markers" ]]; then
+  echo "Unresolved merge-conflict markers in tracked files:" >&2
+  echo "$conflict_markers" >&2
+  failures=1
+fi
+
 # Ticket keys and local execution-band identifiers belong in private planning,
 # not tracked repository files. Durable public architecture references such as
 # D116 and Band 6 are intentionally not ticket keys and remain valid project
@@ -115,6 +122,7 @@ python3 scripts/ui_test_scope.py --validate-catalog
 python3 -m unittest Tests.Tooling.test_collect_field_evidence
 python3 -m unittest Tests.Tooling.test_release_reliability
 python3 -m unittest Tests.Tooling.test_make_release
+python3 -m unittest Tests.Tooling.test_deployment_floor
 python3 -m unittest Tests.Tooling.test_site_interactions
 python3 -m unittest Tests.Tooling.test_dev_install
 python3 -m unittest Tests.Tooling.test_candidate_automation
@@ -169,7 +177,7 @@ bash -n scripts/run-commitment-radar-benchmark.sh
 python3 -m unittest Tests.Tooling.test_dictation_corpus \
   Tests.Tooling.test_dictation_materialization Tests.Tooling.test_dictation_model_runner \
   Tests.Tooling.test_dictation_controller_runner Tests.Tooling.test_dictation_controller_matrix \
-  Tests.Tooling.test_dictation_benchmark
+  Tests.Tooling.test_dictation_benchmark Tests.Tooling.test_dictation_field_corpus
 python3 scripts/dictation_corpus.py verify-public
 python3 -m unittest Tests.Tooling.test_dictation_search_quality
 python3 scripts/dictation_search_quality.py verify-public

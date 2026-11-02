@@ -887,6 +887,48 @@ final class ParakeetSegmentMapperTests: XCTestCase {
         XCTAssertEqual(segments[1].startTime, 1.0)
     }
 
+    func testALateClosingMarkStaysWithItsSentence() {
+        let timings = [
+            timing("▁is", 18.6, 19.0),
+            timing("▁there", 19.0, 19.6),
+            timing("▁one", 19.6, 20.0),
+            timing("▁here", 20.0, 20.24),
+            timing("?", 21.12, 21.44),
+            timing("▁okay", 21.44, 22.0),
+        ]
+        let segments = ParakeetSegmentMapper.segments(
+            fromBatchText: "is there one here? okay",
+            tokenTimings: timings,
+            audioDuration: 23,
+            confidence: 0.9,
+            meetingID: meeting,
+            channel: .system,
+            language: nil
+        )
+        XCTAssertEqual(segments.map(\.text), ["is there one here?", "okay"])
+        XCTAssertEqual(segments[0].endTime, 20.24)
+    }
+
+    func testPunctuationNeverBecomesARowAndOpeningMarksLeadTheirSentence() {
+        let timings = [
+            timing(".", 0.0, 0.2),
+            timing("▁¿", 2.0, 2.1),
+            timing("▁vienes", 2.8, 3.2),
+            timing("?", 3.2, 3.3),
+        ]
+        let segments = ParakeetSegmentMapper.segments(
+            fromBatchText: ". ¿vienes?",
+            tokenTimings: timings,
+            audioDuration: 4,
+            confidence: 0.9,
+            meetingID: meeting,
+            channel: .system,
+            language: nil
+        )
+        XCTAssertEqual(segments.map(\.text), ["¿ vienes?"])
+        XCTAssertEqual(segments[0].startTime, 2.8)
+    }
+
     func testBatchWithoutTimingsYieldsSingleSegment() {
         let segments = ParakeetSegmentMapper.segments(
             fromBatchText: "todo el archivo",

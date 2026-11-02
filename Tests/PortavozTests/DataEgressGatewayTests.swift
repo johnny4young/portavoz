@@ -100,6 +100,31 @@ final class DataEgressGatewayTests: XCTestCase {
         XCTAssertEqual(captured.metadata.providerDisclosure.providerID, "localhost")
     }
 
+    func testCompanionClientNeverReturnsModelReasoning() async throws {
+        func client(answering content: String) -> CompanionBYOKClient {
+            let payload = try? JSONSerialization.data(
+                withJSONObject: ["choices": [["message": ["content": content]]]])
+            return CompanionBYOKClient(
+                endpoint: URL(string: "http://localhost:11434/v1")!,
+                model: "qwen-local",
+                apiKey: "local",
+                gateway: CapturingDataEgressGateway(responseData: payload ?? Data()))
+        }
+        let context = CompanionDataEgressContext(meetingID: meetingID, consentSource: .companionBYOKSettings)
+
+        let answer = try await client(answering: "<think>var or let?</think>\nUse let by default.")
+            .completeCompanionQuestion(system: "Static", user: "var o let?", maxTokens: 100, context: context)
+        XCTAssertEqual(answer, "Use let by default.")
+
+        do {
+            _ = try await client(answering: "<think>var or let? Maybe")
+                .completeCompanionQuestion(system: "Static", user: "var o let?", maxTokens: 100, context: context)
+            XCTFail("unfinished reasoning must not become an answer")
+        } catch {
+            XCTAssertTrue(error.localizedDescription.contains("reasoning never finished"))
+        }
+    }
+
     func testSummaryProviderRoutesCompleteMaterialWithRemoteMetadata() async throws {
         let structured = #"{"overview":"Listo","sections":[],"actionItems":[]}"#
         let response = try JSONSerialization.data(withJSONObject: [

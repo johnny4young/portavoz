@@ -207,6 +207,8 @@ public actor WhisperEngine {
         if let audioFile = try? AVAudioFile(forReading: url) {
             duration = Double(audioFile.length) / audioFile.processingFormat.sampleRate
         }
+        let faint = FaintSpeechFilter.filter(segments, samples: samples, sampleRate: Double(WhisperKit.sampleRate))
+        segments = faint.kept
         segments.sort { $0.startTime < $1.startTime }
         let text = segments.map(\.text).joined(separator: " ")
 
@@ -215,7 +217,10 @@ public actor WhisperEngine {
             segments: segments,
             audioDuration: duration,
             processingTime: processingTime,
-            detectedSpeechSeconds: regions.map { $0.reduce(0) { $0 + $1.upperBound - $1.lowerBound } }
+            // Rows rejected as room noise are not speech Refine lost.
+            detectedSpeechSeconds: regions.map {
+                max(0, $0.reduce(0) { $0 + $1.upperBound - $1.lowerBound } - faint.droppedSeconds)
+            }
         )
     }
 

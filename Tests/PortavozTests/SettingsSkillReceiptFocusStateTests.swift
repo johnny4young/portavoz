@@ -89,10 +89,6 @@ final class SettingsSkillReceiptFocusStateTests: XCTestCase {
     private func eventually(
         _ predicate: @escaping @MainActor () -> Bool
     ) async -> Bool {
-        for _ in 0..<20_000 {
-            if predicate() { return true }
-            await Task.yield()
-        }
-        return false
+        await TestPolling.until(predicate)
     }
 }

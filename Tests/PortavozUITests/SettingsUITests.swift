@@ -60,8 +60,8 @@ final class SettingsUITests: PortavozUITestCase {
     @MainActor
     func testParakeetUltraIsAnExplicitDictationOnlyDownload() throws {
         let app = try XCUIApplication.portavoz(openSettings: true)
-        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
-            #"{"globalDictationEnabled":true,"dictationLiveSpeechEngine":"parakeetUltra"}"#
+        // No engine preference: Ultra is the dictation default (D613).
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
         app.launchPortavoz()
         defer { finishUITestApplication(app) }
 
@@ -217,9 +217,12 @@ final class SettingsUITests: PortavozUITestCase {
         _ = try uiSnapshotElement("settings-category-integrations", in: intelligence)
         _ = try uiObservation(
             of: app,
-            requiring: ["settings-summary-engine-picker", "settings-summary-language", "settings-whisper-turbo"],
+            requiring: [
+                "settings-summary-engine-picker", "settings-summary-language",
+                "settings-summary-detail", "settings-whisper-turbo"
+            ],
             timeout: 5,
-            message: "Intelligence must expose summary engine/output language and proactive Whisper preparation")
+            message: "Intelligence must expose summary engine, output language, detail and Whisper preparation")
         let whisperDownload = app.control(withIdentifier: "settings-whisper-download-turbo")
         XCTAssertTrue(
             whisperDownload.exists,

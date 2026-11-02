@@ -418,3 +418,58 @@ PORTAVOZ_ASR_COMPARE_OUTPUT=/absolute/scratch/compare.json \
 
 `PORTAVOZ_ASR_COMPARE_CASES` limits the run to a comma-separated list of cells.
 A cell that fails records only the error type, never provider text.
+
+Set `PORTAVOZ_ASR_COMPARE_MODEL=v3` or `ultra` to measure one model in its own
+process. The receipt then records that model's load time, its physical footprint
+before load, after load and after the cells, and the process peak. Running both
+models in one process mixes their footprints. Core ML maps the weights outside
+the process footprint, so the steady numbers stay small and the peak mostly
+reflects loading; a Dev diagnostics snapshot during a dictation gives the in-app
+figure.
+
+### Record the speech families with a real microphone
+
+The synthetic voices cannot show how a model handles a person and a microphone.
+A field recording is one person reading each of the 56 speech families once,
+as they would dictate it. Recordings and the manifest stay in a private local
+directory; never commit them:
+
+```sh
+xcrun swift scripts/record-dictation-field-corpus.swift --output /absolute/scratch/field-audio
+python3 scripts/dictation_field_corpus.py build --audio-root /absolute/scratch/field-audio \
+  --microphone built-in
+```
+
+The recorder asks for microphone access for the terminal, shows one sentence at a
+time and saves `<family>.field.wav` as 16 kHz mono PCM16. Rerunning it skips
+families already recorded; `--redo <family>` records one again. `build` names any
+family still missing instead of publishing a partial manifest. The resulting
+`dictation-field-audio-manifest` has no synthesis recipe and declares the
+microphone as `built-in` or `external`.
+
+### Run the comparison and the T38 decision rule
+
+`run_dictation_model_comparison.py` admits either manifest and, per model, runs a
+one-cell warm-up process and then the measured process, each with a minimal
+environment. The warm-up fills Core ML's compiled cache, so the measured load is
+the one a dictation pays after an idle release. The warm-up's load is reported as
+the first load, which is cold only when Core ML has not compiled that copy before.
+It validates every receipt and writes a content-free
+`report.json`:
+
+```sh
+python3 scripts/run_dictation_model_comparison.py \
+  --audio-root /absolute/scratch/field-audio \
+  --models /absolute/scratch/models \
+  --test-bundle "$RELEASE_TEST_BUNDLE" --xctest "$(xcrun --find xctest)" \
+  --output /absolute/scratch/new-ultra-comparison
+```
+
+The report gives each model's reference-weighted WER, overall and per cohort,
+exact matches, failed cells, critical cells with errors, load times and
+footprints, plus the cells where Ultra is better or worse. A failed cell counts
+every reference word as an error. On a field manifest it also applies the rule
+fixed before any field data was seen (D612): Ultra becomes the dictation default
+only if it cuts WER by at least 15% relative in English, Spanish and mixed, has no
+more critical cells with errors than v3, peaks at most 150 MiB above v3 and warm
+loads at most 1 s slower. Synthetic evidence always reports `not-applicable`.

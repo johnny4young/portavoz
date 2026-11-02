@@ -1457,6 +1457,12 @@ terminal run, immutable snapshot, and action items. A provider or publish
 failure stores one standalone failed/cancelled run best effort, while the prior
 imported aggregate cannot roll back (D64).
 
+`rewriteCurrentSummary(meetingID:_:)` reads the newest live snapshot, applies
+a deterministic rewrite and inserts the result as that recipe's next version
+in one write (D609). The new row links the original snapshot's generation run,
+so its correction freshness is unchanged, and carries claim feedback over. A
+deleted meeting, no summary or a rewrite that returns nil writes nothing.
+
 Meeting-bundle import uses the superset
 `saveImportedMeetingBundle(_:at:)` Unit of Work (D51). Before writing it
 validates the relative audio directory; unique speaker/segment/note/card/action
@@ -2048,6 +2054,20 @@ admission query still rejects them. Query-plan regression uses the production
 request and requires indexed search rather than a full Library scan. This is
 access-path evidence, not a measured UI latency claim.
 
+Trimming a silent tail (D607) is stricter: `canTrimMeetingAudio` adds to the
+compression admission a live meeting that owns the directory, lifecycle
+`ready` and no pending or running processing job. `trimMeetingTail` is one
+write fenced on the expected transcript revision (`staleRefineDraft` on a
+mismatch). The same write rechecks lifecycle `ready` and absence of pending or
+running jobs after asynchronous audio staging; a changed admission fails with
+`audioTrimUnavailable` before any transcript mutation. This closes work
+queued during staging, but does not reserve exclusive audio ownership between
+the completed database write and the subsequent file swap. The write tombstones rows with `startTime >= cutoff`, clips rows whose
+`endTime` crosses it while keeping their identity, sets
+`endedAt = startedAt + cutoff`, increments `transcriptRevision` and refreshes
+the correction search projection. A non-positive or non-finite cutoff is
+`invalidTrimCutoff`.
+
 The external bookmark does not outlive an import that can no longer use it.
 `cancelAudioImport` retires it in the cancelling transaction when no owned copy
 was published, and the worker calls `retireFailedAudioImportSource` after a
@@ -2117,7 +2137,11 @@ Unicode scalars and close `mode`, `language` and `delivery` to their known value
 
 `dictationRecords(before:limit:)` pages newest first with a `(createdAt, id)`
 keyset cursor and a 1–100 limit. No audio, window title, URL or surrounding text
-is stored; the destination is the application name and bundle ID.
+is stored; the destination is the application name and bundle ID. `engine` names
+the lane that transcribed the session (`parakeet`, `parakeetUltra` or
+`appleSpeech`), carried on the live runtime by the services layer that acquired
+it, so a session that fell back to v3 or reused a resident v3 says `parakeet`.
+The Settings choice fills it only for runtimes without a lane (fixtures).
 
 Isolation: sync aggregates, per-meeting export/import, Spotlight, MCP/CLI,
 support diagnostics and settings transfer name their tables, so none reads
@@ -2223,6 +2247,10 @@ or a 64-character digest, `createdAt`; cascades from `meeting`) and
 reading fingerprint without reconciling the meeting lifecycle, returns an active
 job as is and resets a settled one; `cancelTranscriptTranslation` cancels pending
 and running ones, so a running worker loses its lease.
+`validateTranscriptTranslationLease` reads the same running-state, owner and
+expiry fence used by publication before each translator call without renewing or
+mutating the job, and reports a job purged with its meeting as a lost lease. Lease
+loss leaves cancellation or a replacement owner's work intact.
 `completeTranscriptTranslationJob` requires the owned lease, the job's kind,
 meeting and fingerprint, the current `transcriptRevision`, and the current
 correction revision, then replaces that language's translation and succeeds the

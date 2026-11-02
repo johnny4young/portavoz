@@ -56,10 +56,7 @@ struct SelectionRewriteControllerTests {
     }
 
     private func eventually(_ condition: @MainActor () -> Bool) async throws {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
-        while !condition(), ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(5))
-        }
+        _ = await TestPolling.until(condition)
         try #require(condition())
     }
 
@@ -180,7 +177,7 @@ struct SelectionCopyClipboardTests {
     }
 }
 
-@Suite(.serialized, .timeLimit(.minutes(1)))
+@Suite(.serialized, .exclusiveArgumentDomain, .timeLimit(.minutes(1)))
 @MainActor
 struct SelectionRewriteSayHowTests {
     private final class Recorder {
@@ -211,10 +208,7 @@ struct SelectionRewriteSayHowTests {
     }
 
     private func eventually(_ condition: @MainActor () -> Bool) async throws {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
-        while !condition(), ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(5))
-        }
+        _ = await TestPolling.until(condition)
         try #require(condition())
     }
 
@@ -333,7 +327,8 @@ struct SelectionRewriteSayHowTests {
         defer { rewrite.cancel() }
         rewrite.start(using: dependencies(recorder))
         try await eventually { rewrite.phase == .choosing }
-        _ = rewrite.instructionDependencies(DictationControllerHarness(text: "").dependencies)
+        let harness = DictationControllerHarness(text: "")
+        _ = rewrite.instructionDependencies(harness.dependencies)
         #expect(rewrite.phase == .listening)
         try await eventually { rewrite.phase == .choosing }
         #expect(recorder.recipes.isEmpty)

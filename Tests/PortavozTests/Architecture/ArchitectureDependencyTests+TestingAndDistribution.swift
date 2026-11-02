@@ -82,6 +82,96 @@ extension ArchitectureDependencyTests {
         XCTAssertFalse(focusTests.contains("Task.sleep"))
     }
 
+    func testParallelSuitesSharingTheArgumentDomainRunExclusively() throws {
+        let root = "Tests/PortavozTests"
+        let sources = try Self.sourceMatches(under: root, pattern: #"(?m)^import Testing$"#)
+            .filter { $0 != "ExclusiveArgumentDomain.swift" }
+            .reduce(into: [String: String]()) { $0[$1] = try Self.contents(of: "\(root)/\($1)") }
+        XCTAssertEqual(
+            try Self.suitesSharingTheArgumentDomainWithoutExclusivity(sources), [],
+            "The argument domain is process-wide; parallel suites that write it need .exclusiveArgumentDomain")
+    }
+
+    func testArgumentDomainRatchetChecksEachSuiteAndItsExtensions() throws {
+        let sources = [
+            "Mixed.swift": """
+                @Suite(.serialized, .exclusiveArgumentDomain, .timeLimit(.minutes(1)))
+                @MainActor
+                struct GuardedSuite {
+                    @Test func writes() { _ = DictationControllerHarness(text: "") }
+                }
+
+                @Suite(.serialized)
+                struct UnguardedSuite {
+                    @Test func writes() { _ = UserDefaults.argumentDomain }
+                }
+
+                struct QuietSuite {
+                    @Test func reads() {}
+                }
+                """,
+            "Guarded+More.swift": """
+                extension GuardedSuite {
+                    @Test func alsoWrites() { _ = DictationTextSettingsModel(defaults: .standard, temporary: true) }
+                }
+
+                extension QuietSuite {
+                    // DictationControllerHarness( in a comment does not count.
+                    @Test func writes() { _ = DictationControllerHarness(text: "") }
+                }
+                """
+        ]
+        XCTAssertEqual(
+            try Self.suitesSharingTheArgumentDomainWithoutExclusivity(sources),
+            ["Guarded+More.swift: QuietSuite", "Mixed.swift: UnguardedSuite"])
+    }
+
+    /// Splits each file into its top-level declarations, so a guarded suite
+    /// does not cover an unguarded one in the same file, while an extension
+    /// inherits the trait of the suite it extends, wherever it lives.
+    static func suitesSharingTheArgumentDomainWithoutExclusivity(
+        _ sources: [String: String]
+    ) throws -> [String] {
+        let shared = try NSRegularExpression(
+            pattern: #"argumentDomain|DictationControllerHarness\(|temporary: true|storesPreferencesTemporarily"#)
+        let declaration = try NSRegularExpression(
+            pattern: #"^(?:\w+\s+)*(?:struct|class|enum|actor|extension)\s+(\w+)"#)
+        var exclusiveTypes: Set<String> = []
+        var sharingDeclarations: [(file: String, type: String)] = []
+        for (file, source) in sources {
+            var attributes = ""
+            var current: (type: String, body: String)?
+            func close() {
+                guard let current else { return }
+                let range = NSRange(current.body.startIndex..., in: current.body)
+                if shared.firstMatch(in: current.body, range: range) != nil {
+                    sharingDeclarations.append((file, current.type))
+                }
+            }
+            for line in SwiftSourceScanner.codeOnly(source).components(separatedBy: "\n") {
+                let range = NSRange(line.startIndex..., in: line)
+                if line.hasPrefix("@") {
+                    attributes += line
+                } else if let match = declaration.firstMatch(in: line, range: range) {
+                    close()
+                    let type = (line as NSString).substring(with: match.range(at: 1))
+                    if attributes.contains("@Suite("), attributes.contains(".exclusiveArgumentDomain") {
+                        exclusiveTypes.insert(type)
+                    }
+                    attributes = ""
+                    current = (type, line)
+                } else {
+                    current?.body += "\n" + line
+                }
+            }
+            close()
+        }
+        return Set(sharingDeclarations
+            .filter { !exclusiveTypes.contains($0.type) }
+            .map { "\($0.file): \($0.type)" })
+            .sorted()
+    }
+
     func testArchitectureDocumentUsesOnlyDurableTechnicalVocabulary() throws {
         let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
         let forbidden = try NSRegularExpression(

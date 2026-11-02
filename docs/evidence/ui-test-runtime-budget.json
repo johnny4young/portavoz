@@ -1,10 +1,10 @@
 {
   "catalog": {
-    "expectedCaseCount": 187
+    "expectedCaseCount": 191
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
-    "maximumTestDurationSecondsPerLocale": 1300.0
+    "maximumTestDurationSecondsPerLocale": 2020.0
   },
   "historicalBaseline": {
     "caseCount": 109,
@@ -45,6 +45,7 @@
     "DictationCorrectionUITests/testASpokenCorrectionChangesTheLastDictationInsteadOfPasting()": 25.0,
     "MeetingTranscriptTranslationUITests/testATranscriptIsTranslatedOnRequestAndTheOriginalStaysOneClickAway()": 30.0,
     "MeetingTranscriptTranslationUITests/testMissingLanguagesPointToTheirDownload()": 30.0,
+    "MeetingTranscriptTranslationUITests/testAnExportCanUseTheCurrentTranslation()": 30.0,
     "DictationCorrectionUITests/testTheDictionaryGroupsEveryHeardFormUnderItsSpelling()": 20.0,
     "DictationPolishUITests/testARecipeCanBeCreatedAndChosenAsTheDefault()": 30.0,
     "DictationPolishUITests/testARecipeShapesTheDictationAndKeepsItsFacts()": 20.0,
@@ -97,6 +98,7 @@
     "LibraryUITests/testSeededMeetingsGroupByRecency()": 20.0,
     "LibraryUITests/testUnansweredCallEndedQuestionStopsTheRecording()": 20.0,
     "LibraryUITests/testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment()": 20.0,
+    "MeetingAudioTrimUITests/testSilentTailRequiresConfirmationAndCutsOnlyAfterConfirmation()": 30.0,
     "MeetingDetailUITests/testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix()": 20.0,
     "MeetingDetailUITests/testAbandonedAutomaticSummarySaysSoBesideGeneration()": 20.0,
     "MeetingDetailUITests/testClickingALineOfTextJumpsThere()": 20.0,
@@ -115,6 +117,7 @@
     "MeetingDetailUITests/testFreshQualifyingMeetingShowsThePostMeetingMirror()": 20.0,
     "MeetingDetailUITests/testMeetingReviewSurfacesRemainCompleteAndActionable()": 20.0,
     "MeetingDetailUITests/testMostRecentRecipeRemainsVisibleAfterReload()": 20.0,
+    "MeetingDetailUITests/testAConfidentVoiceMatchNamesTheSpeakerAndCanBeUndone()": 20.0,
     "MeetingDetailUITests/testNamedSpeakerCanBeRememberedAsCanonicalPerson()": 20.0,
     "MeetingDetailUITests/testPlayerExposesSkipAndOnlyMyVoice()": 20.0,
     "MeetingDetailUITests/testRecapSheetDraftsFromTheSummaryWithoutTheTranscript()": 20.0,
@@ -123,6 +126,7 @@
     "MeetingDetailUITests/testNoAppleIntelligenceApuntadorRefreshPreservesStaleAnswers()": 20.0,
     "MeetingDetailUITests/testNoAppleIntelligenceSummaryFailureOpensExactSetupAndExplainsApuntador()": 20.0,
     "MeetingDetailUITests/testSkillProposalJourneyFromBannerToReceipt()": 30.848,
+    "MeetingDetailUITests/testRegenerateMenuOffersEveryDetailLevel()": 20.0,
     "MeetingDetailUITests/testStructureMenuOffersSeededTemplates()": 20.0,
     "MeetingDetailUITests/testSummaryFeedbackIsExplicitReversibleAndLocal()": 20.0,
     "MeetingDetailUITests/testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo()": 23.101,

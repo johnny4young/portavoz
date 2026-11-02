@@ -97,3 +97,39 @@ private struct ChipContent: View {
         }
     }
 }
+
+/// A suggestion that was already applied: Undo reverts it, the cross keeps it.
+struct UndoableAppliedChip: View {
+    let kind: ChipLabel.Kind
+    let text: String
+    let undoAccessibilityIdentifier: String
+    let keepAccessibilityLabel: String
+    let keepAccessibilityIdentifier: String
+    let undo: () -> Void
+    let keep: () -> Void
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ChipContent(kind: kind, text: text)
+            Button(L10n.text("Undo"), action: undo)
+                .font(.caption.weight(.semibold))
+                .buttonStyle(.plain)
+                .foregroundStyle(PVDesign.accent)
+                .accessibilityIdentifier(undoAccessibilityIdentifier)
+            Button(action: keep) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(kind.ink.opacity(0.75))
+                    .frame(width: 14, height: 14)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(keepAccessibilityLabel)
+            .accessibilityIdentifier(keepAccessibilityIdentifier)
+        }
+        .padding(.leading, 8)
+        .padding(.trailing, 4)
+        .padding(.vertical, 3)
+        .background(kind.background, in: Capsule())
+    }
+}

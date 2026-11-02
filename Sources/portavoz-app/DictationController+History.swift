@@ -77,7 +77,7 @@ extension DictationController {
             originalText: original,
             mode: textMode,
             language: dependencies.transcriptionHints().language,
-            engine: LiveSpeechPurpose.dictation.selectedEngine(in: dependencies.defaults).rawValue,
+            engine: (sessionEngine ?? LiveSpeechPurpose.dictation.selectedEngine(in: dependencies.defaults)).rawValue,
             applicationName: destination?.name,
             applicationBundleID: destination?.bundleIdentifier,
             delivery: .notDelivered))
