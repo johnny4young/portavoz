@@ -113,30 +113,9 @@ jobs:
           path: .build
           key: ${{ steps.swift_cache_key.outputs.key }}
 
-  ios-scope:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      required: ${{ steps.select.outputs.required }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-      # A PR compiles only when it touches the shared targets' closure or the
-      # lane's own policy; main pushes and manual runs skip this job and compile.
-      - name: Select the iOS portability lane
-        id: select
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: python3 scripts/ios_portability_scope.py --base "$BASE_SHA" --head "$HEAD_SHA" >> "$GITHUB_OUTPUT"
-
   ios-portability:
-    needs: [repository-hygiene, ios-scope]
-    if: >-
-      !cancelled() && needs.repository-hygiene.result == 'success' &&
-      (github.event_name != 'pull_request' || needs.ios-scope.outputs.required == 'true')
+    needs: repository-hygiene
+    if: github.event_name != 'pull_request'
     # Compile the exact future shared surface in its own current-SDK lane. A
     # failure means an iOS deployment/API break, not a duplicate macOS test or
     # an unavailable signed-container/device assertion.

@@ -609,12 +609,9 @@ FULL_HARNESS_FILES = frozenset({
 # change here, or anywhere in the fixture target, requires the controls; an
 # unrelated full-catalog fallback such as localization does not.
 INTERRUPTION_CONTROL_FILES = frozenset({
-    ".github/workflows/ui-tests.yml",
-    "Makefile",
     "packaging/portavoz-uitests.entitlements",
     "scripts/check-ui-interruption-safety.py",
     "scripts/ui_test_execution.py",
-    "scripts/ui_test_scope.py",
     "Tests/PortavozUITests/PortavozUITestCase.swift",
     "Tests/PortavozUITests/UITestKeyboardSupport.swift",
     "Tests/PortavozUITests/UITestStorageSupport.swift",

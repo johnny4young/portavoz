@@ -141,7 +141,7 @@ python3 -m unittest Tests.Tooling.test_ci_swift_cache
 python3 -m unittest Tests.Tooling.test_ci_time_report
 python3 -m unittest Tests.Tooling.test_ci_swift_source_stamps
 python3 -m unittest Tests.Tooling.test_ios_portability
-python3 -m unittest Tests.Tooling.test_ios_portability_scope
+python3 -m unittest Tests.Tooling.test_ui_nightly_health
 python3 -m unittest Tests.Tooling.test_swift_test_scope
 python3 -m unittest Tests.Tooling.test_ui_test_ci_gate
 python3 -m unittest Tests.Tooling.test_ui_test_execution

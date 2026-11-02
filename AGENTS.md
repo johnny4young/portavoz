@@ -50,8 +50,9 @@ library) and asserts against `accessibilityIdentifier`s.
   canaries; changed English copy runs the journeys that quote it plus the
   canaries; the dependency lock, shared-harness, build and unowned resource
   changes run the full English suite. The full catalog also runs nightly
-  on `main` in three shards. `make test-ui-en` and `make test-ui-release` are the
-  explicit full-suite gates.
+  on `main` in three shards; an unverified night or evidence older than 48 hours
+  opens an issue, and new scope reductions wait until it is resolved.
+  `make test-ui-en` and `make test-ui-release` are the explicit full-suite gates.
 - XCUITest runs in English only. Spanish is covered by `LocalizationTests`: every
   visible literal is cataloged, every key has a translated Spanish value with the
   same placeholders, and Spanish may equal English only for an explicit list of

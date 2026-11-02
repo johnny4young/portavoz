@@ -409,14 +409,8 @@ Simulator compile for the four shared targets, and a repository-hygiene/tooling
 gate that runs before macOS allocation). Each behavioral Swift lane owns one
 test invocation, so compilation and tests use the same flags instead of a
 build/test pair that can compile twice. The iOS portability lane owns only its
-sequential destination compiles and cannot claim runtime/device behavior. On a
-pull request it runs only when `scripts/ios_portability_scope.py` finds a change
-in the manifest closure of those targets or in the lane's own policy files;
-`Tests/Tooling/test_ios_portability_scope.py` covers the derived closure
-(compared with `swift package dump-package` on macOS), comments and products,
-unprovable dependency forms, a file moved out of a shared target, skip and run
-cases, a prefix-sibling directory, an undeclared runner target and the
-fail-closed CLI (D596).
+sequential destination compiles and cannot claim runtime/device behavior. It
+runs on every `main` push and manual run and never on a pull request (D615).
 
 ### Hosted CI time report
 
@@ -3208,7 +3202,18 @@ selects everything (D601). The nightly workflow runs the complete catalogue on
 `main` as three shards balanced greedily by
 `docs/evidence/ui-test-runtime-budget.json` (`--all --shard K/N`), classifies
 each shard with the pull-request gate, fails any shard whose result is not
-verified evidence, and runs the interruption controls. The
+verified evidence, and runs the interruption controls, holding at most three
+macOS runners at once. It fires off-peak at 03:23 UTC. Its `alert` job opens or
+updates one issue when any needed job ended as anything but success, cancelled
+included. `ui-nightly-watch.yml` runs on every `main` push, on its own schedule
+and by dispatch, because a schedule that never fires cannot report itself: it
+keeps one issue open while the newest verified run on `main` is older than 48
+hours and closes it once fresh evidence returns. Only a scheduled or dispatched
+run from this repository counts as verified, and only issues the workflow opened
+are reused. An unreadable API fails that job instead of reading as healthy (D615). Pull requests run the interruption
+controls only when one of their behavior files changes:
+`INTERRUPTION_CONTROL_FILES` no longer lists the workflow, the Makefile or the
+selector. The
 Meeting Detail primary column also selects the complete English suite: its
 pane layout decides which detail content exists for every journey that opens a
 meeting, including recording-recovery and Skills journeys (D549). Docs,

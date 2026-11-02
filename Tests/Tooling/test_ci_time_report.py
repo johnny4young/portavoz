@@ -30,7 +30,7 @@ PRODUCT_STEPS = {
     "Refuse to manufacture evidence on a rerun", "Classify functional evidence and hosted runtime drift",
     "Require selected evidence and allow an honest no-UI skip",
 }
-NOT_BLOCKING_JOBS = {"ios-scope", "ios-portability", "verification-anchor"}
+NOT_BLOCKING_JOBS = {"ios-portability", "verification-anchor"}
 
 
 def job(name, created, started, completed, conclusion="success", job_id=None, runner="macos-26", steps=()):

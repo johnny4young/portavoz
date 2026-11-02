@@ -5790,11 +5790,7 @@ inventory or follows source symlinks. Pull requests restore but never save. A
 hit whose fingerprints fail validation is discarded and the job builds cold. UI
 products, iOS portability, release/performance evidence and private model
 or library state are outside this cache. The iOS portability lane runs on every
-`main` push and manual run, and on a pull request only when it changes a source
-directory in the manifest closure of the four compiled targets (either side of a
-rename), the package manifest or lock, or the lane's own runner, selector,
-toolchain verifier or workflow (`scripts/ios_portability_scope.py`). An
-unreadable diff, or a manifest form the selector cannot prove, runs the lane. The quality spec owns measurement and
+`main` push and manual run, and never on a pull request. The quality spec owns measurement and
 invalidation checks; a hit alone is not evidence of a faster or passing build.
 
 Pull-request UI evidence is selected deterministically from changed paths.
@@ -5810,7 +5806,11 @@ language-switch changes, unowned resources and other unknown non-Swift paths
 expand to the complete English catalogue, which also runs every night on
 `main` in three shards balanced by runtime budget
 (`.github/workflows/ui-nightly.yml`). A nightly shard succeeds only with
-verified evidence; a hosted-automation advisory fails the run. XCUITest runs in
+verified evidence; a hosted-automation advisory fails the run. An unverified or
+cancelled night opens or updates one issue, and `ui-nightly-watch.yml` keeps
+another open while verified evidence on `main` is older than 48 hours.
+Pull requests run the interruption controls only when one of their behavior
+files changes. XCUITest runs in
 English only: Spanish parity is a unit-test property of the string catalogs
 (every key translated, matching placeholders, every visible literal
 cataloged, Spanish equal to English only for an explicit list of terms), and
