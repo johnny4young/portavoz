@@ -288,7 +288,7 @@ no cloud service or transcript translation is involved.
 
 ## Build from source
 
-Requires **Xcode 26+ / Swift 6.2 on macOS 26+** with the full Xcode toolchain.
+Requires **Xcode 26.6+ / Swift 6.3 on macOS 26+** with the full Xcode toolchain.
 
 ```sh
 git clone https://github.com/johnny4young/portavoz.git

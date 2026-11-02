@@ -7,7 +7,7 @@ import Testing
 
 /// Recognition is scripted; every case enters the real session, polish and final delivery.
 // The controller harness overrides process-wide NSArgumentDomain, so the suite is serialized.
-@Suite(.serialized, .timeLimit(.minutes(1)))
+@Suite(.serialized, .exclusiveArgumentDomain, .timeLimit(.minutes(1)))
 @MainActor
 struct DictationPolishDeliveryTests {
     private final class Recorder {
@@ -142,10 +142,7 @@ struct DictationPolishDeliveryTests {
     }
 
     private func eventually(_ condition: @MainActor () -> Bool) async throws {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
-        while !condition(), ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(5))
-        }
+        _ = await TestPolling.until(condition)
         try #require(condition(), "The real controller must reach the asserted lifecycle boundary")
     }
 }

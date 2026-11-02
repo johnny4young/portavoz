@@ -41,7 +41,7 @@ struct DictationCorrectionCommandTests {
     }
 }
 
-@Suite(.serialized, .timeLimit(.minutes(1)))
+@Suite(.serialized, .exclusiveArgumentDomain, .timeLimit(.minutes(1)))
 @MainActor
 struct DictationCorrectionDeliveryTests {
     private func dependencies(
@@ -67,10 +67,7 @@ struct DictationCorrectionDeliveryTests {
     }
 
     private func eventually(_ condition: @MainActor () -> Bool) async throws {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
-        while !condition(), ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(5))
-        }
+        _ = await TestPolling.until(condition)
         try #require(condition())
     }
 

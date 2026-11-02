@@ -36,6 +36,17 @@ extension ArchitectureDependencyTests {
             "The resolved dependency must equal the full reviewed SHA")
     }
 
+    func testMLXRequirementStaysExactWithoutDefaultTraits() throws {
+        let manifest = try Self.contents(of: "Package.swift")
+        XCTAssertNotNil(manifest.range(of:
+            #"\.package\(url: "https://github\.com/ml-explore/mlx-swift-lm\.git", exact: "\d+\.\d+\.\d+", traits: \[\]\)"#,
+            options: .regularExpression),
+            "Default traits compile an unused FoundationModels adapter and grammar engine into the app")
+        let provider = try Self.contents(of: "Sources/IntelligenceKit/MLXSummaryProvider.swift")
+        XCTAssertTrue(provider.contains("parameters.prefill.chunking = .remainder"),
+            "Balanced prefill returned more invalid summaries in the D614 comparison")
+    }
+
     /// Statement-anchored: attributes and access modifiers may precede `import`,
     /// but nothing else on the line may. Paired with `codeOnly: true` scanning,
     /// prose or a quoted pattern can never register as an import.

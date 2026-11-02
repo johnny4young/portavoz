@@ -82,8 +82,14 @@ public struct OpenAICompatibleSummaryProvider: SummaryProvider {
     }
 
     static func parseStructured(_ content: String) throws -> StructuredSummary {
+        // Reasoning drafts can hold their own braces, so the prose fallback
+        // below would decode the draft instead of the answer.
+        guard let answer = ReasoningEnvelope.visibleText(content) else {
+            throw IntelligenceError.providerFailed(
+                "the model's reasoning never finished, so it returned no summary")
+        }
         // Models love fencing JSON in ```json blocks despite instructions.
-        let stripped = content
+        let stripped = answer
             .replacingOccurrences(of: "```json", with: "")
             .replacingOccurrences(of: "```", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)

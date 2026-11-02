@@ -97,8 +97,8 @@ public enum DictationPolishPrompt {
     /// Removes wrappers a model adds around the answer and undoes the prompt's
     /// escaping. Quotes stay when the dictation itself was quoted.
     public static func normalize(_ output: String, source: String) -> String {
-        var text = output.trimmingCharacters(in: .whitespacesAndNewlines)
-        text = strippingReasoning(text)
+        // Unfinished reasoning is never pasted; the dictation stays as spoken.
+        guard var text = ReasoningEnvelope.visibleText(output) else { return source }
         text = strippingCodeFence(text)
         text = strippingTag(text)
         text = strippingQuotes(text, source: source.trimmingCharacters(in: .whitespacesAndNewlines))
@@ -108,11 +108,6 @@ public enum DictationPolishPrompt {
     private static let quotePairs: [(Character, Character)] = [
         ("\"", "\""), ("“", "”"), ("«", "»"), ("'", "'"), ("‘", "’")
     ]
-
-    private static func strippingReasoning(_ text: String) -> String {
-        guard text.hasPrefix("<think>"), let end = text.range(of: "</think>") else { return text }
-        return String(text[end.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
-    }
 
     private static func strippingCodeFence(_ text: String) -> String {
         guard text.hasPrefix("```"), text.hasSuffix("```"), text.count >= 6 else { return text }
