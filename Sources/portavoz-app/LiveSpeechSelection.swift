@@ -2,8 +2,8 @@ import Foundation
 import TranscriptionKit
 
 /// This is a live-lane choice, not a replacement for the durable batch model.
-/// Existing installations continue to use Parakeet unless they explicitly
-/// select Apple's fixed-locale engine for one workflow.
+/// Meetings default to Parakeet v3. Dictation defaults to Ultra (D613), which
+/// falls back to v3 until the person downloads it.
 enum LiveSpeechSelection: String, CaseIterable {
     case parakeet
     /// Dictation only; meetings keep v3.
@@ -12,6 +12,7 @@ enum LiveSpeechSelection: String, CaseIterable {
 
     static let meetingKey = "meetingLiveSpeechEngine"
     static let dictationKey = "dictationLiveSpeechEngine"
+    static let dictationDefault = Self.parakeetUltra
 
     static func meeting(defaults: UserDefaults = .standard) -> Self {
         let selection = Self(rawValue: defaults.string(forKey: meetingKey) ?? "") ?? .parakeet
@@ -19,7 +20,7 @@ enum LiveSpeechSelection: String, CaseIterable {
     }
 
     static func dictation(defaults: UserDefaults = .standard) -> Self {
-        Self(rawValue: defaults.string(forKey: dictationKey) ?? "") ?? .parakeet
+        Self(rawValue: defaults.string(forKey: dictationKey) ?? "") ?? dictationDefault
     }
 }
 

@@ -1,3 +1,4 @@
+import PortavozCore
 import XCTest
 
 @testable import TranscriptionKit
@@ -36,10 +37,49 @@ final class SpeechDecodeWindowsTests: XCTestCase {
         XCTAssertEqual(languages, ["en", "en", "en", "en", "es", "en"])
     }
 
-    func testWithoutAnySupportedDetectionWindowsStayAutomatic() {
+    func testWithoutAnySupportedDetectionWindowsTakeTheClosestSupportedLanguage() {
         XCTAssertEqual(
-            SpeechDecodeWindows.languages(detected: ["ja", "pt", nil], allowed: ["en", "es"]),
-            [nil, nil, nil])
+            SpeechDecodeWindows.languages(detected: ["ja", "pt", "gl", nil], allowed: ["en", "es"]),
+            ["en", "es", "es", nil])
+        XCTAssertEqual(
+            SpeechDecodeWindows.languages(detected: ["pt"], allowed: ["en"]),
+            ["en"])
+    }
+
+    func testFaintStretchedRowsAreDroppedButQuietRealPhrasesStay() {
+        let rate = 16_000.0
+        var samples = (0..<Int(rate * 60)).map { index in
+            Float(0.003 * sin(Double(index) * 12.9898).truncatingRemainder(dividingBy: 1))
+        }
+        for range in [2.0..<5.0, 45.0..<50.0] {
+            for index in Int(range.lowerBound * rate)..<Int(range.upperBound * rate) {
+                samples[index] += Float(0.1 * sin(2 * Double.pi * 220 * Double(index) / rate))
+            }
+        }
+        let meetingID = MeetingID()
+        func row(_ start: TimeInterval, _ end: TimeInterval, _ text: String) -> TranscriptSegment {
+            TranscriptSegment(meetingID: meetingID, channel: .microphone, text: text, startTime: start, endTime: end)
+        }
+        let stretch = 2 / FaintSpeechFilter.maximumWordsPerSecond + 0.5
+        let rows = [
+            row(2, 5, "Esto es una grabación"),
+            row(10, 11.5, "Ya estoy cerrando las ventanas"),
+            row(20, 40, "Gracias."),
+            row(51, 51 + stretch, "E aí"),
+            row(45, 50, "Okay."),
+        ]
+
+        let result = FaintSpeechFilter.filter(rows, samples: samples, sampleRate: rate)
+
+        XCTAssertEqual(result.kept.map(\.text), ["Esto es una grabación", "Ya estoy cerrando las ventanas", "Okay."])
+        XCTAssertEqual(result.droppedSeconds, 20 + stretch, accuracy: 0.001)
+    }
+
+    func testFaintFilterKeepsEverythingWithoutAudio() {
+        let row = TranscriptSegment(meetingID: MeetingID(), channel: .system, text: "Hi", startTime: 0, endTime: 9)
+        let result = FaintSpeechFilter.filter([row], samples: [], sampleRate: 16_000)
+        XCTAssertEqual(result.kept.count, 1)
+        XCTAssertEqual(result.droppedSeconds, 0)
     }
 
     func testMajorityTieIsDeterministic() {

@@ -26,6 +26,7 @@ extension MeetingDetailModel {
         case acceptNameSuggestion(Speaker, name: String)
         case acceptVoiceSuggestion(Speaker, name: String)
         case renameSpeaker(Speaker, name: String)
+        case undoVoiceAutoAssign(speakerLabel: String)
         case correctTranscript(CorrectMeetingTranscriptRequest)
         case restructureTranscript(RestructureMeetingTranscriptRequest)
         case findCanonicalPeople(Speaker, source: PersonAliasSource)
@@ -72,6 +73,7 @@ extension MeetingDetailModel {
         case loadPlayback
         case refreshCompressionPermission
         case compressAudio
+        case trimTrailingSilence
         case exportAudioClip(ClosedRange<TimeInterval>, to: URL)
         case checkVoiceMemoryOffer(name: String)
         case rememberVoice(SpeakerID)
@@ -102,6 +104,10 @@ extension MeetingDetailModel {
 
         static func renameSpeaker(_ speaker: Speaker, name: String) -> Self {
             .content(.editing(.renameSpeaker(speaker, name: name)))
+        }
+
+        static func undoVoiceAutoAssign(speakerLabel: String) -> Self {
+            .content(.editing(.undoVoiceAutoAssign(speakerLabel: speakerLabel)))
         }
 
         static func correctTranscript(
@@ -250,6 +256,7 @@ extension MeetingDetailModel {
         static var loadPlayback: Self { .review(.audio(.loadPlayback)) }
         static var refreshAudioCompressionPermission: Self { .review(.audio(.refreshCompressionPermission)) }
         static var compressAudio: Self { .review(.audio(.compressAudio)) }
+        static var trimTrailingSilence: Self { .review(.audio(.trimTrailingSilence)) }
 
         static func exportAudioClip(
             _ range: ClosedRange<TimeInterval>,
@@ -295,6 +302,7 @@ extension MeetingDetailModel {
         case voiceRemembered
         case voiceMemoryInsufficientAudio
         case audioCompressed(Int64)
+        case audioTrimmed(TimeInterval)
         case audioClipExported(URL)
         case operationFailed(String)
     }

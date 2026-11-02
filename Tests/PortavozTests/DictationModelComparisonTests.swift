@@ -1,13 +1,15 @@
 import Foundation
 import ModelStoreKit
 import os
+import PlatformKit
 import XCTest
 
 @testable import PortavozCLIKit
 @testable import TranscriptionKit
 
-/// Explicit local lane: v3 and Ultra over the same public cells and feed. Both
-/// models come from a selected scratch store; nothing here downloads.
+/// Explicit local lane: v3 and Ultra over the same cells and feed. Both models come
+/// from a selected scratch store; nothing here downloads. Selecting one model per
+/// process keeps each footprint free of the other model's allocations.
 final class DictationModelComparisonTests: XCTestCase {
     private struct CellReceipt: Encodable {
         let model: String
@@ -27,11 +29,16 @@ final class DictationModelComparisonTests: XCTestCase {
         let model: String
         let revision: String
         let loadSeconds: Double
+        let footprintBeforeLoadBytes: UInt64
+        let footprintAfterLoadBytes: UInt64
+        let footprintAfterCellsBytes: UInt64
+        let peakFootprintBytes: UInt64
     }
 
     private struct Receipt: Encodable {
         let kind = "dictation-model-comparison-observation"
-        let schemaVersion = 1
+        let schemaVersion = 2
+        let corpus: DictationModelFixture.Corpus
         let corpusSHA256 = DictationModelFixture.sourceDigest
         let manifestSHA256: String
         let feed = "realtime-100ms-bounded-pcm"
@@ -62,26 +69,40 @@ final class DictationModelComparisonTests: XCTestCase {
             let store = ModelStore(rootDirectory: URL(fileURLWithPath: models, isDirectory: true))
             var loaded: [ModelReceipt] = []
             var cells: [CellReceipt] = []
-            let compared: [(ModelDescriptor, ParakeetCheckpoint)] = [
+            var compared: [(ModelDescriptor, ParakeetCheckpoint)] = [
                 (ModelCatalog.parakeetTdtV3, .v3), (ModelCatalog.parakeetUltra, .ultra)
             ]
+            if let selected = environment["PORTAVOZ_ASR_COMPARE_MODEL"] {
+                compared = compared.filter { $0.1.rawValue == selected }
+                guard compared.count == 1 else {
+                    XCTFail("PORTAVOZ_ASR_COMPARE_MODEL must name v3 or ultra")
+                    return
+                }
+            }
             for (descriptor, checkpoint) in compared {
                 guard let installation = await store.verifiedInstallation(descriptor) else {
                     XCTFail("a compared model did not pass pinned verification; nothing downloaded")
                     return
                 }
+                let before = try OwnProcessResourceUsage.current().physicalFootprintBytes
                 let started = ContinuousClock.now
                 let engine = try await ParakeetEngine.load(
                     fromVerifiedDirectory: installation.directory, checkpoint: checkpoint)
-                loaded.append(ModelReceipt(
-                    model: descriptor.id, revision: installation.descriptorRevision,
-                    loadSeconds: DictationModelProbe.seconds(started.duration(to: .now))))
+                let loadSeconds = DictationModelProbe.seconds(started.duration(to: .now))
+                let afterLoad = try OwnProcessResourceUsage.current().physicalFootprintBytes
                 for id in ids {
                     cells.append(try await observe(id: id, model: descriptor.id, fixture: fixture, engine: engine))
                 }
+                let afterCells = try OwnProcessResourceUsage.current().physicalFootprintBytes
+                let peak = try XCTUnwrap(
+                    OwnProcessResourceUsage.current(extendedCounters: true).lifetimeMaxPhysicalFootprintBytes)
+                loaded.append(ModelReceipt(
+                    model: descriptor.id, revision: installation.descriptorRevision,
+                    loadSeconds: loadSeconds, footprintBeforeLoadBytes: before, footprintAfterLoadBytes: afterLoad,
+                    footprintAfterCellsBytes: afterCells, peakFootprintBytes: peak))
             }
             try CLIPrivateJSONWriter.write(
-                Receipt(manifestSHA256: fixture.manifestDigest, models: loaded, cells: cells),
+                Receipt(corpus: fixture.corpus, manifestSHA256: fixture.manifestDigest, models: loaded, cells: cells),
                 to: URL(fileURLWithPath: output))
         } catch {
             // Never ask XCTest to interpolate provider errors or hypothesis text.

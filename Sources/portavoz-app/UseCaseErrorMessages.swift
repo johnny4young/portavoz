@@ -15,6 +15,10 @@ enum UseCaseErrorMessages {
         switch error {
         case MeetingAudioCompressionError.unavailable:
             L10n.text("Complete the audio import before compressing it.")
+        case TrimMeetingAudioTailError.nothingToTrim:
+            L10n.text("There is no long silence at the end to remove.")
+        case TrimMeetingAudioTailError.unavailable:
+            L10n.text("Wait for processing to finish before removing silence.")
         default: nil
         }
     }

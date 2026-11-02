@@ -10,6 +10,14 @@ The existing persistence suite also admits an already-due retry in its
 capability-filtered scheduling test. These regressions establish storage
 behavior, not application-timer, process-kill or hardware performance evidence.
 
+`TranscriptTranslationWorkerTests` holds a fake translator's first response,
+cancels the persisted job, then releases it. The worker must skip the next row,
+preserve the cancellation without retry or meeting-lifecycle changes, publish no
+cancelled artifact, and drain the next meeting's translation. Lease reclamation
+by another owner and a meeting purged mid-translation also stop it without a
+processing issue. It uses an in-memory store and no real audio, UI, models or
+translation service.
+
 `ProcessingWakeScheduleTests` checks the shared drain-failure retry against
 explicit timestamps: five seconds, doubling per consecutive failure up to one
 minute. `AudioImportQueueModelTests` proves a failed drain retries without
@@ -267,6 +275,26 @@ Executable bytes and file identity are checked before and after the child; a
 concurrent replacement cannot retain a prelaunch digest as admitted evidence.
 Binary identity remains separate from source/commit qualification. Commands and limitations
 live in the corpus README.
+
+**Parakeet v3 and Ultra comparison with field recordings.**
+`DictationModelComparisonTests` runs v3 or Ultra, one model per process when
+`PORTAVOZ_ASR_COMPARE_MODEL` is set, through the installed-model feed and scoring.
+Receipt schema 2 adds the physical footprint before load, after load, after the
+cells and at the process peak; the runner precedes each measured process with a
+one-cell warm-up process, so the measured load is the warm one. The fixture also admits
+a `dictation-field-audio-manifest`: one real-microphone reading of each of the 56
+speech families (`<family>.field`), recorded by
+`scripts/record-dictation-field-corpus.swift` and admitted by
+`scripts/dictation_field_corpus.py`. Field audio is personal and never committed.
+`scripts/run_dictation_model_comparison.py` validates both receipts and writes a
+content-free report with reference-weighted WER per cohort, failed and critical
+cells, loads, footprints and the pre-registered T38 rule (D612). Synthetic
+evidence can never promote Ultra. Core ML maps the weights outside the process
+footprint: on the Mac that ran the first smoke both models stayed near 28 MB after
+load and the peak mostly reflects loading, so a Dev-app diagnostics snapshot
+during an Ultra dictation confirms the in-app number. `Tests.Tooling.test_dictation_field_corpus`
+covers admission, the rule and the per-model launches with generated audio; it
+measures no model.
 
 The separately versioned offline `dictation_benchmark.py` adapter validates a
 frozen configuration/dataset/run plan and explicit content-free edit counts,
@@ -4342,27 +4370,6 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   `docs/evidence/commitment-quality-research-20260802.json`; its local-model
   result remains `review-required` and its product decision remains
   `not-evaluated` (D236).
-- `make test-stated-priority-quality` validates D606's 100-case public-
-  synthetic stated-priority corpus and runs twenty-three evaluator tests. Each
-  language has 15 priorities, 15 demotions, 10 unresolved questions, and 10
-  abstentions, split 20 development / 80 sealed evaluation cases; 55 families
-  each live in one split. Validation rejects family leakage, abstain truth with
-  evidence, targets outside their evidence, quotes that do not occur exactly
-  once, a focus mention that is not the gold target, and an unadjudicated
-  second-review disagreement. Observations are bound to the fixture digest
-  and split, one per case. A claim whose evidence misses the focal caption or
-  its own target, or any invalid probability, is refused as `invalid-output`,
-  and every abstention not
-  classified as neutral speech scores as `refused`, never as a correct
-  `abstain`. Scorecards keep raw counts and denominators: the four-by-five
-  confusion, unsafe-promotion and priority-recall Wilson intervals, demotion-
-  and question-to-priority slices, coverage, selective error, target and
-  evidence exactness judged apart from the label, decisions that contradict
-  their own probabilities, per-language/label/tag breakdowns, risk-coverage points
-  when probabilities exist, and every case. `make stated-priority-quality-
-  control` scores the no-proposal control (zero promotions, zero credit);
-  `make stated-priority-quality-compare` pairs two arms case by case without
-  a winner.
 - `make test-commitment-link-quality` validates D245's reproducible 36-case
   cross-meeting fixture and runs thirty-one evaluator/contract tests without a
   model, database, or user library. The corpus is balanced across English,
@@ -9383,3 +9390,25 @@ never overwritten. `DictationSearchBenchmarkTests` exercise the observer with a
 deterministic bag-of-words embedding and no rewrites; the real run needs
 installed embedding assets and Apple Intelligence and is not part of CI.
 
+
+### Disposable silent-tail UI journey
+
+The positive silent-tail journey writes two synthetic 600-second WAV channels
+inside its registered app audio root before launch. It observes Cancel without
+changing their hashes, then confirms the real trim to 215 seconds and verifies
+the retained transcript, result and updated player duration. A finite
+`-use-temp-store`-only handshake at the application boundary makes progress
+observable without replacing the real trimmer. Attachments show only the seeded
+app. The test never opens the live SQLite database; native storage tests own
+revision, admission and transcript mutation assertions. Its initial 30-second
+budget follows the existing target for related audio-import journeys and the
+full-suite p95 target. A focused English local run completed in 24.789 seconds;
+its exact success message is exposed through the macOS static-text value rather
+than its empty label. No existing threshold changes. This one run is not a
+performance qualification.
+
+The clip-export menu journey marks Start on a fresh paused six-second recording,
+seeks through the identified waveform to an interior End, and verifies the
+cursor remains fixed while opening the menu. It requires that ordered range
+before asserting Export. Playback and rewind remain covered by the separate
+player journey; this paused case does not qualify marking during playback.

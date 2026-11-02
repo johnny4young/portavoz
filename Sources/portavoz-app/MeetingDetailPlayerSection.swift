@@ -8,6 +8,10 @@ struct MeetingDetailPlayerValues {
     let canCompressAudio: Bool
     let isCompressingAudio: Bool
     let compressionMessage: String?
+    /// Removable silent tail; nil hides the action.
+    let trailingSilence: TimeInterval?
+    let isTrimmingAudio: Bool
+    let trimMessage: String?
 }
 
 struct MeetingDetailPlayerActions {
@@ -15,6 +19,7 @@ struct MeetingDetailPlayerActions {
         ClosedRange<TimeInterval>, URL
     ) async -> String?
     let compressAudio: @MainActor () -> Void
+    let trimSilence: @MainActor () -> Void
 }
 
 /// The complete docked playback surface for one reviewed meeting.
@@ -35,13 +40,33 @@ struct MeetingDetailPlayerSection: View {
                         player: player,
                         waveform: values.waveform,
                         voices: values.voices,
-                        exportClip: actions.exportClip)
+                        exportClip: actions.exportClip,
+                        trailingSilence: values.trailingSilence,
+                        trimSilence: actions.trimSilence)
                     compressionRow
+                    trimRow
                 }
             }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-player-section")
+    }
+
+    @ViewBuilder
+    private var trimRow: some View {
+        if values.isTrimmingAudio {
+            HStack(spacing: 6) {
+                ProgressView().controlSize(.small)
+                Text("Removing silence…")
+            }
+            .font(.caption)
+            .accessibilityIdentifier("detail-trim-progress")
+        } else if let trimMessage = values.trimMessage {
+            Text(trimMessage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("detail-trim-message")
+        }
     }
 
     @ViewBuilder

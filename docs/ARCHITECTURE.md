@@ -168,15 +168,15 @@ remote replacement cannot silently undo a dismissal or deferral.
 | Module | Implemented responsibility |
 |---|---|
 | `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, direct-Web citation/retrieval, language, privacy, sync, immutable transcript-correction, deterministic commitment-replica merge, content-free deferred-Mac-work, secret-identifier, and content-free resource-workload values plus capability ports, pure streaming PCM resampling, the universal lexical transcript-content policy, and deterministic generated-card admission. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, logging, or platform-service framework. |
-| `ApplicationKit` | Delete, restore, purge, summary and explicit Apuntador regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup plus publication-recovery contracts, Ask search/evidence/answer coordination, bounded source-closed live interview question assistance, deterministic semantic-corpus indexing and speaker-safe retrieval-chunk candidate derivation, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, correction-ready Meeting Detail transcript reading snapshots, pure transcript-correction composition, focused text/speaker correction, and accepted-snapshot structural correction commands, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
+| `ApplicationKit` | Delete, restore, purge, summary and explicit Apuntador regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup plus publication-recovery contracts, Ask search/evidence/answer coordination, bounded source-closed live interview question assistance, deterministic semantic-corpus indexing and speaker-safe retrieval-chunk candidate derivation, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, correction-ready Meeting Detail transcript reading snapshots, pure transcript-correction composition, focused text/speaker correction, and accepted-snapshot structural correction commands, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression, silent-tail trimming and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access, microphone authorization, and regular persistent file bookmarks while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
 | `AudioCaptureKit` | Call-safe raw microphone capture, explicit nondefault voice processing for bounded nonmeeting tools, macOS process taps, checked PCM geometry and native buffer views, single-owner failed-source retirement, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
-| `TranscriptionKit` | Live Parakeet, quality Whisper, and an optional macOS 26 SpeechAnalyzer live adapter for fixed installed locales; a CLI-only non-serving Nemotron challenger; a verified Silero voice-activity adapter serving the default-on dictation speech gate, plus whole-file Silero speech regions that limit batch Whisper to speech windows with one supported language each; transcript scheduling; language-aware operation fingerprints; model preparation tokens; segment mapping; structured SpeechAnalyzer input ownership; and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
+| `TranscriptionKit` | Live Parakeet, quality Whisper, and an optional macOS 26 SpeechAnalyzer live adapter for fixed installed locales; a CLI-only non-serving Nemotron challenger; a verified Silero voice-activity adapter serving the default-on dictation speech gate, plus whole-file Silero speech regions that limit batch Whisper to speech windows with one supported language each and drop rows stretched over the channel's noise floor; transcript scheduling; language-aware operation fingerprints; model preparation tokens; segment mapping; structured SpeechAnalyzer input ownership; and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, session-clock-anchored live windowing, and encrypted local voice-gallery support. |
 | `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Apuntador plus pure bounded proactive meeting-assist admission; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
 | `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, immutable transcript-correction history with atomic multi-lane appends and sparse correction-search lineage, explicit topic and decision continuity with immutable evidence and append-only relationship history, explicitly confirmed decision-topic authority, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and correction-fenced Spotlight projections. |
-| `AudioPlaybackKit` | Synchronized channel playback, reversible role-aware clear mixing validated on the timescale it is delivered on, stateless task-cancellable Accelerate waveform generation, silence skipping, voice-only playback, clip export, and AAC compression. |
+| `AudioPlaybackKit` | Synchronized channel playback, reversible role-aware clear mixing validated on the timescale it is delivered on, stateless task-cancellable Accelerate waveform generation, silence skipping, voice-only playback, clip export, AAC compression, and verified tail trimming. |
 | `IntegrationsKit` | Canonical Markdown/PDF, identity-preserving diarized SRT/WebVTT, and issue exports; meeting bundles; EventKit mapping; MCP protocol handling; policy-checked HTTP transport and direct public-page Web retrieval; deterministic sync envelopes; protected CloudKit record/state adapters; and sync lifecycle policy. The current signed-entitlement capability probe is a macOS composition and fails closed on iOS until a signed iOS app adapter exists. |
 | `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners including recording-scoped proactive-assist state, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
 | `portavoz-cli` / `PortavozCLIKit` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface, in a library the app executable also runs when started as `portavoz-cli`. |
@@ -219,6 +219,14 @@ coordinator. That refresh retains the model's cancellation, generation,
 directory and session fences; it adds no task owner and cannot replace a healthy
 player. The initial application admission read and the backend's destructive
 compression check retain their existing authority boundaries.
+
+Trimming a long silent tail goes through the same channel resolver.
+`TrimMeetingAudioTail` stages verified cut copies through AudioPlaybackKit,
+commits the transcript through a revision-fenced StorageKit write, and only
+then swaps the files; a failed transcript write discards the copies and a
+failed swap attempts to restore the originals. If a restore also fails, its
+`.trim-backup-` copy remains beside the channel for recovery; staged cut copies
+are discarded and the original swap error is propagated.
 
 The model's focused skill-preview extension retains the existing read-only
 client request and routes preview failure through its explicit error mutation.
@@ -304,6 +312,8 @@ PlatformKit owns `OwnProcessResourceUsage`: one read of the calling process,
 without process identities or paths. Normal support requests use the stable
 V0 resource prefix; the existing benchmark explicitly requests current extended
 counters through that same bridge and retains failure on unsupported counters.
+Those extended counters include the process's lifetime peak footprint, which the
+v3/Ultra comparison reads with one model per process.
 CPU time is cumulative process work in seconds, not gesture latency or elapsed
 meeting time. A failed read stays unavailable. Per-family memory remains an
 optional owner measurement; process memory is never apportioned among models.
@@ -325,8 +335,9 @@ composition extension. Production composition acquires the shared live-speech
 token through a type-erased live-engine handle that ends it on completion.
 Recording and dictation share that boundary; batch callers retain the concrete
 Parakeet lease. App composition selects Parakeet by default or an explicitly
-chosen, installed Apple Speech locale on macOS 26. Dictation may also select
-the verified Parakeet Ultra checkpoint (`ParakeetCheckpoint.ultra`). One
+chosen, installed Apple Speech locale on macOS 26. Dictation defaults to the
+Parakeet Ultra checkpoint (`ParakeetCheckpoint.ultra`) and runs it only
+once it is verified, falling back to v3 until then. One
 live-speech runtime stays resident and its checkpoint is part of its identity:
 `LiveSpeechCheckpointPlan` lets dictation borrow a v3 runtime a meeting is
 using, swaps an idle runtime, and makes every v3 caller wait for an Ultra
@@ -455,8 +466,9 @@ The implemented application workflows include:
   lead window, session deduplication, and an injected upcoming-event source;
 - crash-safe standing pre-meeting brief execution with exact-event admission,
   bounded daily accounting, local artifact publication, and relaunch recovery;
-- degradable participant-voice suggestions, duplicate-offer admission, and
-  explicit remembered-voice persistence without automatic speaker mutation;
+- degradable participant-voice suggestions with their auto-assign verdict,
+  duplicate-offer admission, and explicit remembered-voice persistence; the
+  use case never renames a speaker itself;
 - asynchronous user-managed secret reads, writes, presence checks, and deletion
   over an injected device-local storage port;
 - scoped Library, Insights, Meeting Detail, and resident menu-bar read contracts;
@@ -1307,7 +1319,8 @@ caret spacing join.
 A meeting transcript can be translated on request: a durable
 `transcript-translation` job, claimed by the post-capture runner only when a
 translator is composed, stores a per-language overlay fenced to the transcript and
-correction revision, and never changes the meeting lifecycle.
+correction revision, and never changes the meeting lifecycle. A document export
+can swap in the current translation; a stale or missing one is refused.
 The app resolves explicit Literal/Clean/Polish mode by session choice, captured bundle-ID
 profile, then global preference. The existing destination capture supplies identity;
 no profile recaptures focus or grants insertion authority. Missing preferences
@@ -4186,12 +4199,15 @@ asynchronous sequence arrives, and the UI renders them in a labeled indigo rail
 rather than as another spoken transcript row.
 
 `TranscriptContentPolicy` is the channel-neutral minimum boundary: text with no
-letter or digit is not speech. Whisper applies it while mapping model output;
+letter or digit is not speech. Whisper and Parakeet batch mapping apply it to
+model output; post-capture transcription applies it to the system channel;
 ApplicationKit applies it again to both Refine channels before microphone-only
 confidence and bleed rules; StorageKit rejects any accepted Refine aggregate
 that still contains a nonlexical row. Intelligence formatting independently
 filters legacy rows and assigns contiguous evidence tags only to admitted
-speech. This defense in depth prevents punctuation-only rows from becoming UI
+speech. `TranscriptContentPolicy.readableSegments` hides legacy nonlexical rows
+from the accepted and composed readings, keeping any row a current correction
+targets so stored corrections still compose. This defense in depth prevents punctuation-only rows from becoming UI
 noise, search material, generated facts, or navigable evidence without using a
 language-specific word list.
 
@@ -5673,6 +5689,10 @@ thermal or battery behavior, physical devices, or two-device convergence.
   drained before their owning workflow returns.
 - Durable jobs are idempotent, fingerprinted, owner-leased, heartbeat-driven,
   and retryable without polling.
+- Transcript translation checks its persisted ownership before each translator
+  call. Lease loss, including a job purged with its meeting, yields to the next
+  serial job without changing cancellation or another owner's work; publication
+  remains atomic.
 - Compiler-dense deterministic collections, including operation fingerprints
   and high-cardinality characterization fixtures, are assembled in explicitly
   typed steps. This preserves order and coverage while keeping compile time
@@ -5799,7 +5819,8 @@ ancestor, and an unavailable default-branch ref fails selection. Manual integrat
 catalogue runs. Every feature scope names a checked-in
 production owner, and
 catalog validation rejects unscoped tests, empty or orphaned scopes, duplicate
-selectors, retired overlapping journeys, and missing or stale runtime budgets.
+selectors, retired overlapping journeys, missing or stale runtime budgets, and
+a full-suite total below the catalogue at the qualified per-case rate.
 `RecordingToolbar` maps specifically to the external-recording geometry
 case plus the live recording-control/recovery cases, without paying for
 unrelated Library grouping or Meeting Detail. The local selector compares the

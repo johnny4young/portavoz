@@ -333,7 +333,8 @@ struct SelectionRewriteSayHowTests {
         defer { rewrite.cancel() }
         rewrite.start(using: dependencies(recorder))
         try await eventually { rewrite.phase == .choosing }
-        _ = rewrite.instructionDependencies(DictationControllerHarness(text: "").dependencies)
+        let harness = DictationControllerHarness(text: "")
+        _ = rewrite.instructionDependencies(harness.dependencies)
         #expect(rewrite.phase == .listening)
         try await eventually { rewrite.phase == .choosing }
         #expect(recorder.recipes.isEmpty)

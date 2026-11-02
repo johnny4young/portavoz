@@ -109,6 +109,19 @@ final class MeetingExporterTests: XCTestCase {
             "Markdown is canonical and passes through unchanged")
     }
 
+    func testATranslatedTranscriptSaysWhichLanguageAndWhereItWasMade() {
+        let (record, speakers, segments, _) = fixture()
+        let translated = MeetingExporter.markdown(
+            meeting: record, speakers: speakers, segments: segments, translationLanguage: "en")
+        XCTAssertTrue(translated.contains("## Transcript (English translation, made on this Mac)"))
+        let original = MeetingExporter.markdown(meeting: record, speakers: speakers, segments: segments)
+        XCTAssertTrue(original.contains("## Transcript\n"))
+        let vtt = SubtitleExport.render(.vtt, segments: segments, speakers: speakers, translationLanguage: "es")
+        XCTAssertTrue(vtt.hasPrefix("WEBVTT\n\nNOTE Portavoz Spanish translation, made on this Mac\n\n"))
+        let srt = SubtitleExport.render(.srt, segments: segments, speakers: speakers, translationLanguage: "es")
+        XCTAssertFalse(srt.contains("NOTE"), "SRT has no comment syntax")
+    }
+
     func testMarkdownWithoutSummarySkipsThatSection() {
         let (record, speakers, segments, _) = fixture()
         let markdown = MeetingExporter.markdown(

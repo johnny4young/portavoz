@@ -121,7 +121,13 @@ enum ParakeetSegmentMapper {
         var groups: [[TokenTiming]] = []
         var current: [TokenTiming] = []
         for timing in tokenTimings {
+            // TDT often times a sentence's closing mark after a pause; it still closes that sentence.
+            if !current.isEmpty, punctuation(timing) == .closing {
+                current.append(timing)
+                continue
+            }
             if let last = current.last,
+                punctuation(last) != .opening,
                 let first = current.first,
                 timing.startTime - last.endTime > pauseSplitSeconds
                     || timing.endTime - first.startTime > maxSegmentSeconds
@@ -134,9 +140,11 @@ enum ParakeetSegmentMapper {
         if !current.isEmpty { groups.append(current) }
 
         return groups.compactMap { group in
-            guard let first = group.first, let last = group.last else { return nil }
             let text = joinedText(of: group)
-            guard !text.isEmpty else { return nil }
+            // Marks are not speech, so they do not stretch the row's span.
+            guard let first = group.first(where: { punctuation($0) == nil }),
+                  let last = group.last(where: { punctuation($0) == nil })
+            else { return nil }
             let meanConfidence =
                 group.map { Double($0.confidence) }.reduce(0, +) / Double(group.count)
             return TranscriptSegment(
@@ -150,6 +158,19 @@ enum ParakeetSegmentMapper {
                 isFinal: true
             )
         }
+    }
+
+    enum Punctuation { case opening, closing }
+
+    /// Inverted question and exclamation marks, brackets and opening quotes.
+    static let openingMarks: Set<Character> = ["\u{BF}", "\u{A1}", "(", "[", "{", "\"", "\u{201C}", "\u{AB}"]
+
+    /// `nil` for a piece that carries letters or digits.
+    static func punctuation(_ timing: TokenTiming) -> Punctuation? {
+        let piece = timing.token.replacingOccurrences(of: "▁", with: "")
+            .trimmingCharacters(in: .whitespaces)
+        guard !TranscriptContentPolicy.hasLexicalContent(piece) else { return nil }
+        return piece.contains(where: openingMarks.contains) ? .opening : .closing
     }
 
     static func endsSentence(_ timing: TokenTiming) -> Bool {

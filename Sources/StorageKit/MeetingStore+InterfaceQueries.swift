@@ -15,6 +15,7 @@ extension MeetingStore {
             version: Int,
             correctionSource: TranscriptCorrectionArtifactSource
         )?
+        public var translations: [TranscriptTranslation] = []
     }
 
     public func meetingLibrarySnapshot(
@@ -54,7 +55,8 @@ extension MeetingStore {
                 corrections: core.corrections,
                 correctionRevision: core.correctionRevision,
                 isRefinedTranscript: core.isRefinedTranscript,
-                summary: summary)
+                summary: summary,
+                translations: try Self.fetchTranscriptTranslations(id, in: db))
         }
     }
 

@@ -21,7 +21,7 @@ public enum SummaryFingerprint {
         let transcript = TranscriptFormatter.format(
             segments: request.segments, speakers: request.speakers)
         let notes = PromptFactory.notesBlock(request.contextItems)
-        let canonical = [
+        var canonical = [
             promptVersion,
             providerID,
             request.recipe.id,
@@ -29,6 +29,10 @@ public enum SummaryFingerprint {
             notes,
             transcript
         ].joined(separator: "\u{1F}")  // unit separator: fields can't bleed
+        // Standard keeps its historical identity so existing snapshots stay cached.
+        if request.detail != .standard {
+            canonical += "\u{1F}detail=\(request.detail.rawValue)"
+        }
         let digest = SHA256.hash(data: Data(canonical.utf8))
         return digest.map { String(format: "%02x", $0) }.joined()
     }

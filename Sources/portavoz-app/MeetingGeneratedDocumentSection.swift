@@ -33,6 +33,7 @@ struct MeetingGeneratedDocumentValues {
 struct MeetingGeneratedDocumentActions {
     let copy: @MainActor (MeetingGeneratedDocumentCopyFormat) -> Void
     let regenerate: @MainActor (LanguageCode, SummaryEngine?, Recipe?) -> Void
+    let regenerateDetail: @MainActor (SummaryDetail) -> Void
     let createStructure: @MainActor () -> Void
     let dismissRecipeSuggestion: @MainActor () -> Void
     let dismissThinSuggestion: @MainActor () -> Void
@@ -139,17 +140,18 @@ struct MeetingGeneratedDocumentSection: View {
         if values.showThinSuggestion, !values.regenerating {
             DismissibleSuggestionChip(
                 kind: .ai,
-                text: L10n.text("Summary looks thin — retry with Built-in?"),
+                text: L10n.text("Summary looks thin — make it detailed?"),
                 acceptAccessibilityIdentifier: "detail-thin-summary-suggestion",
                 dismissAccessibilityIdentifier: "detail-thin-summary-suggestion-dismiss",
                 accept: {
-                    actions.regenerate(values.summaryLanguage, .mlx, nil)
+                    actions.dismissThinSuggestion()
+                    actions.regenerateDetail(.detailed)
                 },
                 dismiss: actions.dismissThinSuggestion)
             .help(
                 // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "This meeting is long but its summary came out very small. Regenerate with the embedded model — nothing changes unless you click.")
+                "This meeting is long but its summary came out very small. Regenerate a detailed summary — nothing changes unless you click.")
         }
     }
 
@@ -179,6 +181,7 @@ struct MeetingGeneratedDocumentSection: View {
                     actions.regenerate(.english, nil, nil)
                 }
                 structureMenu
+                detailMenu
                 if let alternate = values.alternateEngine {
                     Divider()
                     Menu(alternate.label) {
@@ -214,6 +217,16 @@ struct MeetingGeneratedDocumentSection: View {
             Button("New structure…", action: actions.createStructure)
         }
         .accessibilityIdentifier("detail-structure-menu")
+    }
+
+    private var detailMenu: some View {
+        Menu("Detail") {
+            ForEach(SummaryDetail.allCases, id: \.self) { level in
+                Button(level.title) { actions.regenerateDetail(level) }
+                    .accessibilityIdentifier("detail-summary-detail-\(level.rawValue)")
+            }
+        }
+        .accessibilityIdentifier("detail-summary-detail-menu")
     }
 
     private var documentTabs: some View {

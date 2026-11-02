@@ -17,7 +17,9 @@ final class MeetingDetailModel {
         var transcriptPresentation: MeetingDetailTranscriptPresentation? { transcriptPresentationState.presentation }
         fileprivate(set) var nameSuggestions: [MeetingNameSuggestion] = []
         fileprivate(set) var isSuggestingNames = false
-        fileprivate(set) var voiceSuggestions: [MeetingVoiceSuggestion] = []
+        fileprivate(set) var voice = MeetingDetailVoiceSuggestions()
+        var voiceSuggestions: [MeetingVoiceSuggestion] { voice.offered }
+        var autoAssignedVoices: [MeetingVoiceSuggestion] { voice.autoAssigned }
         var chapterTitles: [TimeInterval: String] { transcriptPresentationState.chapterTitles }
         fileprivate(set) var suggestedTitle: String?
         fileprivate(set) var suggestedRecipe: Recipe?
@@ -25,6 +27,8 @@ final class MeetingDetailModel {
         fileprivate(set) var playback: PreparedMeetingPlayback?
         fileprivate(set) var isCompressingAudio = false
         fileprivate(set) var audioCompressionMessage: String?
+        fileprivate(set) var isTrimmingAudio = false
+        fileprivate(set) var audioTrimMessage: String?
         fileprivate(set) var revision = 0
         fileprivate(set) var lastActionError: String?
         fileprivate(set) var decisionConfirmations:
@@ -41,7 +45,6 @@ final class MeetingDetailModel {
     private let firstContentTrace: MeetingDetailFirstContentTrace
     private var reviewAccumulator = MeetingDetailReviewAccumulator()
     private var metadataSuggestionState = MeetingDetailMetadataSuggestionState()
-    private var didLoadVoiceSuggestions = false
     private var playbackDirectoryAttempt: String?
     private let audioCompressionAdmission = MeetingDetailAudioCompressionState()
 
@@ -69,9 +72,9 @@ final class MeetingDetailModel {
 
     func dismissNameSuggestion(label: String) { state.nameSuggestions.removeAll { $0.label == label } }
 
-    func dismissVoiceSuggestion(speakerLabel: String) {
-        state.voiceSuggestions.removeAll { $0.speakerLabel == speakerLabel }
-    }
+    func dismissVoiceSuggestion(speakerLabel: String) { state.voice.dismiss(speakerLabel) }
+
+    func keepAutoAssignedVoice(speakerLabel: String) { state.voice.keep(speakerLabel) }
 
     func dismissThinSummarySuggestion(version: Int) { state.dismissedThinSummaryVersion = version }
 
@@ -133,6 +136,8 @@ final class MeetingDetailModel {
             return await acceptVoiceSuggestion(speaker, name: name)
         case .renameSpeaker(let speaker, let name):
             return await renameSpeaker(speaker, name: name)
+        case .undoVoiceAutoAssign(let speakerLabel):
+            return await undoVoiceAutoAssign(speakerLabel: speakerLabel)
         case .correctTranscript(let request):
             return await correctTranscript(request)
         case .restructureTranscript(let request):
@@ -241,6 +246,8 @@ final class MeetingDetailModel {
             return nil
         case .compressAudio:
             return await compressAudio()
+        case .trimTrailingSilence:
+            return await trimTrailingSilence()
         case .exportAudioClip(let range, let destination):
             return await exportAudioClip(range, to: destination)
         case .checkVoiceMemoryOffer(let name):
@@ -281,6 +288,7 @@ private extension MeetingDetailModel {
         }
         state.lastActionError = nil
         state.nameSuggestions.removeAll { $0.label == original.label }
+        await carrySpeakerRenameIntoSummary(from: original, to: speaker)
         client.requestMeetingDetailSearchReindex()
         return .nameSuggestionAccepted(speaker)
     }
@@ -296,7 +304,8 @@ private extension MeetingDetailModel {
             return .operationFailed(message)
         }
         state.lastActionError = nil
-        state.voiceSuggestions.removeAll { $0.speakerLabel == original.label }
+        state.voice.accepted(original.label)
+        await carrySpeakerRenameIntoSummary(from: original, to: speaker)
         client.requestMeetingDetailSearchReindex()
         return .voiceSuggestionAccepted(speaker)
     }
@@ -312,6 +321,7 @@ private extension MeetingDetailModel {
                 error.localizedDescription)
             return nil
         }
+        await carrySpeakerRenameIntoSummary(from: original, to: speaker)
         client.requestMeetingDetailSearchReindex()
         return .speakerRenamed(speaker)
     }
@@ -570,30 +580,6 @@ private extension MeetingDetailModel {
         }
     }
 
-    func prepareDocument(
-        _ format: MeetingDocumentFormat,
-        options: MeetingDocumentOptions
-    ) async -> Effect {
-        do {
-            return .documentPrepared(try await client.prepareMeetingDetailDocument(
-                meetingID,
-                format: format,
-                options: options))
-        } catch {
-            return .operationFailed(UseCaseErrorMessages.describe(error))
-        }
-    }
-
-    func publishGist(options: MeetingDocumentOptions) async -> Effect {
-        do {
-            return .gistPublished(try await client.publishMeetingDetailGist(
-                meetingID,
-                options: options))
-        } catch {
-            return .operationFailed(UseCaseErrorMessages.describe(error))
-        }
-    }
-
     func loadNameSuggestions() async -> Effect? {
         guard !state.isSuggestingNames else { return nil }
         state.isSuggestingNames = true
@@ -613,11 +599,47 @@ private extension MeetingDetailModel {
     }
 
     func loadVoiceSuggestions() async {
-        guard !didLoadVoiceSuggestions else { return }
-        didLoadVoiceSuggestions = true
-        state.voiceSuggestions = (try? await client.meetingDetailVoiceSuggestions(
-            meetingID)) ?? []
+        guard let speakers = state.readModel?.speakers,
+              state.voice.begin(speakers: speakers)
+        else { return }
+        // Speakers just marked evaluated must finish even when a newer revision cancels the caller.
+        await Task { await evaluateVoiceSuggestions() }.value
+    }
+
+    private func evaluateVoiceSuggestions() async {
+        let loaded = (try? await client.meetingDetailVoiceSuggestions(meetingID)) ?? []
+        // Speakers are replaced after capture; only a settled meeting is named for the user.
+        let automatic = state.voice.receive(
+            loaded, speakers: state.readModel?.speakers ?? [],
+            canAutoAssign: state.readModel?.meeting.lifecycleState == .ready)
         reconcileSuggestionSources()
+        for suggestion in automatic {
+            await autoAssign(suggestion)
+        }
+    }
+
+    private func autoAssign(_ suggestion: MeetingVoiceSuggestion) async {
+        guard let speaker = state.readModel?.speakers.first(where: {
+            $0.label == suggestion.speakerLabel && $0.displayName == nil
+        }) else { return }
+        guard case .voiceSuggestionAccepted = await acceptVoiceSuggestion(speaker, name: suggestion.name) else {
+            // Fall back to the tap-to-accept chip rather than an unprompted error.
+            state.lastActionError = nil
+            state.voice.offer(suggestion)
+            return
+        }
+        state.nameSuggestions.removeAll { $0.label == suggestion.speakerLabel }
+        state.voice.assigned(suggestion)
+    }
+
+    func undoVoiceAutoAssign(speakerLabel: String) async -> Effect? {
+        guard let assigned = state.voice.undo(speakerLabel) else { return nil }
+        // The projection may not show the name yet; a different name is the user's own rename.
+        guard var speaker = state.readModel?.speakers.first(where: { $0.label == speakerLabel }),
+              speaker.displayName == nil || speaker.displayName == assigned.name
+        else { return nil }
+        speaker.displayName = assigned.name
+        return await renameSpeaker(speaker, name: "")
     }
 
     /// Voice evidence outranks a text proposal for the same speaker: the
@@ -711,11 +733,7 @@ private extension MeetingDetailModel {
 
         do {
             let result = try await client.compressMeetingDetailAudio(request)
-            let previous = state.playback
-            state.playback = nil
-            playbackDirectoryAttempt = nil
-            previous?.session.invalidate()
-            await loadPlayback()
+            await reloadPlayback()
             state.audioCompressionMessage = MeetingDetailAudioCompressionState.message(bytesFreed: result.bytesFreed)
             return .audioCompressed(result.bytesFreed)
         } catch is CancellationError {
@@ -727,44 +745,33 @@ private extension MeetingDetailModel {
         }
     }
 
-    func exportAudioClip(
-        _ range: ClosedRange<TimeInterval>,
-        to destination: URL
-    ) async -> Effect {
-        guard let relative = state.readModel?.meeting.audioDirectory else {
-            return .operationFailed(L10n.text("The meeting has no audio to trim."))
-        }
+    func trimTrailingSilence() async -> Effect? {
+        guard let request = MeetingDetailAudioTrimState.trimRequest(for: state) else { return nil }
+        state.isTrimmingAudio = true
+        state.audioTrimMessage = nil
+        defer { state.isTrimmingAudio = false }
+
         do {
-            try await client.exportMeetingDetailAudioClip(
-                ExportMeetingAudioClipRequest(
-                    relativeAudioDirectory: relative,
-                    range: range,
-                    destination: destination,
-                    segments: state.readModel?.segments ?? [],
-                    clearPlayback: state.playback?.session.clearPlayback ?? true))
-            return .audioClipExported(destination)
+            let removed = try await client.trimMeetingDetailAudioTail(request)
+            await reloadPlayback()
+            state.audioTrimMessage = MeetingDetailAudioTrimState.message(removed: removed)
+            return .audioTrimmed(removed)
+        } catch is CancellationError {
+            return nil
         } catch {
-            return .operationFailed(error.localizedDescription)
+            let message = UseCaseErrorMessages.describe(error)
+            state.audioTrimMessage = message
+            return .operationFailed(message)
         }
     }
 
-    func rememberVoice(_ speakerID: SpeakerID) async -> Effect {
-        do {
-            switch try await client.rememberMeetingDetailVoice(
-                meetingID: meetingID,
-                speakerID: speakerID) {
-            case .remembered:
-                return .voiceRemembered
-            case .insufficientAudio:
-                return .voiceMemoryInsufficientAudio
-            case .suggestions, .canRemember:
-                return .operationFailed(L10n.text("Could not remember the voice."))
-            }
-        } catch {
-            return .operationFailed(L10n.format(
-                "Could not remember the voice: %@",
-                UseCaseErrorMessages.describe(error)))
-        }
+    /// The audio files changed under the session; prepare them again.
+    func reloadPlayback() async {
+        let previous = state.playback
+        state.playback = nil
+        playbackDirectoryAttempt = nil
+        previous?.session.invalidate()
+        await loadPlayback()
     }
 }
 
@@ -782,6 +789,7 @@ private extension MeetingDetailModel {
         }
         var next = state
         next.readModel = transition.readModel
+        next.voice.follow(speakers: transition.readModel?.speakers ?? [])
         if case .core = update {
             // Every delivered core is authoritative, even if its revision ID
             // matches: refinement, rows or speakers may still have changed.

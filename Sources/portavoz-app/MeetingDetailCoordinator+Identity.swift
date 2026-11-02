@@ -47,6 +47,15 @@ extension MeetingDetailCoordinator {
         model.dismissVoiceSuggestion(speakerLabel: speakerLabel)
     }
 
+    func undoVoiceAutoAssign(_ voice: MeetingVoiceSuggestion) {
+        VoiceSuggestionLog.undone(voice)
+        Task { await model.send(.undoVoiceAutoAssign(speakerLabel: voice.speakerLabel)) }
+    }
+
+    func keepVoiceAutoAssign(_ voice: MeetingVoiceSuggestion) {
+        model.keepAutoAssignedVoice(speakerLabel: voice.speakerLabel)
+    }
+
     func findOrCreatePerson(for offer: PersonRememberOffer) {
         Task { await findOrCreatePerson(offer) }
     }
@@ -106,6 +115,7 @@ extension MeetingDetailCoordinator {
         let effect = await model.send(.acceptVoiceSuggestion(speaker, name: suggestion.name))
         switch effect {
         case .voiceSuggestionAccepted(let renamed):
+            VoiceSuggestionLog.accepted(suggestion)
             offerToRememberPerson(renamed, source: .voiceSuggestion)
         case .operationFailed(let message):
             flow.alert = .failure(message)
