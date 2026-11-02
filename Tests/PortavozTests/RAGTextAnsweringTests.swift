@@ -122,6 +122,26 @@ final class RAGTextAnsweringTests: XCTestCase {
             metadata: captured.metadata))
     }
 
+    func testOllamaAnswerNeverReturnsModelReasoning() async throws {
+        func answer(_ content: String) async throws -> String {
+            let payload = try JSONSerialization.data(
+                withJSONObject: ["choices": [["message": ["content": content]]]])
+            return try await OllamaService.askAnswerer(
+                model: "qwen-local",
+                gateway: CapturingDataEgressGateway(responseData: payload))
+                .answer(question: "¿Qué se decidió?", passages: [passage(text: "El rollout quedó para el viernes.")])
+        }
+
+        let visible = try await answer("<think>Check [1] first.</think>\nEl rollout es el viernes [1].")
+        XCTAssertEqual(visible, "El rollout es el viernes [1].")
+        do {
+            _ = try await answer("<think>Check [1] first.")
+            XCTFail("unfinished reasoning must not become an answer")
+        } catch {
+            XCTAssertTrue(error.localizedDescription.contains("reasoning never finished"))
+        }
+    }
+
     func testOllamaWebAnswerUsesPublicWebSpecificLoopbackMetadata() async throws {
         let gateway = CapturingDataEgressGateway()
         let answerer = OllamaService.askAnswerer(

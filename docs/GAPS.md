@@ -425,6 +425,12 @@ Meeting/question identity fences now reject withdrawn or stale actions;
 Notification Center. Actual operating-system delivery, withdrawal and
 action timing across recording sessions still require integrated qualification.
 
+### Short-reply confidence floor is not field-tuned
+
+Quiet short replies ("Sí", "OK", "mhm") survive the noise filter down to a
+0.15 confidence floor. That value was chosen without field scores; real quiet
+replies and replies hallucinated on silence still need measuring.
+
 ### Speaker echo thresholds need more rooms and devices
 
 D602 was calibrated on one MacBook built-in speaker/microphone meeting, where

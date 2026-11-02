@@ -468,11 +468,7 @@ final class DictationControllerTests: XCTestCase {
     }
 
     func awaitEventually(_ condition: @escaping @MainActor () -> Bool) async -> Bool {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
-        while !condition(), ContinuousClock.now < deadline {
-            try? await Task.sleep(for: .milliseconds(5))
-        }
-        return condition()
+        return await TestPolling.until(condition)
     }
 }
 

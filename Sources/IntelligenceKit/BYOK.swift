@@ -37,15 +37,25 @@ enum OpenAICompatibleChatCodec {
         let choices: [Choice]
     }
     private struct Choice: Decodable {
-        let message: Message
+        let message: ChatCompletionMessage
     }
-    private struct Message: Decodable { let content: String }
 
     static func parseContent(_ data: Data) throws -> String {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
         guard
-            let content = try? JSONDecoder().decode(ChatResponse.self, from: data)
-                .choices.first?.message.content
+            let message = try? decoder.decode(ChatResponse.self, from: data)
+                .choices.first?.message
         else {
+            throw IntelligenceError.providerFailed("response is not a chat completion")
+        }
+        let answered = message.content.map { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        if answered == true, let content = message.content { return content }
+        // Thinking models can spend the whole token budget before answering.
+        if message.hasReasoning {
+            throw IntelligenceError.providerFailed("the model returned only its reasoning, no answer")
+        }
+        guard let content = message.content else {
             throw IntelligenceError.providerFailed("response is not a chat completion")
         }
         return content
@@ -57,6 +67,33 @@ enum OpenAICompatibleChatCodec {
             throw IntelligenceError.providerFailed("HTTP \(statusCode): \(body)")
         }
         return try parseContent(data)
+    }
+
+    /// Free-text answer without the model's reasoning. Throws when reasoning
+    /// never finished, so callers fall back instead of showing it.
+    static func answerContent(data: Data, statusCode: Int) throws -> String {
+        let content = try responseContent(data: data, statusCode: statusCode)
+        guard let answer = ReasoningEnvelope.visibleText(content) else {
+            throw IntelligenceError.providerFailed("the model's reasoning never finished, so it returned no answer")
+        }
+        return answer
+    }
+}
+
+private struct ChatCompletionMessage: Decodable {
+    let content: String?
+    let hasReasoning: Bool
+
+    private enum CodingKeys: String, CodingKey { case content, reasoning, reasoningContent }
+
+    // Providers shape the reasoning field differently; any non-empty value counts.
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        content = try container.decodeIfPresent(String.self, forKey: .content)
+        hasReasoning = [CodingKeys.reasoning, .reasoningContent].contains { key in
+            (try? container.decodeNil(forKey: key)) == false
+                && (try? container.decode(String.self, forKey: key))?.isEmpty != true
+        }
     }
 }
 
@@ -174,7 +211,7 @@ public struct CompanionBYOKClient: Sendable {
                 providerID: providerLabel,
                 modelID: model))
         let response = try await gateway.perform(networkRequest, metadata: metadata)
-        return try OpenAICompatibleChatCodec.responseContent(
+        return try OpenAICompatibleChatCodec.answerContent(
             data: response.data,
             statusCode: response.statusCode)
     }
