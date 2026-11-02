@@ -22,6 +22,10 @@ enum LiveSpeechSelection: String, CaseIterable {
     static func dictation(defaults: UserDefaults = .standard) -> Self {
         Self(rawValue: defaults.string(forKey: dictationKey) ?? "") ?? dictationDefault
     }
+
+    init(checkpoint: ParakeetCheckpoint) {
+        self = checkpoint == .ultra ? .parakeetUltra : .parakeet
+    }
 }
 
 @MainActor

@@ -130,7 +130,9 @@ extension AppServices {
         _ runtime: LiveSpeechRuntimeLease
     ) -> LiveTranscriptionRuntime {
         let engine = benchLiveWorkObserver.map(runtime.engine.observingLiveWork) ?? runtime.engine
-        return LiveTranscriptionRuntime(engine: engine) { [weak self] in
+        return LiveTranscriptionRuntime(
+            engine: engine, lane: LiveSpeechSelection(checkpoint: runtime.engine.checkpoint)
+        ) { [weak self] in
             guard let self else { return }
             _ = self.finishLiveSpeechRuntime(runtime)
             self.scheduleRecordingEnginesRelease()
@@ -146,7 +148,7 @@ extension AppServices {
         if purpose.selectedEngine(in: defaults) == .appleSpeech {
             let engine = try await SpeechAnalyzerLiveEngine.acquireInstalled(
                 language: purpose.language(in: defaults))
-            return LiveTranscriptionRuntime(engine: engine) {}
+            return LiveTranscriptionRuntime(engine: engine, lane: .appleSpeech) {}
         }
         guard purpose == .dictation else {
             return liveTranscriptionRuntime(try await acquireLiveSpeechRuntime())
