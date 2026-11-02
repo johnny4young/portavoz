@@ -69,6 +69,16 @@ enum OpenAICompatibleChatCodec {
         }
         return try parseContent(data)
     }
+
+    /// Free-text answer without the model's reasoning. Throws when reasoning
+    /// never finished, so callers fall back instead of showing it.
+    static func answerContent(data: Data, statusCode: Int) throws -> String {
+        let content = try responseContent(data: data, statusCode: statusCode)
+        guard let answer = ReasoningEnvelope.visibleText(content) else {
+            throw IntelligenceError.providerFailed("the model's reasoning never finished, so it returned no answer")
+        }
+        return answer
+    }
 }
 
 /// OpenAI-compatible summary adapter. It cannot perform transport without the
@@ -185,7 +195,7 @@ public struct CompanionBYOKClient: Sendable {
                 providerID: providerLabel,
                 modelID: model))
         let response = try await gateway.perform(networkRequest, metadata: metadata)
-        return try OpenAICompatibleChatCodec.responseContent(
+        return try OpenAICompatibleChatCodec.answerContent(
             data: response.data,
             statusCode: response.statusCode)
     }
