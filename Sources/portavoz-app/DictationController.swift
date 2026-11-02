@@ -107,6 +107,8 @@ final class DictationController {
     private var sessionFeedbackWait: (@MainActor (Duration) async throws -> Void)?
     private(set) var activeSessionID: UUID?
     private var measurement: DictationSessionMeasurementRecorder?
+    /// The lane that transcribed this session, which can differ from the preference.
+    private(set) var sessionEngine: LiveSpeechSelection?
     private var textPolicy = DictationTextPreferenceSnapshot.inert
     /// Set once delivery has prepared its text; a later panel choice could not apply.
     /// Only `start` clears it: between sessions `canChangeTextMode` is already false.
@@ -253,6 +255,7 @@ final class DictationController {
         panelAnchor = dependencies.locatePanelAnchor()
         textPolicy = Self.textPolicy(for: dependencies, bundleIdentifier: destination.bundleIdentifier)
         textPolicySealed = false
+        sessionEngine = nil
         phase = .preparing
         confirmedText = ""
         partialText = ""
@@ -506,6 +509,7 @@ private extension DictationController {
         measurement?.record(.runtimeReady)
         try Task.checkCancellation()
         guard activeSessionID == id else { throw CancellationError() }
+        sessionEngine = LiveSpeechSelection(engineID: runtime.engine.descriptor.id)
         return runtime
     }
 

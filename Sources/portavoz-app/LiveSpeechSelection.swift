@@ -22,6 +22,16 @@ enum LiveSpeechSelection: String, CaseIterable {
     static func dictation(defaults: UserDefaults = .standard) -> Self {
         Self(rawValue: defaults.string(forKey: dictationKey) ?? "") ?? dictationDefault
     }
+
+    /// The lane of the engine that ran; nil for fixture and benchmark engines.
+    init?(engineID: String) {
+        switch engineID {
+        case ParakeetCheckpoint.v3.engineID: self = .parakeet
+        case ParakeetCheckpoint.ultra.engineID: self = .parakeetUltra
+        case _ where engineID.hasPrefix(SpeechAnalyzerLiveEngine.engineIDPrefix): self = .appleSpeech
+        default: return nil
+        }
+    }
 }
 
 @MainActor

@@ -44,6 +44,8 @@ public enum SpeechAnalyzerLiveReadiness: Equatable, Error, Sendable {
 /// contract. Volatile range revisions cannot enter CaptionCoalescer: joining
 /// them as deltas would turn a corrected phrase into a false duplicate.
 public struct SpeechAnalyzerLiveEngine: TranscriptionEngine {
+    public static let engineIDPrefix = "apple-speech-analyzer-"
+
     public let descriptor: EngineDescriptor
     public let locale: Locale
 
@@ -95,7 +97,7 @@ public struct SpeechAnalyzerLiveEngine: TranscriptionEngine {
         self.locale = locale
         self.source = source
         descriptor = EngineDescriptor(
-            id: "apple-speech-analyzer-\(locale.identifier)",
+            id: Self.engineIDPrefix + locale.identifier,
             displayName: "Apple Speech (\(locale.identifier))",
             languages: [locale.identifier],
             realTimeFactor: nil,

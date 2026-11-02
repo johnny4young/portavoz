@@ -8,6 +8,8 @@ import PortavozCore
 public enum ParakeetCheckpoint: String, Sendable {
     case v3
     case ultra
+
+    public var engineID: String { self == .ultra ? "parakeet-ultra" : "parakeet-tdt-0.6b-v3" }
 }
 
 /// Parakeet TDT 0.6B v3 (FluidAudio, CoreML/ANE): the default engine for
@@ -128,7 +130,7 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
         self.liveWorkObserver = liveWorkObserver
         self.checkpoint = checkpoint
         self.descriptor = EngineDescriptor(
-            id: checkpoint == .ultra ? "parakeet-ultra" : "parakeet-tdt-0.6b-v3",
+            id: checkpoint.engineID,
             displayName: checkpoint == .ultra ? "Parakeet Ultra" : "Parakeet TDT 0.6B v3",
             languages: [],  // multilingual (25 European languages incl. es/en)
             realTimeFactor: 0.01,
