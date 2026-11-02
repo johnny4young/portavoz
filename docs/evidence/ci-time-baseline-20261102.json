@@ -10,14 +10,19 @@
       "attempts": 52,
       "span_days": 2.7,
       "outcomes": {
-        "cancelled": 1,
-        "passed": 32,
+        "infrastructure": 1,
+        "passed": 31,
         "product": 5,
         "rerun-refused": 1,
-        "superseded": 13
+        "superseded": 14
+      },
+      "cache_states": {
+        "fallback": 31,
+        "miss": 5,
+        "not-run": 2
       },
       "overall": {
-        "attempts": 39,
+        "attempts": 38,
         "t_execution": {
           "n": 38,
           "p50": 851,
@@ -35,20 +40,20 @@
       },
       "cohorts": {
         "ordinary": {
-          "attempts": 26,
+          "attempts": 33,
           "t_execution": {
-            "n": 25,
+            "n": 33,
             "p50": 694,
-            "p90": 1252,
-            "p95": 1451,
-            "max": 1471
+            "p90": 1471,
+            "p95": 2822,
+            "max": 2896
           },
           "t_total": {
-            "n": 25,
-            "p50": 1054,
-            "p90": 2131,
-            "p95": 2258,
-            "max": 2348
+            "n": 33,
+            "p50": 1335,
+            "p90": 2348,
+            "p95": 3608,
+            "max": 3633
           }
         },
         "cache-exact": null,
@@ -105,6 +110,7 @@
             "max": 3633
           }
         },
+        "xcode-pin": null,
         "interruption": {
           "attempts": 5,
           "t_execution": {
@@ -157,7 +163,7 @@
           }
         },
         "app-change": {
-          "attempts": 11,
+          "attempts": 10,
           "t_execution": {
             "n": 10,
             "p50": 1089,
@@ -361,8 +367,8 @@
         }
       },
       "ui_selectors": {
-        "n": 24,
-        "p50": 94,
+        "n": 23,
+        "p50": 100,
         "p90": 191,
         "p95": 191,
         "max": 191
@@ -386,7 +392,7 @@
         "total_met": false
       },
       "acceptance": {
-        "ordinary_heads": 24,
+        "ordinary_heads": 31,
         "required_heads": 30,
         "span_days": 2.7,
         "required_days": 7,
@@ -398,23 +404,29 @@
       "attempts": 50,
       "span_days": 7.8,
       "outcomes": {
+        "infrastructure": 1,
         "passed": 40,
         "product": 4,
-        "superseded": 6
+        "superseded": 5
+      },
+      "cache_states": {
+        "exact": 5,
+        "miss": 38,
+        "not-run": 2
       },
       "overall": {
-        "attempts": 44,
+        "attempts": 45,
         "t_execution": {
-          "n": 44,
-          "p50": 1106,
-          "p90": 1289,
-          "p95": 1341,
-          "max": 1425
+          "n": 45,
+          "p50": 1113,
+          "p90": 1330,
+          "p95": 1378,
+          "max": 1664
         },
         "t_total": {
-          "n": 44,
-          "p50": 1241,
-          "p90": 1816,
+          "n": 45,
+          "p50": 1249,
+          "p90": 1848,
           "p95": 2223,
           "max": 3809
         }
@@ -459,22 +471,23 @@
             "max": 1451
           }
         },
+        "xcode-pin": null,
         "interruption": null,
         "docs-only": {
-          "attempts": 4,
+          "attempts": 5,
           "t_execution": {
-            "n": 4,
-            "p50": 962,
-            "p90": 1116,
-            "p95": 1116,
-            "max": 1116
+            "n": 5,
+            "p50": 1032,
+            "p90": 1664,
+            "p95": 1664,
+            "max": 1664
           },
           "t_total": {
-            "n": 4,
-            "p50": 1327,
-            "p90": 1848,
-            "p95": 1848,
-            "max": 1848
+            "n": 5,
+            "p50": 1330,
+            "p90": 2092,
+            "p95": 2092,
+            "max": 2092
           }
         },
         "core-change": {
@@ -550,19 +563,19 @@
           }
         },
         "repository-hygiene > build-and-test": {
-          "attempts": 41,
+          "attempts": 42,
           "t_execution": {
-            "n": 41,
+            "n": 42,
             "p50": 1114,
-            "p90": 1289,
-            "p95": 1341,
-            "max": 1425
+            "p90": 1330,
+            "p95": 1378,
+            "max": 1664
           },
           "t_total": {
-            "n": 41,
+            "n": 42,
             "p50": 1241,
-            "p90": 1640,
-            "p95": 1848,
+            "p90": 1816,
+            "p95": 2092,
             "max": 3809
           }
         },
@@ -586,46 +599,46 @@
       },
       "jobs": {
         "build-and-test": {
-          "n": 43,
+          "n": 44,
           "p50": 1113,
-          "p90": 1289,
-          "p95": 1341,
-          "max": 1425
+          "p90": 1330,
+          "p95": 1378,
+          "max": 1664
         },
         "ios-portability": {
-          "n": 43,
+          "n": 44,
           "p50": 485,
-          "p90": 533,
-          "p95": 568,
-          "max": 757
+          "p90": 541,
+          "p95": 736,
+          "max": 1502
         },
         "lint": {
-          "n": 43,
+          "n": 44,
           "p50": 22,
           "p90": 28,
           "p95": 33,
           "max": 35
         },
         "repository-hygiene": {
-          "n": 44,
+          "n": 45,
           "p50": 107,
-          "p90": 116,
-          "p95": 117,
-          "max": 122
+          "p90": 117,
+          "p95": 118,
+          "max": 123
         }
       },
       "queue": {
         "macos": {
-          "n": 86,
+          "n": 88,
           "p50": 4,
           "p90": 604,
           "p95": 695,
           "max": 2627
         },
         "ubuntu": {
-          "n": 87,
+          "n": 89,
           "p50": 3,
-          "p90": 3,
+          "p90": 4,
           "p95": 4,
           "max": 29
         }
