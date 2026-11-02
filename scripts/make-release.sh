@@ -74,8 +74,7 @@ scripts/verify_release_appcast.py \
 
 # Homebrew cask with real version + sha256.
 SHA256="$(shasum -a 256 "$RELEASE_DIR/Portavoz-$VERSION.dmg" | cut -d' ' -f1)"
-sed -e "s/__VERSION__/$VERSION/" -e "s/__SHA256__/$SHA256/" \
-  packaging/Casks/portavoz.rb > "$RELEASE_DIR/portavoz.rb"
+scripts/render-cask.sh "$VERSION" "$SHA256" > "$RELEASE_DIR/portavoz.rb"
 
 echo ""
 echo "Release $VERSION ready in $RELEASE_DIR/:"
