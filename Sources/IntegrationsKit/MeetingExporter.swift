@@ -15,7 +15,8 @@ public enum MeetingExporter {
         segments: [TranscriptSegment],
         summary: SummaryDraft? = nil,
         summaryVersion: Int? = nil,
-        correctionProvenance: TranscriptCorrectionExportProvenance? = nil
+        correctionProvenance: TranscriptCorrectionExportProvenance? = nil,
+        translationLanguage: String? = nil
     ) -> String {
         var parts: [String] = ["# \(meeting.title)"]
 
@@ -49,7 +50,9 @@ public enum MeetingExporter {
         if !segments.isEmpty {
             let labelsByID = Dictionary(
                 uniqueKeysWithValues: speakers.map { ($0.id, displayName($0)) })
-            var block = "## Transcript\n"
+            var block = "## Transcript" + (translationLanguage.map {
+                " (\(languageName($0)) translation, made on this Mac)"
+            } ?? "") + "\n"
             for segment in segments {
                 let label = segment.speakerID.flatMap { labelsByID[$0] } ?? "?"
                 block += "\n- **[\(timestamp(segment.startTime))] \(label):** \(segment.text)"
@@ -62,6 +65,10 @@ public enum MeetingExporter {
         }
 
         return parts.joined(separator: "\n\n") + "\n"
+    }
+
+    static func languageName(_ code: String) -> String {
+        code == "es" ? "Spanish" : code == "en" ? "English" : code
     }
 
     private static func correctionProvenanceMarkdown(

@@ -11,6 +11,14 @@ public enum ThinSummaryPolicy {
     /// Under this many characters, a long meeting's summary is thin.
     static let thinCharacterFloor = 900
 
+    /// The length the gate judges: wall-clock time, capped where speech ends,
+    /// so a recording left running after a short talk is not "long".
+    public static func meetingSeconds(
+        wallClock: TimeInterval, lastSpeechEnd: TimeInterval?
+    ) -> TimeInterval {
+        min(wallClock, lastSpeechEnd ?? 0)
+    }
+
     public static func isThin(
         summaryCharacters: Int,
         actionItems: Int,

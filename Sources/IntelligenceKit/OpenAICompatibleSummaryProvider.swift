@@ -72,7 +72,8 @@ public struct OpenAICompatibleSummaryProvider: SummaryProvider {
                 recipe: request.recipe,
                 targetLanguage: request.targetLanguage,
                 glossary: request.glossary,
-                hasUserNotes: !notes.isEmpty) + "\n" + schemaNote,
+                hasUserNotes: !notes.isEmpty,
+                detail: request.detail) + "\n" + schemaNote,
             user: PromptFactory.summaryPrompt(
                 transcriptOrNotes: transcript.text,
                 targetLanguage: request.targetLanguage,

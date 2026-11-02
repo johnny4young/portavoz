@@ -64,7 +64,8 @@ private struct AppMeetingDocumentRenderer: MeetingDocumentRendering {
             segments: content.segments,
             summary: content.summary,
             summaryVersion: content.summaryVersion,
-            correctionProvenance: content.correctionProvenance)
+            correctionProvenance: content.correctionProvenance,
+            translationLanguage: content.translationLanguage)
     }
 
     func pdf(fromMarkdown markdown: String) async throws -> Data {
@@ -85,7 +86,8 @@ private struct AppMeetingDocumentRenderer: MeetingDocumentRendering {
             exportFormat,
             segments: content.segments,
             speakers: content.speakers,
-            correctionProvenance: content.correctionProvenance)
+            correctionProvenance: content.correctionProvenance,
+            translationLanguage: content.translationLanguage)
     }
 }
 

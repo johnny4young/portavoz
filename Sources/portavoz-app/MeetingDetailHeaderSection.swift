@@ -12,11 +12,12 @@ struct MeetingDetailHeaderValues {
     let isSuggestingNames: Bool
     let nameSuggestions: [MeetingNameSuggestion]
     let voiceSuggestions: [MeetingVoiceSuggestion]
+    let autoAssignedVoices: [MeetingVoiceSuggestion]
     let personOffer: MeetingDetailRememberOffer?
     let voiceOffer: MeetingDetailRememberOffer?
 
     var hasSuggestions: Bool {
-        !nameSuggestions.isEmpty || !voiceSuggestions.isEmpty
+        !nameSuggestions.isEmpty || !voiceSuggestions.isEmpty || !autoAssignedVoices.isEmpty
             || personOffer != nil || voiceOffer != nil
     }
 }
@@ -45,6 +46,8 @@ struct MeetingDetailHeaderActions {
     let dismissNameSuggestion: @MainActor (String) -> Void
     let acceptVoiceSuggestion: @MainActor (MeetingVoiceSuggestion) -> Void
     let dismissVoiceSuggestion: @MainActor (String) -> Void
+    let undoVoiceAutoAssign: @MainActor (MeetingVoiceSuggestion) -> Void
+    let keepVoiceAutoAssign: @MainActor (MeetingVoiceSuggestion) -> Void
     let acceptPersonOffer: @MainActor () -> Void
     let dismissPersonOffer: @MainActor () -> Void
     let acceptVoiceOffer: @MainActor () -> Void
@@ -140,6 +143,7 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
         if values.hasSuggestions {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
+                    autoAssignedVoiceChips
                     nameSuggestionChips
                     voiceSuggestionChips
                     rememberPersonOffer
@@ -204,6 +208,24 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
         }
     }
 
+    @ViewBuilder
+    private var autoAssignedVoiceChips: some View {
+        ForEach(values.autoAssignedVoices, id: \.speakerLabel) { voice in
+            UndoableAppliedChip(
+                kind: .voice,
+                text: L10n.format("%@ · by voice", voice.name),
+                undoAccessibilityIdentifier: "detail-voice-auto-undo-\(voice.speakerLabel)",
+                keepAccessibilityLabel: L10n.text("Keep name"),
+                keepAccessibilityIdentifier: "detail-voice-auto-keep-\(voice.speakerLabel)",
+                undo: { actions.undoVoiceAutoAssign(voice) },
+                keep: { actions.keepVoiceAutoAssign(voice) })
+            .fixedSize()
+            .help(L10n.format("Matches “%@” from your remembered voices", voice.name))
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("detail-voice-auto-\(voice.speakerLabel)")
+        }
+    }
+
     private func nameSuggestionHelp(_ suggestion: MeetingNameSuggestion) -> String {
         switch suggestion.evidence {
         case .transcript(let quote):
@@ -237,7 +259,7 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
             rememberOffer(
                 offer,
                 presentation: MeetingDetailRememberOfferPresentation(
-                    label: L10n.format("Remember %@’s voice?", offer.name),
+                    label: L10n.format("Recognize %@ in future meetings?", offer.name),
                     systemImage: "person.wave.2",
                     acceptIdentifier: "voice-remember-offer",
                     dismissLabel: L10n.text("Dismiss voice offer"),
@@ -245,7 +267,7 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
                     help: L10n.text(
                         // One-line UI help text.
                         // swiftlint:disable:next line_length
-                        "Keeps an encrypted voiceprint so future meetings can suggest this name. Removable in Settings.")),
+                        "Suggests this name when the voice is heard again. The voiceprint stays encrypted on this Mac; remove it in Settings.")),
                 accept: actions.acceptVoiceOffer,
                 dismiss: actions.dismissVoiceOffer)
         }

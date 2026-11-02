@@ -4,6 +4,22 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## 1.3.0 — October 31, 2026
+
+**Dictation that writes it the way you mean it.**
+
+- **✨ Polish and recipes** — a Polish text mode fixes grammar, punctuation and false starts with your summary engine on this Mac, and recipes shape it: Formal, Friendly, Bullet list, Concise or your own.
+- **🪄 Rewrite anything you select** — select text in any app, pick Polish or a recipe from the menu bar or with ⌃⌥⌘R, or just say how, then check the preview and press Return.
+- **✏️ Fix it by voice, once** — start a dictation with “change Friday to Monday” to correct only what Portavoz just pasted, and press Always write so it spells that word your way from then on.
+- **🎯 Parakeet Ultra by default** — dictation switches to the more accurate model as soon as you download it from Settings or onboarding; nothing downloads on its own.
+- **🌐 English ↔ Spanish, on your Mac** — translate a dictation as it pastes, read a meeting's transcript in the other language, and export it translated.
+- **🗂️ Your dictations, if you want them** — an opt-in private history you can search, ask about in either language, add to a meeting's notes, share with local agents, count in statistics and drive from Shortcuts.
+- **🎙️ Meetings that know who spoke** — a remembered voice that clearly matches names the speaker (one Undo clears it), lookalike voices stay quiet, and summaries come Concise, Standard or Detailed with renames applied right away.
+- **🔈 Cleaner meetings** — speaker echo stays out of your microphone, Refine skips silence and stops inventing words, a quiet call asks whether it ended, transcripts keep their question marks, and the player skips dead air, jumps where you click and can cut a silent tail.
+- **📥 Also** — the command-line tool and MCP server ship inside the app, capitals that fit the sentence, and Spanish all the way.
+
+1.3.0 requires macOS 26 Tahoe. Macs on macOS 15 Sequoia or earlier keep 1.2.0.
+
 ## 1.2.0 — October 20, 2026
 
 **Dictation that keeps up with you.**
@@ -29,11 +45,30 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
-## October 30, 2026
+## November 2, 2026
 
 - **🔒 Recording notifications stay with their call** — a withdrawn call-ended question stays dismissed, and an old notification cannot stop a newer recording.
 
+## October 31, 2026
+
+- **❓ Questions keep their question mark** — the other side's sentences keep their closing “?” and “.”, and the stray rows holding only a dot are gone, in old meetings too.
+- **🎯 Parakeet Ultra is the dictation default** — your dictation uses the more accurate model as soon as you download it from Settings or onboarding; nothing downloads on its own.
+- **🎙️ Names from voices you know** — when a remembered voice is an unmistakable match, the speaker is named as you open the meeting, marked "Marta · by voice", and one Undo clears it.
+
+## October 30, 2026
+
+- **🗣️ Voice suggestions you can trust** — speakers found after you open a meeting get suggested too, named speakers lose their chip, and two remembered voices that sound alike stay quiet instead of guessing.
+- **📏 Summaries as short or as long as you need** — pick Concise, Standard or Detailed in Settings or from Regenerate → Detail, on whichever engine you use.
+- **🏷️ Names follow you into the summary** — rename a speaker and the summary updates to the new name right away, no regeneration needed.
+- **⏹️ Cancel translation** — stops after the current line so the next background job can continue.
+- **🌍 Share a meeting in the other language** — after translating a transcript, pick its language under Export › Transcript language and the Markdown, PDF, subtitles or Gist go out translated.
+- **🛑 Wait for background work** — removing a silent tail stops safely if another processing job starts while its audio copies are being prepared.
+- **🛟 Keep a recovery copy** — removing a silent tail preserves the original audio backup if a disk error also prevents restoration.
+
 ## October 29, 2026
+
+- **🧹 Refine stops inventing words in a quiet room** — faint room noise no longer turns into "Gracias." or Portuguese phrases, and every passage stays in English or Spanish.
+- **✂️ Cut the silence after the call** — if a recording kept running long after everyone left, the player's ⋯ menu offers to remove that quiet tail from the audio and the transcript, freeing the space and fixing the meeting's length.
 
 - **🔚 Echo sorted right up to Stop** — the other side's voice your microphone picked up as the recording stops now goes to them too.
 - **🎙️ Keep your final words** — microphone speech that extends past the measured speaker echo stays yours, even when the other audio channel ends early.

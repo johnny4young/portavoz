@@ -164,12 +164,16 @@ private extension MeetingDetailView {
                 voices: detail.map {
                     MeetingPlaybackVoice.voices(speakers: $0.speakers, segments: $0.segments)
                 } ?? [],
-                canCompressAudio: canCompressAudio,
+                canCompressAudio: MeetingDetailAudioCompressionState.canCompress(model.state),
                 isCompressingAudio: model.state.isCompressingAudio,
-                compressionMessage: model.state.audioCompressionMessage),
+                compressionMessage: model.state.audioCompressionMessage,
+                trailingSilence: MeetingDetailAudioTrimState.trailingSilence(for: model.state),
+                isTrimmingAudio: model.state.isTrimmingAudio,
+                trimMessage: model.state.audioTrimMessage),
             actions: MeetingDetailPlayerActions(
                 exportClip: coordinator.exportClip,
-                compressAudio: compressAudio))
+                compressAudio: { changeAudio(coordinator.compressAudio) },
+                trimSilence: { changeAudio(coordinator.trimTrailingSilence) }))
     }
 
     private func detailRail(
@@ -295,10 +299,10 @@ private extension MeetingDetailView {
                     coordinator.acceptNameSuggestion($0, in: detail)
                 },
                 dismissNameSuggestion: coordinator.dismissNameSuggestion,
-                acceptVoiceSuggestion: {
-                    coordinator.acceptVoiceSuggestion($0, in: detail)
-                },
+                acceptVoiceSuggestion: { coordinator.acceptVoiceSuggestion($0, in: detail) },
                 dismissVoiceSuggestion: coordinator.dismissVoiceSuggestion,
+                undoVoiceAutoAssign: coordinator.undoVoiceAutoAssign,
+                keepVoiceAutoAssign: coordinator.keepVoiceAutoAssign,
                 acceptPersonOffer: acceptPersonOffer,
                 dismissPersonOffer: { flow.personOffer = nil },
                 acceptVoiceOffer: acceptVoiceOffer,
@@ -319,10 +323,9 @@ private extension MeetingDetailView {
             isSuggestingNames: model.state.isSuggestingNames,
             nameSuggestions: model.state.nameSuggestions,
             voiceSuggestions: model.state.voiceSuggestions,
+            autoAssignedVoices: model.state.autoAssignedVoices,
             personOffer: flow.personOffer.flatMap { offer in
-                offer.speaker.displayName.map {
-                    MeetingDetailRememberOffer(name: $0, isBusy: flow.isFindingPerson)
-                }
+                offer.speaker.displayName.map { MeetingDetailRememberOffer(name: $0, isBusy: flow.isFindingPerson) }
             },
             voiceOffer: flow.rememberedVoiceOffer.flatMap { offer in
                 offer.displayName.map {
@@ -339,6 +342,7 @@ private extension MeetingDetailView {
                 hasSummary: summary != nil,
                 hasCorrections: !detail.correctionRevision.isAccepted,
                 includeCorrectionProvenance: flow.includeCorrectionProvenance,
+                exportTranslation: flow.exportTranslation(for: detail),
                 skillOffers: model.state.skillOffers),
             actions: MeetingDetailActionActions(
                 startRefine: { coordinator.startRefine(detail) },
@@ -474,14 +478,9 @@ private extension MeetingDetailView {
             player: player)
     }
 
-    private var canCompressAudio: Bool {
-        !model.state.isCompressingAudio
-            && model.state.playback?.canCompressAudio == true
-    }
-
-    private func compressAudio() {
+    private func changeAudio(_ change: @escaping @MainActor () async -> Void) {
         Task {
-            await coordinator.compressAudio()
+            await change()
             playbackNavigation.applyPendingSeek(to: player)
         }
     }

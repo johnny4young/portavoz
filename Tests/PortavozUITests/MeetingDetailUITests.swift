@@ -169,7 +169,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
         summaryEngine: String? = nil,
         compactWindow: Bool = false,
         minimumWindow: Bool = false,
-        recapPasteboardName: String? = nil
+        recapPasteboardName: String? = nil,
+        extraArguments: [String] = []
     ) throws -> XCUIApplication {
         let app = try XCUIApplication.portavoz(
             seedDemo: true,
@@ -197,6 +198,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         if aiSuggestions {
             app.launchArguments.append("-seed-ai-suggestions")
         }
+        app.launchArguments += extraArguments
         if abandonedSummary {
             app.launchArguments.append("-seed-abandoned-summary")
         }
@@ -667,6 +669,27 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 .waitForStableFrame(timeout: 5),
             "the detail header must finish its navigation transition")
         attachScreenshot(of: app, named: "meeting-name-suggestions")
+    }
+
+    @MainActor
+    func testAConfidentVoiceMatchNamesTheSpeakerAndCanBeUndone() throws {
+        let app = try launchOnSeededMeeting(extraArguments: ["-seed-voice-match"])
+        defer { finishUITestApplication(app) }
+        let pill = app.control(withIdentifier: "cast-speaker-S1")
+        let pillShowsMarta = { "\(pill.label) \(pill.value as? String ?? "")".contains("Marta") }
+
+        let chip = app.control(withIdentifier: "detail-voice-auto-S1")
+        XCTAssertTrue(chip.waitForExistenceFast(timeout: 20), "a confident voice match names the speaker without a tap")
+        XCTAssertTrue(waitForUITestCondition(timeout: 10, pillShowsMarta), "the cast shows the recognized name")
+        XCTAssertTrue(app.control(withIdentifier: "detail-voice-auto-keep-S1").exists)
+        let undo = app.control(withIdentifier: "detail-voice-auto-undo-S1")
+        XCTAssertTrue(undo.waitForHittable(timeout: 5))
+        undo.click()
+
+        XCTAssertTrue(chip.waitForDisappearance(timeout: 10))
+        XCTAssertTrue(waitForUITestCondition(timeout: 10) { !pillShowsMarta() }, "Undo clears the name")
+        XCTAssertFalse(app.control(withIdentifier: "detail-voice-suggestion-S1").exists,
+                       "an undone match is not offered again")
     }
 
     @MainActor
@@ -1861,6 +1884,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.menuItems["player-skip-silence"].waitForExistenceFast(timeout: 5),
             "the player must offer skipping dead time")
+        XCTAssertFalse(
+            app.menuItems["player-trim-silence"].exists,
+            "a meeting without a long silent tail must not offer to trim it")
         typeKey(.escape, modifierFlags: [], in: app)
         XCTAssertTrue(
             app.control(withIdentifier: "detail-compress-audio").exists,
@@ -2012,29 +2038,70 @@ final class MeetingDetailUITests: PortavozUITestCase {
         typeKey(.escape, modifierFlags: [], in: app)
     }
 
-    /// Marking in/out reveals the clip export button (M11). Advances the
-    /// playhead by playing, so it doesn't depend on clicking a transcript
-    /// line (dimmed/clipped in the focus carousel).
+    @MainActor
+    func testRegenerateMenuOffersEveryDetailLevel() throws {
+        let app = try launchOnSeededMeeting()
+        defer { finishUITestApplication(app) }
+        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
+
+        let menu = app.control(withIdentifier: "detail-regenerate-menu")
+        XCTAssertTrue(menu.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(app.prepareForInteraction())
+        XCTAssertTrue(menu.waitForStableFrame(timeout: 5))
+        menu.click()
+        let detail = app.menuItems["detail-summary-detail-menu"]
+        guard detail.waitForExistenceFast(timeout: 5) else {
+            XCTFail("the regenerate menu must offer the Detail submenu")
+            return
+        }
+        detail.click()
+        for level in ["brief", "standard", "detailed"] {
+            XCTAssertTrue(
+                app.menuItems["detail-summary-detail-\(level)"].waitForExistenceFast(timeout: 5),
+                "the Detail submenu must offer \(level)")
+        }
+        typeKey(.escape, modifierFlags: [], in: app)
+        typeKey(.escape, modifierFlags: [], in: app)
+    }
+
+    /// Mark a valid range through the real menu while the fresh player stays
+    /// paused; the waveform supplies an interior position without racing EOF.
     @MainActor
     func testClipMarkingRevealsExport() throws {
         let app = try launchOnSeededMeeting()
         defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.buttons["player-play-pause"].waitForExistenceFast(timeout: 15))
-        app.buttons["player-play-pause"].click()  // play → the playhead moves
+        let currentTime = app.control(withIdentifier: "player-current-time")
+        XCTAssertTrue(app.staticTexts["/ 0:06"].exists, "this journey requires the disposable six-second fixture")
+        XCTAssertTrue(currentTime.waitForValue("0:00", timeout: 5))
         let options = app.control(withIdentifier: "player-options")
         options.click()
         app.menuItems["clip-mark-start"].click()
-        let currentTime = app.control(withIdentifier: "player-current-time")
-        let clipStartTime = String(describing: currentTime.value)
-        XCTAssertTrue(
-            currentTime.waitForValueChange(from: clipStartTime, timeout: 5),
-            "the playhead must advance before marking a non-empty clip")
+        XCTAssertTrue(currentTime.waitForValue("0:00", timeout: 5), "Start must be marked before seeking")
+
+        let waveform = app.control(withIdentifier: "player-waveform")
+        XCTAssertTrue(waveform.waitForHittable(timeout: 5))
+        waveform.click()  // seek to the identified waveform's center without starting playback
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            guard let clock = currentTime.value as? String else { return false }
+            return ["0:01", "0:02", "0:03", "0:04", "0:05"].contains(clock)
+        }, "End must be strictly between the zero Start and six-second EOF")
+        let beforeMenu = try XCTUnwrap(currentTime.value as? String)
         options.click()
-        app.menuItems["clip-mark-end"].click()  // end after start → valid range
+        let beforeEnd = try XCTUnwrap(currentTime.value as? String)
+        let evidence = XCTAttachment(string: "fixture=0:06; start=0:00; beforeMenu=\(beforeMenu); beforeEnd=\(beforeEnd)")
+        evidence.name = "clip-cursor-before-end"
+        evidence.lifetime = .keepAlways
+        add(evidence)
+        XCTAssertEqual(beforeEnd, beforeMenu, "the paused cursor must stay fixed while opening the menu")
+        XCTAssertTrue(["0:01", "0:02", "0:03", "0:04", "0:05"].contains(beforeEnd))
+        app.menuItems["clip-mark-end"].click()
+        XCTAssertTrue(currentTime.waitForValue(beforeEnd, timeout: 5))
 
         XCTAssertTrue(
             app.buttons["clip-export"].waitForExistenceFast(timeout: 5),
             "marking a valid in/out range must reveal the export button")
+        attachScreenshot(of: app, named: "clip-paused-export")
     }
 }

@@ -16,8 +16,12 @@ struct MeetingPlayerBar: View {
     let exportClip: @MainActor @Sendable (
         ClosedRange<TimeInterval>, URL
     ) async -> String?
+    /// Removable silent tail; nil hides the action.
+    var trailingSilence: TimeInterval?
+    var trimSilence: @MainActor () -> Void = {}
 
     @State private var exporting = false
+    @State private var confirmingTrim = false
     @State private var exportError: String?
 
     private static let rates: [Float] = [1, 1.25, 1.5, 2]
@@ -76,6 +80,17 @@ struct MeetingPlayerBar: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(exportError ?? "")
+        }
+        .confirmationDialog(
+            "Remove the silence at the end?",
+            isPresented: $confirmingTrim
+        ) {
+            Button("Remove", role: .destructive, action: trimSilence)
+                .accessibilityIdentifier("player-trim-silence-confirm")
+            Button("Cancel", role: .cancel) {}
+                .accessibilityIdentifier("player-trim-silence-cancel")
+        } message: {
+            Text("The audio after the last phrase is deleted for good, and transcript edits are reset.")
         }
     }
 
@@ -154,6 +169,15 @@ struct MeetingPlayerBar: View {
                 .accessibilityIdentifier("clip-mark-start")
             Button("Mark clip end") { player.markClipEnd() }
                 .accessibilityIdentifier("clip-mark-end")
+            if let trailingSilence {
+                Divider()
+                Button(L10n.format(
+                    "Remove %@ of silence at the end…",
+                    MeetingDetailAudioTrimState.formatted(trailingSilence))) {
+                    confirmingTrim = true
+                }
+                .accessibilityIdentifier("player-trim-silence")
+            }
         } label: {
             Image(systemName: "ellipsis.circle")
         }

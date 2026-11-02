@@ -31,6 +31,16 @@
         }
       }
     },
+    "%@ · by voice": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · por voz"
+          }
+        }
+      }
+    },
     "%@ — completed": {
       "localizations": {
         "es": {
@@ -1937,6 +1947,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Descargar inglés y español"
+          }
+        }
+      }
+    },
+    "Download Parakeet Ultra (more accurate, 613 MB)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar Parakeet Ultra (más preciso, 613 MB)"
           }
         }
       }
@@ -6959,6 +6979,16 @@
         }
       }
     },
+    "Keep name": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conservar nombre"
+          }
+        }
+      }
+    },
     "Keep recording": {
       "localizations": {
         "es": {
@@ -6975,16 +7005,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Conservar regla"
-          }
-        }
-      }
-    },
-    "Keeps an encrypted voiceprint so future meetings can suggest this name. Removable in Settings.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Guarda una huella de voz cifrada para sugerir este nombre en futuras reuniones. Se puede quitar en Ajustes."
           }
         }
       }
@@ -11879,16 +11899,6 @@
         }
       }
     },
-    "Remember %@’s voice?": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "¿Recordar la voz de %@?"
-          }
-        }
-      }
-    },
     "Remembered voices": {
       "localizations": {
         "es": {
@@ -14771,16 +14781,6 @@
         }
       }
     },
-    "Summary looks thin — retry with Built-in?": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El resumen quedó corto — ¿reintentar con el Integrado?"
-          }
-        }
-      }
-    },
     "Summary material": {
       "localizations": {
         "es": {
@@ -15701,16 +15701,6 @@
         }
       }
     },
-    "The selected local engine could not generate this summary. Open Intelligence Settings to verify its model, then try again.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El motor local seleccionado no pudo generar este resumen. Abre Ajustes de Inteligencia para verificar su modelo y vuelve a intentarlo."
-          }
-        }
-      }
-    },
     "The selected transcript line is no longer available.": {
       "localizations": {
         "es": {
@@ -16257,16 +16247,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Esta reunión no tiene audio guardado."
-          }
-        }
-      }
-    },
-    "This meeting is long but its summary came out very small. Regenerate with the embedded model — nothing changes unless you click.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La reunión es larga pero su resumen salió muy pequeño. Regenera con el modelo integrado: nada cambia si no haces clic."
           }
         }
       }
@@ -16897,6 +16877,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sin cambios"
+          }
+        }
+      }
+    },
+    "Undo": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deshacer"
           }
         }
       }
@@ -20833,6 +20823,166 @@
           "stringUnit": {
             "state": "translated",
             "value": "el modelo del dispositivo aún se está descargando; inténtalo de nuevo en unos minutos"
+          }
+        }
+      }
+    },
+    "Removed %@ of silence.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se quitaron %@ de silencio."
+          }
+        }
+      }
+    },
+    "Remove %@ of silence at the end…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar %@ de silencio al final…"
+          }
+        }
+      }
+    },
+    "Remove the silence at the end?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Quitar el silencio del final?"
+          }
+        }
+      }
+    },
+    "The audio after the last phrase is deleted for good, and transcript edits are reset.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El audio después de la última frase se borra para siempre y se descartan las correcciones de la transcripción."
+          }
+        }
+      }
+    },
+    "Removing silence…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitando silencio…"
+          }
+        }
+      }
+    },
+    "There is no long silence at the end to remove.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay un silencio largo al final para quitar."
+          }
+        }
+      }
+    },
+    "Wait for processing to finish before removing silence.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Espera a que termine el procesamiento antes de quitar el silencio."
+          }
+        }
+      }
+    },
+    "Standard": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estándar"
+          }
+        }
+      }
+    },
+    "Detailed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detallado"
+          }
+        }
+      }
+    },
+    "Detail": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detalle"
+          }
+        }
+      }
+    },
+    "Summary looks thin — make it detailed?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El resumen quedó corto — ¿hacerlo detallado?"
+          }
+        }
+      }
+    },
+    "The local model couldn’t finish this summary. Try again with a shorter detail level, or check its model in Intelligence Settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El modelo local no pudo terminar este resumen. Vuelve a intentarlo con un nivel de detalle más corto o revisa su modelo en Ajustes de Inteligencia."
+          }
+        }
+      }
+    },
+    "Summary couldn’t finish": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El resumen no pudo terminar"
+          }
+        }
+      }
+    },
+    "This meeting is long but its summary came out very small. Regenerate a detailed summary — nothing changes unless you click.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La reunión es larga pero su resumen salió muy pequeño. Regenera un resumen detallado — nada cambia a menos que hagas clic."
+          }
+        }
+      }
+    },
+    "Recognize %@ in future meetings?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Reconocer a %@ en próximas reuniones?"
+          }
+        }
+      }
+    },
+    "Suggests this name when the voice is heard again. The voiceprint stays encrypted on this Mac; remove it in Settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugiere este nombre cuando vuelva a escucharse esta voz. La huella de voz queda cifrada en esta Mac; puedes borrarla en Ajustes."
           }
         }
       }

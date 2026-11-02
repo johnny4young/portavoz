@@ -27,9 +27,12 @@ final class MeetingDetailAudioCompressionState {
         }
     }
 
+    static func canCompress(_ state: MeetingDetailModel.State) -> Bool {
+        !state.isCompressingAudio && !state.isTrimmingAudio && state.playback?.canCompressAudio == true
+    }
+
     static func compressionRequest(for state: MeetingDetailModel.State) -> CompressMeetingAudioRequest? {
-        guard !state.isCompressingAudio, state.playback?.canCompressAudio == true,
-              let relative = state.readModel?.meeting.audioDirectory else { return nil }
+        guard canCompress(state), let relative = state.readModel?.meeting.audioDirectory else { return nil }
         return CompressMeetingAudioRequest(relativeAudioDirectory: relative)
     }
 

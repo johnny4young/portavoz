@@ -311,6 +311,8 @@ final class MeetingDetailModelTests: XCTestCase {
             .deleteMeeting(fixture.meeting.id),
             .retryProcessing(fixture.meeting.id),
         ])
+        // Accepting the name it already has leaves the summary alone.
+        XCTAssertEqual(client.summaryRenames, [["Ana", "Bea"], ["Ana", "Carla"]])
         XCTAssertEqual(client.searchReindexRequests, 8)
         XCTAssertEqual(effectSpeakerName(nameEffect), "Ana")
         XCTAssertEqual(effectSpeakerName(voiceEffect), "Bea")
@@ -681,8 +683,9 @@ final class MeetingDetailModelTests: XCTestCase {
 
     func testDocumentNameAndVoiceActionsStayBehindTheFeatureOwner() async {
         let fixture = MeetingDetailModelFixture()
-        let client = MeetingDetailModelClientFake(updates: [])
+        let client = MeetingDetailModelClientFake(updates: [.core(fixture.unnamedCore)])
         let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        await model.observe()
 
         let document = await model.send(.prepareDocument(.markdown))
         let gist = await model.send(.publishGist)
@@ -719,6 +722,7 @@ final class MeetingDetailModelTests: XCTestCase {
         }
         XCTAssertTrue(model.state.voiceSuggestions.isEmpty)
         XCTAssertEqual(client.calls, [
+            .observe(fixture.meeting.id),
             .prepareDocument(fixture.meeting.id, .markdown),
             .publishGist(fixture.meeting.id),
             .loadNameSuggestions(fixture.meeting.id),
@@ -731,8 +735,9 @@ final class MeetingDetailModelTests: XCTestCase {
 
     func testVoiceSuggestionKeepsNameLookupSuccessfulWhenItSuppressesText() async {
         let fixture = MeetingDetailModelFixture()
-        let client = MeetingDetailModelClientFake(updates: [])
+        let client = MeetingDetailModelClientFake(updates: [.core(fixture.unnamedCore)])
         let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        await model.observe()
 
         await model.send(.loadVoiceSuggestions)
         let effect = await model.send(.loadNameSuggestions)
@@ -745,9 +750,143 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertEqual(model.state.voiceSuggestions.map(\.name), ["Ana"])
         XCTAssertNil(model.state.lastActionError)
         XCTAssertEqual(client.calls, [
+            .observe(fixture.meeting.id),
             .loadVoiceSuggestions(fixture.meeting.id),
             .loadNameSuggestions(fixture.meeting.id),
         ])
+    }
+
+    func testVoiceSuggestionsFollowTheSpeakersThatAppearAndGetNamed() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        client.voiceSuggestionsResult = [
+            MeetingVoiceSuggestion(speakerLabel: "S1", name: "Ana", distance: 0.2),
+            MeetingVoiceSuggestion(speakerLabel: "S2", name: "Bea", distance: 0.3),
+        ]
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        let second = Speaker(meetingID: fixture.meeting.id, label: "S2")
+
+        // Before diarization there is no cast, so nothing is evaluated or latched.
+        await model.send(.loadVoiceSuggestions)
+        client.updates = [.core(fixture.unnamedCore)]
+        await model.observe()
+        await model.send(.loadVoiceSuggestions)
+        await model.send(.loadVoiceSuggestions)
+        client.updates = [.core(MeetingReviewCore(
+            meeting: fixture.meeting,
+            speakers: [fixture.unnamedSpeaker, second],
+            segments: [fixture.segment]))]
+        await model.observe()
+        await model.send(.loadVoiceSuggestions)
+        let bothShown = model.state.voiceSuggestions.map(\.speakerLabel)
+        client.updates = [.core(MeetingReviewCore(
+            meeting: fixture.meeting,
+            speakers: [fixture.speaker, second],
+            segments: [fixture.segment]))]
+        await model.observe()
+
+        XCTAssertEqual(bothShown, ["S1", "S2"])
+        XCTAssertEqual(model.state.voiceSuggestions.map(\.speakerLabel), ["S2"])
+        XCTAssertEqual(client.calls.filter { $0 == .loadVoiceSuggestions(fixture.meeting.id) }.count, 2)
+    }
+
+    func testADismissedVoiceChipStaysAwayWhenAnotherSpeakerAppears() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        client.voiceSuggestionsResult = [
+            MeetingVoiceSuggestion(speakerLabel: "S1", name: "Ana", distance: 0.2),
+        ]
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        client.updates = [.core(fixture.unnamedCore)]
+        await model.observe()
+        await model.send(.loadVoiceSuggestions)
+        model.dismissVoiceSuggestion(speakerLabel: "S1")
+
+        client.updates = [.core(MeetingReviewCore(
+            meeting: fixture.meeting,
+            speakers: [fixture.unnamedSpeaker, Speaker(meetingID: fixture.meeting.id, label: "S2")],
+            segments: [fixture.segment]))]
+        await model.observe()
+        await model.send(.loadVoiceSuggestions)
+
+        XCTAssertTrue(model.state.voiceSuggestions.isEmpty)
+    }
+
+    func testAConfidentVoiceMatchNamesTheSpeakerAndUndoClearsIt() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [.core(fixture.unnamedCore)])
+        client.voiceSuggestionsResult = [
+            MeetingVoiceSuggestion(speakerLabel: "S1", name: "Ana", distance: 0.2, speechSeconds: 12),
+        ]
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        await model.observe()
+
+        await model.send(.loadVoiceSuggestions)
+        XCTAssertEqual(model.state.autoAssignedVoices.map(\.name), ["Ana"])
+        XCTAssertTrue(model.state.voiceSuggestions.isEmpty)
+        XCTAssertEqual(client.summaryRenames, [["S1", "Ana"]])
+        client.updates = [.core(fixture.core)]
+        await model.observe()
+        XCTAssertEqual(model.state.autoAssignedVoices.map(\.name), ["Ana"], "the projection confirms the name")
+
+        await model.send(.undoVoiceAutoAssign(speakerLabel: "S1"))
+        client.updates = [.core(fixture.unnamedCore)]
+        await model.observe()
+        await model.send(.loadVoiceSuggestions)
+
+        XCTAssertTrue(model.state.autoAssignedVoices.isEmpty)
+        XCTAssertTrue(model.state.voiceSuggestions.isEmpty, "an undone match is not offered again")
+        XCTAssertEqual(client.calls.filter { if case .renameSpeaker = $0 { true } else { false } }, [
+            .renameSpeaker("Ana"), .renameSpeaker(nil),
+        ])
+        XCTAssertEqual(client.summaryRenames, [["S1", "Ana"], ["Ana", "S1"]])
+    }
+
+    func testANewerRevisionCancellingTheLoadDoesNotLoseTheVoiceMatch() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [.core(fixture.unnamedCore)])
+        client.voiceSuggestionsResult = [
+            MeetingVoiceSuggestion(speakerLabel: "S1", name: "Ana", distance: 0.2, speechSeconds: 12),
+        ]
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        await model.observe()
+
+        let load = Task { await model.send(.loadVoiceSuggestions) }
+        load.cancel()
+        _ = await load.value
+
+        XCTAssertEqual(model.state.autoAssignedVoices.map(\.name), ["Ana"])
+        XCTAssertEqual(client.summaryRenames, [["S1", "Ana"]])
+    }
+
+    func testVoiceMatchesBelowTheBarOrBeforeTheMeetingSettlesStayChips() async {
+        let fixture = MeetingDetailModelFixture()
+        var processing = fixture.meeting
+        processing.lifecycleState = .processing
+        let weak = MeetingDetailModelClientFake(updates: [.core(fixture.unnamedCore)])
+        weak.voiceSuggestionsResult = [
+            MeetingVoiceSuggestion(speakerLabel: "S1", name: "Ana", distance: 0.2, speechSeconds: 4),
+        ]
+        let early = MeetingDetailModelClientFake(updates: [.core(MeetingReviewCore(
+            meeting: processing, speakers: [fixture.unnamedSpeaker], segments: [fixture.segment]))])
+        early.voiceSuggestionsResult = [
+            MeetingVoiceSuggestion(speakerLabel: "S1", name: "Ana", distance: 0.2, speechSeconds: 12),
+        ]
+        let failing = MeetingDetailModelClientFake(updates: [.core(fixture.unnamedCore)])
+        failing.voiceSuggestionsResult = early.voiceSuggestionsResult
+        failing.failures = [.renameSpeaker]
+
+        for client in [weak, early, failing] {
+            let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+            await model.observe()
+            await model.send(.loadVoiceSuggestions)
+
+            XCTAssertEqual(model.state.voiceSuggestions.map(\.name), ["Ana"])
+            XCTAssertTrue(model.state.autoAssignedVoices.isEmpty)
+            XCTAssertNil(model.state.lastActionError)
+        }
+        XCTAssertFalse(weak.calls.contains(.renameSpeaker("Ana")))
+        XCTAssertFalse(early.calls.contains(.renameSpeaker("Ana")))
     }
 
     func testOptionalSuggestionsCanBeDismissedWithoutMutatingMeetingContent() async {
@@ -899,8 +1038,9 @@ final class MeetingDetailModelTests: XCTestCase {
 
     func testMutationFailuresPreserveSilentAndVisiblePolicies() async {
         let fixture = MeetingDetailModelFixture()
-        let client = MeetingDetailModelClientFake(updates: [])
+        let client = MeetingDetailModelClientFake(updates: [.core(fixture.unnamedCore)])
         let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        await model.observe()
         _ = await model.send(.loadNameSuggestions)
         await model.send(.loadVoiceSuggestions)
         client.failures = Set(MeetingDetailModelFailure.allCases)
@@ -1179,6 +1319,16 @@ private struct MeetingDetailModelFixture {
             segments: [segment])
     }
 
+    var unnamedSpeaker: Speaker {
+        var unnamed = speaker
+        unnamed.displayName = nil
+        return unnamed
+    }
+
+    var unnamedCore: MeetingReviewCore {
+        MeetingReviewCore(meeting: meeting, speakers: [unnamedSpeaker], segments: [segment])
+    }
+
     var summary: MeetingReviewSummary {
         MeetingReviewSummary(
             draft: SummaryDraft(
@@ -1216,6 +1366,7 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     var calls: [MeetingDetailModelCall] = []
     var failures: Set<MeetingDetailModelFailure> = []
     var searchReindexRequests = 0
+    var summaryRenames: [[String]] = []
     var memoryGraphReindexRequests = 0
     var canRememberVoiceResult = true
     var rememberVoiceResult: ManageMeetingVoiceMemoryResult = .remembered
@@ -1282,6 +1433,13 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     func renameMeetingDetailSpeaker(_ speaker: Speaker) throws {
         calls.append(.renameSpeaker(speaker.displayName))
         try fail(.renameSpeaker)
+    }
+
+    func applyMeetingDetailSpeakerRenameToSummary(
+        meetingID: MeetingID, from oldName: String, to newName: String
+    ) throws -> Int? {
+        summaryRenames.append([oldName, newName])
+        return nil
     }
 
     func correctMeetingDetailTranscript(
@@ -1502,6 +1660,7 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     ) throws -> [MeetingVoiceSuggestion] {
         calls.append(.loadVoiceSuggestions(meetingID))
         try fail(.loadVoiceSuggestions)
+        try Task.checkCancellation()
         return voiceSuggestionsResult
     }
 
@@ -1538,6 +1697,12 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
         calls.append(.compressAudio(request.relativeAudioDirectory))
         try fail(.compressAudio)
         return compressionResult
+    }
+
+    func trimMeetingDetailAudioTail(_ request: TrimMeetingAudioTailRequest) throws -> TimeInterval {
+        calls.append(.trimAudio(request.relativeAudioDirectory, revision: request.transcriptRevision))
+        try fail(.trimAudio)
+        return request.duration - (TrailingSilence.cutoff(segments: request.segments, duration: request.duration) ?? 0)
     }
 
     func canCompressMeetingDetailAudio(relativeAudioDirectory: String) async throws -> Bool {
@@ -1667,6 +1832,40 @@ struct MeetingDetailCompressionPermissionTests {
         #expect(client.calls.filter { if case .preparePlayback = $0 { return true }; return false }.count == 1)
     }
 
+    @Test(.timeLimit(.minutes(1)))
+    func longSilentTailIsOfferedAndTrimmedThenPlaybackReloads() async throws {
+        let fixture = MeetingDetailModelFixture()
+        var meeting = fixture.meeting
+        meeting.audioDirectory = "Audio/imported"
+        let segments = [TranscriptSegment(
+            meetingID: meeting.id, channel: .system, text: "Bye", startTime: 0, endTime: 30, isFinal: true)]
+        let busy = ProcessingJob(meetingID: meeting.id, kind: .audioImport, inputFingerprint: "fixture")
+        let client = MeetingDetailModelClientFake(updates: [
+            .core(MeetingReviewCore(meeting: meeting, speakers: [], segments: segments)), .processingJobs([busy])
+        ])
+        let (prepared, file) = try await makePreparedPlayback(sampleRate: 8_000, frames: 2_880_000)
+        defer { prepared.session.invalidate(); try? FileManager.default.removeItem(at: file) }
+        client.preparedPlaybackResult = prepared
+        let model = MeetingDetailModel(meetingID: meeting.id, client: client)
+        await model.observe()
+        await model.send(.loadPlayback)
+        #expect(MeetingDetailAudioTrimState.trailingSilence(for: model.state) == nil)
+        #expect(await model.send(.trimTrailingSilence) == nil)
+
+        client.updates = [.processingJobs([])]
+        await model.observe()
+        #expect(MeetingDetailAudioTrimState.trailingSilence(for: model.state) == 320)
+        guard case .audioTrimmed(let removed) = await model.send(.trimTrailingSilence) else {
+            Issue.record("trim did not report removed audio")
+            return
+        }
+        #expect(removed == 320)
+        #expect(client.calls.contains(.trimAudio("Audio/imported", revision: 0)))
+        #expect(client.calls.filter { if case .preparePlayback = $0 { return true }; return false }.count == 2)
+        #expect(model.state.audioTrimMessage != nil)
+        #expect(model.state.isTrimmingAudio == false)
+    }
+
     @Test func sameDirectoryImportCompletionRefreshesCompressionWithoutReplacingPlayback() async throws {
         let fixture = MeetingDetailModelFixture()
         var meeting = fixture.meeting
@@ -1760,11 +1959,13 @@ struct MeetingDetailCompressionPermissionTests {
         }
     }
 
-    private func makePreparedPlayback() async throws -> (PreparedMeetingPlayback, URL) {
+    private func makePreparedPlayback(
+        sampleRate: Double = 16_000, frames: AVAudioFrameCount = 3_200
+    ) async throws -> (PreparedMeetingPlayback, URL) {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("permission-\(UUID().uuidString).wav")
         do {
-            let format = try #require(AVAudioFormat(standardFormatWithSampleRate: 16_000, channels: 1))
-            let buffer = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 3_200))
+            let format = try #require(AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1))
+            let buffer = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames))
             buffer.frameLength = buffer.frameCapacity
             let samples = try #require(buffer.floatChannelData?[0])
             for index in 0..<Int(buffer.frameLength) { samples[index] = 0.1 }
@@ -1827,6 +2028,7 @@ private enum MeetingDetailModelFailure: String, CaseIterable, Error, LocalizedEr
     case loadMetadataSuggestions
     case preparePlayback
     case compressAudio
+    case trimAudio
     case exportAudioClip
     case rememberVoice
 
@@ -1858,6 +2060,7 @@ private enum MeetingDetailModelCall: Equatable {
         titledChapterStarts: Set<TimeInterval>)
     case preparePlayback(String)
     case compressAudio(String)
+    case trimAudio(String, revision: Int)
     case exportAudioClip(String, ClosedRange<TimeInterval>, URL)
     case checkVoiceMemoryOffer(String)
     case rememberVoice(MeetingID, SpeakerID)

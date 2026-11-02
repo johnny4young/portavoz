@@ -45,8 +45,9 @@ let package = Package(
         .package(url: "https://github.com/sparkle-project/Sparkle.git", .upToNextMajor(from: "2.10.1")),
         // Embedded local LLM (MLX, MIT) — D25's last mile: summaries on
         // Macs with neither Apple Intelligence nor Ollama. Pinned exact:
-        // the LLM API surface moves between minors.
-        .package(url: "https://github.com/ml-explore/mlx-swift-lm.git", exact: "3.31.4"),
+        // the LLM API surface moves between minors. No default traits: the
+        // FoundationModels adapter and its grammar engine stay out of the app.
+        .package(url: "https://github.com/ml-explore/mlx-swift-lm.git", exact: "3.32.3", traits: []),
         // Tokenizer runtime for the embedded summarizer: mlx-swift-lm 3.x
         // deliberately decoupled swift-transformers — the app provides it
         // through the MLXHuggingFace macros.

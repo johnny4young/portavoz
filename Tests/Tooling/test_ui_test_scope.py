@@ -268,7 +268,14 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
             self.assertEqual(selection.tests, FEATURE_TESTS["meeting-audio"], path)
             self.assertTrue(
-                all("MeetingDetailUITests" in test for test in selection.tests),
+                all(test.split("/")[1] in {"MeetingDetailUITests", "MeetingAudioTrimUITests"}
+                    for test in selection.tests),
+                path,
+            )
+            self.assertIn(
+                "PortavozUITests/MeetingAudioTrimUITests/"
+                "testSilentTailRequiresConfirmationAndCutsOnlyAfterConfirmation",
+                selection.tests,
                 path,
             )
 
@@ -1203,6 +1210,15 @@ class UITestScopeTests(unittest.TestCase):
         for index in (0, 4):
             with self.subTest(index=index), self.assertRaises(ValueError):
                 ui_scope.shard_tests(ROOT, index, 3)
+
+    def test_full_suite_total_keeps_pace_with_the_catalog(self):
+        budget = json.loads(
+            (ROOT / "docs/evidence/ui-test-runtime-budget.json").read_text(encoding="utf-8")
+        )
+        self.assertIsNone(ui_scope.full_suite_total_error(budget, len(ALL_TESTS)))
+        rate = budget["qualifiedCandidate"]["englishTestDurationSeconds"] / budget["qualifiedCandidate"]["caseCount"]
+        grown = int(budget["fullSuite"]["maximumTestDurationSecondsPerLocale"] / rate) + 1
+        self.assertIn("full-suite total", ui_scope.full_suite_total_error(budget, grown))
 
     def test_cli_shard_requires_all_and_emits_only_its_tests(self):
         stderr = io.StringIO()

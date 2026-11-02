@@ -11,6 +11,7 @@ extension AppServices {
         guard case .suggestions(let suggestions) = try await meetingVoiceMemory.execute(
             .init(action: .suggestions(meetingID: meetingID)))
         else { return [] }
+        VoiceSuggestionLog.shown(suggestions)
         return suggestions
     }
 
@@ -30,7 +31,13 @@ extension AppServices {
     }
 
     private var meetingVoiceMemory: ManageMeetingVoiceMemory {
-        ManageMeetingVoiceMemory(
+        if usesTemporaryMeetingStore, ProcessInfo.processInfo.arguments.contains(MeetingVoiceMatchFixture.argument) {
+            return ManageMeetingVoiceMemory(
+                library: .local(store: store),
+                memory: MeetingVoiceMatchFixture(),
+                extractor: MeetingVoiceMatchFixture())
+        }
+        return ManageMeetingVoiceMemory(
             library: .local(store: store),
             memory: AppRememberedVoiceMemory(
                 gallery: voiceGallery,

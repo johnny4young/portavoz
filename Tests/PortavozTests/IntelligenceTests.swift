@@ -1646,6 +1646,16 @@ final class ThinSummaryPolicyTests: XCTestCase {
             summaryCharacters: 4_000, actionItems: 8, meetingSeconds: 56 * 60))
     }
 
+    func testARecordingThatOutlastsItsSpeechIsMeasuredBySpeech() {
+        XCTAssertEqual(
+            ThinSummaryPolicy.meetingSeconds(wallClock: 30 * 60, lastSpeechEnd: 4 * 60),
+            4 * 60)
+        XCTAssertEqual(
+            ThinSummaryPolicy.meetingSeconds(wallClock: 30 * 60, lastSpeechEnd: 31 * 60),
+            30 * 60)
+        XCTAssertEqual(ThinSummaryPolicy.meetingSeconds(wallClock: 30 * 60, lastSpeechEnd: nil), 0)
+    }
+
     func testMidLengthMeetingWithSubstanceIsNotThin() {
         XCTAssertFalse(ThinSummaryPolicy.isThin(
             summaryCharacters: 1_500, actionItems: 0, meetingSeconds: 25 * 60))

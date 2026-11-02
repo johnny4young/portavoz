@@ -281,7 +281,8 @@ struct CLIMeetingDocumentRenderer: MeetingDocumentRendering {
             segments: content.segments,
             summary: content.summary,
             summaryVersion: content.summaryVersion,
-            correctionProvenance: content.correctionProvenance)
+            correctionProvenance: content.correctionProvenance,
+            translationLanguage: content.translationLanguage)
     }
 
     func pdf(fromMarkdown markdown: String) async throws -> Data {
@@ -302,7 +303,8 @@ struct CLIMeetingDocumentRenderer: MeetingDocumentRendering {
             exportFormat,
             segments: content.segments,
             speakers: content.speakers,
-            correctionProvenance: content.correctionProvenance)
+            correctionProvenance: content.correctionProvenance,
+            translationLanguage: content.translationLanguage)
     }
 }
 
