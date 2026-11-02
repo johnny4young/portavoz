@@ -16,6 +16,32 @@ protocols and full-certification scorecard preserve those missing results.
 Code readiness does not authorize publication or establish notarization,
 production sync reliability, universal hardware support or real-world quality.
 
+### Embedded MLX dependency qualification
+
+MLX Swift 0.33.0 is not an in-range update of the embedded summarizer. The
+current exact `mlx-swift-lm` 3.31.4 dependency requires MLX
+`0.31.4..<0.32.0`; the latest published LM release, 3.32.3, requires
+`0.32.3..<0.33.0`. Minimal SwiftPM resolution probes reject an explicit
+MLX 0.33.0 pin with either release. Upstream LM main declares a compatible
+0.33.0 range, but is an unreleased, substantially larger change.
+Isolated strict builds and tiny GPU model checks now cover both graphs.
+Float32 prefill, cache continuation and greedy tokens pass within each
+graph; cancellation and serialized container access also pass. However,
+the candidate's 4-bit/bfloat16 fixture changes greedy output between
+prefill block sizes at 97 and 129 tokens, and cross-version greedy output
+differs for three of twelve quantized prompts. The baseline has its own
+bfloat16 warm-continuation tolerance failure; that is not attributed to
+the upgrade. A scoped core load-progress handler sees only one of three
+files under concurrent loading, versus all three in the serial control.
+These are bounded synthetic findings, not evidence of a production-model
+quality regression or a loading speedup.
+
+Keep the existing graph until the quantized differences are explained
+and accepted, a compatible immutable LM is selected, and full app/macro,
+pinned-model, resource and packaged-runtime qualification passes. The
+[intelligence spec](specs/04-intelligence.md#embedded-mlx-upgrade-boundary)
+records the matrix, tolerances, controls and remaining evidence.
+
 ### Durable processing cancellation qualification
 
 A genuinely cancelled Swift task cannot persist `suspendProcessingJob` through

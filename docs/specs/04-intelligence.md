@@ -979,6 +979,172 @@ The durable post-capture worker selects Ollama through `OllamaService.summaryPro
 
 **Embedded MLX (D32/D151/D161, Jul 2026)**: third engine `summaryEngine = "mlx"` — `MLXSummaryProvider` (IntelligenceKit) runs **Qwen3.5-4B 4-bit** (Apache-2.0, sha256-pinned in `ModelCatalog.mlxQwen35`, 3 GB; `mlxQwen3` remains in the catalog for A/B) in-process on the GPU via `mlx-swift-lm` (exact 3.31.4 — successor to mlx-swift-examples; the tokenizer is provided by `swift-transformers` through the `MLXHuggingFace` macros). **Field A/B (Jul 10, refined 56 min / 852-segment sprint demo)**: Qwen3-4B collapsed into a degenerate loop twice (34k and 68k chars truncated); Qwen3.5-4B with `enable_thinking: false` (additionalContext — the 3.5 family reasons by default and loses the JSON prompt) produced decisions + open questions + 11 action items with owners in clean Spanish in 89 s. `maxTokens` 16384 as a pure anti-runaway safeguard. Reuses the prompt and JSON contract from `OpenAICompatibleSummaryProvider.prompt/parseStructured` — same `StructuredSummary`, same fingerprint. `MLXSummaryRuntime` (actor) keeps one verified `ModelContainer` loaded. Production `MLXSummaryProvider` values receive a narrow client for the AppServices-owned process runtime; AppServices records exact load/use/release transitions, guards model deletion, and preserves the 120-second idle fence. The independent MLX `IntelligenceScheduler` lane still serializes `container.perform` generation with explicit interactive/background priority and content-free queue/execution telemetry. Settings → "Built-in (MLX)": `MLXModelRow` row with verified download/status/delete (`AppServices.mlxDownloaded/downloadMLX/deleteMLXModel`); `LocalSummaryProviderPolicy` suggests it with RAM ≥ 8 GB when Apple Intelligence is unavailable and Ollama has no eligible name-screened model. **Shipping**: SwiftPM does not compile Metal shaders → `scripts/build-mlx-metallib.sh` caches `mlx-swift_Cmlx.bundle` (one-time xcodebuild, keyed by mlx-swift version), and `make-app.sh` copies it to `Contents/Resources`. **E2E verification**: `portavoz-app --mlx-smoke [real]` — synthetic ES in 3 s; with `real`, summarizes the most recent meeting in the library (read-only). Verified with a real meeting of 40 min / 686 segments: 44 s, coherent decisions and action items. Swift tests exercise provider/runtime injection without loading Metal; real generation still requires the bundled metallib. **Memory (critical)**: without `MLX.Memory.cacheLimit`, MLX's buffer cache grows without limit on long prompts — 31 GB of RSS was observed on that same meeting before macOS suspended the process. `MLXSummaryRuntime` sets the supported API to 20 MB (the LLMEval value) and `maxTokens: 16384` as the generation cap; with that, the real peak is ~4.5 GB (2.3 GB weights + KV + runtime) (D118).
 
+### Embedded MLX upgrade boundary
+
+The [dependency update deferred in #156](https://github.com/johnny4young/portavoz/pull/156)
+requires a coupled LM/core qualification, not an isolated lockfile edit.
+The 2026-10-30 source and resolver evaluation leaves the serving graph intact:
+
+| Candidate | MLX requirement | Result |
+| --- | --- | --- |
+| Serving LM 3.31.4 (`bd4b7434e6bd`) | `0.31.4..<0.32.0`; lock resolves 0.31.6 | Minimal 3.31.4/0.31.6 control resolves; adding exact 0.33.0 fails resolution |
+| Published LM 3.32.3 (`3b339ad6e3b3`) | `0.32.3..<0.33.0` | Adding exact 0.33.0 fails resolution |
+| Upstream LM main (`f5b0677f6b52`) | `0.33.0..<0.34.0` | Minimal probe resolves and isolated engine builds/runs; unreleased, with quantized differences and app qualification still open |
+
+MLX 0.33.0 is commit `7ede4fd6d05f63305c1c0ebf4f8c1909a637c574`.
+The full upstream main snapshot inspected above is
+`f5b0677f6b52b81d068871611cfcb82d1e7a0005`; it is evidence about that
+snapshot, not a recommendation to track a branch. The serving tokenizer
+graph remains `swift-transformers` 1.3.5, `swift-huggingface` 1.0.0,
+`swift-jinja` 2.5.2 and `swift-syntax` 603.0.2. LM supplies
+`MLXHuggingFaceMacros`; its compatibility and normal validation must be
+checked again for a different LM revision.
+
+**API and behavior boundaries:**
+
+- [MLX 0.33.0](https://github.com/ml-explore/mlx-swift/releases/tag/0.33.0)
+  changes `compile(inputs:outputs:shapeless:_:)` to return a non-Sendable
+  closure. Stateless `compile(shapeless:_:)` requires and returns Sendable
+  closures; `MLXCustomFunction` closures are Sendable too. Portavoz has no
+  direct `compile` or `MLXCustomFunction` call, but LM's compiled model paths
+  still need strict Swift compilation. Module state must be declared as
+  compile inputs rather than hidden with unchecked Sendable wrappers.
+- `MaterializedArray` permits sharing evaluated immutable arrays; it does
+  not make a mutable model or KV cache safe for parallel generations.
+  Preserve the independent MLX scheduler lane, `ModelContainer.perform`,
+  composition-owned residency and deletion/idle fences. Upstream changes
+  to eval locking do not remove these application ownership requirements.
+- LM changes Qwen3.5 prefill, carried state, cache planning and compiled
+  decode. Portavoz uses a fresh generation through `generate` with
+  `temperature: 0`, `enable_thinking: false`, a 16,384-token ceiling and
+  a cancellation check after consuming the stream. Those call signatures
+  still exist in the inspected snapshot; that source observation is not
+  evidence of equivalent output, complete cancellation or memory bounds.
+- Concurrent multi-file safetensors loading is an explicit new core API;
+  the inspected LM weight loader uses its own concurrent CPU work groups,
+  calling single-file `loadArraysAndMetadata` from those worker threads.
+  It does not call the new multi-file API. A version bump alone does not
+  establish a loading speedup for Portavoz.
+- Core `LoadProgress` describes bytes read per URL, not model-download or
+  generation completion. Its scoped handler can observe lazy evaluation
+  after the loading call returns; callbacks can arrive concurrently from
+  worker threads and must be cheap and avoid MLX re-entry. Unevaluated or
+  discarded weights can leave the byte count short of the file size.
+  Portavoz's local-directory `loadContainer(from:using:)` currently exposes
+  no byte-progress UI. The scoped handler is task-local, so its propagation
+  into LM's dispatch workers must be verified rather than assumed. Any
+  future adapter must aggregate per-file events,
+  fence stale callbacks and finish on successful evaluation rather than
+  waiting for every file to report 100%.
+
+**Reproducible range check:** in an empty temporary directory create this
+manifest and run `swift package resolve`. It performs dependency resolution
+only, without building the application, executing its macros or downloading
+model weights. Repeat with LM 3.32.3. Both reject the incompatible
+requirements; removing the conflict is not permission to bypass validation.
+
+```swift
+// swift-tools-version: 6.2
+import PackageDescription
+let package = Package(name: "MLXCompatibilityProbe", dependencies: [
+    .package(url: "https://github.com/ml-explore/mlx-swift-lm.git", exact: "3.31.4"),
+    .package(url: "https://github.com/ml-explore/mlx-swift", exact: "0.33.0"),
+])
+```
+
+For a positive control, replace core `exact: "0.33.0"` with
+`exact: "0.31.6"`. To reproduce the unreleased candidate's resolution,
+keep core 0.33.0 and replace LM `exact: "3.31.4"` with
+`revision: "f5b0677f6b52b81d068871611cfcb82d1e7a0005"`. Both probes
+resolved successfully. The minimal graph selects `swift-syntax` 603.0.2
+and `swift-numerics` 1.1.1 in both cases; the baseline also selects
+`swift-argument-parser` 1.8.2. This does not resolve or compile the full
+Portavoz/tokenizer graph and does not approve adopting an unreleased LM.
+
+A separate detached checkout of Portavoz main `c35b0751fe8f` also resolves
+the complete graph with the exact core 0.33.0 and immutable LM revision.
+Only the `mlx-swift` and `mlx-swift-lm` lock entries change; the tokenizer,
+SwiftSyntax, speech libraries and other pins remain unchanged. This is a
+resolution result, not compilation of the full candidate app.
+
+**Isolated GPU engine checks (Swift 6.4, macOS 27):**
+
+Both immutable graphs compile `MLX`, `MLXNN`, `MLXLMCommon` and `MLXLLM`
+with `-Xswiftc -warnings-as-errors`, using normal package/plugin handling.
+The harness excludes `MLXHuggingFace`, uses a numeric test tokenizer,
+and never executes `MLXHuggingFaceMacros`. On this toolchain SwiftPM's
+native build also produces a matching Cmlx metallib, which the probe
+loads on the GPU; this does not qualify the shipping app's packaging recipe.
+The build system emits a `missing creator for mutated node` warning for
+the resource bundle, separate from the successful strict Swift compilation.
+
+The fixtures are four-layer Qwen3.5 text models with hidden size 64,
+vocabulary 128 and shared baseline-created checkpoint bytes. Float32 uses
+full-attention interval 2; the quantized fixture uses 4-bit/group-32
+weights, bfloat16 and full-attention interval 4. Candidate preparation
+runs before inference, including its default projection-fusion preparation.
+No model weights are downloaded. All tests retain the 20 MiB buffer-cache
+limit. These small fixtures do not represent the shipped 4B model's quality,
+resource use, tokenizer or prompt/template behavior.
+
+| Check | Baseline 3.31.4 / 0.31.6 | Candidate `f5b0677` / 0.33.0 |
+| --- | --- | --- |
+| Float32 single/chunked prefill, cache offsets and 8-token greedy generation | 12/12 pass | 12/12 pass |
+| Quantized single/chunked logits and cache offsets | 12/12 pass at the stated tolerance | 12/12 pass at the stated tolerance |
+| Quantized greedy tokens, prefill step 512 versus 32 | 12/12 identical | 10/12 identical; differs at prompt lengths 97 and 129 |
+| Warm 65+17-token cache versus cold 82-token prompt | Float32 passes; bfloat16 fails tolerance, max absolute logit difference 0.0341796875 | Both pass; quantized max difference 0 |
+| Immediate and mid-decode cancellation | Stops with `.cancelled`; immediate cancellation emits zero tokens | Same; immediate cancellation emits zero tokens |
+| Already-cancelled task entering prefill | Still processes the tiny prompt | Throws `CancellationError` |
+| Cancellation from the first real prefill progress callback | No equivalent callback API tested | Throws after one callback on the 1,025-token/step-32 fixture; the stream is synchronized before subsequent work |
+| Eight concurrent `ModelContainer.perform` callers, including an await inside each operation | Maximum active operation 1; all eight finish with identical tokens | Same |
+| Concurrent core safetensors loading and scoped progress | New API unavailable | Loaded values match serial; progress observes 1/3 files in 10/10 trials, while serial scoped loading observes 3/3 |
+
+Prompt lengths are 31, 32, 33, 63, 64, 65, 97, 129, 511, 512, 513 and
+1,025. Within-graph logit checks use `atol=rtol=0.001` for float32 and
+`atol=rtol=0.03` for bfloat16; greedy tokens must match exactly. The
+candidate's balanced versus legacy remainder prefill at step 32 also
+produces the same tokens at lengths 33, 97, 513 and 1,025 in both profiles.
+The app's default balanced step-512 policy remains a separate qualification.
+Turning off
+the official `MLX_QWEN_FOUR_GDN` fusion switch does not remove the two
+quantized step-size failures in this fixture; it is not a demonstrated fix.
+
+Across graphs, float32 greedy sequences match at all twelve lengths,
+but the logits exceed the 0.001 tolerance (maximum absolute difference
+0.0075610876). Quantized logits meet their tolerance while greedy output
+matches at only nine lengths; lengths 31, 97 and 512 differ. Do not widen
+tolerances or infer production quality from these observations. Investigate
+the numerical and shape-dependent differences before choosing an inference
+policy for the migration. The baseline's separate warm-cache failure must
+also remain visible rather than being called a candidate regression.
+
+The progress coverage finding is consistent with a task-local handler not
+being inherited by dispatch workers in core's `IO+Concurrent.swift`.
+Payloads were evaluated and all files contained used tensors, so this
+particular coverage gap is not explained by discarded or unevaluated
+weights. No app progress adapter or upstream fix is qualified by this probe.
+The container test establishes exclusive engine access, not the application's
+complete priority, cancellation, residency or deletion policy. Harness
+source and reproduction commands are retained in [the evaluation PR](https://github.com/johnny4young/portavoz/pull/176).
+
+**Qualification still required before adoption:**
+
+| Area | Matched baseline/candidate evidence required |
+| --- | --- |
+| Dependency graph and Swift 6 | Preserve the resolved immutable pair; compile full app production and test targets with warnings as errors and normal macro/plugin validation. The LM snapshot also changes its Hugging Face macro implementation, which the isolated engine target excludes. |
+| Prefill and KV cache | Tiny deterministic Qwen3.5 text models: one-shot versus chunked prefill across chunk boundaries, cold versus warm continuation and cache offsets/state; compare logits and greedy tokens within declared numeric tolerances. Upstream `Qwen35PrefillLogitsTests`, `Qwen35MRoPETests`, `Qwen35ContinuationTests` and `KVCacheTests` provide starting fixtures, not Portavoz test results. |
+| Generation and cancellation | Identical synthetic Spanish/English meeting prompts and pinned tokenizer; valid structured summaries, thinking disabled, bounded token count; cancellation during prefill and decode must propagate, release the lane and admit a subsequent request without publishing partial output. |
+| Loading and progress | Small locally generated safetensors: single/multiple files, lazy evaluation, discarded tensors, overlapping loads, failure and cancellation; bounded monotonic per-load counts and no late callback publication. Separate disk loading from ModelStore download progress. |
+| Ownership and resources | Provider injection, scheduler serialization/priority/cancellation and residency/delete/idle regressions; stress concurrent callers without sharing mutable MLX state. Compare cold/warm latency and peak RSS on the same host, preserving the 20 MiB buffer-cache limit. |
+| Packaged runtime | Rebuild and bundle the metallib for the exact new core version with validated macros/plugins, then run the synthetic `--mlx-smoke` path in a disposable app environment. That command can download the catalog model: check verified local availability and resource headroom first; never add `real` for this qualification. Dependency/build changes also require the full English UI selection. |
+
+The dependency probes and isolated engine checks above were executed;
+they do not constitute an app qualification. Full candidate app/test
+compilation with the changed Hugging Face macro, real pinned-model
+structured summaries, host resource comparisons and packaged app/UI
+execution remain unverified. The serving manifest and lockfile stay
+unchanged, and adoption remains open in [GAPS](../GAPS.md#embedded-mlx-dependency-qualification).
+
 ## Seeded summary templates (TMPL, Jul 2026)
 
 `Recipe.all` seeds eight templates: General, Standup, 1:1, Planning,
