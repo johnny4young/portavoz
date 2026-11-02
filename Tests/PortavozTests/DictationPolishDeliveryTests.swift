@@ -7,7 +7,7 @@ import Testing
 
 /// Recognition is scripted; every case enters the real session, polish and final delivery.
 // The controller harness overrides process-wide NSArgumentDomain, so the suite is serialized.
-@Suite(.serialized, .timeLimit(.minutes(1)))
+@Suite(.serialized, .exclusiveArgumentDomain, .timeLimit(.minutes(1)))
 @MainActor
 struct DictationPolishDeliveryTests {
     private final class Recorder {

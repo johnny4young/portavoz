@@ -41,7 +41,7 @@ struct DictationCorrectionCommandTests {
     }
 }
 
-@Suite(.serialized, .timeLimit(.minutes(1)))
+@Suite(.serialized, .exclusiveArgumentDomain, .timeLimit(.minutes(1)))
 @MainActor
 struct DictationCorrectionDeliveryTests {
     private func dependencies(

@@ -8,7 +8,7 @@ import Testing
 /// Recognition is scripted, but every case enters the real session and final delivery.
 // The existing controller harness overrides process-wide NSArgumentDomain.
 // Serialize that fixture owner, not the production dictation implementation.
-@Suite(.serialized, .timeLimit(.minutes(1)))
+@Suite(.serialized, .exclusiveArgumentDomain, .timeLimit(.minutes(1)))
 @MainActor
 struct DictationTextModeDeliveryTests {
     struct Example: Sendable {

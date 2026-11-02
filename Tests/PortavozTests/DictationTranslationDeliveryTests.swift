@@ -7,7 +7,7 @@ import Testing
 
 /// Recognition is scripted; every case enters the real session, translation and final delivery.
 // Preferences go to the harness suite: other suites reset the process-wide argument domain.
-@Suite(.serialized, .timeLimit(.minutes(1)))
+@Suite(.serialized, .exclusiveArgumentDomain, .timeLimit(.minutes(1)))
 @MainActor
 struct DictationTranslationDeliveryTests {
     private final class Recorder {

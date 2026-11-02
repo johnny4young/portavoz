@@ -177,7 +177,7 @@ struct SelectionCopyClipboardTests {
     }
 }
 
-@Suite(.serialized, .timeLimit(.minutes(1)))
+@Suite(.serialized, .exclusiveArgumentDomain, .timeLimit(.minutes(1)))
 @MainActor
 struct SelectionRewriteSayHowTests {
     private final class Recorder {

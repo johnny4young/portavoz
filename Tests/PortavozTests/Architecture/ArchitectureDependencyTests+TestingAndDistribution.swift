@@ -82,6 +82,41 @@ extension ArchitectureDependencyTests {
         XCTAssertFalse(focusTests.contains("Task.sleep"))
     }
 
+    func testParallelSuitesSharingTheArgumentDomainRunExclusively() throws {
+        let root = "Tests/PortavozTests"
+        let swiftTesting = Set(try Self.sourceMatches(under: root, pattern: #"(?m)^import Testing$"#))
+        let shared = Set(try Self.sourceMatches(
+            under: root,
+            pattern: #"argumentDomain|DictationControllerHarness\(|temporary: true|storesPreferencesTemporarily"#,
+            codeOnly: true))
+        let suite = try NSRegularExpression(
+            pattern: #"(?m)^@Suite\(.*\.exclusiveArgumentDomain.*$\s*(?:@\w+\s*)*struct (\w+)"#)
+        let extensionDeclaration = try NSRegularExpression(pattern: #"(?m)^extension (\w+)"#)
+        var exclusiveTypes: Set<String> = []
+        var extendedTypes: [String: Set<String>] = [:]
+        for file in swiftTesting {
+            let source = SwiftSourceScanner.codeOnly(try Self.contents(of: "\(root)/\(file)"))
+            let range = NSRange(source.startIndex..., in: source)
+            for match in suite.matches(in: source, range: range) {
+                exclusiveTypes.insert((source as NSString).substring(with: match.range(at: 1)))
+            }
+            extendedTypes[file] = Set(extensionDeclaration.matches(in: source, range: range).map {
+                (source as NSString).substring(with: $0.range(at: 1))
+            })
+        }
+        let unguarded = swiftTesting.intersection(shared)
+            .subtracting(["ExclusiveArgumentDomain.swift"])
+            .filter { file in
+                let source = (try? Self.contents(of: "\(root)/\(file)")) ?? ""
+                let extended = extendedTypes[file] ?? []
+                let onlyExtendsGuardedSuites = !extended.isEmpty && extended.isSubset(of: exclusiveTypes)
+                return !source.contains(".exclusiveArgumentDomain") && !onlyExtendsGuardedSuites
+            }
+        XCTAssertEqual(
+            unguarded.sorted(), [],
+            "The argument domain is process-wide; parallel suites that write it need .exclusiveArgumentDomain")
+    }
+
     func testArchitectureDocumentUsesOnlyDurableTechnicalVocabulary() throws {
         let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
         let forbidden = try NSRegularExpression(
