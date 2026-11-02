@@ -496,7 +496,7 @@ final class DictationControllerHarness {
     var now = Date(timeIntervalSince1970: 1_000)
     var loads = 0
     var finishes = 0
-    var engineID = "controlled"
+    var lane: LiveSpeechSelection?
     var hints: TranscriptionHints?
     var transcriptOutput: AsyncThrowingStream<TranscriptSegment, Error>.Continuation?
     var insertions: [String] = []
@@ -545,10 +545,10 @@ final class DictationControllerHarness {
                 guard let self else { throw CancellationError() }
                 self.loads += 1
                 return LiveTranscriptionRuntime(engine: ControlledDictationEngine(
-                    engineID: self.engineID, text: self.text, consumerGate: self.consumerGate,
+                    text: self.text, consumerGate: self.consumerGate,
                     stopsReadingAfterFirstCaption: self.stopsReadingAfterFirstCaption,
                     receivedHints: { [weak self] in self?.hints = $0 },
-                    receivedOutput: { [weak self] in self?.transcriptOutput = $0 })) { [weak self] in
+                    receivedOutput: { [weak self] in self?.transcriptOutput = $0 }), lane: self.lane) { [weak self] in
                     self?.finishes += 1
                 }
             },
@@ -671,17 +671,14 @@ actor ControlledMicrophoneSession: CaptureReportingSource {
 }
 
 private struct ControlledDictationEngine: TranscriptionEngine {
-    let engineID: String
     let text: String
     let consumerGate: PreparationGate?
     let stopsReadingAfterFirstCaption: Bool
     let receivedHints: @MainActor @Sendable (TranscriptionHints) -> Void
     let receivedOutput: @MainActor @Sendable (AsyncThrowingStream<TranscriptSegment, Error>.Continuation) -> Void
-    var descriptor: EngineDescriptor {
-        EngineDescriptor(
-            id: engineID, displayName: "Controlled", realTimeFactor: 0,
-            runsOnDevice: true, approximateMemoryMB: 0)
-    }
+    let descriptor = EngineDescriptor(
+        id: "controlled", displayName: "Controlled", realTimeFactor: 0,
+        runsOnDevice: true, approximateMemoryMB: 0)
 
     func transcribe(
         _ audio: AsyncStream<AudioChunk>, hints: TranscriptionHints

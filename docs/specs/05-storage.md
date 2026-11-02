@@ -2139,9 +2139,9 @@ Unicode scalars and close `mode`, `language` and `delivery` to their known value
 keyset cursor and a 1–100 limit. No audio, window title, URL or surrounding text
 is stored; the destination is the application name and bundle ID. `engine` names
 the lane that transcribed the session (`parakeet`, `parakeetUltra` or
-`appleSpeech`), read from the live runtime's engine ID, so a session that fell
-back to v3 or reused a resident v3 says `parakeet`. The Settings choice fills it
-only for engines outside the product lanes (fixtures).
+`appleSpeech`), carried on the live runtime by the services layer that acquired
+it, so a session that fell back to v3 or reused a resident v3 says `parakeet`.
+The Settings choice fills it only for runtimes without a lane (fixtures).
 
 Isolation: sync aggregates, per-meeting export/import, Spotlight, MCP/CLI,
 support diagnostics and settings transfer name their tables, so none reads

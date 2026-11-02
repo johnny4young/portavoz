@@ -6,38 +6,32 @@ import TranscriptionKit
 @testable import portavoz_app
 
 /// The history names the lane that transcribed, not the one selected in Settings.
-@Suite(.serialized, .timeLimit(.minutes(1)))
+@Suite(.serialized, .exclusiveArgumentDomain, .timeLimit(.minutes(1)))
 @MainActor
 struct DictationHistoryEngineTests {
     @Test
-    func engineIDsMapToTheirLanes() {
-        #expect(LiveSpeechSelection(engineID: ParakeetCheckpoint.v3.engineID) == .parakeet)
-        #expect(LiveSpeechSelection(engineID: ParakeetCheckpoint.ultra.engineID) == .parakeetUltra)
-        #expect(LiveSpeechSelection(engineID: SpeechAnalyzerLiveEngine.engineIDPrefix + "es-ES") == .appleSpeech)
-        #expect(LiveSpeechSelection(engineID: "controlled") == nil)
+    func parakeetCheckpointsMapToTheirLanes() {
+        #expect(LiveSpeechSelection(checkpoint: .v3) == .parakeet)
+        #expect(LiveSpeechSelection(checkpoint: .ultra) == .parakeetUltra)
     }
 
-    @Test(arguments: [
-        (ParakeetCheckpoint.v3.engineID, LiveSpeechSelection.parakeet),
-        (ParakeetCheckpoint.ultra.engineID, .parakeetUltra),
-        (SpeechAnalyzerLiveEngine.engineIDPrefix + "en-US", .appleSpeech),
-    ])
-    func theRecordNamesTheEngineThatRan(engineID: String, expected: LiveSpeechSelection) async throws {
+    @Test(arguments: [LiveSpeechSelection.parakeet, .parakeetUltra, .appleSpeech])
+    func theRecordNamesTheLaneThatRan(lane: LiveSpeechSelection) async throws {
         let harness = DictationControllerHarness(text: "no borres estas notas")
         defer { harness.controller.cancel() }
-        harness.defaults.set(LiveSpeechSelection.parakeetUltra.rawValue, forKey: LiveSpeechSelection.dictationKey)
-        harness.engineID = engineID
-        let records = try await dictate(harness)
-        #expect(records.map(\.engine) == [expected.rawValue])
+        harness.defaults.set(
+            lane == .parakeetUltra ? LiveSpeechSelection.appleSpeech.rawValue : LiveSpeechSelection.parakeetUltra.rawValue,
+            forKey: LiveSpeechSelection.dictationKey)
+        harness.lane = lane
+        #expect(try await dictate(harness).map(\.engine) == [lane.rawValue])
     }
 
     @Test
-    func anUnknownEngineKeepsTheSelectedLane() async throws {
+    func aRuntimeWithoutALaneKeepsTheSelectedLane() async throws {
         let harness = DictationControllerHarness(text: "no borres estas notas")
         defer { harness.controller.cancel() }
         harness.defaults.set(LiveSpeechSelection.appleSpeech.rawValue, forKey: LiveSpeechSelection.dictationKey)
-        let records = try await dictate(harness)
-        #expect(records.map(\.engine) == [LiveSpeechSelection.appleSpeech.rawValue])
+        #expect(try await dictate(harness).map(\.engine) == [LiveSpeechSelection.appleSpeech.rawValue])
     }
 
     private final class Recorder {
@@ -49,18 +43,10 @@ struct DictationHistoryEngineTests {
         var dependencies = harness.dependencies
         dependencies.beginHistory = { { record in recorder.records.append(record); return true } }
         harness.controller.toggle(using: dependencies)
-        try await eventually { harness.controller.partialText == harness.text }
+        try #require(await TestPolling.until { harness.controller.partialText == harness.text })
         harness.now = harness.now.addingTimeInterval(1)
         harness.controller.toggle(using: dependencies)
-        try await eventually { recorder.records.count == 1 }
+        try #require(await TestPolling.until { recorder.records.count == 1 })
         return recorder.records
-    }
-
-    private func eventually(_ condition: @MainActor () -> Bool) async throws {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
-        while !condition(), ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(5))
-        }
-        try #require(condition(), "The real controller must reach the asserted lifecycle boundary")
     }
 }
