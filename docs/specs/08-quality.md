@@ -418,6 +418,22 @@ unprovable dependency forms, a file moved out of a shared target, skip and run
 cases, a prefix-sibling directory, an undeclared runner target and the
 fail-closed CLI (D596).
 
+### Hosted CI time report
+
+`scripts/ci_time_report.py` measures the newest 50 finished heads per event and
+all their attempts through read-only `gh api` calls. Execution is the longest
+blocking job of an attempt, queue is each job's wait from `created_at` to
+`started_at`, and total runs from attempt start to the last blocking job. It
+reports nearest-rank p50, p90, p95, maximum and N per overlapping cohort (cache
+state from the restore action's log, dependency or Xcode change, interruption
+controls, documentation only, Core or app change) and per critical path. A
+cohort with no samples prints `no evidence`. Outcomes separate product,
+infrastructure, timeout, cancelled, refused rerun and superseded; a superseded
+attempt is counted but not measured, and a timeout or failure stays in the
+distribution. `--until` pins the window, so the recorded baseline
+`docs/evidence/ci-time-baseline-20261102.json` reproduces with one command while
+GitHub retains the job logs.
+
 ### Compatible Swift build reuse, not test-result reuse (D557, D596)
 
 The current-SDK job restores only `.build` with commit-pinned
