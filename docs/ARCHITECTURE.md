@@ -5802,7 +5802,9 @@ Known presentation files and lower-layer files with a proven owner map to
 feature-level XCUITest selectors. Lower-layer and unmapped app Swift files
 without a proven owner run seventeen smoke canaries across the main surfaces:
 unit tests own their behavior. A string-catalog change runs the journeys whose
-UI tests quote a changed English key, plus the canaries; a Spanish-only change
+UI tests quote a changed key or its previous/new English value as Xcode compiles
+it, plus the canaries. Plural, substitution and unshipped English entries, or
+an unreadable catalog, select the full English suite. A Spanish-only change
 needs no UI evidence. The dependency lock, shared-harness, fixture, build and
 language-switch changes, unowned resources and other unknown non-Swift paths
 expand to the complete English catalogue, which also runs every night on
