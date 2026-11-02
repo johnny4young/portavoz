@@ -1,5 +1,6 @@
 """Keep the first installation choice explicit and release-scoped."""
 import os
+import re
 from html.parser import HTMLParser
 from pathlib import Path
 import unittest
@@ -36,6 +37,12 @@ class FirstInstallSiteTests(unittest.TestCase):
         self.assertNotIn("macOS 14.4+ · Apple Silicon", html)
         self.assertIn("Open the DMG and drag Portavoz to Applications.", html)
         self.assertIn("Abre el DMG y arrastra Portavoz a Aplicaciones.", html)
+
+    def test_release_kicker_names_the_latest_changelog_release(self):
+        html = (ROOT / "site/index.html").read_text()
+        kicker = re.search(r'class="release-kicker".*?</a>', html, re.S).group(0)
+        latest = re.search(r"^## (\d+\.\d+\.\d+) ", (ROOT / "CHANGELOG.md").read_text(), re.M).group(1)
+        self.assertEqual(re.findall(r"Portavoz (\d+\.\d+\.\d+)", kicker), [latest, latest])
 
     def test_readme_states_the_macos_26_floor(self):
         readme = (ROOT / "README.md").read_text()
