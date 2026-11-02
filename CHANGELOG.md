@@ -49,6 +49,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 - **💬 Short answers stay in** — a quiet “Sí”, “OK” or “De acuerdo” into your microphone stays in the transcript instead of being dropped as noise.
 - **🧠 Thinking models answer cleanly** — Ollama and cloud models that reason before answering no longer break your summary or leak their reasoning into summaries, Ask answers or Apuntador cards, and say so plainly when they run out of room before answering.
+- **🔒 Recording notifications stay with their call** — a withdrawn call-ended question stays dismissed, and an old notification cannot stop a newer recording.
 - **🍺 Clean Homebrew installs** — installing or upgrading Portavoz with Homebrew no longer prints a deprecation warning.
 
 ## October 31, 2026
