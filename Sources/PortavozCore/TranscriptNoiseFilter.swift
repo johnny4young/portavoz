@@ -12,6 +12,9 @@ import Foundation
 public enum TranscriptNoiseFilter {
     /// Below this the model was mostly guessing.
     public static let confidenceFloor = 0.42
+    /// Short replies survive below `confidenceFloor` but not below this, where
+    /// replies hallucinated on silence score.
+    public static let shortReplyFloor = 0.15
 
     private static let vowels = Set("aeiouy")
 
@@ -35,13 +38,14 @@ public enum TranscriptNoiseFilter {
         // A short single token with no vowel is shape-junk only when the model
         // was unsure (or provided no score). High-confidence acronyms such as
         // "ML" and "HR" are real meeting vocabulary and must survive.
+        let keepsShortReply = confidence.map { $0 >= shortReplyFloor } ?? true && isShortReply(words)
         if words.count == 1, letters.count <= 3, !hasVowel,
-            confidence.map({ $0 < confidenceFloor }) ?? true, !isShortReply(words) { return true }
+            confidence.map({ $0 < confidenceFloor }) ?? true, !keepsShortReply { return true }
         // Confidence alone is only decisive for a FRAGMENT. A quiet but real
         // sentence can score below the floor; deleting the whole sentence is
         // much worse than keeping an uncertain transcription.
         if let confidence, confidence < confidenceFloor, words.count <= 3,
-            !isShortReply(words) { return true }
+            !keepsShortReply { return true }
         return false
     }
 
@@ -52,13 +56,13 @@ public enum TranscriptNoiseFilter {
         "yes", "yeah", "yep", "yup", "no", "nope", "ok", "okay", "sure", "right",
         "exactly", "correct", "agreed", "absolutely", "definitely", "perfect",
         "alright", "all right", "got it", "of course", "sounds good", "makes sense",
-        "for sure", "not yet", "uhhuh", "mmhmm", "mhm",
+        "for sure", "not yet", "uhhuh", "uh huh", "mmhmm", "mm hmm", "mmhm", "mm hm", "mhmm", "mhm",
         "si", "vale", "claro", "exacto", "exactamente", "correcto", "perfecto",
         "listo", "dale", "bueno", "aja", "okey", "entendido", "de acuerdo",
         "por supuesto", "esta bien", "todavia no", "aun no", "tal cual"
     ]
 
-    static func isShortReply(_ words: [Substring]) -> Bool {
+    public static func isShortReply(_ words: [Substring]) -> Bool {
         let tokens = words
             .map { $0.folding(options: .diacriticInsensitive, locale: nil).lowercased().filter(\.isLetter) }
             .filter { !$0.isEmpty }

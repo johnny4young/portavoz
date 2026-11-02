@@ -1156,6 +1156,24 @@ final class OpenAICompatibleChatCodecTests: XCTestCase {
         }
     }
 
+    func testEmptyContentBesideReasoningIsReasoningOnly() {
+        let payload = #"{"choices": [{"message": {"content": " \n", "reasoning": "draft"}}]}"#
+        XCTAssertThrowsError(try OpenAICompatibleChatCodec.parseContent(Data(payload.utf8))) {
+            XCTAssertTrue($0.localizedDescription.contains("only its reasoning"))
+        }
+        let noReasoning = #"{"choices": [{"message": {"content": ""}}]}"#
+        XCTAssertEqual(try OpenAICompatibleChatCodec.parseContent(Data(noReasoning.utf8)), "")
+    }
+
+    func testStructuredReasoningFieldDoesNotHideTheContent() throws {
+        let payload = #"{"choices": [{"message": {"content": "Hola.", "reasoning": {"summary": ["draft"]}}}]}"#
+        XCTAssertEqual(try OpenAICompatibleChatCodec.parseContent(Data(payload.utf8)), "Hola.")
+        let only = #"{"choices": [{"message": {"content": null, "reasoning_content": [{"text": "draft"}]}}]}"#
+        XCTAssertThrowsError(try OpenAICompatibleChatCodec.parseContent(Data(only.utf8))) {
+            XCTAssertTrue($0.localizedDescription.contains("only its reasoning"))
+        }
+    }
+
     func testProviderLabelIsTheHost() {
         let client = OpenAICompatibleSummaryClient(
             endpoint: URL(string: "http://localhost:11434/v1")!,
@@ -1399,6 +1417,19 @@ final class OpenAICompatibleProviderTests: XCTestCase {
 
     func testThinkerTagIsNotReasoning() {
         XCTAssertEqual(ReasoningEnvelope.visibleText("<thinker>Visible</thinker>"), "<thinker>Visible</thinker>")
+    }
+
+    func testTagsQuotedInsideTheAnswerAreKept() throws {
+        for answer in [
+            "Wrap the draft in <think> tags before answering.",
+            "The model printed <think>a</think> and then </think> literally.",
+        ] {
+            XCTAssertEqual(ReasoningEnvelope.visibleText(answer), answer)
+        }
+        let json = #"{"overview": "We discussed <think>tags</think> in prompts", "sections": [], "actionItems": []}"#
+        XCTAssertEqual(
+            try OpenAICompatibleSummaryProvider.parseStructured("<think>plan</think>\n" + json).overview,
+            "We discussed <think>tags</think> in prompts")
     }
 }
 

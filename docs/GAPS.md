@@ -421,6 +421,12 @@ evidence is still needed for long screen-share silences, hold music, a noisy
 room that keeps the microphone above the threshold, and the notification
 actions while the app is hidden or the Mac is locked.
 
+### Short-reply confidence floor is not field-tuned
+
+Quiet short replies ("Sí", "OK", "mhm") survive the noise filter down to a
+0.15 confidence floor. That value was chosen without field scores; real quiet
+replies and replies hallucinated on silence still need measuring.
+
 ### Speaker echo thresholds need more rooms and devices
 
 D602 was calibrated on one MacBook built-in speaker/microphone meeting, where

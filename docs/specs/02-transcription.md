@@ -259,7 +259,9 @@ concurrency without treating that one fixture as universal accuracy evidence.
   of speech.
 - A segment made only of short English or Spanish replies (yes, OK, agreed,
   mhm, not yet, and their Spanish equivalents) survives the confidence and
-  no-vowel rules, because such replies can score below the floor.
+  no-vowel rules down to a 0.15 floor of its own, because such replies can
+  score below the 0.42 floor. Below 0.15 they are treated as replies
+  hallucinated on silence, as live captions run no echo filter afterwards.
   Thanks-phrases are excluded: models hallucinate them on silence.
 - A native live job binds its first audio channel and rejects a later channel
   change before feeding that PCM. Non-finite samples become silence with the

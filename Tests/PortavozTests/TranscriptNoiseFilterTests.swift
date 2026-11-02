@@ -57,11 +57,20 @@ final class TranscriptNoiseFilterTests: XCTestCase {
 
     func testLowConfidenceShortRepliesAreKept() {
         for text in ["Sí.", "sí, claro", "No.", "Okay.", "Yes, sure.", "De acuerdo.",
-                     "Got it.", "Mhm.", "Uh-huh", "Vale, perfecto", "Todavía no."] {
+                     "Got it.", "Mhm.", "Uh-huh", "Uh huh.", "Mm hmm.", "Mhmm.", "Mm-hm",
+                     "Vale, perfecto", "Todavía no."] {
             XCTAssertFalse(noise(text, belowFloor), text)
             XCTAssertFalse(TranscriptNoiseFilter.isLikelyNoise(
                 text: text, confidence: belowFloor, allowsTokenFragments: true), text)
         }
+    }
+
+    func testShortRepliesBelowTheirOwnFloorAreNoise() {
+        let guess = TranscriptNoiseFilter.shortReplyFloor / 2
+        for text in ["Okay.", "Sí.", "No.", "Mhm.", "De acuerdo."] {
+            XCTAssertTrue(noise(text, guess), text)
+        }
+        XCTAssertFalse(noise("Okay.", TranscriptNoiseFilter.shortReplyFloor))
     }
 
     func testShortReplyExemptionNeedsTheWholeSegment() {

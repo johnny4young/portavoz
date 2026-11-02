@@ -112,12 +112,9 @@ final class AskWebFixtureIntegrationTests: XCTestCase {
         _ expected: Int,
         in store: MeetingStore
     ) async throws -> Bool {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(10))
-        while ContinuousClock.now < deadline {
-            if try await store.globalDataEgressEvents().count >= expected { return true }
-            await Task.yield()
+        await TestPolling.untilAsync {
+            ((try? await store.globalDataEgressEvents().count) ?? 0) >= expected
         }
-        return false
     }
 
     private func assertRetrievalError(

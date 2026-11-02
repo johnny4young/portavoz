@@ -37,12 +37,7 @@ enum OpenAICompatibleChatCodec {
         let choices: [Choice]
     }
     private struct Choice: Decodable {
-        let message: Message
-    }
-    private struct Message: Decodable {
-        let content: String?
-        let reasoning: String?
-        let reasoningContent: String?
+        let message: ChatCompletionMessage
     }
 
     static func parseContent(_ data: Data) throws -> String {
@@ -54,12 +49,16 @@ enum OpenAICompatibleChatCodec {
         else {
             throw IntelligenceError.providerFailed("response is not a chat completion")
         }
-        if let content = message.content { return content }
+        let answered = message.content.map { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        if answered == true, let content = message.content { return content }
         // Thinking models can spend the whole token budget before answering.
-        if [message.reasoning, message.reasoningContent].contains(where: { $0?.isEmpty == false }) {
+        if message.hasReasoning {
             throw IntelligenceError.providerFailed("the model returned only its reasoning, no answer")
         }
-        throw IntelligenceError.providerFailed("response is not a chat completion")
+        guard let content = message.content else {
+            throw IntelligenceError.providerFailed("response is not a chat completion")
+        }
+        return content
     }
 
     static func responseContent(data: Data, statusCode: Int) throws -> String {
@@ -78,6 +77,23 @@ enum OpenAICompatibleChatCodec {
             throw IntelligenceError.providerFailed("the model's reasoning never finished, so it returned no answer")
         }
         return answer
+    }
+}
+
+private struct ChatCompletionMessage: Decodable {
+    let content: String?
+    let hasReasoning: Bool
+
+    private enum CodingKeys: String, CodingKey { case content, reasoning, reasoningContent }
+
+    // Providers shape the reasoning field differently; any non-empty value counts.
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        content = try container.decodeIfPresent(String.self, forKey: .content)
+        hasReasoning = [CodingKeys.reasoning, .reasoningContent].contains { key in
+            (try? container.decodeNil(forKey: key)) == false
+                && (try? container.decode(String.self, forKey: key))?.isEmpty != true
+        }
     }
 }
 

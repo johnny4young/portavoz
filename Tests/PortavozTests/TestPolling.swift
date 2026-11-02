@@ -10,7 +10,7 @@ enum TestPolling {
     static func until(_ condition: @MainActor () -> Bool) async -> Bool {
         let deadline = ContinuousClock.now.advanced(by: ControlledTestSleep.hangGuard)
         while !condition(), ContinuousClock.now < deadline {
-            try? await Task.sleep(for: interval)
+            do { try await Task.sleep(for: interval) } catch { break }
         }
         return condition()
     }
@@ -22,7 +22,7 @@ enum TestPolling {
         let deadline = ContinuousClock.now.advanced(by: ControlledTestSleep.hangGuard)
         while ContinuousClock.now < deadline {
             if await condition() { return true }
-            try? await Task.sleep(for: interval)
+            do { try await Task.sleep(for: interval) } catch { break }
         }
         return await condition()
     }

@@ -45,6 +45,30 @@ final class ControlledTestSleepTests: XCTestCase {
         XCTAssertTrue(arrived)
     }
 
+    func testACallCancelledBeforeItSuspendsStillCounts() async {
+        let sleep = ControlledTestSleep()
+        async let counted = sleep.waitUntilCallCount(1)
+        await yieldLongerThanTheOldPollingBudget()
+        let call = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            try await sleep.wait(for: .milliseconds(200))
+        }
+        _ = try? await call.value
+        let started = ContinuousClock.now
+        let observed = await counted
+        XCTAssertTrue(observed)
+        XCTAssertLessThan(ContinuousClock.now - started, ControlledTestSleep.hangGuard / 2)
+    }
+
+    func testPollingStopsWhenTheTestIsCancelled() async {
+        let poll = Task { @MainActor in await TestPolling.until { false } }
+        let started = ContinuousClock.now
+        poll.cancel()
+        let reached = await poll.value
+        XCTAssertFalse(reached)
+        XCTAssertLessThan(ContinuousClock.now - started, ControlledTestSleep.hangGuard / 2)
+    }
+
     private func yieldLongerThanTheOldPollingBudget() async {
         for _ in 0..<50_000 { await Task.yield() }
     }

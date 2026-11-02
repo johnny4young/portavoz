@@ -78,6 +78,12 @@ final class DictationPolishPromptTests: XCTestCase {
         }
     }
 
+    func testUnfinishedReasoningKeepsTheDictation() {
+        let source = "eh mañana enviamos el informe"
+        XCTAssertEqual(
+            DictationPolishPrompt.normalize("<think>Okay, the user wants a clean", source: source), source)
+    }
+
     func testNormalizerKeepsQuotesTheUserDictatedAndUndoesEscaping() {
         XCTAssertEqual(
             DictationPolishPrompt.normalize("\"Hello there.\"", source: "\"hello there\""),

@@ -17,7 +17,8 @@ actor ControlledTestSleep {
         durations.append(duration)
 
         try await withTaskCancellationHandler {
-            try Task.checkCancellation()
+            // A call cancelled before it suspends still counts for its waiters.
+            do { try Task.checkCancellation() } catch { wakeWaiters(); throw error }
             try await withCheckedThrowingContinuation { continuation in
                 continuations[callIndex] = continuation
                 wakeWaiters()
