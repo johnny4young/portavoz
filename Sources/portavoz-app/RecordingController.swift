@@ -1186,7 +1186,7 @@ extension RecordingController {
         callEnd = next
         switch next {
         case .asking(let secondsUntilStop):
-            if !wasAsking { AppCallEndedNotification.post(
+            if !wasAsking, phase == .recording { AppCallEndedNotification.post(
                 secondsUntilStop: secondsUntilStop, sessionID: meetingID.rawValue) }
         case .listening:
             if wasAsking { AppCallEndedNotification.withdraw() }

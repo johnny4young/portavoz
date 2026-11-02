@@ -27,6 +27,7 @@ final class PortavozAppDelegate:
             AppReminderNotificationMetadata.category,
             AppCallEndedNotification.category
         ])
+        Task { await AppCallEndedNotification.notifier.removeOrphans() }
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -378,21 +379,16 @@ private extension PortavozAppDelegate {
     static func handleCallEnded(
         _ reply: AppCallEndedNotification.Response?, identifier: String, sessionID: UUID?
     ) {
+        let notifier = AppCallEndedNotification.notifier
         guard let reply, let services, let sessionID,
-            sessionID == services.recording.meetingID.rawValue,
-            AppCallEndedNotification.accepts(
-                identifier: identifier, sessionID: sessionID, isRecording: services.recording.phase == .recording)
+            notifier.accepts(identifier: identifier, sessionID: sessionID)
         else { return }
         switch reply {
         case .stop:
-            services.pendingRoute = .recording(nil)
-            NSApp.activate(ignoringOtherApps: true)
             Task {
-                guard sessionID == services.recording.meetingID.rawValue,
-                    AppCallEndedNotification.accepts(
-                        identifier: identifier, sessionID: sessionID,
-                        isRecording: services.recording.phase == .recording)
-                else { return }
+                guard notifier.accepts(identifier: identifier, sessionID: sessionID) else { return }
+                services.pendingRoute = .recording(nil)
+                NSApp.activate(ignoringOtherApps: true)
                 await services.recording.stop(services: services)
             }
         case .keepRecording:
