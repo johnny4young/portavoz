@@ -71,11 +71,12 @@ public enum ChapterExtractor {
         return title(from: segments.first?.text ?? "")
     }
 
-    /// A line worth showing as a chapter label: not model-flagged noise, and
-    /// at least a few words long.
+    /// A line worth showing as a chapter label: not model-flagged noise, not
+    /// a bare reply such as "okay, sounds good", and at least a few words long.
     private static func isSubstantial(_ segment: TranscriptSegment) -> Bool {
-        !TranscriptNoiseFilter.isLikelyNoise(text: segment.text, confidence: segment.confidence)
-            && segment.text.split(separator: " ").count >= 3
+        let words = segment.text.split(separator: " ")
+        return !TranscriptNoiseFilter.isLikelyNoise(text: segment.text, confidence: segment.confidence)
+            && words.count >= 3 && !TranscriptNoiseFilter.isShortReply(words)
     }
 
     /// The opening segment's first sentence, trimmed — a real line from the

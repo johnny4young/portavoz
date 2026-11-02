@@ -468,11 +468,7 @@ final class DictationControllerTests: XCTestCase {
     }
 
     func awaitEventually(_ condition: @escaping @MainActor () -> Bool) async -> Bool {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
-        while !condition(), ContinuousClock.now < deadline {
-            try? await Task.sleep(for: .milliseconds(5))
-        }
-        return condition()
+        return await TestPolling.until(condition)
     }
 }
 
@@ -496,6 +492,7 @@ final class DictationControllerHarness {
     var now = Date(timeIntervalSince1970: 1_000)
     var loads = 0
     var finishes = 0
+    var lane: LiveSpeechSelection?
     var hints: TranscriptionHints?
     var transcriptOutput: AsyncThrowingStream<TranscriptSegment, Error>.Continuation?
     var insertions: [String] = []
@@ -547,7 +544,7 @@ final class DictationControllerHarness {
                     text: self.text, consumerGate: self.consumerGate,
                     stopsReadingAfterFirstCaption: self.stopsReadingAfterFirstCaption,
                     receivedHints: { [weak self] in self?.hints = $0 },
-                    receivedOutput: { [weak self] in self?.transcriptOutput = $0 })) { [weak self] in
+                    receivedOutput: { [weak self] in self?.transcriptOutput = $0 }), lane: self.lane) { [weak self] in
                     self?.finishes += 1
                 }
             },

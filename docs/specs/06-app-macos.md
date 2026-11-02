@@ -3282,6 +3282,13 @@ only after the call-ended question (D604): `recording-call-ended` with
 `recording-call-ended-keep` / `recording-call-ended-stop`, the HUD label
 `recording-hud-call-ended`, and the `portavoz.call-ended` notification
 category; an unanswered question stops the recording after five minutes.
+Each notification question carries its meeting identity and a unique request
+identity, and is posted only while recording. Withdrawal or leaving recording
+invalidates the question before removing it; delayed authorization/publication
+completions cannot revive it. Notification actions require the current
+question and recording identity, and Stop checks again before it routes,
+activates and stops. Launch removes call-ended notifications left by an
+earlier process.
 
 **Opt-in controller phase measurements.** A session dependency may supply a
 content-free measurement sink and monotonic clock. Ordinary composition supplies
