@@ -1,0 +1,90 @@
+name: CI-5 spike
+
+on:
+  push:
+    branches: [ci/05-spike-host]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci5-spike
+  cancel-in-progress: true
+
+jobs:
+  lane:
+    name: ${{ matrix.lane }}
+    runs-on: macos-26
+    timeout-minutes: ${{ matrix.timeout }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { lane: smoke-view, args: "smoke view 3", restore: true, timeout: 40 }
+          - { lane: smoke-core, args: "smoke core 1", restore: true, timeout: 40 }
+          - { lane: crash, args: "crash", restore: true, timeout: 30 }
+    env: &lane_env
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps: &lane_steps
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Verify fixed Tahoe toolchain
+        run: scripts/verify-ci-toolchain.sh 26 26.6
+      - name: Install checksum-pinned XcodeGen 2.46.0
+        run: scripts/install-ci-xcodegen.sh "$RUNNER_TEMP/portavoz-xcodegen"
+      - name: Identify compatible Swift build state
+        id: swift_cache_key
+        run: python3 scripts/ci_swift_cache_key.py --lane build-and-test --commit "$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+      - name: Restore compatible Swift build state
+        if: matrix.restore
+        id: swift_cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .build
+          key: ${{ steps.swift_cache_key.outputs.key }}
+          restore-keys: ${{ steps.swift_cache_key.outputs.prefix }}
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: "2"
+      - name: Verify cached source freshness
+        if: matrix.restore && steps.swift_cache.outputs.cache-matched-key != ''
+        run: |
+          if ! python3 scripts/ci_swift_source_stamps.py restore; then
+            echo "::warning::Cached Swift build state failed freshness verification; building cold."
+            rm -rf .build
+          fi
+      - name: Run the lane
+        run: scripts/ci5-spike.sh ${{ matrix.args }}
+      - name: Preserve lane evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: spike-${{ matrix.lane }}
+          path: |
+            dist/spike
+            dist/ui-test-results/**/*-runtime.json
+            dist/ui-test-results/**/*-execution.json
+            dist/ui-test-results/**/*.log
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Preserve failing result bundles
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: spike-xcresult-${{ matrix.lane }}
+          path: dist/ui-test-results
+          if-no-files-found: warn
+          retention-days: 7
+
+  full:
+    name: ${{ matrix.lane }}
+    needs: lane
+    if: always() && !cancelled()
+    runs-on: macos-26
+    timeout-minutes: 110
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { lane: full-new, args: "full-new", restore: true }
+          - { lane: full-old, args: "full-old", restore: false }
+    env: *lane_env
+    steps: *lane_steps

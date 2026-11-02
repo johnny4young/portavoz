@@ -8,6 +8,9 @@ import PortavozCLIKit
 @MainActor
 enum PortavozLauncher {
     static func main() {
+        if CommandLine.arguments.contains("-spike-force-crash") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { fatalError("spike forced crash") }
+        }
         guard CommandLineInvocation.runsCommandLineTool(CommandLine.arguments) else {
             PortavozApp.main()
             return
