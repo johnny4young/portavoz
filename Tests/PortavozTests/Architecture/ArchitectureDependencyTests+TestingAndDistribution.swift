@@ -97,25 +97,25 @@ extension ArchitectureDependencyTests {
             "Mixed.swift": """
                 @Suite(.serialized, .exclusiveArgumentDomain, .timeLimit(.minutes(1)))
                 @MainActor
-                struct GuardedTests {
+                struct GuardedSuite {
                     @Test func writes() { _ = DictationControllerHarness(text: "") }
                 }
 
                 @Suite(.serialized)
-                struct UnguardedTests {
+                struct UnguardedSuite {
                     @Test func writes() { _ = UserDefaults.argumentDomain }
                 }
 
-                struct QuietTests {
+                struct QuietSuite {
                     @Test func reads() {}
                 }
                 """,
             "Guarded+More.swift": """
-                extension GuardedTests {
+                extension GuardedSuite {
                     @Test func alsoWrites() { _ = DictationTextSettingsModel(defaults: .standard, temporary: true) }
                 }
 
-                extension QuietTests {
+                extension QuietSuite {
                     // DictationControllerHarness( in a comment does not count.
                     @Test func writes() { _ = DictationControllerHarness(text: "") }
                 }
@@ -123,7 +123,7 @@ extension ArchitectureDependencyTests {
         ]
         XCTAssertEqual(
             try Self.suitesSharingTheArgumentDomainWithoutExclusivity(sources),
-            ["Guarded+More.swift: QuietTests", "Mixed.swift: UnguardedTests"])
+            ["Guarded+More.swift: QuietSuite", "Mixed.swift: UnguardedSuite"])
     }
 
     /// Splits each file into its top-level declarations, so a guarded suite
