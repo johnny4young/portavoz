@@ -60,8 +60,7 @@ jobs:
           SHA256: ${{ steps.release.outputs.sha256 }}
         run: |
           set -euo pipefail
-          sed -e "s/__VERSION__/${VERSION}/" -e "s/__SHA256__/${SHA256}/" \
-            packaging/Casks/portavoz.rb > tap/Casks/portavoz.rb
+          scripts/render-cask.sh "$VERSION" "$SHA256" > tap/Casks/portavoz.rb
           cd tap
           if [ -x scripts/sync-readme.py ] || [ -f scripts/sync-readme.py ]; then
             python3 scripts/sync-readme.py || true

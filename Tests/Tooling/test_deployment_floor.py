@@ -1,4 +1,5 @@
 import re
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -34,6 +35,15 @@ class DeploymentFloorTests(unittest.TestCase):
             'MINIMUM_SYSTEM_VERSION = "26.0"', read("scripts/verify_release_appcast.py")
         )
         self.assertIn("depends_on macos: :tahoe", read("packaging/Casks/portavoz.rb"))
+
+    def test_rendered_cask_has_no_template_header_or_placeholders(self):
+        rendered = subprocess.run(
+            [REPOSITORY / "scripts" / "render-cask.sh", "1.2.3", "0" * 64],
+            check=True, capture_output=True, text=True,
+        ).stdout
+        self.assertTrue(rendered.startswith('cask "portavoz" do\n  version "1.2.3"'))
+        self.assertNotIn("__", rendered)
+        self.assertIn("depends_on macos: :tahoe", rendered)
 
     def test_cask_omits_the_deprecated_url_verified_option(self):
         # Homebrew deprecates `verified:`, and developer mode refuses to load it.

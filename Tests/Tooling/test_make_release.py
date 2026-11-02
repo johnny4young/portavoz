@@ -133,7 +133,7 @@ class MakeReleaseTests(unittest.TestCase):
             self.assertIn("Release 1.0.0 ready", result.stdout)
             cask = repository / "dist" / "release" / "portavoz.rb"
             self.assertTrue(cask.is_file())
-            self.assertIn('version "1.0.0"', cask.read_text(encoding="utf-8"))
+            self.assertTrue(cask.read_text(encoding="utf-8").startswith('cask "portavoz" do\n  version "1.0.0"'))
 
     def make_repository(self, root: Path) -> Path:
         repository = root / "repository"
@@ -145,6 +145,7 @@ class MakeReleaseTests(unittest.TestCase):
         casks.mkdir(parents=True)
 
         shutil.copy2(SCRIPT, scripts / SCRIPT.name)
+        shutil.copy2(REPOSITORY / "scripts" / "render-cask.sh", scripts / "render-cask.sh")
         shutil.copy2(
             REPOSITORY / "scripts" / "verify_release_appcast.py",
             scripts / "verify_release_appcast.py",
@@ -176,7 +177,7 @@ printf 'dmg' > 'dist/Portavoz-{self.version}.dmg'
 """,
         )
         (casks / "portavoz.rb").write_text(
-            'version "__VERSION__"\nsha256 "__SHA256__"\n',
+            '# Template header.\ncask "portavoz" do\n  version "__VERSION__"\n  sha256 "__SHA256__"\nend\n',
             encoding="utf-8",
         )
         return repository
