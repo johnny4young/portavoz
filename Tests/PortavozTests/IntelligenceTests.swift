@@ -1141,6 +1141,21 @@ final class OpenAICompatibleChatCodecTests: XCTestCase {
             try OpenAICompatibleChatCodec.parseContent(Data("{\"error\": \"nope\"}".utf8)))
     }
 
+    func testReasoningOnlyChatResponseNamesTheCause() {
+        for field in ["reasoning", "reasoning_content"] {
+            let payload = #"{"choices": [{"message": {"content": null, "\#(field)": "draft"}}]}"#
+            XCTAssertThrowsError(try OpenAICompatibleChatCodec.parseContent(Data(payload.utf8))) {
+                XCTAssertTrue($0.localizedDescription.contains("only its reasoning"), field)
+            }
+        }
+        let separate = #"{"choices": [{"message": {"content": "Hola.", "reasoning": "draft"}}]}"#
+        XCTAssertEqual(try OpenAICompatibleChatCodec.parseContent(Data(separate.utf8)), "Hola.")
+        let empty = #"{"choices": [{"message": {"content": null, "reasoning": ""}}]}"#
+        XCTAssertThrowsError(try OpenAICompatibleChatCodec.parseContent(Data(empty.utf8))) {
+            XCTAssertTrue($0.localizedDescription.contains("not a chat completion"))
+        }
+    }
+
     func testProviderLabelIsTheHost() {
         let client = OpenAICompatibleSummaryClient(
             endpoint: URL(string: "http://localhost:11434/v1")!,
@@ -1360,6 +1375,30 @@ final class OpenAICompatibleProviderTests: XCTestCase {
         let content = #"{"overview": "usar \'Aurora Suite\' en vez de Kepler", "sections": [], "actionItems": []}"#
         let summary = try OpenAICompatibleSummaryProvider.parseStructured(content)
         XCTAssertEqual(summary.overview, "usar 'Aurora Suite' en vez de Kepler")
+    }
+
+    func testIgnoresReasoningThatContainsItsOwnJSONDraft() throws {
+        let answer = #"{"overview": "final", "sections": [], "actionItems": []}"#
+        let draft = #"Plan: {"overview": "draft"} then refine."#
+        for content in [
+            "<think>\(draft)</think>\n\(answer)",
+            "<THINKING class=\"internal\">\(draft)</THINKING>\(answer)",
+            "\(draft)\n</think>\n\(answer)",
+            "```json\n<think>\(draft)</think>\n\(answer)\n```"
+        ] {
+            XCTAssertEqual(try OpenAICompatibleSummaryProvider.parseStructured(content).overview, "final", content)
+        }
+    }
+
+    func testUnfinishedReasoningIsReportedInsteadOfDecoded() {
+        let content = #"<think>Plan: {"overview": "draft", "sections": [], "actionItems": []}"#
+        XCTAssertThrowsError(try OpenAICompatibleSummaryProvider.parseStructured(content)) {
+            XCTAssertTrue($0.localizedDescription.contains("reasoning never finished"))
+        }
+    }
+
+    func testThinkerTagIsNotReasoning() {
+        XCTAssertEqual(ReasoningEnvelope.visibleText("<thinker>Visible</thinker>"), "<thinker>Visible</thinker>")
     }
 }
 

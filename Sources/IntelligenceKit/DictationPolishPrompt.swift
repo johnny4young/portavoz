@@ -110,8 +110,7 @@ public enum DictationPolishPrompt {
     ]
 
     private static func strippingReasoning(_ text: String) -> String {
-        guard text.hasPrefix("<think>"), let end = text.range(of: "</think>") else { return text }
-        return String(text[end.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+        ReasoningEnvelope.visibleText(text) ?? text
     }
 
     private static func strippingCodeFence(_ text: String) -> String {

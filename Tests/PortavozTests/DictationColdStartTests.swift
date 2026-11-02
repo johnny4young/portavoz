@@ -231,19 +231,11 @@ final class DictationColdStartTests: XCTestCase {
     }
 
     private func eventually(_ condition: @escaping @MainActor () -> Bool) async -> Bool {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
-        while !condition(), ContinuousClock.now < deadline {
-            try? await Task.sleep(for: .milliseconds(5))
-        }
-        return condition()
+        return await TestPolling.until(condition)
     }
 
     private func eventuallyAsync(_ condition: @escaping @MainActor () async -> Bool) async -> Bool {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
-        while await !condition(), ContinuousClock.now < deadline {
-            try? await Task.sleep(for: .milliseconds(5))
-        }
-        return await condition()
+        return await TestPolling.untilAsync(condition)
     }
 }
 

@@ -39,16 +39,27 @@ enum OpenAICompatibleChatCodec {
     private struct Choice: Decodable {
         let message: Message
     }
-    private struct Message: Decodable { let content: String }
+    private struct Message: Decodable {
+        let content: String?
+        let reasoning: String?
+        let reasoningContent: String?
+    }
 
     static func parseContent(_ data: Data) throws -> String {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
         guard
-            let content = try? JSONDecoder().decode(ChatResponse.self, from: data)
-                .choices.first?.message.content
+            let message = try? decoder.decode(ChatResponse.self, from: data)
+                .choices.first?.message
         else {
             throw IntelligenceError.providerFailed("response is not a chat completion")
         }
-        return content
+        if let content = message.content { return content }
+        // Thinking models can spend the whole token budget before answering.
+        if [message.reasoning, message.reasoningContent].contains(where: { $0?.isEmpty == false }) {
+            throw IntelligenceError.providerFailed("the model returned only its reasoning, no answer")
+        }
+        throw IntelligenceError.providerFailed("response is not a chat completion")
     }
 
     static func responseContent(data: Data, statusCode: Int) throws -> String {
@@ -57,6 +68,16 @@ enum OpenAICompatibleChatCodec {
             throw IntelligenceError.providerFailed("HTTP \(statusCode): \(body)")
         }
         return try parseContent(data)
+    }
+
+    /// Free-text answer without the model's reasoning. Throws when reasoning
+    /// never finished, so callers fall back instead of showing it.
+    static func answerContent(data: Data, statusCode: Int) throws -> String {
+        let content = try responseContent(data: data, statusCode: statusCode)
+        guard let answer = ReasoningEnvelope.visibleText(content) else {
+            throw IntelligenceError.providerFailed("the model's reasoning never finished, so it returned no answer")
+        }
+        return answer
     }
 }
 
@@ -174,7 +195,7 @@ public struct CompanionBYOKClient: Sendable {
                 providerID: providerLabel,
                 modelID: model))
         let response = try await gateway.perform(networkRequest, metadata: metadata)
-        return try OpenAICompatibleChatCodec.responseContent(
+        return try OpenAICompatibleChatCodec.answerContent(
             data: response.data,
             statusCode: response.statusCode)
     }

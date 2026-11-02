@@ -613,7 +613,7 @@ public struct OpenAICompatibleRAGClient: Sendable {
                 providerID: endpoint.host ?? "Ollama",
                 modelID: model))
         let response = try await gateway.perform(request, metadata: metadata)
-        return try OpenAICompatibleChatCodec.responseContent(
+        return try OpenAICompatibleChatCodec.answerContent(
             data: response.data,
             statusCode: response.statusCode)
     }

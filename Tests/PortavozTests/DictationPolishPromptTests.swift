@@ -70,6 +70,8 @@ final class DictationPolishPromptTests: XCTestCase {
             "```text\nMañana enviamos el informe.\n```": "Mañana enviamos el informe.",
             "<dictation>\nMañana enviamos el informe.\n</dictation>": "Mañana enviamos el informe.",
             "<think>\nfillers only\n</think>\nMañana enviamos el informe.": "Mañana enviamos el informe.",
+            "<thinking>fillers</thinking>\nMañana enviamos el informe.": "Mañana enviamos el informe.",
+            "fillers only\n</think>\nMañana enviamos el informe.": "Mañana enviamos el informe.",
         ]
         for (output, expected) in cases {
             XCTAssertEqual(DictationPolishPrompt.normalize(output, source: source), expected, output)

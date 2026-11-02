@@ -36,11 +36,40 @@ public enum TranscriptNoiseFilter {
         // was unsure (or provided no score). High-confidence acronyms such as
         // "ML" and "HR" are real meeting vocabulary and must survive.
         if words.count == 1, letters.count <= 3, !hasVowel,
-            confidence.map({ $0 < confidenceFloor }) ?? true { return true }
+            confidence.map({ $0 < confidenceFloor }) ?? true, !isShortReply(words) { return true }
         // Confidence alone is only decisive for a FRAGMENT. A quiet but real
         // sentence can score below the floor; deleting the whole sentence is
         // much worse than keeping an uncertain transcription.
-        if let confidence, confidence < confidenceFloor, words.count <= 3 { return true }
+        if let confidence, confidence < confidenceFloor, words.count <= 3,
+            !isShortReply(words) { return true }
         return false
+    }
+
+    /// English and Spanish short replies carry decisions ("yes", "agreed") and
+    /// can score below the floor. Thanks-phrases stay out: models hallucinate
+    /// them on silence.
+    private static let shortReplies: Set<String> = [
+        "yes", "yeah", "yep", "yup", "no", "nope", "ok", "okay", "sure", "right",
+        "exactly", "correct", "agreed", "absolutely", "definitely", "perfect",
+        "alright", "all right", "got it", "of course", "sounds good", "makes sense",
+        "for sure", "not yet", "uhhuh", "mmhmm", "mhm",
+        "si", "vale", "claro", "exacto", "exactamente", "correcto", "perfecto",
+        "listo", "dale", "bueno", "aja", "okey", "entendido", "de acuerdo",
+        "por supuesto", "esta bien", "todavia no", "aun no", "tal cual"
+    ]
+
+    static func isShortReply(_ words: [Substring]) -> Bool {
+        let tokens = words
+            .map { $0.folding(options: .diacriticInsensitive, locale: nil).lowercased().filter(\.isLetter) }
+            .filter { !$0.isEmpty }
+        return !tokens.isEmpty && isCoveredByShortReplies(tokens[...])
+    }
+
+    private static func isCoveredByShortReplies(_ tokens: ArraySlice<String>) -> Bool {
+        if tokens.isEmpty { return true }
+        return (1...min(2, tokens.count)).contains { length in
+            shortReplies.contains(tokens.prefix(length).joined(separator: " "))
+                && isCoveredByShortReplies(tokens.dropFirst(length))
+        }
     }
 }

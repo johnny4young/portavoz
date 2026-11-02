@@ -77,8 +77,6 @@ final class ParakeetUltraSelectionTests: XCTestCase {
     }
 
     private func awaitCondition(_ condition: @MainActor () -> Bool) async -> Bool {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
-        while !condition(), ContinuousClock.now < deadline { try? await Task.sleep(for: .milliseconds(10)) }
-        return condition()
+        return await TestPolling.until(condition)
     }
 }

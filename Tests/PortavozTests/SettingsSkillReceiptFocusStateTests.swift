@@ -89,10 +89,11 @@ final class SettingsSkillReceiptFocusStateTests: XCTestCase {
     private func eventually(
         _ predicate: @escaping @MainActor () -> Bool
     ) async -> Bool {
-        for _ in 0..<20_000 {
+        let deadline = ContinuousClock.now.advanced(by: ControlledTestSleep.hangGuard)
+        while ContinuousClock.now < deadline {
             if predicate() { return true }
             await Task.yield()
         }
-        return false
+        return predicate()
     }
 }
