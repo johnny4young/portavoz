@@ -47,7 +47,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 2, 2026
 
-- **🍺 Quieter Homebrew commands** — the Portavoz cask template no longer emits the deprecated URL-verification warning with current Homebrew.
+- **🍺 Clean Homebrew installs** — installing or upgrading Portavoz with Homebrew no longer prints a deprecation warning.
 
 ## October 31, 2026
 

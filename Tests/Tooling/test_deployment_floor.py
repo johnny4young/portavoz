@@ -35,6 +35,10 @@ class DeploymentFloorTests(unittest.TestCase):
         )
         self.assertIn("depends_on macos: :tahoe", read("packaging/Casks/portavoz.rb"))
 
+    def test_cask_omits_the_deprecated_url_verified_option(self):
+        # Homebrew deprecates `verified:`, and developer mode refuses to load it.
+        self.assertNotIn("verified:", read("packaging/Casks/portavoz.rb"))
+
 
 if __name__ == "__main__":
     unittest.main()
