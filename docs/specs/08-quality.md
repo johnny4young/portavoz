@@ -3209,11 +3209,12 @@ included. `ui-nightly-watch.yml` runs on every `main` push, on its own schedule
 and by dispatch, because a schedule that never fires cannot report itself: it
 keeps one issue open while the newest verified run on `main` is older than 48
 hours and closes it once fresh evidence returns. Only a scheduled or dispatched
-run from this repository counts as verified, and only issues the workflow opened
-are reused. An unreadable API fails that job instead of reading as healthy (D615). Pull requests run the interruption
-controls only when one of their behavior files changes:
-`INTERRUPTION_CONTROL_FILES` no longer lists the workflow, the Makefile or the
-selector. The
+run from this repository counts as verified, aged from its latest attempt, and
+only issues the workflow opened are reused. An unreadable API fails that job
+instead of reading as healthy (D615). Pull requests run the interruption controls
+only when one of their behavior files changes: `INTERRUPTION_CONTROL_FILES` no
+longer lists the workflow, the Makefile or the selector, and the nightly run still
+covers those owners. The
 Meeting Detail primary column also selects the complete English suite: its
 pane layout decides which detail content exists for every journey that opens a
 meeting, including recording-recovery and Skills journeys (D549). Docs,
@@ -8721,8 +8722,8 @@ expected failures, source hashes and content-free effects; it never substitutes
 for a product UI receipt. Tooling tests reject missing readiness, absent guard,
 late action, dialog choice, cleanup failure, skipped/empty/extra cases and an
 exit-zero restart. Changes to the guard, keyboard, storage, wait or scratch
-sources, the fixture target, the execution classifier or their CI/Make owners
-select this once, as do explicit full bilingual local runs and full-suite
+sources, the fixture target, the execution classifier or the control's own
+runner select this once, as do explicit full bilingual local runs and full-suite
 dispatches; localization-only and other unrelated full-bilingual fallbacks do not. CI executes the controls on a separate hosted Mac concurrently with the single
 product build. Locale jobs wait for both prerequisites; an unselected controls
 job must be skipped, while a selected job must succeed. The final classifier

@@ -22336,9 +22336,10 @@ reading as healthy.
 Two lanes leave ordinary pull requests. The interruption controls follow only
 their behavior files: the workflow, the Makefile and the selector no longer
 trigger them. The old list selected this 10-minute job on 56 of the last 120
-commits; 7 of the last 130 touch the behavior files. iOS portability runs only on
-`main` pushes and manual runs, so its selector is removed; D438 keeps iOS deferred
-and the release contract still requires the job on `main`.
+commits; 4 of the last 130 touch the behavior files. iOS portability runs only on
+`main` pushes and manual runs, so its selector is removed, which supersedes that
+part of D596; D438 keeps iOS deferred and the release contract still requires the
+job on `main`.
 
 The accepted risk is that a deferred UI regression, or an iOS compile break, can
 reach `main` until the next run sees it. 48 hours is an alert threshold, not a

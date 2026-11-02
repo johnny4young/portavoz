@@ -44,9 +44,9 @@ def unverified_jobs(needs: dict[str, Any]) -> dict[str, str]:
 
 
 def open_issue_number(title: str, run: Callable[..., str] = gh) -> int | None:
-    # The search is fuzzy, so the exact title decides.
+    # A plain listing, because the search index can lag behind an issue opened moments ago.
     found = json.loads(run("issue", "list", "--state", "open", "--author", ISSUE_AUTHOR,
-                           "--search", f'"{title}" in:title', "--limit", "20", "--json", "number,title"))
+                           "--limit", "100", "--json", "number,title"))
     return next((issue["number"] for issue in found if issue["title"] == title), None)
 
 
@@ -76,8 +76,9 @@ def stale_message(verified: dict[str, Any] | None, now: datetime, max_age_hours:
     """Why the evidence is stale, or None while it is fresh."""
     if verified is None:
         return "No nightly UI run on `main` has ever been verified."
-    created = datetime.fromisoformat(verified["created_at"].replace("Z", "+00:00"))
-    age_hours = (now - created).total_seconds() / 3600
+    # The latest attempt, so a nightly rerun to green counts from when it really ran.
+    started = datetime.fromisoformat((verified.get("run_started_at") or verified["created_at"]).replace("Z", "+00:00"))
+    age_hours = (now - started).total_seconds() / 3600
     if age_hours <= max_age_hours:
         return None
     return (f"The newest verified nightly UI run on `main` is {age_hours:.0f} hours old (limit {max_age_hours:g}): "

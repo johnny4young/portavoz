@@ -23,8 +23,7 @@ JOB_IDS = itertools.count(1_000)
 # Failing here means the repository or its code is wrong, never the hosted machine.
 PRODUCT_STEPS = {
     "Repository, evidence, and CI policy contracts", "Release performance ledger rules", "Select the Swift test scope",
-    "Current-SDK build and selected test suite", "Select the iOS portability lane",
-    "Compile transport-neutral iOS 26 surface", "Strict SwiftLint 0.65.0 from checksum-pinned official archive",
+    "Current-SDK build and selected test suite", "Compile transport-neutral iOS 26 surface", "Strict SwiftLint 0.65.0 from checksum-pinned official archive",
     "Validate the selector catalog", "Select UI evidence", "Verify interruption safety at the shared callback",
     "Build selected UI products once", "Run ${{ matrix.locale }} functional UI evidence",
     "Refuse to manufacture evidence on a rerun", "Classify functional evidence and hosted runtime drift",
@@ -579,6 +578,7 @@ class WorkflowContractTests(unittest.TestCase):
         unclassified = {name for name in names if not report.INFRASTRUCTURE_STEP.match(name)} - PRODUCT_STEPS
         self.assertEqual(unclassified, set())
         self.assertEqual({name for name in PRODUCT_STEPS if report.INFRASTRUCTURE_STEP.match(name)}, set())
+        self.assertEqual(PRODUCT_STEPS - names, set(), "a renamed or removed step must leave this list")
 
     def test_the_suite_step_and_the_refused_rerun_step_still_exist(self):
         text = "".join(path.read_text(encoding="utf-8") for path in report.WORKFLOW_FILES)

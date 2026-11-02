@@ -154,6 +154,19 @@ class FreshnessTests(unittest.TestCase):
         listing = next(call for call in fake.calls if call[:2] == ("issue", "list"))
         self.assertEqual(listing[listing.index("--author") + 1], "github-actions[bot]")
 
+    def test_the_lookup_never_depends_on_the_search_index(self):
+        fake = FakeGitHub()
+
+        alert(needs(build="failure"), fake)
+
+        listing = next(call for call in fake.calls if call[:2] == ("issue", "list"))
+        self.assertNotIn("--search", listing)
+
+    def test_a_rerun_is_aged_from_its_latest_attempt(self):
+        rerun = run_entry(created_at="2026-10-20T00:00:00Z", run_started_at="2026-11-02T11:00:00Z")
+
+        self.assertIsNone(health.stale_message(rerun, NOW, 48))
+
 
 class CommandLineTests(unittest.TestCase):
     def test_an_unreadable_api_fails_instead_of_reading_as_healthy(self):
