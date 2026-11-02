@@ -45,10 +45,11 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
-## November 1, 2026
+## November 2, 2026
 
 - **💬 Short answers stay in** — a quiet “Sí”, “OK” or “De acuerdo” into your microphone stays in the transcript instead of being dropped as noise.
 - **🧠 Thinking models answer cleanly** — Ollama and cloud models that reason before answering no longer break your summary or leak their reasoning into summaries, Ask answers or Apuntador cards, and say so plainly when they run out of room before answering.
+- **🍺 Clean Homebrew installs** — installing or upgrading Portavoz with Homebrew no longer prints a deprecation warning.
 
 ## October 31, 2026
 

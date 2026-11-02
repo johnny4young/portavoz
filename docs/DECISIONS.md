@@ -244,7 +244,7 @@ confirms every suggestion.
 
 **Context:** D25 called for a 100% local summary engine for Macs with neither Apple Intelligence NOR Ollama. The embedded provider needs the prompt/parsing stack (`PromptFactory`, `StructuredSummary`, `SummaryFingerprint`) that lives in IntelligenceKit; a separate Kit would have forced all of that into Core.
 
-**Decision:** `mlx-swift-lm` (MIT, pinned exactly to 3.31.4 — official successor to `mlx-swift-examples`, which was frozen in Oct 2025; the migration was made in Jul 2026 to support `qwen3_5`) is a direct IntelligenceKit dependency, together with `swift-transformers` (the new package decoupled the tokenizer: the app provides it through the `MLXHuggingFace` macros), and `MLXSummaryProvider` lives there, reusing the OpenAI-compatible provider's prompt/JSON contract (changing engines never changes the summary's shape). The shipped default is **Qwen3.5-4B MLX 4-bit** (Apache-2.0, ungated, ~3 GB), sha256-pinned as `ModelCatalog.mlxQwen35`; Qwen3-4B-Instruct-2507 remains in the catalog as the explicit A/B alternative. Generation runs on GPU through `ModelContainer.perform`; D151 later makes its single-flight policy explicit through an independent MLX scheduler lane rather than treating the async cache actor as that policy. Accepted cost: mlx compiles C++/Metal on the first build (~10 min) and increases the binary size; the model downloads only if the user selects the "Built-in (MLX)" engine.
+**Decision:** `mlx-swift-lm` (MIT, pinned exactly to 3.32.3 with its default traits disabled, so the FoundationModels adapter and its vendored grammar engine stay out of the app — official successor to `mlx-swift-examples`, which was frozen in Oct 2025; the migration was made in Jul 2026 to support `qwen3_5`) is a direct IntelligenceKit dependency, together with `swift-transformers` (the new package decoupled the tokenizer: the app provides it through the `MLXHuggingFace` macros), and `MLXSummaryProvider` lives there, reusing the OpenAI-compatible provider's prompt/JSON contract (changing engines never changes the summary's shape). The shipped default is **Qwen3.5-4B MLX 4-bit** (Apache-2.0, ungated, ~3 GB), sha256-pinned as `ModelCatalog.mlxQwen35`; Qwen3-4B-Instruct-2507 remains in the catalog as the explicit A/B alternative. Generation runs on GPU through `ModelContainer.perform`; D151 later makes its single-flight policy explicit through an independent MLX scheduler lane rather than treating the async cache actor as that policy. Accepted cost: mlx compiles C++/Metal on the first build (~10 min) and increases the binary size; the model downloads only if the user selects the "Built-in (MLX)" engine.
 
 **Shipping and verification:** the SwiftPM CLI cannot compile Metal shaders (limitation documented in the mlx-swift README): `swift build` never produces `default.metallib`, so no test under `swift test` can exercise generation. The metallib comes from a one-time xcodebuild pass that `scripts/build-mlx-metallib.sh` caches in `.build/mlx/` (cache keyed by the resolved mlx-swift version; requires the Xcode 26 Metal Toolchain: `xcodebuild -downloadComponent MetalToolchain`); `make-app.sh` copies `mlx-swift_Cmlx.bundle` to `Contents/Resources`, where the mlx loader resolves it through NSBundle. E2E verification is in-app — `Portavoz.app/Contents/MacOS/portavoz-app --mlx-smoke` (same pattern as `--bench-live`): synthetic ES meeting → structured summary with correct decision and action item in ~5 s (M-series, model already downloaded).
 
@@ -22302,3 +22302,20 @@ before, and Settings shows Ultra as not downloaded yet. An explicit Parakeet or
 Apple Speech choice is kept, and meetings stay on v3 (D565). The English and
 peak-memory margins were thin and came from one speaker, so a second field run
 stays open in GAPS T38.
+
+## D614 — MLX 3.32.3 keeps legacy prefill chunking and no default traits
+
+mlx-swift-lm 3.32.3 and mlx-swift 0.32.3 change greedy output for the same
+prompt, and no test under `swift test` can see it because generation needs the
+bundled metallib. `--mlx-smoke` on one synthetic meeting and copies of the ten
+newest real meetings produced these valid summaries: 3.31.4 8/11, 3.32.3 with
+its default balanced chunking 6/11, and 3.32.3 with `.remainder` 9/11. The
+provider therefore sets `.remainder`, which also lowered the highest peak
+footprint from 5.29 GB to 4.44 GB. It does not restore 3.31.4 output byte for
+byte, and eleven prompts cannot rank small differences. Peak footprint and
+timing come from a host with other work running.
+
+The dependency also disables default traits, so the FoundationModels adapter
+and its vendored grammar engine stay out of the app. mlx-swift 0.32.3 declares
+tools 6.3, which raises the source build floor to the Xcode 26.6 toolchain that
+CI pins.
