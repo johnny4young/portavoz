@@ -4,7 +4,6 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 FLAGS=(-Xswiftc -warnings-as-errors)
-HOST=/private/tmp/portavoz-ui-tests/host/Portavoz.app
 PRODUCTS="$RUNNER_TEMP/ui-products/portavoz-ui.xctestproducts"
 RECEIPT="$RUNNER_TEMP/ui-products/build-duration-seconds.txt"
 TIMINGS="dist/spike/timings.txt"
@@ -37,36 +36,60 @@ catalog() {
 apply_change() {
   case "$1" in
     view) printf '\nprivate let ci5SpikeMarker = "view"\n' >> Sources/portavoz-app/MeetingDetailNotesSection.swift ;;
-    core) printf '\nprivate let ci5SpikeMarker = "core"\n' >> Sources/PortavozCore/MeetingTypes.swift ;;
+    core1) printf '\nprivate let ci5SpikeMarker = "core"\n' >> Sources/PortavozCore/MeetingTypes.swift ;;
+    core2) printf '\nprivate let ci5SpikeMarker = "core"\n' >> Sources/PortavozCore/TranscriptTypes.swift ;;
+    core3) printf '\nprivate let ci5SpikeMarker = "core"\n' >> Sources/PortavozCore/AudioTypes.swift ;;
     none) ;;
     *) echo "unknown change $1" >&2; exit 2 ;;
   esac
 }
 
+inject_host() {
+  python3 - "$1" <<'PY'
+import plistlib, sys
+from pathlib import Path
+run = next(Path(sys.argv[1]).rglob("*.xctestrun"))
+data = plistlib.loads(run.read_bytes())
+target = data["PortavozUITests"]
+target.pop("UseUITargetAppProvidedByTests", None)
+target["UITargetAppPath"] = "__TESTROOT__/Debug/Portavoz.app"
+target["DependentProductPaths"].insert(0, "__TESTROOT__/Debug/Portavoz.app")
+target["BundleIdentifiersForCrashReportEmphasis"].append("app.portavoz.mac.uitest-host")
+run.write_bytes(plistlib.dumps(data))
+print(f"Injected the host into {run}")
+PY
+}
+
 build_new() {
   apply_change "$1"
   timed swift-build-product swift build --product portavoz-app "${FLAGS[@]}"
-  mkdir -p "$(dirname "$HOST")"
-  chmod 700 /private/tmp/portavoz-ui-tests
-  timed make-ui-host scripts/make-ui-host.sh "$HOST" "${FLAGS[@]}"
-  manifest "$HOST" new
   timed xcodegen xcodegen generate --spec project-ui-runner.yml --project .
   started=$SECONDS
   timed runner-build xcodebuild build-for-testing -project PortavozUIRunner.xcodeproj -scheme Portavoz \
     -destination "platform=macOS,arch=$(uname -m)" -configuration Debug -testProductsPath "$PRODUCTS"
   echo "$((SECONDS - started))" > "$RECEIPT"
+  HOST="$PRODUCTS/Binaries/0/Debug/Portavoz.app"
+  timed make-ui-host scripts/make-ui-host.sh "$HOST" "${FLAGS[@]}"
+  manifest "$HOST" new
+  inject_host "$PRODUCTS"
   plutil -convert json -o dist/spike/xctestrun.json "$(find "$PRODUCTS" -name '*.xctestrun' | head -1)" || true
 }
 
 run_new() {
   local tests="$1" label="$2"
-  export TEST_RUNNER_PORTAVOZ_UI_HOST_PATH="$HOST"
   timed "tests-$label" env UI_TESTS="$tests" UI_TEST_LOCALES=en UI_TEST_RESULTS_DIR="$PWD/dist/ui-test-results/$label" \
     UI_TEST_PRODUCTS_PATH="$PRODUCTS" UI_TEST_BUILD_RECEIPT="$RECEIPT" UI_TEST_ENFORCE_RUNTIME_BUDGET=false \
     make test-ui-run
 }
 
+# Every journey that failed with XCUIApplication(url:), plus SMOKE.
+PROBE="PortavozUITests/AudioImportUITests/testCancelOneImportContinuesTheNextAndExplicitRetryReusesTheQueue PortavozUITests/AudioImportUITests/testMultipleAudioFilesReachPagedQueueAndOpenTheirMeeting PortavozUITests/AudioImportUITests/testRelaunchResumesPublishedAudioWithoutTheSelectedOriginals PortavozUITests/AudioImportUITests/testSingleMeetingBundleReachesDetailWithoutChangingTheOriginal PortavozUITests/DictationTextModeUITests/testApplicationProfileUsesNativePickerAndKeepsTheOriginal PortavozUITests/LibraryUITests/testAskConversationAnswersAndSeeksToExactCitation PortavozUITests/MeetingAudioTrimUITests/testSilentTailRequiresConfirmationAndCutsOnlyAfterConfirmation PortavozUITests/MeetingDetailUITests/testTwentyThousandSegmentDetailRendersFromDisposableScaleFixture PortavozUITests/SkillsSettingsUITests/testSkillActivityFiltersByUpdatePeriodAndResetsExpansion PortavozUITests/SkillsSettingsUITests/testSkillActivityTransitionsHideStaleRowsAndKeepVerifiedControlsUsable PortavozUITests/UITestStorageUITests/testSharedScratchProtectsOwnershipAndRoundTripsAppFixtures $SMOKE"
+
 case "${1:?mode}" in
+  probe)
+    build_new none
+    run_new "$PROBE" probe
+    ;;
   smoke)
     build_new "$2"
     status=0

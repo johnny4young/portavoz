@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lane:
+  first:
     name: ${{ matrix.lane }}
     runs-on: macos-26
     timeout-minutes: ${{ matrix.timeout }}
@@ -20,9 +20,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { lane: smoke-view, args: "smoke view 3", restore: true, timeout: 40 }
-          - { lane: smoke-core, args: "smoke core 1", restore: true, timeout: 40 }
+          - { lane: probe, args: "probe", restore: true, timeout: 40 }
           - { lane: crash, args: "crash", restore: true, timeout: 30 }
+          - { lane: core-1, args: "smoke core1 1", restore: true, timeout: 40 }
     env: &lane_env
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
     steps: &lane_steps
@@ -74,10 +74,26 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+  second:
+    name: ${{ matrix.lane }}
+    needs: first
+    if: ${{ !cancelled() }}
+    runs-on: macos-26
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { lane: core-2, args: "smoke core2 1", restore: true }
+          - { lane: core-3, args: "smoke core3 1", restore: true }
+    env: *lane_env
+    steps: *lane_steps
+
+  # The full comparison costs two hours of runners, so it needs the probe green.
   full:
     name: ${{ matrix.lane }}
-    needs: lane
-    if: always() && !cancelled()
+    needs: [first, second]
+    if: ${{ !cancelled() && needs.first.result == 'success' }}
     runs-on: macos-26
     timeout-minutes: 110
     strategy:

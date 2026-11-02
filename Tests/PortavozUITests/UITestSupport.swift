@@ -30,11 +30,6 @@ enum UITestLocale {
     }
 }
 
-enum UITestHost {
-    /// The SwiftPM-built host; without it XCTest launches its own target app.
-    static var path: String? { ProcessInfo.processInfo.environment["PORTAVOZ_UI_HOST_PATH"] }
-}
-
 private let notificationCenterAlertOverride =
     "PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS"
 
@@ -115,7 +110,7 @@ extension XCUIApplication {
         makeTemporaryDirectory: @MainActor () throws -> URL = UITestStorage.makeDirectory
     ) throws -> XCUIApplication {
         let processTempRoot = try makeTemporaryDirectory()
-        let app = UITestHost.path.map { XCUIApplication(url: URL(fileURLWithPath: $0)) } ?? XCUIApplication()
+        let app = XCUIApplication()
         try UITestStorage.register(app)
         app.launchArguments = ["-NSTreatUnknownArgumentsAsOpen", "NO", "-ApplePersistenceIgnoreState", "YES", "-use-temp-store", "-reset-app-language"]
         if seedDemo {
