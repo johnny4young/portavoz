@@ -1252,19 +1252,51 @@ def lower_layer_features(path: str) -> set[str]:
 
 
 CATALOG = "Resources/Localization/Portavoz/Localizable.xcstrings"
-PLACEHOLDER = re.compile(r"%(?:\d+\$)?(?:ll|l)?[@dfsu]|%%")
+PLACEHOLDER = re.compile(r"%(?:\d+\$)?[-+ 0#]*\d*(?:\.\d+)?(?:hh|h|ll|l)?[@dfsuxXeEgGc]|%#@\w+@|%%")
+SHIPPED_STATES = {None, "translated", "needs_review"}
 
 
-def catalog_keys(text: str) -> set[str]:
-    return set(json.loads(text).get("strings", {}))
+def catalog_english(text: str) -> dict[str, str | None]:
+    """English copy as Xcode compiles it into the UI test app.
+
+    An empty value stays empty and a missing one shows the key. None marks
+    plural, substitution or unshipped entries, which only the full suite covers.
+    """
+    catalog = json.loads(text)
+    if not isinstance(catalog, dict) or not isinstance(catalog.get("strings"), dict):
+        raise ValueError("Invalid string catalog")
+    values: dict[str, str | None] = {}
+    for key, entry in catalog["strings"].items():
+        english = entry
+        for field in ("localizations", "en"):
+            if not isinstance(english, dict):
+                raise ValueError("Invalid English localization")
+            english = english.get(field, {})
+        if not isinstance(english, dict):
+            raise ValueError("Invalid English localization")
+        if "variations" in english or "substitutions" in english:
+            values[key] = None
+            continue
+        unit = english.get("stringUnit", {})
+        if not isinstance(unit, dict):
+            raise ValueError("Invalid English string unit")
+        value = unit.get("value")
+        if value is not None and not isinstance(value, str):
+            raise ValueError("Invalid English string value")
+        values[key] = None if unit.get("state") not in SHIPPED_STATES else key if value is None else value
+    return values
+
+
+def swift_literal(text: str) -> str:
+    return text.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
 
 
 def copy_tests(changed_keys: Iterable[str], root: Path) -> set[str]:
     """UI tests whose sources quote a changed English string or a long literal part of it."""
     needles = set()
     for key in changed_keys:
-        parts = [part.strip() for part in PLACEHOLDER.split(key) if len(part.strip()) >= 12]
-        needles.update(parts or [f'"{key}"'])
+        parts = [swift_literal(part.strip()) for part in PLACEHOLDER.split(key) if len(part.strip()) >= 12]
+        needles.update(parts or [f'"{swift_literal(key)}"'])
     selected: set[str] = set()
     for source in sorted((root / "Tests/PortavozUITests").glob("*UITests.swift")):
         text = source.read_text(encoding="utf-8")
@@ -1436,7 +1468,7 @@ def changed_paths(base: str, head: str) -> list[str]:
 
 
 def catalog_changes(base: str, head: str | None, root: Path) -> set[str] | None:
-    """English keys added or removed between base and head (or the working file)."""
+    """Changed keys and old/new effective English copy; None means unreadable."""
     try:
         before = subprocess.run(["git", "show", f"{base}:{CATALOG}"], check=True, capture_output=True,
                                 text=True, cwd=root).stdout
@@ -1445,7 +1477,17 @@ def catalog_changes(base: str, head: str | None, root: Path) -> set[str] | None:
         else:
             after = subprocess.run(["git", "show", f"{head}:{CATALOG}"], check=True, capture_output=True,
                                    text=True, cwd=root).stdout
-        return catalog_keys(before) ^ catalog_keys(after)
+        old_values, new_values = catalog_english(before), catalog_english(after)
+        changed: set[str] = set()
+        for key in old_values.keys() | new_values.keys():
+            sides = [values[key] for values in (old_values, new_values) if key in values]
+            if len(sides) == 2 and sides[0] == sides[1]:
+                continue
+            if None in sides:
+                return None
+            changed.add(key)
+            changed.update(value for value in sides if value)
+        return changed
     except (OSError, ValueError, subprocess.CalledProcessError):
         return None
 

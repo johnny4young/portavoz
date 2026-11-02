@@ -561,6 +561,15 @@ still switches the running app to Spanish inside the English run.
 `make test-ui-es` remains a manual pass that no gate requires. Earlier
 bilingual receipts below are history.
 
+A string-catalog change compares each key's English copy as Xcode compiles it
+into the app under test: an empty value stays empty, a missing value shows the
+key. Added, removed or changed copy selects the journeys quoting the key or
+either value, matched in Swift string-literal form, plus the smoke canaries.
+A changed plural, substitution or unshipped-state English entry, or an
+unreadable catalog, selects the complete English suite. `test_ui_test_scope`
+covers these cases against synthetic Git revisions and an uncommitted working
+file. They are selector contracts, not real-app UI runs.
+
 `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates macOS UI runners only when product presentation is
 affected: one job builds the exact products once into an `xctestproducts`
