@@ -48,6 +48,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 ## November 1, 2026
 
 - **💬 Short answers stay in** — a quiet “Sí”, “OK” or “De acuerdo” into your microphone stays in the transcript instead of being dropped as noise.
+- **🧠 Thinking models summarize cleanly** — Ollama and cloud models that reason before answering no longer break or leak into your summary, and say so plainly when they run out of room before answering.
 
 ## October 31, 2026
 
