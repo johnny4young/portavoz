@@ -46,7 +46,7 @@ let package = Package(
         // Embedded local LLM (MLX, MIT) — D25's last mile: summaries on
         // Macs with neither Apple Intelligence nor Ollama. Pinned exact:
         // the LLM API surface moves between minors.
-        .package(url: "https://github.com/ml-explore/mlx-swift-lm.git", exact: "3.31.4"),
+        .package(url: "https://github.com/ml-explore/mlx-swift-lm.git", exact: "3.32.3"),
         // Tokenizer runtime for the embedded summarizer: mlx-swift-lm 3.x
         // deliberately decoupled swift-transformers — the app provides it
         // through the MLXHuggingFace macros.
