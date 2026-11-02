@@ -257,6 +257,10 @@ concurrency without treating that one fixture as universal accuracy evidence.
   The coalescer's empty/character-noise/punctuation-row checks remain. Unmarked
   phrase results retain the existing noise policy; token ownership is not proof
   of speech.
+- A segment made only of short English or Spanish replies (yes, OK, agreed,
+  mhm, not yet, and their Spanish equivalents) survives the confidence and
+  no-vowel rules, because such replies can score below the floor.
+  Thanks-phrases are excluded: models hallucinate them on silence.
 - A native live job binds its first audio channel and rejects a later channel
   change before feeding that PCM. Non-finite samples become silence with the
   sample count preserved, so a device glitch neither ends the session nor shifts
