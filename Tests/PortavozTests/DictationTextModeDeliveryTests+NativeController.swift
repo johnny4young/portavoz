@@ -151,10 +151,7 @@ extension DictationTextModeDeliveryTests {
     }
 
     private func waitForNativeDriver(_ condition: @MainActor () -> Bool) async throws {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
-        while !condition(), ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(5))
-        }
+        _ = await TestPolling.until(condition)
         try #require(condition())
     }
 }

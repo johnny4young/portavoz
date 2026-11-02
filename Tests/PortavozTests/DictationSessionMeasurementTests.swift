@@ -233,10 +233,7 @@ final class DictationSessionMeasurementTests: XCTestCase {
     }
 
     private func eventually(_ condition: @MainActor () -> Bool, file: StaticString = #filePath, line: UInt = #line) async {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
-        while !condition(), ContinuousClock.now < deadline {
-            try? await Task.sleep(for: .milliseconds(5))
-        }
+        _ = await TestPolling.until(condition)
         XCTAssertTrue(condition(), "Controller call site did not reach the expected state", file: file, line: line)
     }
 
