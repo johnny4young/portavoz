@@ -94,12 +94,18 @@ final class MeetingAudioTrimUITests: PortavozUITestCase {
     private func assertTranscript(in app: XCUIApplication) {
         let viewport = app.control(withIdentifier: "detail-transcript-scroll")
         XCTAssertTrue(viewport.waitForExistenceFast(timeout: 5))
-        for text in [
+        let lines = [
             "Revisemos el presupuesto de transcripción.",
             "El rollout del modelo queda para el viernes.",
             "¿Cuándo es el rollout?",
             "Cerremos con los próximos pasos del rollout.",
-        ] {
+        ]
+        // An earlier pass leaves the first rows clipped above the viewport.
+        let first = app.staticTexts[lines[0]]
+        for _ in 0..<8 where !first.exists {
+            viewport.scroll(byDeltaX: 0, deltaY: 96)
+        }
+        for text in lines {
             let line = app.staticTexts[text]
             // The playback carousel can omit fully clipped rows from AX.
             // Materialize each row through its own identified scroll boundary.
