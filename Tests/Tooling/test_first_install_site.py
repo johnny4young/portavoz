@@ -37,6 +37,10 @@ class FirstInstallSiteTests(unittest.TestCase):
         self.assertIn("Open the DMG and drag Portavoz to Applications.", html)
         self.assertIn("Abre el DMG y arrastra Portavoz a Aplicaciones.", html)
 
+    def test_both_languages_point_sequoia_to_its_last_release(self):
+        html = (ROOT / "site/index.html").read_text()
+        self.assertEqual(html.count('href="https://github.com/johnny4young/portavoz/releases/tag/v1.2.0"'), 2)
+
     def test_readme_states_the_macos_26_floor(self):
         readme = (ROOT / "README.md").read_text()
         self.assertIn("Releases after 1.2.0 require macOS 26 Tahoe", readme)
