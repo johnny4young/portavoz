@@ -47,6 +47,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 2, 2026
 
+- **🔒 Recording notifications stay with their call** — a withdrawn call-ended question stays dismissed, and an old notification cannot stop a newer recording.
 - **🍺 Clean Homebrew installs** — installing or upgrading Portavoz with Homebrew no longer prints a deprecation warning.
 
 ## October 31, 2026
