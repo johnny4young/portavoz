@@ -38,6 +38,15 @@ class FirstInstallSiteTests(unittest.TestCase):
         self.assertIn("Open the DMG and drag Portavoz to Applications.", html)
         self.assertIn("Abre el DMG y arrastra Portavoz a Aplicaciones.", html)
 
+    def test_each_language_links_older_macos_to_the_last_release_that_runs_there(self):
+        html = (ROOT / "site/index.html").read_text()
+        platform = re.search(r'<p class="platform">(.*?)</p>', html, re.S).group(1)
+        dmg = "https://github.com/johnny4young/portavoz/releases/download/v1.2.0/Portavoz-1.2.0.dmg"
+        for language in ("es", "en"):
+            span = re.search(rf'<span class="{language}">(.*?)</span>', platform, re.S).group(1)
+            self.assertIn(f'<a href="{dmg}">', span, language)
+            self.assertIn("macOS 14.4–15", span, language)
+
     def test_release_kicker_names_the_latest_changelog_release(self):
         html = (ROOT / "site/index.html").read_text()
         kicker = re.search(r'class="release-kicker".*?</a>', html, re.S).group(0)
