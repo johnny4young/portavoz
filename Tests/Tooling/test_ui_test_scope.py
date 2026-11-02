@@ -394,6 +394,16 @@ class UITestScopeTests(unittest.TestCase):
         self.assertFalse(spanish_only.required, "Spanish values belong to LocalizationTests")
 
     def test_catalog_changes_compare_english_keys_between_revisions(self):
+        with self.catalog_revisions(
+            {"strings": {"Keep": {}, "Old copy": {}}},
+            {"strings": {"Keep": {"localizations": {"es": {}}}, "New copy": {}}},
+        ) as (root, base):
+            self.assertEqual(ui_scope.catalog_changes(base, "HEAD", root), {"Old copy", "New copy"})
+            self.assertEqual(ui_scope.catalog_changes(base, None, root), {"Old copy", "New copy"})
+            self.assertIsNone(ui_scope.catalog_changes("0" * 40, "HEAD", root))
+
+    @contextlib.contextmanager
+    def catalog_revisions(self, before, after, commit_after=True):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             def git(*arguments):
@@ -403,15 +413,137 @@ class UITestScopeTests(unittest.TestCase):
             git("config", "user.name", "Fixture")
             path = root / ui_scope.CATALOG
             path.parent.mkdir(parents=True)
-            path.write_text(json.dumps({"strings": {"Keep": {}, "Old copy": {}}}))
+            path.write_text(json.dumps(before), encoding="utf-8")
             git("add", "-A")
             git("commit", "-q", "-m", "base")
             base = git("rev-parse", "HEAD").strip()
-            path.write_text(json.dumps({"strings": {"Keep": {"localizations": {"es": {}}}, "New copy": {}}}))
-            git("commit", "-qam", "copy")
-            self.assertEqual(ui_scope.catalog_changes(base, "HEAD", root), {"Old copy", "New copy"})
-            self.assertEqual(ui_scope.catalog_changes(base, None, root), {"Old copy", "New copy"})
-            self.assertIsNone(ui_scope.catalog_changes("0" * 40, "HEAD", root))
+            path.write_text(json.dumps(after), encoding="utf-8")
+            if commit_after:
+                git("commit", "-qam", "copy")
+            yield root, base
+
+    @staticmethod
+    def english(value, state=None):
+        unit = {"value": value, **({"state": state} if state else {})}
+        return {"localizations": {"en": {"stringUnit": unit}}}
+
+    def test_catalog_changes_track_stable_key_english_overrides(self):
+        key = "Live captions are available now."
+        old, new = "Captions were ready to read.", "Captions are ready to read."
+        cases = (
+            ({}, self.english(new), {key, new}),
+            (self.english(old), self.english(new), {key, old, new}),
+            (self.english(old), {}, {key, old}),
+            (self.english(old), self.english(""), {key, old}),
+            ({}, self.english(""), {key}),
+        )
+        for before, after, expected in cases:
+            with self.subTest(before=before, after=after), self.catalog_revisions(
+                {"strings": {key: before}}, {"strings": {key: after}}
+            ) as (root, base):
+                for head in ("HEAD", None):
+                    changed = ui_scope.catalog_changes(base, head, root)
+                    self.assertEqual(changed, expected)
+                    selected = select_paths([ui_scope.CATALOG], changed, ROOT)
+                    self.assertTrue(set(SMOKE_TESTS) <= set(selected.tests))
+                    library = {test for test in ALL_TESTS if "/LibraryUITests/" in test}
+                    self.assertTrue(library <= set(selected.tests))
+                    self.assertLess(len(selected.tests), len(ALL_TESTS))
+
+    def test_uncommitted_catalog_edit_counts_in_working_tree_mode(self):
+        key = "Live captions are available now."
+        with self.catalog_revisions(
+            {"strings": {key: {}}}, {"strings": {key: self.english("Captions are ready.")}}, commit_after=False
+        ) as (root, base):
+            self.assertEqual(ui_scope.catalog_changes(base, None, root), {key, "Captions are ready."})
+            self.assertEqual(ui_scope.catalog_changes(base, "HEAD", root), set())
+
+    def test_catalog_override_changes_select_old_and_new_quoted_values(self):
+        key = "stable-caption-key"
+        old, new = 'Old "caption" override text.', "New caption override text."
+        with self.catalog_revisions(
+            {"strings": {key: self.english(old)}}, {"strings": {key: self.english(new)}}
+        ) as (root, base):
+            tests = root / "Tests/PortavozUITests"
+            tests.mkdir(parents=True)
+            for name, value in (("LibraryUITests", old), ("InsightsUITests", new)):
+                literal = value.replace('"', '\\"')
+                (tests / f"{name}.swift").write_text(f'XCTAssert(label == "{literal}")\n', encoding="utf-8")
+            for head in ("HEAD", None):
+                changed = ui_scope.catalog_changes(base, head, root)
+                self.assertEqual(changed, {key, old, new})
+                selected = select_paths([ui_scope.CATALOG], changed, root)
+                for name in ("LibraryUITests", "InsightsUITests"):
+                    expected = {test for test in ALL_TESTS if f"/{name}/" in test}
+                    self.assertTrue(expected)
+                    self.assertTrue(expected <= set(selected.tests))
+
+    def test_catalog_changes_include_overrides_for_added_and_removed_keys(self):
+        with self.catalog_revisions(
+            {"strings": {"old-key": self.english("Old English override.")}},
+            {"strings": {"new-key": self.english("New English override.")}},
+        ) as (root, base):
+            for head in ("HEAD", None):
+                self.assertEqual(
+                    ui_scope.catalog_changes(base, head, root),
+                    {"old-key", "new-key", "Old English override.", "New English override."},
+                )
+
+    def test_catalog_changes_ignore_spanish_only_and_compiled_no_ops(self):
+        key = "Live captions are available now."
+        entries = (
+            {"localizations": {"es": {"stringUnit": {"value": "Los subtítulos están disponibles."}}}},
+            {"localizations": {"en": {}}},
+            {"localizations": {"en": {"stringUnit": {}}}},
+            {"localizations": {"en": {"stringUnit": {"value": None}}}},
+            self.english(key, "translated"),
+            self.english(key, "needs_review"),
+        )
+        for entry in entries:
+            with self.subTest(entry=entry), self.catalog_revisions(
+                {"strings": {key: {}}}, {"strings": {key: entry}}
+            ) as (root, base):
+                for head in ("HEAD", None):
+                    changed = ui_scope.catalog_changes(base, head, root)
+                    self.assertEqual(changed, set())
+                    self.assertFalse(select_paths([ui_scope.CATALOG], changed, ROOT).required)
+
+    def test_plural_substitution_and_unshipped_english_changes_select_everything(self):
+        key = "%lld meetings"
+        plural = {"plural": {"one": {"stringUnit": {"value": "%lld meeting"}}}}
+        substitution = {"n": {"formatSpecifier": "lld", "variations": plural}}
+        for after in (
+            {"localizations": {"en": {"variations": plural}}},
+            {"localizations": {"en": {"stringUnit": {"value": "%#@n@ left"}, "substitutions": substitution}}},
+            self.english(key, "new"),
+        ):
+            with self.subTest(after=after), self.catalog_revisions(
+                {"strings": {key: {}}}, {"strings": {key: after}}
+            ) as (root, base):
+                changed = ui_scope.catalog_changes(base, "HEAD", root)
+                self.assertIsNone(changed)
+                self.assertEqual(select_paths([ui_scope.CATALOG], changed, ROOT).tests, ALL_TESTS)
+        with self.catalog_revisions(
+            {"strings": {key: {"localizations": {"en": {"variations": plural}}}}},
+            {"strings": {key: {"localizations": {"en": {"variations": plural}, "es": {}}}}},
+        ) as (root, base):
+            self.assertEqual(ui_scope.catalog_changes(base, "HEAD", root), set())
+
+    def test_catalog_english_rejects_malformed_data(self):
+        for invalid in (
+            [], {}, {"strings": []}, {"strings": {"Keep": None}},
+            {"strings": {"Keep": {"localizations": []}}},
+            {"strings": {"Keep": {"localizations": {"en": None}}}},
+            {"strings": {"Keep": {"localizations": {"en": {"stringUnit": []}}}}},
+            {"strings": {"Keep": {"localizations": {"en": {"stringUnit": {"value": 42}}}}}},
+        ):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                ui_scope.catalog_english(json.dumps(invalid))
+        with self.catalog_revisions({"strings": {"Keep": {}}}, {"strings": []}) as (root, base):
+            for head in ("HEAD", None):
+                changed = ui_scope.catalog_changes(base, head, root)
+                self.assertIsNone(changed)
+                self.assertEqual(select_paths([ui_scope.CATALOG], changed, ROOT).tests, ALL_TESTS)
 
     def test_no_path_combination_selects_spanish(self):
         selection = select_paths([
