@@ -40,7 +40,7 @@ class FirstInstallSiteTests(unittest.TestCase):
     def test_readme_states_the_macos_26_floor(self):
         readme = (ROOT / "README.md").read_text()
         self.assertIn("Releases after 1.2.0 require macOS 26 Tahoe", readme)
-        self.assertIn("Swift 6.2 on macOS 26+", readme)
+        self.assertIn("Swift 6.3 on macOS 26+", readme)
         self.assertNotIn("macOS 14.4+**", readme)
 
 
