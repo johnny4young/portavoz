@@ -82,3 +82,30 @@ actor ControlledTestSleep {
         waiters.removeValue(forKey: id)?.resume(returning: false)
     }
 }
+
+/// Main-actor counterpart for test probes: waiters suspend until `signal()`
+/// instead of polling, bounded only by `ControlledTestSleep.hangGuard`.
+@MainActor
+final class MainActorTestEvents {
+    private var waiters: [UUID: CheckedContinuation<Bool, Never>] = [:]
+
+    func signal() {
+        let pending = waiters
+        waiters.removeAll()
+        pending.values.forEach { $0.resume(returning: true) }
+    }
+
+    func waitUntil(_ condition: () -> Bool) async -> Bool {
+        while !condition() {
+            let id = UUID()
+            let timeout = Task { [weak self] in
+                guard (try? await Task.sleep(for: ControlledTestSleep.hangGuard)) != nil else { return }
+                self?.waiters.removeValue(forKey: id)?.resume(returning: false)
+            }
+            let woken = await withCheckedContinuation { waiters[id] = $0 }
+            timeout.cancel()
+            if !woken { return condition() }
+        }
+        return true
+    }
+}

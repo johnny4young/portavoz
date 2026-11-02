@@ -33,7 +33,24 @@ final class ControlledTestSleepTests: XCTestCase {
         } catch is CancellationError {}
     }
 
+    func testMainActorWaiterOutlastsALateEvent() async {
+        let events = MainActorTestEvents()
+        let counter = MainActorCounter()
+        let waiter = Task { await events.waitUntil { counter.value >= 1 } }
+        await yieldLongerThanTheOldPollingBudget()
+
+        counter.value = 1
+        events.signal()
+        let arrived = await waiter.value
+        XCTAssertTrue(arrived)
+    }
+
     private func yieldLongerThanTheOldPollingBudget() async {
         for _ in 0..<50_000 { await Task.yield() }
     }
+}
+
+@MainActor
+private final class MainActorCounter {
+    var value = 0
 }
