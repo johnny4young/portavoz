@@ -76,8 +76,11 @@ final class AskWebFixtureIntegrationTests: XCTestCase {
         let slow = Task {
             try await retriever.retrieve(fixture.url("/slow/fresh-es"))
         }
-        try await Task.sleep(for: .milliseconds(20))
+        // Cancelling before the receipt is a legitimate no-egress outcome, so
+        // wait until the slow request is in flight instead of a fixed delay.
+        let slowRequestInFlight = try await waitForReceiptCount(10, in: store)
         slow.cancel()
+        XCTAssertTrue(slowRequestInFlight)
         await XCTAssertThrowsErrorAsync(try await slow.value) { error in
             XCTAssertTrue(error is CancellationError, "unexpected error: \(error)")
         }
@@ -103,6 +106,18 @@ final class AskWebFixtureIntegrationTests: XCTestCase {
         ] {
             XCTAssertFalse(columns.contains(forbidden), forbidden)
         }
+    }
+
+    private func waitForReceiptCount(
+        _ expected: Int,
+        in store: MeetingStore
+    ) async throws -> Bool {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(10))
+        while ContinuousClock.now < deadline {
+            if try await store.globalDataEgressEvents().count >= expected { return true }
+            await Task.yield()
+        }
+        return false
     }
 
     private func assertRetrievalError(
