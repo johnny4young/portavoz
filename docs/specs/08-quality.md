@@ -425,8 +425,9 @@ cohort with no samples prints `no evidence`. The 10-minute execution and 20-minu
 total targets exclude only Xcode pin changes and interruption controls; a cache
 miss, a dependency bump or a documentation head still counts. Outcomes separate
 product, infrastructure (including a hosted outage the UI gate accepts), timeout,
-cancelled, refused rerun and superseded; a superseded attempt is counted but not
-measured, and a timeout or failure stays in the distribution. `--until` pins the
+cancelled, refused rerun and superseded; only a pull request attempt can be
+superseded, because `main` commits no longer replace each other (D620). A superseded
+attempt is counted but not measured, and a timeout or failure stays in the distribution. `--until` pins the
 window, so the recorded baseline `docs/evidence/ci-time-baseline-20261102.json`
 reproduces with one command at the commit that recorded it while GitHub retains
 the job logs; later commits may change which jobs block and their timeouts.
@@ -444,8 +445,9 @@ cohort with no samples prints `no evidence`. The 10-minute execution and 20-minu
 total targets exclude only Xcode pin changes and interruption controls; a cache
 miss, a dependency bump or a documentation head still counts. Outcomes separate
 product, infrastructure (including a hosted outage the UI gate accepts), timeout,
-cancelled, refused rerun and superseded; a superseded attempt is counted but not
-measured, and a timeout or failure stays in the distribution. `--until` pins the
+cancelled, refused rerun and superseded; only a pull request attempt can be
+superseded, because `main` commits no longer replace each other (D620). A superseded
+attempt is counted but not measured, and a timeout or failure stays in the distribution. `--until` pins the
 window, so the recorded baseline `docs/evidence/ci-time-baseline-20261102.json`
 reproduces with one command at the commit that recorded it while GitHub retains
 the job logs; later commits may change which jobs block and their timeouts.
