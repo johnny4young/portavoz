@@ -22345,3 +22345,24 @@ The accepted risk is that a deferred UI regression, or an iOS compile break, can
 reach `main` until the next run sees it. 48 hours is an alert threshold, not a
 bound on that exposure. Past it, further scope reductions pause and the pending
 evidence is dispatched. A release still requires a green nightly on its commit.
+
+## D620 — Every `main` commit gets its own CI run, and CI-only diffs run the checkout readers
+
+**Context:** `ci.yml` shared one concurrency group per ref with
+`cancel-in-progress: true`, so a merge cancelled the run of the previous `main`
+commit, and two commits lost theirs on 2 November. Source integration needs a
+first-attempt run for each commit it publishes. Separately, 9 of the last 120
+`main` commits changed only workflows, scripts or the `Makefile` and ran the
+complete suite although none of those files is compiled.
+
+**Decision:** A pull request still replaces its older run. Outside a pull request
+the group is the commit, because a shared group drops a pending run even without
+cancelling. D600 widens: `.github/`, `scripts/` and the `Makefile` also select the
+checkout readers, except the files that build or run the suite
+(`RUNS_THE_SUITE`). The `docs-only` cohort of `ci_time_report.py` follows, since it
+means the same narrowed lane. UI products travel as one zstd archive uploaded
+without a second compression, and the CI builds stop writing an index store.
+
+**Consequences:** Pushes close together on `main` run side by side and use more
+macOS slots. Every `main` push and manual run still runs the complete suite, so a
+missed reader fails there instead of on the pull request.

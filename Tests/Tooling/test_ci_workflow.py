@@ -36,6 +36,29 @@ class CIWorkflowTests(unittest.TestCase):
         self.assertIn("lookup-only: ${{ github.event_name != 'pull_request' }}", workflow)
         self.assertIn("if: github.event_name == 'pull_request' &&", workflow)
 
+    def test_only_a_pull_request_replaces_its_older_run(self):
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+        self.assertIn(
+            "concurrency:\n"
+            "  group: ci-${{ github.event.pull_request.number || github.sha }}\n"
+            "  cancel-in-progress: ${{ github.event_name == 'pull_request' }}\n",
+            workflow,
+        )
+
+    def test_ui_products_travel_compressed_once(self):
+        for name in ("ui-tests.yml", "ui-nightly.yml"):
+            workflow = (ROOT / ".github/workflows" / name).read_text(encoding="utf-8")
+            with self.subTest(workflow=name):
+                self.assertIn('zstd -T0 -3 --rm "$RUNNER_TEMP/ui-products.tar"', workflow)
+                self.assertIn(
+                    "path: ${{ runner.temp }}/ui-products.tar.zst\n"
+                    "          compression-level: 0\n",
+                    workflow,
+                )
+                self.assertIn('zstd -d --rm "$RUNNER_TEMP/ui-archive/ui-products.tar.zst"', workflow)
+                self.assertNotIn("ui-products.tar.gz", workflow)
+
     def test_current_sdk_uses_one_fixed_toolchain_test_build(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
 

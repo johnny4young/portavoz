@@ -111,7 +111,8 @@ if [[ "$phase" != test-only ]]; then
   # Compile the app and UI bundle once. Every requested locale then reuses the
   # same products through test-without-building instead of rebuilding.
   rm -f "$build_duration_receipt"
-  build_args=("${common[@]}")
+  # Nothing reads this build's index, and writing it costs compile time.
+  build_args=("${common[@]}" COMPILER_INDEX_STORE_ENABLE=NO)
   if [[ -n "$products_path" ]]; then
     rm -rf "$products_path"
     build_args+=(-testProductsPath "$products_path")
