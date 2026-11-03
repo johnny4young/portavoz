@@ -32,9 +32,8 @@ class CIWorkflowTests(unittest.TestCase):
         self.assertIn("  push:\n    branches: [main]\n", triggers)
         self.assertIn("  pull_request:\n", triggers)
         self.assertIn("  workflow_dispatch:\n", triggers)
-        # A dispatched run follows the push cache policy, never the pull-request restore path.
-        self.assertIn("lookup-only: ${{ github.event_name != 'pull_request' }}", workflow)
-        self.assertIn("if: github.event_name == 'pull_request' &&", workflow)
+        # A dispatched run follows the push seed policy.
+        self.assertIn("if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'", workflow)
 
     def test_current_sdk_uses_one_fixed_toolchain_test_build(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
@@ -505,14 +504,14 @@ class NightlyUIWorkflowTests(unittest.TestCase):
     def test_a_night_never_holds_more_than_three_macos_slots(self):
         shard = self.workflow.split("  shard:\n", 1)[1].split("\n  alert:\n", 1)[0]
 
-        self.assertIn("needs: [build-ui-products, interruption-controls]\n", shard)
+        self.assertIn("needs: [build-ui-products, interruption-controls, clean-build-and-test]\n", shard)
         self.assertIn("!cancelled() && needs.build-ui-products.result == 'success'", shard)
         self.assertEqual(self.workflow.split("\n  shard:\n", 1)[1].count("shard: [1, 2, 3]"), 1)
 
     def test_any_unverified_or_cancelled_job_reaches_the_alert(self):
         alert = self.workflow.split("\n  alert:\n", 1)[1]
 
-        self.assertIn("needs: [build-ui-products, interruption-controls, shard]\n", alert)
+        self.assertIn("needs: [build-ui-products, interruption-controls, clean-build-and-test, shard]\n", alert)
         self.assertIn("if: always()\n", alert)
         self.assertIn("issues: write\n", alert)
         self.assertIn("NEEDS: ${{ toJSON(needs) }}\n", alert)
@@ -533,10 +532,20 @@ class NightlyUIWorkflowTests(unittest.TestCase):
         self.assertIn("  issues: write\n", watch)
         self.assertIn("scripts/ui_nightly_health.py freshness", watch)
 
+    def test_nightly_owns_a_clean_build_and_seeds_only_from_main(self):
+        clean = self.workflow.split("  clean-build-and-test:\n", 1)[1].split("\n  # After the jobs above", 1)[0]
+
+        self.assertNotIn("actions/cache/restore@", clean)
+        self.assertIn("run: scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors\n", clean)
+        self.assertLess(clean.index("run-swift-tests.sh"), clean.index("ci_swift_source_stamps.py snapshot"))
+        self.assertEqual(clean.count("if: github.ref == 'refs/heads/main'"), 2)
+        self.assertIn("if: steps.swift_cache_size.outputs.save == 'true'", clean)
+        self.assertIn("key: ${{ steps.swift_cache_key.outputs.clean_key }}", clean)
+
     def test_every_macos_job_uses_the_fixed_toolchain(self):
-        self.assertEqual(self.workflow.count("runs-on: macos-26"), 3)
-        self.assertEqual(self.workflow.count("DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer"), 3)
-        self.assertEqual(self.workflow.count("run: scripts/verify-ci-toolchain.sh 26 26.6"), 3)
+        self.assertEqual(self.workflow.count("runs-on: macos-26"), 4)
+        self.assertEqual(self.workflow.count("DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer"), 4)
+        self.assertEqual(self.workflow.count("run: scripts/verify-ci-toolchain.sh 26 26.6"), 4)
 
 
 if __name__ == "__main__":

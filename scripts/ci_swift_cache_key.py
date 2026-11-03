@@ -15,16 +15,11 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 LANES = ("build-and-test",)
-# These owners define the dependency graph, compiler arguments and cache policy.
-INPUTS = (
-    "Package.swift",
-    "Package.resolved",
-    ".github/workflows/ci.yml",
-    "scripts/run-swift-tests.sh",
-    "scripts/verify-ci-toolchain.sh",
-    "scripts/ci_swift_cache_key.py",
-    "scripts/ci_swift_source_stamps.py",
-)
+# Compiled state depends on these, not on how a workflow is written. Tooling tests
+# tie the flags to the workflows; bump the version when what a seed holds changes.
+BUILD_CONTRACT = {"version": 1, "flags": ("-Xswiftc", "-warnings-as-errors")}
+# A moved dependency restores within the same toolchain and recompiles what moved.
+GRAPH_INPUTS = ("Package.swift", "Package.resolved")
 COMMANDS = (
     ("sw_vers", "-productVersion"),
     ("sw_vers", "-buildVersion"),
@@ -50,8 +45,9 @@ def cache_prefix(root: Path, lane: str) -> str:
     if not developer or not Path(developer).is_dir():
         raise ValueError("DEVELOPER_DIR must identify an installed Xcode")
     identity = {
-        "schema": 1,
+        "schema": 2,
         "lane": lane,
+        "contract": BUILD_CONTRACT,
         # SwiftPM and module caches contain absolute paths. Do not transplant
         # them across workspaces, architectures, SDKs or runner image revisions.
         "workspace": str(root.resolve()),
@@ -60,19 +56,33 @@ def cache_prefix(root: Path, lane: str) -> str:
         "runnerImage": os.environ.get("ImageOS", ""),
         "runnerImageVersion": os.environ.get("ImageVersion", ""),
         "tools": [command_output(command) for command in COMMANDS],
-        "inputs": {name: hashlib.sha256((root / name).read_bytes()).hexdigest()
-                   for name in INPUTS},
     }
     digest = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
-    return f"swift-build-v2-{lane}-{digest}-"
+    return f"swift-build-v3-{lane}-{digest}-"
+
+
+def graph_prefix(root: Path, lane: str) -> str:
+    graph = hashlib.sha256()
+    for name in GRAPH_INPUTS:
+        graph.update(name.encode() + b"\0" + (root / name).read_bytes() + b"\0")
+    return f"{cache_prefix(root, lane)}{graph.hexdigest()[:16]}-"
+
+
+def checked_commit(commit: str) -> str:
+    if not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise ValueError("The cache commit must be a full lowercase SHA-1")
+    return commit
 
 
 def cache_key(root: Path, lane: str, commit: str) -> str:
-    # One seed per main commit keeps first-party state current; a PR restores
-    # the newest seed of its exact graph through the prefix, never another graph.
-    if not re.fullmatch(r"[0-9a-f]{40}", commit):
-        raise ValueError("The cache commit must be a full lowercase SHA-1")
-    return cache_prefix(root, lane) + commit
+    # One seed per main commit keeps first-party state current. A restore prefers
+    # the newest seed of its graph, then any seed of its toolchain and flags.
+    return graph_prefix(root, lane) + checked_commit(commit)
+
+
+def clean_cache_key(root: Path, lane: str, commit: str) -> str:
+    # Seeds are immutable, so the clean seed cannot replace the same commit's main seed.
+    return f"{graph_prefix(root, lane)}clean-{checked_commit(commit)}"
 
 
 def main() -> int:
@@ -81,8 +91,9 @@ def main() -> int:
     parser.add_argument("--commit", required=True)
     args = parser.parse_args()
     try:
-        key = cache_key(ROOT, args.lane, args.commit)
-        print(f"prefix={key.removesuffix(args.commit)}\nkey={key}")
+        print(f"prefix={cache_prefix(ROOT, args.lane)}\ngraph_prefix={graph_prefix(ROOT, args.lane)}\n"
+              f"key={cache_key(ROOT, args.lane, args.commit)}\n"
+              f"clean_key={clean_cache_key(ROOT, args.lane, args.commit)}")
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         parser.exit(1, f"Cannot identify Swift build cache: {error}\n")
     return 0

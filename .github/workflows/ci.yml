@@ -62,21 +62,21 @@ jobs:
       - name: Identify compatible Swift build state
         id: swift_cache_key
         run: python3 scripts/ci_swift_cache_key.py --lane build-and-test --commit "$GITHUB_SHA" >> "$GITHUB_OUTPUT"
-      # Main always compiles cold and seeds one entry per commit; its probe only
-      # stops a rerun from saving the same commit twice. PRs restore the newest
-      # entry of the same graph: they reuse compilation, never test results.
+      # Every run restores the newest seed of its graph, then of its toolchain and
+      # flags: it reuses compilation, never test results. Nightly owns the clean build.
       - name: Restore compatible Swift build state
         id: swift_cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .build
           key: ${{ steps.swift_cache_key.outputs.key }}
-          restore-keys: ${{ github.event_name == 'pull_request' && steps.swift_cache_key.outputs.prefix || '' }}
-          lookup-only: ${{ github.event_name != 'pull_request' }}
+          restore-keys: |
+            ${{ steps.swift_cache_key.outputs.graph_prefix }}
+            ${{ steps.swift_cache_key.outputs.prefix }}
         env:
           SEGMENT_DOWNLOAD_TIMEOUT_MINS: "2"
       - name: Verify cached source freshness
-        if: github.event_name == 'pull_request' && steps.swift_cache.outputs.cache-matched-key != ''
+        if: steps.swift_cache.outputs.cache-matched-key != ''
         # A rejected graph is discarded so the job builds cold instead of failing.
         run: |
           if ! python3 scripts/ci_swift_source_stamps.py restore; then
@@ -90,20 +90,15 @@ jobs:
         env:
           PORTAVOZ_SWIFT_TEST_SCOPE: ${{ needs.swift-scope.outputs.filter }}
         run: scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors
-      # Bound storage and save only after the complete suite succeeds. Oversize
-      # graphs stay cold; do not increase the repository's paid cache allowance.
+      # Bound storage and save only after the complete suite succeeds; do not
+      # increase the repository's paid cache allowance.
       - name: Record successful source fingerprints
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && steps.swift_cache.outputs.cache-hit != 'true'
         run: python3 scripts/ci_swift_source_stamps.py snapshot
       - name: Check Swift cache size
         id: swift_cache_size
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && steps.swift_cache.outputs.cache-hit != 'true'
-        run: |
-          size_kib="$(du -sk .build | awk '{print $1}')"
-          echo "Swift build cache: $size_kib KiB (limit 6291456 KiB)"
-          if (( size_kib <= 6291456 )); then
-            echo "save=true" >> "$GITHUB_OUTPUT"
-          fi
+        run: scripts/check-swift-cache-size.sh
       - name: Save successful Swift build state
         if: steps.swift_cache_size.outputs.save == 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

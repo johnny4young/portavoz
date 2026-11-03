@@ -442,21 +442,25 @@ window, so the recorded baseline `docs/evidence/ci-time-baseline-20261102.json`
 reproduces with one command at the commit that recorded it while GitHub retains
 the job logs; later commits may change which jobs block and their timeouts.
 
-### Compatible Swift build reuse, not test-result reuse (D557, D596)
+### Compatible Swift build reuse, not test-result reuse (D557, D596, D618)
 
 The current-SDK job restores only `.build` with commit-pinned
 `actions/cache` restore/save actions. `scripts/ci_swift_cache_key.py` binds each
-seed's identity prefix to its lane, absolute workspace and developer paths, CPU
-architecture, macOS version/build, runner image/version, Xcode and Swift build,
-macOS SDK path/build, `Package.swift`, `Package.resolved`, the CI workflow, test
-launcher, toolchain verifier, cache-key and source-freshness implementations. Unknown lanes,
-missing inputs, failed/empty tool reads and timeouts fail key generation; no
-broad key substitutes for an unknown identity. Each successful `main` commit
-saves one seed as that prefix plus its full commit SHA; a pull request restores
-the newest saved seed through the exact prefix, never across identities; a
-lookup-only probe stops a `main` rerun from saving its commit twice. A
-dependency or build-policy change starts cold. Ordinary source changes keep the
-prefix. After a successful suite,
+seed's identity prefix to its lane, the versioned build contract with its exact
+compiler flags, absolute workspace and developer paths, CPU architecture, macOS
+version/build, runner image/version, Xcode and Swift build and macOS SDK path/build.
+Editing a workflow or script no longer changes it; a Tooling test ties the contract's
+flags to every workflow that compiles. `Package.swift` and `Package.resolved` form a
+second level. Unknown lanes, missing inputs, failed/empty tool reads and timeouts fail
+key generation; no broad key substitutes for an unknown identity. Each successful `main`
+commit saves one seed as identity, graph and full commit SHA, and an exact hit stops a
+rerun from saving it twice. Every run restores the newest seed of its graph, then of its
+identity, never across identities or flags, so a dependency change recompiles what moved
+instead of starting cold. `main` no longer builds cold. The nightly
+`clean-build-and-test` job builds from nothing, runs the complete suite and saves a seed
+under the graph as `clean-<commit>`, which keeps the incremental chain from drifting and
+is the clean-build authority; a green incremental build proves nothing about a clean one.
+A graph over 6 GiB saves nothing and warns. After a successful suite,
 `scripts/ci_swift_source_stamps.py snapshot` records SHA-256, size, permissions and
 nanosecond mtime for tracked `Sources/`, `Tests/`, `Vendor/`, and package
 manifest/lock inputs inside `.build`. The vendor inventory includes the
@@ -470,7 +474,7 @@ checkout and belonging to the inventory. Because that walk resolves includes
 only relative to the including file, a manifest guard rejects target paths
 outside `Sources/`/`Tests/`, `headerSearchPath`, and `unsafeFlags` until the
 inventory and walker learn them. This is input-coverage evidence, not a
-measured CI speedup. On an exact PR cache hit,
+measured CI speedup. On a restored seed,
 `restore` intersects that receipt with the current Git inventory and restores
 mtime only for byte-identical, same-mode inputs. Changed/new inputs receive
 fresh timestamps even when their size and incoming mtime happen to match the old

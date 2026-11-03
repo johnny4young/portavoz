@@ -160,6 +160,7 @@ bash -n scripts/verify-cloudkit-capabilities.sh
 bash -n scripts/run-release-reliability-gates.sh
 bash -n scripts/run-ui-tests.sh
 bash -n scripts/pr-evidence.sh
+bash -n scripts/check-swift-cache-size.sh
 bash -n scripts/run-ci-swiftlint.sh
 bash -n scripts/install-ci-xcodegen.sh
 bash -n scripts/verify-ci-toolchain.sh

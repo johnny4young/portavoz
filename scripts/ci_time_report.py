@@ -65,7 +65,8 @@ LOG_TIMESTAMP = r"^\S+Z "
 EXACT_HIT = re.compile(LOG_TIMESTAMP + r"Cache hit for: ", re.MULTILINE)
 FALLBACK_HIT = re.compile(LOG_TIMESTAMP + r"Cache hit for restore-key: ", re.MULTILINE)
 CACHE_MISS = re.compile(LOG_TIMESTAMP + r"Cache not found for input keys", re.MULTILINE)
-LOOKUP_ONLY = re.compile(LOG_TIMESTAMP + r"Cache found and can be restored from key", re.MULTILINE)
+# Main compiled cold behind a lookup-only probe until the build contract let it restore.
+LOOKUP_ONLY = re.compile(LOG_TIMESTAMP + r"\s*lookup-only: true\s*$", re.MULTILINE)
 # Anchored on the annotation: the log also echoes the workflow script that prints it.
 CACHE_REJECTED = re.compile(LOG_TIMESTAMP + r"##\[warning\]Cached Swift build state failed freshness", re.MULTILINE)
 BUILD_COMPLETE = re.compile(r"Build complete! \((\d+(?:\.\d+)?)s\)")
@@ -75,7 +76,7 @@ UI_TESTS = re.compile(LOG_TIMESTAMP + r"\s*TESTS: ?(.*)$", re.MULTILINE)
 GATE_ADVISORY = re.compile(LOG_TIMESTAMP + r"##\[warning\]Known hosted UI infrastructure was unavailable", re.MULTILINE)
 SUMMARY_LIMIT = 240
 # Bump when a digest or a cached shape changes, or old answers keep being served.
-CACHE_VERSION = 1
+CACHE_VERSION = 2
 MISSING_BUILD_LOG = {"cache": "log-unavailable", "compile_s": None, "swift_scope": None}
 MISSING_SCOPE_LOG = {"summary": None, "selectors": None}
 MISSING_GATE_LOG = {"advisory": False}
@@ -127,14 +128,14 @@ def declared_timeouts(paths: Iterable[Path] = WORKFLOW_FILES) -> dict[str, int]:
 
 
 def build_log_digest(log: str) -> dict[str, Any]:
-    if CACHE_REJECTED.search(log):
+    if LOOKUP_ONLY.search(log):
+        cache = "cold-policy"
+    elif CACHE_REJECTED.search(log):
         cache = "rejected"
     elif FALLBACK_HIT.search(log):
         cache = "fallback"
     elif EXACT_HIT.search(log):
         cache = "exact"
-    elif LOOKUP_ONLY.search(log):
-        cache = "cold-policy"
     elif CACHE_MISS.search(log):
         cache = "miss"
     else:
@@ -293,10 +294,7 @@ def attempt_cohorts(head: HeadAttempt, changes: HeadChanges, cache: str | None,
         return any(base_name(row["name"]) in names and row["duration_s"] is not None for row in fresh)
 
     cohorts = change_cohorts(changes)
-    # A main push compiles cold by policy, so its lookup-only probe says nothing about reuse.
-    if head.event == "push" and cache:
-        cohorts.add("cache-cold-policy")
-    elif cache in {"exact", "fallback", "miss", "rejected"}:
+    if cache in {"exact", "fallback", "miss", "rejected", "cold-policy"}:
         cohorts.add(f"cache-{cache}")
     if ran("interruption-controls", "interruption"):
         cohorts.add("interruption")
