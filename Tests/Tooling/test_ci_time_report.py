@@ -141,6 +141,9 @@ class SupersededTests(unittest.TestCase):
         self.assertFalse(self.superseded("09:00:00"))
         self.assertFalse(self.superseded())
 
+    def test_a_newer_main_run_supersedes_nothing(self):
+        self.assertFalse(report.was_superseded(head(self.JOBS, event="push"), ["2026-11-02T10:10:00Z"]))
+
     def test_a_run_cancelled_before_any_job_uses_its_own_end(self):
         empty = head([], conclusion="cancelled")
         self.assertTrue(report.was_superseded(empty, ["2026-11-02T10:10:00Z"]))
@@ -290,6 +293,10 @@ class CohortTests(unittest.TestCase):
     def test_docs_only_stays_in_the_slo(self):
         result = self.cohorts(["docs/GAPS.md", "site/index.html"])
         self.assertTrue({"docs-only", "ordinary"} <= set(result))
+
+    def test_a_workflow_or_script_head_is_not_docs_only(self):
+        self.assertNotIn("docs-only", self.cohorts([".github/workflows/ui-tests.yml", "docs/a.md"]))
+        self.assertNotIn("docs-only", self.cohorts(["scripts/ui_test_scope.py"]))
 
     def test_an_empty_diff_is_not_docs_only(self):
         self.assertNotIn("docs-only", self.cohorts([]))

@@ -16,12 +16,16 @@ rm -rf "$products"
 rm -f "$receipt"
 swift build --product portavoz-app "${flags[@]}"
 xcodegen generate --spec project-ui-runner.yml --project . --quiet
-xcodebuild build-for-testing \
-  -project PortavozUIRunner.xcodeproj \
-  -scheme Portavoz \
-  -destination "platform=macOS,arch=$(uname -m)" \
-  -configuration Debug \
+runner_args=(
+  -project PortavozUIRunner.xcodeproj
+  -scheme Portavoz
+  -destination "platform=macOS,arch=$(uname -m)"
+  -configuration Debug
   -testProductsPath "$products"
+)
+# Nothing reads a hosted index, as in run-ui-tests.sh.
+[[ -z "${CI:-}" ]] || runner_args+=(COMPILER_INDEX_STORE_ENABLE=NO)
+xcodebuild build-for-testing "${runner_args[@]}"
 scripts/make-ui-host.sh "$(python3 scripts/ui_host.py host-path "$products")" "${flags[@]}"
 python3 scripts/ui_host.py inject "$products"
 printf '%s\n' "$((SECONDS - started))" > "$receipt"

@@ -112,6 +112,8 @@ if [[ "$phase" != test-only ]]; then
   # same products through test-without-building instead of rebuilding.
   rm -f "$build_duration_receipt"
   build_args=("${common[@]}")
+  # Nothing reads a hosted index. Locally the flag would rebuild the IDE's DerivedData.
+  [[ -z "${CI:-}" ]] || build_args+=(COMPILER_INDEX_STORE_ENABLE=NO)
   if [[ -n "$products_path" ]]; then
     rm -rf "$products_path"
     build_args+=(-testProductsPath "$products_path")

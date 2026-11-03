@@ -69,6 +69,7 @@
     "LibraryUITests/testAskConfirmedMemoryLoadsPersonCommitmentsBlockersAndBothCitations()": 15.3,
     "LibraryUITests/testAskConversationAnswersAndSeeksToExactCitation()": 35.4,
     "LibraryUITests/testCaptureFailureSurvivesStopAndRelaunchWithPlayablePrefix()": 14.7,
+    "LibraryUITests/testCleanStopReachesAReadyMeetingWithItsTranscriptAndPlayer()": 12.6,
     "LibraryUITests/testColdRecordingStartsLiveCaptionsWhenModelBecomesReady()": 11.3,
     "LibraryUITests/testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState()": 14.3,
     "LibraryUITests/testDatabaseLaunchFailureOffersSafeRecovery()": 6.4,

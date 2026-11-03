@@ -21,7 +21,8 @@ REPOSITORY_PATH = re.compile(
 class SwiftTestScopeTests(unittest.TestCase):
     def test_documentation_site_and_tooling_diffs_select_only_checkout_readers(self):
         for changed in (["docs/GAPS.md"], ["README.md", "site/index.html"],
-                        ["Tests/Tooling/test_ci_workflow.py", "docs/specs/08-quality.md"], ["LICENSE"]):
+                        ["Tests/Tooling/test_ci_workflow.py", "docs/specs/08-quality.md"], ["LICENSE"],
+                        [".github/workflows/ui-tests.yml", "scripts/ui_test_scope.py"], ["docs/a.md", "Makefile"]):
             with self.subTest(changed=changed):
                 selected = scope.selection(ROOT, changed)
                 self.assertTrue(selected.startswith(r"^Portavoz(Kit|App)Tests\.("))
@@ -31,11 +32,16 @@ class SwiftTestScopeTests(unittest.TestCase):
 
     def test_anything_that_can_change_the_build_or_runner_selects_everything(self):
         for changed in (["Sources/StorageKit/MeetingStore.swift"], ["Tests/PortavozKitTests/StorageTests.swift"],
-                        ["Package.resolved"], ["scripts/run-swift-tests.sh"], ["scripts/run_xctest_pool.py"],
-                        [".github/workflows/ci.yml"], ["Resources/Localization/Portavoz/Localizable.xcstrings"],
-                        ["Fixtures/AskQuality/corpus.json"], ["docs/a.md", "Makefile"], ["Sources/README.md"], []):
+                        ["Package.resolved"], ["Resources/Localization/Portavoz/Localizable.xcstrings"],
+                        ["Fixtures/AskQuality/corpus.json"], ["Sources/README.md"], [],
+                        *([path] for path in sorted(scope.RUNS_THE_SUITE))):
             with self.subTest(changed=changed):
                 self.assertEqual(scope.selection(ROOT, changed), "")
+
+    def test_the_suite_runner_files_keep_their_paths(self):
+        for path in scope.RUNS_THE_SUITE:
+            with self.subTest(path=path):
+                self.assertTrue((ROOT / path).is_file())
 
     def test_every_class_that_names_a_repository_path_is_selected(self):
         selected = set(scope.reading_classes(ROOT))
