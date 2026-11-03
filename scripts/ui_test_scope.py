@@ -57,6 +57,9 @@ SWIFT_FUNCTION = re.compile(
     r"(?:(?:private|fileprivate|internal|public|package|static|class|final|override|nonisolated|mutating)\s+)*"
     r"func\s+(\w+)")
 HUNK = re.compile(r"^@@ -\S+ \+(\d+)(?:,(\d+))? @@")
+SWIFT_NON_CODE = re.compile(r'"(?:[^"\\]|\\.)*"|//.*$')
+# XCTest calls these itself, so no test body names them.
+XCTEST_LIFECYCLE = frozenset({"setUp", "setUpWithError", "tearDown", "tearDownWithError"})
 
 
 # What a change here breaks shows up first in the self-test, and in any journey
@@ -171,6 +174,13 @@ SELECTION_LOCALES = ("en",)
 
 
 @dataclass(frozen=True)
+class UITestChange:
+    """What a diff touches in one UI test source."""
+    functions: set[str]
+    outside_functions: bool = False
+
+
+@dataclass(frozen=True)
 class Selection:
     tests: tuple[str, ...]
     locales: tuple[str, ...]
@@ -222,7 +232,8 @@ def function_spans(source: str) -> list[tuple[str, int, int]]:
             continue
         closing = f"{match.group(1)}}}"
         last = index
-        if line.count("{") == 0 or line.count("{") != line.count("}"):
+        code = SWIFT_NON_CODE.sub("", line)
+        if code.count("{") == 0 or code.count("{") != code.count("}"):
             last = next((later for later in range(index + 1, len(lines)) if lines[later].startswith(closing)), index)
         spans.append((match.group(2), index + 1, last + 1))
     return spans
@@ -233,8 +244,8 @@ def enclosing_function(spans: Sequence[tuple[str, int, int]], line: int) -> str 
     return next((name for name, first, last in spans if first <= line <= last), None)
 
 
-def ui_test_changes(base: str, head: str | None, root: Path) -> dict[str, set[str] | None]:
-    """Functions a diff touches per UI test source; None when a change falls outside any of them."""
+def ui_test_changes(base: str, head: str | None, root: Path) -> dict[str, UITestChange]:
+    """Functions a diff touches per UI test source, and whether it also touches anything else."""
     command = ["git", "diff", "--unified=0", "--no-color", "--no-renames", base]
     if head is not None:
         command.append(head)
@@ -250,7 +261,7 @@ def ui_test_changes(base: str, head: str | None, root: Path) -> dict[str, set[st
         elif path and (hunk := HUNK.match(line)):
             first, count = int(hunk.group(1)), int(hunk.group(2) or 1)
             touched[path].extend(range(first, first + max(count, 1)))
-    changes: dict[str, set[str] | None] = {}
+    changes: dict[str, UITestChange] = {}
     for path, numbers in touched.items():
         if head is None:
             source = (root / path).read_text(encoding="utf-8")
@@ -259,23 +270,30 @@ def ui_test_changes(base: str, head: str | None, root: Path) -> dict[str, set[st
                                     text=True, cwd=root).stdout
         spans = function_spans(source)
         names = [enclosing_function(spans, number) for number in numbers]
-        changes[path] = None if None in names else {name for name in names if name}
+        changes[path] = UITestChange({name for name in names if name}, None in names)
     return changes
 
 
 def tests_using(helpers: set[str], root: Path) -> set[str]:
-    """Reachable tests whose own bodies name one of these helpers."""
-    if not helpers:
-        return set()
-    pattern = re.compile(r"\b(?:" + "|".join(map(re.escape, sorted(helpers))) + r")\b")
-    found = set()
-    for source in sorted((root / "Tests/PortavozUITests").glob("*UITests.swift")):
+    """Reachable tests whose bodies name one of these helpers, directly or through another helper."""
+    bodies: dict[str, str] = {}
+    owners: dict[str, str] = {}
+    for source in sorted((root / "Tests/PortavozUITests").glob("*.swift")):
         lines = source.read_text(encoding="utf-8").splitlines()
         for name, first, last in function_spans("\n".join(lines)):
-            selector = test_id(source.stem, name)
-            if selector in PR_TESTS and pattern.search("\n".join(lines[first:last])):
-                found.add(selector)
-    return found
+            key = f"{source.stem}/{name}"
+            bodies[key] = "\n".join(lines[first - 1:last])
+            owners[key] = name
+    reached = set(helpers)
+    pending = set(helpers)
+    while pending:
+        pattern = re.compile(r"\b(?:" + "|".join(map(re.escape, sorted(pending))) + r")\b")
+        # A body names itself in its own declaration, which is not a use.
+        pending = {owners[key] for key, body in bodies.items()
+                   if owners[key] not in reached and pattern.search(body)}
+        reached |= pending
+    return {selector for selector in PR_TESTS
+            if (key := selector.split("/", 1)[1]) in owners and owners[key] in reached}
 
 
 def app_features(filename: str) -> set[str]:
@@ -809,7 +827,7 @@ def select_paths(
     catalog_changes: set[str] | None = None,
     root: Path | None = None,
     dependency_changes: set[str] | None = None,
-    ui_changes: Mapping[str, set[str] | None] | None = None,
+    ui_changes: Mapping[str, UITestChange] | None = None,
 ) -> Selection:
     selected: collections.Counter[str] = collections.Counter()
     edited: set[str] = set()
@@ -825,9 +843,10 @@ def select_paths(
         reasons.append(f"scope-unknown: {reason}")
 
     def helpers_changed(path: str) -> None:
-        names = (ui_changes or {}).get(path) or set()
-        consumers.update(tests_using({name for name in names if not name.startswith("test")},
-                                     root or Path(__file__).resolve().parent.parent))
+        change = (ui_changes or {}).get(path)
+        names = {name for name in change.functions if not name.startswith("test")} if change else set()
+        if names:
+            consumers.update(tests_using(names, root or Path(__file__).resolve().parent.parent))
 
     for raw_path in paths:
         path = raw_path.strip().removeprefix("./")
@@ -916,15 +935,17 @@ def select_paths(
             continue
 
         name = ui_test_class(path)
-        if name is not None and (ui_changes or {}).get(path) is not None:
-            methods = {test_id(name, method) for method in ui_changes[path] if method.startswith("test")}
+        change = (ui_changes or {}).get(path)
+        if name is not None and change is not None:
+            methods = {test_id(name, method) for method in change.functions if method.startswith("test")}
             # An edited nightly-only method runs: its author is the one who needs the answer.
             edited.update(methods & set(ALL_TESTS))
             selected.update(methods & set(ALL_TESTS))
             selected.update(SMOKE_TESTS)
             helpers_changed(path)
             reasons.append(f"{path}: {len(methods)} edited methods, helper consumers and canaries")
-            continue
+            if not change.outside_functions and not change.functions & XCTEST_LIFECYCLE:
+                continue
         changed_ui_tests = tests_for_ui_test_file(path)
         if changed_ui_tests:
             edited.update(changed_ui_tests)

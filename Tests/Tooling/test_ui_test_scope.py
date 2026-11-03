@@ -1354,7 +1354,7 @@ class UITestScopeTests(unittest.TestCase):
         method = "testRelaunchResumesPublishedAudioWithoutTheSelectedOriginals"
         path = "Tests/PortavozUITests/AudioImportUITests.swift"
 
-        selection = select_paths([path], ui_changes={path: {method}})
+        selection = select_paths([path], ui_changes={path: ui_scope.UITestChange({method})})
 
         self.assertEqual(set(selection.tests), {ui_scope.test_id("AudioImportUITests", method)} | set(SMOKE_TESTS))
         self.assertEqual(selection.priority[ui_scope.test_id("AudioImportUITests", method)][0], 0)
@@ -1365,7 +1365,7 @@ class UITestScopeTests(unittest.TestCase):
         selector = ui_scope.test_id("AudioImportUITests", method)
         self.assertIn(selector, ui_scope.NIGHTLY_ONLY_TESTS)
 
-        selection = select_paths([path], ui_changes={path: {method}})
+        selection = select_paths([path], ui_changes={path: ui_scope.UITestChange({method})})
 
         self.assertIn(selector, selection.tests)
 
@@ -1383,7 +1383,7 @@ class UITestScopeTests(unittest.TestCase):
                 f"    private func shared() {{\n        click()\n    }}\n}}\n", encoding="utf-8")
             path = "Tests/PortavozUITests/AudioImportUITests.swift"
 
-            selection = select_paths([path], root=root, ui_changes={path: {"shared"}})
+            selection = select_paths([path], root=root, ui_changes={path: ui_scope.UITestChange({"shared"})})
 
             self.assertIn(ui_scope.test_id("AudioImportUITests", kept), selection.tests)
             self.assertNotIn(ui_scope.test_id("AudioImportUITests", other), selection.tests)
@@ -1411,8 +1411,50 @@ class UITestScopeTests(unittest.TestCase):
 
             changes = ui_scope.ui_test_changes("HEAD~1", "HEAD", root)
 
-            self.assertEqual(changes["Tests/PortavozUITests/AUITests.swift"], {"testTwo"})
-            self.assertIsNone(changes["Tests/PortavozUITests/BUITests.swift"])
+            self.assertEqual(changes["Tests/PortavozUITests/AUITests.swift"], ui_scope.UITestChange({"testTwo"}))
+            self.assertEqual(changes["Tests/PortavozUITests/BUITests.swift"],
+                             ui_scope.UITestChange(set(), outside_functions=True))
+
+    def test_an_edit_beside_a_function_keeps_the_edited_nightly_method_and_adds_the_class(self):
+        method = "testMultipleAudioFilesReachPagedQueueAndOpenTheirMeeting"
+        path = "Tests/PortavozUITests/AudioImportUITests.swift"
+        changes = ui_scope.UITestChange({method}, outside_functions=True)
+
+        selection = select_paths([path], ui_changes={path: changes})
+
+        self.assertIn(ui_scope.test_id("AudioImportUITests", method), selection.tests)
+        self.assertTrue({test for test in PR_TESTS if "/AudioImportUITests/" in test} <= set(selection.tests))
+
+    def test_a_lifecycle_edit_selects_the_class_because_no_body_names_it(self):
+        path = "Tests/PortavozUITests/AudioImportUITests.swift"
+
+        selection = select_paths([path], ui_changes={path: ui_scope.UITestChange({"tearDown"})})
+
+        self.assertTrue({test for test in PR_TESTS if "/AudioImportUITests/" in test} <= set(selection.tests))
+
+    def test_a_helper_called_on_a_test_first_line_or_through_another_helper_finds_the_test(self):
+        direct = "testRelaunchResumesPublishedAudioWithoutTheSelectedOriginals"
+        indirect = "testSingleMeetingBundleReachesDetailWithoutChangingTheOriginal"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            tests = root / "Tests/PortavozUITests"
+            tests.mkdir(parents=True)
+            (tests / "AudioImportUITests.swift").write_text(
+                f"final class AudioImportUITests {{\n    func {direct}() {{ shared() }}\n"
+                f"    func {indirect}() {{\n        wrapper()\n    }}\n}}\n", encoding="utf-8")
+            (tests / "ImportSupport.swift").write_text(
+                "func wrapper() {\n    shared()\n}\n\nfunc shared() {\n    click()\n}\n", encoding="utf-8")
+
+            found = ui_scope.tests_using({"shared"}, root)
+
+        self.assertEqual(found, {ui_scope.test_id("AudioImportUITests", direct),
+                                 ui_scope.test_id("AudioImportUITests", indirect)})
+
+    def test_a_brace_in_a_string_or_comment_does_not_stretch_a_one_line_function(self):
+        source = ('class T {\n    func testA() { print("{") }\n    func testB() { work() } // {\n'
+                  '    func testC() {\n        c()\n    }\n}\n')
+
+        self.assertEqual(ui_scope.function_spans(source), [("testA", 2, 2), ("testB", 3, 3), ("testC", 4, 6)])
 
     def test_one_line_and_multi_line_functions_end_where_they_close(self):
         source = ("class T {\n    func one() { a() }\n\n    private func two(\n        x: Int\n    ) {\n"
