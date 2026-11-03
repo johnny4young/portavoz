@@ -161,14 +161,21 @@ class CIWorkflowTests(unittest.TestCase):
         ui = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
 
         self.assertEqual(ci.count("run: scripts/check-repository-hygiene.sh"), 1)
-        self.assertEqual(ci.count("needs: repository-hygiene\n"), 1)
+        self.assertEqual(ci.count("needs: repository-hygiene\n"), 2)
         self.assertEqual(ci.count("needs: [repository-hygiene, swift-scope]\n"), 1)
-        self.assertEqual(ci.count("needs: [repository-hygiene, ios-scope]\n"), 1)
         self.assertNotIn("python3 -m unittest Tests.Tooling", ui)
         self.assertEqual(
             ui.count("scripts/ui_test_scope.py --validate-catalog"),
             1,
         )
+
+    def test_ios_portability_leaves_pull_requests_and_stays_on_main(self):
+        ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        lane = ci.split("  ios-portability:\n", 1)[1].split("\n  lint:\n", 1)[0]
+
+        self.assertIn("if: github.event_name != 'pull_request'\n", lane)
+        self.assertNotIn("ios-scope", ci)
+        self.assertFalse((ROOT / "scripts/ios_portability_scope.py").exists())
 
     def test_ui_scope_requires_first_attempt_anchor_and_never_previous_push(self):
         workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
@@ -420,7 +427,7 @@ class NightlyUIWorkflowTests(unittest.TestCase):
 
     def test_nightly_runs_on_main_schedule_and_on_demand_only(self):
         triggers = self.workflow.split("\npermissions:", 1)[0]
-        self.assertIn('  schedule:\n    - cron: "0 9 * * *"\n', triggers)
+        self.assertIn('    - cron: "23 3 * * *"\n', triggers)
         self.assertIn("  workflow_dispatch:\n", triggers)
         self.assertNotIn("pull_request", triggers)
         self.assertNotIn("  push:", triggers)
@@ -449,6 +456,37 @@ class NightlyUIWorkflowTests(unittest.TestCase):
         # Success must mean verified evidence; an advisory shard fails the run.
         self.assertIn('if [[ "$STATE" != "passed" || "$VERIFIED" != "true" ]]; then', self.workflow)
         self.assertIn("VERIFIED: ${{ steps.classify.outputs.verified }}", self.workflow)
+
+    def test_a_night_never_holds_more_than_three_macos_slots(self):
+        shard = self.workflow.split("  shard:\n", 1)[1].split("\n  alert:\n", 1)[0]
+
+        self.assertIn("needs: [build-ui-products, interruption-controls]\n", shard)
+        self.assertIn("!cancelled() && needs.build-ui-products.result == 'success'", shard)
+        self.assertEqual(self.workflow.split("\n  shard:\n", 1)[1].count("shard: [1, 2, 3]"), 1)
+
+    def test_any_unverified_or_cancelled_job_reaches_the_alert(self):
+        alert = self.workflow.split("\n  alert:\n", 1)[1]
+
+        self.assertIn("needs: [build-ui-products, interruption-controls, shard]\n", alert)
+        self.assertIn("if: always()\n", alert)
+        self.assertIn("issues: write\n", alert)
+        self.assertIn("NEEDS: ${{ toJSON(needs) }}\n", alert)
+        self.assertIn("runs-on: ubuntu-latest\n", alert)
+        # Only the alert may write; the jobs running tests keep read-only tokens.
+        self.assertEqual(self.workflow.count("issues: write"), 1)
+        self.assertIn("permissions:\n  contents: read\n", self.workflow)
+
+    def test_the_watch_runs_where_a_missing_schedule_cannot_silence_it(self):
+        watch = (ROOT / ".github/workflows/ui-nightly-watch.yml").read_text(encoding="utf-8")
+        triggers = watch.split("\npermissions:", 1)[0]
+
+        self.assertIn("  push:\n    branches: [main]\n", triggers)
+        self.assertIn("  schedule:\n", triggers)
+        self.assertIn("  workflow_dispatch:\n", triggers)
+        self.assertNotIn("pull_request", triggers)
+        self.assertIn("  actions: read\n", watch)
+        self.assertIn("  issues: write\n", watch)
+        self.assertIn("scripts/ui_nightly_health.py freshness", watch)
 
     def test_every_macos_job_uses_the_fixed_toolchain(self):
         self.assertEqual(self.workflow.count("runs-on: macos-26"), 3)

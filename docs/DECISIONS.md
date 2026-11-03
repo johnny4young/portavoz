@@ -22319,3 +22319,29 @@ The dependency also disables default traits, so the FoundationModels adapter
 and its vendored grammar engine stay out of the app. mlx-swift 0.32.3 declares
 tools 6.3, which raises the source build floor to the Xcode 26.6 toolchain that
 CI pins.
+
+## D615 — Nightly UI reports its own failure and absence; two lanes leave ordinary pull requests
+
+The later CI stages rely on the nightly run to catch what pull requests defer,
+and nothing reported when it did not do that job. The only observed scheduled
+failure ended as `cancelled`, the `0 9` schedule fired up to 6.7 hours late on
+four days, and it ran during the working day. The nightly now fires at 03:23 UTC
+and holds at most three macOS runners at once. An `alert` job opens or updates
+one issue when any needed job ended as anything but success. `ui-nightly-watch.yml`
+runs on every `main` push and on its own schedule, because a schedule that never
+fires cannot report itself, and keeps one issue open while the newest verified
+run on `main` is older than 48 hours. An unreadable API fails that job instead of
+reading as healthy.
+
+Two lanes leave ordinary pull requests. The interruption controls follow only
+their behavior files: the workflow, the Makefile and the selector no longer
+trigger them. The old list selected this 10-minute job on 56 of the last 120
+commits; 4 of the last 130 touch the behavior files. iOS portability runs only on
+`main` pushes and manual runs, so its selector is removed, which supersedes that
+part of D596; D438 keeps iOS deferred and the release contract still requires the
+job on `main`.
+
+The accepted risk is that a deferred UI regression, or an iOS compile break, can
+reach `main` until the next run sees it. 48 hours is an alert threshold, not a
+bound on that exposure. Past it, further scope reductions pause and the pending
+evidence is dispatched. A release still requires a green nightly on its commit.

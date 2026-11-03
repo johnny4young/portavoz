@@ -409,14 +409,27 @@ Simulator compile for the four shared targets, and a repository-hygiene/tooling
 gate that runs before macOS allocation). Each behavioral Swift lane owns one
 test invocation, so compilation and tests use the same flags instead of a
 build/test pair that can compile twice. The iOS portability lane owns only its
-sequential destination compiles and cannot claim runtime/device behavior. On a
-pull request it runs only when `scripts/ios_portability_scope.py` finds a change
-in the manifest closure of those targets or in the lane's own policy files;
-`Tests/Tooling/test_ios_portability_scope.py` covers the derived closure
-(compared with `swift package dump-package` on macOS), comments and products,
-unprovable dependency forms, a file moved out of a shared target, skip and run
-cases, a prefix-sibling directory, an undeclared runner target and the
-fail-closed CLI (D596).
+sequential destination compiles and cannot claim runtime/device behavior. It
+runs on every `main` push and manual run and never on a pull request (D615).
+
+### Hosted CI time report
+
+`scripts/ci_time_report.py` measures the newest 50 finished heads per event and
+all their attempts through read-only `gh api` calls. Execution is the longest
+blocking job of an attempt, queue is each job's wait from `created_at` to
+`started_at`, and total runs from attempt start to the last blocking job. It
+reports nearest-rank p50, p90, p95, maximum and N per overlapping cohort (cache
+state from the restore action's log, dependency or Xcode change, interruption
+controls, documentation only, Core or app change) and per critical path. A
+cohort with no samples prints `no evidence`. The 10-minute execution and 20-minute
+total targets exclude only Xcode pin changes and interruption controls; a cache
+miss, a dependency bump or a documentation head still counts. Outcomes separate
+product, infrastructure (including a hosted outage the UI gate accepts), timeout,
+cancelled, refused rerun and superseded; a superseded attempt is counted but not
+measured, and a timeout or failure stays in the distribution. `--until` pins the
+window, so the recorded baseline `docs/evidence/ci-time-baseline-20261102.json`
+reproduces with one command at the commit that recorded it while GitHub retains
+the job logs; later commits may change which jobs block and their timeouts.
 
 ### Hosted CI time report
 
@@ -3208,7 +3221,19 @@ selects everything (D601). The nightly workflow runs the complete catalogue on
 `main` as three shards balanced greedily by
 `docs/evidence/ui-test-runtime-budget.json` (`--all --shard K/N`), classifies
 each shard with the pull-request gate, fails any shard whose result is not
-verified evidence, and runs the interruption controls. The
+verified evidence, and runs the interruption controls, holding at most three
+macOS runners at once. It fires off-peak at 03:23 UTC. Its `alert` job opens or
+updates one issue when any needed job ended as anything but success, cancelled
+included. `ui-nightly-watch.yml` runs on every `main` push, on its own schedule
+and by dispatch, because a schedule that never fires cannot report itself: it
+keeps one issue open while the newest verified run on `main` is older than 48
+hours and closes it once fresh evidence returns. Only a scheduled or dispatched
+run from this repository counts as verified, aged from its latest attempt, and
+only issues the workflow opened are reused. An unreadable API fails that job
+instead of reading as healthy (D615). Pull requests run the interruption controls
+only when one of their behavior files changes: `INTERRUPTION_CONTROL_FILES` no
+longer lists the workflow, the Makefile or the selector, and the nightly run still
+covers those owners. The
 Meeting Detail primary column also selects the complete English suite: its
 pane layout decides which detail content exists for every journey that opens a
 meeting, including recording-recovery and Skills journeys (D549). Docs,
@@ -8716,8 +8741,8 @@ expected failures, source hashes and content-free effects; it never substitutes
 for a product UI receipt. Tooling tests reject missing readiness, absent guard,
 late action, dialog choice, cleanup failure, skipped/empty/extra cases and an
 exit-zero restart. Changes to the guard, keyboard, storage, wait or scratch
-sources, the fixture target, the execution classifier or their CI/Make owners
-select this once, as do explicit full bilingual local runs and full-suite
+sources, the fixture target, the execution classifier or the control's own
+runner select this once, as do explicit full bilingual local runs and full-suite
 dispatches; localization-only and other unrelated full-bilingual fallbacks do not. CI executes the controls on a separate hosted Mac concurrently with the single
 product build. Locale jobs wait for both prerequisites; an unselected controls
 job must be skipped, while a selected job must succeed. The final classifier

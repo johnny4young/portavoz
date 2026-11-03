@@ -4,7 +4,8 @@ name: Nightly UI
 # owns the complete English catalog on main, split into balanced shards.
 on:
   schedule:
-    - cron: "0 9 * * *"
+    # Off-peak: the macOS slots are shared with daytime pull requests.
+    - cron: "23 3 * * *"
   workflow_dispatch:
 
 permissions:
@@ -71,8 +72,10 @@ jobs:
       - name: Verify interruption safety at the shared callback
         run: make test-ui-interruption-safety UI_INTERRUPTION_RESULTS="$RUNNER_TEMP/ui-interruption-safety"
 
+  # After both jobs above, so the account's five macOS slots never hold more than three of ours.
   shard:
-    needs: build-ui-products
+    needs: [build-ui-products, interruption-controls]
+    if: ${{ !cancelled() && needs.build-ui-products.result == 'success' }}
     runs-on: macos-26
     timeout-minutes: 60
     strategy:
@@ -145,3 +148,23 @@ jobs:
           path: dist/ui-test-results
           if-no-files-found: warn
           retention-days: 7
+
+  alert:
+    needs: [build-ui-products, interruption-controls, shard]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Report an unverified night
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          NEEDS: ${{ toJSON(needs) }}
+          REF: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: python3 scripts/ui_nightly_health.py alert --needs "$NEEDS" --ref "$REF" --sha "$SHA" --run-url "$RUN_URL"

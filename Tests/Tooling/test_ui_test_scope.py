@@ -291,6 +291,17 @@ class UITestScopeTests(unittest.TestCase):
                 self.assertEqual(selection.locales, ("en",))
                 self.assertFalse(selection.interruption_controls)
 
+    def test_interruption_controls_follow_only_their_behavior_files(self):
+        for path in ("Tests/PortavozUITests/PortavozUITestCase.swift", "Tests/Support/UITestScratch.swift",
+                     "packaging/portavoz-uitests.entitlements", "scripts/check-ui-interruption-safety.py",
+                     "scripts/ui_test_execution.py", "Tests/UIInterruptionFixtures/Fixture.swift"):
+            with self.subTest(path=path):
+                self.assertTrue(select_paths([path]).interruption_controls)
+        for path in ("scripts/ui_test_scope.py", "docs/evidence/ui-test-runtime-budget.json", "Makefile",
+                     ".github/workflows/ui-tests.yml"):
+            with self.subTest(path=path):
+                self.assertFalse(select_paths([path]).interruption_controls)
+
     def test_detail_secondary_sections_select_only_owned_journeys(self):
         expected = {
             "Sources/portavoz-app/MeetingDetailActionSection.swift": (
