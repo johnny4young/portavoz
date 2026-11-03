@@ -482,6 +482,7 @@ class RunUITestsTests(unittest.TestCase):
         source = RUNNER.read_text(encoding="utf-8")
 
         self.assertEqual(source.count("xcodebuild build-for-testing"), 1)
+        self.assertIn("COMPILER_INDEX_STORE_ENABLE=NO", source)
         self.assertIn("xcodebuild test-without-building", source)
         self.assertIn("UI_TEST_PHASE:-build-and-test", source)
         self.assertIn("build-duration-seconds.txt", source)
