@@ -436,8 +436,9 @@ cohort with no samples prints `no evidence`. The 10-minute execution and 20-minu
 total targets exclude only Xcode pin changes and interruption controls; a cache
 miss, a dependency bump or a documentation head still counts. Outcomes separate
 product, infrastructure (including a hosted outage the UI gate accepts), timeout,
-cancelled, refused rerun and superseded; a superseded attempt is counted but not
-measured, and a timeout or failure stays in the distribution. `--until` pins the
+cancelled, refused rerun and superseded; only a pull request attempt can be
+superseded, because `main` commits no longer replace each other (D620). A superseded
+attempt is counted but not measured, and a timeout or failure stays in the distribution. `--until` pins the
 window, so the recorded baseline `docs/evidence/ci-time-baseline-20261102.json`
 reproduces with one command at the commit that recorded it while GitHub retains
 the job logs; later commits may change which jobs block and their timeouts.
@@ -2204,11 +2205,11 @@ that write preferences use their own suite domain rather than
 `UserDefaults.standard`, which concurrent processes share on disk.
 `Tests/Tooling/test_run_xctest_pool.py` and `test_run_swift_tests.py` cover the
 batching, the per-class accounting, crashes, hangs, a process failing after its
-suites, targeted passthrough and the process-group stop. A documentation, website or Python-tooling
+suites, targeted passthrough and the process-group stop. A documentation, website, CI-configuration or tooling
 pull request runs only the classes that locate the checkout through `#filePath`
-or a repository root (D600): `Tests/Tooling/test_swift_test_scope.py` checks
+or a repository root (D600, D620): `Tests/Tooling/test_swift_test_scope.py` checks
 that every Swift test naming a repository path is selected, that build, test,
-runner, workflow, resource and fixture changes select everything, that a scan
+suite-runner, resource and fixture changes select everything, that a scan
 finding no reader fails, and that the CLI fails closed to the complete suite. A strict `swift build` alone does not compile
 the test targets; a subsequent non-strict `swift test` can therefore miss a
 test-only diagnostic that fails CI. Non-reassigned weak lifetime probes use

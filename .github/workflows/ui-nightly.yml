@@ -45,13 +45,16 @@ jobs:
 
       # Artifacts drop the executable bit and symlinks; tar keeps the .app intact.
       - name: Archive the exact products with their bundle permissions
-        run: tar -czf "$RUNNER_TEMP/ui-products.tar.gz" -C "$RUNNER_TEMP/ui-products" .
+        run: |
+          tar -cf "$RUNNER_TEMP/ui-products.tar" -C "$RUNNER_TEMP/ui-products" .
+          zstd -T0 -3 --rm "$RUNNER_TEMP/ui-products.tar"
 
       - name: Publish the exact UI products for the shards
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: nightly-ui-products-${{ github.run_id }}
-          path: ${{ runner.temp }}/ui-products.tar.gz
+          path: ${{ runner.temp }}/ui-products.tar.zst
+          compression-level: 0
           if-no-files-found: error
           retention-days: 1
 
@@ -138,7 +141,8 @@ jobs:
       - name: Unpack the products with their bundle permissions
         run: |
           mkdir -p "$RUNNER_TEMP/ui-products"
-          tar -xzf "$RUNNER_TEMP/ui-archive/ui-products.tar.gz" -C "$RUNNER_TEMP/ui-products"
+          zstd -d --rm "$RUNNER_TEMP/ui-archive/ui-products.tar.zst"
+          tar -xf "$RUNNER_TEMP/ui-archive/ui-products.tar" -C "$RUNNER_TEMP/ui-products"
 
       - name: Select shard ${{ matrix.shard }} of 3
         id: select
