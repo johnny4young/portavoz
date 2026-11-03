@@ -751,7 +751,7 @@ class UITestScopeTests(unittest.TestCase):
         )
         self.assertIn("matrix:\n        locale: ${{ fromJSON(needs.scope.outputs.matrix) }}", workflow)
         self.assertIn("UI_TEST_LOCALES: ${{ matrix.locale }}", workflow)
-        self.assertIn("UI_TEST_PRODUCTS_PATH:", workflow)
+        self.assertIn("UI_TEST_PRODUCTS_PATH=", workflow)
         self.assertIn('--english-outcome "$(outcome en)"', workflow)
         self.assertNotIn("--spanish-outcome", workflow)
         self.assertIn("runs-on: macos-26", workflow)

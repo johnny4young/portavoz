@@ -272,7 +272,7 @@ extension ArchitectureDependencyTests {
                 separatedBy: "UI_TEST_ENFORCE_RUNTIME_BUDGET: \"false\"").count - 1,
             1)
         XCTAssertTrue(workflow.contains("locale: ${{ fromJSON(needs.scope.outputs.matrix) }}"))
-        XCTAssertTrue(workflow.contains("UI_TEST_PRODUCTS_PATH:"))
+        XCTAssertTrue(workflow.contains("UI_TEST_PRODUCTS_PATH="))
         let artifact = try XCTUnwrap(workflow.range(
             of: "Preserve ${{ matrix.locale }} UI evidence"))
         let classifier = try XCTUnwrap(workflow.range(
