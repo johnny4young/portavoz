@@ -48,10 +48,14 @@ library) and asserts against `accessibilityIdentifier`s.
   and lower-layer files with a proven owner map to feature-level selectors;
   other lower-layer Swift files and unmapped app Swift files run the smoke
   canaries; changed English copy runs the journeys that quote it plus the
-  canaries; the dependency lock, shared-harness, build and unowned resource
-  changes run the full English suite. The full catalog also runs nightly
-  on `main` in three shards. An unverified night opens an issue; evidence older
-  than 48 hours opens another, and new scope reductions wait until it closes.
+  canaries; a changed UI test runs its class and the canaries; the dependency
+  lock runs the canaries and the moved pins' owners; shared-harness changes add
+  a self-test; a path with no known owner reports `scope-unknown`. No path selects
+  the full catalog by itself: it runs nightly on `main` in three shards and on demand with
+  `gh workflow run ui-tests.yml --ref <branch> -f full_ui=true`. Add a test with
+  its feature; it does not have to run in full on the PR. An unverified night
+  opens an issue; evidence older than 48 hours opens another, and new scope
+  reductions wait until it closes.
   `make test-ui-en` and `make test-ui-release` are the explicit full-suite gates.
 - XCUITest runs in English only. Spanish is covered by `LocalizationTests`: every
   visible literal is cataloged, every key has a translated Spanish value with the

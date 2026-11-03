@@ -3,6 +3,11 @@ name: Scoped UI
 on:
   pull_request:
   workflow_dispatch:
+    inputs:
+      full_ui:
+        description: Run the complete English catalog instead of the selection against main
+        type: boolean
+        default: true
 
 permissions:
   actions: read
@@ -60,11 +65,16 @@ jobs:
         id: select
         env:
           EVENT_NAME: ${{ github.event_name }}
+          FULL_UI: ${{ inputs.full_ui }}
           VERIFIED_BASE_SHA: ${{ steps.verified_base.outputs.base }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+          if [[ "$EVENT_NAME" == "workflow_dispatch" && "$FULL_UI" == "true" ]]; then
             python3 scripts/ui_test_scope.py --all --format github >> "$GITHUB_OUTPUT"
+          elif [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            python3 scripts/ui_test_scope.py \
+              --base "$(git merge-base origin/main HEAD)" --head HEAD \
+              --format github >> "$GITHUB_OUTPUT"
           else
             python3 scripts/ui_test_scope.py \
               --base "$VERIFIED_BASE_SHA" --head "$HEAD_SHA" \
@@ -77,11 +87,18 @@ jobs:
           TESTS: ${{ steps.select.outputs.tests }}
           LOCALES: ${{ steps.select.outputs.locales }}
           VERIFIED_BASE: ${{ steps.verified_base.outputs.summary }}
+          SCOPE_UNKNOWN: ${{ steps.select.outputs.scope_unknown }}
+          DEFERRED: ${{ steps.select.outputs.deferred }}
+          HEAD_REF: ${{ github.head_ref || github.ref_name }}
         run: |
-          echo "${VERIFIED_BASE:-manual full-suite request}"
+          echo "${VERIFIED_BASE:-manual request}"
           echo "$SUMMARY"
           echo "Locales: ${LOCALES:-none}"
           echo "Selectors: ${TESTS:-none}"
+          echo "Deferred to nightly: ${DEFERRED:-0}" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [[ "$SCOPE_UNKNOWN" == "true" ]]; then
+            echo "::warning title=UI scope unknown::Canaries and the harness self-test are selected. For the complete catalog: gh workflow run ui-tests.yml --ref $HEAD_REF -f full_ui=true"
+          fi
 
   interruption-controls:
     needs: scope
@@ -175,8 +192,7 @@ jobs:
         needs.interruption-controls.result == 'skipped'))
     runs-on: macos-26
     # The scope matrix is English only; the lane runs on its own hosted Mac
-    # against the shared products. Localization/shared-harness and manual
-    # integration runs legitimately select all catalog tests.
+    # against the shared products. A manual full_ui run selects all catalog tests.
     # This 90-minute job-orchestration ceiling is not a per-test/runtime budget.
     timeout-minutes: 90
     strategy:

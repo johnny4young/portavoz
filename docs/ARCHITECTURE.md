@@ -5796,19 +5796,25 @@ or library state are outside this cache. The iOS portability lane runs on every
 `main` push and manual run, and never on a pull request. The quality spec owns measurement and
 invalidation checks; a hit alone is not evidence of a faster or passing build.
 
-Pull-request UI evidence is selected deterministically from changed paths.
-Known presentation files and lower-layer files with a proven owner map to
-feature-level XCUITest selectors. Lower-layer and unmapped app Swift files
-without a proven owner run seventeen smoke canaries across the main surfaces:
-unit tests own their behavior. A string-catalog change runs the journeys whose
+Pull-request UI evidence is selected deterministically from changed paths, and
+no path selects the complete catalogue by itself. Known presentation files and lower-layer
+files with a proven owner map to feature-level XCUITest selectors. Lower-layer
+and unmapped app Swift files without a proven owner run seventeen smoke canaries
+across the main surfaces: unit tests own their behavior. A changed UI-test file
+runs its class and the canaries. A string-catalog change runs the journeys whose
 UI tests quote a changed key or its previous/new English value as Xcode compiles
-it, plus the canaries. Plural, substitution and unshipped English entries, or
-an unreadable catalog, select the full English suite. A Spanish-only change
-needs no UI evidence. The dependency lock, shared-harness, fixture, build and
-language-switch changes, unowned resources and other unknown non-Swift paths
-expand to the complete English catalogue, which also runs every night on
+it, plus the canaries. A Spanish-only change needs no UI evidence. A dependency
+lock change runs the canaries and the owners of the moved pins. Shared-harness
+changes run the canaries and a harness self-test of the app handoffs. A manifest
+or seed-fixture change, a pin without an owner, an unreadable catalogue or lock,
+and unknown non-Swift paths run the same set and report `scope-unknown` with the
+command that dispatches the full run. The test list and its owners live in
+`scripts/ui_test_catalog.py`, the rules in `scripts/ui_test_scope.py`, and editing
+either selects no UI test; Tooling tests own them. The selection records how many
+cases it defers. The complete English catalogue runs every night on
 `main` in three shards balanced by runtime budget
-(`.github/workflows/ui-nightly.yml`). A nightly shard succeeds only with
+(`.github/workflows/ui-nightly.yml`) and on demand through the `full_ui` dispatch
+input. A nightly shard succeeds only with
 verified evidence; a hosted-automation advisory fails the run. An unverified or
 cancelled night opens or updates one issue, and `ui-nightly-watch.yml` keeps
 another open while verified evidence on `main` is older than 48 hours.
@@ -6679,10 +6685,9 @@ reliability evidence retained from 9 Aug, is:
 - the Meeting Detail interaction contract contains 431 signals, 15 feature
   owners, and 30 explicitly owned UI journeys;
 - the complete English XCUITest catalogue is the release UI gate;
-- pull requests run their selected feature evidence or the smoke canaries;
-  shared-harness changes, the dependency lock, release closure and unknown
-  non-Swift paths expand to
-  the complete English catalogue, which also runs nightly in three shards;
+- pull requests run their selected feature evidence or the smoke canaries, and
+  no path selects the complete English catalogue by itself; it runs nightly in three
+  shards and on demand;
 - hosted pull-request UI runs compile once, execute the English selection as a
   first attempt, preserve its result bundle, and then apply one fail-closed
   functional/receipt classifier. The enclosing job keeps a 90-minute

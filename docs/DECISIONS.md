@@ -22346,6 +22346,38 @@ reach `main` until the next run sees it. 48 hours is an alert threshold, not a
 bound on that exposure. Past it, further scope reductions pause and the pending
 evidence is dispatched. A release still requires a green nightly on its commit.
 
+## D616 — No path selects the complete UI catalog by itself
+
+Adding a UI test edited the selector and the runtime budget, both of which selected
+the complete catalog, so most feature pull requests paid about 45 minutes. Of the
+last 120 commits, 59 selected everything. Later CI stages cannot meet their limits
+while any ordinary path does.
+
+The test list, canaries, the harness self-test and dependency owners move to
+`scripts/ui_test_catalog.py`. Editing them, the selector or the runtime budget selects
+no UI test, because Tooling tests own that logic. A changed UI test runs its class and
+the canaries. The dependency lock runs the canaries and the owners of the moved pins.
+Shared-harness files run the canaries and a self-test of the journeys that use the
+harness's app handoffs: the ones that failed when the launch mode broke them while the
+canaries stayed green. The Meeting Detail column selects the journeys that open a
+meeting, and a Tooling test keeps that list current. A manifest or seed-fixture change, a pin without an owner, an unreadable
+catalogue or lock and unknown paths run the same conservative set and report
+`scope-unknown` with the command for a full run; a parse error is never zero tests.
+Every selection records how many cases it defers. `full_ui` dispatches the complete
+catalog, and nothing dispatches it automatically.
+
+This supersedes D601's complete run for the lock, unknown keys and resources, D597's
+complete run for shared-harness, fixture, build and language-switch changes, and D549's
+complete run for the Meeting Detail column. The gate now compares selected and executed
+cases itself. Its detection of an omitted selector,
+zero tests, a crashed host and a cancelled lane is pinned in Tooling, which is what makes
+this reduction acceptable.
+
+The accepted risk is that a harness or dependency regression outside this set reaches
+`main` until the next nightly run, and D615's alarm bounds how long that goes unnoticed.
+A change that replaces the UI host still runs the complete catalog by hand during its
+transition. A release still requires a green nightly on its commit.
+
 ## D620 — Every `main` commit gets its own CI run, and CI-only diffs run the checkout readers
 
 **Context:** `ci.yml` shared one concurrency group per ref with
@@ -22366,3 +22398,4 @@ without a second compression, and the CI builds stop writing an index store.
 **Consequences:** Pushes close together on `main` run side by side and use more
 macOS slots. Every `main` push and manual run still runs the complete suite, so a
 missed reader fails there instead of on the pull request.
+||||||| 9a4b84d0

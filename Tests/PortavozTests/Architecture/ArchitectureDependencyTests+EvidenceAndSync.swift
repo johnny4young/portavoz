@@ -621,6 +621,7 @@ extension ArchitectureDependencyTests {
 
     func testHostedQualificationToolingStaysPortableAndBounded() throws {
         let scope = try Self.contents(of: "scripts/ui_test_scope.py")
+            + Self.contents(of: "scripts/ui_test_catalog.py")
         let scopeTests = try Self.contents(
             of: "Tests/Tooling/test_ui_test_scope.py")
         let collector = try Self.contents(
@@ -925,6 +926,7 @@ extension ArchitectureDependencyTests {
         let view = try Self.contents(
             of: "Sources/portavoz-app/BackgroundWorkCenterView.swift")
         let scope = try Self.contents(of: "scripts/ui_test_scope.py")
+            + Self.contents(of: "scripts/ui_test_catalog.py")
         let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
         let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
         let qualitySpec = try Self.contents(of: "docs/specs/08-quality.md")

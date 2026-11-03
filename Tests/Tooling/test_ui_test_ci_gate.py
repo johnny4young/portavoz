@@ -227,6 +227,61 @@ class UITestCIGateTests(unittest.TestCase):
             {"verified": "false", "state": "infrastructure-advisory"},
         )
 
+    # What replaces a complete run on a harness change must still catch these.
+    def test_harness_self_test_catches_an_omitted_selector(self):
+        document = receipt("en")
+        document["selectorCount"] = 2
+        document["budgetStatus"] = "failed"
+        document["budgetViolations"] = ["scoped run: result contains 1 cases for 2 selectors"]
+        result = self.run_gate(receipts={"en": document})
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("evidence-contract violations", result.stderr)
+        self.assertEqual(self.outputs["verified"], "false")
+
+    def test_gate_catches_an_omitted_selector_the_producer_did_not_report(self):
+        document = receipt("en")
+        document["selectorCount"] = 2
+        consistent = execution("en")
+        consistent["selectorCount"] = 2
+        result = self.run_gate(receipts={"en": document}, executions={"en": consistent})
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("executed 1 of 2 selected cases", result.stderr)
+        self.assertEqual(self.outputs["verified"], "false")
+
+    def test_a_complete_run_without_selectors_is_not_an_omission(self):
+        document = receipt("en")
+        document["selectorCount"] = 0
+        unselected = execution("en")
+        unselected["selectorCount"] = 0
+        result = self.run_gate(receipts={"en": document}, executions={"en": unselected})
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_harness_self_test_catches_zero_tests(self):
+        document = receipt("en")
+        document.update(caseCount=0, tests=[])
+        result = self.run_gate(receipts={"en": document})
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("case count differs", result.stderr)
+        self.assertEqual(self.outputs["verified"], "false")
+
+    def test_harness_self_test_catches_a_crashed_host(self):
+        result = self.run_gate(english_outcome="failure", receipts={"en": receipt("en", result="Failed")})
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("product-or-test-regression", result.stderr)
+        self.assertEqual(self.outputs["verified"], "false")
+
+    def test_harness_self_test_catches_a_cancelled_lane(self):
+        result = self.run_gate(english_outcome="cancelled")
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("step outcome cancelled", result.stderr)
+        self.assertEqual(self.outputs["verified"], "false")
+
     def test_selected_locale_cannot_be_skipped(self):
         result = self.run_gate(english_outcome="skipped")
 

@@ -18,8 +18,10 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import ui_test_scope as ui_scope  # noqa: E402
 from ui_test_scope import (  # noqa: E402
     ALL_TESTS,
+    CONSERVATIVE_TESTS,
     FEATURE_TESTS,
-    HARNESS_TESTS,
+    HARNESS_FILES,
+    HARNESS_SELF_TESTS,
     MEETING_FEATURES,
     PERMISSION_GATED_TESTS,
     SMOKE_TESTS,
@@ -33,7 +35,7 @@ class UITestScopeTests(unittest.TestCase):
     def test_compact_detail_column_selects_every_journey_that_opens_a_meeting(self):
         path = "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift"
         selection = select_paths([path])
-        self.assertEqual(set(selection.tests), set(HARNESS_TESTS))
+        self.assertLess(len(selection.tests), len(ALL_TESTS))
         self.assertEqual(selection.locales, ("en",))
         for journey in (
             "RecordingInputUITests/testAcceptedNotesAndObjectivesSurviveTerminationAndRecovery",
@@ -59,20 +61,139 @@ class UITestScopeTests(unittest.TestCase):
 
     def test_package_changes_cannot_bypass_ui_evidence(self):
         manifest = select_paths(["Package.swift"])
-        self.assertTrue(manifest.required)
-        self.assertEqual(manifest.tests, ALL_TESTS)
+        self.assertEqual(set(manifest.tests), set(CONSERVATIVE_TESTS))
         self.assertEqual(manifest.locales, ("en",))
+        self.assertTrue(manifest.scope_unknown)
 
         lock = select_paths(["Package.resolved"])
-        self.assertTrue(lock.required)
-        self.assertEqual(lock.tests, ALL_TESTS)
+        self.assertEqual(set(lock.tests), set(CONSERVATIVE_TESTS))
         self.assertEqual(lock.locales, ("en",))
-        self.assertEqual(lock.reasons, ("Package.resolved: complete English dependency fallback",))
+        self.assertTrue(lock.scope_unknown)
+        self.assertEqual(lock.reasons, ("scope-unknown: Package.resolved: changed pins unknown",))
 
-    def test_package_changes_keep_complete_harness_expansion(self):
+    def test_a_known_pin_selects_canaries_and_its_owners_without_full_catalog(self):
+        selection = select_paths(["Package.resolved"], dependency_changes={"sparkle"})
+
+        expected = set(SMOKE_TESTS) | set(FEATURE_TESTS["main-shell"]) | set(FEATURE_TESTS["settings-navigation"])
+        self.assertEqual(set(selection.tests), expected)
+        self.assertFalse(selection.scope_unknown)
+        self.assertEqual(selection.deferred_to_nightly, len(ALL_TESTS) - len(expected))
+
+    def test_an_unmapped_pin_is_reported_and_keeps_the_owners_it_can_name(self):
+        selection = select_paths(["Package.resolved"], dependency_changes={"sparkle", "swift-collections"})
+
+        self.assertTrue(selection.scope_unknown)
+        self.assertTrue(set(CONSERVATIVE_TESTS) <= set(selection.tests))
+        self.assertTrue(set(FEATURE_TESTS["settings-navigation"]) <= set(selection.tests))
+        self.assertIn("swift-collections", selection.reasons[0])
+
+    def test_a_lock_with_no_moved_pin_still_runs_the_canaries(self):
+        selection = select_paths(["Package.resolved"], dependency_changes=set())
+
+        self.assertEqual(set(selection.tests), set(SMOKE_TESTS))
+        self.assertFalse(selection.scope_unknown)
+
+    def test_dependency_changes_read_pins_from_both_revisions(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            root = Path(scratch)
+
+            def run(*arguments):
+                subprocess.run(["git", *arguments], cwd=root, check=True, capture_output=True)
+
+            def lock(pins):
+                (root / "Package.resolved").write_text(json.dumps({"pins": [
+                    {"identity": name, "state": {"revision": revision}} for name, revision in pins.items()]}))
+
+            run("init", "-q")
+            run("config", "user.email", "ci@example.test")
+            run("config", "user.name", "CI")
+            lock({"kept": "1", "moved": "1", "removed": "1"})
+            run("add", ".")
+            run("commit", "-qm", "base")
+            lock({"kept": "1", "moved": "2", "added": "1"})
+            run("add", ".")
+            run("commit", "-qm", "head")
+
+            self.assertEqual(ui_scope.dependency_changes("HEAD~1", "HEAD", root), {"moved", "removed", "added"})
+            self.assertEqual(ui_scope.dependency_changes("HEAD~1", None, root), {"moved", "removed", "added"})
+            (root / "Package.resolved").write_text("not json")
+            self.assertIsNone(ui_scope.dependency_changes("HEAD~1", None, root))
+            self.assertIsNone(ui_scope.dependency_changes("no-such-revision", "HEAD", root))
+
+    def test_package_and_harness_changes_keep_the_conservative_set(self):
         selection = select_paths(["Package.swift", "project.yml"])
-        self.assertEqual(selection.tests, ALL_TESTS)
+        self.assertEqual(set(selection.tests), set(CONSERVATIVE_TESTS))
         self.assertEqual(selection.locales, ("en",))
+
+    def test_a_layout_change_selects_every_journey_that_opens_meeting_detail(self):
+        selected = set(select_paths(["Sources/portavoz-app/MeetingDetailPrimaryColumn.swift"]).tests)
+        opens_detail = re.compile(r'openMeetingDetail|"detail-|detail-compact|detail-transcript|detail-artifacts')
+        missed = []
+        for source in sorted((ROOT / "Tests/PortavozUITests").glob("*UITests.swift")):
+            text = source.read_text(encoding="utf-8")
+            owner = re.search(r"class\s+(\w+UITests)\s*:", text)
+            for body in re.split(r"(?=\n\s*func\s+test\w+\s*\()", text)[1:]:
+                method = re.search(r"func\s+(test\w+)\s*\(", body).group(1)
+                selector = ui_scope.test_id(owner.group(1), method)
+                if selector in ALL_TESTS and opens_detail.search(body) and selector not in selected:
+                    missed.append(selector)
+        self.assertEqual(missed, [])
+
+    def test_no_single_path_selects_the_complete_catalog(self):
+        every_kind = [
+            "Package.swift", "Package.resolved", ui_scope.CATALOG, "Makefile", "project.yml",
+            "scripts/ui_test_scope.py", "scripts/ui_test_catalog.py", "docs/evidence/ui-test-runtime-budget.json",
+            "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift", "Sources/portavoz-app/UITestDefaults.swift",
+            "Sources/portavoz-app/L10n.swift", "Resources/Unknown.bin",
+            "Tests/PortavozUITests/UITestSupport.swift",
+        ]
+        for path in every_kind:
+            with self.subTest(path=path):
+                self.assertLess(len(select_paths([path]).tests), len(ALL_TESTS))
+
+    def test_a_catalog_edit_runs_no_ui_and_a_new_case_runs_its_class_with_the_canaries(self):
+        for path in ("scripts/ui_test_catalog.py", "scripts/ui_test_scope.py",
+                     "docs/evidence/ui-test-runtime-budget.json"):
+            with self.subTest(path=path):
+                self.assertFalse(select_paths([path]).required)
+
+        selection = select_paths([
+            "scripts/ui_test_catalog.py", "docs/evidence/ui-test-runtime-budget.json",
+            "Tests/PortavozUITests/InsightsUITests.swift",
+        ])
+        insights = {test for test in ALL_TESTS if "/InsightsUITests/" in test}
+        self.assertEqual(set(selection.tests), insights | set(SMOKE_TESTS))
+        self.assertGreater(selection.deferred_to_nightly, 0)
+
+    def test_unreadable_or_unknown_input_is_never_zero_tests(self):
+        for selection in (select_paths([ui_scope.CATALOG]), select_paths(["Package.resolved"]),
+                          select_paths(["Resources/Unknown.bin"]), select_paths(["Fixtures/Deleted/gone.json"])):
+            with self.subTest(reasons=selection.reasons):
+                self.assertTrue(selection.required)
+                self.assertTrue(selection.scope_unknown)
+                self.assertTrue(selection.reasons[0].startswith("scope-unknown: "))
+
+    def test_github_output_declares_scope_and_what_it_defers(self):
+        outputs = dict(line.split("=", 1) for line in ui_scope.render(select_paths(["Package.swift"]), "github").splitlines())
+        self.assertEqual(outputs["scope_unknown"], "true")
+        self.assertEqual(outputs["deferred"], str(len(ALL_TESTS) - len(CONSERVATIVE_TESTS)))
+        quiet = dict(line.split("=", 1) for line in ui_scope.render(select_paths(["docs/GAPS.md"]), "github").splitlines())
+        self.assertEqual(quiet["scope_unknown"], "false")
+        self.assertEqual(quiet["deferred"], "0")
+
+    def test_harness_self_test_covers_every_handoff_and_stays_in_the_catalog(self):
+        self.assertTrue(set(HARNESS_SELF_TESTS) <= set(ALL_TESTS))
+        self.assertTrue(set(HARNESS_SELF_TESTS) - set(SMOKE_TESTS))
+        for journey in ("UITestStorageUITests/testSharedScratch", "AudioImportUITests/", "SkillsSettingsUITests/",
+                        "testAskConversationAnswersAndSeeksToExactCitation", "testTwentyThousandSegment"):
+            with self.subTest(journey=journey):
+                self.assertTrue(any(journey in test for test in HARNESS_SELF_TESTS))
+
+    def test_validation_rejects_a_dependency_owner_that_does_not_exist(self):
+        for owners in ({"not-a-pin": frozenset({"library"})}, {"sparkle": frozenset({"not-a-feature"})}):
+            with self.subTest(owners=owners), mock.patch.object(ui_scope, "DEPENDENCY_FEATURES", owners):
+                with self.assertRaisesRegex(RuntimeError, "dependency owners that do not exist"):
+                    validate_catalog(ROOT, runtime_budget_required=False)
 
     def minimal_catalog_root(self, *methods: str, with_owner: bool = True):
         temporary = tempfile.TemporaryDirectory()
@@ -114,7 +235,8 @@ class UITestScopeTests(unittest.TestCase):
         unknown_fixture = select_paths([
             "Fixtures/DictationValidation/future-app-resource.json",
         ])
-        self.assertEqual(unknown_fixture.tests, ALL_TESTS)
+        self.assertEqual(set(unknown_fixture.tests), set(CONSERVATIVE_TESTS))
+        self.assertTrue(unknown_fixture.scope_unknown)
         self.assertEqual(unknown_fixture.locales, ("en",))
 
     def test_headless_live_benchmark_runs_no_ui_while_unknown_neighbors_keep_smoke(self):
@@ -393,7 +515,8 @@ class UITestScopeTests(unittest.TestCase):
     def test_localization_selects_journeys_quoting_changed_english_copy(self):
         catalog = ui_scope.CATALOG
         unknown = select_paths([catalog])
-        self.assertEqual(unknown.tests, ALL_TESTS, "changed keys must be known to narrow the run")
+        self.assertEqual(set(unknown.tests), set(CONSERVATIVE_TESTS), "unknown keys cannot name a journey")
+        self.assertTrue(unknown.scope_unknown)
         quoted = select_paths([catalog], {"Live captions are available now."}, ROOT)
         library = {test for test in ALL_TESTS if "/LibraryUITests/" in test}
         self.assertTrue(library <= set(quoted.tests))
@@ -533,7 +656,7 @@ class UITestScopeTests(unittest.TestCase):
             ) as (root, base):
                 changed = ui_scope.catalog_changes(base, "HEAD", root)
                 self.assertIsNone(changed)
-                self.assertEqual(select_paths([ui_scope.CATALOG], changed, ROOT).tests, ALL_TESTS)
+                self.assertTrue(select_paths([ui_scope.CATALOG], changed, ROOT).scope_unknown)
         with self.catalog_revisions(
             {"strings": {key: {"localizations": {"en": {"variations": plural}}}}},
             {"strings": {key: {"localizations": {"en": {"variations": plural}, "es": {}}}}},
@@ -554,7 +677,7 @@ class UITestScopeTests(unittest.TestCase):
             for head in ("HEAD", None):
                 changed = ui_scope.catalog_changes(base, head, root)
                 self.assertIsNone(changed)
-                self.assertEqual(select_paths([ui_scope.CATALOG], changed, ROOT).tests, ALL_TESTS)
+                self.assertTrue(select_paths([ui_scope.CATALOG], changed, ROOT).scope_unknown)
 
     def test_no_path_combination_selects_spanish(self):
         selection = select_paths([
@@ -565,7 +688,7 @@ class UITestScopeTests(unittest.TestCase):
             "Fixtures/ApuntadorWeb/public-local-v1.json",
             *sorted(ui_scope.APUNTADOR_LEAK_EVIDENCE_FILES),
         ])
-        self.assertEqual(selection.tests, ALL_TESTS)
+        self.assertTrue(selection.required)
         self.assertEqual(selection.locales, ("en",))
         self.assertEqual(ui_scope.SELECTION_LOCALES, ("en",))
 
@@ -1013,17 +1136,16 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en",), path)
 
-    def test_window_placement_expands_to_the_complete_english_catalog(self):
+    def test_window_placement_runs_the_harness_self_test(self):
         for path in (
             "Sources/portavoz-app/UITestWindowPlacement.swift",
-            "Sources/portavoz-app/SettingsSkillReceiptNavigation.swift",
         ):
             with self.subTest(path=path):
                 selection = select_paths([path])
-                self.assertEqual(selection.tests, HARNESS_TESTS)
+                self.assertEqual(set(selection.tests), set(CONSERVATIVE_TESTS))
                 self.assertEqual(selection.locales, ("en",))
 
-    def test_seed_fixtures_expand_to_the_complete_english_catalog(self):
+    def test_seed_fixtures_report_an_unknown_scope(self):
         for path in (
             "Sources/portavoz-app/AppServices+UITestFixtures.swift",
             "Sources/portavoz-app/AppServices+LiveAssistUITestFixture.swift",
@@ -1033,9 +1155,10 @@ class UITestScopeTests(unittest.TestCase):
         ):
             with self.subTest(path=path):
                 selection = select_paths([path])
-                self.assertEqual(selection.tests, HARNESS_TESTS)
+                self.assertEqual(set(selection.tests), set(CONSERVATIVE_TESTS))
                 self.assertEqual(selection.locales, ("en",))
-                self.assertIn("seed-fixture fallback", selection.reasons[0])
+                self.assertTrue(selection.scope_unknown)
+                self.assertIn("seed fixture", selection.reasons[0])
 
     def test_subtitle_export_selects_only_its_meeting_export_smoke(self):
         selection = select_paths(["Sources/IntegrationsKit/SubtitleExport.swift"])
@@ -1156,13 +1279,13 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
             self.assertEqual(len(selection.tests), 2, path)
 
-    def test_atomic_snapshot_helper_requires_the_complete_catalog_without_neighboring_changes(self):
+    def test_atomic_snapshot_helper_runs_the_harness_self_test(self):
         path = "Tests/PortavozUITests/UITestSnapshotSupport.swift"
         selection = select_paths([path])
-        self.assertEqual(selection.tests, HARNESS_TESTS)
+        self.assertEqual(set(selection.tests), set(CONSERVATIVE_TESTS))
         self.assertEqual(selection.locales, ("en",))
 
-    def test_shared_fixture_build_sources_and_permission_require_full_catalog(self):
+    def test_shared_fixture_build_sources_and_permission_run_the_harness_self_test(self):
         for path in (
             "Package.swift",
             "packaging/portavoz-uitests.entitlements",
@@ -1171,17 +1294,21 @@ class UITestScopeTests(unittest.TestCase):
         ):
             with self.subTest(path=path):
                 selection = select_paths([path])
-                self.assertEqual(selection.tests, HARNESS_TESTS)
+                self.assertEqual(set(selection.tests), set(CONSERVATIVE_TESTS))
                 self.assertEqual(selection.locales, ("en",))
 
-    def test_harness_change_expands_to_the_complete_english_catalog(self):
-        self.assertIn(
-            "scripts/candidate_automation.py",
-            ui_scope.FULL_HARNESS_FILES,
-        )
-        for path in sorted(ui_scope.FULL_HARNESS_FILES):
+    def test_a_production_harness_file_keeps_its_own_journeys(self):
+        selection = select_paths(["Sources/portavoz-app/SettingsSkillReceiptNavigation.swift"])
+
+        self.assertTrue(set(CONSERVATIVE_TESTS) <= set(selection.tests))
+        self.assertTrue(set(FEATURE_TESTS["settings-skills"]) <= set(selection.tests))
+
+    def test_harness_change_runs_the_canaries_and_the_self_test(self):
+        self.assertIn("scripts/candidate_automation.py", HARNESS_FILES)
+        for path in sorted(HARNESS_FILES - {"Sources/portavoz-app/SettingsSkillReceiptNavigation.swift"}):
             selection = select_paths([path])
-            self.assertEqual(selection.tests, HARNESS_TESTS, path)
+            self.assertEqual(set(selection.tests), set(CONSERVATIVE_TESTS), path)
+            self.assertFalse(selection.scope_unknown, path)
             self.assertEqual(selection.locales, ("en",), path)
 
     def test_leak_evidence_owners_select_only_their_product_paths(self):
@@ -1198,7 +1325,7 @@ class UITestScopeTests(unittest.TestCase):
         # Ask also owns the dictation-source journey.
         self.assertEqual(len(expected), 18)
         self.assertTrue(ui_scope.APUNTADOR_LEAK_EVIDENCE_FILES.isdisjoint(
-            ui_scope.FULL_HARNESS_FILES
+            HARNESS_FILES
         ))
         for path in sorted(ui_scope.APUNTADOR_LEAK_EVIDENCE_FILES):
             selection = select_paths([path])
@@ -1261,10 +1388,10 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en",), path)
 
-    def test_changed_ui_test_file_selects_only_its_class(self):
-        selection = select_paths(["Tests/PortavozUITests/InsightsUITests.swift"])
-        self.assertEqual(selection.tests, FEATURE_TESTS["insights"])
-        self.assertTrue(all("InsightsUITests" in test for test in selection.tests))
+    def test_changed_ui_test_file_selects_its_class_and_the_canaries(self):
+        selection = select_paths(["Tests/PortavozUITests/AudioImportUITests.swift"])
+        audio = {test for test in ALL_TESTS if "/AudioImportUITests/" in test}
+        self.assertEqual(set(selection.tests), audio | set(SMOKE_TESTS))
 
     def test_web_fixture_selects_only_its_real_app_journey(self):
         for path in (
@@ -1310,23 +1437,24 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(set(select_paths([classifier]).tests), set(FEATURE_TESTS["live-assist"]))
         for unknown in ("Sources/PlatformKit/Resources/Unowned.json", "Sources/portavoz-app/Info.plist"):
             with self.subTest(path=unknown):
-                self.assertEqual(select_paths([unknown]).tests, ALL_TESTS)
+                self.assertEqual(set(select_paths([unknown]).tests), set(CONSERVATIVE_TESTS))
+                self.assertTrue(select_paths([unknown]).scope_unknown)
         for research in ("Sources/portavoz-cli-main/main.swift", "Sources/CSQLiteVecResearch/sqlite-vec.c",
                          "Sources/SQLiteVecResearchKit/Ranker.swift"):
             with self.subTest(path=research):
                 self.assertFalse(select_paths([research]).required)
         for path in ("Sources/portavoz-app/L10n.swift", "Sources/portavoz-app/AppLanguage.swift"):
             with self.subTest(path=path):
-                self.assertEqual(select_paths([path]).tests, ALL_TESTS)
+                self.assertEqual(select_paths([path]).tests, self.smoke_selection())
 
     def smoke_selection(self):
         return tuple(test for test in ALL_TESTS if test in set(SMOKE_TESTS))
 
-    def test_unknown_non_swift_paths_keep_the_full_english_fallback(self):
+    def test_unknown_non_swift_paths_keep_the_conservative_set(self):
         for path in ("Fixtures/NewCapability/future-app-resource.json", "project.yml"):
             with self.subTest(path=path):
                 selection = select_paths([path])
-                self.assertEqual(selection.tests, ALL_TESTS)
+                self.assertEqual(set(selection.tests), set(CONSERVATIVE_TESTS))
                 self.assertEqual(selection.locales, ("en",))
 
     def test_smoke_canaries_are_a_unique_unattended_subset_of_the_catalog(self):
@@ -1398,6 +1526,8 @@ class UITestScopeTests(unittest.TestCase):
             ALL_TESTS=(scoped,),
             ALL_FEATURES=frozenset({"insights"}),
             SMOKE_TESTS=(scoped, outside),
+            HARNESS_SELF_TESTS=(),
+            DEPENDENCY_FEATURES={},
             FEATURE_SOURCE_SENTINELS={
                 "insights": "Sources/portavoz-app/InsightsView.swift"
             },
@@ -1407,6 +1537,12 @@ class UITestScopeTests(unittest.TestCase):
                 RuntimeError, rf"smoke canaries outside the catalog: {re.escape(outside)}$"
             ):
                 ui_scope.validate_catalog(root, runtime_budget_required=False)
+
+    def test_catalog_policy_rejects_a_self_test_outside_the_catalog(self):
+        outside = ui_scope.test_id("InsightsUITests", "testOutside")
+        with mock.patch.object(ui_scope, "HARNESS_SELF_TESTS", (outside,)):
+            with self.assertRaisesRegex(RuntimeError, re.escape(outside)):
+                validate_catalog(ROOT, runtime_budget_required=False)
 
     def test_working_tree_paths_keeps_staged_change_hidden_from_worktree_diff(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -265,7 +265,7 @@ class StackedPRSelectionIntegrationTests(unittest.TestCase):
         self.assertIn("required=true", cumulative.stdout)
         self.assertIn("testDictationOffersTriggersLanguageAndDictionary", cumulative.stdout)
 
-    def test_parent_shared_harness_change_requires_the_complete_english_child_catalog(self):
+    def test_parent_shared_harness_change_keeps_the_harness_self_test_on_the_child(self):
         self.git("reset", "--hard", self.parent)
         self.write_commit("project.yml", "parent shared UI harness\n")
         self.parent = self.git("rev-parse", "HEAD").stdout.strip()
@@ -278,7 +278,7 @@ class StackedPRSelectionIntegrationTests(unittest.TestCase):
         self.assertEqual(resolved["base"], self.root)
         cumulative = self.select(resolved["base"])
         self.assertIn("locales=en\n", cumulative.stdout)
-        self.assertIn("testDictationOffersTriggersLanguageAndDictionary", cumulative.stdout)
+        self.assertIn("testSharedScratchProtectsOwnershipAndRoundTripsAppFixtures", cumulative.stdout)
 
     def test_missing_default_branch_ref_fails_instead_of_using_parent(self):
         self.git("update-ref", "-d", "refs/remotes/origin/main")
