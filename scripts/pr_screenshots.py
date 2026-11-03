@@ -2,7 +2,7 @@
 """Copy a UI run's `pr-*` screenshots out of its result bundle for the PR artifact.
 
 Evidence only: a run with no bundle or no such screenshot still succeeds, so this
-step can never change a lane's outcome.
+step never changes a lane's outcome.
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ from typing import Any, Sequence
 
 PREFIX = "pr-"
 MAX_SCREENSHOTS = 6
+EXPORT_TIMEOUT_SECONDS = 60
 NAME = re.compile(r"pr-[a-z0-9-]+")
 
 
@@ -42,7 +43,7 @@ def export(result: Path, output: Path) -> int:
     with tempfile.TemporaryDirectory() as scratch:
         directory = Path(scratch)
         subprocess.run(["xcrun", "xcresulttool", "export", "attachments", "--path", str(result),
-                        "--output-path", str(directory)], check=True, capture_output=True, timeout=300)
+                        "--output-path", str(directory)], check=True, capture_output=True, timeout=EXPORT_TIMEOUT_SECONDS)
         manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
         selected = selected_attachments(manifest)
         output.mkdir(parents=True, exist_ok=True)
@@ -59,7 +60,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     arguments = parser.parse_args(argv)
     try:
         export(arguments.result, arguments.output)
-    except (OSError, ValueError, subprocess.SubprocessError) as error:
+    except (AttributeError, KeyError, OSError, TypeError, ValueError, subprocess.SubprocessError) as error:
         print(f"::warning title=PR screenshots::{error}", file=sys.stderr)
     return 0
 

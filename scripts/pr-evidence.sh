@@ -1,16 +1,36 @@
 #!/usr/bin/env bash
-# Publishes a PR's synthetic pr-* screenshots to the orphan pr-evidence branch
-# and prints the markdown for the description. Look at each image first.
+# Shows a PR's synthetic pr-* screenshots. After looking at each one, --publish
+# pushes them to the orphan pr-evidence branch and prints the description markdown.
 set -euo pipefail
 
+publish=false
+if [[ "${1:-}" == --publish ]]; then
+  publish=true
+  shift
+fi
 pr="${1:-}"
 run="${2:-}"
 if [[ ! "$pr" =~ ^[0-9]+$ || ! "$run" =~ ^[0-9]+$ ]]; then
-  echo "usage: scripts/pr-evidence.sh <pull-request> <run-id>" >&2
+  echo "usage: scripts/pr-evidence.sh [--publish] <pull-request> <run-id>" >&2
   exit 64
 fi
 
 repository="$(gh repo view --json nameWithOwner --jq .nameWithOwner)"
+images_dir="$(git rev-parse --show-toplevel)/dist/pr-evidence/$run"
+rm -rf "$images_dir"
+gh run download "$run" --repo "$repository" --name "pr-screenshots-$run" --dir "$images_dir"
+images=("$images_dir"/pr-*.png)
+if [[ ! -f "${images[0]}" ]]; then
+  echo "Run $run has no pr-* screenshots." >&2
+  exit 66
+fi
+
+if [[ "$publish" != true ]]; then
+  printf '%s\n' "${images[@]}"
+  echo "Look at each image, then run this again with --publish." >&2
+  exit 0
+fi
+
 scratch="$(mktemp -d "${TMPDIR:-/tmp}/portavoz-pr-evidence.XXXXXX")"
 worktree="$scratch/branch"
 cleanup() {
@@ -18,13 +38,6 @@ cleanup() {
   rm -rf "$scratch"
 }
 trap cleanup EXIT
-
-gh run download "$run" --repo "$repository" --name "pr-screenshots-$run" --dir "$scratch/images"
-images=("$scratch/images"/pr-*.png)
-if [[ ! -f "${images[0]}" ]]; then
-  echo "Run $run has no pr-* screenshots." >&2
-  exit 66
-fi
 
 git worktree add --quiet --detach "$worktree"
 if git ls-remote --exit-code --heads origin pr-evidence >/dev/null; then

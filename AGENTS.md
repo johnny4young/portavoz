@@ -73,8 +73,8 @@ library) and asserts against `accessibilityIdentifier`s.
 - Keep `scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors` green before closing any code change. A strict `swift build` does not compile the test targets and cannot replace this gate.
 - **After any UI change, reinstall the dev app with `make install`** — it installs to `/Applications/Portavoz Dev.app`. **NEVER touch `/Applications/Portavoz.app`**: that is the user's notarized release copy (it updates only via Sparkle/Homebrew). Need real recordings or the real DB for a test? COPY them to a scratch location — never operate on the release app's live data.
 - A visible UI change attaches synthetic `pr-*` screenshots from its feature test
-  (`attachScreenshot(of:named:)`), and `scripts/pr-evidence.sh <PR> <run-id>` publishes
-  them and prints the markdown. Look at each image first.
+  (`attachScreenshot(of:named:)`). `scripts/pr-evidence.sh <PR> <run-id>` downloads
+  them; look at each one, then add `--publish` to push them and print the markdown.
 - **Every user-visible feature or fix adds one entry to [CHANGELOG.md](CHANGELOG.md)** — English, short and catchy for end users (**emoji + feature name** — what it gives you), newest first under today's date. Internal plumbing (refactors, CI, docs) gets NO entry.
 - Use Conventional Commits.
 - Keep private tracker IDs, sprint/agent names, local plans, tickets, reports,

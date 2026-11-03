@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -46,6 +47,17 @@ class ScreenshotSelectionTests(unittest.TestCase):
         self.assertEqual(len(selected), screenshots.MAX_SCREENSHOTS)
         self.assertEqual(selected["pr-0"], "pr-0.png")
 
+    def test_a_malformed_manifest_never_fails_the_lane(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            bundle = Path(scratch) / "run.xcresult"
+            bundle.mkdir()
+
+            def fake_export(command, **_):
+                (Path(command[command.index("--output-path") + 1]) / "manifest.json").write_text('[{"attachments": 3}]')
+
+            with patch.object(screenshots.subprocess, "run", side_effect=fake_export):
+                self.assertEqual(screenshots.main(["--result", str(bundle), "--output", str(Path(scratch) / "out")]), 0)
+
     def test_a_missing_bundle_never_fails_the_lane(self):
         with tempfile.TemporaryDirectory() as scratch:
             missing = Path(scratch) / "none.xcresult"
@@ -78,6 +90,33 @@ class LaneReceiptTests(unittest.TestCase):
         self.assertFalse(result["runtimeReceiptPresent"])
         self.assertEqual(result["executed"], [])
         self.assertEqual(len(result["notExecuted"]), 2)
+
+    def test_only_a_clean_run_of_every_selected_case_is_complete(self):
+        cases = [{"identifier": f"LibraryUITests/{name}()", "result": "Passed", "durationSeconds": 1.0}
+                 for name in ("testA", "testB")]
+        clean = self.receipt({"testDurationSeconds": 2.0, "tests": cases})
+        self.assertTrue(lane.is_complete(clean))
+        self.assertFalse(lane.is_complete(self.receipt({"testDurationSeconds": 1.0, "tests": cases[:1]})))
+        self.assertFalse(lane.is_complete(self.receipt(None)))
+        failed = self.receipt({"testDurationSeconds": 2.0, "tests": [cases[0], {**cases[1], "result": "Failed"}]})
+        self.assertFalse(lane.is_complete(failed))
+        self.assertFalse(lane.is_complete({**clean, "outcome": "failure"}))
+
+    def test_a_malformed_runtime_receipt_counts_as_missing(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            path = Path(scratch) / "en-runtime.json"
+            for text in ('{"tests": [{"identifier": "x"}]}', '{"tests": [3]}', '{"tests": 3}', "[]"):
+                with self.subTest(text=text):
+                    path.write_text(text)
+                    self.assertIsNone(lane.read_runtime(path))
+
+    def test_the_command_reports_completeness_to_the_workflow(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            results = Path(scratch)
+            output = results / "github-output"
+            lane.main(["--locale", "en", "--results", str(results), "--sha", "abc", "--attempt", "1", "--toolchain", "X",
+                       "--outcome", "success", "--tests", self.SELECTED, "--github-output", str(output)])
+            self.assertEqual(output.read_text(), "complete=false\n")
 
     def test_the_command_writes_beside_the_other_receipts_even_with_unreadable_runtime(self):
         with tempfile.TemporaryDirectory() as scratch:
@@ -124,9 +163,21 @@ class EvidencePublicationTests(unittest.TestCase):
     def git(self, cwd, *arguments):
         return subprocess.run(["git", *arguments], cwd=cwd, check=True, capture_output=True, text=True).stdout
 
-    def publish(self, *arguments, images="pr-library"):
-        return subprocess.run([str(ROOT / "scripts/pr-evidence.sh"), *arguments], cwd=self.clone, capture_output=True,
+    def publish(self, *arguments, images="pr-library", publish=True):
+        flags = ["--publish"] if publish else []
+        return subprocess.run([str(ROOT / "scripts/pr-evidence.sh"), *flags, *arguments], cwd=self.clone,
+                              capture_output=True,
                               text=True, env={**self.environment, "FAKE_IMAGES": images}, check=False)
+
+    def test_without_publish_it_only_shows_the_images_and_pushes_nothing(self):
+        result = self.publish("204", "99", publish=False)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.git(self.origin, "branch", "--list", "pr-evidence"), "")
+        shown = Path(result.stdout.strip().splitlines()[0])
+        self.assertEqual(shown.name, "pr-library.png")
+        self.assertTrue(shown.is_file())
+        self.assertIn("Look at each image", result.stderr)
 
     def test_it_publishes_to_an_orphan_branch_and_prints_markdown(self):
         result = self.publish("204", "99")

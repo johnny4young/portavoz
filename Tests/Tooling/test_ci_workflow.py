@@ -163,6 +163,8 @@ class CIWorkflowTests(unittest.TestCase):
         self.assertEqual(ci.count("run: scripts/check-repository-hygiene.sh"), 1)
         self.assertEqual(ci.count("needs: repository-hygiene\n"), 1)
         self.assertEqual(ci.count("needs: swift-scope\n"), 1)
+        # swift-scope is skipped on a main push, and the release contract requires this job there.
+        self.assertIn("if: ${{ !cancelled() && needs.swift-scope.result != 'failure' }}\n", ci)
         self.assertNotIn("needs: repository-hygiene", ci.split("  lint:\n", 1)[1])
         self.assertNotIn("python3 -m unittest Tests.Tooling", ui)
         self.assertEqual(
@@ -182,14 +184,17 @@ class CIWorkflowTests(unittest.TestCase):
         ui = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
         nightly = (ROOT / ".github/workflows/ui-nightly.yml").read_text(encoding="utf-8")
 
-        self.assertIn("if: always() && steps.ui.outcome != 'success'\n", ui.split("- name: Preserve ${{ matrix.locale }} UI evidence\n", 1)[1][:80])
+        self.assertIn("if: always() && steps.lane.outputs.complete != 'true'\n",
+                      ui.split("- name: Preserve ${{ matrix.locale }} UI evidence\n", 1)[1][:80])
+        self.assertIn("id: lane\n", ui.split("- name: Record the lane receipt\n", 1)[1][:60])
+        self.assertIn('--github-output "$GITHUB_OUTPUT"', ui)
         self.assertIn("steps.ui.outcome != 'success' || steps.classify.outputs.verified != 'true'", nightly)
 
     def test_small_receipts_and_pr_screenshots_are_kept_on_every_run(self):
         ui = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
         for step in ("- name: Record the lane receipt\n", "- name: Record PR screenshots\n",
                      "- name: Publish PR screenshots\n", "- name: Publish compact classifier receipts\n"):
-            self.assertIn("        if: always()\n", ui.split(step, 1)[1][:30], step)
+            self.assertIn("        if: always()\n", ui.split(step, 1)[1][:60], step)
         self.assertIn("dist/ui-test-results/${{ matrix.locale }}-lane.json", ui)
         self.assertIn("name: pr-screenshots-${{ github.run_id }}", ui)
         self.assertIn("path: dist/pr-screenshots\n          if-no-files-found: ignore", ui)

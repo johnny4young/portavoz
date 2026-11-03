@@ -6,7 +6,7 @@
 
 ## Screenshots
 
-<!-- Before and after, seed data only: `scripts/pr-evidence.sh <PR> <run-id>`. "None: no visible change" if so. -->
+<!-- Before and after, seed data only: `scripts/pr-evidence.sh [--publish] <PR> <run-id>`. "None: no visible change" if so. -->
 
 ## Gates
 

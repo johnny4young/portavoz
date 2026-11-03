@@ -417,11 +417,11 @@ runs on every `main` push and manual run and never on a pull request (D615).
 Each UI lane keeps a small `<locale>-lane.json` on every run: head, attempt,
 toolchain, outcome, the selected, deferred and executed cases with their results and
 times, and any selected case that did not run. `scripts/ui_test_lane_receipt.py`
-writes it and it never changes the lane's outcome. The large result bundle is kept only
-when a lane did not pass. `scripts/pr_screenshots.py` copies attachments named `pr-*`,
+writes it and it never changes the lane's outcome. The large result bundle is kept
+unless the lane passed and every selected case ran. `scripts/pr_screenshots.py` copies attachments named `pr-*`,
 at most six, into a `pr-screenshots-<run>` artifact, and `scripts/pr-evidence.sh <pr>
-<run>` publishes them to the orphan `pr-evidence` branch and prints the markdown for the
-description. Screenshots come only from temporary stores and synthetic fixtures (D617).
+<run>` downloads them to look at, and `--publish` pushes them to the orphan `pr-evidence`
+branch and prints the markdown for the description. Screenshots come only from temporary stores and synthetic fixtures (D617).
 
 ### Hosted CI time report
 
