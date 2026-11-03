@@ -28,8 +28,6 @@ jobs:
       locales: ${{ steps.select.outputs.locales }}
       matrix: ${{ steps.select.outputs.matrix }}
       summary: ${{ steps.select.outputs.summary }}
-      scope_unknown: ${{ steps.select.outputs.scope_unknown }}
-      deferred: ${{ steps.select.outputs.deferred }}
       base: ${{ steps.verified_base.outputs.base }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -75,7 +73,7 @@ jobs:
             python3 scripts/ui_test_scope.py --all --format github >> "$GITHUB_OUTPUT"
           elif [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             python3 scripts/ui_test_scope.py \
-              --base origin/main --head HEAD \
+              --base "$(git merge-base origin/main HEAD)" --head HEAD \
               --format github >> "$GITHUB_OUTPUT"
           else
             python3 scripts/ui_test_scope.py \
@@ -191,8 +189,7 @@ jobs:
         needs.interruption-controls.result == 'skipped'))
     runs-on: macos-26
     # The scope matrix is English only; the lane runs on its own hosted Mac
-    # against the shared products. Localization/shared-harness and manual
-    # integration runs legitimately select all catalog tests.
+    # against the shared products. A manual full_ui run selects all catalog tests.
     # This 90-minute job-orchestration ceiling is not a per-test/runtime budget.
     timeout-minutes: 90
     strategy:

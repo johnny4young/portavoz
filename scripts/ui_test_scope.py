@@ -5,8 +5,8 @@ Known presentation files map to feature-level tests. Lower-layer Swift,
 unrecognized app files, the dependency lock and localized copy run the smoke
 canaries plus any owner they name; shared harness files add the harness
 self-test. A path nothing can map is reported as scope-unknown, never as zero
-tests. No diff selects the complete catalog: nightly owns it and a person can
-dispatch it. Every selection runs in English only. Documentation, governance,
+tests. No path selects the complete catalog by itself: nightly owns it and a
+person can dispatch it. Every selection runs in English only. Documentation, governance,
 CLI, and package-test-only changes do not spend a macOS UI runner.
 """
 
@@ -31,6 +31,7 @@ from ui_test_catalog import (  # noqa: E402
     FEATURE_SOURCE_SENTINELS,
     FEATURE_TESTS,
     HARNESS_SELF_TESTS,
+    MEETING_DETAIL_EXTRA_JOURNEYS,
     MEETING_FEATURES,
     PERMISSION_GATED_TESTS,
     RETIRED_DUPLICATE_TESTS,
@@ -78,8 +79,7 @@ HARNESS_FILES = frozenset({
 })
 
 # The native interruption controls compile and qualify only these owners. A
-# change here, or anywhere in the fixture target, requires the controls; an
-# unrelated full-catalog fallback such as localization does not.
+# change here, or anywhere in the fixture target, requires the controls.
 INTERRUPTION_CONTROL_FILES = frozenset({
     "packaging/portavoz-uitests.entitlements",
     "scripts/check-ui-interruption-safety.py",
@@ -106,8 +106,8 @@ MEETING_DETAIL_LAYOUT_FEATURES = MEETING_FEATURES | {"live-assist", "recording-r
 # These owners can change which real Apuntador workloads qualify, but they do
 # not build, select, measure, or accept XCUITest itself. Exercise the exact
 # user-visible owners reached by the leak matrix instead of paying for every
-# unrelated UI journey. Candidate automation remains a full-catalog harness
-# owner above because it validates the UI receipt itself.
+# unrelated UI journey. Candidate automation stays a harness owner above
+# because it validates the UI receipt itself.
 APUNTADOR_LEAK_EVIDENCE_FILES = frozenset({
     "Sources/portavoz-app/BenchMode.swift",
     "Sources/portavoz-app/BenchMode+ResourceAsk.swift",
@@ -504,7 +504,7 @@ def lower_layer_features(path: str) -> set[str]:
         "sources/intelligencekit/titlesuggester.swift": {"meeting-naming"},
         # IOS-READY contracts are intentionally dormant. Keep their future
         # continuity and worker-center presentation owners explicit now so a
-        # later edit cannot silently fall through to an unrelated full suite.
+        # later edit cannot silently fall through to the unknown-scope set.
         "sources/portavozcore/commitmentreplicamerge.swift": {
             "meeting-commitments", "production-sync"
         },
@@ -673,7 +673,7 @@ def catalog_english(text: str) -> dict[str, str | None]:
     """English copy as Xcode compiles it into the UI test app.
 
     An empty value stays empty and a missing one shows the key. None marks
-    plural, substitution or unshipped entries, which only the full suite covers.
+    plural, substitution or unshipped entries, which report an unknown scope.
     """
     catalog = json.loads(text)
     if not isinstance(catalog, dict) or not isinstance(catalog.get("strings"), dict):
@@ -778,6 +778,7 @@ def select_paths(
 
         if path == "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift":
             selected.update(feature_tests(MEETING_DETAIL_LAYOUT_FEATURES))
+            selected.update(MEETING_DETAIL_EXTRA_JOURNEYS)
             reasons.append(f"{path}: journeys that open a meeting")
             continue
 
@@ -1009,7 +1010,7 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
             orphan_scopes.append(f"{feature} (missing {path})")
             continue
         mapped = app_features(source.name)
-        if feature not in mapped or mapped == set(ALL_FEATURES):
+        if feature not in mapped:
             orphan_scopes.append(f"{feature} ({path})")
 
     # A no-UI fixture must stay unreachable from the app and its UI tests.
@@ -1210,7 +1211,6 @@ def render(selection: Selection, output_format: str) -> str:
                 f"export UI_TEST_INTERRUPTION_REQUIRED={'true' if selection.interruption_controls_required else 'false'}",
                 f"export UI_TESTS={shlex.quote(tests)}",
                 f"export UI_TEST_LOCALES={shlex.quote(locales)}",
-                f"export UI_TEST_SCOPE_UNKNOWN={'true' if selection.scope_unknown else 'false'}",
                 f"export UI_TEST_SCOPE_SUMMARY={shlex.quote(summary)}",
             )
         )

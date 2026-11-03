@@ -236,6 +236,7 @@ class UITestCIGateTests(unittest.TestCase):
         result = self.run_gate(receipts={"en": document})
 
         self.assertEqual(result.returncode, 1)
+        self.assertIn("evidence-contract violations", result.stderr)
         self.assertEqual(self.outputs["verified"], "false")
 
     def test_harness_self_test_catches_zero_tests(self):
@@ -244,18 +245,21 @@ class UITestCIGateTests(unittest.TestCase):
         result = self.run_gate(receipts={"en": document})
 
         self.assertEqual(result.returncode, 1)
+        self.assertIn("case count differs", result.stderr)
         self.assertEqual(self.outputs["verified"], "false")
 
     def test_harness_self_test_catches_a_crashed_host(self):
         result = self.run_gate(english_outcome="failure", receipts={"en": receipt("en", result="Failed")})
 
         self.assertEqual(result.returncode, 1)
+        self.assertIn("product-or-test-regression", result.stderr)
         self.assertEqual(self.outputs["verified"], "false")
 
     def test_harness_self_test_catches_a_cancelled_lane(self):
         result = self.run_gate(english_outcome="cancelled")
 
         self.assertEqual(result.returncode, 1)
+        self.assertIn("step outcome cancelled", result.stderr)
         self.assertEqual(self.outputs["verified"], "false")
 
     def test_selected_locale_cannot_be_skipped(self):

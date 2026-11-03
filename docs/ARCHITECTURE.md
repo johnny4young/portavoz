@@ -5794,7 +5794,7 @@ or library state are outside this cache. The iOS portability lane runs on every
 invalidation checks; a hit alone is not evidence of a faster or passing build.
 
 Pull-request UI evidence is selected deterministically from changed paths, and
-no diff selects the complete catalogue. Known presentation files and lower-layer
+no path selects the complete catalogue by itself. Known presentation files and lower-layer
 files with a proven owner map to feature-level XCUITest selectors. Lower-layer
 and unmapped app Swift files without a proven owner run seventeen smoke canaries
 across the main surfaces: unit tests own their behavior. A changed UI-test file
@@ -6683,7 +6683,7 @@ reliability evidence retained from 9 Aug, is:
   owners, and 30 explicitly owned UI journeys;
 - the complete English XCUITest catalogue is the release UI gate;
 - pull requests run their selected feature evidence or the smoke canaries, and
-  no diff selects the complete English catalogue, which runs nightly in three
+  no path selects the complete English catalogue by itself; it runs nightly in three
   shards and on demand;
 - hosted pull-request UI runs compile once, execute the English selection as a
   first attempt, preserve its result bundle, and then apply one fail-closed

@@ -15,8 +15,8 @@ the process in [SECURITY.md](SECURITY.md), never through a public issue.
   test targets; a strict production build alone does not cover them.
 - **UI evidence follows impact.** Give every interactive control an
   `accessibilityIdentifier`; use `make test-ui-changed UI_BASE=origin/main` to
-  run the feature-level XCUITest selectors chosen from the diff. No diff runs the
-  complete English suite: it runs nightly and with `full_ui` on a dispatch.
+  run the feature-level XCUITest selectors chosen from the diff. No path runs the
+  complete English suite by itself: it runs nightly and with `full_ui` on a dispatch.
   Spanish is checked by `LocalizationTests`, not by a UI pass.
 - **Domain types live in `PortavozCore`**; workflows live in `ApplicationKit`.
   Kits depend on Core, never on `ApplicationKit` or on each other, except the

@@ -22346,11 +22346,11 @@ reach `main` until the next run sees it. 48 hours is an alert threshold, not a
 bound on that exposure. Past it, further scope reductions pause and the pending
 evidence is dispatched. A release still requires a green nightly on its commit.
 
-## D616 — No diff selects the complete UI catalog
+## D616 — No path selects the complete UI catalog by itself
 
 Adding a UI test edited the selector and the runtime budget, both of which selected
 the complete catalog, so most feature pull requests paid about 45 minutes. Of the
-last 120 commits, 63 selected everything. Later CI stages cannot meet their limits
+last 120 commits, 59 selected everything. Later CI stages cannot meet their limits
 while any ordinary path does.
 
 The test list, canaries, the harness self-test and dependency owners move to
@@ -22360,7 +22360,7 @@ the canaries. The dependency lock runs the canaries and the owners of the moved 
 Shared-harness files run the canaries and a self-test of the journeys that use the
 harness's app handoffs: the ones that failed when the launch mode broke them while the
 canaries stayed green. The Meeting Detail column selects the journeys that open a
-meeting. A manifest or seed-fixture change, a pin without an owner, an unreadable
+meeting, and a Tooling test keeps that list current. A manifest or seed-fixture change, a pin without an owner, an unreadable
 catalogue or lock and unknown paths run the same conservative set and report
 `scope-unknown` with the command for a full run; a parse error is never zero tests.
 Every selection records how many cases it defers. `full_ui` dispatches the complete

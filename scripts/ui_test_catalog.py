@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Which UI tests exist and which feature, canary or dependency owns them.
 
 Data only, so adding a case or changing a time here never widens a selection.
@@ -579,6 +578,18 @@ DEPENDENCY_FEATURES: dict[str, frozenset[str]] = {
     "swift-transformers": _SUMMARY_MODEL_FEATURES,
     "whisperkit": frozenset({"meeting-processing", "settings-audio"}),
 }
+
+# Journeys outside the meeting features that also open Meeting Detail.
+MEETING_DETAIL_EXTRA_JOURNEYS = (
+    test_id("AudioImportUITests", "testSingleMeetingBundleReachesDetailWithoutChangingTheOriginal"),
+    test_id("AutomationUITests", "testOpenDictationsShortcutShowsItsSearch"),
+    test_id("CommitmentRadarUITests", "testRadarFiltersConfirmedWorkAndOpensItsExactSourceMeeting"),
+    test_id("CommitmentRadarUITests", "testReviewQueueKeepsSuggestionsSeparateAndOpensExactEvidence"),
+    test_id("DictationHistoryUITests", "testADictationCanBeAddedToAMeetingsNotes"),
+    test_id("LibraryUITests", "testActiveRecordingRemainsReachableAfterBrowsingTheLibrary"),
+    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsPersonCommitmentsBlockersAndBothCitations"),
+    test_id("PublicShowcaseUITests", "testMeetingDetailShowcase"),
+)
 
 RETIRED_DUPLICATE_TESTS = frozenset({
     test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence"),

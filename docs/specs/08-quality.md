@@ -3189,8 +3189,8 @@ or its Keychain key while `-use-temp-store` is active.
 
 `scripts/ui_test_scope.py` is the executable PR-impact policy for the UI
 catalog, and `scripts/ui_test_catalog.py` holds its data: tests by feature scope,
-canaries, the harness self-test and dependency owners. No diff selects the complete
-catalog (D616). Editing the data, the selector or the runtime budget selects no UI
+canaries, the harness self-test and dependency owners. No path selects the complete
+catalog by itself (D616). Editing the data, the selector or the runtime budget selects no UI
 test; Tooling tests own them. Known app and application files
 select only the scopes they can affect; a changed UI-test file selects its own
 class and the canaries; shared-harness changes select the canaries and

@@ -125,7 +125,21 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(set(selection.tests), set(CONSERVATIVE_TESTS))
         self.assertEqual(selection.locales, ("en",))
 
-    def test_no_diff_selects_the_complete_catalog(self):
+    def test_a_layout_change_selects_every_journey_that_opens_meeting_detail(self):
+        selected = set(select_paths(["Sources/portavoz-app/MeetingDetailPrimaryColumn.swift"]).tests)
+        opens_detail = re.compile(r'openMeetingDetail|"detail-|detail-compact|detail-transcript|detail-artifacts')
+        missed = []
+        for source in sorted((ROOT / "Tests/PortavozUITests").glob("*UITests.swift")):
+            text = source.read_text(encoding="utf-8")
+            owner = re.search(r"class\s+(\w+UITests)\s*:", text)
+            for body in re.split(r"(?=\n\s*func\s+test\w+\s*\()", text)[1:]:
+                method = re.search(r"func\s+(test\w+)\s*\(", body).group(1)
+                selector = ui_scope.test_id(owner.group(1), method)
+                if selector in ALL_TESTS and opens_detail.search(body) and selector not in selected:
+                    missed.append(selector)
+        self.assertEqual(missed, [])
+
+    def test_no_single_path_selects_the_complete_catalog(self):
         every_kind = [
             "Package.swift", "Package.resolved", ui_scope.CATALOG, "Makefile", "project.yml",
             "scripts/ui_test_scope.py", "scripts/ui_test_catalog.py", "docs/evidence/ui-test-runtime-budget.json",

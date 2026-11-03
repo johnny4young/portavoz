@@ -187,7 +187,7 @@ class CIWorkflowTests(unittest.TestCase):
         self.assertIn('FULL_UI: ${{ inputs.full_ui }}', select)
         self.assertIn('"$EVENT_NAME" == "workflow_dispatch" && "$FULL_UI" == "true"', select)
         self.assertIn("scripts/ui_test_scope.py --all --format github", select)
-        self.assertIn("--base origin/main --head HEAD", select)
+        self.assertIn('--base "$(git merge-base origin/main HEAD)" --head HEAD', select)
 
     def test_a_pull_request_shows_an_unknown_scope_and_what_it_defers(self):
         ui = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
