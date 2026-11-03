@@ -839,8 +839,8 @@ test-ui-run:
 ## Select UI evidence from committed, staged, unstaged, and untracked changes
 ## against UI_BASE. Known views and owned lower layers map to feature tests;
 ## other lower layers, unmapped app files, the lock and copy run smoke canaries;
-## shared-harness changes expand to the complete English gate; docs-only
-## changes skip XCUITest. Set UI_HEAD explicitly to inspect a committed range.
+## shared-harness changes add the harness self-test; docs-only changes skip
+## XCUITest. Set UI_HEAD explicitly to inspect a committed range.
 UI_BASE ?= origin/main
 UI_HEAD ?=
 test-ui-changed:

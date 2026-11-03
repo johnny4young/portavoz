@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Select the smallest safe Portavoz XCUITest set for a Git diff.
 
-Known presentation files map to feature-level tests, and shared UI-harness,
-fixture and build changes run the whole suite. Lower-layer Swift, unrecognized
-app files, the dependency lock and localized copy run the smoke canaries: unit
-tests own their behavior and the nightly sharded run owns the complete catalog.
-Every selection runs in English only. Documentation, governance, CLI, and
-package-test-only changes do not spend a macOS UI runner.
+Known presentation files map to feature-level tests. Lower-layer Swift,
+unrecognized app files, the dependency lock and localized copy run the smoke
+canaries plus any owner they name; shared harness files add the harness
+self-test. A path nothing can map is reported as scope-unknown, never as zero
+tests. No path selects the complete catalog by itself: nightly owns it and a
+person can dispatch it. Every selection runs in English only. Documentation, governance,
+CLI, and package-test-only changes do not spend a macOS UI runner.
 """
 
 from __future__ import annotations
@@ -22,561 +23,35 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from ui_test_catalog import (  # noqa: E402
+    ALL_FEATURES,
+    ALL_TESTS,
+    DEPENDENCY_FEATURES,
+    FEATURE_SOURCE_SENTINELS,
+    FEATURE_TESTS,
+    HARNESS_SELF_TESTS,
+    MEETING_DETAIL_EXTRA_JOURNEYS,
+    MEETING_FEATURES,
+    PERMISSION_GATED_TESTS,
+    RETIRED_DUPLICATE_TESTS,
+    SETTINGS_FEATURES,
+    SMOKE_TESTS,
+    TARGET,
+    test_id,
+)
 
-TARGET = "PortavozUITests"
+
 MAX_SUMMARY_BYTES = 16 * 1024
 
 
-def test_id(test_class: str, method: str) -> str:
-    return f"{TARGET}/{test_class}/{method}"
+# What a change here breaks shows up first in the self-test, and in any journey
+# on the nightly run. Tooling tests own the selector and its catalog data.
+CONSERVATIVE_TESTS = tuple(dict.fromkeys((*SMOKE_TESTS, *HARNESS_SELF_TESTS)))
 
-
-FEATURE_TESTS: dict[str, tuple[str, ...]] = {
-    "launch-recovery": (
-        test_id("UITestStorageUITests", "testSharedScratchProtectsOwnershipAndRoundTripsAppFixtures"),
-        test_id(
-            "LibraryUITests",
-            "testDatabaseLaunchFailureOffersSafeRecovery",
-        ),
-    ),
-    "background-work": (
-        test_id(
-            "BackgroundWorkUITests",
-            "testBackgroundWorkCenterShowsAllOwnersAndRecoversExactFailures",
-        ),
-        test_id(
-            "BackgroundWorkUITests",
-            "testRecordingDefersDerivedWorkAndStopResumesIt",
-        ),
-    ),
-    "automation-entry": (
-        test_id(
-            "AutomationUITests",
-            "testAppEntitiesOpenExactVisibleDestinations",
-        ),
-        test_id(
-            "AutomationUITests",
-            "testRecordingAutomationRoutesStartAndStopThroughVisibleApp",
-        ),
-        test_id("AutomationUITests", "testOpenDictationsShortcutShowsItsSearch"),
-    ),
-    "home": (
-        test_id("HomeUITests", "testTodayShowsAgendaOpenWorkAndRecentMeetingsAboveTheFold"),
-        test_id("HomeUITests", "testTodayAsksAndRecordsWithoutTyping"),
-    ),
-    "library": (
-        test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
-        test_id("LibraryUITests", "testPrivacyChipOpensTheActivityLogInYourData"),
-        test_id("LibraryUITests", "testSeededMeetingsGroupByRecency"),
-        test_id("LibraryUITests", "testActiveRecordingRemainsReachableAfterBrowsingTheLibrary"),
-    ),
-    "audio-imports": (
-        test_id("AudioImportUITests", "testSingleMeetingBundleReachesDetailWithoutChangingTheOriginal"),
-        test_id("AudioImportUITests", "testMultipleAudioFilesReachPagedQueueAndOpenTheirMeeting"),
-        test_id("AudioImportUITests", "testCancelOneImportContinuesTheNextAndExplicitRetryReusesTheQueue"),
-        test_id("AudioImportUITests", "testRelaunchResumesPublishedAudioWithoutTheSelectedOriginals"),
-    ),
-    "meeting-brief": (
-        test_id("LibraryUITests", "testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment"),
-    ),
-    "menu-bar-brief": (
-        test_id(
-            "MenuBarUITests",
-            "testPreMeetingBriefMovesFromExactProposalToDurableReceipt",
-        ),
-    ),
-    "recording-recovery": (
-        test_id("LibraryUITests", "testCaptureFailureSurvivesStopAndRelaunchWithPlayablePrefix"),
-        test_id("LibraryUITests", "testRecordingStartFailureOffersTypedRecovery"),
-        test_id("LibraryUITests", "testRecordingWarnsWhenRemoteAudioCallbacksStop"),
-        test_id("LibraryUITests", "testRecordingWarnsWhenIncomingAudioClips"),
-        test_id("LibraryUITests", "testRecordingAsksWhetherTheCallEndedAndKeepsRecording"),
-        test_id("LibraryUITests", "testUnansweredCallEndedQuestionStopsTheRecording"),
-        test_id("LibraryUITests", "testColdRecordingStartsLiveCaptionsWhenModelBecomesReady"),
-        test_id("LibraryUITests", "testLiveTranscriptYieldsFollowWhileReadingHistory"),
-        test_id("LibraryUITests", "testOwnedTokenPreviewRetiresWithoutEnteringCanonicalCaption"),
-        test_id("LibraryUITests", "testLiveTranslationUsesADistinctLabeledRail"),
-        test_id("LibraryUITests", "testRecordingOffersObjectivesNextQuestionAndTalkBalance"),
-        test_id("LibraryUITests", "testLaunchRecoversInterruptedStagingAudio"),
-        test_id("LibraryUITests", "testLaunchResumesDurablePostCaptureProcessing"),
-    ),
-    "live-assist": (
-        test_id(
-            "LibraryUITests",
-            "testRecordingOffersObjectivesNextQuestionAndTalkBalance",
-        ),
-        test_id("RecordingInputUITests", "testStopDrainsAnAdmittedWriteBeforeFinalizingTheRecording"),
-        test_id("RecordingInputUITests", "testAcceptedNotesAndObjectivesSurviveTerminationAndRecovery"),
-        test_id("RecordingInputUITests", "testFailedWriteRetainsInputAndStopWaitsForAnExplicitRetry"),
-        test_id("RecordingInputUITests", "testFailedRemovalKeepsTheAcceptedNoteUntilDiscardOrRetry"),
-        test_id(
-            "RecordingAssistUITests",
-            "testLiveAssistKeepsOnePanelOpenAndABoundedCardList",
-        ),
-        test_id(
-            "RecordingAssistUITests",
-            "testCompanionActionsKeepIdentityAndSeenStateAfterReentry",
-        ),
-        test_id(
-            "RecordingAssistUITests",
-            "testLatestManualAssistRequestOwnsTheFocusSlot",
-        ),
-        test_id(
-            "RecordingAssistUITests",
-            "testBatchedObjectivesRevealLastArrivalAndReplacementCountsAsUnread",
-        ),
-        test_id(
-            "RecordingAssistUITests",
-            "testUnsubmittedNotesAndObjectivesSurviveTabsAndLibraryBrowsing",
-        ),
-        test_id(
-            "MeetingDetailUITests",
-            "testNoAppleIntelligenceSummaryFailureOpensExactSetupAndExplainsApuntador",
-        ),
-    ),
-    "recording-interview": (
-        test_id(
-            "InterviewAssistUITests",
-            "testInterviewAssistGroundsTheCurrentQuestionInExactEvidence",
-        ),
-    ),
-    "ask": (
-        test_id("LibraryUITests", "testAskConversationAnswersAndSeeksToExactCitation"),
-        test_id(
-            "LibraryUITests",
-            "testAskConfirmedMemoryLoadsPersonCommitmentsBlockersAndBothCitations",
-        ),
-        test_id("LibraryUITests", "testAskConfirmedMemoryLoadsAllTopicJobsAndExactCitations"),
-        test_id("LibraryUITests", "testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState"),
-        test_id("DictationHistoryUITests", "testAskAboutDictationsCitesAndOpensTheDictation"),
-    ),
-    "insights": (
-        test_id("InsightsUITests", "testInsightsShowsCompleteLocalDashboard"),
-    ),
-    "commitment-radar": (
-        test_id(
-            "CommitmentRadarUITests",
-            "testReminderAlertOpensCommitmentRadar",
-        ),
-        test_id(
-            "CommitmentRadarUITests",
-            "testRadarFiltersConfirmedWorkAndOpensItsExactSourceMeeting",
-        ),
-        test_id(
-            "CommitmentRadarUITests",
-            "testReminderDraftRequiresExplicitAccessAndLeavesDurableReceipt",
-        ),
-        test_id(
-            "CommitmentRadarUITests",
-            "testReviewQueueKeepsSuggestionsSeparateAndOpensExactEvidence",
-        ),
-        test_id(
-            "CommitmentRadarUITests",
-            "testFieldQualityObservesARealReviewWithoutAutomatingDecisions",
-        ),
-    ),
-    "main-shell": (
-        test_id(
-            "AutomationUITests",
-            "testRecordingAutomationRoutesStartAndStopThroughVisibleApp",
-        ),
-        test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
-        test_id("LibraryUITests", "testAskConversationAnswersAndSeeksToExactCitation"),
-        test_id("InsightsUITests", "testInsightsShowsCompleteLocalDashboard"),
-        test_id(
-            "MeetingDetailUITests",
-            "testMeetingReviewSurfacesRemainCompleteAndActionable",
-        ),
-        test_id("OnboardingUITests", "testAdvancesFromFirstListenToLocalVoiceEnrollment"),
-        test_id(
-            "CommitmentRadarUITests",
-            "testRadarFiltersConfirmedWorkAndOpensItsExactSourceMeeting",
-        ),
-    ),
-    "onboarding": (
-        test_id("OnboardingUITests", "testAdvancesFromFirstListenToLocalVoiceEnrollment"),
-        test_id("OnboardingUITests", "testModelFailureCanContinueBackAndRetryWithoutDownloading"),
-        test_id("DictationPracticeUITests", "testOnboardingDictationStepPracticesInItsOwnFieldWithoutTheClipboard"),
-        test_id("DictationPracticeUITests", "testOnboardingDictationStepOffersShortcutAndAccessibilityOnceTurnedOn"),
-    ),
-    "meeting-performance": (
-        test_id("MeetingDetailUITests", "testFiveThousandSegmentDetailRendersFromDisposableScaleFixture"),
-        test_id(
-            "MeetingDetailUITests",
-            "testTwentyThousandSegmentDetailRendersFromDisposableScaleFixture",
-        ),
-    ),
-    "meeting-export": (
-        test_id("MeetingDetailUITests", "testExportMenuOffersSubtitleFormats"),
-    ),
-    "meeting-recap": (
-        test_id(
-            "MeetingDetailUITests",
-            "testRecapSheetDraftsFromTheSummaryWithoutTheTranscript"),
-    ),
-    "meeting-naming": (
-        test_id("MeetingDetailUITests", "testUnnamedSpeakerOffersExplicitNameSuggestions"),
-        test_id("MeetingDetailUITests", "testAConfidentVoiceMatchNamesTheSpeakerAndCanBeUndone"),
-        test_id(
-            "MeetingDetailUITests",
-            "testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix"),
-        test_id("MeetingDetailUITests", "testNamedSpeakerCanBeRememberedAsCanonicalPerson"),
-    ),
-    "meeting-processing": (
-        test_id("MeetingDetailUITests", "testFailedDurableProcessingOffersOneRecoveryAction"),
-        test_id(
-            "MeetingDetailUITests",
-            "testAbandonedAutomaticSummarySaysSoBesideGeneration"),
-        test_id("MeetingDetailUITests", "testNoAppleIntelligenceSummaryFailureOpensExactSetupAndExplainsApuntador"),
-        test_id("MeetingDetailUITests", "testRunningRefineCanBeCanceledWithoutChangingTheTranscript"),
-    ),
-    "meeting-summary": (
-        test_id(
-            "MeetingDetailUITests",
-            "testMeetingReviewSurfacesRemainCompleteAndActionable",
-        ),
-        test_id("MeetingDetailUITests", "testMostRecentRecipeRemainsVisibleAfterReload"),
-        test_id("MeetingDetailUITests", "testStructureMenuOffersSeededTemplates"),
-        test_id("MeetingDetailUITests", "testRegenerateMenuOffersEveryDetailLevel"),
-    ),
-    "meeting-evidence": (
-        test_id(
-            "MeetingDetailUITests",
-            "testEvidenceSourcesJumpToTheirExactTranscriptAndAudio",
-        ),
-        test_id("MeetingDetailUITests", "testDecisionCanBeConfirmedAboutATopic"),
-        test_id("MeetingDetailUITests", "testSummaryFeedbackIsExplicitReversibleAndLocal"),
-    ),
-    "meeting-commitments": (
-        test_id(
-            "MeetingDetailUITests",
-            "testCommitmentInboxRequiresEvidenceReviewBeforeConfirmation",
-        ),
-    ),
-    "meeting-skills": (
-        test_id("MeetingDetailUITests", "testSkillProposalJourneyFromBannerToReceipt"),
-        test_id(
-            "MeetingDetailUITests",
-            "testEmailRecapSkillPreviewsAndHandsOffWithoutSending",
-        ),
-        test_id(
-            "MeetingDetailUITests",
-            "testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument",
-        ),
-        test_id(
-            "MeetingDetailUITests",
-            "testFailedSkillEffectRetriesItsOriginalProposal",
-        ),
-    ),
-    "meeting-health": (
-        test_id(
-            "MeetingDetailUITests",
-            "testMeetingReviewSurfacesRemainCompleteAndActionable",
-        ),
-        test_id("MeetingDetailUITests", "testFreshQualifyingMeetingShowsThePostMeetingMirror"),
-    ),
-    "meeting-audio": (
-        test_id(
-            "MeetingDetailUITests",
-            "testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix"),
-        test_id(
-            "MeetingDetailUITests",
-            "testEvidenceSourcesJumpToTheirExactTranscriptAndAudio",
-        ),
-        test_id("MeetingDetailUITests", "testPlayerExposesSkipAndOnlyMyVoice"),
-        test_id("MeetingDetailUITests", "testClipMarkingRevealsExport"),
-        test_id("MeetingDetailUITests", "testClickingALineOfTextJumpsThere"),
-        test_id("MeetingAudioTrimUITests", "testSilentTailRequiresConfirmationAndCutsOnlyAfterConfirmation"),
-    ),
-    "meeting-correction": (
-        test_id(
-            "MeetingDetailUITests",
-            "testCompactTranscriptCorrectionCanReachItsOwnAction",
-        ),
-        test_id(
-            "MeetingDetailUITests",
-            "testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo",
-        ),
-        test_id(
-            "MeetingDetailUITests",
-            "testTranscriptStructuralCorrectionsSplitMergeHideAndRestoreEvidence",
-        ),
-        test_id(
-            "MeetingDetailUITests",
-            "testCorrectedTranscriptMarksDerivedArtifactsStale",
-        ),
-        test_id(
-            "MeetingDetailUITests",
-            "testExplicitApuntadorRefreshUsesCorrectedTranscript",
-        ),
-        test_id(
-            "MeetingDetailUITests",
-            "testNoAppleIntelligenceApuntadorRefreshPreservesStaleAnswers",
-        ),
-    ),
-    "meeting-translation": (
-        test_id(
-            "MeetingTranscriptTranslationUITests",
-            "testATranscriptIsTranslatedOnRequestAndTheOriginalStaysOneClickAway",
-        ),
-        test_id("MeetingTranscriptTranslationUITests", "testMissingLanguagesPointToTheirDownload"),
-        test_id("MeetingTranscriptTranslationUITests", "testAnExportCanUseTheCurrentTranslation"),
-    ),
-    "settings-navigation": (
-        test_id("SettingsUITests", "testCategoryNavigationRevealsEachPane"),
-        test_id("SettingsUITests", "testLanguageToggleSwitchesVisibleTextWithoutRelaunch"),
-    ),
-    "settings-integrations": (
-        test_id("CommandLineToolUITests", "testIntegrationsInstallsAndRemovesTheCommandLineToolLink"),
-        test_id("CommandLineToolUITests", "testABuildWithoutTheToolSaysSo"),
-    ),
-    "settings-skills": (
-        test_id(
-            "SkillsSettingsUITests",
-            "testSuggestedActionsExplainReviewFirstSafety",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
-            "testSkillsPaneFailsClosedWhenDurablePolicyCannotLoad",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
-            "testFailedSkillControlMutationReloadsWithoutClosingSettings",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
-            "testSkillsPaneControlsOffersAndShowsTheConfirmedReceipt",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
-            "testSkillActivityScopeFailureDoesNotInventRowsOrDisableVerifiedPolicy",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
-            "testSkillActivityTransitionsHideStaleRowsAndKeepVerifiedControlsUsable",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
-            "testSameSkillProposalsHaveDistinctAccessibleActions",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
-            "testSkillActivityHidesExpansionWhenExactlyOnePageExists",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
-            "testSkillActivityFiltersByUpdatePeriodAndResetsExpansion",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
-            "testSkillProposalFailureDoesNotInventOffersOrDisableVerifiedPolicy",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
-            "testProposedSkillReviewReturnsToItsMeetingWithoutRunning",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
-            "testFailedProposedSkillReviewKeepsTheOfferAndAllowsRetry",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
-            "testProposedSkillDismissalRetiresTheDurableOfferEverywhere",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
-            "testFailedProposedSkillDismissalKeepsTheOfferAndAllowsRetry",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
-            "testWaitingSkillApprovalCanBeRevokedBeforeHandoff",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
-            "testFailedWaitingSkillRevocationKeepsTheReceiptAndRetry",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
-            "testRecoverableFailedSkillReturnsToItsMeetingWithoutRunning",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
-            "testFailedRecoveryResolutionKeepsTheReceiptAndAllowsRetry",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
-            "testWaitingReceiptIgnoresUnavailablePolicyAndReviewsSourceWithoutRunning",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
-            "testFailedSourceContextResolutionKeepsReceiptAndAllowsRetry",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
-            "testSkillReceiptRestoresKeyboardFocusAndPassesAccessibilityAudit",
-        ),
-    ),
-    "settings-standing-skills": (
-        test_id(
-            "SkillsSettingsUITests",
-            "testAutomaticBriefCancellationFailureRequiresVerifiedReload",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
-            "testAutomaticBriefRuleRecoversAndKeepsInspectableHistory",
-        ),
-    ),
-    "settings-transfer": (
-        test_id("SettingsTransferUITests", "testPortablePreferencesReviewCancelApplyAndLiveLanguage"),
-        test_id("SettingsTransferUITests", "testUnsupportedPreferencesRemainRecoverableWithoutMutation"),
-    ),
-    "settings-data": (
-        test_id("SettingsUITests", "testLocalDataLedgerShowsExactCountsAndHonestNetworkPolicy"),
-        test_id("SettingsUITests", "testSyncPaneKeepsOptInAndExistingLibrarySeparate"),
-        test_id("SettingsUITests", "testDataPaneExportsARedactedLocalSupportFile"),
-        test_id("SettingsUITests", "testDataPaneExportsAReadableWholeLibraryMarkdownBackup"),
-        test_id("SettingsUITests", "testDataPaneCreditsTheOnDeviceModels"),
-    ),
-    "production-sync": (
-        test_id("SettingsUITests", "testSyncPaneKeepsOptInAndExistingLibrarySeparate"),
-    ),
-    "settings-intelligence": (
-        test_id(
-            "SettingsUITests",
-            "testIntelligencePaneExplicitlyPreparesSemanticSearch",
-        ),
-        test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),
-        test_id("SettingsUITests", "testAppleSpeechInspectionFailureOffersExplicitRetry"),
-        test_id("SettingsUITests", "testIntelligencePaneCreatesACustomStructure"),
-    ),
-    "dictation": (
-        test_id("DictationPolishUITests", "testPolishIsOfferedAsTheDefaultTextMode"),
-        test_id("SelectionRewriteUITests", "testRewriteSelectionPreviewsBeforeReplacing"),
-        test_id("SelectionRewriteUITests", "testARecipeRewriteIsNeverPastedOverAChangedSelection"),
-        test_id("SelectionRewriteUITests", "testRewritingWithoutASelectionExplainsWhatToDo"),
-        test_id("SelectionRewriteUITests", "testSayingHowRewritesTheSelectionWithTheSpokenInstruction"),
-        test_id("DictationCorrectionUITests", "testASpokenCorrectionChangesTheLastDictationInsteadOfPasting"),
-        test_id("DictationCorrectionUITests", "testTheDictionaryGroupsEveryHeardFormUnderItsSpelling"),
-        test_id("DictationPolishUITests", "testAPolishedDictationCanStillBePastedWithoutPolish"),
-        test_id("DictationPolishUITests", "testPolishingCanBeSkippedToPasteTheCleanText"),
-        test_id("DictationPolishUITests", "testARewriteThatChangesTheMeaningPastesCleanAndSaysWhy"),
-        test_id("DictationPolishUITests", "testARecipeCanBeCreatedAndChosenAsTheDefault"),
-        test_id("DictationPolishUITests", "testARecipeShapesTheDictationAndKeepsItsFacts"),
-        test_id("DictationTranslationUITests", "testATranslatedDictationCanStillBePastedInTheOriginal"),
-        test_id("DictationTranslationUITests", "testMissingLanguagesPasteTheOriginalAndSaySo"),
-        test_id("DictationTranslationUITests", "testTranslatingCanBeSkippedToPasteTheOriginal"),
-        test_id("DictationTranslationUITests", "testTranslationIsChosenInSettingsWithTheLanguageStatus"),
-        test_id("DictationTextModeUITests", "testApplicationProfileUsesNativePickerAndKeepsTheOriginal"),
-        test_id("DictationTextModeUITests", "testCorruptProfilesShowAnExplicitResetWithoutChangingTheDefault"),
-        test_id("DictationTextModeUITests", "testSessionModeOverrideCancelsAndRestartsWithoutChangingDefaults"),
-        test_id("DictationUITests", "testDeliveredDictationDistinguishesDispatchFromVerification"),
-        test_id("DictationUITests", "testSilentDictationIsOfferedToCopyInsteadOfPasted"),
-        test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),
-        test_id("SettingsUITests", "testAppleSpeechInspectionFailureOffersExplicitRetry"),
-        test_id("DictationUITests", "testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart"),
-        test_id("DictationUITests", "testClipboardBorrowRestoresRichPrivateContentAndKeepsTextInRecovery"),
-        test_id("DictationUITests", "testDictationSourceEOFBeforeStopIsVisibleAndCanRestart"),
-        test_id("DictationUITests", "testDictationCaptureFailureIsVisibleAndCanBeDismissed"),
-        test_id("DictationUITests", "testDictationPanelCancelsAndRestartsWithoutGlobalInput"),
-        test_id("DictationUITests", "testMicrophoneDenialRemainsRecoverableWithoutOpeningAudio"),
-        test_id("DictationUITests", "testMissingMicrophoneAudioShowsFallbackAndAllowsRestart"),
-        test_id("DictationUITests", "testPreparingDictationCanCancelWithoutAListeningClaim"),
-        test_id("DictationUITests", "testLoadingModelLooksDifferentFromDictating"),
-        test_id("DictationUITests", "testCompactIndicatorShowsOnlyTheLevelAndTime"),
-        test_id("DictationUITests", "testCompactIndicatorOpensTheFullPanelForAFailure"),
-        test_id("DictationUITests", "testUnverifiedNoticeClosesWithItsCloseButton"),
-        test_id("DictationUITests", "testCompactIndicatorCanBeDraggedWhileDictating"),
-        test_id("DictationUITests", "testUndeliveredTextCanBeCopiedAndExplicitlyRetried"),
-        test_id("DictationUITests", "testUndeliveredTextSurvivesAnotherTriggerUntilDiscarded"),
-        test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
-        test_id("SettingsUITests", "testDictationRecoversShortcutConflictAndRefreshesHelp"),
-        test_id("SettingsUITests", "testDictationRepairsCorruptShortcutWithoutLeavingSettings"),
-        test_id("SettingsUITests", "testHeldFnTriggerExplainsTheGlobeKeySetting"),
-        test_id("SettingsUITests", "testParakeetUltraIsAnExplicitDictationOnlyDownload"),
-        test_id("SettingsUITests", "testAnUltraDownloadInFlightCanBeCancelled"),
-        test_id("DictationPracticeUITests", "testOnboardingDictationStepPracticesInItsOwnFieldWithoutTheClipboard"),
-        test_id("DictationPracticeUITests", "testOnboardingDictationStepOffersShortcutAndAccessibilityOnceTurnedOn"),
-        test_id("DictationPracticeUITests", "testSettingsPracticeFieldReceivesDictationWithoutTheClipboard"),
-        test_id("DictationHistoryUITests", "testHistoryStartsOffAndTurnsOnFromTheDictationsPage"),
-        test_id("DictationHistoryUITests", "testSavedDictationsCanBeDeletedOneByOneOrAll"),
-        test_id("DictationHistoryUITests", "testADictationSavedToHistorySaysSoInsteadOfNothingWasSaved"),
-        test_id("DictationHistoryUITests", "testSettingsAskForHistoryConsentWithEverySwitchOff"),
-        test_id("DictationHistoryUITests", "testSearchAndFiltersNarrowTheHistory"),
-        test_id("DictationHistoryUITests", "testADictationCanBeAddedToAMeetingsNotes"),
-        test_id("DictationHistoryUITests", "testAskAboutDictationsCitesAndOpensTheDictation"),
-        test_id("DictationHistoryUITests", "testStatisticsSummarizeTheWeekWithoutTheHistory"),
-        test_id("DictationHistoryUITests", "testStatisticsStartOffAndTurnOnFromSettings"),
-    ),
-    "settings-audio": (
-        test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),
-        test_id("SettingsUITests", "testAppleSpeechInspectionFailureOffersExplicitRetry"),
-        test_id("SettingsUITests", "testAudioPaneOffersCaptureSourceControls"),
-        test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
-        test_id("SettingsUITests", "testDictationRecoversShortcutConflictAndRefreshesHelp"),
-        test_id("SettingsUITests", "testDictationRepairsCorruptShortcutWithoutLeavingSettings"),
-        test_id("SettingsUITests", "testHeldFnTriggerExplainsTheGlobeKeySetting"),
-        test_id("SettingsUITests", "testParakeetUltraIsAnExplicitDictationOnlyDownload"),
-        test_id("SettingsUITests", "testAnUltraDownloadInFlightCanBeCancelled"),
-    ),
-    "settings-voice": (
-        test_id(
-            "SettingsUITests",
-            "testUnreadableVoiceStorageStaysVisibleAndOffersExplicitRecovery",
-        ),
-        test_id("SettingsUITests", "testVoicePaneOffersTheMirrorOptIn"),
-    ),
-    "public-showcase": (
-        test_id("PublicShowcaseUITests", "testMeetingDetailShowcase"),
-        test_id("PublicShowcaseUITests", "testLiveTranslationShowcase"),
-        test_id("PublicShowcaseUITests", "testInsightsShowcase"),
-        test_id("PublicShowcaseUITests", "testTodayShowcase"),
-    ),
-}
-
-ALL_TESTS = tuple(dict.fromkeys(test for tests in FEATURE_TESTS.values() for test in tests))
-# Needs a user-granted Accessibility decision; run only via test-ui-native-dictation.
-PERMISSION_GATED_TESTS = frozenset({
-    test_id("DictationUITests", "testNativeInserterUsesDisposableReceiverAndClipboard"),
-    test_id("DictationUITests", "testNativeControllerModeChoicePreservesReceiverAndClipboard"),
-})
-ALL_FEATURES = frozenset(FEATURE_TESTS)
-MEETING_FEATURES = frozenset(
-    feature
-    for feature in ALL_FEATURES
-    if feature.startswith("meeting-") and feature != "meeting-brief"
-)
-SETTINGS_FEATURES = frozenset(feature for feature in ALL_FEATURES if feature.startswith("settings-"))
-# Shared-harness changes can alter every accessibility query, so their safe
-# expansion is the complete catalog rather than a small canary set.
-HARNESS_TESTS = ALL_TESTS
-# Canaries across the main surfaces: launch, Library, Today, recording, live
-# assist, derived work, Meeting Detail, Ask, dictation, Settings, onboarding,
-# Radar, Insights, the menu-bar brief and App Intents.
-SMOKE_TESTS = (
-    test_id("LibraryUITests", "testDatabaseLaunchFailureOffersSafeRecovery"),
-    test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
-    test_id("HomeUITests", "testTodayShowsAgendaOpenWorkAndRecentMeetingsAboveTheFold"),
-    test_id("LibraryUITests", "testRecordingStartFailureOffersTypedRecovery"),
-    test_id("BackgroundWorkUITests", "testRecordingDefersDerivedWorkAndStopResumesIt"),
-    test_id("MeetingDetailUITests", "testPlayerExposesSkipAndOnlyMyVoice"),
-    test_id("MeetingDetailUITests", "testMostRecentRecipeRemainsVisibleAfterReload"),
-    test_id("LibraryUITests", "testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState"),
-    test_id("DictationUITests", "testDeliveredDictationDistinguishesDispatchFromVerification"),
-    test_id("SettingsUITests", "testLanguageToggleSwitchesVisibleTextWithoutRelaunch"),
-    test_id("SettingsUITests", "testIntelligencePaneCreatesACustomStructure"),
-    test_id("OnboardingUITests", "testAdvancesFromFirstListenToLocalVoiceEnrollment"),
-    test_id("CommitmentRadarUITests", "testReminderAlertOpensCommitmentRadar"),
-    test_id("InsightsUITests", "testInsightsShowsCompleteLocalDashboard"),
-    test_id("AutomationUITests", "testOpenDictationsShortcutShowsItsSearch"),
-    test_id("RecordingAssistUITests", "testLatestManualAssistRequestOwnsTheFocusSlot"),
-    test_id("MenuBarUITests", "testPreMeetingBriefMovesFromExactProposalToDurableReceipt"),
-)
-
-# Changes to these shared owners can alter what gets built, selected, measured,
-# or accepted as UI evidence. They therefore require one complete English
-# run even when they do not change product presentation directly.
-FULL_HARNESS_FILES = frozenset({
-    "Package.swift",
+# Changes to these shared owners can alter what gets built, measured or accepted
+# as UI evidence, without changing product presentation directly.
+HARNESS_FILES = frozenset({
     "packaging/portavoz-uitests.entitlements",
     ".github/workflows/ui-tests.yml",
     "Makefile",
@@ -589,10 +64,8 @@ FULL_HARNESS_FILES = frozenset({
     "scripts/ui_test_ci_gate.py",
     "scripts/ui_test_execution.py",
     "scripts/ui_test_runtime.py",
-    "scripts/ui_test_scope.py",
     "scripts/ui_test_verification_anchor.py",
     "scripts/ui_test_verified_base.py",
-    "docs/evidence/ui-test-runtime-budget.json",
     "Sources/portavoz-app/UITestWindowPlacement.swift",
     "Sources/portavoz-app/SettingsSkillReceiptNavigation.swift",
     "Tests/PortavozUITests/UITestSupport.swift",
@@ -606,8 +79,7 @@ FULL_HARNESS_FILES = frozenset({
 })
 
 # The native interruption controls compile and qualify only these owners. A
-# change here, or anywhere in the fixture target, requires the controls; an
-# unrelated full-catalog fallback such as localization does not.
+# change here, or anywhere in the fixture target, requires the controls.
 INTERRUPTION_CONTROL_FILES = frozenset({
     "packaging/portavoz-uitests.entitlements",
     "scripts/check-ui-interruption-safety.py",
@@ -626,11 +98,16 @@ def requires_interruption_controls(path: str) -> bool:
     return path in INTERRUPTION_CONTROL_FILES or path.startswith(INTERRUPTION_FIXTURE_PREFIX)
 
 
+# The compact column decides which detail content exists for every journey that
+# opens a meeting, including recording input, recovery and Skills.
+MEETING_DETAIL_LAYOUT_FEATURES = MEETING_FEATURES | {"live-assist", "recording-recovery", "settings-skills"}
+
+
 # These owners can change which real Apuntador workloads qualify, but they do
 # not build, select, measure, or accept XCUITest itself. Exercise the exact
 # user-visible owners reached by the leak matrix instead of paying for every
-# unrelated UI journey. Candidate automation remains a full-catalog harness
-# owner above because it validates the UI receipt itself.
+# unrelated UI journey. Candidate automation stays a harness owner above
+# because it validates the UI receipt itself.
 APUNTADOR_LEAK_EVIDENCE_FILES = frozenset({
     "Sources/portavoz-app/BenchMode.swift",
     "Sources/portavoz-app/BenchMode+ResourceAsk.swift",
@@ -645,74 +122,6 @@ APUNTADOR_LEAK_UI_FEATURES = frozenset({
     "background-work",
     "live-assist",
 })
-
-RETIRED_DUPLICATE_TESTS = frozenset({
-    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence"),
-    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicFirstDiscussionAndEvidence"),
-    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicDecisionConflictsAndEvidence"),
-    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence"),
-    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence"),
-    test_id("LibraryUITests", "testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence"),
-    test_id("SkillsSettingsUITests", "testSkillActivityRefreshPreservesTheExpandedCurrentScope"),
-    test_id("SkillsSettingsUITests", "testSkillActivityExpandsOlderRunsOnlyAfterExplicitRequest"),
-    test_id("InsightsUITests", "testInsightsRendersHeatmap"),
-    test_id("InsightsUITests", "testInsightsShowsWhoYouTalkWith"),
-    test_id("OnboardingUITests", "testOpensOnTheFirstListenStep"),
-    test_id("OnboardingUITests", "testContinueAdvancesPastTheFirstListen"),
-    test_id("OnboardingUITests", "testVoiceStepOffersLocalEnrollmentWithoutStartingCapture"),
-    test_id(
-        "SkillsSettingsUITests",
-        "testSkillActivityFiltersExactSkillAndResetsExpansion",
-    ),
-})
-
-# One checked-in production owner per scope makes feature-to-test and
-# changed-file-to-feature ownership executable. A new scope without a live
-# owner is an orphan; a renamed owner that falls through to the broad default
-# no longer silently validates the catalog.
-FEATURE_SOURCE_SENTINELS: dict[str, str] = {
-    "live-assist": "Sources/portavoz-app/LiveAssistValidationRunner.swift",
-    "launch-recovery": "Sources/portavoz-app/AppLaunchRecoveryView.swift",
-    "background-work": "Sources/portavoz-app/BackgroundWorkCenterView.swift",
-    "automation-entry": "Sources/portavoz-app/PortavozAppIntents.swift",
-    "home": "Sources/portavoz-app/HomeView.swift",
-    "library": "Sources/portavoz-app/LibraryView.swift",
-    "audio-imports": "Sources/portavoz-app/AudioImportQueueView.swift",
-    "meeting-brief": "Sources/portavoz-app/MeetingBriefView.swift",
-    "menu-bar-brief": "Sources/portavoz-app/MenuBarView.swift",
-    "recording-recovery": "Sources/portavoz-app/RecordingView.swift",
-    "recording-interview": "Sources/portavoz-app/RecordingInterviewAssistView.swift",
-    "ask": "Sources/portavoz-app/AskView.swift",
-    "insights": "Sources/portavoz-app/InsightsView.swift",
-    "commitment-radar": "Sources/portavoz-app/CommitmentRadarView.swift",
-    "main-shell": "Sources/portavoz-app/ContentView.swift",
-    "onboarding": "Sources/portavoz-app/OnboardingView.swift",
-    "meeting-performance": "Sources/portavoz-app/MeetingDetailPerformanceTrace.swift",
-    "meeting-export": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
-    "meeting-recap": "Sources/portavoz-app/MeetingDetailActionSection.swift",
-    "meeting-naming": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
-    "meeting-processing": "Sources/portavoz-app/MeetingDetailRefineReviewSheet.swift",
-    "meeting-summary": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
-    "meeting-evidence": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
-    "meeting-commitments": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
-    "meeting-skills": "Sources/portavoz-app/SkillOfferBanner.swift",
-    "meeting-health": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
-    "meeting-audio": "Sources/portavoz-app/MeetingPlayerBar.swift",
-    "meeting-correction": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
-    "meeting-translation": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
-    "settings-navigation": "Sources/portavoz-app/SettingsView.swift",
-    "settings-skills": "Sources/portavoz-app/SkillsSettingsSection.swift",
-    "settings-integrations": "Sources/portavoz-app/CommandLineToolSection.swift",
-    "settings-standing-skills": "Sources/portavoz-app/StandingSkillRulesSection.swift",
-    "settings-data": "Sources/portavoz-app/AppServices+MeetingSync.swift",
-    "settings-transfer": "Sources/portavoz-app/SettingsTransferSection.swift",
-    "production-sync": "Sources/portavoz-app/ProductionSyncQualificationRunner.swift",
-    "settings-intelligence": "Sources/portavoz-app/SemanticSearchPreparationModel.swift",
-    "dictation": "Sources/portavoz-app/DictationController.swift",
-    "settings-audio": "Sources/portavoz-app/AudioSection.swift",
-    "settings-voice": "Sources/portavoz-app/SettingsVoiceSection.swift",
-    "public-showcase": "Sources/portavoz-app/AppServices+Showcase.swift",
-}
 
 NO_UI_PREFIXES = (
     ".design-sync/",
@@ -757,10 +166,16 @@ class Selection:
     locales: tuple[str, ...]
     reasons: tuple[str, ...]
     interruption_controls: bool = False
+    scope_unknown: bool = False
 
     @property
     def required(self) -> bool:
         return bool(self.tests)
+
+    @property
+    def deferred_to_nightly(self) -> int:
+        """Catalog cases this selection leaves to nightly; zero when it needs no UI."""
+        return len(ALL_TESTS) - len(self.tests) if self.tests else 0
 
     @property
     def interruption_controls_required(self) -> bool:
@@ -868,7 +283,8 @@ def app_features(filename: str) -> set[str]:
     )):
         return {"commitment-radar"}
     if any(token in lowered for token in ("l10n", "applanguage")):
-        return set(ALL_FEATURES)
+        # LocalizationTests own the strings; the canaries include the live language switch.
+        return set()
     if any(token in lowered for token in ("applespeech", "livespeechselection")):
         return {"dictation", "settings-intelligence", "recording-recovery"}
     if "livetranscriptionattacher" in lowered:
@@ -1088,7 +504,7 @@ def lower_layer_features(path: str) -> set[str]:
         "sources/intelligencekit/titlesuggester.swift": {"meeting-naming"},
         # IOS-READY contracts are intentionally dormant. Keep their future
         # continuity and worker-center presentation owners explicit now so a
-        # later edit cannot silently fall through to an unrelated full suite.
+        # later edit cannot silently fall through to the unknown-scope set.
         "sources/portavozcore/commitmentreplicamerge.swift": {
             "meeting-commitments", "production-sync"
         },
@@ -1257,7 +673,7 @@ def catalog_english(text: str) -> dict[str, str | None]:
     """English copy as Xcode compiles it into the UI test app.
 
     An empty value stays empty and a missing one shows the key. None marks
-    plural, substitution or unshipped entries, which only the full suite covers.
+    plural, substitution or unshipped entries, which report an unknown scope.
     """
     catalog = json.loads(text)
     if not isinstance(catalog, dict) or not isinstance(catalog.get("strings"), dict):
@@ -1306,10 +722,18 @@ def select_paths(
     paths: Iterable[str],
     catalog_changes: set[str] | None = None,
     root: Path | None = None,
+    dependency_changes: set[str] | None = None,
 ) -> Selection:
     selected: set[str] = set()
     reasons: list[str] = []
     interruption_controls = False
+    scope_unknown = False
+
+    def unknown(reason: str) -> None:
+        nonlocal scope_unknown
+        scope_unknown = True
+        selected.update(CONSERVATIVE_TESTS)
+        reasons.append(f"scope-unknown: {reason}")
 
     for raw_path in paths:
         path = raw_path.strip().removeprefix("./")
@@ -1319,15 +743,26 @@ def select_paths(
         interruption_controls = interruption_controls or requires_interruption_controls(path)
 
         if path == "Package.resolved":
-            # A dependency can change behavior behind any journey.
-            selected.update(HARNESS_TESTS)
-            reasons.append(f"{path}: complete English dependency fallback")
+            selected.update(SMOKE_TESTS)
+            if dependency_changes is None:
+                unknown(f"{path}: changed pins unknown")
+                continue
+            unmapped = sorted(dependency_changes - DEPENDENCY_FEATURES.keys())
+            if unmapped:
+                unknown(f"{path}: no owner for {', '.join(unmapped)}")
+            owned = sorted(dependency_changes & DEPENDENCY_FEATURES.keys())
+            selected.update(feature_tests(
+                feature for dependency in owned for feature in DEPENDENCY_FEATURES[dependency]))
+            reasons.append(f"{path}: canaries and owners of {', '.join(owned) or 'no changed pin'}")
+            continue
+
+        if path == "Package.swift":
+            unknown(f"{path}: a manifest change has no known owner")
             continue
 
         if path == CATALOG:
             if catalog_changes is None:
-                selected.update(HARNESS_TESTS)
-                reasons.append(f"{path}: complete localization fallback (changed keys unknown)")
+                unknown(f"{path}: changed keys unknown")
                 continue
             # Journeys assert English copy literally; Spanish values belong to LocalizationTests.
             if catalog_changes:
@@ -1336,16 +771,18 @@ def select_paths(
                 reasons.append(f"{path}: journeys quoting {len(catalog_changes)} changed English strings")
             continue
 
-        if path in FULL_HARNESS_FILES or path.startswith(INTERRUPTION_FIXTURE_PREFIX):
-            selected.update(HARNESS_TESTS)
-            reasons.append(f"{path}: complete shared-harness fallback")
+        if path in HARNESS_FILES or path.startswith(INTERRUPTION_FIXTURE_PREFIX):
+            selected.update(CONSERVATIVE_TESTS)
+            # A production file in the harness still owes its own journeys.
+            if path.startswith("Sources/portavoz-app/"):
+                selected.update(feature_tests(app_features(Path(path).name)))
+            reasons.append(f"{path}: canaries and harness self-test")
             continue
 
         if path == "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift":
-            # The layout decides which Meeting Detail content exists for every
-            # journey that opens a meeting, not only the Meeting Detail suite.
-            selected.update(HARNESS_TESTS)
-            reasons.append(f"{path}: complete English Meeting Detail layout fallback")
+            selected.update(feature_tests(MEETING_DETAIL_LAYOUT_FEATURES))
+            selected.update(MEETING_DETAIL_EXTRA_JOURNEYS)
+            reasons.append(f"{path}: journeys that open a meeting")
             continue
 
         if path in APUNTADOR_LEAK_EVIDENCE_FILES:
@@ -1393,7 +830,8 @@ def select_paths(
         changed_ui_tests = tests_for_ui_test_file(path)
         if changed_ui_tests:
             selected.update(changed_ui_tests)
-            reasons.append(f"{path}: changed UI-test contract")
+            selected.update(SMOKE_TESTS)
+            reasons.append(f"{path}: changed UI-test contract and canaries")
             continue
 
         if path.startswith("Sources/portavoz-app/") and path.endswith(".swift"):
@@ -1405,10 +843,7 @@ def select_paths(
                 "AppServices+AskTopicMemoryUITestFixture.swift",
                 "UITestDefaults.swift",
             }:
-                selected.update(HARNESS_TESTS)
-                reasons.append(
-                    f"{path}: complete seed-fixture fallback"
-                )
+                unknown(f"{path}: a seed fixture has no known owner")
                 continue
             features = app_features(file_name)
             if not features:
@@ -1444,10 +879,8 @@ def select_paths(
                 continue
 
         # Unknown build/configuration changes may alter the executable even if
-        # they do not look like a view. Prefer one full English pass to a false
-        # claim that UI evidence was unnecessary.
-        selected.update(ALL_TESTS)
-        reasons.append(f"{path}: unknown executable impact (full fallback)")
+        # they do not look like a view, so they are never a claim of no UI impact.
+        unknown(f"{path}: unknown executable impact")
 
     ordered_tests = tuple(test for test in ALL_TESTS if test in selected)
     return Selection(
@@ -1455,6 +888,7 @@ def select_paths(
         SELECTION_LOCALES if ordered_tests else (),
         tuple(dict.fromkeys(reasons)),
         interruption_controls=interruption_controls,
+        scope_unknown=scope_unknown,
     )
 
 
@@ -1487,6 +921,27 @@ def catalog_changes(base: str, head: str | None, root: Path) -> set[str] | None:
         return changed
     except (OSError, ValueError, subprocess.CalledProcessError):
         return None
+
+
+def resolved_pins(text: str) -> dict[str, str]:
+    pins = json.loads(text)["pins"]
+    return {pin["identity"]: pin["state"]["revision"] for pin in pins}
+
+
+def dependency_changes(base: str, head: str | None, root: Path) -> set[str] | None:
+    """Pins added, removed or moved between two locks; None means unreadable."""
+    try:
+        before = subprocess.run(["git", "show", f"{base}:Package.resolved"], check=True, capture_output=True,
+                                text=True, cwd=root).stdout
+        if head is None:
+            after = (root / "Package.resolved").read_text(encoding="utf-8")
+        else:
+            after = subprocess.run(["git", "show", f"{head}:Package.resolved"], check=True, capture_output=True,
+                                   text=True, cwd=root).stdout
+        old_pins, new_pins = resolved_pins(before), resolved_pins(after)
+    except (OSError, ValueError, KeyError, TypeError, subprocess.CalledProcessError):
+        return None
+    return {name for name in old_pins.keys() | new_pins.keys() if old_pins.get(name) != new_pins.get(name)}
 
 
 def working_tree_paths(base: str, *, cwd: Path | None = None) -> list[str]:
@@ -1542,9 +997,14 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
     )
     retired = sorted(discovered & RETIRED_DUPLICATE_TESTS)
     permission_overlap = sorted(set(ALL_TESTS) & PERMISSION_GATED_TESTS)
-    smoke_errors = sorted(set(SMOKE_TESTS) - set(ALL_TESTS))
+    smoke_errors = sorted((set(SMOKE_TESTS) | set(HARNESS_SELF_TESTS)) - set(ALL_TESTS))
     if len(SMOKE_TESTS) != len(set(SMOKE_TESTS)):
         smoke_errors.append("duplicate smoke canary")
+    lock = root / "Package.resolved"
+    pins = set(resolved_pins(lock.read_text(encoding="utf-8"))) if lock.is_file() else set(DEPENDENCY_FEATURES)
+    dependency_errors = sorted(DEPENDENCY_FEATURES.keys() - pins)
+    dependency_errors += sorted(
+        feature for features in DEPENDENCY_FEATURES.values() for feature in features - ALL_FEATURES)
     sentinel_mismatch = sorted(ALL_FEATURES ^ FEATURE_SOURCE_SENTINELS.keys())
     orphan_scopes: list[str] = []
     for feature, path in FEATURE_SOURCE_SENTINELS.items():
@@ -1553,7 +1013,7 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
             orphan_scopes.append(f"{feature} (missing {path})")
             continue
         mapped = app_features(source.name)
-        if feature not in mapped or mapped == set(ALL_FEATURES):
+        if feature not in mapped:
             orphan_scopes.append(f"{feature} ({path})")
 
     # A no-UI fixture must stay unreachable from the app and its UI tests.
@@ -1630,6 +1090,7 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         or reachable_fixtures
         or runtime_budget_errors
         or smoke_errors
+        or dependency_errors
     ):
         details = []
         if missing:
@@ -1653,6 +1114,8 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         details.extend(runtime_budget_errors)
         if smoke_errors:
             details.append("smoke canaries outside the catalog: " + ", ".join(smoke_errors))
+        if dependency_errors:
+            details.append("dependency owners that do not exist: " + ", ".join(dependency_errors))
         raise RuntimeError("UI-test scope catalog is stale; " + "; ".join(details))
 
 
@@ -1739,6 +1202,8 @@ def render(selection: Selection, output_format: str) -> str:
                 f"tests={tests}",
                 f"locales={locales}",
                 f"matrix={json.dumps(list(selection.locales))}",
+                f"scope_unknown={'true' if selection.scope_unknown else 'false'}",
+                f"deferred={selection.deferred_to_nightly}",
                 f"summary={summary}",
             )
         )
@@ -1757,7 +1222,8 @@ def render(selection: Selection, output_format: str) -> str:
     return (
         f"UI tests: {len(selection.tests)}/{len(ALL_TESTS)}\n"
         f"Locales: {locales}\n"
-        f"Selectors:\n  " + "\n  ".join(selection.tests) + f"\nReasons: {summary}"
+        f"Selectors:\n  " + "\n  ".join(selection.tests) + f"\nReasons: {summary}\n"
+        f"Deferred to nightly: {selection.deferred_to_nightly}"
     )
 
 
@@ -1820,7 +1286,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         changes = None
         if arguments.base and CATALOG in paths:
             changes = catalog_changes(arguments.base, None if arguments.working_tree else arguments.head, root)
-        selection = select_paths(paths, changes, root)
+        pin_changes = None
+        if arguments.base and "Package.resolved" in paths:
+            pin_changes = dependency_changes(arguments.base, None if arguments.working_tree else arguments.head, root)
+        selection = select_paths(paths, changes, root, pin_changes)
     print(render(selection, arguments.format))
     return 0
 

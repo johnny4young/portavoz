@@ -177,6 +177,28 @@ class CIWorkflowTests(unittest.TestCase):
         self.assertNotIn("ios-scope", ci)
         self.assertFalse((ROOT / "scripts/ios_portability_scope.py").exists())
 
+    def test_a_person_can_ask_for_the_complete_catalog_or_the_selection(self):
+        ui = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
+        triggers = ui.split("\npermissions:", 1)[0]
+        select = ui.split("- name: Select UI evidence\n", 1)[1].split("- name: Explain the selection", 1)[0]
+
+        self.assertIn("    inputs:\n      full_ui:\n", triggers)
+        self.assertIn("        type: boolean\n        default: true\n", triggers)
+        self.assertIn('FULL_UI: ${{ inputs.full_ui }}', select)
+        self.assertIn('"$EVENT_NAME" == "workflow_dispatch" && "$FULL_UI" == "true"', select)
+        self.assertIn("scripts/ui_test_scope.py --all --format github", select)
+        self.assertIn('--base "$(git merge-base origin/main HEAD)" --head HEAD', select)
+
+    def test_a_pull_request_shows_an_unknown_scope_and_what_it_defers(self):
+        ui = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
+        explain = ui.split("- name: Explain the selection\n", 1)[1].split("\n  interruption-controls:", 1)[0]
+
+        self.assertIn('if [[ "$SCOPE_UNKNOWN" == "true" ]]; then', explain)
+        self.assertIn("::warning title=UI scope unknown::Canaries and the harness self-test are selected.", explain)
+        self.assertIn("-f full_ui=true", explain)
+        self.assertIn('Deferred to nightly: ${DEFERRED:-0}', explain)
+        self.assertIn("$GITHUB_STEP_SUMMARY", explain)
+
     def test_ui_scope_requires_first_attempt_anchor_and_never_previous_push(self):
         workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
             encoding="utf-8"

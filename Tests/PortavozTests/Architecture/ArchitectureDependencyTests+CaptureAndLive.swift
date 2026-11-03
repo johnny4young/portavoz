@@ -590,6 +590,7 @@ extension ArchitectureDependencyTests {
             of: "Sources/portavoz-app/CompanionSettingsSection.swift")
         let packager = try Self.contents(of: "scripts/make-app.sh")
         let scope = try Self.contents(of: "scripts/ui_test_scope.py")
+            + Self.contents(of: "scripts/ui_test_catalog.py")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
         let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
         let intelligenceSpec = try Self.contents(

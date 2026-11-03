@@ -24,7 +24,7 @@
 - [ ] `make install` run if this changes the app UI (so local install matches the change).
 - [ ] UI changes include stable accessibility identifiers and the selectors from
       `make test-ui-changed UI_BASE=origin/main`; the full English UI suite was run
-      only when localization/shared impact selected it or the change needs the release gate.
+      only when the change needs the release gate.
 - [ ] No local plans, ticket files, result bundles, generated projects, ad-hoc
       screenshots, private tracker keys, or agent-session names are tracked.
 

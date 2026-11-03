@@ -467,6 +467,17 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "evidence-contract | unavailable | - |"
             )
             continue
+        # The receipt's own diagnostics cannot be the only proof that nothing was skipped.
+        if 0 < receipt["selectorCount"] != receipt["caseCount"]:
+            failures.append(
+                f"{locale}: evidence-contract: executed {receipt['caseCount']} of "
+                f"{receipt['selectorCount']} selected cases"
+            )
+            summary_rows.append(
+                f"| {locale} | {outcome} | {receipt['caseCount']} | "
+                "evidence-contract | unavailable | - |"
+            )
+            continue
         nonpassing = [case for case in receipt["tests"] if case["result"] != "Passed"]
         if nonpassing:
             failures.append(f"{locale}: product-or-test-regression: non-passing cases")
