@@ -161,8 +161,9 @@ class CIWorkflowTests(unittest.TestCase):
         ui = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
 
         self.assertEqual(ci.count("run: scripts/check-repository-hygiene.sh"), 1)
-        self.assertEqual(ci.count("needs: repository-hygiene\n"), 2)
-        self.assertEqual(ci.count("needs: [repository-hygiene, swift-scope]\n"), 1)
+        self.assertEqual(ci.count("needs: repository-hygiene\n"), 1)
+        self.assertEqual(ci.count("needs: swift-scope\n"), 1)
+        self.assertNotIn("needs: repository-hygiene", ci.split("  lint:\n", 1)[1])
         self.assertNotIn("python3 -m unittest Tests.Tooling", ui)
         self.assertEqual(
             ui.count("scripts/ui_test_scope.py --validate-catalog"),
@@ -176,6 +177,22 @@ class CIWorkflowTests(unittest.TestCase):
         self.assertIn("if: github.event_name != 'pull_request'\n", lane)
         self.assertNotIn("ios-scope", ci)
         self.assertFalse((ROOT / "scripts/ios_portability_scope.py").exists())
+
+    def test_large_ui_evidence_is_kept_only_when_a_lane_did_not_pass(self):
+        ui = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
+        nightly = (ROOT / ".github/workflows/ui-nightly.yml").read_text(encoding="utf-8")
+
+        self.assertIn("if: always() && steps.ui.outcome != 'success'\n", ui.split("- name: Preserve ${{ matrix.locale }} UI evidence\n", 1)[1][:80])
+        self.assertIn("steps.ui.outcome != 'success' || steps.classify.outputs.verified != 'true'", nightly)
+
+    def test_small_receipts_and_pr_screenshots_are_kept_on_every_run(self):
+        ui = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
+        for step in ("- name: Record the lane receipt\n", "- name: Record PR screenshots\n",
+                     "- name: Publish PR screenshots\n", "- name: Publish compact classifier receipts\n"):
+            self.assertIn("        if: always()\n", ui.split(step, 1)[1][:30], step)
+        self.assertIn("dist/ui-test-results/${{ matrix.locale }}-lane.json", ui)
+        self.assertIn("name: pr-screenshots-${{ github.run_id }}", ui)
+        self.assertIn("path: dist/pr-screenshots\n          if-no-files-found: ignore", ui)
 
     def test_a_person_can_ask_for_the_complete_catalog_or_the_selection(self):
         ui = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
@@ -339,8 +356,9 @@ class UIArtifactTransportTests(unittest.TestCase):
             f"dist/ui-test-results/{locale}-runtime.json",
             f"dist/ui-test-results/{locale}-execution.json",
             f"dist/ui-test-results/{locale}-outcome.txt",
+            f"dist/ui-test-results/{locale}-lane.json",
         })
-        self.assertEqual(len(paths), 3)
+        self.assertEqual(len(paths), 4)
         return paths
 
     def test_classifier_fetches_only_receipts_without_removing_raw_evidence(self):

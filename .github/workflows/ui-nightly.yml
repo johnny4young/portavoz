@@ -141,7 +141,7 @@ jobs:
           fi
 
       - name: Preserve shard ${{ matrix.shard }} UI evidence
-        if: always()
+        if: always() && (steps.ui.outcome != 'success' || steps.classify.outputs.verified != 'true')
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: nightly-ui-shard-${{ matrix.shard }}-${{ github.run_id }}

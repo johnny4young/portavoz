@@ -406,11 +406,22 @@ on GitHub Actions
 build/test, checksum-pinned
 **SwiftLint 0.65.0 `--strict`** on Linux, a separate current-SDK iOS 17
 Simulator compile for the four shared targets, and a repository-hygiene/tooling
-gate that runs before macOS allocation). Each behavioral Swift lane owns one
+gate that runs beside the macOS lanes (D617)). Each behavioral Swift lane owns one
 test invocation, so compilation and tests use the same flags instead of a
 build/test pair that can compile twice. The iOS portability lane owns only its
 sequential destination compiles and cannot claim runtime/device behavior. It
 runs on every `main` push and manual run and never on a pull request (D615).
+
+### Hosted UI evidence
+
+Each UI lane keeps a small `<locale>-lane.json` on every run: head, attempt,
+toolchain, outcome, the selected, deferred and executed cases with their results and
+times, and any selected case that did not run. `scripts/ui_test_lane_receipt.py`
+writes it and it never changes the lane's outcome. The large result bundle is kept only
+when a lane did not pass. `scripts/pr_screenshots.py` copies attachments named `pr-*`,
+at most six, into a `pr-screenshots-<run>` artifact, and `scripts/pr-evidence.sh <pr>
+<run>` publishes them to the orphan `pr-evidence` branch and prints the markdown for the
+description. Screenshots come only from temporary stores and synthetic fixtures (D617).
 
 ### Hosted CI time report
 

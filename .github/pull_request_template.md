@@ -2,19 +2,37 @@
 
 ## Summary
 
-<!-- What does this change and why? -->
+<!-- What changes, in plain words. Why now. -->
 
-## Type of change
+## Screenshots
 
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Refactor / internal
-- [ ] Docs
-- [ ] Build / CI / tooling
+<!-- Before and after, seed data only: `scripts/pr-evidence.sh <PR> <run-id>`. "None: no visible change" if so. -->
+
+## Gates
+
+| Gate | Result |
+|---|---|
+| Strict tests | |
+| Lint and hygiene | |
+| UI | <!-- run, and deferred to nightly --> |
+| Review | |
+| Hosted CI | |
+
+## How to test
+
+<!-- Step by step: disposable launch, the real flow, edge cases, language switch, exact commands. -->
+
+## Risk and rollback
+
+<!-- What can break, and the revert or flag. -->
+
+## Stack
+
+<!-- Base and next, or "Base: main". -->
 
 ## Checklist
 
-- [ ] `swift build && swift test` pass locally.
+- [ ] `scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors` passes locally.
 - [ ] `swiftlint lint --strict --no-cache` and `scripts/check-repository-hygiene.sh` pass.
 - [ ] Conventional Commit title (`feat:`, `fix:`, `docs:`…).
 - [ ] No audio/transcripts/summaries leave the device without an explicit, visible opt-in.
@@ -27,7 +45,3 @@
       only when the change needs the release gate.
 - [ ] No local plans, ticket files, result bundles, generated projects, ad-hoc
       screenshots, private tracker keys, or agent-session names are tracked.
-
-## Notes for reviewers
-
-<!-- Anything worth calling out: trade-offs, follow-ups, field verification still pending. -->

@@ -22377,3 +22377,23 @@ The accepted risk is that a harness or dependency regression outside this set re
 `main` until the next nightly run, and D615's alarm bounds how long that goes unnoticed.
 A change that replaces the UI host still runs the complete catalog by hand during its
 transition. A release still requires a green nightly on its commit.
+
+## D617 — macOS lanes stop waiting for hygiene, and hosted UI evidence splits by size
+
+Repository hygiene held every macOS lane for up to 2:20, and each UI lane uploaded about
+150 MB even when it passed. Later stages need a small artifact to verify coverage,
+which the result bundle cannot be.
+
+`build-and-test` and `lint` no longer need `repository-hygiene`; `ios-portability` still
+does, because it runs only on `main`. A hygiene failure now reports beside lanes that kept
+running, and a pull request still needs all of them. Each UI lane keeps a small receipt on
+every run with its head, attempt, toolchain, selection, deferred count, executed cases and
+any selected case that did not run. The result bundle is kept only when a lane did not
+pass, on pull requests and on nightly shards. `pr-*` screenshots travel in their own
+artifact and reach a description through the orphan `pr-evidence` branch. That branch never
+merges and is outside the tracked-file rule against ad-hoc screenshots, because repository
+hygiene reads only the active tree. Screenshots come only from temporary stores and
+synthetic fixtures, and someone looks at each one before publishing it.
+
+The accepted cost is that a passing lane leaves no bundle to inspect, and a hygiene failure
+can spend a macOS runner that the old order would have saved.

@@ -16,8 +16,8 @@ concurrency:
 
 jobs:
   repository-hygiene:
-    # Own every deterministic repository/tooling contract exactly once and
-    # fail before allocating either macOS runner.
+    # Own every deterministic repository/tooling contract exactly once. macOS
+    # lanes start beside it instead of waiting about two minutes.
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -49,10 +49,8 @@ jobs:
         run: python3 scripts/swift_test_scope.py --base "$BASE_SHA" --head "$HEAD_SHA" >> "$GITHUB_OUTPUT"
 
   build-and-test:
-    needs: [repository-hygiene, swift-scope]
-    if: >-
-      !cancelled() && needs.repository-hygiene.result == 'success' &&
-      needs.swift-scope.result != 'failure'
+    needs: swift-scope
+    if: ${{ !cancelled() && needs.swift-scope.result != 'failure' }}
     runs-on: macos-26
     timeout-minutes: 30
     env:
@@ -131,7 +129,6 @@ jobs:
         run: scripts/check-ios-portability.sh
 
   lint:
-    needs: repository-hygiene
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
