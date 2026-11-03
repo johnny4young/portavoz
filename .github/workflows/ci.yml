@@ -77,9 +77,10 @@ jobs:
           SEGMENT_DOWNLOAD_TIMEOUT_MINS: "2"
       - name: Verify cached source freshness
         if: steps.swift_cache.outputs.cache-matched-key != ''
-        # A rejected graph is discarded so the job builds cold instead of failing.
+        # A rejected graph is discarded so the job builds cold instead of failing. An
+        # older pin can make SwiftPM refuse a valid manifest, which no rerun could fix.
         run: |
-          if ! python3 scripts/ci_swift_source_stamps.py restore; then
+          if ! python3 scripts/ci_swift_source_stamps.py restore || ! swift package resolve; then
             echo "::warning::Cached Swift build state failed freshness verification; building cold."
             rm -rf .build
           fi

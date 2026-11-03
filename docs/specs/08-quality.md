@@ -458,8 +458,10 @@ rerun from saving it twice. Every run restores the newest seed of its graph, the
 identity, never across identities or flags, so a dependency change recompiles what moved
 instead of starting cold. `main` no longer builds cold. The nightly
 `clean-build-and-test` job builds from nothing, runs the complete suite and saves a seed
-under the graph as `clean-<commit>`, which keeps the incremental chain from drifting and
+under the graph as `clean-<commit>`, which later runs continue from, and
 is the clean-build authority; a green incremental build proves nothing about a clean one.
+A seed whose fingerprints fail or that `swift package resolve` refuses is discarded before
+the build, because an older pin can make SwiftPM reject a valid manifest.
 A graph over 6 GiB saves nothing and warns. After a successful suite,
 `scripts/ci_swift_source_stamps.py snapshot` records SHA-256, size, permissions and
 nanosecond mtime for tracked `Sources/`, `Tests/`, `Vendor/`, and package
@@ -492,8 +494,9 @@ warnings-as-errors. No `--skip-build`, test filtering, retries, smaller test
 counts or cached success receipts are introduced. The fixed OS/toolchain matrix,
 iOS compile, strict lint, Linux policy tests, UI scopes/locales/assertions,
 first-attempt rules and runtime budgets are unchanged. Every `main` push or
-manual run on `main` skips restore and **still compiles cold**; only those runs
-record fingerprints, measure and save a seed. Pull requests restore but never save:
+manual run on `main` restores like any other run, and only those runs record
+fingerprints, measure and save a seed; the nightly clean build is the cold-build
+evidence. Pull requests restore but never save:
 a PR-created cache would be reachable only from its own merge ref under GitHub's
 [cache access rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#restrictions-for-accessing-a-cache)
 while consuming the shared repository quota. No privileged trigger or broader
@@ -502,7 +505,8 @@ When freshness restoration rejects a hit, the step emits a warning, deletes the
 restored `.build` and the unchanged complete command compiles cold; an immutable
 seed therefore cannot keep a PR red. A failed build/test is not
 retried cold to manufacture a pass. Save occurs only after the full suite passes
-and only at or below a 6 GiB on-disk graph limit; oversized graphs remain uncached.
+and only at or below a 6 GiB on-disk graph limit; an oversized graph warns and saves
+nothing.
 The segment download timeout is two minutes. No repository cache billing or
 quota setting changes. Downloaded model caches, the user library, secrets, UI
 result bundles and release products are outside the cached path. Checked-in
@@ -512,7 +516,7 @@ The ordinary unprivileged Swift test build is not an artifact suitable for relea
 `Tests/Tooling/test_ci_swift_cache.py` exercises each identity input, lane/host
 separation, malformed or unavailable tool identity, exact CLI output, the
 per-commit key under one prefix and malformed commits, missing lockfiles,
-unconditional test ownership, cold-main and main-only seeding policy,
+unconditional test ownership, restore order and main-only seeding policy,
 the actual shell size gate at/beyond its boundary and on measurement failure, and
 the actual freshness step discarding a rejected graph without failing the job. Repository hygiene
 owns these tests before either macOS test lane starts. Source-freshness tests
@@ -3228,8 +3232,8 @@ change that only edits Spanish values selects nothing. The nightly workflow runs
 `main` as three shards balanced greedily by
 `docs/evidence/ui-test-runtime-budget.json` (`--all --shard K/N`), classifies
 each shard with the pull-request gate, fails any shard whose result is not
-verified evidence, and runs the interruption controls, holding at most three
-macOS runners at once. It fires off-peak at 03:23 UTC. Its `alert` job opens or
+verified evidence, and runs the interruption controls and the clean build with the
+complete Swift suite, holding at most three macOS runners at once. It fires off-peak at 03:23 UTC. Its `alert` job opens or
 updates one issue when any needed job ended as anything but success, cancelled
 included. `ui-nightly-watch.yml` runs on every `main` push, on its own schedule
 and by dispatch, because a schedule that never fires cannot report itself: it

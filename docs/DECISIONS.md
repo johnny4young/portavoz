@@ -22407,10 +22407,13 @@ change had no fallback, and `main` compiled cold by policy for 11 minutes on eve
 The identity now holds a versioned build contract with the exact compiler flags, plus the
 toolchain, SDK, workspace, architecture and runner image. A Tooling test ties those flags to
 every workflow that compiles. `Package.swift` and `Package.resolved` form a second level: a
-run restores the newest seed of its graph, then of its identity. `main` restores like any
-other run. The nightly `clean-build-and-test` job builds from nothing, runs the complete
-suite and saves its own seed, so a clean build runs every day and the incremental chain
-cannot drift. An oversize graph now warns instead of silently saving nothing.
+run restores the newest seed of its graph, then of its identity, and discards a seed that
+`swift package resolve` refuses, because an older pin can make SwiftPM reject a valid
+manifest and no rerun could clear it. `main` restores like any other run. The nightly `clean-build-and-test` job builds from nothing, runs the complete
+suite and saves its own seed, so a clean build runs every day and later runs continue from
+it. A `main` run that overlaps the nightly can save after it and delay that reset by a day;
+always preferring the clean seed would make every run restore state up to a day old. An
+oversize graph now warns instead of silently saving nothing.
 
 `ImageVersion` stays in the identity. Restoring across runner images has never been tried,
 and it could recompile almost everything if the SDK's timestamps change, so it leaves only

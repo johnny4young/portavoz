@@ -61,11 +61,15 @@ def cache_prefix(root: Path, lane: str) -> str:
     return f"swift-build-v3-{lane}-{digest}-"
 
 
-def graph_prefix(root: Path, lane: str) -> str:
+def graph_digest(root: Path) -> str:
     graph = hashlib.sha256()
     for name in GRAPH_INPUTS:
         graph.update(name.encode() + b"\0" + (root / name).read_bytes() + b"\0")
-    return f"{cache_prefix(root, lane)}{graph.hexdigest()[:16]}-"
+    return graph.hexdigest()[:16]
+
+
+def graph_prefix(root: Path, lane: str) -> str:
+    return f"{cache_prefix(root, lane)}{graph_digest(root)}-"
 
 
 def checked_commit(commit: str) -> str:
@@ -91,9 +95,11 @@ def main() -> int:
     parser.add_argument("--commit", required=True)
     args = parser.parse_args()
     try:
-        print(f"prefix={cache_prefix(ROOT, args.lane)}\ngraph_prefix={graph_prefix(ROOT, args.lane)}\n"
-              f"key={cache_key(ROOT, args.lane, args.commit)}\n"
-              f"clean_key={clean_cache_key(ROOT, args.lane, args.commit)}")
+        # The tool commands behind the prefix take seconds on a hosted runner.
+        prefix = cache_prefix(ROOT, args.lane)
+        graph = f"{prefix}{graph_digest(ROOT)}-"
+        commit = checked_commit(args.commit)
+        print(f"prefix={prefix}\ngraph_prefix={graph}\nkey={graph}{commit}\nclean_key={graph}clean-{commit}")
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         parser.exit(1, f"Cannot identify Swift build cache: {error}\n")
     return 0

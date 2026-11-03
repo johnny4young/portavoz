@@ -100,6 +100,14 @@ class SwiftCacheIdentityTests(unittest.TestCase):
         self.assertIn('swift build --build-tests ${build[@]+"${build[@]}"}',
                       (ROOT / "scripts/run-swift-tests.sh").read_text())
 
+    def test_the_command_reads_the_toolchain_once(self):
+        arguments = ["cache", "--lane", "build-and-test", "--commit", COMMIT]
+        with patch.object(cache, "ROOT", self.root), patch("sys.argv", arguments), patch.object(
+                cache, "cache_prefix", wraps=cache.cache_prefix) as prefix:
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(cache.main(), 0)
+        self.assertEqual(prefix.call_count, 1)
+
     def test_a_clean_seed_is_restorable_through_the_graph_prefix(self):
         clean = cache.clean_cache_key(self.root, "build-and-test", COMMIT)
 
@@ -172,7 +180,7 @@ class SwiftCacheIdentityTests(unittest.TestCase):
             graph = cache.graph_prefix(self.root, "build-and-test")
             clean = cache.clean_cache_key(self.root, "build-and-test", COMMIT)
             self.assertEqual(output.getvalue(), f"prefix={prefix}\ngraph_prefix={graph}\nkey={self.key()}\nclean_key={clean}\n")
-            with patch.object(cache, "cache_key", side_effect=ValueError("invalid")):
+            with patch.object(cache, "graph_digest", side_effect=ValueError("invalid")):
                 with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
                     cache.main()
                 self.assertEqual(error.exception.code, 1)
@@ -264,6 +272,7 @@ class SwiftCacheWorkflowTests(unittest.TestCase):
                                             capture_output=True, text=True, timeout=5)
                     self.assertEqual(output.read_text() == "save=true\n", admitted)
                     self.assertEqual(result.returncode == 0, status == 0)
+                    self.assertNotIn("build cold", result.stdout)
                     self.assertEqual("::warning title=Swift cache too large::" in result.stdout,
                                      status == 0 and not admitted)
 
@@ -291,6 +300,8 @@ class SwiftCacheWorkflowTests(unittest.TestCase):
                     binary.mkdir()
                     (binary / "python3").write_text('#!/bin/sh\nexit "$RESTORE_EXIT"\n')
                     (binary / "python3").chmod(0o755)
+                    (binary / "swift").write_text('#!/bin/sh\n[ "$*" = "package resolve" ] || exit 9\nexit 0\n')
+                    (binary / "swift").chmod(0o755)
                     (root / ".build/debug").mkdir(parents=True)
                     env = dict(os.environ, PATH=f"{binary}:{os.environ['PATH']}", RESTORE_EXIT=str(status))
                     result = subprocess.run(["bash", "-eo", "pipefail", "-c", shell], cwd=root,
@@ -298,6 +309,26 @@ class SwiftCacheWorkflowTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr)
                     self.assertEqual((root / ".build").exists(), status == 0)
                     self.assertEqual("::warning::" in result.stdout, status != 0)
+
+    def test_a_seed_swiftpm_cannot_resolve_is_discarded_before_the_build(self):
+        for lane in cache.LANES:
+            step = self.jobs[lane].split("      - name: Verify cached source freshness\n", 1)[1].split("      - name:", 1)[0]
+            shell = textwrap.dedent(step.split("        run: |\n", 1)[1])
+            with self.subTest(lane=lane), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                binary = root / "bin"
+                binary.mkdir()
+                (binary / "python3").write_text("#!/bin/sh\nexit 0\n")
+                (binary / "python3").chmod(0o755)
+                (binary / "swift").write_text("#!/bin/sh\necho 'Disabled default traits' >&2\nexit 1\n")
+                (binary / "swift").chmod(0o755)
+                (root / ".build/debug").mkdir(parents=True)
+                env = dict(os.environ, PATH=f"{binary}:{os.environ['PATH']}")
+                result = subprocess.run(["bash", "-eo", "pipefail", "-c", shell], cwd=root,
+                                        env=env, capture_output=True, text=True, timeout=5)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertFalse((root / ".build").exists())
+                self.assertIn("::warning::", result.stdout)
 
     def test_cache_policy_runs_in_repository_hygiene(self):
         hygiene = (ROOT / "scripts/check-repository-hygiene.sh").read_text()

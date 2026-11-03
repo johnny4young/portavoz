@@ -72,8 +72,8 @@ jobs:
       - name: Verify interruption safety at the shared callback
         run: make test-ui-interruption-safety UI_INTERRUPTION_RESULTS="$RUNNER_TEMP/ui-interruption-safety"
 
-  # Main's seeds are incremental, so this is the authority for a clean build, and its
-  # seed keeps them from drifting.
+  # Main's seeds are incremental, so this is the authority for a clean build, and later
+  # runs continue from its seed.
   clean-build-and-test:
     runs-on: macos-26
     timeout-minutes: 45

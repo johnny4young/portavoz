@@ -8,5 +8,5 @@ echo "Swift build cache: $size_kib KiB (limit $limit_kib KiB)"
 if (( size_kib <= limit_kib )); then
   echo "save=true" >> "$GITHUB_OUTPUT"
 else
-  echo "::warning title=Swift cache too large::.build is $size_kib KiB, over the $limit_kib KiB limit, so no seed was saved and later runs will build cold."
+  echo "::warning title=Swift cache too large::.build is $size_kib KiB, over the $limit_kib KiB limit, so no seed was saved and later runs restore an older one."
 fi
