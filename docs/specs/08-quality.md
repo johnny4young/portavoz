@@ -614,9 +614,8 @@ adds candidates while their hosted p90 and xcodebuild's overhead fit 240 seconds
 edited methods first, then helper consumers, then the tests the most paths map to, then
 by feature tier and fewest seconds. The rest are not dropped: `cut` names them in the job
 summary, a `ui-budget-cut` notice and the lane receipt, and nightly owns them. Canaries
-over the budget fail the selection. `hostedSeconds` in
-`docs/evidence/ui-test-runtime-budget.json` comes from `scripts/ui_test_hosted_seconds.py`
-over nightly logs; a case without one counts at its ceiling. A local `make test-ui-changed`
+over the budget fail the selection. `docs/evidence/ui-test-hosted-seconds.json` comes from
+`scripts/ui_test_hosted_seconds.py` over nightly logs; a case without one counts at its ceiling. A local `make test-ui-changed`
 does not cut. `testCleanStopReachesAReadyMeetingWithItsTranscriptAndPlayer` proves a
 clean Stop through the production Stop and post-capture adapters, with a disposable
 `-simulate-clean-capture` capture and summary fixture.

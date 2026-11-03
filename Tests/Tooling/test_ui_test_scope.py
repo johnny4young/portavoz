@@ -1421,7 +1421,7 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(ui_scope.function_spans(source), [("one", 2, 2), ("two", 4, 8)])
 
     def seconds(self, overrides=None):
-        seconds = {ui_scope.runtime_budget_key(test): 10.0 for test in (*ALL_TESTS, *ui_scope.ON_DEMAND_TESTS)}
+        seconds = {ui_scope.runtime_budget_key(test): 10.0 for test in ALL_TESTS}
         seconds.update(overrides or {})
         return seconds
 

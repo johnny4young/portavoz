@@ -996,8 +996,9 @@ def select_paths(
 
 def hosted_seconds(root: Path) -> dict[str, float]:
     """Observed hosted p90 per case; a case no night has timed yet counts at its ceiling."""
-    budgets = json.loads((root / "docs/evidence/ui-test-runtime-budget.json").read_text(encoding="utf-8"))
-    return {**budgets["testBudgetsSeconds"], **budgets.get("hostedSeconds", {})}
+    ceilings = json.loads((root / "docs/evidence/ui-test-runtime-budget.json").read_text(encoding="utf-8"))
+    hosted = json.loads((root / "docs/evidence/ui-test-hosted-seconds.json").read_text(encoding="utf-8"))
+    return {**ceilings["testBudgetsSeconds"], **hosted["hostedSeconds"]}
 
 
 def feature_tier(test: str) -> int:
@@ -1175,7 +1176,7 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         else:
             budget = json.loads(budget_path.read_text(encoding="utf-8"))
             runtime_ids = set(budget.get("testBudgetsSeconds", {}))
-            expected_runtime_ids = {runtime_budget_key(selector) for selector in (*ALL_TESTS, *ON_DEMAND_TESTS)}
+            expected_runtime_ids = {runtime_budget_key(selector) for selector in ALL_TESTS}
             missing_budgets = sorted(expected_runtime_ids - runtime_ids)
             stale_budgets = sorted(runtime_ids - expected_runtime_ids)
             budget_count = budget.get("catalog", {}).get("expectedCaseCount")
@@ -1194,6 +1195,12 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
             if (total_error := full_suite_total_error(budget, len(ALL_TESTS))) is not None:
                 runtime_budget_errors.append(total_error)
 
+        on_demand_path = root / "docs/evidence/ui-test-on-demand-runtime-budget.json"
+        on_demand_ids = (
+            set(json.loads(on_demand_path.read_text(encoding="utf-8")).get("testBudgetsSeconds", {}))
+            if on_demand_path.is_file() else set())
+        if on_demand_ids != {runtime_budget_key(selector) for selector in ON_DEMAND_TESTS}:
+            runtime_budget_errors.append("on-demand runtime budgets do not match their catalog")
         native_budget_path = root / "docs/evidence/ui-test-native-dictation-runtime-budget.json"
         if not native_budget_path.is_file():
             runtime_budget_errors.append(

@@ -1,0 +1,16 @@
+{
+  "catalog": {
+    "expectedCaseCount": 4
+  },
+  "fullSuite": {
+    "maximumP95Seconds": 30.0,
+    "maximumTestDurationSecondsPerLocale": 120.0
+  },
+  "schemaVersion": 1,
+  "testBudgetsSeconds": {
+    "PublicShowcaseUITests/testInsightsShowcase()": 20.0,
+    "PublicShowcaseUITests/testLiveTranslationShowcase()": 20.0,
+    "PublicShowcaseUITests/testMeetingDetailShowcase()": 20.0,
+    "PublicShowcaseUITests/testTodayShowcase()": 20.0
+  }
+}
