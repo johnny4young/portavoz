@@ -15,7 +15,7 @@ import dictation_field_corpus as field
 from materialize_dictation_corpus import publish_json
 
 ROOT = Path(__file__).resolve().parents[1]
-SELECTOR = 'PortavozKitTests.DictationModelComparisonTests/testParakeetV3AgainstUltraOnPublicCells'
+SELECTOR = 'PortavozAppTests.DictationModelComparisonTests/testParakeetV3AgainstUltraOnPublicCells'
 MODELS = {'v3': 'parakeet-tdt-0.6b-v3-coreml', 'ultra': 'parakeet-ultra-coreml'}
 COHORTS = ('en', 'es', 'mixed')
 # Fixed before any field data was seen; see the decision recorded for T38.

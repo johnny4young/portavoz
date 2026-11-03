@@ -80,8 +80,12 @@ def bare(name: str) -> str:
     return name.rsplit(".", 1)[-1]
 
 
-def estimated_seconds(classes: collections.Counter[str], recorded: dict[str, float]) -> dict[str, float]:
-    return {name: recorded.get(bare(name), cases * ESTIMATED_CASE_SECONDS) for name, cases in classes.items()}
+def estimated_seconds(classes: collections.Counter[str], whole: collections.Counter[str],
+                      recorded: dict[str, float]) -> dict[str, float]:
+    # A recorded duration covers the whole class, so it says nothing once cases are deferred.
+    return {name: recorded[bare(name)] if bare(name) in recorded and cases == whole[name]
+            else cases * ESTIMATED_CASE_SECONDS
+            for name, cases in classes.items()}
 
 
 def partition(seconds: dict[str, float], target: float = TARGET_BATCH_SECONDS,
@@ -111,7 +115,6 @@ class SuiteTracker:
         self.by_suite = {bare(name): name for name in names}
         self.finished: dict[str, tuple[bool, tuple[int, int, int] | None]] = {}
         self.started: set[str] = set()
-        self.running: str | None = None
         self.last_finished: str | None = None
         self.last_boundary = time.monotonic()
         self.awaiting_summary: str | None = None
@@ -128,10 +131,8 @@ class SuiteTracker:
                 self.last_boundary = time.monotonic()
                 if suite.group(2) == "started":
                     self.started.add(name)
-                    self.running = name
                     return
                 self.finished[name] = (suite.group(2) == "passed", None)
-                self.running = None
                 self.last_finished = name
                 self.awaiting_summary = name
                 return
@@ -143,11 +144,9 @@ class SuiteTracker:
                                        (int(counts.group(1)), int(counts.group(2) or 0), failures))
                 self.awaiting_summary = None
 
-    def timed_out(self, limit: float) -> str | None:
+    def timed_out(self, limit: float) -> bool:
         with self.lock:
-            if time.monotonic() - self.last_boundary <= limit:
-                return None
-            return self.running or "(between classes)"
+            return time.monotonic() - self.last_boundary > limit
 
 
 def run_process(bundle: Path, names: Sequence[str], selected: dict[str, str],
@@ -221,6 +220,19 @@ def run_batch(bundle: Path, names: Sequence[str], listed: collections.Counter[st
     return results, "".join(transcripts)
 
 
+def plan_batches(seconds: dict[str, float], products: Path, seed: str | None) -> list[tuple[Path, list[str]]] | None:
+    """Batches for each bundle, longest first across all of them. None when a class has no bundle."""
+    by_bundle: dict[Path, dict[str, float]] = collections.defaultdict(dict)
+    for name, estimate in seconds.items():
+        bundle = bundle_for(name, products)
+        if bundle is None:
+            print(f"No XCTest bundle for {name} in {products}", file=sys.stderr)
+            return None
+        by_bundle[bundle][name] = estimate
+    batches = [(bundle, batch) for bundle, group in by_bundle.items() for batch in partition(group, seed=seed)]
+    return sorted(batches, key=lambda item: -sum(seconds[name] for name in item[1]))
+
+
 def recorded_seconds(log: str) -> dict[str, float]:
     """Each class's duration from an xctest log, at the table's one-second floor."""
     seconds: dict[str, float] = {}
@@ -268,16 +280,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"XCTest suites cannot be told apart across modules: {sorted(ambiguous)}", file=sys.stderr)
         return 2
     recorded = json.loads(arguments.durations.read_text(encoding="utf-8")) if arguments.durations.is_file() else {}
-    seconds = estimated_seconds(classes, recorded)
-    by_bundle: dict[Path, dict[str, float]] = collections.defaultdict(dict)
-    for name, estimate in seconds.items():
-        bundle = bundle_for(name, arguments.products)
-        if bundle is None:
-            print(f"No XCTest bundle for {name} in {arguments.products}", file=sys.stderr)
-            return 2
-        by_bundle[bundle][name] = estimate
-    batches = [(bundle, batch) for bundle, group in by_bundle.items()
-               for batch in partition(group, seed=arguments.batch_seed)]
+    seconds = estimated_seconds(classes, class_counts(listed), recorded)
+    batches = plan_batches(seconds, arguments.products, arguments.batch_seed)
+    if batches is None:
+        return 2
     selected = selectors(listed, kept)
     expected = sum(classes.values())
     results: dict[str, ClassResult] = {}

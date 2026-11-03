@@ -22432,8 +22432,8 @@ change to the app recompiled every package test, though two thirds never import 
 
 The pool now groups classes by a table of recorded durations into processes of about 15
 seconds, three at a time. Sharing a process must not lose what D598 gave, so each class still
-accounts for itself: its own suite has to finish with exactly its listed cases. A crash or a
-300-second silence fails the class that was running, and the classes that process never
+accounts for itself: its own suite has to finish with exactly its listed cases. A crash, or a
+class that has not finished after 300 seconds, fails the class that was running, and the classes that process never
 reached run in a new one. The composition is fixed on pull requests so a failure reproduces,
 and the nightly clean build varies it with its run ID, so a class that starts depending on a
 neighbour appears there. A failure there names its seed.

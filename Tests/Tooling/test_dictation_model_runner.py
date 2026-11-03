@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import plistlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -38,7 +39,19 @@ class DictationModelRunnerTests(unittest.TestCase):
         self.cases = ['en-payment-negation.clean', 'es-payment-negation.clean']
         self.calls = []
 
-    def use_swiftbuild_layout(self, name='PortavozTests'):
+    def test_every_runbook_selector_is_in_the_one_bundle_the_runbook_names(self):
+        import run_dictation_model_comparison as comparison
+        readme = (ROOT / 'Fixtures/DictationValidation/README.md').read_text(encoding='utf-8')
+        selectors = [runner.SELECTOR, runner.CONTROLLER_SELECTOR, comparison.SELECTOR,
+                     *re.findall(r'-XCTest (\S+)', readme)]
+
+        for selector in selectors:
+            module, name = selector.split('/')[0].split('.')
+            with self.subTest(selector=selector):
+                self.assertEqual(module, 'PortavozAppTests')
+                self.assertTrue((ROOT / 'Tests' / module / f'{name}.swift').is_file())
+
+    def use_swiftbuild_layout(self, name='PortavozAppTests'):
         executable = self.bundle / 'Contents/MacOS' / name
         (executable.parent / 'PortavozPackageTests').rename(executable)
         self.info.write_bytes(plistlib.dumps({'CFBundleExecutable': executable.name}, fmt=plistlib.FMT_BINARY))

@@ -5567,7 +5567,7 @@ owner-only temporary directory, preserves the Swift process status from Bash's
 pipeline status, and deletes the log after success, failure, or interruption.
 On failure, `swift_test_failure_summary.py` reads at most 16 MiB and emits only
 stable, deduplicated XCTest identifiers such as
-`PortavozTests.ExampleTests/testFailure`; the final summary never repeats
+`PortavozKitTests.ExampleTests/testFailure`; the final summary never repeats
 assertion messages, source paths, transcripts, prompts, or generated text. A
 missing, empty, oversized, malformed, or unreadable log reports only that the
 identifier is unavailable, and the gate still exits with the original nonzero

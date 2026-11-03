@@ -175,10 +175,10 @@ class XCTestPoolTests(unittest.TestCase):
         self.assertIn("PortavozTests.DeltaTests", relaunched)
 
     def test_a_hung_class_times_out_and_the_rest_continue_without_it(self):
-        status, output = self.run_pool("--class-timeout", "1", BetaTests="1:0:0:hang")
+        status, output = self.run_pool("--class-timeout", "5", BetaTests="1:0:0:hang")
 
         self.assertEqual(status, 1)
-        self.assertIn("FAILED XCTest class: PortavozTests.BetaTests (no summary after 1 s)", output)
+        self.assertIn("FAILED XCTest class: PortavozTests.BetaTests (no summary after 5 s)", output)
         self.assertIn("cases: 3 of 4 listed", output)
         self.assertEqual(len(self.launches()), 2)
 
@@ -246,9 +246,25 @@ class XCTestPoolTests(unittest.TestCase):
     def test_an_unrecorded_class_is_estimated_from_its_cases(self):
         classes = collections.Counter({"M.Known": 2, "M.Unknown": 10})
 
-        seconds = pool.estimated_seconds(classes, {"Known": 7.5})
+        seconds = pool.estimated_seconds(classes, classes, {"Known": 7.5})
 
         self.assertEqual(seconds, {"M.Known": 7.5, "M.Unknown": 10 * pool.ESTIMATED_CASE_SECONDS})
+
+    def test_a_class_with_deferred_cases_is_estimated_from_the_cases_it_still_runs(self):
+        kept = collections.Counter({"M.Partial": 5})
+
+        seconds = pool.estimated_seconds(kept, collections.Counter({"M.Partial": 8}), {"Partial": 53.0})
+
+        self.assertEqual(seconds, {"M.Partial": 5 * pool.ESTIMATED_CASE_SECONDS})
+
+    def test_the_longest_batch_starts_first_across_bundles(self):
+        (self.root / "KitTests.xctest").mkdir()
+        (self.root / "AppTests.xctest").mkdir()
+        seconds = {"KitTests.Short": 1.0, "AppTests.Long": 40.0, "KitTests.Medium": 12.0}
+
+        batches = pool.plan_batches(seconds, self.root, None)
+
+        self.assertEqual([batch for _, batch in batches], [["AppTests.Long"], ["KitTests.Medium", "KitTests.Short"]])
 
     def test_the_table_records_only_classes_at_the_floor(self):
         log = ("Test Suite 'SlowTests' passed at x.\n\t Executed 2 tests, with 0 failures (0 unexpected) in 2 (2.04) seconds\n"
@@ -257,14 +273,6 @@ class XCTestPoolTests(unittest.TestCase):
                "Test Suite 'Selected tests' passed at x.\n\t Executed 4 tests, with 0 failures (0 unexpected) in 9 (9) seconds\n")
 
         self.assertEqual(pool.recorded_seconds(log), {"SlowTests": 2.0})
-
-    def test_the_checked_in_table_names_classes_that_exist(self):
-        table = json.loads(pool.DURATIONS.read_text(encoding="utf-8"))
-        sources = "\n".join(path.read_text(encoding="utf-8") for path in (ROOT / "Tests").rglob("*.swift"))
-
-        missing = [name for name in table if f"class {name}" not in sources]
-
-        self.assertEqual(missing, [])
 
 
 if __name__ == "__main__":

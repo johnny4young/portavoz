@@ -86,7 +86,7 @@ extension ArchitectureDependencyTests {
         var sources: [String: String] = [:]
         for root in Self.packageTestRoots {
             for file in try Self.sourceMatches(under: root, pattern: #"(?m)^import Testing$"#)
-            where !file.hasSuffix("ExclusiveArgumentDomain.swift") {
+            where file != "ExclusiveArgumentDomain.swift" {
                 sources["\(root)/\(file)"] = try Self.contents(of: "\(root)/\(file)")
             }
         }

@@ -66,7 +66,8 @@ extension ArchitectureDependencyTests {
             .sorted()
 
         XCTAssertEqual(consumers, ["PortavozAppTests", "PortavozKitTests"])
-        XCTAssertFalse(manifest.contains(#"targets: ["PortavozTestSupport"]"#))
+        XCTAssertNil(manifest.range(
+            of: #"\.(library|executable)\([^)]*PortavozTestSupport"#, options: .regularExpression))
     }
 
     func testOnlyTheAppTestTargetDependsOnTheAppModule() throws {

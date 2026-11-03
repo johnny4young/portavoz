@@ -2192,7 +2192,7 @@ Current-SDK diagnostic closure uses `scripts/run-swift-tests.sh -Xswiftc
 (D619): `scripts/run_xctest_pool.py` groups the listed classes by the durations in
 `scripts/xctest_class_seconds.json`, about 15 seconds to a process, and runs three
 processes at a time. A class fails when its suite fails, when it runs a different
-number of cases than listed, or when it reports nothing for 300 seconds. After a
+number of cases than listed, or when it has not finished after 300 seconds. After a
 crash or a hang, the classes that process never reached run in a new one. The
 nightly clean build sets `PORTAVOZ_XCTEST_BATCH_SEED` to vary which classes share
 a process, and `--record-from <log>` rebuilds the table from an xctest log.
