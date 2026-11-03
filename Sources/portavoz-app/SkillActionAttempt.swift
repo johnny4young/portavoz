@@ -19,10 +19,15 @@ struct SkillActionAttempt<Subject: Equatable>: Equatable {
         if inFlight == subject { inFlight = nil }
     }
 
-    /// An attempt for another subject owns the state, so this report no longer counts.
+    /// Only the attempt in flight can report, so a finished or superseded one no longer counts.
     mutating func fail(_ subject: Subject) {
-        guard inFlight == nil || inFlight == subject else { return }
+        guard inFlight == subject else { return }
         inFlight = nil
+        failed = subject
+    }
+
+    /// A failed read of the subject, which no attempt owns.
+    mutating func recordFailure(_ subject: Subject) {
         failed = subject
     }
 

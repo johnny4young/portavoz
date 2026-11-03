@@ -316,14 +316,10 @@ extension AppServices {
         for meetingID: MeetingID
     ) async {
         let arguments = ProcessInfo.processInfo.arguments
-        let seedsExactPage = arguments.contains(
-            "-seed-skill-exact-page-history")
         guard usesTemporaryMeetingStore,
-              arguments.contains("-seed-skill-history") || seedsExactPage
+              arguments.contains("-seed-skill-exact-page-history")
         else { return }
-        let receiptCount = seedsExactPage
-            ? SkillControlCenterSnapshot.defaultReceiptLimit
-            : 25
+        let receiptCount = SkillControlCenterSnapshot.defaultReceiptLimit
         do {
             for ordinal in 1...receiptCount {
                 let offerKey = "\(MeetingPackageExportSkill.id):"

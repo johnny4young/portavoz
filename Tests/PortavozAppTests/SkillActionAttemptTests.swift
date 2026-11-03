@@ -23,6 +23,15 @@ final class SkillActionAttemptTests: XCTestCase {
             hasSnapshot: true, isChanging: change.isInFlight, hasUnverifiedChange: change.hasFailed))
     }
 
+    func testAFailedReadLocksTheControlsWithoutAnAttemptInFlight() {
+        var change = SkillActionAttempt<SkillControlsSubject>()
+
+        change.recordFailure(.controls)
+
+        XCTAssertTrue(change.hasFailed)
+        XCTAssertFalse(change.isInFlight)
+    }
+
     func testAFailedReviewKeepsItsOfferAndARetryStartsClean() {
         let offer = UUID()
         var review = SkillActionAttempt<UUID>()
@@ -88,5 +97,10 @@ final class SkillActionAttemptTests: XCTestCase {
 
         XCTAssertNil(context.failed)
         XCTAssertTrue(context.isInFlight(current))
+
+        context.finish(current)
+        context.fail(current)
+
+        XCTAssertNil(context.failed, "a finished attempt cannot report afterwards")
     }
 }

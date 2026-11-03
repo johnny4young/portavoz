@@ -145,9 +145,7 @@ struct SkillsSettingsSection: View {
                 .accessibilityLabel(skillTitle(skill.id))
                 .accessibilityIdentifier(
                     "settings-skill-\(skill.id)-enabled")
-                .disabled(
-                    isMutating || auxiliaryMutationInFlight
-                        || controlLoadFailed)
+                .disabled(controlsAreLocked)
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .contain)
@@ -274,7 +272,7 @@ struct SkillsSettingsSection: View {
             else {
                 return
             }
-            controlChange.fail(.controls)
+            controlChange.recordFailure(.controls)
             receiptScopeLoadFailed = snapshot != nil
             finishLoad(loadID)
         }

@@ -221,6 +221,14 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(settings.contains(".task(id: receiptQuery.selection)"))
         XCTAssertTrue(activity.contains(
             "if selection != oldValue { window.reset() }"))
+        // A history or suggestions read must leave verified controls usable.
+        let controlsAreLocked = [
+            "        skillControlsAreLocked(",
+            "            hasSnapshot: snapshot != nil,",
+            "            isChanging: isMutating || auxiliaryMutationInFlight,",
+            "            hasUnverifiedChange: controlLoadFailed)"
+        ].joined(separator: "\n")
+        XCTAssertTrue(settings.contains(controlsAreLocked))
         XCTAssertTrue(settings.contains(
             "receiptLimit: requestedLimit"))
         XCTAssertTrue(settings.contains(
@@ -299,8 +307,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(uiFixtures.contains(
             "-seed-skill-exact-page-history"))
         XCTAssertTrue(uiFixtures.contains(
-            "? SkillControlCenterSnapshot.defaultReceiptLimit\n"
-                + "            : 25"))
+            "let receiptCount = SkillControlCenterSnapshot.defaultReceiptLimit"))
         XCTAssertTrue(uiFixtures.contains("for ordinal in 1...receiptCount"))
         XCTAssertTrue(uiFixtures.contains(
             "let offerKey = \"\\(MeetingPackageExportSkill.id):\""))
