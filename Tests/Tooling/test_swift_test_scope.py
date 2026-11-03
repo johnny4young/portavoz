@@ -24,13 +24,13 @@ class SwiftTestScopeTests(unittest.TestCase):
                         ["Tests/Tooling/test_ci_workflow.py", "docs/specs/08-quality.md"], ["LICENSE"]):
             with self.subTest(changed=changed):
                 selected = scope.selection(ROOT, changed)
-                self.assertTrue(selected.startswith(r"^PortavozTests\.("))
+                self.assertTrue(selected.startswith(r"^Portavoz(Kit|App)Tests\.("))
                 for name in ("ArchitectureDependencyTests", "EnglishSourceTests", "LocalizationTests"):
                     self.assertIn(name, selected)
                 self.assertNotIn("WaveformTests", selected)
 
     def test_anything_that_can_change_the_build_or_runner_selects_everything(self):
-        for changed in (["Sources/StorageKit/MeetingStore.swift"], ["Tests/PortavozTests/StorageTests.swift"],
+        for changed in (["Sources/StorageKit/MeetingStore.swift"], ["Tests/PortavozKitTests/StorageTests.swift"],
                         ["Package.resolved"], ["scripts/run-swift-tests.sh"], ["scripts/run_xctest_pool.py"],
                         [".github/workflows/ci.yml"], ["Resources/Localization/Portavoz/Localizable.xcstrings"],
                         ["Fixtures/AskQuality/corpus.json"], ["docs/a.md", "Makefile"], ["Sources/README.md"], []):
@@ -39,7 +39,7 @@ class SwiftTestScopeTests(unittest.TestCase):
 
     def test_every_class_that_names_a_repository_path_is_selected(self):
         selected = set(scope.reading_classes(ROOT))
-        for source in (ROOT / scope.TESTS).rglob("*.swift"):
+        for source in (source for tests in scope.TESTS for source in (ROOT / tests).rglob("*.swift")):
             text = source.read_text(encoding="utf-8")
             if REPOSITORY_PATH.search(text):
                 names = {name for name in scope.DECLARATION.findall(text) if name.endswith("Tests")}
@@ -48,8 +48,8 @@ class SwiftTestScopeTests(unittest.TestCase):
 
     def test_a_tree_without_checkout_readers_fails_instead_of_selecting_nothing(self):
         with tempfile.TemporaryDirectory() as directory:
-            (Path(directory) / scope.TESTS).mkdir(parents=True)
-            (Path(directory) / scope.TESTS / "PlainTests.swift").write_text("final class PlainTests {}\n")
+            (Path(directory) / scope.TESTS[0]).mkdir(parents=True)
+            (Path(directory) / scope.TESTS[0] / "PlainTests.swift").write_text("final class PlainTests {}\n")
             with self.assertRaises(ValueError):
                 scope.selection(Path(directory), ["docs/a.md"])
 

@@ -66,6 +66,15 @@ def nightly_only(path: Path) -> frozenset[str]:
     return frozenset(line for line in lines if line and not line.startswith("#"))
 
 
+def bundle_for(name: str, products: Path) -> Path | None:
+    """SwiftBuild gives each test target its own bundle; the native build system joins them in one."""
+    own = products / f"{name.split('.', 1)[0]}.xctest"
+    if own.is_dir():
+        return own
+    joined = sorted(products.glob("*PackageTests.xctest"))
+    return joined[0] if len(joined) == 1 else None
+
+
 def bare(name: str) -> str:
     # xctest names a class's suite without its module.
     return name.rsplit(".", 1)[-1]
@@ -231,7 +240,7 @@ def recorded_seconds(log: str) -> dict[str, float]:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--bundle", type=Path)
+    parser.add_argument("--products", type=Path, help="the build's products directory")
     parser.add_argument("--listing", type=Path)
     parser.add_argument("--workers", type=int)
     parser.add_argument("--durations", type=Path, default=DURATIONS)
@@ -245,11 +254,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         log = arguments.record_from.read_text(encoding="utf-8", errors="replace")
         print(json.dumps(recorded_seconds(log), indent=2))
         return 0
-    if not arguments.bundle or not arguments.listing or not arguments.workers:
-        parser.error("--bundle, --listing and --workers are required")
-    if not arguments.bundle.is_dir():
-        print(f"XCTest bundle not found: {arguments.bundle}", file=sys.stderr)
-        return 2
+    if not arguments.products or not arguments.listing or not arguments.workers:
+        parser.error("--products, --listing and --workers are required")
     listing = arguments.listing.read_text(encoding="utf-8")
     deferred = frozenset() if arguments.include_nightly_only else nightly_only(arguments.nightly_only)
     listed, kept = xctest_cases(listing), xctest_cases(listing, deferred)
@@ -262,13 +268,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"XCTest suites cannot be told apart across modules: {sorted(ambiguous)}", file=sys.stderr)
         return 2
     recorded = json.loads(arguments.durations.read_text(encoding="utf-8")) if arguments.durations.is_file() else {}
-    batches = partition(estimated_seconds(classes, recorded), seed=arguments.batch_seed)
+    seconds = estimated_seconds(classes, recorded)
+    by_bundle: dict[Path, dict[str, float]] = collections.defaultdict(dict)
+    for name, estimate in seconds.items():
+        bundle = bundle_for(name, arguments.products)
+        if bundle is None:
+            print(f"No XCTest bundle for {name} in {arguments.products}", file=sys.stderr)
+            return 2
+        by_bundle[bundle][name] = estimate
+    batches = [(bundle, batch) for bundle, group in by_bundle.items()
+               for batch in partition(group, seed=arguments.batch_seed)]
     selected = selectors(listed, kept)
     expected = sum(classes.values())
     results: dict[str, ClassResult] = {}
     with concurrent.futures.ThreadPoolExecutor(arguments.workers) as pool:
-        futures = [pool.submit(run_batch, arguments.bundle, batch, classes, selected, arguments.class_timeout)
-                   for batch in batches]
+        futures = [pool.submit(run_batch, bundle, batch, classes, selected, arguments.class_timeout)
+                   for bundle, batch in batches]
         for future in concurrent.futures.as_completed(futures):
             finished, output = future.result()
             print(output, end="" if output.endswith("\n") or not output else "\n", flush=True)

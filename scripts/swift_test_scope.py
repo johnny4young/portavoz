@@ -16,13 +16,13 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-TESTS = "Tests/PortavozTests"
+TESTS = ("Tests/PortavozKitTests", "Tests/PortavozAppTests")
 CONTRACT_ONLY_PREFIXES = ("docs/", "site/", "Tests/Tooling/", ".github/ISSUE_TEMPLATE/")
 CONTRACT_ONLY_FILES = frozenset({"LICENSE"})
 # A source that locates the checkout can read any tracked file.
 READS_CHECKOUT = re.compile(r"#filePath|\brepoRoot\b|\brepositoryRoot\b")
 DECLARATION = re.compile(r"^\s*(?:@\w+\s+)*(?:final\s+)?(?:class|struct|extension)\s+(\w+)\b", re.MULTILINE)
-MODULE = "PortavozTests"
+MODULE = "Portavoz(Kit|App)Tests"
 
 
 def contract_only(path: str) -> bool:
@@ -33,7 +33,7 @@ def contract_only(path: str) -> bool:
 
 def reading_classes(root: Path) -> list[str]:
     names: set[str] = set()
-    for source in sorted((root / TESTS).rglob("*.swift")):
+    for source in sorted(source for tests in TESTS for source in (root / tests).rglob("*.swift")):
         text = source.read_text(encoding="utf-8")
         if READS_CHECKOUT.search(text):
             names.update(name for name in DECLARATION.findall(text) if name.endswith("Tests"))

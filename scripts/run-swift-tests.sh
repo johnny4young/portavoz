@@ -168,13 +168,8 @@ run_tests() {
     mv "$listing.scoped" "$listing"
   fi
   bin="$(swift build --show-bin-path ${build[@]+"${build[@]}"})" || return
-  local bundles=("$bin"/*.xctest)
-  if [[ ${#bundles[@]} -ne 1 || ! -d "${bundles[0]}" ]]; then
-    echo "Expected exactly one XCTest bundle in $bin." >&2
-    return 2
-  fi
   local xctest_status=0 testing_status=0 suites
-  python3 scripts/run_xctest_pool.py --bundle "${bundles[0]}" \
+  python3 scripts/run_xctest_pool.py --products "$bin" \
     --listing "$listing" --workers "$workers" \
     ${PORTAVOZ_XCTEST_BATCH_SEED:+--batch-seed "$PORTAVOZ_XCTEST_BATCH_SEED"} \
     ${PORTAVOZ_SWIFT_INCLUDE_NIGHTLY_ONLY:+--include-nightly-only} || xctest_status=$?

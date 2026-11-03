@@ -1899,7 +1899,7 @@ deterministically rendered from the tagged template and version metadata. The
 reviewed upstream MIT text and complete provenance remain beside the source.
 
 `CSQLiteVecResearch` is a static C target depended on only by the test-only
-`SQLiteVecResearchKit` and `PortavozTests`. It compiles the amalgamation in
+`SQLiteVecResearchKit` and `PortavozKitTests`. It compiles the amalgamation in
 SQLite-core/static mode with filesystem helpers omitted. Dynamic extension
 loading is not permitted.
 

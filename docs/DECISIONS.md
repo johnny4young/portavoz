@@ -22424,3 +22424,33 @@ risks are that a green incremental build does not prove a clean one until that n
 the clean seed coexists with the same commit's `main` seed, because seeds are immutable and
 skipping it would end the protection against drift. That costs one more entry of about 1.85 GB
 a day against the 10 GB cache limit. Release evidence still never consumes this cache.
+
+## D619 — XCTest runs in batches by duration, and the package tests split in two
+
+D598's one process per class cost over a minute of launches on the hosted runner, and any
+change to the app recompiled every package test, though two thirds never import it.
+
+The pool now groups classes by a table of recorded durations into processes of about 15
+seconds, three at a time. Sharing a process must not lose what D598 gave, so each class still
+accounts for itself: its own suite has to finish with exactly its listed cases. A crash or a
+300-second silence fails the class that was running, and the classes that process never
+reached run in a new one. The composition is fixed on pull requests so a failure reproduces,
+and the nightly clean build varies it with its run ID, so a class that starts depending on a
+neighbour appears there. A failure there names its seed.
+
+`scripts/xctest_nightly_only.txt` lists four cases that only drive a benchmark harness over a
+whole fixture. They are exact identifiers read before listing, never a pattern, because a slow
+or benchmark-sounding name can still prove behavior: of the twelve benchmark classes, most
+cases stay on every run.
+
+`PortavozTests` becomes `PortavozKitTests` and `PortavozAppTests`, with the doubles both need
+in `PortavozTestSupport`, a target in no product. Moving one app-bound assertion out of the
+architecture family kept that family in Kit. The split is safe to adopt on both build systems
+only because the pool resolves bundles by module: SwiftBuild, on the newer local toolchain,
+makes one bundle per test target, while the native system on the hosted toolchain joins them.
+
+This supersedes D598's one process per class and the module name in D600's pattern. The
+accepted costs are that a class can now be disturbed by a neighbour in its process, which the
+A/B runs and the nightly seed have to catch; the table drifts until someone regenerates it with
+`--record-from`, which only affects balance; and a pull request can break a listed harness case
+without knowing until that night.

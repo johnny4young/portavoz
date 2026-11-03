@@ -80,12 +80,36 @@ class XCTestPoolTests(unittest.TestCase):
         output = io.StringIO()
         with unittest.mock.patch.dict(os.environ, environment), contextlib.redirect_stdout(output), \
                 contextlib.redirect_stderr(io.StringIO()):
-            status = pool.main(["--bundle", str(self.bundle), "--listing", str(self.listing),
+            status = pool.main(["--products", str(self.root), "--listing", str(self.listing),
                                 "--workers", "2", *extra])
         return status, output.getvalue()
 
     def launches(self):
         return [line.split(",") for line in self.log.read_text(encoding="utf-8").splitlines()]
+
+    def test_a_module_uses_its_own_bundle_or_the_joined_one(self):
+        (self.root / "KitTests.xctest").mkdir()
+        (self.root / "PortavozPackageTests.xctest").mkdir()
+
+        self.assertEqual(pool.bundle_for("KitTests.AlphaTests", self.root), self.root / "KitTests.xctest")
+        self.assertEqual(pool.bundle_for("AppTests.AlphaTests", self.root), self.root / "PortavozPackageTests.xctest")
+
+    def test_a_module_without_a_bundle_is_rejected(self):
+        self.listing.write_text("AppTests.AlphaTests/testOne\n", encoding="utf-8")
+
+        status, _ = self.run_pool()
+
+        self.assertEqual(status, 2)
+
+    def test_two_bundles_never_share_a_process(self):
+        (self.root / "AppTests.xctest").mkdir()
+        self.listing.write_text("PortavozTests.AlphaTests/testOne\nAppTests.BetaTests/testOnly\n", encoding="utf-8")
+
+        status, output = self.run_pool(AlphaTests="1:0:0:ok")
+
+        self.assertEqual(status, 0)
+        self.assertEqual(sorted(self.launches()), [["AppTests.BetaTests"], ["PortavozTests.AlphaTests"]])
+        self.assertIn("XCTest batches: 2", output)
 
     def test_only_xctest_classes_are_selected(self):
         self.assertEqual(pool.class_counts(pool.xctest_cases(LISTING)),

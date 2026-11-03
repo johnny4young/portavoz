@@ -127,10 +127,12 @@ NO_UI_PREFIXES = (
     ".design-sync/",
     ".github/ISSUE_TEMPLATE/",
     "Tests/Tooling/",
-    "Tests/PortavozTests/",
+    "Tests/PortavozKitTests/",
+    "Tests/PortavozAppTests/",
+    "Tests/PortavozTestSupport/",
     "Sources/portavoz-cli/",
     "Sources/portavoz-cli-main/",
-    # Research-only targets: only PortavozTests links them, never the app.
+    # Research-only targets: only PortavozKitTests links them, never the app.
     "Sources/CSQLiteVecResearch/",
     "Sources/SQLiteVecResearchKit/",
     "docs/",

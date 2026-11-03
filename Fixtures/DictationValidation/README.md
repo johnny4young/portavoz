@@ -395,7 +395,7 @@ PORTAVOZ_SPEECH_GATE_AUDIO=/absolute/scratch/new-dictation-audio \
 PORTAVOZ_SPEECH_GATE_MODELS=/absolute/scratch/models \
 PORTAVOZ_SPEECH_GATE_INSTALL=1 \
 PORTAVOZ_SPEECH_GATE_OUTPUT=/absolute/scratch/speech-gate.json \
-"$(xcrun --find xctest)" -XCTest PortavozTests.DictationSpeechGateCorpusTests "$RELEASE_TEST_BUNDLE"
+"$(xcrun --find xctest)" -XCTest PortavozAppTests.DictationSpeechGateCorpusTests "$RELEASE_TEST_BUNDLE"
 ```
 
 Each cell records whether the gate heard speech, the first speech frame, the peak
@@ -413,7 +413,7 @@ holds verified copies; the lane never downloads. Release only:
 PORTAVOZ_ASR_COMPARE_AUDIO=/absolute/scratch/new-dictation-audio \
 PORTAVOZ_ASR_COMPARE_MODELS=/absolute/scratch/models \
 PORTAVOZ_ASR_COMPARE_OUTPUT=/absolute/scratch/compare.json \
-"$(xcrun --find xctest)" -XCTest PortavozTests.DictationModelComparisonTests "$RELEASE_TEST_BUNDLE"
+"$(xcrun --find xctest)" -XCTest PortavozKitTests.DictationModelComparisonTests "$RELEASE_TEST_BUNDLE"
 ```
 
 `PORTAVOZ_ASR_COMPARE_CASES` limits the run to a comma-separated list of cells.
