@@ -419,8 +419,9 @@ FEATURE_TIERS: dict[str, int] = {
     "settings-voice": 2,
 }
 
-# Test phase of a pull request's UI lane: xcodebuild adds about 46 s plus 0.22 s a test.
-UI_TEST_BUDGET_SECONDS = 240.0
+# Test phase of a pull request's UI lane: what the 9:30 job leaves after setup, the app build
+# and the runner for a view change. xcodebuild adds about 46 s plus 0.22 s a test.
+UI_TEST_BUDGET_SECONDS = 300.0
 UI_TEST_OVERHEAD_SECONDS = 46.0
 UI_TEST_OVERHEAD_PER_TEST_SECONDS = 0.22
 

@@ -611,7 +611,7 @@ request only when the diff edits that method, and `ON_DEMAND_TESTS` run only thr
 tests that run it, through their bodies or other helpers; a lifecycle method, a property,
 a change outside any function or a helper with no visible user selects the class. With
 `--budget`, as `ui-tests.yml` runs it, a pull request always holds the ten canaries and
-adds candidates while their hosted p90 and xcodebuild's overhead fit 240 seconds:
+adds candidates while their hosted p90 and xcodebuild's overhead fit 300 seconds:
 edited methods and harness self-tests first, then helper consumers, then the tests the most paths map to, then
 by feature tier and fewest seconds. The rest are not dropped: `cut` names them in the job
 summary, a `ui-budget-cut` notice, the gate's result and the lane receipt, and nightly owns them. Canaries

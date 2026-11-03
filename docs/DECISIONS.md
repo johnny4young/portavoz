@@ -22470,7 +22470,8 @@ test selects that method and an edited helper the tests that run it, and a lifec
 property, a change outside any function or a helper with no visible user falls back to the class. The broad name rules narrow to one owner.
 
 A pull request always runs the canaries, then adds candidates while their observed hosted p90
-and xcodebuild's overhead fit 240 seconds. Edited methods come first, then helper consumers,
+and xcodebuild's overhead fit 300 seconds, about what a 9:30 job leaves after setup, the app build
+and the runner for a view change. Edited methods come first, then helper consumers,
 then the tests the most paths map to, then feature tier and fewest seconds. A harness or unknown
 change ranks its self-tests first, though not all five always fit. The result is
 deterministic for the same diff and times. A candidate over the budget is named in the job
@@ -22482,6 +22483,11 @@ its author is the one who needs the answer.
 The budget is a fixed test-phase limit, chosen in `scope`, because the UI build still takes about
 ten minutes and a limit on the whole job would fail every run. It moves to what remains of the
 job after the build once the build no longer has its own compiler.
+
+Replayed over the last 120 commits without the dictation group, 29 need no UI, 25 run the canaries
+alone, 19 fit and 47 cut, with a median of 7 cases cut and a test phase of 4:46. While dictation
+remains, its 57 cases rank last, so a broad change names about 45 cut cases, nearly all of them
+dictation.
 
 The accepted risk is that a regression in a cut or nightly-only case reaches `main` until the
 next night. The verification anchor still advances over a cut run, so a later push does not
