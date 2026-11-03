@@ -28,7 +28,7 @@ PRODUCT_STEPS = {
     "Build the UI host and runner once",
     "Fit the selection to what remains of the job", "Run functional UI evidence",
     "Classify functional evidence and hosted runtime drift",
-    "Require every lane the selection asked for", "Follow the gate", "Fail the lane when its evidence is not complete",
+    "Require every lane the selection asked for", "Fail the lane when its evidence is not complete",
 }
 NOT_BLOCKING_JOBS = {"ios-portability"}
 

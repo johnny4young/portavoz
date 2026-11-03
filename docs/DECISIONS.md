@@ -22578,10 +22578,11 @@ every new pull-request job edit a release contract without adding any proof.
 **Consequences:** this replaces D117, D496 and D546, and retires the anchors of D429 and of D622's
 accepted risk: a cut test is selected again on the next push. A change to `ci.yml` now runs the whole
 Swift suite and the UI canaries, including a change only to the lint job. A manual `full_ui` run also
-pays for `build-and-test` and `ios-portability`, and reports `gate-manual` and `ui-test-gate-manual`, so
+pays for `build-and-test` and `ios-portability`, and reports `gate-manual`, so
 it cannot answer for a pull request's required check. A manual run of `ci.yml` on a `main` commit disqualifies that commit from
-a release, because the contract rejects several runs of `CI` for one commit; `full_ui` belongs on a branch. Protection moves in order, with the old `ui-test-gate` name
-following `gate` until `main` requires `gate`, and `strict` goes then too.
+a release, because the contract rejects several runs of `CI` for one commit; `full_ui` belongs on a branch. `main` requires only `gate` and no longer `strict`, so a merge does not rerun
+every open pull request; the old `ui-test-gate` name is gone. Fork and Dependabot pull requests had not run
+through the gate when protection moved.
 
 ---
 
