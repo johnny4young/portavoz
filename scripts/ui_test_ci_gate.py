@@ -102,6 +102,8 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--english-outcome", required=True)
     value.add_argument("--summary", type=Path)
     value.add_argument("--github-output", type=Path)
+    value.add_argument("--head-sha", help="Require the lane receipt of this head")
+    value.add_argument("--attempt", help="Require the lane receipt of this attempt")
     return value
 
 
@@ -317,6 +319,38 @@ def load_execution(path: Path, expected_locale: str) -> dict[str, Any]:
     return execution
 
 
+def case_identifiers(cases: Any) -> list[Any] | None:
+    if not isinstance(cases, list) or not all(isinstance(case, dict) for case in cases):
+        return None
+    return sorted(str(case.get("identifier")) for case in cases)
+
+
+def lane_receipt_problem(results: Path, locale: str, sha: str, attempt: str) -> str | None:
+    """Why the receipt does not prove this head ran everything it selected."""
+    try:
+        lane = json.loads((results / f"{locale}-lane.json").read_text(encoding="utf-8"))
+        runtime = json.loads((results / f"{locale}-runtime.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return f"{locale}: evidence-contract: lane receipt is unreadable"
+    if not isinstance(lane, dict) or not isinstance(runtime, dict) or not isinstance(lane.get("selection"), dict):
+        return f"{locale}: evidence-contract: lane receipt shape differs"
+    if lane.get("sha") != sha:
+        return f"{locale}: evidence-contract: lane receipt belongs to another head"
+    if str(lane.get("attempt")) != attempt:
+        return f"{locale}: evidence-contract: lane receipt belongs to another attempt"
+    executed = case_identifiers(lane.get("executed"))
+    if not executed:
+        return f"{locale}: evidence-contract: lane receipt shows zero tests"
+    if lane.get("notExecuted") != []:
+        return f"{locale}: evidence-contract: lane receipt names selected tests that did not run"
+    selected = lane["selection"].get("selected")
+    if not isinstance(selected, list) or len(selected) != len(executed):
+        return f"{locale}: evidence-contract: lane receipt selected and executed different counts"
+    if executed != case_identifiers(runtime.get("tests")):
+        return f"{locale}: evidence-contract: lane receipt disagrees with the runtime receipt"
+    return None
+
+
 def annotation(message: str) -> str:
     return message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
 
@@ -336,7 +370,7 @@ def write_summary(path: Path | None, rows: Sequence[str]) -> None:
         return
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as output:
-        output.write("## Scoped UI evidence\n\n")
+        output.write("## UI evidence\n\n")
         output.write(
             "| Locale | Step | Cases | Functional | Hosted runtime | "
             "Excluded harness stalls |\n"
@@ -368,7 +402,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     failures: list[str] = []
     infrastructure_advisories: list[str] = []
     summary_rows: list[str] = []
-    # A lane for any other locale means the hosted matrix was widened.
+    # A lane for any other locale means hosted evidence was widened.
     entries = arguments.results.iterdir() if arguments.results.is_dir() else ()
     stray_locales = sorted({
         match.group("locale")
@@ -497,6 +531,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"{len(receipt['runtimeAdjustments'])} |"
         )
 
+    # A hosted timeout ran nothing, so its empty receipt says nothing more about the head.
+    if arguments.head_sha is not None and not infrastructure_advisories:
+        for locale in selected:
+            problem = lane_receipt_problem(arguments.results, locale, arguments.head_sha, arguments.attempt or "")
+            if problem is not None:
+                failures.append(problem)
+
     summary_path = arguments.summary
     if summary_path is None and os.environ.get("GITHUB_STEP_SUMMARY"):
         summary_path = Path(os.environ["GITHUB_STEP_SUMMARY"])
@@ -520,8 +561,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1
     if infrastructure_advisories:
         print(
-            "Hosted UI infrastructure was unavailable; the PR remains green, "
-            "but this head cannot become an incremental verification anchor."
+            "Hosted UI infrastructure was unavailable; functional evidence "
+            "remains unverified."
         )
     else:
         print(

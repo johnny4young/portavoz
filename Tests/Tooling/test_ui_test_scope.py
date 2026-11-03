@@ -281,7 +281,6 @@ class UITestScopeTests(unittest.TestCase):
 
         self.assertEqual(outputs["required"], "true")
         self.assertEqual(outputs["tests"].split(), list(ui_scope.ALL_TESTS))
-        self.assertEqual(outputs["locales"], "en")
         self.assertLessEqual(
             len(outputs["summary"].encode("utf-8")),
             ui_scope.MAX_SUMMARY_BYTES,
@@ -424,7 +423,7 @@ class UITestScopeTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertTrue(select_paths([path]).interruption_controls)
         for path in ("scripts/ui_test_scope.py", "docs/evidence/ui-test-runtime-budget.json", "Makefile",
-                     ".github/workflows/ui-tests.yml"):
+                     ".github/workflows/ci.yml"):
             with self.subTest(path=path):
                 self.assertFalse(select_paths([path]).interruption_controls)
 
@@ -694,7 +693,7 @@ class UITestScopeTests(unittest.TestCase):
 
     def test_all_selects_every_test_in_english_only(self):
         for output_format, expected in (
-            ("github", {"locales=en", 'matrix=["en"]', "interruption_controls=true"}),
+            ("github", {"interruption_controls=true"}),
             ("shell", {"export UI_TEST_LOCALES=en"}),
             ("human", {"Locales: en", f"UI tests: {len(ALL_TESTS)}/{len(ALL_TESTS)}"}),
         ):
@@ -718,66 +717,55 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
             self.assertLess(len(selection.tests), len(ALL_TESTS), path)
 
-    def test_pr_scope_advances_only_from_verified_ancestor_artifacts(self):
-        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
+    def test_every_attempt_selects_from_history_and_no_earlier_run_narrows_it(self):
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(
             encoding="utf-8"
         )
 
         self.assertNotIn("PREVIOUS_HEAD_SHA", workflow)
         self.assertNotIn("github.event.before", workflow)
-        self.assertIn("actions: read", workflow)
-        self.assertIn("scripts/ui_test_verified_base.py", workflow)
-        self.assertIn('--base "$VERIFIED_BASE_SHA"', workflow)
-        self.assertIn("github.run_attempt == 1", workflow)
-        self.assertIn("ui-verification-${{", workflow)
-        self.assertIn("retention-days: 90", workflow)
+        self.assertNotIn("ui-verification-", workflow)
+        self.assertNotIn("github.run_attempt == 1", workflow)
+        self.assertIn('--pull-request-base "$BASE_SHA" --head "$HEAD_SHA"', workflow)
         self.assertIn(
             "python3 scripts/ui_test_scope.py --all --format github",
             workflow,
         )
+        self.assertFalse((ROOT / "scripts/ui_test_verified_base.py").exists())
+        self.assertFalse((ROOT / "scripts/ui_test_verification_anchor.py").exists())
 
     def test_hosted_ui_builds_once_runs_locale_lanes_and_gates_after_artifacts(self):
-        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(
             encoding="utf-8"
         )
 
         # The lane builds its host from SwiftPM and runs it on the same Mac.
         self.assertEqual(workflow.count("run: make test-ui-host-products"), 1)
         self.assertEqual(workflow.count("run: make test-ui-run"), 1)
+        # The classifier reads the UI step's outcome; nothing else may hide a failure.
         self.assertEqual(workflow.count("continue-on-error: true"), 1)
         self.assertEqual(
             workflow.count('UI_TEST_ENFORCE_RUNTIME_BUDGET: "false"'),
             1,
         )
-        self.assertIn("matrix:\n        locale: ${{ fromJSON(needs.scope.outputs.matrix) }}", workflow)
-        self.assertIn("UI_TEST_LOCALES: ${{ matrix.locale }}", workflow)
+        self.assertNotIn("matrix", workflow)
+        self.assertIn("UI_TEST_LOCALES: en", workflow)
         self.assertIn("UI_TEST_PRODUCTS_PATH=", workflow)
-        self.assertIn('--english-outcome "$(outcome en)"', workflow)
+        self.assertIn('--english-outcome "$outcome"', workflow)
         self.assertNotIn("--spanish-outcome", workflow)
         self.assertIn("runs-on: macos-26", workflow)
         self.assertIn("Xcode_26.6.app/Contents/Developer", workflow)
-        for job in ("interruption-controls", "scoped-ui-tests"):
+        for job in ("interruption", "ui-tests"):
             body = re.search(rf"(?ms)^  {job}:\n(.*?)(?=^  [a-z][a-z-]+:\n|\Z)", workflow).group(1)
             self.assertEqual(body.count("scripts/install-ci-xcodegen.sh"), 1, job)
         self.assertNotIn("brew install xcodegen", workflow)
-        artifact = workflow.index("Preserve ${{ matrix.locale }} UI evidence")
+        artifact = workflow.index("Preserve UI evidence")
         gate = workflow.index("Classify functional evidence and hosted runtime drift")
         self.assertLess(artifact, gate)
         self.assertNotIn("run: make test-ui-scoped", workflow)
 
-    def test_github_selection_emits_a_json_locale_matrix(self):
-        selection = ui_scope.Selection(
-            tests=("PortavozUITests/HomeUITests/testTodayAsksAndRecordsWithoutTyping",),
-            locales=("en",),
-            reasons=("localization catalog changed",),
-        )
-        rendered = ui_scope.render(selection, "github")
-        self.assertIn('matrix=["en"]', rendered)
-        empty = ui_scope.Selection(tests=(), locales=(), reasons=())
-        self.assertIn("matrix=[]", ui_scope.render(empty, "github"))
-
     def test_ui_scope_does_not_duplicate_repository_tooling_suites(self):
-        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(
             encoding="utf-8"
         )
 
@@ -785,7 +773,8 @@ class UITestScopeTests(unittest.TestCase):
             workflow.count("scripts/ui_test_scope.py --validate-catalog"),
             1,
         )
-        self.assertNotIn("python3 -m unittest Tests.Tooling", workflow)
+        lanes = workflow.split("\n  scope:\n", 1)[1]
+        self.assertNotIn("python3 -m unittest Tests.Tooling", lanes)
 
     def test_semantic_asset_preparation_selects_its_settings_journey(self):
         expected = FEATURE_TESTS["settings-intelligence"]
@@ -2042,6 +2031,116 @@ class UITestScopeTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(RuntimeError, "duplicate selectors"):
                 ui_scope.validate_catalog(root, runtime_budget_required=False)
+
+
+class PullRequestBaseSelectionTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.repository = Path(self.temporary.name)
+        self.git("init", "-q")
+        self.git("config", "user.email", "fixture@example.invalid")
+        self.git("config", "user.name", "Fixture")
+        self.write_commit("README.md", "base\n")
+        self.root = self.git("rev-parse", "HEAD").stdout.strip()
+        self.git("update-ref", "refs/remotes/origin/main", self.root)
+        self.write_commit("Sources/portavoz-app/DictationSection.swift", "parent view\n")
+        self.parent = self.git("rev-parse", "HEAD").stdout.strip()
+        self.write_commit("docs/GAPS.md", "child documentation\n")
+        self.head = self.git("rev-parse", "HEAD").stdout.strip()
+
+    def git(self, *arguments):
+        return subprocess.run(["git", *arguments], cwd=self.repository, check=True, capture_output=True, text=True)
+
+    def write_commit(self, path, content):
+        target = self.repository / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding="utf-8")
+        self.git("add", path)
+        self.git("commit", "-qm", f"Add {path}")
+
+    def select(self, pull_request_base, *extra):
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "scripts/ui_test_scope.py"), "--pull-request-base", pull_request_base,
+             "--head", self.head, "--format", "github", *extra],
+            cwd=self.repository, capture_output=True, text=True)
+        return result, dict(line.split("=", 1) for line in result.stdout.splitlines())
+
+    def test_child_docs_change_still_selects_the_parents_view_journey(self):
+        run, outputs = self.select(self.parent)
+
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(outputs["required"], "true")
+        self.assertIn("testDictationOffersTriggersLanguageAndDictionary", outputs["tests"])
+
+    def test_a_direct_pull_request_diffs_from_its_merge_base_when_main_moved_on(self):
+        self.git("checkout", "-q", "-b", "newer-main", self.root)
+        self.write_commit("Sources/portavoz-app/HomeView.swift", "main moved on\n")
+        newer_main = self.git("rev-parse", "HEAD").stdout.strip()
+        self.git("update-ref", "refs/remotes/origin/main", newer_main)
+
+        run, outputs = self.select(newer_main)
+
+        self.assertEqual(run.returncode, 0, run.stderr)
+        own = ui_scope.select_paths(["Sources/portavoz-app/DictationSection.swift", "docs/GAPS.md"])
+        self.assertEqual(outputs["tests"].split(), list(own.tests))
+
+    def test_what_a_child_changed_ranks_before_what_its_parents_changed(self):
+        self.git("reset", "-q", "--hard", self.parent)
+        self.write_commit("Sources/portavoz-app/HomeView.swift", "child view\n")
+        self.head = self.git("rev-parse", "HEAD").stdout.strip()
+
+        child = ui_scope.select_paths(["Sources/portavoz-app/HomeView.swift"])
+        parent = ui_scope.select_paths(["Sources/portavoz-app/DictationSection.swift"])
+        only_child = set(child.tests) - set(ui_scope.SMOKE_TESTS)
+
+        run, outputs = self.select(self.parent, "--ranked")
+
+        self.assertEqual(run.returncode, 0, run.stderr)
+        ranked = outputs["ranked"].split()
+        self.assertEqual(set(ranked[:len(only_child)]), only_child)
+        self.assertLessEqual(set(parent.tests) - only_child - set(ui_scope.SMOKE_TESTS), set(ranked[len(only_child):]))
+
+    def test_a_parents_shared_harness_change_keeps_the_self_test_on_the_child(self):
+        self.git("reset", "-q", "--hard", self.parent)
+        self.write_commit("project.yml", "parent shared UI harness\n")
+        self.parent = self.git("rev-parse", "HEAD").stdout.strip()
+        self.write_commit("docs/GAPS.md", "new child documentation\n")
+        self.head = self.git("rev-parse", "HEAD").stdout.strip()
+
+        run, outputs = self.select(self.parent)
+
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("testSharedScratchProtectsOwnershipAndRoundTripsAppFixtures", outputs["tests"])
+
+    def test_a_missing_default_branch_fails_instead_of_using_the_parent(self):
+        self.git("update-ref", "-d", "refs/remotes/origin/main")
+
+        run, _ = self.select(self.parent)
+
+        self.assertEqual(run.returncode, 2)
+        self.assertIn("::error title=UI scope::", run.stderr)
+        self.assertEqual(run.stdout, "")
+
+    def test_criss_cross_history_widens_to_the_shared_root(self):
+        self.git("checkout", "-q", "-B", "main-line", self.root)
+        self.write_commit("docs/ROADMAP-public.md", "main side\n")
+        main_side = self.git("rev-parse", "HEAD").stdout.strip()
+        self.git("checkout", "-q", "-B", "child-line", self.root)
+        self.write_commit("Sources/portavoz-app/DictationSection.swift", "child view\n")
+        child_side = self.git("rev-parse", "HEAD").stdout.strip()
+        self.git("merge", "-q", "--no-edit", main_side)
+        self.head = self.git("rev-parse", "HEAD").stdout.strip()
+        self.git("checkout", "-q", "main-line")
+        self.git("merge", "-q", "--no-edit", child_side)
+        self.git("update-ref", "refs/remotes/origin/main", "HEAD")
+        roots = self.git("merge-base", "--all", "refs/remotes/origin/main", self.head).stdout.split()
+        self.assertEqual(set(roots), {main_side, child_side})
+
+        run, outputs = self.select(self.root)
+
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("testDictationOffersTriggersLanguageAndDictionary", outputs["tests"])
 
 
 if __name__ == "__main__":

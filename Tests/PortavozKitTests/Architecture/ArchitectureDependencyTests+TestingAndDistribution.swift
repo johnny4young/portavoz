@@ -236,17 +236,12 @@ extension ArchitectureDependencyTests {
     }
 
     func testHostedUIFunctionalGateSeparatesRunnerDriftFromControlledBudgets() throws {
-        let workflow = try Self.contents(of: ".github/workflows/ui-tests.yml")
+        let workflow = try Self.contents(of: ".github/workflows/ci.yml")
         let makefile = try Self.contents(of: "Makefile")
         let runner = try Self.contents(of: "scripts/run-ui-tests.sh")
         let runtime = try Self.contents(of: "scripts/ui_test_runtime.py")
         let gate = try Self.contents(of: "scripts/ui_test_ci_gate.py")
         let execution = try Self.contents(of: "scripts/ui_test_execution.py")
-        let verifiedBase = try Self.contents(
-            of: "scripts/ui_test_verified_base.py")
-        let anchor = try Self.contents(
-            of: "scripts/ui_test_verification_anchor.py")
-        let ci = try Self.contents(of: ".github/workflows/ci.yml")
         let swiftLint = try Self.contents(of: "scripts/run-ci-swiftlint.sh")
         let xcodegen = try Self.contents(of: "scripts/install-ci-xcodegen.sh")
         let candidate = try Self.contents(of: "scripts/candidate_automation.py")
@@ -266,24 +261,23 @@ extension ArchitectureDependencyTests {
         XCTAssertEqual(
             workflow.components(separatedBy: "continue-on-error: true").count - 1,
             1,
-            "each first-attempt locale lane must finish before the final classifier")
+            "the UI lane must finish before the final classifier")
         XCTAssertEqual(
             workflow.components(
                 separatedBy: "UI_TEST_ENFORCE_RUNTIME_BUDGET: \"false\"").count - 1,
             1)
-        XCTAssertTrue(workflow.contains("locale: ${{ fromJSON(needs.scope.outputs.matrix) }}"))
+        XCTAssertFalse(workflow.contains("matrix"))
         XCTAssertTrue(workflow.contains("UI_TEST_PRODUCTS_PATH="))
         let artifact = try XCTUnwrap(workflow.range(
-            of: "Preserve ${{ matrix.locale }} UI evidence"))
+            of: "Preserve UI evidence"))
         let classifier = try XCTUnwrap(workflow.range(
             of: "Classify functional evidence and hosted runtime drift"))
         XCTAssertLessThan(artifact.lowerBound, classifier.lowerBound)
-        XCTAssertTrue(workflow.contains("--english-outcome \"$(outcome en)\""))
+        XCTAssertTrue(workflow.contains("--english-outcome \"$outcome\""))
         XCTAssertFalse(workflow.contains("--spanish-outcome"))
         XCTAssertFalse(workflow.contains("run: make test-ui-scoped"))
-        XCTAssertTrue(workflow.contains("scripts/ui_test_verified_base.py"))
-        XCTAssertTrue(workflow.contains("ui-verification-${{"))
-        XCTAssertTrue(workflow.contains("github.run_attempt == 1"))
+        XCTAssertFalse(workflow.contains("ui-verification-"))
+        XCTAssertFalse(workflow.contains("github.run_attempt == 1"))
         XCTAssertFalse(workflow.contains("github.event.before"))
         XCTAssertTrue(workflow.contains("runs-on: macos-26"))
         XCTAssertTrue(workflow.contains("Xcode_26.6.app/Contents/Developer"))
@@ -317,16 +311,11 @@ extension ArchitectureDependencyTests {
             "Timed out while enabling automation mode"))
         XCTAssertTrue(execution.contains(
             "has_executed_cases = runtime_cases is not None and runtime_cases > 0"))
-        XCTAssertTrue(verifiedBase.contains("raw_run.get(\"run_attempt\") != 1"))
-        XCTAssertTrue(verifiedBase.contains(
-            "history.is_ancestor(candidate, head)"))
-        XCTAssertTrue(anchor.contains("ui-functional-verification"))
-        XCTAssertTrue(anchor.contains("selectorSHA256"))
-        XCTAssertTrue(ci.contains("runs-on: macos-26"))
-        XCTAssertTrue(ci.contains(
+        XCTAssertTrue(workflow.contains("runs-on: macos-26"))
+        XCTAssertTrue(workflow.contains(
             "scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors"))
-        XCTAssertFalse(ci.contains("run: swift build"))
-        XCTAssertFalse(ci.contains("Select newest Xcode"))
+        XCTAssertFalse(workflow.contains("run: swift build"))
+        XCTAssertFalse(workflow.contains("Select newest Xcode"))
         XCTAssertTrue(swiftLint.contains("version=\"0.65.0\""))
         XCTAssertTrue(xcodegen.contains("version=\"2.46.0\""))
         XCTAssertTrue(runtime.contains("RECEIPT_SCHEMA_VERSION = 3"))
@@ -355,7 +344,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(scope.contains("scripts/ui_test_runtime.py"))
         XCTAssertTrue(scope.contains("scripts/ui_test_ci_gate.py"))
         XCTAssertTrue(scope.contains("scripts/candidate_automation.py"))
-        XCTAssertTrue(scope.contains(".github/workflows/ui-tests.yml"))
+        XCTAssertTrue(scope.contains(".github/workflows/ci.yml"))
         XCTAssertTrue(scope.contains("docs/evidence/ui-test-runtime-budget.json"))
         XCTAssertTrue(decisions.contains("## D425"))
         XCTAssertTrue(decisions.contains("## D428"))

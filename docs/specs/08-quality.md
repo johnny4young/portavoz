@@ -493,8 +493,8 @@ cannot be fingerprinted.
 Both complete test invocations are unconditional, including current-SDK
 warnings-as-errors. No `--skip-build`, test filtering, retries, smaller test
 counts or cached success receipts are introduced. The fixed OS/toolchain matrix,
-iOS compile, strict lint, Linux policy tests, UI scopes/locales/assertions,
-first-attempt rules and runtime budgets are unchanged. Every `main` push or
+iOS compile, strict lint, Linux policy tests, UI scopes/locales/assertions
+and runtime budgets are unchanged. Every `main` push or
 manual run on `main` restores like any other run, and only those runs record
 fingerprints, measure and save a seed; the nightly clean build is the cold-build
 evidence. Pull requests restore but never save:
@@ -624,7 +624,7 @@ does not cut. `testCleanStopReachesAReadyMeetingWithItsTranscriptAndPlayer` prov
 clean Stop through the production Stop and post-capture adapters, with a disposable
 `-simulate-clean-capture` capture and summary fixture.
 
-`.github/workflows/ui-tests.yml` computes feature-level selectors from
+`.github/workflows/ci.yml` computes feature-level selectors from
 the PR diff and allocates a macOS UI runner only when product presentation is
 affected. One job restores the `build-and-test` seed read-only, runs
 `scripts/build-ui-host-products.sh` and then `test-without-building`, and one Linux classifier
@@ -639,14 +639,25 @@ metallib. A failed lane uploads the host's crash reports with its result bundle.
 a manual `full_ui`. `scripts/ui_host.py verify` runs before the build and refuses a runner that drifts from
 `project.yml`, or a host key that would act like the shipping app. A UI test
 imports no package: `Tests/Support/MeetingBundleFixture.swift` writes its bundle by hand and
-`MeetingBundleTests` proves the production codec reads it. Direct-to-main PRs may advance the selection base only from a
-first-attempt verified ancestor. A stacked PR always selects from the merge
-base of its head and the fetched default branch, including unmerged parent
-changes. It ignores earlier child anchors because they may prove only the
-child diff; several criss-cross merge bases widen to their common ancestor,
-and an unavailable default-branch ref fails selection rather than falling back
-to the parent (D542). Manual dispatch selects the complete
-English catalog. Because a prebuilt-products run does not hand the XCTest
+`MeetingBundleTests` proves the production codec reads it. Every attempt selects again from
+history, so no earlier run narrows a head (D623). A PR into `main` selects from its merge base. A
+stacked PR selects from the merge base of its head and the fetched default branch, including
+unmerged parent changes, and what its own diff changed ranks first when the budget chooses; several
+criss-cross merge bases widen to their common ancestor, and an unavailable default-branch ref fails
+selection rather than falling back to the parent (D542). `full_ui=true` on a manual `ci.yml` run selects
+the complete English catalog.
+
+`gate` is the one check a merge needs. It runs with `if: always()`, needs every lane and refuses
+whatever it cannot prove: hygiene, lint, scope and `build-and-test` must succeed; `ios-portability` must
+skip on a PR and succeed on a manual run; a skipped UI lane needs scope's explicit `required=false` and
+reason; the interruption controls must match the selection. A required UI lane needs its job's success,
+the classifier's `passed`, and a lane receipt of this head and of the attempt that ran, with tests executed,
+none missing, and the same cases as the runtime receipt. The known automation-mode timeout therefore leaves the PR red instead of green with no
+evidence, and rerunning the failed jobs is allowed on a PR. The UI lane fails as its last step when its evidence
+is not complete, so that rerun runs it again; a rerun keeps a passed lane, so the gate reads that lane's own
+attempt. A manual run reports `gate-manual` and `ui-test-gate-manual`, skipped or not, so it cannot answer for a PR's required check. Receipts last seven days; past that, rerun all jobs. On `main` a manual run
+disqualifies the commit from a release, so `full_ui` belongs on a branch. `main` still takes only a first attempt for a release (`rejectReruns`). `ui-test-gate`
+follows `gate` only until the protection of `main` requires `gate`. Because a prebuilt-products run does not hand the XCTest
 process the app's language, bilingual expectations read
 `UITestLocale.environmentLocale` — the locale the run declared — rather than
 the ambient `Locale.current`; `scripts/check-repository-hygiene.sh` rejects the
@@ -657,10 +668,9 @@ ratchets reached a single 13 519-line file before D503 split them by family.
 This is a per-file readability limit, not a bound on the combined class or proof
 of behavioral coverage.
 
-Each locale publishes a compact classifier artifact containing only its
-runtime receipt, execution receipt and recorded step outcome. The Linux gate
-downloads only these artifacts, merged under their locale-qualified filenames;
-it does not download the result bundles or logs it never reads. Full raw UI
+The UI lane publishes a compact classifier artifact per attempt containing only its
+runtime receipt, execution receipt, lane receipt and recorded step outcome. The Linux gate
+downloads only that artifact; it does not download the result bundles or logs it never reads. Full raw UI
 artifacts retain their separate names and seven-day retention for audit. Missing,
 malformed or contradictory receipts still fail the same classifier; splitting
 transport never turns an incomplete lane into verified evidence. Tooling tests
@@ -3264,7 +3274,7 @@ the canaries and the owners of the pins that moved. `Package.swift`, seed fixtur
 a pin without an owner, an unreadable catalog or lock, unowned resources and app
 resources such as `Info.plist` report `scope-unknown` with the conservative set and
 the command for a full run; a parse error is never zero tests. Every selection
-reports how many cases it defers to nightly. `full_ui` on the Scoped UI dispatch
+reports how many cases it defers to nightly. `full_ui` on a manual `ci.yml` run
 runs the complete catalog, and false runs the selection against `main`. The gate's
 detection of an omitted selector, zero tests, a crashed host and a cancelled lane is
 pinned in `test_ui_test_ci_gate`; the gate compares selected and executed cases
@@ -3309,13 +3319,8 @@ Standard-library unit tests characterize skip, targeted,
 bilingual, harness, and conservative-fallback behavior. `make test-ui-changed` consumes that
 policy locally against committed, staged, unstaged, and untracked paths, so a
 pre-commit smoke cannot silently select nothing; `UI_HEAD` remains an explicit
-committed-range override. Pull requests advance from the newest successful,
-first-attempt ancestor that published one exact-SHA `ui-verification-*`
-artifact after complete selected functional evidence (or a verified no-UI
-selection). The resolver rejects retries, duplicate/expired artifacts,
-non-ancestors, and force-pushed history. Missing API/artifact/history proof
-falls back to the repository base, and manual integration dispatches still
-select the full catalogue.
+committed-range override. Pull requests select from history on every attempt,
+and a manual `full_ui` run selects the full catalogue (D623).
 `scripts/run-ui-tests.sh` performs one `build-for-testing` and
 reuses it with `test-without-building` for each selected locale, retaining an
 xcresult plus content-free runtime and execution receipts per locale under
@@ -5629,15 +5634,14 @@ correctly failed closed, and no verification anchor was published. The
 preserved English receipt and missing Spanish receipt distinguish orchestration
 exhaustion from a product assertion, skip, malformed receipt, or green retry.
 
-The `scoped-ui-tests` job keeps a 90-minute global orchestration ceiling only on a
+The `ui-tests` job keeps a 90-minute global orchestration ceiling only on a
 manual complete run, and 22 minutes on a pull request (D622). The 90 minutes were sized for one
 build plus both complete sequential locales with bounded
 hosted variance and cleanup/upload/classification headroom. Neither is a product
 or per-test runtime budget: selectors, assertions, test waits, the controlled-
 host per-journey/catalogue/p95 budgets, locale order, artifact preservation,
-first-attempt requirement, no-retry rule, and fail-closed classifier remain
-unchanged. A timeout still blocks the UI gate and cannot publish an incremental
-verification anchor.
+no-retry rule, and fail-closed classifier remain unchanged. A timeout still
+blocks the gate.
 
 ## Measured numbers (MacBook Pro M4 Max 36 GB, macOS 26, Jul 2026)
 
@@ -7212,7 +7216,8 @@ The initial D409 policy scoped synchronization from the immediately previous PR
 head instead of replaying the whole accumulated branch diff. D429 replaces that
 unproven shortcut with the newest first-attempt exact-SHA verification artifact
 inside current ancestry; missing, expired, duplicate, failed, retried, or
-force-pushed proof falls back to the target branch. Shared/localization/unknown
+force-pushed proof falls back to the target branch. D623 later removes that
+proof, and each attempt selects from history. Shared/localization/unknown
 paths retain their fail-safe expansion, and manual integration dispatch remains
 full. This
 changes feature-band cost, not the release contract: a fresh complete bilingual
@@ -7915,12 +7920,7 @@ test's source-spelling assertion for the executed-case predicate; the package
 test retains its workflow wiring and dependency checks. They do not replace the native
 interruption controls, answer prompts, or make unsafe runs qualify.
 
-Incremental scope is proof-carrying rather than based on the previous push.
-Only a successful first-attempt run with one non-expired exact-SHA verification
-artifact can become the next base; the candidate must be inside the current PR
-ancestry. API uncertainty, duplicate artifacts, retries, failed evidence,
-expired retention, and force-push divergence expand from the PR base. A
-diagnostic rerun can never satisfy the final gate or publish an anchor.
+Scope never narrows from an earlier run: each attempt selects from history (D623).
 
 This split follows retained exact-head evidence rather than relaxing a red
 product test. Run `33230421948` passed 101/101 English cases at `e4767a34`, but
@@ -8798,14 +8798,14 @@ exit-zero restart. Changes to the guard, keyboard, storage, wait or scratch
 sources, the fixture target, the execution classifier or the control's own
 runner select this once, as do explicit full bilingual local runs and full-suite
 dispatches; localization-only and other unrelated full-bilingual fallbacks do not. CI executes the controls on a separate hosted Mac concurrently with the single
-product build. Locale jobs wait for both prerequisites; an unselected controls
-job must be skipped, while a selected job must succeed. The final classifier
-checks both states again before the exact-head verification anchor can publish. Synthetic
+product build. The UI job waits for both prerequisites; an unselected controls
+job must be skipped, while a selected job must succeed. `gate` checks both states
+again. Synthetic
 fixtures request no microphone, authentication or accessibility permission.
 The controls job archives qualification JSON, case logs, exit statuses and
 raw `.xcresult` bundles as one artifact once the controls have run. It excludes
 only the disposable fixture's generated project and DerivedData; an empty
-archive or failed upload fails that job, so locale lanes and the final gate
+archive or failed upload fails that job, so the UI lane and the final gate
 cannot qualify. This avoids transporting thousands of tiny build files
 through the artifact API while preserving failure forensics.
 

@@ -1,4 +1,8 @@
+import itertools
 import json
+import os
+import re
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -115,7 +119,7 @@ class CIWorkflowTests(unittest.TestCase):
         installer = (ROOT / "scripts/install-ci-xcodegen.sh").read_text(
             encoding="utf-8"
         )
-        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(
             encoding="utf-8"
         )
 
@@ -127,29 +131,28 @@ class CIWorkflowTests(unittest.TestCase):
         self.assertNotIn("brew install xcodegen", workflow)
         self.assertNotIn("-retry-tests-on-failure", workflow)
         self.assertNotIn("test-iterations", workflow)
-        self.assertIn("cannot manufacture qualifying UI evidence", workflow)
 
     def test_complete_ui_job_has_bounded_orchestration_headroom(self):
-        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(
             encoding="utf-8"
         )
-        scoped_job = workflow.split("  scoped-ui-tests:\n", 1)[1].split(
-            "\n  ui-test-gate:\n", 1
+        scoped_job = workflow.split("  ui-tests:\n", 1)[1].split(
+            "\n  gate:\n", 1
         )[0]
 
         self.assertEqual(scoped_job.count("    timeout-minutes: ${{ inputs.full_ui && 90 || 22 }}\n"), 1)
 
     def test_one_job_builds_the_host_and_runs_it_without_a_second_compiler(self):
-        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(
             encoding="utf-8"
         )
         runner = (ROOT / "scripts/run-ui-tests.sh").read_text(encoding="utf-8")
         builder = (ROOT / "scripts/build-ui-host-products.sh").read_text(encoding="utf-8")
-        scoped_job = workflow.split("  scoped-ui-tests:\n", 1)[1].split(
-            "\n  ui-test-gate:\n", 1
+        scoped_job = workflow.split("  ui-tests:\n", 1)[1].split(
+            "\n  gate:\n", 1
         )[0]
-        gate_job = workflow.split("  ui-test-gate:\n", 1)[1].split(
-            "\n  verification-anchor:\n", 1
+        gate_job = workflow.split("  gate:\n", 1)[1].split(
+            "\n  ui-test-gate:\n", 1
         )[0]
 
         self.assertNotIn("build-ui-products", workflow)
@@ -166,29 +169,25 @@ class CIWorkflowTests(unittest.TestCase):
         # GitHub rejects the whole workflow for this context at job level.
         for job in (scoped_job, gate_job):
             self.assertNotIn("runner.temp", job.split("    steps:\n", 1)[0])
-        self.assertIn("fail-fast: false", scoped_job)
-        self.assertIn("locale: ${{ fromJSON(needs.scope.outputs.matrix) }}", scoped_job)
+        self.assertNotIn("matrix", workflow)
         self.assertEqual(scoped_job.count("run: make test-ui-run"), 1)
-        # One Linux classifier reads every lane's receipts and outcome.
+        # One Linux classifier reads the lane's receipts and outcome.
         self.assertEqual(workflow.count("scripts/ui_test_ci_gate.py"), 1)
         self.assertIn("scripts/ui_test_ci_gate.py", gate_job)
-        self.assertIn("merge-multiple: true", gate_job)
-        self.assertIn("needs.ui-test-gate.outputs.verified == 'true'", workflow)
         # Hosted evidence is English only; Spanish is never wired as a lane.
-        self.assertIn('--english-outcome "$(outcome en)"', gate_job)
+        self.assertIn('--english-outcome "$outcome"', gate_job)
         self.assertNotIn("spanish", workflow.lower())
         self.assertNotIn("outcome es", workflow)
 
     def test_repository_contracts_have_one_linux_owner_before_macos(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        ui = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
+        ui = ci.split("\n  scope:\n", 1)[1]
 
         self.assertEqual(ci.count("run: scripts/check-repository-hygiene.sh"), 1)
         self.assertEqual(ci.count("needs: repository-hygiene\n"), 1)
-        self.assertEqual(ci.count("needs: swift-scope\n"), 1)
-        # swift-scope is skipped on a main push, and the release contract requires this job there.
-        self.assertIn("if: ${{ !cancelled() && needs.swift-scope.result != 'failure' }}\n", ci)
-        self.assertNotIn("needs: repository-hygiene", ci.split("  lint:\n", 1)[1])
+        self.assertEqual(ci.count("    needs: scope\n"), 2)
+        # scope is skipped on a main push, and the release contract requires this job there.
+        self.assertIn("if: ${{ !cancelled() && needs.scope.result != 'failure' }}\n", ci)
         self.assertNotIn("python3 -m unittest Tests.Tooling", ui)
         self.assertEqual(
             ui.count("scripts/ui_test_scope.py --validate-catalog"),
@@ -197,46 +196,46 @@ class CIWorkflowTests(unittest.TestCase):
 
     def test_ios_portability_leaves_pull_requests_and_stays_on_main(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        lane = ci.split("  ios-portability:\n", 1)[1].split("\n  lint:\n", 1)[0]
+        lane = ci.split("  ios-portability:\n", 1)[1].split("\n  interruption:\n", 1)[0]
 
         self.assertIn("if: github.event_name != 'pull_request'\n", lane)
         self.assertNotIn("ios-scope", ci)
         self.assertFalse((ROOT / "scripts/ios_portability_scope.py").exists())
 
     def test_large_ui_evidence_is_kept_only_when_a_lane_did_not_pass(self):
-        ui = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
+        ui = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         nightly = (ROOT / ".github/workflows/ui-nightly.yml").read_text(encoding="utf-8")
 
         self.assertIn("if: always() && steps.lane.outputs.complete != 'true'\n",
-                      ui.split("- name: Preserve ${{ matrix.locale }} UI evidence\n", 1)[1][:80])
+                      ui.split("- name: Preserve UI evidence\n", 1)[1][:80])
         self.assertIn("id: lane\n", ui.split("- name: Record the lane receipt\n", 1)[1][:60])
         self.assertIn('--github-output "$GITHUB_OUTPUT"', ui)
         self.assertIn("steps.ui.outcome != 'success' || steps.classify.outputs.verified != 'true'", nightly)
 
     def test_small_receipts_and_pr_screenshots_are_kept_on_every_run(self):
-        ui = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
+        ui = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         for step in ("- name: Record the lane receipt\n", "- name: Record PR screenshots\n",
                      "- name: Publish PR screenshots\n", "- name: Publish compact classifier receipts\n"):
             self.assertIn("        if: always()\n", ui.split(step, 1)[1][:60], step)
-        self.assertIn("dist/ui-test-results/${{ matrix.locale }}-lane.json", ui)
+        self.assertIn("dist/ui-test-results/en-lane.json", ui)
         self.assertIn("name: pr-screenshots-${{ github.run_id }}", ui)
         self.assertIn("path: dist/pr-screenshots\n          if-no-files-found: ignore", ui)
 
     def test_a_person_can_ask_for_the_complete_catalog_or_the_selection(self):
-        ui = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
+        ui = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         triggers = ui.split("\npermissions:", 1)[0]
         select = ui.split("- name: Select UI evidence\n", 1)[1].split("- name: Explain the selection", 1)[0]
 
         self.assertIn("    inputs:\n      full_ui:\n", triggers)
-        self.assertIn("        type: boolean\n        default: true\n", triggers)
+        self.assertIn("        type: boolean\n        default: false\n", triggers)
         self.assertIn('FULL_UI: ${{ inputs.full_ui }}', select)
         self.assertIn('"$EVENT_NAME" == "workflow_dispatch" && "$FULL_UI" == "true"', select)
         self.assertIn("scripts/ui_test_scope.py --all --format github", select)
-        self.assertIn('--base "$(git merge-base origin/main HEAD)" --head HEAD', select)
+        self.assertIn("--pull-request-base origin/main --head HEAD", select)
 
     def test_a_pull_request_shows_an_unknown_scope_and_what_it_defers(self):
-        ui = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
-        explain = ui.split("- name: Explain the selection\n", 1)[1].split("\n  interruption-controls:", 1)[0]
+        ui = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        explain = ui.split("- name: Explain the selection\n", 1)[1].split("\n  build-and-test:", 1)[0]
 
         self.assertIn('if [[ "$SCOPE_UNKNOWN" == "true" ]]; then', explain)
         self.assertIn("::warning title=UI scope unknown::Canaries and what fits of the harness self-test are selected.", explain)
@@ -244,28 +243,76 @@ class CIWorkflowTests(unittest.TestCase):
         fit = ui.split("- name: Fit the selection to what remains of the job\n", 1)[1].split("- name: Run ", 1)[0]
         self.assertIn('echo "Deferred to nightly: $deferred" | tee -a "$GITHUB_STEP_SUMMARY"', fit)
 
-    def test_ui_scope_requires_first_attempt_anchor_and_never_previous_push(self):
-        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
-            encoding="utf-8"
-        )
+    def test_reruns_are_allowed_and_no_earlier_run_narrows_a_selection(self):
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        contract = json.loads((ROOT / "docs/evidence/source-integration-qualification.json").read_text(encoding="utf-8"))
 
-        self.assertIn("id: verified_base", workflow)
-        self.assertIn("scripts/ui_test_verified_base.py", workflow)
-        self.assertIn("github.run_attempt == 1", workflow)
-        self.assertIn("retention-days: 90", workflow)
+        self.assertNotIn("github.run_attempt == 1", workflow)
+        self.assertNotIn("RUN_ATTEMPT", workflow)
+        self.assertNotIn("verification-anchor", workflow)
         self.assertNotIn("github.event.before", workflow)
         self.assertNotIn("PREVIOUS_HEAD_SHA", workflow)
+        # A release still takes only a first attempt of the main push.
+        self.assertIs(contract["hostedCI"]["rejectReruns"], True)
 
-    def test_stacked_ui_scope_passes_both_branch_identities_to_resolver(self):
-        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
-            encoding="utf-8"
-        )
+    def test_one_workflow_owns_pull_requests_and_always_triggers(self):
+        workflows = ROOT / ".github/workflows"
+        workflow = (workflows / "ci.yml").read_text(encoding="utf-8")
+        triggers = workflow.split("\npermissions:", 1)[0]
 
-        self.assertIn("BASE_BRANCH: ${{ github.event.pull_request.base.ref }}", workflow)
-        self.assertIn("DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}", workflow)
-        self.assertIn('--base-branch "$BASE_BRANCH"', workflow)
-        self.assertIn('--default-branch "$DEFAULT_BRANCH"', workflow)
-        self.assertIn('--base "$VERIFIED_BASE_SHA" --head "$HEAD_SHA"', workflow)
+        self.assertFalse((workflows / "ui-tests.yml").exists())
+        self.assertNotIn("paths", triggers)
+        self.assertIn("  pull_request:\n", triggers)
+        self.assertIn("cancel-in-progress: ${{ github.event_name == 'pull_request' }}", workflow)
+
+    def test_pull_request_jobs_stay_off_the_push_the_release_contract_reads(self):
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+        for job in ("scope", "gate"):
+            body = workflow.split(f"\n  {job}:\n", 1)[1]
+            self.assertIn("github.event_name != 'push'", body.split("    steps:\n", 1)[0], job)
+
+    def test_only_a_pull_request_reports_the_required_check_names(self):
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        gate = workflow.split("\n  gate:\n", 1)[1].split("    steps:\n", 1)[0]
+        follower = workflow.split("\n  ui-test-gate:\n", 1)[1].split("    steps:\n", 1)[0]
+
+        self.assertIn("name: ${{ github.event_name == 'pull_request' && 'gate' || 'gate-manual' }}", gate)
+        # GitHub counts a skipped required check as passing, so skipping is not enough here.
+        self.assertIn("name: ${{ github.event_name == 'pull_request' && 'ui-test-gate' || 'ui-test-gate-manual' }}", follower)
+        self.assertIn("if: always() && github.event_name == 'pull_request'", follower)
+
+    def test_a_rerun_of_failed_jobs_runs_again_a_lane_without_complete_evidence(self):
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        lane = workflow.split("\n  ui-tests:\n", 1)[1].split("\n  gate:\n", 1)[0]
+        steps = re.findall(r"^      - name: (.*)$", lane, re.MULTILINE)
+        last = lane.split("- name: Fail the lane when its evidence is not complete\n", 1)[1]
+        command = last.split("run: ", 1)[1].strip()
+
+        self.assertEqual(steps[-1], "Fail the lane when its evidence is not complete")
+        self.assertIn("if: always()\n", last)
+        self.assertIn("COMPLETE: ${{ steps.lane.outputs.complete }}", last)
+        for complete, status in (("true", 0), ("false", 1), ("", 1)):
+            with self.subTest(complete=complete):
+                run = subprocess.run(["bash", "-c", command], env={**os.environ, "COMPLETE": complete},
+                                     capture_output=True, timeout=5)
+                self.assertEqual(run.returncode, status)
+
+    def test_no_required_job_can_be_green_by_continuing_on_error(self):
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+        self.assertNotRegex(workflow, r"(?m)^    continue-on-error:")
+        self.assertEqual(workflow.count("continue-on-error: true"), 1)
+        self.assertIn("id: ui\n        continue-on-error: true\n", workflow)
+
+    def test_the_gate_needs_every_lane(self):
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        jobs = re.findall(r"^  ([a-z][a-z-]+):\n", workflow.split("\njobs:\n", 1)[1], re.MULTILINE)
+        gate = workflow.split("\n  gate:\n", 1)[1].split("\n  ui-test-gate:\n", 1)[0]
+        needed = re.search(r"needs: \[(.*)\]", gate).group(1).split(", ")
+
+        self.assertEqual(set(needed), set(jobs) - {"gate", "ui-test-gate"})
+        self.assertIn("if: always() && github.event_name != 'push'", gate)
 
 
 class UIPrerequisiteTests(unittest.TestCase):
@@ -276,19 +323,21 @@ class UIPrerequisiteTests(unittest.TestCase):
         import re
         import textwrap
 
-        cls.workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text()
+        cls.workflow = (ROOT / ".github/workflows/ci.yml").read_text()
         cls.jobs = dict(re.findall(
             r"^  ([a-z][a-z-]+):\n(.*?)(?=^  [a-z][a-z-]+:\n|\Z)",
             cls.workflow, re.MULTILINE | re.DOTALL))
-        final_step = cls.jobs["ui-test-gate"].split(
-            "      - name: Require selected evidence and allow an honest no-UI skip\n", 1)[1]
+        final_step = cls.jobs["gate"].split(
+            "      - name: Require every lane the selection asked for\n", 1)[1]
         cls.shell = textwrap.dedent(final_step.split("        run: |\n", 1)[1])
 
     def run_gate(self, **overrides):
         import os
         import subprocess
 
-        environment = dict(os.environ, SCOPE_RESULT="success", UI_REQUIRED="true",
+        environment = dict(os.environ, EVENT_NAME="pull_request", HYGIENE_RESULT="success", LINT_RESULT="success",
+                           BUILD_RESULT="success", IOS_RESULT="skipped", SCOPE_SUMMARY="reason",
+                           SCOPE_RESULT="success", UI_REQUIRED="true",
                            CONTROLS_REQUIRED="true",
                            CONTROLS_RESULT="success", UI_RESULT="success",
                            UI_VERIFIED="true", UI_STATE="passed")
@@ -297,8 +346,8 @@ class UIPrerequisiteTests(unittest.TestCase):
                               env=environment, text=True, capture_output=True, timeout=5)
 
     def test_native_and_product_builds_are_independent_single_owners(self):
-        native = self.jobs["interruption-controls"]
-        build = self.jobs["scoped-ui-tests"]
+        native = self.jobs["interruption"]
+        build = self.jobs["ui-tests"]
         self.assertIn("    needs: scope\n", native)
         self.assertIn("runs-on: macos-26", native)
         self.assertIn("runs-on: macos-26", build)
@@ -308,11 +357,11 @@ class UIPrerequisiteTests(unittest.TestCase):
         self.assertNotIn("test-ui-interruption-safety", build)
         self.assertEqual(build.count("run: make test-ui-host-products"), 1)
         self.assertIn("if: always()", native)
-        self.assertIn("name: ui-interruption-safety-${{ github.run_id }}", native)
+        self.assertIn("name: ui-interruption-safety-${{ github.run_id }}-${{ github.run_attempt }}", native)
 
     def test_interruption_evidence_is_archived_by_its_owning_job(self):
-        native = self.jobs["interruption-controls"]
-        self.assertNotIn("archive-ui-interruption-evidence", self.jobs["scoped-ui-tests"])
+        native = self.jobs["interruption"]
+        self.assertNotIn("archive-ui-interruption-evidence", self.jobs["ui-tests"])
         self.assertEqual(native.count("scripts/archive-ui-interruption-evidence.sh"), 1)
         self.assertIn("steps.interruption_controls.outcome != 'skipped'", native)
         upload = native.split("      - name: Upload interruption-control evidence\n", 1)[1]
@@ -323,16 +372,16 @@ class UIPrerequisiteTests(unittest.TestCase):
         self.assertNotIn("continue-on-error: true", upload)
 
     def test_locales_join_both_prerequisites_even_when_native_is_skipped(self):
-        lane = self.jobs["scoped-ui-tests"]
-        self.assertIn("needs: [scope, interruption-controls]", lane)
+        lane = self.jobs["ui-tests"]
+        self.assertIn("needs: [scope, interruption]", lane)
         self.assertIn("always() && !cancelled()", lane)
-        self.assertIn("needs.interruption-controls.result == 'success'", lane)
-        self.assertIn("needs.interruption-controls.result == 'skipped'", lane)
-        gate = self.jobs["ui-test-gate"]
-        self.assertIn("needs: [scope, interruption-controls, scoped-ui-tests]", gate)
+        self.assertIn("needs.interruption.result == 'success'", lane)
+        self.assertIn("needs.interruption.result == 'skipped'", lane)
+        gate = self.jobs["gate"]
         self.assertIn("CONTROLS_REQUIRED: ${{ needs.scope.outputs.interruption_controls }}", gate)
-        self.assertIn("CONTROLS_RESULT: ${{ needs.interruption-controls.result }}", gate)
-        self.assertIn("needs.ui-test-gate.result == 'success'", self.jobs["verification-anchor"])
+        self.assertIn("CONTROLS_RESULT: ${{ needs.interruption.result }}", gate)
+        self.assertIn("test \"$GATE_RESULT\" = \"success\"", self.jobs["ui-test-gate"])
+        self.assertIn("    needs: gate\n", self.jobs["ui-test-gate"])
 
     def test_actual_gate_rejects_every_invalid_native_outcome_even_with_green_ui(self):
         states = ("success", "failure", "cancelled", "skipped", "", "neutral")
@@ -357,7 +406,7 @@ class UIPrerequisiteTests(unittest.TestCase):
         self.assertIn("cannot require native controls", run.stderr)
 
     def test_other_failures_cannot_hide_behind_successful_native_controls(self):
-        for key in ("SCOPE_RESULT", "UI_RESULT"):
+        for key in ("HYGIENE_RESULT", "LINT_RESULT", "SCOPE_RESULT", "BUILD_RESULT", "UI_RESULT"):
             for result in ("failure", "cancelled", "skipped", ""):
                 with self.subTest(key=key, result=result):
                     run = self.run_gate(**{key: result})
@@ -365,19 +414,72 @@ class UIPrerequisiteTests(unittest.TestCase):
         run = self.run_gate(UI_STATE="passed", UI_VERIFIED="false")
         self.assertNotEqual(run.returncode, 0, run.stdout)
 
+    def test_every_combination_of_a_required_lane_and_a_result_is_decided(self):
+        states = ("success", "failure", "cancelled", "skipped", "")
+        for hygiene, lint, scope, build in itertools.product(states, repeat=4):
+            with self.subTest(hygiene=hygiene, lint=lint, scope=scope, build=build):
+                run = self.run_gate(HYGIENE_RESULT=hygiene, LINT_RESULT=lint, SCOPE_RESULT=scope, BUILD_RESULT=build)
+                self.assertEqual(run.returncode == 0, {hygiene, lint, scope, build} == {"success"}, run.stderr)
+
+    def test_a_hosted_failure_stays_red_and_names_the_rerun(self):
+        run = self.run_gate(UI_RESULT="failure", UI_STATE="infrastructure-advisory", UI_VERIFIED="false")
+
+        self.assertNotEqual(run.returncode, 0, run.stdout)
+        self.assertIn("infrastructure-advisory", run.stderr)
+        self.assertIn("Rerun the failed jobs", run.stderr)
+
+    def test_a_selection_that_said_nothing_is_not_a_skip(self):
+        for required in ("", "TRUE", "maybe"):
+            with self.subTest(required=required):
+                run = self.run_gate(UI_REQUIRED=required, CONTROLS_REQUIRED="false", CONTROLS_RESULT="skipped",
+                                    UI_RESULT="skipped")
+                self.assertNotEqual(run.returncode, 0, run.stdout)
+                self.assertIn("did not say whether UI is required", run.stderr)
+
+    def test_a_skipped_ui_lane_needs_the_reason_scope_gave(self):
+        for overrides in ({"SCOPE_SUMMARY": ""}, {"UI_RESULT": "success"}, {"UI_RESULT": "cancelled"}):
+            with self.subTest(**overrides):
+                values = dict(UI_REQUIRED="false", CONTROLS_REQUIRED="false", CONTROLS_RESULT="skipped",
+                              UI_RESULT="skipped", UI_VERIFIED="", UI_STATE="")
+                run = self.run_gate(**{**values, **overrides})
+                self.assertNotEqual(run.returncode, 0, run.stdout)
+                self.assertIn("needs its reason and a skipped lane", run.stderr)
+
+    def test_ios_portability_follows_the_event(self):
+        for event, result, accepted in (("pull_request", "skipped", True), ("pull_request", "success", False),
+                                        ("workflow_dispatch", "success", True), ("workflow_dispatch", "skipped", False),
+                                        ("workflow_dispatch", "failure", False), ("pull_request", "cancelled", False)):
+            with self.subTest(event=event, result=result):
+                run = self.run_gate(EVENT_NAME=event, IOS_RESULT=result)
+                self.assertEqual(run.returncode == 0, accepted, run.stderr)
+
+    def test_a_failed_receipt_download_still_reaches_the_classifier_and_the_final_step(self):
+        gate = self.jobs["gate"]
+        self.assertIn("if: always() && needs.scope.outputs.required == 'true'",
+                      gate.split("- name: Classify functional evidence", 1)[1][:200])
+        self.assertIn("if: always()\n", gate.split("- name: Require every lane", 1)[1][:60])
+        self.assertIn("name: ui-receipts-${{ github.run_id }}-${{ needs.ui-tests.outputs.attempt }}", gate)
+
 
 class UIArtifactTransportTests(unittest.TestCase):
+    def lane_receipt(self, **change):
+        from Tests.Tooling.test_ui_test_ci_gate import receipt
+
+        cases = [{"identifier": case["identifier"]} for case in receipt("en")["tests"]]
+        return {"sha": "a" * 40, "attempt": 1, "selection": {"selected": ["PortavozUITests/LibraryUITests/testLibrary"]},
+                "executed": cases, "notExecuted": [], **change}
+
     def receipt_paths(self, locale):
-        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text()
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text()
         marker = "      - name: Publish compact classifier receipts\n"
         self.assertIn(marker, workflow, "the classifier must not download result bundles")
         step = workflow.split(marker, 1)[1].split("\n      - name:", 1)[0]
         self.assertIn("if: always()", step)
-        self.assertIn("name: scoped-ui-receipts-${{ matrix.locale }}-${{ github.run_id }}", step)
+        self.assertIn("name: ui-receipts-${{ github.run_id }}-${{ github.run_attempt }}", step)
         self.assertIn("if-no-files-found: error", step)
         paths = step.split("          path: |\n", 1)[1].split(
             "          if-no-files-found:", 1)[0]
-        paths = [line.strip().replace("${{ matrix.locale }}", locale)
+        paths = [line.strip().replace("/en-", f"/{locale}-")
                  for line in paths.splitlines() if line.strip()]
         self.assertEqual(set(paths), {
             f"dist/ui-test-results/{locale}-runtime.json",
@@ -389,20 +491,19 @@ class UIArtifactTransportTests(unittest.TestCase):
         return paths
 
     def test_classifier_fetches_only_receipts_without_removing_raw_evidence(self):
-        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text()
-        gate = workflow.split("  ui-test-gate:\n", 1)[1].split(
-            "\n  verification-anchor:\n", 1)[0]
-        self.assertIn("pattern: scoped-ui-receipts-*-${{ github.run_id }}", gate)
-        self.assertNotIn("pattern: scoped-ui-*-${{ github.run_id }}", gate)
-        self.assertIn("merge-multiple: true", gate)
-        raw = workflow.split("      - name: Preserve ${{ matrix.locale }} UI evidence\n", 1)[1]
-        self.assertIn("name: scoped-ui-${{ matrix.locale }}-${{ github.run_id }}", raw)
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+        gate = workflow.split("\n  gate:\n", 1)[1].split(
+            "\n  ui-test-gate:\n", 1)[0]
+        self.assertIn("name: ui-receipts-${{ github.run_id }}-${{ needs.ui-tests.outputs.attempt }}", gate)
+        self.assertNotIn("ui-evidence-", gate)
+        raw = workflow.split("      - name: Preserve UI evidence\n", 1)[1]
+        self.assertIn("name: ui-evidence-${{ github.run_id }}-${{ github.run_attempt }}", raw)
         self.assertIn("path: dist/ui-test-results", raw)
         self.assertIn("retention-days: 7", raw)
         self.receipt_paths("en")
 
     def classify_transported_files(
-        self, *, remove=None, replace=None, lanes=("en",), selected="en",
+        self, *, remove=None, replace=None, lanes=("en",),
     ):
         import os
         import shutil
@@ -411,7 +512,7 @@ class UIArtifactTransportTests(unittest.TestCase):
         import textwrap
         from Tests.Tooling.test_ui_test_ci_gate import execution, receipt
 
-        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text()
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text()
         step = workflow.split(
             "      - name: Classify functional evidence and hosted runtime drift\n", 1)[1]
         shell = textwrap.dedent(step.split("        run: |\n", 1)[1].split(
@@ -425,6 +526,7 @@ class UIArtifactTransportTests(unittest.TestCase):
                 (results / f"{locale}-runtime.json").write_text(json.dumps(receipt(locale)))
                 (results / f"{locale}-execution.json").write_text(json.dumps(execution(locale)))
                 (results / f"{locale}-outcome.txt").write_text("success\n")
+                (results / f"{locale}-lane.json").write_text(json.dumps(self.lane_receipt()))
             (results / "en.xcresult").mkdir()
             (results / "en.xcresult/large-result").write_bytes(b"unneeded by the classifier")
             (results / "en.log").write_text("retained diagnostic log")
@@ -449,7 +551,7 @@ class UIArtifactTransportTests(unittest.TestCase):
             shutil.copyfile(ROOT / "scripts/ui_test_ci_gate.py",
                             consumer / "scripts/ui_test_ci_gate.py")
             output = root / "github-output"
-            environment = dict(os.environ, UI_TEST_LOCALES=selected, GITHUB_OUTPUT=str(output))
+            environment = dict(os.environ, HEAD_SHA="a" * 40, ATTEMPT="1", GITHUB_OUTPUT=str(output))
             result = subprocess.run(["bash", "-euo", "pipefail", "-c", shell],
                                     cwd=consumer, env=environment, capture_output=True,
                                     text=True, timeout=5)
@@ -460,17 +562,31 @@ class UIArtifactTransportTests(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
         self.assertIn("verified=true", outputs)
 
+    def test_a_lane_receipt_of_another_head_or_with_gaps_never_qualifies(self):
+        cases = (
+            ({"sha": "b" * 40}, "another head"), ({"attempt": 2}, "another attempt"), ({"executed": []}, "zero tests"),
+            ({"notExecuted": ["y"]}, "did not run"), ({"selection": {"selected": ["a", "b"]}}, "different counts"),
+            ({"selection": {"selected": []}}, "different counts"), ({"selection": None}, "shape differs"),
+            ({"executed": [{"identifier": "AnotherUITests/testOther()"}]}, "disagrees with the runtime"),
+        )
+        for change, message in cases:
+            with self.subTest(change=change):
+                run, outputs = self.classify_transported_files(
+                    replace=("en-lane.json", json.dumps(self.lane_receipt(**change))))
+                self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+                self.assertIn(message, run.stderr)
+                self.assertIn("verified=false", outputs)
+
+        run, outputs = self.classify_transported_files(remove="en-lane.json")
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn("lane receipt is unreadable", run.stderr)
+
     def test_transported_spanish_lane_never_qualifies(self):
         run, outputs = self.classify_transported_files(lanes=("en", "es"))
         self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
         self.assertIn("es: unsupported locale lane", run.stderr)
         self.assertIn("verified=false", outputs)
-        for selected in ("en es", "es"):
-            with self.subTest(selected=selected):
-                run, outputs = self.classify_transported_files(
-                    lanes=("en", "es"), selected=selected)
-                self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
-                self.assertNotIn("verified=true", outputs)
+        self.assertIn("--locales en \\\n", (ROOT / ".github/workflows/ci.yml").read_text())
 
     def test_transport_cannot_hide_missing_or_corrupt_required_evidence(self):
         for locale in ("en",):
@@ -556,7 +672,7 @@ class NightlyUIWorkflowTests(unittest.TestCase):
         self.assertIn("scripts/ui_nightly_health.py freshness", watch)
 
     def test_pull_requests_select_within_the_budget_and_report_what_was_cut(self):
-        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
 
         self.assertEqual(workflow.count("python3 scripts/ui_test_scope.py --ranked"), 2)
         self.assertNotIn("ui_test_scope.py --budget", workflow)
@@ -564,8 +680,7 @@ class NightlyUIWorkflowTests(unittest.TestCase):
         self.assertIn("ranked: ${{ steps.select.outputs.ranked }}", workflow)
         self.assertIn("cut: ${{ steps.fit.outputs.cut }}", workflow)
         self.assertIn("UI_TESTS: ${{ steps.fit.outputs.tests }}", workflow)
-        self.assertIn("UI_TESTS: ${{ needs.scoped-ui-tests.outputs.tests }}", workflow)
-        self.assertIn("UI_CUT: ${{ needs.scoped-ui-tests.outputs.cut }}", workflow)
+        self.assertIn("UI_CUT: ${{ needs.ui-tests.outputs.cut }}", workflow)
         self.assertIn("DEFERRED: ${{ steps.fit.outputs.deferred }}", workflow)
         self.assertIn('Deferred to nightly: $deferred', workflow)
         self.assertNotIn("needs.scope.outputs.deferred", workflow)

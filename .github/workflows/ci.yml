@@ -6,6 +6,11 @@ on:
   pull_request:
   # Re-runs main by hand when GitHub drops a push event and creates no run.
   workflow_dispatch:
+    inputs:
+      full_ui:
+        description: Run the complete English catalog instead of the selection against main
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -31,28 +36,84 @@ jobs:
       - name: Release performance ledger rules
         run: python3 -m unittest Tests.Tooling.test_perf_ledger
 
-  swift-scope:
-    if: github.event_name == 'pull_request'
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Strict SwiftLint 0.65.0 from checksum-pinned official archive
+        run: scripts/run-ci-swiftlint.sh
+
+  scope:
+    # Pull requests choose their evidence here; main and manual runs keep every Swift test.
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      filter: ${{ steps.select.outputs.filter }}
+      swift_filter: ${{ steps.swift.outputs.filter }}
+      required: ${{ steps.select.outputs.required }}
+      interruption_controls: ${{ steps.select.outputs.interruption_controls }}
+      tests: ${{ steps.select.outputs.tests }}
+      scope_unknown: ${{ steps.select.outputs.scope_unknown }}
+      ranked: ${{ steps.select.outputs.ranked }}
+      summary: ${{ steps.select.outputs.summary }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+
+      # Full policy/unit ownership stays in repository-hygiene. This job
+      # performs only the prerequisite needed to select this exact head.
+      - name: Validate the selector catalog
+        run: python3 scripts/ui_test_scope.py --validate-catalog
+
       # A docs/site/tooling-only diff runs only the Swift classes that read the
-      # checkout; anything else, and every main or manual run, runs everything.
+      # checkout; anything else, and every manual run, runs everything.
       - name: Select the Swift test scope
-        id: select
+        id: swift
+        if: github.event_name == 'pull_request'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: python3 scripts/swift_test_scope.py --base "$BASE_SHA" --head "$HEAD_SHA" >> "$GITHUB_OUTPUT"
 
+      # Every attempt selects again from history; no earlier run narrows it.
+      - name: Select UI evidence
+        id: select
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          FULL_UI: ${{ inputs.full_ui }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [[ "$EVENT_NAME" == "workflow_dispatch" && "$FULL_UI" == "true" ]]; then
+            python3 scripts/ui_test_scope.py --all --format github >> "$GITHUB_OUTPUT"
+          elif [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            python3 scripts/ui_test_scope.py --ranked \
+              --pull-request-base origin/main --head HEAD \
+              --format github >> "$GITHUB_OUTPUT"
+          else
+            python3 scripts/ui_test_scope.py --ranked \
+              --pull-request-base "$BASE_SHA" --head "$HEAD_SHA" \
+              --format github >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Explain the selection
+        env:
+          SUMMARY: ${{ steps.select.outputs.summary }}
+          TESTS: ${{ steps.select.outputs.tests }}
+          SCOPE_UNKNOWN: ${{ steps.select.outputs.scope_unknown }}
+          HEAD_REF: ${{ github.head_ref || github.ref_name }}
+        run: |
+          echo "$SUMMARY"
+          echo "Selectors: ${TESTS:-none}"
+          if [[ "$SCOPE_UNKNOWN" == "true" ]]; then
+            echo "::warning title=UI scope unknown::Canaries and what fits of the harness self-test are selected. For the complete catalog: gh workflow run ci.yml --ref $HEAD_REF -f full_ui=true"
+          fi
+
   build-and-test:
-    needs: swift-scope
-    if: ${{ !cancelled() && needs.swift-scope.result != 'failure' }}
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.result != 'failure' }}
     runs-on: macos-26
     timeout-minutes: 30
     env:
@@ -91,7 +152,7 @@ jobs:
       # second package build while producing two different diagnostic modes.
       - name: Current-SDK build and selected test suite
         env:
-          PORTAVOZ_SWIFT_TEST_SCOPE: ${{ needs.swift-scope.outputs.filter }}
+          PORTAVOZ_SWIFT_TEST_SCOPE: ${{ needs.scope.outputs.swift_filter }}
         run: scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors
       # Bound storage and save only after the complete suite succeeds; do not
       # increase the repository's paid cache allowance.
@@ -126,10 +187,334 @@ jobs:
       - name: Compile transport-neutral iOS 26 surface
         run: scripts/check-ios-portability.sh
 
-  lint:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+  interruption:
+    needs: scope
+    if: needs.scope.outputs.interruption_controls == 'true'
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Strict SwiftLint 0.65.0 from checksum-pinned official archive
-        run: scripts/run-ci-swiftlint.sh
+
+      - name: Verify fixed Tahoe toolchain
+        run: scripts/verify-ci-toolchain.sh 26 26.6
+
+      - name: Install checksum-pinned XcodeGen 2.46.0
+        run: scripts/install-ci-xcodegen.sh "$RUNNER_TEMP/portavoz-xcodegen"
+
+      # Independent hosted Mac: no shared WindowServer or product build state.
+      - name: Verify interruption safety at the shared callback
+        id: interruption_controls
+        run: make test-ui-interruption-safety UI_INTERRUPTION_RESULTS="$RUNNER_TEMP/ui-interruption-safety"
+
+      - name: Preserve interruption-control evidence
+        id: interruption_archive
+        if: always() && steps.interruption_controls.outcome != 'skipped'
+        run: |
+          scripts/archive-ui-interruption-evidence.sh \
+            "$RUNNER_TEMP/ui-interruption-safety" \
+            "$RUNNER_TEMP/ui-interruption-safety.tar.gz"
+
+      - name: Upload interruption-control evidence
+        if: always() && steps.interruption_archive.outcome == 'success'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ui-interruption-safety-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ui-interruption-safety.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
+  ui-tests:
+    needs: [scope, interruption]
+    if: >-
+      always() && !cancelled() &&
+      needs.scope.result == 'success' &&
+      needs.scope.outputs.required == 'true' &&
+      ((needs.scope.outputs.interruption_controls == 'true' &&
+        needs.interruption.result == 'success') ||
+       (needs.scope.outputs.interruption_controls == 'false' &&
+        needs.interruption.result == 'skipped'))
+    runs-on: macos-26
+    # The ceiling, not the target: a cold build still has to finish on a pull request.
+    # Only a manual full_ui run holds the complete catalog.
+    timeout-minutes: ${{ inputs.full_ui && 90 || 22 }}
+    outputs:
+      attempt: ${{ github.run_attempt }}
+      cut: ${{ steps.fit.outputs.cut }}
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - name: Record when the job started and where its products go
+        run: |
+          {
+            echo "UI_JOB_STARTED=$(date +%s)"
+            echo "UI_TEST_PRODUCTS_PATH=$RUNNER_TEMP/ui-products/portavoz-ui.xctestproducts"
+            echo "UI_TEST_BUILD_RECEIPT=$RUNNER_TEMP/ui-products/build-duration-seconds.txt"
+          } >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Verify fixed Tahoe toolchain
+        run: scripts/verify-ci-toolchain.sh 26 26.6
+
+      - name: Install checksum-pinned XcodeGen 2.46.0
+        run: scripts/install-ci-xcodegen.sh "$RUNNER_TEMP/portavoz-xcodegen"
+
+      - name: Identify compatible Swift build state
+        id: swift_cache_key
+        run: python3 scripts/ci_swift_cache_key.py --lane build-and-test --commit "$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+
+      # The seed main saves for build-and-test; this lane reads it and never saves.
+      - name: Restore compatible Swift build state
+        id: swift_cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .build
+          key: ${{ steps.swift_cache_key.outputs.key }}
+          restore-keys: |
+            ${{ steps.swift_cache_key.outputs.graph_prefix }}
+            ${{ steps.swift_cache_key.outputs.prefix }}
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: "2"
+
+      - name: Verify cached source freshness
+        if: steps.swift_cache.outputs.cache-matched-key != ''
+        run: |
+          if ! python3 scripts/ci_swift_source_stamps.py restore || ! swift package resolve; then
+            echo "::warning::Cached Swift build state failed freshness verification; building cold."
+            rm -rf .build
+          fi
+
+      - name: Build the UI host and runner once
+        run: make test-ui-host-products
+
+      - name: Fit the selection to what remains of the job
+        id: fit
+        env:
+          TESTS: ${{ needs.scope.outputs.tests }}
+          RANKED: ${{ needs.scope.outputs.ranked }}
+        run: |
+          python3 scripts/ui_test_fit.py --tests "$TESTS" --ranked "$RANKED" \
+            --elapsed "$(($(date +%s) - UI_JOB_STARTED))" > "$RUNNER_TEMP/ui-fit.txt"
+          cat "$RUNNER_TEMP/ui-fit.txt" >> "$GITHUB_OUTPUT"
+          cut="$(sed -n 's/^cut=//p' "$RUNNER_TEMP/ui-fit.txt")"
+          left="$(sed -n 's/^left=//p' "$RUNNER_TEMP/ui-fit.txt")"
+          deferred="$(sed -n 's/^deferred=//p' "$RUNNER_TEMP/ui-fit.txt")"
+          echo "Seconds left after the build: $left" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Deferred to nightly: $deferred" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [[ -n "$cut" ]]; then
+            echo "Cut by the budget: $cut" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "::notice title=ui-budget-cut::$(wc -w <<< "$cut" | tr -d ' ') candidates wait for nightly: $cut"
+          fi
+
+      - name: Run functional UI evidence
+        id: ui
+        continue-on-error: true
+        env:
+          UI_TESTS: ${{ steps.fit.outputs.tests }}
+          UI_TEST_LOCALES: en
+          # GitHub-hosted macOS wall-clock variance is reported in the receipt,
+          # not promoted to performance authority. Local/stable-Mac integration
+          # keeps the same unchanged budgets blocking by default.
+          UI_TEST_ENFORCE_RUNTIME_BUDGET: "false"
+        run: make test-ui-run
+
+      - name: Record the lane outcome beside its receipts
+        if: always()
+        env:
+          LOCALE: en
+          OUTCOME: ${{ steps.ui.outcome }}
+        run: |
+          mkdir -p dist/ui-test-results
+          printf '%s\n' "$OUTCOME" > "dist/ui-test-results/$LOCALE-outcome.txt"
+
+      - name: Record the lane receipt
+        id: lane
+        if: always()
+        env:
+          LOCALE: en
+          OUTCOME: ${{ steps.ui.outcome }}
+          SELECTED: ${{ steps.fit.outputs.tests }}
+          DEFERRED: ${{ steps.fit.outputs.deferred }}
+          CUT: ${{ steps.fit.outputs.cut }}
+          SCOPE_UNKNOWN: ${{ needs.scope.outputs.scope_unknown }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          python3 scripts/ui_test_lane_receipt.py \
+            --locale "$LOCALE" --results dist/ui-test-results --sha "$HEAD_SHA" --attempt "$ATTEMPT" \
+            --toolchain "$(xcodebuild -version | tr '\n' ' ')" --outcome "$OUTCOME" \
+            --tests "$SELECTED" --deferred "$DEFERRED" --cut "$CUT" --scope-unknown "$SCOPE_UNKNOWN" \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Record PR screenshots
+        if: always()
+        env:
+          LOCALE: en
+        run: python3 scripts/pr_screenshots.py --result "dist/ui-test-results/$LOCALE.xcresult" --output dist/pr-screenshots
+
+      - name: Publish PR screenshots
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pr-screenshots-${{ github.run_id }}
+          overwrite: true
+          path: dist/pr-screenshots
+          if-no-files-found: ignore
+          retention-days: 14
+
+      # The classifier reads these files, not hundreds of MB of xcresult
+      # attachments, which are kept only when the lane did not pass.
+      - name: Publish compact classifier receipts
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ui-receipts-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            dist/ui-test-results/en-runtime.json
+            dist/ui-test-results/en-execution.json
+            dist/ui-test-results/en-outcome.txt
+            dist/ui-test-results/en-lane.json
+          if-no-files-found: error
+          retention-days: 7
+
+      # Keep the host's crash reports beside the result bundle of a lane that did not pass.
+      - name: Collect host crash reports
+        if: always() && steps.lane.outputs.complete != 'true'
+        run: |
+          mkdir -p dist/ui-test-results/crash-reports
+          find "$HOME/Library/Logs/DiagnosticReports" -name 'Portavoz*.ips' \
+            -exec cp {} dist/ui-test-results/crash-reports/ \; 2>/dev/null || true
+
+      - name: Preserve UI evidence
+        if: always() && steps.lane.outputs.complete != 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ui-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: dist/ui-test-results
+          if-no-files-found: warn
+          retention-days: 7
+
+      # Last, after the receipts: a rerun of failed jobs must run this lane again.
+      - name: Fail the lane when its evidence is not complete
+        if: always()
+        env:
+          COMPLETE: ${{ steps.lane.outputs.complete }}
+        run: test "$COMPLETE" = "true"
+
+  gate:
+    # The one required check. A manual run keeps another name, so it cannot answer for the PR.
+    name: ${{ github.event_name == 'pull_request' && 'gate' || 'gate-manual' }}
+    needs: [repository-hygiene, lint, scope, build-and-test, ios-portability, interruption, ui-tests]
+    if: always() && github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.scope.outputs.required == 'true'
+
+      # A rerun of failed jobs keeps a passed lane, so its receipts carry that attempt.
+      - name: Collect the UI lane's receipts
+        if: needs.scope.outputs.required == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ui-receipts-${{ github.run_id }}-${{ needs.ui-tests.outputs.attempt }}
+          path: dist/ui-test-results
+
+      - name: Classify functional evidence and hosted runtime drift
+        id: classify
+        # Runs without receipts too, so a failed download still says what is missing.
+        if: always() && needs.scope.outputs.required == 'true'
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          ATTEMPT: ${{ needs.ui-tests.outputs.attempt }}
+        run: |
+          outcome="skipped"
+          if [[ -f dist/ui-test-results/en-outcome.txt ]]; then outcome="$(cat dist/ui-test-results/en-outcome.txt)"; fi
+          python3 scripts/ui_test_ci_gate.py \
+            --results dist/ui-test-results \
+            --locales en \
+            --english-outcome "$outcome" \
+            --head-sha "$HEAD_SHA" --attempt "$ATTEMPT" \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Require every lane the selection asked for
+        if: always()
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          HYGIENE_RESULT: ${{ needs.repository-hygiene.result }}
+          LINT_RESULT: ${{ needs.lint.result }}
+          SCOPE_RESULT: ${{ needs.scope.result }}
+          BUILD_RESULT: ${{ needs.build-and-test.result }}
+          IOS_RESULT: ${{ needs.ios-portability.result }}
+          UI_REQUIRED: ${{ needs.scope.outputs.required }}
+          SCOPE_SUMMARY: ${{ needs.scope.outputs.summary }}
+          CONTROLS_REQUIRED: ${{ needs.scope.outputs.interruption_controls }}
+          CONTROLS_RESULT: ${{ needs.interruption.result }}
+          UI_RESULT: ${{ needs.ui-tests.result }}
+          UI_CUT: ${{ needs.ui-tests.outputs.cut }}
+          UI_VERIFIED: ${{ steps.classify.outputs.verified }}
+          UI_STATE: ${{ steps.classify.outputs.state }}
+        run: |
+          for lane in "repository-hygiene:$HYGIENE_RESULT" "lint:$LINT_RESULT" "scope:$SCOPE_RESULT" "build-and-test:$BUILD_RESULT"; do
+            if [[ "${lane#*:}" != "success" ]]; then
+              echo "${lane%%:*} did not pass: ${lane#*:}" >&2
+              exit 1
+            fi
+          done
+          expected_ios="success"
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then expected_ios="skipped"; fi
+          if [[ "$IOS_RESULT" != "$expected_ios" ]]; then
+            echo "ios-portability contradicts the event: $EVENT_NAME/$IOS_RESULT" >&2
+            exit 1
+          fi
+          case "$UI_REQUIRED" in
+            true) ;;
+            false)
+              if [[ "$CONTROLS_REQUIRED" != "false" ]]; then
+                echo "A no-UI selection cannot require native controls." >&2
+                exit 1
+              fi
+              if [[ -z "${SCOPE_SUMMARY:-}" || "$UI_RESULT" != "skipped" ]]; then
+                echo "A no-UI selection needs its reason and a skipped lane: ${UI_RESULT:-none}" >&2
+                exit 1
+              fi
+              ;;
+            *)
+              echo "The selection did not say whether UI is required: ${UI_REQUIRED:-none}" >&2
+              exit 1
+              ;;
+          esac
+          case "$CONTROLS_REQUIRED:$CONTROLS_RESULT" in
+            true:success|false:skipped) ;;
+            *)
+              echo "Native interruption controls contradict selection: $CONTROLS_REQUIRED/$CONTROLS_RESULT" >&2
+              exit 1
+              ;;
+          esac
+          if [[ "$UI_REQUIRED" == "true" ]]; then
+            if [[ "$UI_RESULT" != "success" || "$UI_STATE:$UI_VERIFIED" != "passed:true" ]]; then
+              echo "UI evidence is not proven: lane ${UI_RESULT:-none}, ${UI_STATE:-none}/${UI_VERIFIED:-none}. Rerun the failed jobs if the host was at fault." >&2
+              exit 1
+            fi
+            echo "UI functional evidence is complete."
+            if [[ -n "${UI_CUT:-}" ]]; then
+              echo "Not run, for nightly to own: $UI_CUT" | tee -a "$GITHUB_STEP_SUMMARY"
+            fi
+          fi
+          echo "Gate passed (ui=$UI_REQUIRED, result=$UI_RESULT, verified=${UI_VERIFIED:-not-required})."
+
+  ui-test-gate:
+    # Old required name, until main's protection requires gate instead. A skip under this
+    # name would count as passing, so a manual run keeps another one here too.
+    name: ${{ github.event_name == 'pull_request' && 'ui-test-gate' || 'ui-test-gate-manual' }}
+    needs: gate
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Follow the gate
+        env:
+          GATE_RESULT: ${{ needs.gate.result }}
+        run: test "$GATE_RESULT" = "success"

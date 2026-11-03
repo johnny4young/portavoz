@@ -403,6 +403,26 @@ class SourceIntegrationQualificationTests(unittest.TestCase):
         ):
             self.collect(api)
 
+    def test_a_pull_request_job_may_skip_on_the_push_and_nothing_else_may(self):
+        skipped = self.good_api()
+        skipped.jobs.append({"name": "gate", "conclusion": "skipped"})
+        self.assertNotIn("gate", self.collect(skipped)["hostedCI"]["jobs"])
+
+        for conclusion in ("failure", "cancelled", "timed_out", "neutral", "action_required", None):
+            with self.subTest(conclusion=conclusion):
+                other = self.good_api()
+                other.jobs.append({"name": "gate", "conclusion": conclusion})
+                with self.assertRaisesRegex(source_integration.SourceIntegrationError, "non-success job"):
+                    self.collect(other)
+
+    def test_a_required_job_may_not_skip(self):
+        for required in ("build-and-test", "ios-portability", "lint", "repository-hygiene"):
+            with self.subTest(required=required):
+                api = self.good_api()
+                next(job for job in api.jobs if job["name"] == required)["conclusion"] = "skipped"
+                with self.assertRaisesRegex(source_integration.SourceIntegrationError, f"{required} must run"):
+                    self.collect(api)
+
     def test_every_required_ci_job_must_run_once_and_pass(self):
         missing = self.good_api()
         missing.jobs = [

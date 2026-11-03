@@ -28,7 +28,10 @@ from ui_test_runtime import percentile, write_receipt  # noqa: E402
 
 REPOSITORY = "johnny4young/portavoz"
 WORKFLOWS = ("ci.yml", "ui-tests.yml")
-WORKFLOW_FILES = tuple(ROOT / ".github/workflows" / name for name in WORKFLOWS)
+WORKFLOW_FILES = (ROOT / ".github/workflows/ci.yml",)
+# The API still reads the retired workflow, so its runs keep a limit to be judged against.
+RETIRED_TIMEOUTS = {"swift-scope": 5, "interruption-controls": 30, "build-ui-products": 30, "scoped-ui-tests": 22,
+                    "ui-test-gate": 5}
 EVENTS = ("pull_request", "push")
 # Jobs a merge or a publish waits for, by base name. Later CI stages keep or add
 # to these names, so the same report compares before and after.
@@ -61,6 +64,8 @@ INFRASTRUCTURE_STEP = re.compile(
     r"Check Swift cache|Save successful|Record |Create content-free)")
 GATE_JOBS = frozenset({"ui-test-gate", "gate"})
 RERUN_REFUSED_STEP = "Refuse to manufacture evidence on a rerun"
+UI_LANE_FAILED_STEP = "Fail the lane when its evidence is not complete"
+UI_RECEIPTS_STEP = "Collect the UI lane's receipts"
 CAPACITY_ANNOTATION = "was not acquired by Runner"
 LOG_TIMESTAMP = r"^\S+Z "
 EXACT_HIT = re.compile(LOG_TIMESTAMP + r"Cache hit for: ", re.MULTILINE)
@@ -74,10 +79,12 @@ BUILD_COMPLETE = re.compile(r"Build complete! \((\d+(?:\.\d+)?)s\)")
 SWIFT_SCOPE = re.compile(LOG_TIMESTAMP + r"\s*PORTAVOZ_SWIFT_TEST_SCOPE: ?(.*)$", re.MULTILINE)
 UI_SUMMARY = re.compile(LOG_TIMESTAMP + r"\s*SUMMARY: ?(.*)$", re.MULTILINE)
 UI_TESTS = re.compile(LOG_TIMESTAMP + r"\s*TESTS: ?(.*)$", re.MULTILINE)
-GATE_ADVISORY = re.compile(LOG_TIMESTAMP + r"##\[warning\]Known hosted UI infrastructure was unavailable", re.MULTILINE)
+GATE_ADVISORY = re.compile(
+    LOG_TIMESTAMP + r"##\[warning\](?:Known hosted UI infrastructure was unavailable|.*functional evidence remains unverified)",
+    re.MULTILINE)
 SUMMARY_LIMIT = 240
 # Bump when a digest or a cached shape changes, or old answers keep being served.
-CACHE_VERSION = 2
+CACHE_VERSION = 3
 MISSING_BUILD_LOG = {"cache": "log-unavailable", "compile_s": None, "swift_scope": None}
 MISSING_SCOPE_LOG = {"summary": None, "selectors": None}
 MISSING_GATE_LOG = {"advisory": False}
@@ -230,6 +237,8 @@ def classify_outcome(jobs: Sequence[dict[str, Any]], *, timeouts: dict[str, int]
         steps = {step for job in failed for step in job["failed_steps"]}
         if steps == {RERUN_REFUSED_STEP}:
             return "rerun-refused"
+        if UI_RECEIPTS_STEP in steps or (advisory and steps <= {UI_LANE_FAILED_STEP}):
+            return "infrastructure"
         if steps and not all(INFRASTRUCTURE_STEP.match(step) for step in steps):
             return "product"
         return "infrastructure"
@@ -659,7 +668,8 @@ def head_rows(client: GitHub, event: str, head: dict[str, Any], branch_runs: dic
     changes = HeadChanges(**client.changes(event, sha, branch))
     rows = []
     for attempt in group_attempts(client, event, head, runs, wanted, until):
-        gate = _digest(client, attempt, "ui-test-gate", gate_log_digest, MISSING_GATE_LOG)
+        gate = (_digest(client, attempt, "gate", gate_log_digest, MISSING_GATE_LOG)
+                or _digest(client, attempt, "ui-test-gate", gate_log_digest, MISSING_GATE_LOG))
         rows.append(attempt_row(
             attempt, changes=changes, timeouts=timeouts,
             build=_digest(client, attempt, "build-and-test", build_log_digest, MISSING_BUILD_LOG),
@@ -691,7 +701,7 @@ def _digest(client: GitHub, attempt: HeadAttempt, job_name: str, digest: Callabl
 
 
 def collect(client: GitHub, count: int, until: str | None) -> list[dict[str, Any]]:
-    timeouts = declared_timeouts()
+    timeouts = {**RETIRED_TIMEOUTS, **declared_timeouts()}
     rows: list[dict[str, Any]] = []
     for event in EVENTS:
         heads, branch_runs = latest_heads(client, event, count, until)
