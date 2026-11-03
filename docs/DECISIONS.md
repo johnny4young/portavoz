@@ -22393,9 +22393,10 @@ cancelling. D600 widens: `.github/`, `scripts/` and the `Makefile` also select t
 checkout readers, except the files that build or run the suite
 (`RUNS_THE_SUITE`). The `docs-only` cohort of `ci_time_report.py` follows, since it
 means the same narrowed lane. UI products travel as one zstd archive uploaded
-without a second compression, and the CI builds stop writing an index store.
+without a second compression, and the UI products build stops writing an index
+store. The SwiftPM lane keeps its index: a local cold build without it took 130 s
+against 121 s and saved 4% of the graph, so there was nothing to gain.
 
 **Consequences:** Pushes close together on `main` run side by side and use more
 macOS slots. Every `main` push and manual run still runs the complete suite, so a
 missed reader fails there instead of on the pull request.
-||||||| 9a4b84d0
