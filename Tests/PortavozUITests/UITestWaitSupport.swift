@@ -12,9 +12,12 @@ func waitForUITestCondition(
     _ condition: () throws -> Bool
 ) rethrows -> Bool {
     if try condition() { return true }
-    let deadline = Date().addingTimeInterval(timeout)
+    let start = Date()
+    let deadline = start.addingTimeInterval(timeout)
     while Date() < deadline {
-        let nextProbe = min(deadline, Date().addingTimeInterval(pollInterval))
+        // A long wait backs off, so its accessibility reads stop competing with the app.
+        let interval = Date().timeIntervalSince(start) < 1 ? pollInterval : max(pollInterval, 0.25)
+        let nextProbe = min(deadline, Date().addingTimeInterval(interval))
         // `run(mode:before:)` may return after any handled source, which turns
         // a requested polling interval into an unbounded AX-query loop. Keep
         // servicing the default run loop until the actual probe boundary.

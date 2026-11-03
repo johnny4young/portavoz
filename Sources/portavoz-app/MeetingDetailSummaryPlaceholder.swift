@@ -25,7 +25,7 @@ struct MeetingDetailSummaryPlaceholder: View {
 
     @ViewBuilder
     private var abandonedNotice: some View {
-        if let cancelled = latestCancelledSummary {
+        if let cancelled = Self.latestCancelledSummary(in: processingJobs) {
             Label(explanation(cancelled.errorCode), systemImage: "sparkles.slash")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -34,8 +34,8 @@ struct MeetingDetailSummaryPlaceholder: View {
         }
     }
 
-    private var latestCancelledSummary: ProcessingJob? {
-        processingJobs
+    nonisolated static func latestCancelledSummary(in jobs: [ProcessingJob]) -> ProcessingJob? {
+        jobs
             .filter { $0.kind == .summary && $0.state == .cancelled }
             .max { $0.updatedAt < $1.updatedAt }
     }

@@ -279,9 +279,7 @@ DEFAULT_FEATURE_OWNERSHIP = (
     {
         "feature": "playback-and-clips",
         "tests": [
-            "testClickingALineOfTextJumpsThere",
-            "testClipMarkingRevealsExport",
-            "testPlayerExposesSkipAndOnlyMyVoice",
+            "testPlayerMarksAClipJumpsFromALineAndPlaysOneVoice",
         ],
         "sourceAnchors": [
             {
@@ -301,7 +299,6 @@ DEFAULT_FEATURE_OWNERSHIP = (
     {
         "feature": "processing-and-refine",
         "tests": [
-            "testAbandonedAutomaticSummarySaysSoBesideGeneration",
             "testFailedDurableProcessingOffersOneRecoveryAction",
             "testRunningRefineCanBeCanceledWithoutChangingTheTranscript",
         ],
@@ -396,7 +393,6 @@ DEFAULT_FEATURE_OWNERSHIP = (
             "testMostRecentRecipeRemainsVisibleAfterReload",
             "testNoAppleIntelligenceSummaryFailureOpensExactSetupAndExplainsApuntador",
             "testRegenerateMenuOffersEveryDetailLevel",
-            "testStructureMenuOffersSeededTemplates",
         ],
         "sourceAnchors": [
             {

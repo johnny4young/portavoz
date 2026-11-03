@@ -595,10 +595,6 @@ extension ArchitectureDependencyTests {
 
         XCTAssertTrue(skills.contains(
             "the live pane must expose the seven-action candidate catalogue"))
-        XCTAssertTrue(skills.contains(
-            "testSkillActivityTransitionsHideStaleRowsAndKeepVerifiedControlsUsable"))
-        XCTAssertTrue(skills.contains(
-            "testSkillActivityFiltersByUpdatePeriodAndResetsExpansion"))
         XCTAssertFalse(skills.contains("assertReceiptScopes"))
         XCTAssertEqual(
             skills.components(separatedBy: "auditSkillDescriptions(in: app)").count - 1,

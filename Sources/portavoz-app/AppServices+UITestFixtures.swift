@@ -316,17 +316,10 @@ extension AppServices {
         for meetingID: MeetingID
     ) async {
         let arguments = ProcessInfo.processInfo.arguments
-        let seedsExactPage = arguments.contains(
-            "-seed-skill-exact-page-history")
         guard usesTemporaryMeetingStore,
-              arguments.contains("-seed-skill-history") || seedsExactPage
+              arguments.contains("-seed-skill-exact-page-history")
         else { return }
-        let seedsRecentTail = arguments.contains(
-            "-seed-skill-recent-history")
-        let receiptCount = seedsExactPage
-            ? SkillControlCenterSnapshot.defaultReceiptLimit
-            : 25
-        let referenceDate = Date.now
+        let receiptCount = SkillControlCenterSnapshot.defaultReceiptLimit
         do {
             for ordinal in 1...receiptCount {
                 let offerKey = "\(MeetingPackageExportSkill.id):"
@@ -341,13 +334,10 @@ extension AppServices {
                         subject: .meeting(meetingID),
                         offerKey: offerKey,
                         idempotencyKey: effectKey,
-                        occurredAt: seedsRecentTail && ordinal > 20
-                            ? referenceDate.addingTimeInterval(
-                                -TimeInterval(25 - ordinal) * 60)
-                            : Date(
-                                timeIntervalSince1970:
-                                    1_700_000_600
-                                        + TimeInterval(ordinal))))
+                        occurredAt: Date(
+                            timeIntervalSince1970:
+                                1_700_000_600
+                                    + TimeInterval(ordinal))))
                 switch outcome {
                 case .admitted(let record), .alreadySettled(let record):
                     guard record.state == .confirmed else {

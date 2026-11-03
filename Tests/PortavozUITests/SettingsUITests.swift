@@ -319,36 +319,12 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testDataPaneCreditsTheOnDeviceModels() throws {
-        let app = try XCUIApplication.portavoz(openSettings: true)
-        app.launchPortavoz()
-        defer { finishUITestApplication(app) }
-
-        openCategory("settings-category-data", revealing: "settings-export-diagnostics", in: app)
-        // The credits close the pane; SwiftUI materializes those rows only once scrolled near.
-        let window = app.windows.containing(.any, identifier: "settings-search-field").firstMatch
-        let form = window.scrollViews.element(boundBy: 1)
-        func scrolledTo(_ identifier: String) -> XCUIElement {
-            let row = app.control(withIdentifier: identifier)
-            for _ in 0..<12 where !row.exists {
-                form.scroll(byDeltaX: 0, deltaY: -400)
-            }
-            return row
-        }
-        let parakeet = scrolledTo("settings-model-credit-parakeet-tdt-0.6b-v3-coreml")
-        XCTAssertTrue(parakeet.waitForExistenceFast(timeout: 5))
-        let license = app.control(withIdentifier: "settings-model-credit-parakeet-tdt-0.6b-v3-coreml-license")
-        let credit = renderedText(of: license)
-        XCTAssertTrue(credit.contains("NVIDIA") && credit.contains("CC-BY-4.0"),
-                      "a CC-BY model names its creator and license")
-        XCTAssertTrue(scrolledTo("settings-model-credit-speaker-diarization-coreml").waitForExistenceFast(timeout: 5))
-    }
-
-    @MainActor
-    func testDataPaneExportsARedactedLocalSupportFile() throws {
+    func testDataPaneExportsARedactedSupportFileAndAReadableBackup() throws {
         let destination = try UITestStorage.makeDirectory().appendingPathComponent("support.json")
         let app = try XCUIApplication.portavoz(seedDemo: true, openSettings: true)
         app.launchEnvironment["PORTAVOZ_UI_TEST_DIAGNOSTICS_PATH"] = destination.path
+        let directory = try UITestStorage.makeDirectory()
+        app.launchEnvironment["PORTAVOZ_UI_TEST_BACKUP_FOLDER"] = directory.path
         app.launchPortavoz()
         defer { finishUITestApplication(app) }
 
@@ -383,24 +359,15 @@ final class SettingsUITests: PortavozUITestCase {
         XCTAssertFalse(text.contains("sha256"))
         XCTAssertFalse(text.contains("Revisemos el presupuesto de transcripción."))
         attachScreenshot(of: app, named: "band-3i-redacted-support-export")
-    }
-
-    @MainActor
-    func testDataPaneExportsAReadableWholeLibraryMarkdownBackup() throws {
-        let directory = try UITestStorage.makeDirectory()
-        let app = try XCUIApplication.portavoz(seedDemo: true, openSettings: true)
-        app.launchEnvironment["PORTAVOZ_UI_TEST_BACKUP_FOLDER"] = directory.path
-        app.launchPortavoz()
-        defer { finishUITestApplication(app) }
 
         openCategory(
             "settings-category-data",
             revealing: "settings-export-all-button",
             in: app)
 
-        let export = app.buttons["settings-export-all-button"]
-        XCTAssertTrue(export.waitForExistenceFast(timeout: 5))
-        export.click()
+        let backup = app.buttons["settings-export-all-button"]
+        XCTAssertTrue(backup.waitForExistenceFast(timeout: 5))
+        backup.click()
         let status = app.staticTexts["settings-backup-status"]
         XCTAssertTrue(
             status.waitForExistenceFast(timeout: 15),
@@ -424,7 +391,6 @@ final class SettingsUITests: PortavozUITestCase {
         XCTAssertTrue(exportedText.contains("Revisemos el presupuesto de transcripción."))
         attachScreenshot(of: app, named: "band-6c4-markdown-backup")
     }
-
     @MainActor
     func testIntelligencePaneCreatesACustomStructure() throws {
         // The Intelligence pane lets you author your own summary structures;

@@ -543,8 +543,9 @@ extension XCUIApplication {
         let categoryList = control(withIdentifier: "settings-category-list")
         let expectedControl = control(withIdentifier: expectedControlIdentifier)
         for attempt in 0..<2 {
+            // Only a completion surface over the sidebar needs the hand-off again.
             guard prepareForInteraction(timeout: timeout),
-                  finishSettingsSearchEditing(timeout: timeout)
+                  (category.exists && category.isHittable) || finishSettingsSearchEditing(timeout: timeout)
             else { continue }
             bringSettingsCategoryIntoView(identifier: identifier, inside: categoryList)
             guard category.waitForHittable(timeout: timeout) else { continue }

@@ -1,6 +1,24 @@
 import PortavozCore
 import SwiftUI
 
+/// Which companion cards the person has not seen. Identity decides, so a card
+/// replaced in place counts as unread even when the number of cards stays the same.
+struct RecordingAssistUnread: Equatable {
+    private(set) var seen: Set<UUID> = []
+
+    func count(in ids: Set<UUID>) -> Int {
+        ids.subtracting(seen).count
+    }
+
+    mutating func observe(_ ids: Set<UUID>, showingCompanion: Bool) {
+        seen = showingCompanion ? ids : seen.intersection(ids)
+    }
+
+    mutating func markSeen(_ ids: Set<UUID>) {
+        seen = ids
+    }
+}
+
 /// The live assist area: one focus slot, a tab bar, and exactly one open panel.
 ///
 /// Eight panels used to share a single 260 pt scroll — catch-up, next
@@ -17,7 +35,7 @@ struct RecordingAssistPanel: View {
     @State private var selection: RecordingAssistTab = .companion
     /// Owned here so switching tabs does not reset what the user opened.
     @State private var presentations: [UUID: CompanionCardPresentation] = [:]
-    @State private var seenCompanionIDs: Set<UUID> = []
+    @State private var companionUnread = RecordingAssistUnread()
 
     private var tabs: [RecordingAssistTab] {
         RecordingAssistTab.available(
@@ -53,13 +71,12 @@ struct RecordingAssistPanel: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .onChange(of: companionIDs, initial: true) { _, ids in
-            seenCompanionIDs = tab == .companion
-                ? ids : seenCompanionIDs.intersection(ids)
+            companionUnread.observe(ids, showingCompanion: tab == .companion)
             presentations = presentations.filter { ids.contains($0.key) }
         }
         .onChange(of: tab) { _, current in
             guard current == .companion else { return }
-            seenCompanionIDs = companionIDs
+            companionUnread.markSeen(companionIDs)
         }
         // Without this the container identifier propagates onto every leaf
         // and shadows the inner ones, so the focus card becomes unaddressable.
@@ -165,7 +182,7 @@ private extension RecordingAssistPanel {
     func tabButton(_ candidate: RecordingAssistTab) -> some View {
         let isActive = candidate == tab
         let badge = candidate == .companion
-            ? companionIDs.subtracting(seenCompanionIDs).count
+            ? companionUnread.count(in: companionIDs)
             : 0
         return Button {
             selection = candidate

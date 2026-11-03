@@ -16,17 +16,6 @@ extension AppServices {
         ) {
             throw SimulatedSkillControlFailure()
         }
-        if usesTemporaryMeetingStore,
-           receiptScope != .recent,
-           ProcessInfo.processInfo.arguments.contains(
-               "-simulate-skill-receipt-refresh-handshake") {
-            try await UITestFeatureHandshake.pauseIfRequested(
-                argument: "-simulate-skill-receipt-refresh-handshake",
-                readyEnvironmentKey:
-                    "PORTAVOZ_UI_TEST_SKILL_RECEIPT_REFRESH_READY_PATH",
-                continueEnvironmentKey:
-                    "PORTAVOZ_UI_TEST_SKILL_RECEIPT_REFRESH_CONTINUE_PATH")
-        }
         let snapshot = try await LoadSkillControlCenter(store: store).execute(
             LoadSkillControlCenterRequest(
                 receiptScope: receiptScope,
@@ -54,11 +43,6 @@ extension AppServices {
         _ action: ManageSkillControlAction
     ) async throws -> ManageSkillControlOutcome {
         let outcome = try await ManageSkillControl(store: store).execute(action)
-        if usesTemporaryMeetingStore,
-           ProcessInfo.processInfo.arguments.contains(
-               "-simulate-skill-control-mutation-unavailable") {
-            throw SimulatedSkillControlMutationFailure()
-        }
         if outcome == .updated {
             await standingPreMeetingBriefs.kick()
         }
@@ -66,16 +50,6 @@ extension AppServices {
     }
 
     func loadSkillOfferReview() async throws -> SkillOfferReviewSnapshot {
-        if usesTemporaryMeetingStore,
-           ProcessInfo.processInfo.arguments.contains(
-               "-simulate-skill-proposal-refresh-handshake") {
-            try await UITestFeatureHandshake.pauseIfRequested(
-                argument: "-simulate-skill-proposal-refresh-handshake",
-                readyEnvironmentKey:
-                    "PORTAVOZ_UI_TEST_SKILL_PROPOSAL_REFRESH_READY_PATH",
-                continueEnvironmentKey:
-                    "PORTAVOZ_UI_TEST_SKILL_PROPOSAL_REFRESH_CONTINUE_PATH")
-        }
         if usesTemporaryMeetingStore,
            ProcessInfo.processInfo.arguments.contains(
                "-simulate-skill-proposal-unavailable") {
@@ -88,22 +62,12 @@ extension AppServices {
     func dismissSkillOfferReview(
         _ reviewID: UUID
     ) async throws -> SkillOfferReviewDismissalOutcome {
-        if usesTemporaryMeetingStore,
-           ProcessInfo.processInfo.arguments.contains(
-               "-simulate-skill-proposal-dismiss-unavailable") {
-            throw SimulatedSkillProposalDismissalFailure()
-        }
         return try await DismissSkillOfferReview(store: store).execute(reviewID)
     }
 
     func resolveSkillOfferReviewDestination(
         _ reviewID: UUID
     ) async throws -> SkillOfferReviewNavigationOutcome {
-        if usesTemporaryMeetingStore,
-           ProcessInfo.processInfo.arguments.contains(
-               "-simulate-skill-proposal-review-unavailable") {
-            throw SimulatedSkillProposalReviewFailure()
-        }
         return try await ResolveSkillOfferReviewDestination(store: store)
             .execute(reviewID)
     }
@@ -125,11 +89,6 @@ extension AppServices {
     func revokeWaitingSkillExecution(
         proposalID: UUID
     ) async throws -> WaitingSkillExecutionRevocationOutcome {
-        if usesTemporaryMeetingStore,
-           ProcessInfo.processInfo.arguments.contains(
-               "-simulate-skill-receipt-revoke-unavailable") {
-            throw SimulatedSkillReceiptRevocationFailure()
-        }
         return try await RevokeWaitingSkillExecution(store: store)
             .execute(proposalID)
     }
@@ -137,11 +96,6 @@ extension AppServices {
     func resolveSkillReceiptRecoveryDestination(
         proposalID: UUID
     ) async throws -> SkillReceiptRecoveryNavigationOutcome {
-        if usesTemporaryMeetingStore,
-           ProcessInfo.processInfo.arguments.contains(
-               "-simulate-skill-receipt-recovery-unavailable") {
-            throw SimulatedSkillReceiptRecoveryFailure()
-        }
         return try await ResolveSkillReceiptRecoveryDestination(store: store)
             .execute(proposalID)
     }
@@ -149,24 +103,13 @@ extension AppServices {
     func resolveSkillReceiptContextDestination(
         proposalID: UUID
     ) async throws -> SkillReceiptContextNavigationOutcome {
-        if usesTemporaryMeetingStore,
-           ProcessInfo.processInfo.arguments.contains(
-               "-simulate-skill-receipt-context-unavailable") {
-            throw SimulatedSkillReceiptContextFailure()
-        }
         return try await ResolveSkillReceiptContextDestination(store: store)
             .execute(proposalID)
     }
 }
 
 private struct SimulatedSkillControlFailure: Error {}
-private struct SimulatedSkillControlMutationFailure: Error {}
 private struct SimulatedSkillProposalFailure: Error {}
-private struct SimulatedSkillProposalDismissalFailure: Error {}
-private struct SimulatedSkillProposalReviewFailure: Error {}
-private struct SimulatedSkillReceiptRevocationFailure: Error {}
-private struct SimulatedSkillReceiptRecoveryFailure: Error {}
-private struct SimulatedSkillReceiptContextFailure: Error {}
 
 /// Proves that policy-independent receipt paths do not consult an unrelated
 /// authority. The disposable-store gate keeps this failure out of production.
