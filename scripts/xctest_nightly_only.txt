@@ -1,0 +1,7 @@
+# Cases that only drive a benchmark harness over a whole fixture. Each was read
+# before it was listed: never a pattern, because a slow name can still prove behavior.
+# Pull requests skip them; the nightly clean build runs them.
+CommitmentLinkQualityProductBenchmarkTests/testPrivateScoredRunnerEmitsProvenanceWithoutFixtureText
+CommitmentLinkQualityProductBenchmarkTests/testProductRunnerEmitsOneIsolatedExternalIdentityObservationPerCase
+CommitmentLinkQualityProductBenchmarkTests/testScoredRunnerBindsExactProfileProvenanceAndExternalScores
+DictationSearchBenchmarkTests/testObservationsCoverEveryQueryWithIdentitiesAndNumbersOnly

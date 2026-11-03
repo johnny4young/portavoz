@@ -145,6 +145,10 @@ dependencies are limited to three declared edges: `TranscriptionKit` and
 IntelligenceKit values for issue-export formatting. `AudioPlaybackKit` is
 self-contained over system frameworks and carries no module dependency.
 
+Package tests live in two targets: `PortavozKitTests` never depends on the app
+module, and `PortavozAppTests` holds the tests that do. Both import
+`PortavozTestSupport`, a target in no product whose doubles and fixtures they share.
+
 The app composition shares microphone permission and preferred-input selection
 between meeting capture and global dictation. Dictation's session-scoped
 `DictationMicrophoneReadiness` owns first-frame admission and the bounded input
@@ -4690,7 +4694,7 @@ identities to the research seam. A characterization composes that adapter throug
 `ProjectedSemanticIndexShadowCandidate` and `ShadowComparingSemanticIndex`,
 proving that current StorageKit evidence remains citation authority and only
 aggregate agreement crosses the shadow boundary. Both research targets are
-reachable only from `PortavozTests`; neither app, CLI, nor `ApplicationKit`
+reachable only from `PortavozKitTests`; neither app, CLI, nor `ApplicationKit`
 depends on them. The native query remains an exact full scan and returns only
 the bounded deterministic top-k, so no resource result is accepted yet. There
 is still no product schema, writer, app composition, durable receipt, or
@@ -5563,7 +5567,7 @@ owner-only temporary directory, preserves the Swift process status from Bash's
 pipeline status, and deletes the log after success, failure, or interruption.
 On failure, `swift_test_failure_summary.py` reads at most 16 MiB and emits only
 stable, deduplicated XCTest identifiers such as
-`PortavozTests.ExampleTests/testFailure`; the final summary never repeats
+`PortavozKitTests.ExampleTests/testFailure`; the final summary never repeats
 assertion messages, source paths, transcripts, prompts, or generated text. A
 missing, empty, oversized, malformed, or unreadable log reports only that the
 identifier is unavailable, and the gate still exits with the original nonzero

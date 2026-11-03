@@ -99,7 +99,10 @@ class RunSwiftTestsTests(unittest.TestCase):
         fake_xcrun.write_text(
             "#!/bin/sh\n"
             "echo \"$3\" >> \"$XCTEST_LOG\"\n"
-            "echo 'Executed 1 test, with 0 failures (0 unexpected) in 0.1 (0.1) seconds'\n"
+            "class=${3##*.}\n"
+            "echo \"Test Suite '$class' started at 2026-11-03 00:00:00.000.\"\n"
+            "echo \"Test Suite '$class' passed at 2026-11-03 00:00:00.100.\"\n"
+            "echo '\t Executed 1 test, with 0 failures (0 unexpected) in 0.1 (0.1) seconds'\n"
             "exit \"${XCTEST_EXIT:-0}\"\n",
             encoding="utf-8",
         )
@@ -369,6 +372,13 @@ class RunSwiftTestsTests(unittest.TestCase):
         self.assertIn("XCTest classes: 1; cases: 1 of 1 listed", result.stdout)
         self.assertEqual(record["arguments"],
                          ["--skip-build", "-Xswiftc", "-warnings-as-errors", "--filter", "^(PortavozTests\\.GammaSuite)/"])
+
+    def test_the_batch_seed_and_nightly_switch_reach_the_pool(self):
+        with mock.patch.dict(os.environ, {"PORTAVOZ_XCTEST_BATCH_SEED": "7",
+                                          "PORTAVOZ_SWIFT_INCLUDE_NIGHTLY_ONLY": "1"}):
+            result, _, _ = self.run_runner()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("XCTest batches: 1, seed 7;", result.stdout)
 
     def test_a_scope_pools_only_the_matching_listed_tests(self):
         result, record, root = self.run_runner(scope=r"^PortavozTests\.(AlphaTests)/")

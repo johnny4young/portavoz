@@ -1,0 +1,543 @@
+import CoreGraphics
+import Foundation
+import PlatformKit
+import PortavozCore
+import XCTest
+
+@testable import IntegrationsKit
+@testable import PortavozTestSupport
+
+final class MeetingExporterTests: XCTestCase {
+    private let meeting = MeetingID()
+
+    private func fixture() -> (Meeting, [Speaker], [TranscriptSegment], SummaryDraft) {
+        let record = Meeting(
+            id: meeting,
+            title: "Planning Q3",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            endedAt: Date(timeIntervalSince1970: 1_700_001_800)
+        )
+        let me = Speaker(meetingID: meeting, label: "Me", isMe: true)
+        let ana = Speaker(meetingID: meeting, label: "S1", displayName: "Ana")
+        let segments = [
+            TranscriptSegment(
+                meetingID: meeting, speakerID: me.id, channel: .microphone,
+                text: "revisemos el roadmap", startTime: 0, endTime: 3, isFinal: true),
+            TranscriptSegment(
+                meetingID: meeting, speakerID: ana.id, channel: .system,
+                text: "el deploy queda para el viernes", startTime: 65, endTime: 70, isFinal: true),
+        ]
+        let summary = SummaryDraft(
+            meetingID: meeting, recipeID: "general", language: "es",
+            markdown: "Summary corto.\n\n## Decisiones\n- Deploy el viernes",
+            actionItems: [
+                ActionItem(text: "preparar el deploy", ownerSpeakerID: ana.id),
+                ActionItem(text: "ya hecho", isDone: true),
+            ])
+        return (record, [me, ana], segments, summary)
+    }
+
+    func testMarkdownContainsEverySection() {
+        let (record, speakers, segments, summary) = fixture()
+        let markdown = MeetingExporter.markdown(
+            meeting: record, speakers: speakers, segments: segments,
+            summary: summary, summaryVersion: 2)
+
+        XCTAssertTrue(markdown.hasPrefix("# Planning Q3\n"))
+        XCTAssertTrue(markdown.contains("30 min"))
+        XCTAssertTrue(markdown.contains("2 speaker(s)"))
+        XCTAssertTrue(markdown.contains("## Summary (v2 · es)"))
+        // The summary's own h2 must be demoted to h3 under "## Summary".
+        XCTAssertTrue(markdown.contains("### Decisiones"))
+        XCTAssertFalse(markdown.contains("\n## Decisiones"))
+        XCTAssertTrue(markdown.contains("- [ ] preparar el deploy — Ana"))
+        XCTAssertTrue(markdown.contains("- [x] ya hecho"))
+        XCTAssertTrue(markdown.contains("- **[00:00] Me:** revisemos el roadmap"))
+        XCTAssertTrue(markdown.contains("- **[01:05] Ana:** el deploy queda para el viernes"))
+    }
+
+    func testSummaryCopyFormats() {
+        let (_, speakers, _, _) = fixture()
+        let ana = speakers[1]
+        let summary = SummaryDraft(
+            meetingID: meeting, recipeID: "general", language: "es",
+            markdown: "Summary **corto**.\n\n## Decisiones\n- Deploy el viernes\n▸ Nota del usuario",
+            actionItems: [ActionItem(text: "preparar el deploy", ownerSpeakerID: ana.id)])
+
+        let markdown = MeetingExporter.summary(summary, speakers: speakers, format: .markdown)
+        XCTAssertTrue(markdown.contains("## Decisiones"))
+        XCTAssertTrue(markdown.contains("- Deploy el viernes"))
+        XCTAssertTrue(markdown.contains("- [ ] preparar el deploy — Ana"))
+
+        let slack = MeetingExporter.summary(summary, speakers: speakers, format: .slack)
+        XCTAssertFalse(slack.contains("#"), "Slack mrkdwn no renderiza headings")
+        XCTAssertTrue(slack.contains("*Decisiones*"), "heading → bold")
+        XCTAssertTrue(slack.contains("Summary *corto*."), "**bold** → *bold*")
+        XCTAssertTrue(slack.contains("• Deploy el viernes"))
+        XCTAssertTrue(slack.contains("• Nota del usuario"), "coauthoring ▸ → bullet")
+        XCTAssertTrue(slack.contains("• ☐ preparar el deploy — Ana"))
+
+        let plain = MeetingExporter.summary(summary, speakers: speakers, format: .plainText)
+        XCTAssertFalse(plain.contains("#"))
+        XCTAssertFalse(plain.contains("*"))
+        XCTAssertTrue(plain.contains("Summary corto."))
+        XCTAssertTrue(plain.contains("Decisiones"))
+        XCTAssertTrue(plain.contains("• Deploy el viernes"))
+    }
+
+    /// The recap rides the same renderer as the summary copy, so a channel
+    /// never grows its own dialect (FEATURE-003).
+    func testRenderShapesAnyPortavozMarkdownForAChannel() {
+        let recap = """
+            Cerramos el rollout.
+
+            ## Pendientes
+            - Ana: preparar el **deploy**
+            """
+
+        let slack = MeetingExporter.render(recap, format: .slack)
+        XCTAssertFalse(slack.contains("#"))
+        XCTAssertTrue(slack.contains("*Pendientes*"))
+        XCTAssertTrue(slack.contains("• Ana: preparar el *deploy*"))
+
+        let plain = MeetingExporter.render(recap, format: .plainText)
+        XCTAssertFalse(plain.contains("#"))
+        XCTAssertFalse(plain.contains("*"))
+        XCTAssertTrue(plain.contains("• Ana: preparar el deploy"))
+
+        XCTAssertEqual(
+            MeetingExporter.render(recap, format: .markdown), recap + "\n",
+            "Markdown is canonical and passes through unchanged")
+    }
+
+    func testATranslatedTranscriptSaysWhichLanguageAndWhereItWasMade() {
+        let (record, speakers, segments, _) = fixture()
+        let translated = MeetingExporter.markdown(
+            meeting: record, speakers: speakers, segments: segments, translationLanguage: "en")
+        XCTAssertTrue(translated.contains("## Transcript (English translation, made on this Mac)"))
+        let original = MeetingExporter.markdown(meeting: record, speakers: speakers, segments: segments)
+        XCTAssertTrue(original.contains("## Transcript\n"))
+        let vtt = SubtitleExport.render(.vtt, segments: segments, speakers: speakers, translationLanguage: "es")
+        XCTAssertTrue(vtt.hasPrefix("WEBVTT\n\nNOTE Portavoz Spanish translation, made on this Mac\n\n"))
+        let srt = SubtitleExport.render(.srt, segments: segments, speakers: speakers, translationLanguage: "es")
+        XCTAssertFalse(srt.contains("NOTE"), "SRT has no comment syntax")
+    }
+
+    func testMarkdownWithoutSummarySkipsThatSection() {
+        let (record, speakers, segments, _) = fixture()
+        let markdown = MeetingExporter.markdown(
+            meeting: record, speakers: speakers, segments: segments)
+        XCTAssertFalse(markdown.contains("## Summary"))
+        XCTAssertTrue(markdown.contains("## Transcript"))
+    }
+
+    func testMarkdownCorrectionProvenanceIsExplicitAndDeterministicallyOrdered() throws {
+        let (record, speakers, segments, _) = fixture()
+        let revision = try XCTUnwrap(TranscriptCorrectionRevision(
+            rawValue: String(repeating: "c", count: 64)))
+        let laterRow = UUID(uuidString: "F0000000-0000-4000-8000-000000000002")!
+        let earlierRow = UUID(uuidString: "F0000000-0000-4000-8000-000000000001")!
+        let provenance = TranscriptCorrectionExportProvenance(
+            baseTranscriptRevision: 6,
+            correctionRevision: revision,
+            activeCorrectionIDs: [UUID(), UUID()],
+            sourceSegmentIDsByExportedSegmentID: [
+                laterRow: [segments[1].id],
+                earlierRow: [segments[0].id],
+            ])
+
+        let markdown = MeetingExporter.markdown(
+            meeting: record,
+            speakers: speakers,
+            segments: segments,
+            correctionProvenance: provenance)
+
+        XCTAssertTrue(markdown.contains("## Transcript correction provenance"))
+        XCTAssertTrue(markdown.contains("Accepted transcript revision: 6"))
+        XCTAssertTrue(markdown.contains("Applied corrections: 2"))
+        XCTAssertTrue(markdown.contains("original audio remain unchanged"))
+        let earlierRange = try XCTUnwrap(markdown.range(of: earlierRow.uuidString))
+        let laterRange = try XCTUnwrap(markdown.range(of: laterRow.uuidString))
+        XCTAssertLessThan(earlierRange.lowerBound, laterRange.lowerBound)
+        XCTAssertTrue(
+            try MeetingExporter.pdf(fromMarkdown: markdown)
+                .starts(with: Data("%PDF".utf8)),
+            "PDF must consume the same provenance-bearing Markdown projection")
+    }
+
+    func testPDFIsValidAndPaginates() throws {
+        let (record, speakers, _, summary) = fixture()
+        // Enough transcript to overflow one US Letter page.
+        let many = (0..<200).map { index in
+            TranscriptSegment(
+                meetingID: meeting, speakerID: speakers[index % 2].id, channel: .system,
+                text: "línea de transcript número \(index) con contenido suficiente para ocupar espacio",
+                startTime: Double(index), endTime: Double(index) + 1, isFinal: true)
+        }
+        let markdown = MeetingExporter.markdown(
+            meeting: record, speakers: speakers, segments: many, summary: summary)
+        let data = try MeetingExporter.pdf(fromMarkdown: markdown)
+
+        XCTAssertTrue(data.starts(with: Data("%PDF".utf8)))
+        guard
+            let provider = CGDataProvider(data: data as CFData),
+            let document = CGPDFDocument(provider)
+        else {
+            return XCTFail("CGPDFDocument could not parse the export")
+        }
+        XCTAssertGreaterThan(document.numberOfPages, 1, "200 segments must paginate")
+    }
+}
+
+final class GistPublisherTests: XCTestCase {
+    private let meetingID = MeetingID(
+        rawValue: UUID(uuidString: "E6000000-0000-0000-0000-000000000002")!)
+
+    func testRequestShape() throws {
+        let request = try GistPublisher.request(
+            markdown: "# hola", filename: "reunion.md",
+            description: "Planning Q3", isPublic: false, token: "ghp_x")
+
+        XCTAssertEqual(request.url?.absoluteString, "https://api.github.com/gists")
+        XCTAssertEqual(request.httpMethod, "POST")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer ghp_x")
+
+        let body = try JSONSerialization.jsonObject(with: request.httpBody!) as! [String: Any]
+        XCTAssertEqual(body["public"] as? Bool, false)
+        let files = body["files"] as! [String: [String: String]]
+        XCTAssertEqual(files["reunion.md"]?["content"], "# hola")
+    }
+
+    func testParsesGistURL() throws {
+        let payload = #"{"html_url": "https://gist.github.com/johnny/abc123", "id": "abc123"}"#
+        let url = try GistPublisher.parseResponse(Data(payload.utf8))
+        XCTAssertEqual(url.absoluteString, "https://gist.github.com/johnny/abc123")
+    }
+
+    func testRejectsMalformedResponse() {
+        XCTAssertThrowsError(try GistPublisher.parseResponse(Data("{}".utf8)))
+    }
+
+    func testPublishRoutesMeetingDocumentThroughGateway() async throws {
+        let response = Data(
+            #"{"html_url":"https://gist.github.com/johnny/abc123"}"#.utf8)
+        let gateway = CapturingDataEgressGateway(
+            responseData: response,
+            statusCode: 201)
+        let publisher = GistPublisher(token: "ghp_x", gateway: gateway)
+
+        let url = try await publisher.publish(
+            meetingID: meetingID,
+            markdown: "# Planning Q3",
+            filename: "planning.md",
+            description: "Planning Q3")
+
+        XCTAssertEqual(url.absoluteString, "https://gist.github.com/johnny/abc123")
+        let snapshot = await gateway.snapshot()
+        let captured = try XCTUnwrap(snapshot)
+        XCTAssertEqual(captured.metadata.operation, .publishGitHubGist)
+        XCTAssertEqual(captured.metadata.destination.scope, .remote)
+        XCTAssertEqual(captured.metadata.dataClassification, .meetingExportDocument)
+        XCTAssertEqual(captured.metadata.meetingID, meetingID)
+        XCTAssertEqual(captured.metadata.consentSource, .explicitGistPublish)
+        XCTAssertEqual(captured.metadata.providerDisclosure.providerID, "api.github.com")
+        XCTAssertNil(captured.metadata.providerDisclosure.modelID)
+        XCTAssertNoThrow(try URLSessionDataEgressGateway.validate(
+            captured.request,
+            metadata: captured.metadata))
+    }
+
+    func testPublishPreservesGitHubFailureDetails() async throws {
+        let gateway = CapturingDataEgressGateway(
+            responseData: Data(#"{"message":"validation failed"}"#.utf8),
+            statusCode: 422)
+        let publisher = GistPublisher(token: "ghp_x", gateway: gateway)
+
+        do {
+            _ = try await publisher.publish(
+                meetingID: meetingID,
+                markdown: "# Planning Q3",
+                filename: "planning.md",
+                description: "Planning Q3")
+            XCTFail("Expected GitHub's failure to remain visible")
+        } catch let error as GistPublisher.PublishError {
+            guard case .requestFailed(let status, let body) = error else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+            XCTAssertEqual(status, 422)
+            XCTAssertEqual(body, #"{"message":"validation failed"}"#)
+        }
+    }
+}
+
+final class IssueExporterTests: XCTestCase {
+    private let item = ActionItem(text: "Preparar el rollback plan")
+    private let meetingID = MeetingID(
+        rawValue: UUID(uuidString: "E6000000-0000-0000-0000-000000000003")!)
+
+    func testGitHubRequestShape() throws {
+        let request = try GitHubIssuesExporter.request(
+            item: item, meetingTitle: "Planning Q3", ownerName: "Ana",
+            repository: "johnny4young/portavoz", token: "ghp_x")
+
+        XCTAssertEqual(
+            request.url?.absoluteString,
+            "https://api.github.com/repos/johnny4young/portavoz/issues")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer ghp_x")
+        let body = try JSONSerialization.jsonObject(with: request.httpBody!) as! [String: String]
+        XCTAssertEqual(body["title"], "Preparar el rollback plan")
+        XCTAssertTrue(body["body"]!.contains("Planning Q3"))
+        XCTAssertTrue(body["body"]!.contains("Ana"))
+    }
+
+    func testGitHubExactRequestPreservesReviewedMaterial() throws {
+        let reviewedBody = "## Evidence\n\n- `00:03` **Ana**: Ship Friday."
+        let request = try GitHubIssuesExporter.request(
+            title: "Ship the release",
+            body: reviewedBody,
+            repository: " owner/repo ",
+            token: "ghp_x")
+
+        XCTAssertEqual(
+            request.url?.absoluteString,
+            "https://api.github.com/repos/owner/repo/issues")
+        XCTAssertEqual(
+            request.value(forHTTPHeaderField: "Content-Type"),
+            "application/json")
+        let payload = try XCTUnwrap(request.httpBody)
+        let object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: payload) as? [String: String])
+        XCTAssertEqual(object["title"], "Ship the release")
+        XCTAssertEqual(object["body"], reviewedBody)
+    }
+
+    func testGitHubRejectsAmbiguousRepositoriesWithoutGatewayCall() async throws {
+        let gateway = CapturingDataEgressGateway(
+            responseData: Data(#"{"html_url":"https://github.com/o/r/issues/7"}"#.utf8),
+            statusCode: 201)
+        let invalidRepositories = [
+            "owner", "owner/repo/extra", "/repo", "owner/", "../repo",
+            "owner/..", "owner/repo?state=open", "owner/repo#fragment",
+            "owner/repo%2Fevil", "owner name/repo",
+        ]
+
+        for repository in invalidRepositories {
+            let publisher = GitHubIssuesExporter(
+                repository: repository,
+                token: "ghp_x",
+                gateway: gateway)
+            do {
+                _ = try await publisher.publish(
+                    title: "Ship",
+                    body: "Reviewed body",
+                    meetingID: meetingID)
+                XCTFail("Expected invalid repository: \(repository)")
+            } catch let error as IssueExporterError {
+                guard case .invalidRepository = error else {
+                    return XCTFail("Unexpected error: \(error)")
+                }
+            }
+        }
+        let snapshot = await gateway.snapshot()
+        XCTAssertNil(snapshot)
+    }
+
+    func testGitHubParsesIssueURL() throws {
+        let repository = try XCTUnwrap(GitHubRepository("o/r"))
+        let url = try GitHubIssuesExporter.parseResponse(
+            Data(#"{"html_url": "https://github.com/o/r/issues/7", "number": 7}"#.utf8),
+            expectedRepository: repository)
+        XCTAssertEqual(url.absoluteString, "https://github.com/o/r/issues/7")
+        XCTAssertThrowsError(try GitHubIssuesExporter.parseResponse(Data("{}".utf8)))
+        for invalid in [
+            "http://github.com/o/r/issues/7",
+            "https://example.com/o/r/issues/7",
+            "https://github.com/other/r/issues/7",
+            "https://github.com/o/r/issues/0",
+            "https://github.com/o/r/issues/7?tab=activity",
+        ] {
+            let payload = try JSONSerialization.data(withJSONObject: ["html_url": invalid])
+            XCTAssertThrowsError(try GitHubIssuesExporter.parseResponse(
+                payload,
+                expectedRepository: repository), invalid)
+        }
+    }
+
+    func testGitHubPublishRoutesActionItemThroughGateway() async throws {
+        let response = Data(
+            #"{"html_url":"https://github.com/o/r/issues/7"}"#.utf8)
+        let gateway = CapturingDataEgressGateway(
+            responseData: response,
+            statusCode: 201)
+        let publisher = GitHubIssuesExporter(
+            repository: "o/r",
+            token: "ghp_x",
+            gateway: gateway)
+
+        let url = try await publisher.publish(
+            item,
+            meetingID: meetingID,
+            meetingTitle: "Planning Q3",
+            ownerName: "Ana")
+
+        XCTAssertEqual(url.absoluteString, "https://github.com/o/r/issues/7")
+        let snapshot = await gateway.snapshot()
+        let captured = try XCTUnwrap(snapshot)
+        XCTAssertEqual(captured.metadata.operation, .createGitHubIssue)
+        XCTAssertEqual(captured.metadata.dataClassification, .meetingActionItem)
+        XCTAssertEqual(captured.metadata.meetingID, meetingID)
+        XCTAssertEqual(captured.metadata.consentSource, .explicitGitHubIssuePublish)
+        XCTAssertEqual(captured.metadata.providerDisclosure.providerID, "api.github.com")
+        XCTAssertNil(captured.metadata.providerDisclosure.modelID)
+        XCTAssertNoThrow(try URLSessionDataEgressGateway.validate(
+            captured.request,
+            metadata: captured.metadata))
+    }
+
+    func testGitHubPublishPreservesProviderFailureDetails() async throws {
+        let gateway = CapturingDataEgressGateway(
+            responseData: Data(#"{"message":"invalid repository"}"#.utf8),
+            statusCode: 422)
+        let publisher = GitHubIssuesExporter(
+            repository: "o/r", token: "ghp_x", gateway: gateway)
+
+        do {
+            _ = try await publisher.publish(
+                item, meetingID: meetingID, meetingTitle: "Planning Q3")
+            XCTFail("Expected GitHub's failure to remain visible")
+        } catch let error as IssueExporterError {
+            guard case .requestFailed(let status, let body) = error else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+            XCTAssertEqual(status, 422)
+            XCTAssertEqual(body, #"{"message":"invalid repository"}"#)
+        }
+    }
+
+    func testLinearRequestShape() throws {
+        let request = try LinearExporter.request(
+            item: item, meetingTitle: "Planning Q3", ownerName: nil,
+            teamID: "TEAM-1", token: "lin_x")
+
+        XCTAssertEqual(request.url?.absoluteString, "https://api.linear.app/graphql")
+        // Linear keys go bare, not as Bearer.
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "lin_x")
+        let body = try JSONSerialization.jsonObject(with: request.httpBody!) as! [String: Any]
+        XCTAssertTrue((body["query"] as! String).contains("issueCreate"))
+        let input = ((body["variables"] as! [String: Any])["input"] as! [String: String])
+        XCTAssertEqual(input["teamId"], "TEAM-1")
+        XCTAssertEqual(input["title"], "Preparar el rollback plan")
+    }
+
+    func testLinearParsesIssueURLAndRejectsFailure() throws {
+        let ok = #"{"data":{"issueCreate":{"success":true,"issue":{"url":"https://linear.app/t/issue/T-1"}}}}"#
+        XCTAssertEqual(
+            try LinearExporter.parseResponse(Data(ok.utf8)).absoluteString,
+            "https://linear.app/t/issue/T-1")
+
+        let failed = #"{"data":{"issueCreate":{"success":false,"issue":null}}}"#
+        XCTAssertThrowsError(try LinearExporter.parseResponse(Data(failed.utf8)))
+    }
+
+    func testLinearPublishRoutesActionItemThroughGateway() async throws {
+        let response = Data(
+            #"{"data":{"issueCreate":{"success":true,"issue":{"url":"https://linear.app/t/issue/T-1"}}}}"#.utf8)
+        let gateway = CapturingDataEgressGateway(responseData: response)
+        let publisher = LinearExporter(
+            teamID: "TEAM-1",
+            token: "lin_x",
+            gateway: gateway)
+
+        let url = try await publisher.publish(
+            item,
+            meetingID: meetingID,
+            meetingTitle: "Planning Q3")
+
+        XCTAssertEqual(url.absoluteString, "https://linear.app/t/issue/T-1")
+        let snapshot = await gateway.snapshot()
+        let captured = try XCTUnwrap(snapshot)
+        XCTAssertEqual(captured.metadata.operation, .createLinearIssue)
+        XCTAssertEqual(captured.metadata.destination.scope, .remote)
+        XCTAssertEqual(captured.metadata.dataClassification, .meetingActionItem)
+        XCTAssertEqual(captured.metadata.meetingID, meetingID)
+        XCTAssertEqual(captured.metadata.consentSource, .explicitLinearIssuePublish)
+        XCTAssertEqual(captured.metadata.providerDisclosure.providerID, "api.linear.app")
+        XCTAssertNil(captured.metadata.providerDisclosure.modelID)
+        XCTAssertNoThrow(try URLSessionDataEgressGateway.validate(
+            captured.request,
+            metadata: captured.metadata))
+    }
+
+    func testLinearPublishPreservesProviderFailureDetails() async throws {
+        let gateway = CapturingDataEgressGateway(
+            responseData: Data(#"{"error":"not authorized"}"#.utf8),
+            statusCode: 401)
+        let publisher = LinearExporter(
+            teamID: "TEAM-1", token: "lin_x", gateway: gateway)
+
+        do {
+            _ = try await publisher.publish(
+                item, meetingID: meetingID, meetingTitle: "Planning Q3")
+            XCTFail("Expected Linear's failure to remain visible")
+        } catch let error as IssueExporterError {
+            guard case .requestFailed(let status, let body) = error else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+            XCTAssertEqual(status, 401)
+            XCTAssertEqual(body, #"{"error":"not authorized"}"#)
+        }
+    }
+}
+
+final class KeychainSecretStoreTests: XCTestCase {
+    /// Uses a throwaway service name so it never touches real tokens.
+    private let identifier = SecretIdentifier(
+        rawValue: "app.portavoz.tests.\(UUID().uuidString)")
+    private let secrets = KeychainSecretStore()
+
+    override func tearDown() {
+        try? secrets.delete(identifier)
+        super.tearDown()
+    }
+
+    func testRoundTripAndDelete() throws {
+        do {
+            try secrets.set("secreto-123", for: identifier)
+        } catch {
+            throw XCTSkip("keychain unavailable in this environment: \(error)")
+        }
+        XCTAssertEqual(try secrets.value(for: identifier), "secreto-123")
+
+        // Overwrite replaces.
+        try secrets.set("secreto-456", for: identifier)
+        XCTAssertEqual(try secrets.value(for: identifier), "secreto-456")
+
+        try secrets.delete(identifier)
+        XCTAssertNil(try secrets.value(for: identifier))
+    }
+}
+
+/// Exports append "## Pendientes" with the library's real done-state; the
+/// snapshot's own "## Action Items" block must not ride along duplicated.
+final class ExporterActionItemsDedupTests: XCTestCase {
+    func testSnapshotActionItemsBlockIsReplacedByPendientes() {
+        let markdown = """
+            Overview text.
+
+            ## Decisions
+            - ship on Monday
+
+            ## Action Items
+            - [ ] own the rollout — S1
+            """
+        let stripped = MeetingExporter.removingActionItemsBlock(from: markdown)
+        XCTAssertFalse(stripped.contains("## Action Items"))
+        XCTAssertTrue(stripped.contains("## Decisions"))
+        XCTAssertTrue(stripped.hasSuffix("- ship on Monday"))
+    }
+
+    func testMarkdownWithoutTheBlockIsUntouched() {
+        let markdown = "Overview.\n\n## Decisions\n- a"
+        XCTAssertEqual(MeetingExporter.removingActionItemsBlock(from: markdown), markdown)
+    }
+}

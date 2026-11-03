@@ -20,8 +20,8 @@ from dictation_controller_receipt import validate_observation as validate_contro
 from materialize_dictation_corpus import publish_json
 
 ROOT = Path(__file__).resolve().parents[1]
-SELECTOR = 'PortavozTests.DictationModelBaselineTests/testInstalledParakeetOnExplicitPublicCells'
-CONTROLLER_SELECTOR = 'PortavozTests.DictationControllerModelTests/testInstalledParakeetThroughControllerOnExplicitPublicCells'
+SELECTOR = 'PortavozAppTests.DictationModelBaselineTests/testInstalledParakeetOnExplicitPublicCells'
+CONTROLLER_SELECTOR = 'PortavozAppTests.DictationControllerModelTests/testInstalledParakeetThroughControllerOnExplicitPublicCells'
 
 
 def run_deadline(entries, cases, attribute_live, repetitions=1):

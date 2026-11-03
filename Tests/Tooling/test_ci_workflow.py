@@ -560,6 +560,8 @@ class NightlyUIWorkflowTests(unittest.TestCase):
 
         self.assertNotIn("actions/cache/restore@", clean)
         self.assertIn("run: scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors\n", clean)
+        self.assertIn("PORTAVOZ_XCTEST_BATCH_SEED: ${{ github.run_id }}\n", clean)
+        self.assertIn('PORTAVOZ_SWIFT_INCLUDE_NIGHTLY_ONLY: "1"\n', clean)
         self.assertLess(clean.index("run-swift-tests.sh"), clean.index("ci_swift_source_stamps.py snapshot"))
         self.assertEqual(clean.count("if: github.ref == 'refs/heads/main'"), 2)
         self.assertIn("if: steps.swift_cache_size.outputs.save == 'true'", clean)

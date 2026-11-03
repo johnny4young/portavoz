@@ -122,7 +122,7 @@ let package = Package(
         .target(name: "AudioPlaybackKit", dependencies: []),
 
         // D212 research-only static sqlite-vec probe. It is intentionally not
-        // a product dependency: only PortavozTests compiles this boundary.
+        // a product dependency: only PortavozKitTests compiles this boundary.
         .target(
             name: "CSQLiteVecResearch",
             path: "Sources/CSQLiteVecResearch",
@@ -180,11 +180,26 @@ let package = Package(
             path: "Sources/portavoz-cli-main"
         ),
 
-        .testTarget(
-            name: "PortavozTests",
+        // Doubles and fixtures both test modules share. It belongs to no product.
+        .target(
+            name: "PortavozTestSupport",
             dependencies: [
-                "portavoz-app",
+                "ApplicationKit",
+                "DiarizationKit",
+                "IntelligenceKit",
+                "PlatformKit",
+                "PortavozCore",
+                "StorageKit",
+                "TranscriptionKit",
+            ],
+            path: "Tests/PortavozTestSupport"
+        ),
+        // Without the app module, so an app change never recompiles these.
+        .testTarget(
+            name: "PortavozKitTests",
+            dependencies: [
                 "PortavozCLIKit",
+                "PortavozTestSupport",
                 "ApplicationKit",
                 "PortavozCore",
                 "PlatformKit",
@@ -201,8 +216,31 @@ let package = Package(
                 .product(name: "GRDB", package: "GRDB.swift"),
             ],
             path: "Tests",
-            exclude: ["PortavozUITests", "PortavozDictationReceiver", "UIInterruptionFixtures", "Tooling"],
-            sources: ["PortavozTests", "Support"]
+            exclude: [
+                "PortavozAppTests", "PortavozTestSupport", "PortavozUITests", "PortavozDictationReceiver",
+                "UIInterruptionFixtures", "Tooling",
+            ],
+            sources: ["PortavozKitTests", "Support"]
+        ),
+        .testTarget(
+            name: "PortavozAppTests",
+            dependencies: [
+                "portavoz-app",
+                "PortavozCLIKit",
+                "PortavozTestSupport",
+                "ApplicationKit",
+                "PortavozCore",
+                "PlatformKit",
+                "ModelStoreKit",
+                "AudioCaptureKit",
+                "TranscriptionKit",
+                "DiarizationKit",
+                "IntelligenceKit",
+                "StorageKit",
+                "IntegrationsKit",
+                .product(name: "GRDB", package: "GRDB.swift"),
+            ],
+            path: "Tests/PortavozAppTests"
         ),
     ]
 )

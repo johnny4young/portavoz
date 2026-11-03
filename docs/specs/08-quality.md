@@ -955,7 +955,13 @@ test overlay is distinct from the maintained single-cell repetition mode, and it
 exit was an observation, not quality qualification. GAPS retains both boundary
 word loss and replay protection as a joint unresolved contract (D518).
 
-## Test suite — `Tests/PortavozTests/`
+## Test suite — `Tests/PortavozKitTests/` and `Tests/PortavozAppTests/`
+
+`PortavozAppTests` holds the tests that need the app module, so `PortavozKitTests`
+never recompiles for an app change and a ratchet keeps it free of that import. Both
+import `Tests/PortavozTestSupport`, a target outside every product for the doubles and
+fixtures they share. The native build system joins both modules in one XCTest bundle,
+while SwiftBuild produces one for each, and the pool resolves the bundle by module.
 
 | File | Coverage |
 |---|---|
@@ -971,7 +977,7 @@ word loss and replay protection as a joint unresolved contract (D518).
 | CommitmentLinkObservationTests / CommitmentSourceLinkArchitectureTests | Exact open-target source/evidence projection; closed and invalid-limit exclusion; installed-assets-only semantic borrowing; existing semantic-port use; separation of semantic relevance from wrong-owner admission; typed unavailable/malformed rejection; fixed 200/20/three bounds; and absence of mutation or app composition |
 | TopicContinuityTests / TopicContinuityHardeningTests | Thirteen focused cases covering deterministic alias normalization; real v24→v25 migration; inert generated proposals and explicit ApplicationKit confirmation; ambiguous and bilingual aliases; generated-candidate score/profile retention and target fencing; exact revision/correction-derived evidence freshness; correction-safe idempotent replay; source-chronological family reads; append-only merge/split identity history with active-root resolution; cross-topic foreign-key integrity and immutability triggers; and atomic rejection of invalid evidence or identity reuse |
 | DecisionContinuityTests / DecisionContinuityHardeningTests | Fifteen focused cases covering a real v25→v26 migration; inert generated observations; explicit initial and multimeeting source confirmation; exact rendered wording and ordered segment evidence; submillisecond-safe confirmation time; strict source chronology with exact old-request replay; supersede/reverse terminal history; correction rejection; correction-safe exact retries; identity reuse rejection; source-purge availability; invalid relationship rejection; event replay; and schema-level source ownership, identity immutability, projection-transition, and foreign-source guards |
-| ArchitectureDependencyTests (`Tests/PortavozTests/Architecture/`, eleven `+*.swift` families over a shared root) | SwiftPM/XcodeGen dependency ratchets, no capability reverse dependencies, approved application imports, workflow bypass prevention including ApplicationKit-owned durable post-capture, speaker naming, Meeting Detail metadata and Meeting Detail audio coordination, an explicit route-owned Meeting Detail scene/model boundary with a Foundation-only presentation formatter and no `AppServices` in the child view, a platform-free and OSLog-free Core, Core-only PlatformKit, composition-root-only Keychain construction, onboarding permission adapters, bounded ApplicationKit CLI/MCP library reads, product-command ApplicationKit entry with presentation-only command sources, audio/model/release/privacy boundaries, scoped feature ownership including first-run/local-receipt/meeting-preparation owners, explicit canonical-people, typed overview/decision/action-item/Apuntador evidence, private-feedback boundaries, typed immutable transcript-correction history with strict migration/envelope/sync-v2 ratchets, the content-free generation-fenced sync journal, CloudKit ownership limited to the IntegrationsKit codec/state/coordinator/delegate/runtime/platform boundary with domain replay still in StorageKit, a CloudKit-free lifecycle policy outside views, one inert consent-gated container owner, capture-gated bounded existing-library seed composition over the Core maintenance boundary, exact local/Developer-ID entitlement and profile gates, one shared Ask workflow with presentation/CLI/MCP/brief bypass prevention, architecture-document vocabulary rules, no speculative SyncKit bypass, content-free resource-workload descriptors outside audio callbacks, one process residency ledger with complete pinned Whisper, MLX, live-speech, diarization, and semantic-embedding load/use/release adapters plus one pressure-to-policy bridge that dispatches only through concrete owners, one process-shared bounded semantic-index flight and one no-poll signal-driven background owner in both reliability gates, capture-aware Whisper/MLX preparation/publication checks and atomic load-ticket admission, absence of model lifecycle/release operations from AudioCaptureKit callbacks, one persisted-level PCM scan plus a generation-fenced latest-value presentation relay, one signal-driven live-translation wake relay with a one-wake buffer and eight-row framework batches in both reliability gates, one recording-scoped live-summary coordinator with row/character budgets and atomic lifecycle-fenced publication, policy-owned 150-row live-paragraph and 1,024-row talk-balance bounds, local diagnostics/signpost redaction including path/checksum-free audio and aggregate-only transcript evidence, and measured scale source/evidence gates |
+| ArchitectureDependencyTests (`Tests/PortavozKitTests/Architecture/`, eleven `+*.swift` families over a shared root) | SwiftPM/XcodeGen dependency ratchets, no capability reverse dependencies, approved application imports, workflow bypass prevention including ApplicationKit-owned durable post-capture, speaker naming, Meeting Detail metadata and Meeting Detail audio coordination, an explicit route-owned Meeting Detail scene/model boundary with a Foundation-only presentation formatter and no `AppServices` in the child view, a platform-free and OSLog-free Core, Core-only PlatformKit, composition-root-only Keychain construction, onboarding permission adapters, bounded ApplicationKit CLI/MCP library reads, product-command ApplicationKit entry with presentation-only command sources, audio/model/release/privacy boundaries, scoped feature ownership including first-run/local-receipt/meeting-preparation owners, explicit canonical-people, typed overview/decision/action-item/Apuntador evidence, private-feedback boundaries, typed immutable transcript-correction history with strict migration/envelope/sync-v2 ratchets, the content-free generation-fenced sync journal, CloudKit ownership limited to the IntegrationsKit codec/state/coordinator/delegate/runtime/platform boundary with domain replay still in StorageKit, a CloudKit-free lifecycle policy outside views, one inert consent-gated container owner, capture-gated bounded existing-library seed composition over the Core maintenance boundary, exact local/Developer-ID entitlement and profile gates, one shared Ask workflow with presentation/CLI/MCP/brief bypass prevention, architecture-document vocabulary rules, no speculative SyncKit bypass, content-free resource-workload descriptors outside audio callbacks, one process residency ledger with complete pinned Whisper, MLX, live-speech, diarization, and semantic-embedding load/use/release adapters plus one pressure-to-policy bridge that dispatches only through concrete owners, one process-shared bounded semantic-index flight and one no-poll signal-driven background owner in both reliability gates, capture-aware Whisper/MLX preparation/publication checks and atomic load-ticket admission, absence of model lifecycle/release operations from AudioCaptureKit callbacks, one persisted-level PCM scan plus a generation-fenced latest-value presentation relay, one signal-driven live-translation wake relay with a one-wake buffer and eight-row framework batches in both reliability gates, one recording-scoped live-summary coordinator with row/character budgets and atomic lifecycle-fenced publication, policy-owned 150-row live-paragraph and 1,024-row talk-balance bounds, local diagnostics/signpost redaction including path/checksum-free audio and aggregate-only transcript evidence, and measured scale source/evidence gates |
 | CLIArgumentValueTests | Missing, empty, next-option, malformed, negative, zero, oversized, non-finite, and out-of-range legacy CLI value rejection; index non-consumption on a missing value; and overflow-safe 1,000,000-segment FTS corpus admission |
 | MeetingDetailPresentationTests | Locale/time-zone-injected meeting dates, bounded duration and segment facts, negative-time clamping, and padded/unpadded transcript clocks without storage or capability access |
 | MeetingSyncStateTests | Empty v13→v14 migration, transactional rollback, portable versus device-local mutation filtering, typed-evidence-only replacement, in-flight N/N+1 acknowledgement, bounded live/deleted initial seed with durable cursor progression and idempotent crash-window replay, delete/restore/purge tombstone behavior, and fail-closed limits/acknowledgements |
@@ -2183,16 +2189,23 @@ evidence without exceeding its type-checking budget.
 
 Current-SDK diagnostic closure uses `scripts/run-swift-tests.sh -Xswiftc
 -warnings-as-errors` both locally before committing and on the explicit
-`macos-26`/Xcode 26.6 CI lane. A complete launcher run pools XCTest by class
-(D598): `scripts/run_xctest_pool.py` runs each listed class in its own `xctest`
-process, three at a time, prints every class's output, and fails when a class
-fails, prints no summary, or the executed total differs from the listed total.
+`macos-26`/Xcode 26.6 CI lane. A complete launcher run pools XCTest in batches
+(D619): `scripts/run_xctest_pool.py` groups the listed classes by the durations in
+`scripts/xctest_class_seconds.json`, about 15 seconds to a process, and runs three
+processes at a time. A class fails when its suite fails, when it runs a different
+number of cases than listed, or when it has not finished after 300 seconds. After a
+crash or a hang, the classes that process never reached run in a new one. The
+nightly clean build sets `PORTAVOZ_XCTEST_BATCH_SEED` to vary which classes share
+a process, and `--record-from <log>` rebuilds the table from an xctest log.
+`scripts/xctest_nightly_only.txt` lists reviewed cases, by exact identifier, that
+only drive a benchmark harness: other runs skip them and report how many, and the
+nightly clean build runs them with `PORTAVOZ_SWIFT_INCLUDE_NIGHTLY_ONLY`.
 Swift Testing suites then run in one process through an anchored filter. Tests
 that write preferences use their own suite domain rather than
 `UserDefaults.standard`, which concurrent processes share on disk.
 `Tests/Tooling/test_run_xctest_pool.py` and `test_run_swift_tests.py` cover the
-class selection, summary parsing, count guard, failure propagation, targeted
-passthrough and the process-group stop. A documentation, website, CI-configuration or tooling
+batching, the per-class accounting, crashes, hangs, a process failing after its
+suites, targeted passthrough and the process-group stop. A documentation, website, CI-configuration or tooling
 pull request runs only the classes that locate the checkout through `#filePath`
 or a repository root (D600, D620): `Tests/Tooling/test_swift_test_scope.py` checks
 that every Swift test naming a repository path is selected, that build, test,
@@ -4121,7 +4134,7 @@ The next clean candidate on
 `83634dec14bd01a12657f8434287ddfc260c43bb` again failed closed after 2,748
 tests and 15 skips, with no deterministic or candidate qualification receipt.
 D394 reduced the result to the dense correction-history budget case in
-`PortavozTests.TranscriptCorrectionScaleBenchmarkTests`. That default Debug
+`PortavozKitTests.TranscriptCorrectionScaleBenchmarkTests`. That default Debug
 case measured five 8,000-segment/4,000-correction permutations, making
 nearest-rank p95 equal the maximum while the rest of the package shared the
 host. The intended isolated Release authority on the unchanged source passed

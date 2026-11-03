@@ -93,6 +93,9 @@ jobs:
         run: python3 scripts/ci_swift_cache_key.py --lane build-and-test --commit "$GITHUB_SHA" >> "$GITHUB_OUTPUT"
 
       - name: Clean build and complete test suite
+        env:
+          PORTAVOZ_XCTEST_BATCH_SEED: ${{ github.run_id }}
+          PORTAVOZ_SWIFT_INCLUDE_NIGHTLY_ONLY: "1"
         run: scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors
 
       - name: Record successful source fingerprints
