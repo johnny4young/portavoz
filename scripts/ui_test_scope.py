@@ -176,7 +176,7 @@ SELECTION_LOCALES = ("en",)
 @dataclass(frozen=True)
 class UITestChange:
     """What a diff touches in one UI test source."""
-    functions: set[str]
+    functions: frozenset[str]
     outside_functions: bool = False
 
 
@@ -188,7 +188,7 @@ class Selection:
     interruption_controls: bool = False
     scope_unknown: bool = False
     # Lower sorts first when the budget chooses; absent for explicit runs.
-    priority: Mapping[str, tuple[int, int]] = field(default_factory=dict)
+    priority: Mapping[str, tuple[int, int]] = field(default_factory=dict, hash=False)
     cut: tuple[str, ...] = ()
 
     @property
@@ -250,7 +250,7 @@ def ui_test_changes(base: str, head: str | None, root: Path) -> dict[str, UITest
     if head is not None:
         command.append(head)
     output = subprocess.run([*command, "--", "Tests/PortavozUITests"], check=True, capture_output=True,
-                            text=True, cwd=root).stdout
+                            encoding="utf-8", errors="replace", cwd=root).stdout
     touched: dict[str, list[int]] = {}
     path = None
     for line in output.splitlines():
@@ -267,20 +267,29 @@ def ui_test_changes(base: str, head: str | None, root: Path) -> dict[str, UITest
             source = (root / path).read_text(encoding="utf-8")
         else:
             source = subprocess.run(["git", "show", f"{head}:{path}"], check=True, capture_output=True,
-                                    text=True, cwd=root).stdout
+                                    encoding="utf-8", errors="replace", cwd=root).stdout
         spans = function_spans(source)
         names = [enclosing_function(spans, number) for number in numbers]
-        changes[path] = UITestChange({name for name in names if name}, None in names)
+        changes[path] = UITestChange(frozenset(name for name in names if name), None in names)
     return changes
 
 
 def tests_using(helpers: set[str], root: Path) -> set[str]:
-    """Reachable tests whose bodies name one of these helpers, directly or through another helper."""
+    """Reachable tests that run one of these helpers: named in a body, directly or through another
+    helper, or anywhere XCTest reaches on its own, a lifecycle method or a property, which is the class.
+    """
+    if not helpers:
+        return set()
     bodies: dict[str, str] = {}
     owners: dict[str, str] = {}
+    outside: dict[str, str] = {}
     for source in sorted((root / "Tests/PortavozUITests").glob("*.swift")):
         lines = source.read_text(encoding="utf-8").splitlines()
-        for name, first, last in function_spans("\n".join(lines)):
+        spans = function_spans("\n".join(lines))
+        covered = {number for _, first, last in spans for number in range(first, last + 1)}
+        outside[source.stem] = "\n".join(
+            line for number, line in enumerate(lines, start=1) if number not in covered)
+        for name, first, last in spans:
             key = f"{source.stem}/{name}"
             bodies[key] = "\n".join(lines[first - 1:last])
             owners[key] = name
@@ -292,8 +301,11 @@ def tests_using(helpers: set[str], root: Path) -> set[str]:
         pending = {owners[key] for key, body in bodies.items()
                    if owners[key] not in reached and pattern.search(body)}
         reached |= pending
+    pattern = re.compile(r"\b(?:" + "|".join(map(re.escape, sorted(reached))) + r")\b")
+    classes = {stem for stem, text in outside.items() if pattern.search(text)}
+    classes |= {key.split("/")[0] for key, name in owners.items() if name in reached & XCTEST_LIFECYCLE}
     return {selector for selector in PR_TESTS
-            if (key := selector.split("/", 1)[1]) in owners and owners[key] in reached}
+            if owners.get(selector.split("/", 1)[1]) in reached or selector.split("/")[1] in classes}
 
 
 def app_features(filename: str) -> set[str]:
@@ -830,7 +842,7 @@ def select_paths(
     ui_changes: Mapping[str, UITestChange] | None = None,
 ) -> Selection:
     selected: collections.Counter[str] = collections.Counter()
-    edited: set[str] = set()
+    first: set[str] = set()
     consumers: set[str] = set()
     reasons: list[str] = []
     interruption_controls = False
@@ -840,13 +852,16 @@ def select_paths(
         nonlocal scope_unknown
         scope_unknown = True
         selected.update(CONSERVATIVE_TESTS)
+        first.update(HARNESS_SELF_TESTS)
         reasons.append(f"scope-unknown: {reason}")
 
-    def helpers_changed(path: str) -> None:
+    def helpers_changed(path: str) -> bool:
+        """Whether every edited helper was traced to a test or there was nothing to trace."""
         change = (ui_changes or {}).get(path)
         names = {name for name in change.functions if not name.startswith("test")} if change else set()
-        if names:
-            consumers.update(tests_using(names, root or Path(__file__).resolve().parent.parent))
+        found = tests_using(names, root or Path(__file__).resolve().parent.parent) if names else set()
+        consumers.update(found)
+        return bool(found) or not names
 
     for raw_path in paths:
         path = raw_path.strip().removeprefix("./")
@@ -886,6 +901,7 @@ def select_paths(
 
         if path in HARNESS_FILES or path.startswith(INTERRUPTION_FIXTURE_PREFIX):
             selected.update(CONSERVATIVE_TESTS)
+            first.update(HARNESS_SELF_TESTS)
             helpers_changed(path)
             # A production file in the harness still owes its own journeys.
             if path.startswith("Sources/portavoz-app/"):
@@ -939,16 +955,18 @@ def select_paths(
         if name is not None and change is not None:
             methods = {test_id(name, method) for method in change.functions if method.startswith("test")}
             # An edited nightly-only method runs: its author is the one who needs the answer.
-            edited.update(methods & set(ALL_TESTS))
+            first.update(methods & set(ALL_TESTS))
             selected.update(methods & set(ALL_TESTS))
             selected.update(SMOKE_TESTS)
-            helpers_changed(path)
+            traced = helpers_changed(path)
             reasons.append(f"{path}: {len(methods)} edited methods, helper consumers and canaries")
-            if not change.outside_functions and not change.functions & XCTEST_LIFECYCLE:
+            if methods - set(ALL_TESTS):
+                reasons.append(f"{path}: edited methods outside the catalog's runs need their own run")
+            if traced and not change.outside_functions and not change.functions & XCTEST_LIFECYCLE:
                 continue
         changed_ui_tests = tests_for_ui_test_file(path)
         if changed_ui_tests:
-            edited.update(changed_ui_tests)
+            first.update(changed_ui_tests)
             selected.update(changed_ui_tests)
             selected.update(SMOKE_TESTS)
             reasons.append(f"{path}: changed UI-test contract and canaries")
@@ -1004,7 +1022,10 @@ def select_paths(
 
     selected.update(consumers)
     ordered_tests = tuple(test for test in ALL_TESTS if test in selected)
-    rank = lambda test: 0 if test in edited else 1 if test in consumers else 2  # noqa: E731
+
+    def rank(test: str) -> int:
+        return 0 if test in first else 1 if test in consumers else 2
+
     return Selection(
         ordered_tests,
         SELECTION_LOCALES if ordered_tests else (),
@@ -1031,7 +1052,9 @@ def apply_budget(selection: Selection, seconds: Mapping[str, float], budget: flo
 
     Raises when the canaries alone exceed the budget: emptying them would prove nothing.
     """
-    cost = lambda test: seconds[runtime_budget_key(test)] + UI_TEST_OVERHEAD_PER_TEST_SECONDS  # noqa: E731
+    def cost(test: str) -> float:
+        return seconds[runtime_budget_key(test)] + UI_TEST_OVERHEAD_PER_TEST_SECONDS
+
     chosen = list(SMOKE_TESTS) if selection.tests else []
     used = UI_TEST_OVERHEAD_SECONDS + sum(cost(test) for test in chosen)
     if chosen and used > budget:

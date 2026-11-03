@@ -105,7 +105,7 @@ jobs:
             echo "::notice title=ui-budget-cut::$(wc -w <<< "$CUT" | tr -d ' ') candidates wait for nightly: $CUT"
           fi
           if [[ "$SCOPE_UNKNOWN" == "true" ]]; then
-            echo "::warning title=UI scope unknown::Canaries and the harness self-test are selected. For the complete catalog: gh workflow run ui-tests.yml --ref $HEAD_REF -f full_ui=true"
+            echo "::warning title=UI scope unknown::Canaries and what fits of the harness self-test are selected. For the complete catalog: gh workflow run ui-tests.yml --ref $HEAD_REF -f full_ui=true"
           fi
 
   interruption-controls:
@@ -358,6 +358,7 @@ jobs:
           CONTROLS_RESULT: ${{ needs.interruption-controls.result }}
           BUILD_RESULT: ${{ needs.build-ui-products.result }}
           UI_RESULT: ${{ needs.scoped-ui-tests.result }}
+          UI_CUT: ${{ needs.scope.outputs.cut }}
           UI_VERIFIED: ${{ steps.classify.outputs.verified }}
           UI_STATE: ${{ steps.classify.outputs.state }}
         run: |
@@ -388,6 +389,9 @@ jobs:
             case "$UI_STATE:$UI_VERIFIED" in
               passed:true)
                 echo "Scoped UI functional evidence is complete."
+                if [[ -n "${UI_CUT:-}" ]]; then
+                  echo "Not run, for nightly to own: $UI_CUT" | tee -a "$GITHUB_STEP_SUMMARY"
+                fi
                 ;;
               infrastructure-advisory:false)
                 echo "::warning::Known hosted UI infrastructure was unavailable; this head will not become a verification anchor."

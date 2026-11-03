@@ -248,10 +248,11 @@ class RunUITestsTests(unittest.TestCase):
             "-skip-testing:PortavozUITests/DictationUITests/"
             "testNativeInserterUsesDisposableReceiverAndClipboard"
         )
-        self.assertEqual(calls[1].count("-skip-testing:"), 2)
+        self.assertEqual(calls[1].count("-skip-testing:"), 3)
         self.assertIn(
             "-skip-testing:PortavozUITests/DictationUITests/"
             "testNativeControllerModeChoicePreservesReceiverAndClipboard", calls[1])
+        self.assertIn("-skip-testing:PortavozUITests/PublicShowcaseUITests", calls[1])
         self.assertIn(native_skip, calls[1])
         self.assertIn("Running all tests in locale: en", result.stdout)
 

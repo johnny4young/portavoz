@@ -22466,14 +22466,15 @@ Each case now has one of three homes: canaries and feature groups, nightly only,
 The canaries change to ten that cover launch, recovery, clean and failed capture, live
 captions, search and Ask, meeting review, Settings and the menu bar. The clean Stop case is new
 and uses a disposable fixture through the production Stop and post-capture adapters. An edited
-test selects that method and an edited helper the tests naming it, and a change outside any
-function falls back to the class. The broad name rules narrow to one owner.
+test selects that method and an edited helper the tests that run it, and a lifecycle method, a
+property, a change outside any function or a helper with no visible user falls back to the class. The broad name rules narrow to one owner.
 
 A pull request always runs the canaries, then adds candidates while their observed hosted p90
 and xcodebuild's overhead fit 240 seconds. Edited methods come first, then helper consumers,
-then the tests the most paths map to, then feature tier and fewest seconds. The result is
+then the tests the most paths map to, then feature tier and fewest seconds. A harness or unknown
+change ranks its self-tests first, though not all five always fit. The result is
 deterministic for the same diff and times. A candidate over the budget is named in the job
-summary, a `ui-budget-cut` notice and the lane receipt, and nightly runs it. Nothing is deleted
+summary, a `ui-budget-cut` notice, the gate's result and the lane receipt, and nightly runs it. Nothing is deleted
 for not fitting, and canaries over the budget fail the selection instead of shrinking it. An
 edited nightly-only method runs on its pull request despite the triage's "never on a PR", because
 its author is the one who needs the answer.

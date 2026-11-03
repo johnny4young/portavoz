@@ -1354,7 +1354,7 @@ class UITestScopeTests(unittest.TestCase):
         method = "testRelaunchResumesPublishedAudioWithoutTheSelectedOriginals"
         path = "Tests/PortavozUITests/AudioImportUITests.swift"
 
-        selection = select_paths([path], ui_changes={path: ui_scope.UITestChange({method})})
+        selection = select_paths([path], ui_changes={path: ui_scope.UITestChange(frozenset({method}))})
 
         self.assertEqual(set(selection.tests), {ui_scope.test_id("AudioImportUITests", method)} | set(SMOKE_TESTS))
         self.assertEqual(selection.priority[ui_scope.test_id("AudioImportUITests", method)][0], 0)
@@ -1365,7 +1365,7 @@ class UITestScopeTests(unittest.TestCase):
         selector = ui_scope.test_id("AudioImportUITests", method)
         self.assertIn(selector, ui_scope.NIGHTLY_ONLY_TESTS)
 
-        selection = select_paths([path], ui_changes={path: ui_scope.UITestChange({method})})
+        selection = select_paths([path], ui_changes={path: ui_scope.UITestChange(frozenset({method}))})
 
         self.assertIn(selector, selection.tests)
 
@@ -1383,7 +1383,7 @@ class UITestScopeTests(unittest.TestCase):
                 f"    private func shared() {{\n        click()\n    }}\n}}\n", encoding="utf-8")
             path = "Tests/PortavozUITests/AudioImportUITests.swift"
 
-            selection = select_paths([path], root=root, ui_changes={path: ui_scope.UITestChange({"shared"})})
+            selection = select_paths([path], root=root, ui_changes={path: ui_scope.UITestChange(frozenset({"shared"}))})
 
             self.assertIn(ui_scope.test_id("AudioImportUITests", kept), selection.tests)
             self.assertNotIn(ui_scope.test_id("AudioImportUITests", other), selection.tests)
@@ -1411,14 +1411,14 @@ class UITestScopeTests(unittest.TestCase):
 
             changes = ui_scope.ui_test_changes("HEAD~1", "HEAD", root)
 
-            self.assertEqual(changes["Tests/PortavozUITests/AUITests.swift"], ui_scope.UITestChange({"testTwo"}))
+            self.assertEqual(changes["Tests/PortavozUITests/AUITests.swift"], ui_scope.UITestChange(frozenset({"testTwo"})))
             self.assertEqual(changes["Tests/PortavozUITests/BUITests.swift"],
-                             ui_scope.UITestChange(set(), outside_functions=True))
+                             ui_scope.UITestChange(frozenset(), outside_functions=True))
 
     def test_an_edit_beside_a_function_keeps_the_edited_nightly_method_and_adds_the_class(self):
         method = "testMultipleAudioFilesReachPagedQueueAndOpenTheirMeeting"
         path = "Tests/PortavozUITests/AudioImportUITests.swift"
-        changes = ui_scope.UITestChange({method}, outside_functions=True)
+        changes = ui_scope.UITestChange(frozenset({method}), outside_functions=True)
 
         selection = select_paths([path], ui_changes={path: changes})
 
@@ -1428,7 +1428,7 @@ class UITestScopeTests(unittest.TestCase):
     def test_a_lifecycle_edit_selects_the_class_because_no_body_names_it(self):
         path = "Tests/PortavozUITests/AudioImportUITests.swift"
 
-        selection = select_paths([path], ui_changes={path: ui_scope.UITestChange({"tearDown"})})
+        selection = select_paths([path], ui_changes={path: ui_scope.UITestChange(frozenset({"tearDown"}))})
 
         self.assertTrue({test for test in PR_TESTS if "/AudioImportUITests/" in test} <= set(selection.tests))
 
@@ -1455,6 +1455,56 @@ class UITestScopeTests(unittest.TestCase):
                   '    func testC() {\n        c()\n    }\n}\n')
 
         self.assertEqual(ui_scope.function_spans(source), [("testA", 2, 2), ("testB", 3, 3), ("testC", 4, 6)])
+
+    def test_a_helper_run_by_a_lifecycle_method_or_a_property_selects_the_class(self):
+        one, other = ("testRelaunchResumesPublishedAudioWithoutTheSelectedOriginals",
+                      "testSingleMeetingBundleReachesDetailWithoutChangingTheOriginal")
+        for body in ("    override func tearDown() {\n        shared()\n    }\n",
+                     "    private let fixture = shared()\n"):
+            with self.subTest(body=body), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                tests = root / "Tests/PortavozUITests"
+                tests.mkdir(parents=True)
+                (tests / "AudioImportUITests.swift").write_text(
+                    f"final class AudioImportUITests {{\n{body}"
+                    f"    func {one}() {{\n        a()\n    }}\n"
+                    f"    func {other}() {{\n        b()\n    }}\n}}\n"
+                    f"func shared() {{\n    c()\n}}\n", encoding="utf-8")
+
+                found = ui_scope.tests_using({"shared"}, root)
+
+                self.assertTrue({ui_scope.test_id("AudioImportUITests", one),
+                                 ui_scope.test_id("AudioImportUITests", other)} <= found)
+
+    def test_a_helper_no_test_is_seen_to_use_selects_its_class(self):
+        path = "Tests/PortavozUITests/AudioImportUITests.swift"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "Tests/PortavozUITests").mkdir(parents=True)
+            (root / path).write_text("final class AudioImportUITests {\n    func orphan() {\n    }\n}\n",
+                                     encoding="utf-8")
+
+            selection = select_paths([path], root=root, ui_changes={path: ui_scope.UITestChange(frozenset({"orphan"}))})
+
+        self.assertTrue({test for test in PR_TESTS if "/AudioImportUITests/" in test} <= set(selection.tests))
+
+    def test_harness_and_unknown_changes_choose_the_self_tests_before_other_candidates(self):
+        for path in ("Package.swift", "Tests/PortavozUITests/UITestSupport.swift"):
+            with self.subTest(path=path):
+                selection = select_paths([path])
+                self.assertTrue(all(selection.priority[test][0] == 0 for test in HARNESS_SELF_TESTS))
+
+    def test_an_edited_method_outside_the_catalog_runs_nothing_and_says_so(self):
+        path = "Tests/PortavozUITests/PublicShowcaseUITests.swift"
+
+        selection = select_paths([path], ui_changes={path: ui_scope.UITestChange(frozenset({"testTodayShowcase"}))})
+
+        self.assertEqual(set(selection.tests), set(SMOKE_TESTS))
+        self.assertTrue(any("need their own run" in reason for reason in selection.reasons))
+
+    def test_selections_and_changes_stay_hashable(self):
+        self.assertIsInstance(hash(ui_scope.UITestChange(frozenset({"a"}))), int)
+        self.assertIsInstance(hash(ui_scope.Selection(("a",), ("en",), (), priority={"a": (0, 0)})), int)
 
     def test_one_line_and_multi_line_functions_end_where_they_close(self):
         source = ("class T {\n    func one() { a() }\n\n    private func two(\n        x: Int\n    ) {\n"
@@ -1520,7 +1570,7 @@ class UITestScopeTests(unittest.TestCase):
             ["Sources/portavoz-app/SettingsTransferSection.swift"]), self.seconds()).tests))
         self.assertEqual(ui_scope.apply_budget(select_paths(["docs/GAPS.md"]), self.seconds()).tests, ())
 
-    def test_the_real_canaries_and_largest_group_fit_on_recorded_times(self):
+    def test_the_real_canaries_fit_on_recorded_times(self):
         seconds = ui_scope.hosted_seconds(ROOT)
         canaries = ui_scope.apply_budget(ui_scope.Selection(tuple(SMOKE_TESTS), ("en",), ()), seconds)
 

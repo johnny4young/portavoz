@@ -215,7 +215,7 @@ class CIWorkflowTests(unittest.TestCase):
         explain = ui.split("- name: Explain the selection\n", 1)[1].split("\n  interruption-controls:", 1)[0]
 
         self.assertIn('if [[ "$SCOPE_UNKNOWN" == "true" ]]; then', explain)
-        self.assertIn("::warning title=UI scope unknown::Canaries and the harness self-test are selected.", explain)
+        self.assertIn("::warning title=UI scope unknown::Canaries and what fits of the harness self-test are selected.", explain)
         self.assertIn("-f full_ui=true", explain)
         self.assertIn('Deferred to nightly: ${DEFERRED:-0}', explain)
         self.assertIn("$GITHUB_STEP_SUMMARY", explain)
@@ -531,6 +531,16 @@ class NightlyUIWorkflowTests(unittest.TestCase):
         self.assertIn("  actions: read\n", watch)
         self.assertIn("  issues: write\n", watch)
         self.assertIn("scripts/ui_nightly_health.py freshness", watch)
+
+    def test_pull_requests_select_within_the_budget_and_report_what_was_cut(self):
+        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
+
+        self.assertEqual(workflow.count("python3 scripts/ui_test_scope.py --budget"), 2)
+        self.assertIn("python3 scripts/ui_test_scope.py --all --format github", workflow)
+        self.assertIn("cut: ${{ steps.select.outputs.cut }}", workflow)
+        self.assertIn("::notice title=ui-budget-cut::", workflow)
+        self.assertIn('--cut "$CUT"', workflow)
+        self.assertIn("Not run, for nightly to own: $UI_CUT", workflow)
 
     def test_nightly_owns_a_clean_build_and_seeds_only_from_main(self):
         clean = self.workflow.split("  clean-build-and-test:\n", 1)[1].split("\n  # After the jobs above", 1)[0]

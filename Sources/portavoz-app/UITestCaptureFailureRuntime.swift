@@ -43,9 +43,14 @@ struct UITestCleanCaptureRuntime: StartRecordingRuntime {
             sources: [UITestCaptureSource(channel: .microphone, failsAfterPrefix: false)],
             onLevel: request.callbacks.level, onHealthEvent: request.callbacks.health)
         request.callbacks.liveTranscription(.available)
-        await request.callbacks.caption(TranscriptSegment(
+        let caption = TranscriptSegment(
             meetingID: request.meetingID, channel: .microphone, text: Self.caption,
-            language: "es", startTime: 0, endTime: 2, confidence: 1, isFinal: true))
+            language: "es", startTime: 0, endTime: 2, confidence: 1, isFinal: true)
+        Task {
+            // Let the recording screen settle, as the other live fixtures do.
+            try? await Task.sleep(for: .milliseconds(400))
+            await request.callbacks.caption(caption)
+        }
         return UITestCleanCaptureSession(session: session)
     }
 

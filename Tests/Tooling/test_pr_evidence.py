@@ -69,7 +69,8 @@ class LaneReceiptTests(unittest.TestCase):
 
     def receipt(self, runtime):
         return lane.lane_receipt(locale="en", sha="a" * 40, attempt=2, toolchain="Xcode 26.6", outcome="success",
-                                 tests=self.SELECTED, deferred=189, scope_unknown=True, runtime=runtime)
+                                 tests=self.SELECTED, deferred=189, cut="PortavozUITests/LibraryUITests/testC", scope_unknown=True,
+                                 runtime=runtime)
 
     def test_it_names_what_was_selected_executed_and_missed(self):
         runtime = {"testDurationSeconds": 3.5, "tests": [
@@ -79,6 +80,7 @@ class LaneReceiptTests(unittest.TestCase):
 
         self.assertEqual((result["sha"], result["attempt"], result["toolchain"]), ("a" * 40, 2, "Xcode 26.6"))
         self.assertEqual(result["selection"]["deferred"], 189)
+        self.assertEqual(result["selection"]["cut"], ["PortavozUITests/LibraryUITests/testC"])
         self.assertTrue(result["selection"]["scopeUnknown"])
         self.assertEqual(result["executed"], [
             {"identifier": "LibraryUITests/testA()", "result": "Passed", "durationSeconds": 3.5}])
