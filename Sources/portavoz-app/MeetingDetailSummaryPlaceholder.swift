@@ -34,7 +34,7 @@ struct MeetingDetailSummaryPlaceholder: View {
         }
     }
 
-    static func latestCancelledSummary(in jobs: [ProcessingJob]) -> ProcessingJob? {
+    nonisolated static func latestCancelledSummary(in jobs: [ProcessingJob]) -> ProcessingJob? {
         jobs
             .filter { $0.kind == .summary && $0.state == .cancelled }
             .max { $0.updatedAt < $1.updatedAt }
