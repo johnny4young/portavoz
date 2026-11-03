@@ -22625,5 +22625,5 @@ SwiftPM host, which a pull request and a manual `full_ui` run use. Every launch 
 is one sample per arm on different hosts: 30% raw and 16-23% without the 5-20 largest swings, and the two
 settings were not measured apart. A failure in that lane leaves screenshots and no video; nightly and local
 project runs keep their video, so nightly seconds overstate the lane and its fit errs toward cutting a case. A
-race visible only during a window animation is no longer exercised, in exchange for fewer waits on moving
-controls.
+race visible only during a window animation is no longer exercised by any run, the release gate included, in
+exchange for fewer waits on moving controls.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The XCUITest host built from SwiftPM: its Info.plist and its place in the xctestrun."""
+"""The XCUITest host built from SwiftPM: its Info.plist, its place in the xctestrun and the lane's capture format."""
 
 import argparse
 import json
@@ -74,7 +74,7 @@ def info_plist(project: dict) -> dict:
 
 
 def inject_host(run: dict, identifier: str) -> dict:
-    """Make the prebuilt host the runner's target app, as if the project had built it."""
+    """Make the prebuilt host the runner's target app, as if the project had built it, and capture no video."""
     target = run[RUNNER_TARGET]
     target.pop("UseUITargetAppProvidedByTests", None)
     target["UITargetAppPath"] = HOST_IN_TEST_ROOT

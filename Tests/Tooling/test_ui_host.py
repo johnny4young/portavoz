@@ -34,17 +34,10 @@ class XctestrunInjectionTests(unittest.TestCase):
         self.assertEqual(target["DependentProductPaths"][0], ui_host.HOST_IN_TEST_ROOT)
         self.assertIn(IDENTIFIER, target["BundleIdentifiersForCrashReportEmphasis"])
 
-    def test_a_hosted_run_captures_screenshots_instead_of_video(self):
+    def test_the_pull_request_lane_captures_screenshots_instead_of_video(self):
         target = ui_host.inject_host(run_document(), IDENTIFIER)[ui_host.RUNNER_TARGET]
 
         self.assertEqual(target["PreferredScreenCaptureFormat"], "screenshots")
-
-    def test_every_launch_turns_off_the_window_and_scroll_animations(self):
-        support = (ROOT / "Tests/PortavozUITests/UITestSupport.swift").read_text(encoding="utf-8")
-
-        for argument in ('"-NSAutomaticWindowAnimationsEnabled", "NO"', '"-NSWindowResizeTime", "0.001"',
-                         '"-NSScrollAnimationEnabled", "NO"'):
-            self.assertIn(argument, support)
 
     def test_a_missing_host_refuses_to_inject(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -133,6 +126,23 @@ class RunnerContractTests(unittest.TestCase):
 
 
 class WiringTests(unittest.TestCase):
+    def test_every_launch_turns_off_the_window_and_scroll_animations(self):
+        support = (ROOT / "Tests/PortavozUITests/UITestSupport.swift").read_text(encoding="utf-8")
+        launch = re.search(r"^\s*app\.launchArguments = \[(.*?)^\s*\]$", support, re.DOTALL | re.MULTILINE).group(1)
+        live = "\n".join(line.split("//", 1)[0] for line in launch.splitlines())
+
+        for argument in ('"-NSAutomaticWindowAnimationsEnabled", "NO"', '"-NSWindowResizeTime", "0.001"',
+                         '"-NSScrollAnimationEnabled", "NO"'):
+            self.assertIn(argument, live)
+
+    def test_only_the_pull_request_lane_builds_the_products_that_drop_video(self):
+        pull_request = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        nightly = (ROOT / ".github/workflows/ui-nightly.yml").read_text(encoding="utf-8")
+
+        self.assertIn("make test-ui-host-products", pull_request)
+        self.assertIn("make test-ui-build", nightly)
+        self.assertNotIn("test-ui-host-products", nightly)
+
     def test_the_contract_runs_before_anything_compiles(self):
         builder = (ROOT / "scripts/build-ui-host-products.sh").read_text(encoding="utf-8")
 
