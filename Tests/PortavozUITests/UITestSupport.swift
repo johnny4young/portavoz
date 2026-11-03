@@ -112,7 +112,11 @@ extension XCUIApplication {
         let processTempRoot = try makeTemporaryDirectory()
         let app = XCUIApplication()
         try UITestStorage.register(app)
-        app.launchArguments = ["-NSTreatUnknownArgumentsAsOpen", "NO", "-ApplePersistenceIgnoreState", "YES", "-use-temp-store", "-reset-app-language"]
+        app.launchArguments = [
+            "-NSTreatUnknownArgumentsAsOpen", "NO",
+            "-NSAutomaticWindowAnimationsEnabled", "NO", "-NSWindowResizeTime", "0.001", "-NSScrollAnimationEnabled", "NO",
+            "-ApplePersistenceIgnoreState", "YES", "-use-temp-store", "-reset-app-language",
+        ]
         if seedDemo {
             app.launchArguments.append("-seed-demo")
             app.launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"] =

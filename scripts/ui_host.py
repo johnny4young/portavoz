@@ -78,6 +78,7 @@ def inject_host(run: dict, identifier: str) -> dict:
     target = run[RUNNER_TARGET]
     target.pop("UseUITargetAppProvidedByTests", None)
     target["UITargetAppPath"] = HOST_IN_TEST_ROOT
+    target["PreferredScreenCaptureFormat"] = "screenshots"
     target.setdefault("DependentProductPaths", []).insert(0, HOST_IN_TEST_ROOT)
     target.setdefault("BundleIdentifiersForCrashReportEmphasis", []).append(identifier)
     return run

@@ -34,6 +34,18 @@ class XctestrunInjectionTests(unittest.TestCase):
         self.assertEqual(target["DependentProductPaths"][0], ui_host.HOST_IN_TEST_ROOT)
         self.assertIn(IDENTIFIER, target["BundleIdentifiersForCrashReportEmphasis"])
 
+    def test_a_hosted_run_captures_screenshots_instead_of_video(self):
+        target = ui_host.inject_host(run_document(), IDENTIFIER)[ui_host.RUNNER_TARGET]
+
+        self.assertEqual(target["PreferredScreenCaptureFormat"], "screenshots")
+
+    def test_every_launch_turns_off_the_window_and_scroll_animations(self):
+        support = (ROOT / "Tests/PortavozUITests/UITestSupport.swift").read_text(encoding="utf-8")
+
+        for argument in ('"-NSAutomaticWindowAnimationsEnabled", "NO"', '"-NSWindowResizeTime", "0.001"',
+                         '"-NSScrollAnimationEnabled", "NO"'):
+            self.assertIn(argument, support)
+
     def test_a_missing_host_refuses_to_inject(self):
         with tempfile.TemporaryDirectory() as directory:
             products = Path(directory)
