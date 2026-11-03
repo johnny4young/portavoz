@@ -5255,8 +5255,8 @@ dismissed approvals do not count.
 
 The same exact commit must have one first-attempt successful `push` run of the
 tracked `CI` workflow on `main`; multiple unchanged-commit runs, a rerun, a
-failed/cancelled job, a missing build/lint/hygiene job, or metadata
-drift blocks. The producer also queries its own exact commit-titled dispatch
+failed/cancelled job, a missing or skipped build/lint/hygiene job, or metadata
+drift blocks; a job scoped to pull requests may skip on that push. The producer also queries its own exact commit-titled dispatch
 and requires the in-progress run to be the only matching first attempt; a
 second dispatch or workflow rerun cannot mint a replacement receipt. Only
 then does the workflow upload a mode-0600 qualification
@@ -5831,17 +5831,12 @@ only when a lane did not pass. XCUITest runs in
 English only: Spanish parity is a unit-test property of the string catalogs
 (every key translated, matching placeholders, every visible literal
 cataloged, Spanish equal to English only for an explicit list of terms), and
-`make test-ui-es` remains a manual, non-gating pass. A pull-request update compares the new head with the newest
-successful first-attempt ancestor that published one exact-SHA, content-free
-verification artifact after complete selected functional evidence (or a
-verified no-UI selection). The resolver rejects retries, failed runs,
-duplicate or expired artifacts, and candidates outside the current base-to-head
-ancestry. For a PR into the default branch, any API, artifact, or force-push
-uncertainty expands from the PR base instead of failing narrow. A stacked PR
-always selects from its head's merge base with the fetched default branch,
-including unmerged parent changes; criss-cross roots widen to their common
-ancestor, and an unavailable default-branch ref fails selection. Manual integration runs remain explicit complete-
-catalogue runs. Every feature scope names a checked-in
+`make test-ui-es` remains a manual, non-gating pass. One `CI` workflow owns pull requests and one
+`gate` job is the check a merge needs. Each attempt selects again from history: a PR into the default
+branch from its merge base, a stacked PR from its head's merge base with the fetched default branch,
+including unmerged parent changes, with its own diff ranked first. Criss-cross roots widen to their common
+ancestor, and an unavailable default-branch ref fails selection. A manual `full_ui` run is an explicit complete-
+catalogue run. Every feature scope names a checked-in
 production owner, and
 catalog validation rejects unscoped tests, empty or orphaned scopes, duplicate
 selectors, retired overlapping journeys, missing or stale runtime budgets, and
@@ -5867,7 +5862,8 @@ serial wall clock: nightly's `build-ui-products` job writes the exact products a
 `test-without-building`. A pull request's single UI job has no second compiler: it wraps the
 SwiftPM app into the disposable host, builds only the runner from `project-ui-runner.yml`, and
 fits its ranked candidates into what remains of the job. One Linux classifier reads the
-receipts and recorded step outcome before the gate and the verification anchor. Every real
+receipts and recorded step outcome inside the gate, which also requires the lane receipt of this
+head and attempt. Every real
 run retains an xcresult plus content-free runtime and execution receipts. The
 first contains only test identity, result, duration distribution, build/wall
 duration, and budget verdict. The second binds locale, selector count,
@@ -6212,8 +6208,8 @@ automation started afterward remains an external race that the result bundle
 must classify.
 
 Hosted UI interruption qualification and the single product build are independent
-prerequisites on separate Macs. Locale execution joins both; the final gate
-revalidates selection/result consistency before publishing any verified ancestor.
+prerequisites on separate Macs. The UI lane joins both; the final gate
+revalidates selection/result consistency.
 This is scheduling only, not a weaker UI or permission boundary.
 
 Disposable UI-test windows do not inherit a user's multi-display placement.
@@ -6707,14 +6703,11 @@ reliability evidence retained from 9 Aug, is:
   catalogue, total-duration, and p95 budgets. Heterogeneous GitHub-hosted macOS
   runners report those wall-clock comparisons as advisory while functional
   failures, skips, malformed/missing receipts, unknown exits, and unknown
-  infrastructure remain blocking. Only the exact pre-case automation-mode
-  timeout is a hosted advisory, and such a head cannot become an incremental
-  verification anchor;
-- pull-request scope advances only from a first-attempt exact-SHA functional
-  verification artifact inside current ancestry; retry, expiry, duplication,
-  API uncertainty, or force-push divergence expands fail-safe from the PR base;
-  a stacked PR selects from its default-branch merge base and fails closed
-  rather than narrowing to its parent;
+  infrastructure remain blocking. The exact pre-case automation-mode timeout
+  is classified as hosted, and it keeps the pull request red until a rerun passes;
+- pull-request scope is computed on every attempt from history and never from an
+  earlier run; a stacked PR selects from its default-branch merge base and fails
+  closed rather than narrowing to its parent;
 - the first phased hosted classifier proved that separation fails closed: Spanish
   passed 101/101 with only runtime advisories, while one English structural-
   correction interaction remained non-passing and therefore blocked the job.

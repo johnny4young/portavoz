@@ -22547,3 +22547,39 @@ a manual `full_ui`, so a host defect in a case no pull request selects could wai
 has no metallib, which no UI case loads. A pull request no longer builds the `project.yml` app, so
 only a test tying its products to `Package.swift` guards it before the night. A cache miss can cut even
 an edited test, which is named but not run; the verification anchor still advances over that run.
+
+---
+
+## D623 — One workflow and one check gate a pull request
+
+**Context:** a pull request ran two workflows and needed five required checks. The second workflow
+kept about 900 lines of evidence machinery: a first-attempt rule, a verification anchor artifact per
+head, and a resolver that narrowed the next push from it. A flaky host forced a new commit, because a
+rerun could not count. A known hosted failure could also leave a PR green with no evidence at all.
+
+Separately, source qualification rejected any job that was not `success`. Since `swift-scope` began
+skipping on a `main` push, no `main` commit could qualify for a release. No run of the producer has
+ever happened, so nothing noticed.
+
+**Decision:** `ui-tests.yml` folds into `ci.yml`, and one `gate` job with `if: always()` needs every
+lane and fails closed, as `docs/specs/08-quality.md` details. Anchors and the resolver are removed: each
+attempt selects from history. A PR into `main` uses its merge base. A stacked PR keeps D542's cumulative
+set, and its own diff ranks first so a parent's journeys cannot crowd out what the child changed. Reruns
+are allowed on pull requests, and the known automation-mode timeout now stays red until one passes. A
+UI lane whose tests did not pass fails as its last step, after its receipts, so rerunning failed jobs
+runs it again.
+`main` keeps `rejectReruns`. The locale matrix is gone, since hosted evidence is English only.
+
+Source qualification now accepts `skipped` on a job the contract does not require. Each of the four
+required jobs must still run once and succeed, and any other conclusion still rejects. A skip means the
+job did not run, and the contract names everything a release relies on. Listing allowed skips would make
+every new pull-request job edit a release contract without adding any proof.
+
+**Consequences:** this replaces D117, D496 and D546, and retires the anchors of D429 and of D622's
+accepted risk: a cut test is selected again on the next push. A change to `ci.yml` now runs the whole
+Swift suite and the UI canaries, including a change only to the lint job. A manual `full_ui` run also
+pays for `build-and-test` and `ios-portability`, and reports `gate-manual`, so it cannot answer for a
+pull request's required check. A manual run of `ci.yml` on a `main` commit disqualifies that commit from
+a release, because the contract rejects several runs of `CI` for one commit; `full_ui` belongs on a branch. Protection moves in order, with the old `ui-test-gate` name
+following `gate` until `main` requires `gate`, and `strict` goes then too.
+

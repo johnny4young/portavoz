@@ -26,11 +26,11 @@ PRODUCT_STEPS = {
     "Current-SDK build and selected test suite", "Compile transport-neutral iOS 26 surface", "Strict SwiftLint 0.65.0 from checksum-pinned official archive",
     "Validate the selector catalog", "Select UI evidence", "Verify interruption safety at the shared callback",
     "Build the UI host and runner once",
-    "Fit the selection to what remains of the job", "Run ${{ matrix.locale }} functional UI evidence",
-    "Refuse to manufacture evidence on a rerun", "Classify functional evidence and hosted runtime drift",
-    "Require selected evidence and allow an honest no-UI skip",
+    "Fit the selection to what remains of the job", "Run functional UI evidence",
+    "Classify functional evidence and hosted runtime drift",
+    "Require every lane the selection asked for", "Follow the gate", "Fail the lane when its tests did not pass",
 }
-NOT_BLOCKING_JOBS = {"ios-portability", "verification-anchor"}
+NOT_BLOCKING_JOBS = {"ios-portability"}
 
 
 def job(name, created, started, completed, conclusion="success", job_id=None, runner="macos-26", steps=()):
@@ -186,6 +186,14 @@ class OutcomeTests(unittest.TestCase):
         self.assertEqual(self.outcome(jobs, timeouts={"build-and-test": 30}), "timeout")
         self.assertEqual(self.outcome(jobs, timeouts={"build-and-test": 30}, superseded=True), "superseded")
 
+    def test_a_ui_lane_the_hosted_timeout_stopped_is_infrastructure_and_a_real_failure_is_product(self):
+        jobs = [job("ui-tests", "10:00:00", "10:00:00", "10:05:00", conclusion="failure",
+                    steps=[(report.UI_LANE_FAILED_STEP, "failure")]),
+                job("gate", "10:05:00", "10:05:00", "10:05:10", conclusion="failure",
+                    steps=[("Require every lane the selection asked for", "failure")])]
+        self.assertEqual(self.outcome(jobs, advisory=True), "infrastructure")
+        self.assertEqual(self.outcome(jobs), "product")
+
     def test_a_gate_failing_on_a_cancelled_need_is_not_a_failure_of_its_own(self):
         jobs = [job("scoped-ui-tests (en)", "10:00:00", "10:00:00", "10:05:00", conclusion="cancelled"),
                 job("ui-test-gate", "10:05:00", "10:05:00", "10:05:10", conclusion="failure",
@@ -263,6 +271,8 @@ class LogDigestTests(unittest.TestCase):
         script = self.STAMP + 'echo "::warning::Known hosted UI infrastructure was unavailable"\n'
         self.assertEqual(report.gate_log_digest(warning), {"advisory": True})
         self.assertEqual(report.gate_log_digest(script), {"advisory": False})
+        hosted = self.STAMP + "##[warning]en: automation-mode-timeout; functional evidence remains unverified\n"
+        self.assertEqual(report.gate_log_digest(hosted), {"advisory": True})
 
     def test_a_log_without_restore_output_is_unknown_never_a_hit(self):
         self.assertEqual(report.build_log_digest("nothing here\n")["cache"], "unknown")
@@ -588,10 +598,18 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertEqual({name for name in PRODUCT_STEPS if report.INFRASTRUCTURE_STEP.match(name)}, set())
         self.assertEqual(PRODUCT_STEPS - names, set(), "a renamed or removed step must leave this list")
 
-    def test_the_suite_step_and_the_refused_rerun_step_still_exist(self):
+    def test_every_retired_job_keeps_a_limit_and_the_current_workflow_outranks_it(self):
+        self.assertEqual(set(report.RETIRED_TIMEOUTS) & {"ui-tests", "gate", "scope"}, set())
+        self.assertIn("{**RETIRED_TIMEOUTS, **declared_timeouts()}", (ROOT / "scripts/ci_time_report.py").read_text())
+
+    def test_the_gate_outranks_the_name_following_it_when_reading_an_advisory(self):
+        self.assertIn('_digest(client, attempt, "gate", gate_log_digest, MISSING_GATE_LOG)\n                or _digest(client, attempt, "ui-test-gate"',
+                      (ROOT / "scripts/ci_time_report.py").read_text(encoding="utf-8"))
+
+    def test_the_suite_step_exists_and_only_older_runs_can_refuse_a_rerun(self):
         text = "".join(path.read_text(encoding="utf-8") for path in report.WORKFLOW_FILES)
         self.assertIn("- name: Current-SDK build", text)
-        self.assertIn(f"- name: {report.RERUN_REFUSED_STEP}", text)
+        self.assertNotIn(f"- name: {report.RERUN_REFUSED_STEP}", text)
 
 
 class TimeoutParsingTests(unittest.TestCase):
@@ -604,7 +622,7 @@ class TimeoutParsingTests(unittest.TestCase):
 
     def test_every_current_required_job_declares_a_timeout(self):
         timeouts = report.declared_timeouts()
-        for name in ("repository-hygiene", "lint", "scope", "build-and-test", "ui-test-gate", "scoped-ui-tests"):
+        for name in ("repository-hygiene", "lint", "scope", "build-and-test", "gate", "ui-tests"):
             self.assertIn(name, timeouts)
 
     def test_a_timeout_expression_reports_the_pull_request_ceiling(self):

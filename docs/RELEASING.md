@@ -129,7 +129,8 @@ This receipt cannot be produced from a local branch. First obtain explicit
 authorization for the push/PR/merge, integrate the exact candidate through one
 non-draft pull request to `main`, obtain at least one independent current human
 approval of the final PR head, resolve every change request, and let the `CI`
-push workflow pass on the resulting merge commit without rerunning it. A
+push workflow pass on the resulting merge commit without rerunning it, and do
+not dispatch `ci.yml` by hand on that commit, since a second `CI` run blocks it. A
 squash or merge changes the source identity: rerun candidate automation for
 that integrated commit before final admission.
 

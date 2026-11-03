@@ -102,13 +102,15 @@ class SwiftCacheIdentityTests(unittest.TestCase):
         self.assertIn(f"flags=({flags})\n", (ROOT / "scripts/build-ui-host-products.sh").read_text())
 
     def test_the_ui_lane_restores_the_seed_exactly_as_build_and_test_does(self):
-        def restore_steps(name):
-            workflow = (ROOT / ".github/workflows" / name).read_text()
-            block = workflow.split("      - name: Identify compatible Swift build state\n", 1)[1]
+        def restore_steps(job):
+            block = job.split("      - name: Identify compatible Swift build state\n", 1)[1]
             block = block.split("            rm -rf .build\n          fi\n", 1)[0]
             return [line for line in block.splitlines() if line.strip() and not line.lstrip().startswith("#")]
 
-        self.assertEqual(restore_steps("ui-tests.yml"), restore_steps("ci.yml"))
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+        build = workflow.split("\n  build-and-test:\n", 1)[1].split("\n  ios-portability:\n", 1)[0]
+        lane = workflow.split("\n  ui-tests:\n", 1)[1].split("\n  gate:\n", 1)[0]
+        self.assertEqual(restore_steps(lane), restore_steps(build))
 
     def test_the_command_reads_the_toolchain_once(self):
         arguments = ["cache", "--lane", "build-and-test", "--commit", COMMIT]
@@ -221,7 +223,8 @@ class SwiftCacheWorkflowTests(unittest.TestCase):
     def test_only_complete_swift_test_lanes_use_the_cache(self):
         for name, job in self.jobs.items():
             with self.subTest(job=name):
-                self.assertEqual("actions/cache/restore@" in job, name in cache.LANES)
+                # The UI lane reads build-and-test's seed and never saves one.
+                self.assertEqual("actions/cache/restore@" in job, name in (*cache.LANES, "ui-tests"))
                 self.assertEqual("actions/cache/save@" in job, name in cache.LANES)
 
     def test_every_run_restores_its_graph_then_its_toolchain_and_tests_are_unconditional(self):
@@ -235,7 +238,7 @@ class SwiftCacheWorkflowTests(unittest.TestCase):
                 self.assertNotIn("continue-on-error:", compile_steps[0])
                 self.assertNotIn("--skip-build", compile_steps[0])
                 # Only the PR scope can narrow the run; main and manual runs leave it empty.
-                self.assertIn("PORTAVOZ_SWIFT_TEST_SCOPE: ${{ needs.swift-scope.outputs.filter }}", compile_steps[0])
+                self.assertIn("PORTAVOZ_SWIFT_TEST_SCOPE: ${{ needs.scope.outputs.swift_filter }}", compile_steps[0])
                 self.assertNotIn("--filter", compile_steps[0])
                 identity = next(step for step in steps if "id: swift_cache_key" in step)
                 self.assertIn(f'--lane {lane} --commit "$GITHUB_SHA"', identity)

@@ -70,7 +70,7 @@ CONSERVATIVE_TESTS = tuple(dict.fromkeys((*SMOKE_TESTS, *HARNESS_SELF_TESTS)))
 # as UI evidence, without changing product presentation directly.
 HARNESS_FILES = frozenset({
     "packaging/portavoz-uitests.entitlements",
-    ".github/workflows/ui-tests.yml",
+    ".github/workflows/ci.yml",
     "Makefile",
     "project.yml",
     "project-ui-runner.yml",
@@ -86,8 +86,6 @@ HARNESS_FILES = frozenset({
     "scripts/ui_test_ci_gate.py",
     "scripts/ui_test_execution.py",
     "scripts/ui_test_runtime.py",
-    "scripts/ui_test_verification_anchor.py",
-    "scripts/ui_test_verified_base.py",
     "Sources/portavoz-app/UITestWindowPlacement.swift",
     "Sources/portavoz-app/SettingsSkillReceiptNavigation.swift",
     "Tests/PortavozUITests/UITestSupport.swift",
@@ -1110,6 +1108,34 @@ def apply_budget(selection: Selection, seconds: Mapping[str, float], budget: flo
     return replace(selection, tests=tests, cut=cut)
 
 
+def merge_root(first: str, second: str) -> str:
+    """Their one merge base. Criss-cross history uses the roots' common ancestor, which only widens selection."""
+    def lines(*arguments: str) -> list[str]:
+        return subprocess.run(["git", "merge-base", *arguments], check=True, capture_output=True, text=True,
+                              timeout=10).stdout.splitlines()
+    roots = lines("--all", first, second)
+    if len(roots) > 1:
+        roots = lines("--octopus", *roots)
+    if len(roots) != 1:
+        raise ValueError(f"no single merge base between {first} and {second}")
+    return roots[0]
+
+
+def stacked_selection(own: Selection, cumulative: Selection) -> Selection:
+    """Everything entering main is a candidate, and what this pull request changed ranks first."""
+    chosen = {*own.tests, *cumulative.tests}
+    later = {test: (rank + 3, weight) for test, (rank, weight) in cumulative.priority.items()}
+    return replace(
+        cumulative,
+        tests=tuple(test for test in ALL_TESTS if test in chosen),
+        locales=SELECTION_LOCALES if chosen else (),
+        reasons=tuple(dict.fromkeys((*own.reasons, *cumulative.reasons))),
+        interruption_controls=own.interruption_controls or cumulative.interruption_controls,
+        scope_unknown=own.scope_unknown or cumulative.scope_unknown,
+        priority={**later, **own.priority},
+    )
+
+
 def changed_paths(base: str, head: str) -> list[str]:
     command = ["git", "diff", "--name-only", "--diff-filter=ACDMRTUXB", base, head, "--"]
     result = subprocess.run(command, check=True, capture_output=True, text=True)
@@ -1422,15 +1448,12 @@ def render(selection: Selection, output_format: str) -> str:
     locales = " ".join(selection.locales)
     summary = bounded_summary(selection.reasons)
     if output_format == "github":
-        # `matrix` feeds one hosted lane per selected locale; an unselected
-        # run still needs valid JSON so the workflow expression can parse it.
         return "\n".join(
             (
                 f"required={'true' if selection.required else 'false'}",
                 f"interruption_controls={'true' if selection.interruption_controls_required else 'false'}",
                 f"tests={tests}",
                 f"locales={locales}",
-                f"matrix={json.dumps(list(selection.locales))}",
                 f"scope_unknown={'true' if selection.scope_unknown else 'false'}",
                 f"deferred={selection.deferred_to_nightly}",
                 f"cut={' '.join(selection.cut)}",
@@ -1459,11 +1482,22 @@ def render(selection: Selection, output_format: str) -> str:
     )
 
 
+def diff_selection(base: str, head: str | None, root: Path, paths: list[str] | None = None) -> Selection:
+    """Select from one diff. No head means the working tree."""
+    if paths is None:
+        paths = changed_paths(base, head)
+    changes = catalog_changes(base, head, root) if CATALOG in paths else None
+    pin_changes = dependency_changes(base, head, root) if "Package.resolved" in paths else None
+    return select_paths(paths, changes, root, pin_changes, ui_test_changes(base, head, Path.cwd()))
+
+
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument("paths", nargs="*", help="Changed paths; otherwise --base and --head are diffed")
     result.add_argument("--base", help="Base Git revision")
     result.add_argument("--head", default="HEAD", help="Head Git revision (default: HEAD)")
+    result.add_argument("--pull-request-base", help="Diff from the merge base with this revision and with --default-ref")
+    result.add_argument("--default-ref", default="refs/remotes/origin/main", help="The branch a stack finally enters")
     result.add_argument(
         "--working-tree",
         action="store_true",
@@ -1506,27 +1540,30 @@ def main(argv: Sequence[str] | None = None) -> int:
         selection = Selection(
             ALL_TESTS, SELECTION_LOCALES, ("explicit full-suite request",), interruption_controls=True)
     else:
-        paths = arguments.paths
-        if arguments.working_tree:
+        if arguments.pull_request_base:
+            try:
+                head = arguments.head
+                own_root = merge_root(arguments.pull_request_base, head)
+                default_root = merge_root(arguments.default_ref, head)
+            except (ValueError, OSError, subprocess.SubprocessError) as error:
+                # A parent-branch diff alone would silently omit the parent's changes.
+                print(f"::error title=UI scope::cannot resolve the pull request's bases: {error}", file=sys.stderr)
+                return 2
+            selection = diff_selection(default_root, head, root)
+            if own_root != default_root:
+                selection = stacked_selection(diff_selection(own_root, head, root), selection)
+        elif arguments.working_tree:
             if not arguments.base:
                 print("--working-tree requires --base.", file=sys.stderr)
                 return 2
-            paths = working_tree_paths(arguments.base)
+            selection = diff_selection(arguments.base, None, root, working_tree_paths(arguments.base))
         elif arguments.base:
-            paths = changed_paths(arguments.base, arguments.head)
-        elif not paths:
+            selection = diff_selection(arguments.base, arguments.head, root)
+        elif arguments.paths:
+            selection = select_paths(arguments.paths, None, root, None, None)
+        else:
             print("Provide changed paths, --base, or --all.", file=sys.stderr)
             return 2
-        changes = None
-        if arguments.base and CATALOG in paths:
-            changes = catalog_changes(arguments.base, None if arguments.working_tree else arguments.head, root)
-        pin_changes = None
-        if arguments.base and "Package.resolved" in paths:
-            pin_changes = dependency_changes(arguments.base, None if arguments.working_tree else arguments.head, root)
-        ui_changes = None
-        if arguments.base:
-            ui_changes = ui_test_changes(arguments.base, None if arguments.working_tree else arguments.head, Path.cwd())
-        selection = select_paths(paths, changes, root, pin_changes, ui_changes)
         if arguments.budget or arguments.ranked:
             try:
                 budgeted = apply_budget if arguments.budget else rank_for_job

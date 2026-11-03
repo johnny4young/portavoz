@@ -102,6 +102,8 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--english-outcome", required=True)
     value.add_argument("--summary", type=Path)
     value.add_argument("--github-output", type=Path)
+    value.add_argument("--head-sha", help="Require the lane receipt of this head")
+    value.add_argument("--attempt", help="Require the lane receipt of this attempt")
     return value
 
 
@@ -317,6 +319,25 @@ def load_execution(path: Path, expected_locale: str) -> dict[str, Any]:
     return execution
 
 
+def lane_receipt_problem(path: Path, locale: str, sha: str, attempt: str) -> str | None:
+    """Why the receipt does not prove this head ran everything it selected."""
+    try:
+        lane = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return f"{locale}: evidence-contract: lane receipt is unreadable"
+    if not isinstance(lane, dict):
+        return f"{locale}: evidence-contract: lane receipt shape differs"
+    if lane.get("sha") != sha:
+        return f"{locale}: evidence-contract: lane receipt belongs to another head"
+    if str(lane.get("attempt")) != attempt:
+        return f"{locale}: evidence-contract: lane receipt belongs to another attempt"
+    if not lane.get("executed"):
+        return f"{locale}: evidence-contract: lane receipt shows zero tests"
+    if lane.get("notExecuted") != []:
+        return f"{locale}: evidence-contract: lane receipt names selected tests that did not run"
+    return None
+
+
 def annotation(message: str) -> str:
     return message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
 
@@ -336,7 +357,7 @@ def write_summary(path: Path | None, rows: Sequence[str]) -> None:
         return
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as output:
-        output.write("## Scoped UI evidence\n\n")
+        output.write("## UI evidence\n\n")
         output.write(
             "| Locale | Step | Cases | Functional | Hosted runtime | "
             "Excluded harness stalls |\n"
@@ -368,7 +389,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     failures: list[str] = []
     infrastructure_advisories: list[str] = []
     summary_rows: list[str] = []
-    # A lane for any other locale means the hosted matrix was widened.
+    # A lane for any other locale means hosted evidence was widened.
     entries = arguments.results.iterdir() if arguments.results.is_dir() else ()
     stray_locales = sorted({
         match.group("locale")
@@ -379,6 +400,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     for locale in stray_locales:
         failures.append(f"{locale}: unsupported locale lane produced hosted evidence")
         summary_rows.append(f"| {locale} | - | - | unsupported locale | - | - |")
+    if arguments.head_sha is not None:
+        for locale in selected:
+            problem = lane_receipt_problem(
+                arguments.results / f"{locale}-lane.json", locale, arguments.head_sha, arguments.attempt or "")
+            if problem is not None:
+                failures.append(problem)
     for locale in selected:
         outcome = outcomes[locale]
         execution: dict[str, Any] | None = None
@@ -520,8 +547,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1
     if infrastructure_advisories:
         print(
-            "Hosted UI infrastructure was unavailable; the PR remains green, "
-            "but this head cannot become an incremental verification anchor."
+            "Hosted UI infrastructure was unavailable; functional evidence "
+            "remains unverified."
         )
     else:
         print(

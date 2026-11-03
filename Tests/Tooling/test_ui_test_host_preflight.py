@@ -522,7 +522,7 @@ class UITestHostPreflightTests(unittest.TestCase):
             self.assertNotIn(": XCTestCase", journey, path.name)
 
     def test_hygiene_owns_preflight_policy_without_ui_workflow_duplication(self):
-        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(
             encoding="utf-8"
         )
         hygiene = (ROOT / "scripts/check-repository-hygiene.sh").read_text(

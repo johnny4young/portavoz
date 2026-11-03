@@ -56,7 +56,7 @@ library) and asserts against `accessibilityIdentifier`s.
   and nightly owns it.
   No path selects the full catalog by itself: it runs nightly on `main` in three
   shards and on demand with
-  `gh workflow run ui-tests.yml --ref <branch> -f full_ui=true`. Add a test with
+  `gh workflow run ci.yml --ref <branch> -f full_ui=true`. Add a test with
   its feature, or in `NIGHTLY_ONLY_TESTS` when a unit test owns the contract. An unverified night
   opens an issue; evidence older than 48 hours opens another, and new scope
   reductions wait until it closes.

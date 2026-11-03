@@ -560,9 +560,10 @@ def validate_hosted_jobs(
             raise SourceIntegrationError(
                 f"hosted CI job {required} must run exactly once and pass"
             )
-    if any(conclusion != "success" for values in states.values() for conclusion in values):
+    # A job scoped to pull requests skips on a push; it did not fail.
+    if any(conclusion not in {"success", "skipped"} for values in states.values() for conclusion in values):
         raise SourceIntegrationError("hosted CI contains a non-success job")
-    return tuple(sorted(states))
+    return tuple(sorted(name for name, values in states.items() if "success" in values))
 
 
 def validate_unique_producer_run(

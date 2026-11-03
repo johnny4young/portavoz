@@ -22,7 +22,7 @@ class SwiftTestScopeTests(unittest.TestCase):
     def test_documentation_site_and_tooling_diffs_select_only_checkout_readers(self):
         for changed in (["docs/GAPS.md"], ["README.md", "site/index.html"],
                         ["Tests/Tooling/test_ci_workflow.py", "docs/specs/08-quality.md"], ["LICENSE"],
-                        [".github/workflows/ui-tests.yml", "scripts/ui_test_scope.py"], ["docs/a.md", "Makefile"]):
+                        [".github/workflows/ui-nightly.yml", "scripts/ui_test_scope.py"], ["docs/a.md", "Makefile"]):
             with self.subTest(changed=changed):
                 selected = scope.selection(ROOT, changed)
                 self.assertTrue(selected.startswith(r"^Portavoz(Kit|App)Tests\.("))
