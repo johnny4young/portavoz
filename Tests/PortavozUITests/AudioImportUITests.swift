@@ -1,6 +1,4 @@
 import AVFoundation
-import IntegrationsKit
-import PortavozCore
 import XCTest
 
 /// Audio uses real PCM decoding with scripted recognition; bundles use the
@@ -300,15 +298,8 @@ final class AudioImportUITests: PortavozUITestCase {
         let selection = folder.appendingPathComponent("selection")
         ownedArtifacts.append(selection)
         try FileManager.default.createDirectory(at: selection, withIntermediateDirectories: true)
-        let meeting = Meeting(title: title, startedAt: Date(timeIntervalSince1970: 1_000), language: "es")
-        let speaker = Speaker(meetingID: meeting.id, label: "S1")
-        let segments = texts.enumerated().map { index, text in
-            TranscriptSegment(meetingID: meeting.id, speakerID: speaker.id, channel: .system,
-                              text: text, startTime: Double(index * 3), endTime: Double(index * 3 + 2), isFinal: true)
-        }
-        let bundle = MeetingBundle(meeting: meeting, speakers: [speaker], segments: segments)
-        let source = selection.appendingPathComponent("Meeting").appendingPathExtension(MeetingBundle.fileExtension)
-        try bundle.encoded().write(to: source, options: .atomic)
+        let source = selection.appendingPathComponent("Meeting").appendingPathExtension(MeetingBundleFixture.fileExtension)
+        try MeetingBundleFixture.data(title: title, texts: texts).write(to: source, options: .atomic)
         return source
     }
 

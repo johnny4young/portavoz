@@ -15,6 +15,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from ui_test_catalog import UI_JOB_BUDGET_SECONDS, UI_JOB_TEARDOWN_SECONDS  # noqa: E402
 import ui_test_scope as ui_scope  # noqa: E402
 from ui_test_scope import (  # noqa: E402
     ALL_TESTS,
@@ -740,9 +741,8 @@ class UITestScopeTests(unittest.TestCase):
             encoding="utf-8"
         )
 
-        # One build job publishes the exact products; one matrix lane per
-        # selected locale restores them and runs without rebuilding.
-        self.assertEqual(workflow.count("run: make test-ui-build"), 1)
+        # The lane builds its host from SwiftPM and runs it on the same Mac.
+        self.assertEqual(workflow.count("run: make test-ui-host-products"), 1)
         self.assertEqual(workflow.count("run: make test-ui-run"), 1)
         self.assertEqual(workflow.count("continue-on-error: true"), 1)
         self.assertEqual(
@@ -751,12 +751,12 @@ class UITestScopeTests(unittest.TestCase):
         )
         self.assertIn("matrix:\n        locale: ${{ fromJSON(needs.scope.outputs.matrix) }}", workflow)
         self.assertIn("UI_TEST_LOCALES: ${{ matrix.locale }}", workflow)
-        self.assertIn("UI_TEST_PRODUCTS_PATH:", workflow)
+        self.assertIn("UI_TEST_PRODUCTS_PATH=", workflow)
         self.assertIn('--english-outcome "$(outcome en)"', workflow)
         self.assertNotIn("--spanish-outcome", workflow)
         self.assertIn("runs-on: macos-26", workflow)
         self.assertIn("Xcode_26.6.app/Contents/Developer", workflow)
-        for job in ("interruption-controls", "build-ui-products"):
+        for job in ("interruption-controls", "scoped-ui-tests"):
             body = re.search(rf"(?ms)^  {job}:\n(.*?)(?=^  [a-z][a-z-]+:\n|\Z)", workflow).group(1)
             self.assertEqual(body.count("scripts/install-ci-xcodegen.sh"), 1, job)
         self.assertNotIn("brew install xcodegen", workflow)
@@ -1554,6 +1554,72 @@ class UITestScopeTests(unittest.TestCase):
 
         self.assertIn(fast, budgeted.tests)
         self.assertEqual(budgeted.cut, (slow,))
+
+    def test_ranking_keeps_every_candidate_for_the_job_to_fit(self):
+        edited, other = [test for test in PR_TESTS if test not in SMOKE_TESTS][:2]
+        selection = ui_scope.Selection((other, edited), ("en",), (),
+                                       priority={edited: (0, -1), other: (2, -1)})
+
+        ranked = ui_scope.rank_for_job(selection, self.seconds())
+
+        self.assertEqual(ranked.ranked, (edited, other))
+        self.assertEqual(set(ranked.tests), {*SMOKE_TESTS, edited, other})
+        self.assertEqual(ranked.cut, ())
+
+    def test_ranking_rejects_canaries_over_the_nominal_budget_and_leaves_no_ui_empty(self):
+        selection = ui_scope.Selection(tuple(SMOKE_TESTS), ("en",), ())
+        over = {ui_scope.runtime_budget_key(test): 100.0 for test in SMOKE_TESTS}
+
+        with self.assertRaisesRegex(ValueError, "canaries need"):
+            ui_scope.rank_for_job(selection, self.seconds(over))
+        self.assertEqual(ui_scope.rank_for_job(ui_scope.Selection((), (), ()), self.seconds()).tests, ())
+
+    def test_a_late_build_cuts_every_candidate_but_never_a_canary(self):
+        candidate = next(test for test in PR_TESTS if test not in SMOKE_TESTS)
+
+        tests, cut = ui_scope.fit_ranked((*SMOKE_TESTS, candidate), (candidate,), self.seconds(), -100)
+
+        self.assertEqual(set(tests), set(SMOKE_TESTS))
+        self.assertEqual(cut, (candidate,))
+
+    def test_more_time_left_after_the_build_fits_more_candidates_in_rank_order(self):
+        first, second = [test for test in PR_TESTS if test not in SMOKE_TESTS][:2]
+        each = 10 + ui_scope.UI_TEST_OVERHEAD_PER_TEST_SECONDS
+        canaries = ui_scope.UI_TEST_OVERHEAD_SECONDS + len(SMOKE_TESTS) * each
+        tests = (*SMOKE_TESTS, first, second)
+
+        for extra, expected_cut in ((0, (first, second)), (1, (second,)), (2, ())):
+            with self.subTest(extra=extra):
+                _, cut = ui_scope.fit_ranked(tests, (first, second), self.seconds(), canaries + extra * each + 0.01)
+                self.assertEqual(cut, expected_cut)
+
+    def test_a_complete_run_has_nothing_ranked_and_nothing_to_cut(self):
+        tests, cut = ui_scope.fit_ranked(ALL_TESTS, (), self.seconds(), -100)
+
+        self.assertEqual(tests, tuple(ALL_TESTS))
+        self.assertEqual(cut, ())
+
+    def test_the_fit_command_budgets_what_remains_of_the_job(self):
+        candidate = next(test for test in PR_TESTS if test not in SMOKE_TESTS)
+        arguments = [sys.executable, str(ROOT / "scripts/ui_test_fit.py"),
+                     "--tests", " ".join((*SMOKE_TESTS, candidate)), "--ranked", candidate]
+        room = int(UI_JOB_BUDGET_SECONDS - UI_JOB_TEARDOWN_SECONDS)
+
+        early = subprocess.run([*arguments, "--elapsed", "0"], check=True, capture_output=True, text=True).stdout
+        late = subprocess.run([*arguments, "--elapsed", str(room + 60)], check=True, capture_output=True, text=True).stdout
+
+        self.assertIn(f"left={room}", early)
+        self.assertIn("cut=\n", early)
+        self.assertIn("left=0", late)
+        self.assertIn(f"cut={candidate}", late)
+        self.assertIn(f"deferred={len(ALL_TESTS) - len(SMOKE_TESTS) - 1}", early)
+        self.assertIn(f"deferred={len(ALL_TESTS) - len(SMOKE_TESTS)}", late)
+
+    def test_the_ui_fixture_selects_its_import_journey(self):
+        selection = select_paths(["Tests/Support/MeetingBundleFixture.swift"])
+
+        self.assertFalse(selection.scope_unknown)
+        self.assertTrue(set(FEATURE_TESTS["audio-imports"]) <= set(selection.tests))
 
     def test_canaries_over_budget_fail_instead_of_emptying_the_selection(self):
         selection = ui_scope.Selection(tuple(SMOKE_TESTS), ("en",), ())

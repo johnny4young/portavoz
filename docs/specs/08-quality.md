@@ -610,24 +610,36 @@ canaries and the feature groups, `NIGHTLY_ONLY_TESTS` run every night and on a p
 request only when the diff edits that method, and `ON_DEMAND_TESTS` run only through
 `make public-screenshots`. An edited test selects that method, and an edited helper the
 tests that run it, through their bodies or other helpers; a lifecycle method, a property,
-a change outside any function or a helper with no visible user selects the class. With
-`--budget`, as `ui-tests.yml` runs it, a pull request always holds the ten canaries and
-adds candidates while their hosted p90 and xcodebuild's overhead fit 300 seconds:
-edited methods and harness self-tests first, then helper consumers, then the tests the most paths map to, then
-by feature tier and fewest seconds. The rest are not dropped: `cut` names them in the job
-summary, a `ui-budget-cut` notice, the gate's result and the lane receipt, and nightly owns them. Canaries
-over the budget fail the selection. `docs/evidence/ui-test-hosted-seconds.json` comes from
+a change outside any function or a helper with no visible user selects the class. A pull
+request always holds the ten canaries. `ui_test_scope.py --ranked`, as `scope` runs it, orders
+the candidates: edited methods and harness self-tests first, then helper consumers, then the tests the most paths map to, then
+by feature tier and fewest seconds. After its build, the UI job's `scripts/ui_test_fit.py` adds them
+while their hosted p90 and xcodebuild's overhead fit what remains of 570 seconds, less 15 for
+teardown (D622). The rest are not dropped: `cut` names them in the job
+summary, a `ui-budget-cut` notice, the gate's result and the lane receipt, and nightly owns them. A
+late build runs the canaries alone and never cuts one, while canaries over a nominal 300 seconds
+fail the selection, and `--budget` dry-runs that figure. `docs/evidence/ui-test-hosted-seconds.json` comes from
 `scripts/ui_test_hosted_seconds.py` over nightly logs; a case without one counts at its ceiling. A local `make test-ui-changed`
 does not cut. `testCleanStopReachesAReadyMeetingWithItsTranscriptAndPlayer` proves a
 clean Stop through the production Stop and post-capture adapters, with a disposable
 `-simulate-clean-capture` capture and summary fixture.
 
 `.github/workflows/ui-tests.yml` computes feature-level selectors from
-the PR diff and allocates macOS UI runners only when product presentation is
-affected: one job builds the exact products once into an `xctestproducts`
-bundle, one matrix lane per selected locale restores it and runs
-`test-without-building`, and one Linux classifier gates on every lane's
-receipts (D496). Direct-to-main PRs may advance the selection base only from a
+the PR diff and allocates a macOS UI runner only when product presentation is
+affected. One job restores the `build-and-test` seed read-only, runs
+`scripts/build-ui-host-products.sh` and then `test-without-building`, and one Linux classifier
+gates on its receipts (D496, D622). That script builds `portavoz-app` with SwiftPM under the seed's
+flags, builds the runner from `project-ui-runner.yml`, which has no app target and no package, and
+wraps the app through `scripts/make-ui-host.sh`. `scripts/ui_host.py` writes the host's plist from
+`project.yml` and sets it as the `UITargetAppPath` of the `xctestrun`. The host keeps the
+disposable bundle identifier, URL type, exported file type, localizations, App Intents
+metadata and ad-hoc local entitlements, and has no updater keys, document claim, CLI link or
+metallib. A failed lane uploads the host's crash reports with its result bundle. Nightly and
+`make test-ui-release` still build the full `project.yml`; the SwiftPM host runs the whole catalog only on
+a manual `full_ui`. `scripts/ui_host.py verify` runs before the build and refuses a runner that drifts from
+`project.yml`, or a host key that would act like the shipping app. A UI test
+imports no package: `Tests/Support/MeetingBundleFixture.swift` writes its bundle by hand and
+`MeetingBundleTests` proves the production codec reads it. Direct-to-main PRs may advance the selection base only from a
 first-attempt verified ancestor. A stacked PR always selects from the merge
 base of its head and the fetched default branch, including unmerged parent
 changes. It ignores earlier child anchors because they may prove only the
@@ -5617,10 +5629,10 @@ correctly failed closed, and no verification anchor was published. The
 preserved English receipt and missing Spanish receipt distinguish orchestration
 exhaustion from a product assertion, skip, malformed receipt, or green retry.
 
-The `scoped-ui-tests` job now has a 90-minute global orchestration ceiling. It
-was sized for one build plus both complete sequential locales with bounded
-hosted variance and cleanup/upload/classification headroom; since D496 each
-locale lane owns that ceiling alone while the build runs in its own job. It is not a product
+The `scoped-ui-tests` job keeps a 90-minute global orchestration ceiling only on a
+manual complete run, and 22 minutes on a pull request (D622). The 90 minutes were sized for one
+build plus both complete sequential locales with bounded
+hosted variance and cleanup/upload/classification headroom. Neither is a product
 or per-test runtime budget: selectors, assertions, test waits, the controlled-
 host per-journey/catalogue/p95 budgets, locale order, artifact preservation,
 first-attempt requirement, no-retry rule, and fail-closed classifier remain
@@ -6550,8 +6562,8 @@ never reads a window title or bounds, dismisses a prompt, resets LaunchServices,
 or terminates another process. Persistent `testmanagerd`, unit-test processes,
 `build-for-testing`, and idle `xcodebuildmcp` helpers are not evidence of an
 active UI run. Eighteen injectable tooling cases and source-policy ratchets pin
-those classifications. D463 gives the hosted bilingual job a 90-minute global
-orchestration ceiling; the current 105-case-per-locale catalogue still runs
+those classifications. D463 gave the hosted bilingual job a 90-minute global
+orchestration ceiling, which D622 keeps only for a manual complete run; the 105-case-per-locale catalogue still runs
 sequentially from one shared build without parallel locale contention. That
 ceiling does not replace or widen any per-test or controlled-host runtime
 budget.

@@ -131,10 +131,6 @@ targets:
     dependencies:
       - target: Portavoz
       - target: PortavozDictationReceiver
-      - package: Portavoz
-        products:
-          - PortavozCore
-          - IntegrationsKit
 
 schemes:
   Portavoz:

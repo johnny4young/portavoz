@@ -1,0 +1,57 @@
+# XCUITest runner without the app or any package: the host comes from the
+# SwiftPM build through scripts/make-ui-host.sh. project.yml keeps the full graph.
+name: PortavozUIRunner
+
+options:
+  bundleIdPrefix: app.portavoz
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+  developmentLanguage: en
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "-"
+    DEVELOPMENT_TEAM: ""
+    ENABLE_HARDENED_RUNTIME: NO
+
+targets:
+  PortavozDictationReceiver:
+    type: application
+    platform: macOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Tests/PortavozDictationReceiver
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.portavoz.dictation-test-receiver
+        GENERATE_INFOPLIST_FILE: YES
+
+  PortavozUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    deploymentTarget: "26.0"
+    settings:
+      base:
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+        CODE_SIGN_ENTITLEMENTS: packaging/portavoz-uitests.entitlements
+        GENERATE_INFOPLIST_FILE: YES
+    sources:
+      - path: Tests/PortavozUITests
+      - path: Tests/Support
+
+schemes:
+  Portavoz:
+    build:
+      targets:
+        PortavozUITests: all
+        PortavozDictationReceiver: [test]
+    test:
+      config: Debug
+      targets:
+        - PortavozUITests

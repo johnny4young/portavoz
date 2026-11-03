@@ -5732,8 +5732,8 @@ SpeechAnalyzer adapters compile unconditionally; a Mac without Apple
 Intelligence resolves the Foundation Models capability as unavailable with the
 system's reason. No source carries an availability check below those floors.
 The app is
-built from SwiftPM and wrapped by `scripts/make-app.sh`; `project.yml` exists for
-XCUITest generation. Generated projects, result bundles, local screenshots,
+built from SwiftPM and wrapped by `scripts/make-app.sh`; `project.yml` and the
+package-free `project-ui-runner.yml` exist for XCUITest generation. Generated projects, result bundles, local screenshots,
 agent state, scratch plans, and local work-item files remain outside version control;
 `scripts/check-repository-hygiene.sh` rejects both tracked local state and
 private work-item identifier leakage in implementation files. SwiftUI APIs with SDK-
@@ -5862,11 +5862,12 @@ runtime. One `build-for-testing` result is reused across selected locales.
 On one Mac, locales run sequentially because macOS XCUITest shares host
 services and a parallel pass would measure contention rather than product
 behavior. The hosted workflow keeps that rule per host while removing the
-serial wall clock: one `build-ui-products` job writes the exact products as an
-`xctestproducts` bundle (`UI_TEST_PRODUCTS_PATH`), one matrix lane per selected
-locale restores that bundle and runs `test-without-building` without the
-project or a rebuild, and one Linux classifier reads every lane's receipts and
-recorded step outcome before the gate and the verification anchor. Every real
+serial wall clock: nightly's `build-ui-products` job writes the exact products as an
+`xctestproducts` bundle (`UI_TEST_PRODUCTS_PATH`) and each shard restores that bundle and runs
+`test-without-building`. A pull request's single UI job has no second compiler: it wraps the
+SwiftPM app into the disposable host, builds only the runner from `project-ui-runner.yml`, and
+fits its ranked candidates into what remains of the job. One Linux classifier reads the
+receipts and recorded step outcome before the gate and the verification anchor. Every real
 run retains an xcresult plus content-free runtime and execution receipts. The
 first contains only test identity, result, duration distribution, build/wall
 duration, and budget verdict. The second binds locale, selector count,
@@ -6698,8 +6699,8 @@ reliability evidence retained from 9 Aug, is:
   shards and on demand;
 - hosted pull-request UI runs compile once, execute the English selection as a
   first attempt, preserve its result bundle, and then apply one fail-closed
-  functional/receipt classifier. The enclosing job keeps a 90-minute
-  orchestration ceiling under observed hosted variance; this does not alter any
+  functional/receipt classifier. The enclosing job's ceiling is 22 minutes, and 90
+  on a manual complete run; this does not alter any
   per-journey wait, assertion, runtime budget, selector, or retry policy;
 - every UI run emits content-free runtime and execution receipts. Controlled
   local/stable-Mac integration and release runs enforce the unchanged per-journey, exact-
