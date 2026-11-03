@@ -257,7 +257,7 @@ private struct UITestLiveTranscriptBrowsingRuntime: StartRecordingRuntime {
         request.callbacks.liveTranscription(.available)
         Task {
             do {
-                try await Task.sleep(for: .milliseconds(400))
+                try await Task.sleep(for: .milliseconds(100))
                 if ProcessInfo.processInfo.arguments.contains("-simulate-owned-token-preview") {
                     try await emitOwnedTokenPreview(request: request)
                     return
@@ -350,7 +350,7 @@ private struct UITestLiveTranscriptBrowsingRuntime: StartRecordingRuntime {
             startTime: start,
             endTime: start + (proactive ? 5 : 1),
             isFinal: true))
-        try await Task.sleep(for: .milliseconds(90))
+        try await Task.sleep(for: .milliseconds(20))
     }
 }
 

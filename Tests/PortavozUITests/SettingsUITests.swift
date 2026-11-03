@@ -319,10 +319,12 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testDataPaneExportsARedactedLocalSupportFile() throws {
+    func testDataPaneExportsARedactedSupportFileAndAReadableBackup() throws {
         let destination = try UITestStorage.makeDirectory().appendingPathComponent("support.json")
         let app = try XCUIApplication.portavoz(seedDemo: true, openSettings: true)
         app.launchEnvironment["PORTAVOZ_UI_TEST_DIAGNOSTICS_PATH"] = destination.path
+        let directory = try UITestStorage.makeDirectory()
+        app.launchEnvironment["PORTAVOZ_UI_TEST_BACKUP_FOLDER"] = directory.path
         app.launchPortavoz()
         defer { finishUITestApplication(app) }
 
@@ -357,24 +359,15 @@ final class SettingsUITests: PortavozUITestCase {
         XCTAssertFalse(text.contains("sha256"))
         XCTAssertFalse(text.contains("Revisemos el presupuesto de transcripción."))
         attachScreenshot(of: app, named: "band-3i-redacted-support-export")
-    }
-
-    @MainActor
-    func testDataPaneExportsAReadableWholeLibraryMarkdownBackup() throws {
-        let directory = try UITestStorage.makeDirectory()
-        let app = try XCUIApplication.portavoz(seedDemo: true, openSettings: true)
-        app.launchEnvironment["PORTAVOZ_UI_TEST_BACKUP_FOLDER"] = directory.path
-        app.launchPortavoz()
-        defer { finishUITestApplication(app) }
 
         openCategory(
             "settings-category-data",
             revealing: "settings-export-all-button",
             in: app)
 
-        let export = app.buttons["settings-export-all-button"]
-        XCTAssertTrue(export.waitForExistenceFast(timeout: 5))
-        export.click()
+        let backup = app.buttons["settings-export-all-button"]
+        XCTAssertTrue(backup.waitForExistenceFast(timeout: 5))
+        backup.click()
         let status = app.staticTexts["settings-backup-status"]
         XCTAssertTrue(
             status.waitForExistenceFast(timeout: 15),
@@ -398,7 +391,6 @@ final class SettingsUITests: PortavozUITestCase {
         XCTAssertTrue(exportedText.contains("Revisemos el presupuesto de transcripción."))
         attachScreenshot(of: app, named: "band-6c4-markdown-backup")
     }
-
     @MainActor
     func testIntelligencePaneCreatesACustomStructure() throws {
         // The Intelligence pane lets you author your own summary structures;

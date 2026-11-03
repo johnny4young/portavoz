@@ -5,8 +5,11 @@ import XCTest
 /// from one screen without scrolling or typing.
 final class HomeUITests: PortavozUITestCase {
     @MainActor
-    func testTodayShowsAgendaOpenWorkAndRecentMeetingsAboveTheFold() throws {
-        let app = try XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
+    func testTodayShowsEverythingAboveTheFoldAndActsWithoutTyping() throws {
+        let app = try XCUIApplication.portavoz(
+            seedDemo: true,
+            seedBrief: true,
+            simulateLiveTranscriptBrowsing: true)
         app.launchPortavoz()
         defer { finishUITestApplication(app) }
 
@@ -40,6 +43,34 @@ final class HomeUITests: PortavozUITestCase {
         XCTAssertTrue(app.staticTexts["Prepare the rollout"].exists)
         attachScreenshot(of: app, named: "home-today")
 
+        // A suggested question reaches Ask already submitted.
+        let chip = app.buttons["home-ask-chip-0"]
+        XCTAssertTrue(chip.waitForStableFrame(timeout: 5))
+        chip.click()
+        XCTAssertTrue(app.control(withIdentifier: "ask-question-field").waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 15) {
+                app.control(withIdentifier: "ask-pending-question").exists
+                    || app.descendants(matching: .any)
+                        .matching(NSPredicate(format: "identifier BEGINSWITH 'ask-answer-'"))
+                        .firstMatch.exists
+            },
+            "the chip must submit its question, not only prefill it")
+        XCTAssertTrue(app.buttons["library-ask-button"].isSelected)
+
+        // Back on Today, the agenda offers a brief.
+        let today = app.buttons["library-home-button"]
+        XCTAssertTrue(today.waitForStableFrame(timeout: 5))
+        today.click()
+        let brief = app.buttons["home-upcoming-brief-ui-test-upcoming-rollout"]
+        XCTAssertTrue(brief.waitForStableFrame(timeout: 10))
+        brief.click()
+        XCTAssertTrue(app.control(withIdentifier: "brief-title").waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Presupuesto rollout"].exists)
+        let close = app.buttons["brief-close-button"]
+        XCTAssertTrue(close.waitForStableFrame(timeout: 5))
+        close.click()
+
         // Checking a to-do here is the same durable action as in the sidebar:
         // the open row leaves Today once the Library observation confirms it.
         let toggle = app.descendants(matching: .any)
@@ -60,48 +91,8 @@ final class HomeUITests: PortavozUITestCase {
         XCTAssertTrue(home.waitForStableFrame(timeout: 5))
         home.click()
         XCTAssertTrue(title.waitForExistenceFast(timeout: 10))
-    }
 
-    @MainActor
-    func testTodayAsksAndRecordsWithoutTyping() throws {
-        let app = try XCUIApplication.portavoz(
-            seedDemo: true,
-            seedBrief: true,
-            simulateLiveTranscriptBrowsing: true)
-        app.launchPortavoz()
-        defer { finishUITestApplication(app) }
-
-        XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        XCTAssertTrue(app.staticTexts["home-title"].waitForExistenceFast(timeout: 10))
-
-        // A suggested question reaches Ask already submitted.
-        let chip = app.buttons["home-ask-chip-0"]
-        XCTAssertTrue(chip.waitForStableFrame(timeout: 5))
-        chip.click()
-        XCTAssertTrue(app.control(withIdentifier: "ask-question-field").waitForExistenceFast(timeout: 10))
-        XCTAssertTrue(
-            waitForUITestCondition(timeout: 15) {
-                app.control(withIdentifier: "ask-pending-question").exists
-                    || app.descendants(matching: .any)
-                        .matching(NSPredicate(format: "identifier BEGINSWITH 'ask-answer-'"))
-                        .firstMatch.exists
-            },
-            "the chip must submit its question, not only prefill it")
-        XCTAssertTrue(app.buttons["library-ask-button"].isSelected)
-
-        // Back on Today, the agenda offers a brief and a linked recording.
-        let home = app.buttons["library-home-button"]
-        XCTAssertTrue(home.waitForStableFrame(timeout: 5))
-        home.click()
-        let brief = app.buttons["home-upcoming-brief-ui-test-upcoming-rollout"]
-        XCTAssertTrue(brief.waitForStableFrame(timeout: 10))
-        brief.click()
-        XCTAssertTrue(app.control(withIdentifier: "brief-title").waitForExistenceFast(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Presupuesto rollout"].exists)
-        let close = app.buttons["brief-close-button"]
-        XCTAssertTrue(close.waitForStableFrame(timeout: 5))
-        close.click()
-
+        // The agenda also offers a linked recording, which ends the journey.
         let record = app.buttons["home-upcoming-record-ui-test-upcoming-rollout"]
         XCTAssertTrue(record.waitForStableFrame(timeout: 10))
         record.click()

@@ -1843,15 +1843,63 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "canceling a quality pass must leave the current transcript visible")
     }
 
+    /// One launch in the order the player needs: the clip wants a fresh paused
+    /// cursor, and playback goes last because it runs to the end of the file.
     @MainActor
-    func testPlayerExposesSkipAndOnlyMyVoice() throws {
+    func testPlayerMarksAClipJumpsFromALineAndPlaysOneVoice() throws {
         let app = try launchOnSeededMeeting()
         defer { finishUITestApplication(app) }
 
-        let play = app.buttons["player-play-pause"]
+        XCTAssertTrue(app.buttons["player-play-pause"].waitForExistenceFast(timeout: 15))
+        let currentTime = app.control(withIdentifier: "player-current-time")
+        XCTAssertTrue(app.staticTexts["/ 0:06"].exists, "this journey requires the disposable six-second fixture")
+        XCTAssertTrue(currentTime.waitForValue("0:00", timeout: 5))
+        let options = app.control(withIdentifier: "player-options")
+        options.click()
+        app.menuItems["clip-mark-start"].click()
+        XCTAssertTrue(currentTime.waitForValue("0:00", timeout: 5), "Start must be marked before seeking")
+
+        let waveform = app.control(withIdentifier: "player-waveform")
+        XCTAssertTrue(waveform.waitForHittable(timeout: 5))
+        waveform.click()  // seek to the identified waveform's center without starting playback
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            guard let clock = currentTime.value as? String else { return false }
+            return ["0:01", "0:02", "0:03", "0:04", "0:05"].contains(clock)
+        }, "End must be strictly between the zero Start and six-second EOF")
+        let beforeMenu = try XCTUnwrap(currentTime.value as? String)
+        options.click()
+        let beforeEnd = try XCTUnwrap(currentTime.value as? String)
+        let evidence = XCTAttachment(string: "fixture=0:06; start=0:00; beforeMenu=\(beforeMenu); beforeEnd=\(beforeEnd)")
+        evidence.name = "clip-cursor-before-end"
+        evidence.lifetime = .keepAlways
+        add(evidence)
+        XCTAssertEqual(beforeEnd, beforeMenu, "the paused cursor must stay fixed while opening the menu")
+        XCTAssertTrue(["0:01", "0:02", "0:03", "0:04", "0:05"].contains(beforeEnd))
+        app.menuItems["clip-mark-end"].click()
+        XCTAssertTrue(currentTime.waitForValue(beforeEnd, timeout: 5))
+
         XCTAssertTrue(
-            play.waitForExistenceFast(timeout: 10),
-            "the player transport must render for a meeting that has audio")
+            app.buttons["clip-export"].waitForExistenceFast(timeout: 5),
+            "marking a valid in/out range must reveal the export button")
+        attachScreenshot(of: app, named: "clip-paused-export")
+
+        let line = app.staticTexts["El rollout del modelo queda para el viernes."]
+        XCTAssertTrue(line.waitForExistenceFast(timeout: 10))
+        line.click()
+
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 5) {
+                ["0:03", "0:04", "0:05"].contains(currentTime.value as? String ?? "")
+            },
+            "clicking the words of a line, not only its time, must jump to that moment")
+
+        let skipBack = app.buttons["player-skip-back"]
+        XCTAssertTrue(skipBack.waitForHittable(timeout: 5))
+        skipBack.click()
+        XCTAssertTrue(
+            currentTime.waitForValue("0:00", timeout: 5),
+            "focused playback must start before the other voice so it has one to jump past")
+        let play = app.buttons["player-play-pause"]
         XCTAssertTrue(
             app.control(withIdentifier: "detail-player-section").exists,
             "the complete playback dock must retain one accessible section boundary")
@@ -1859,7 +1907,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(app.buttons["player-skip-forward"].exists)
         XCTAssertTrue(app.control(withIdentifier: "player-speed").exists)
         XCTAssertTrue(app.control(withIdentifier: "player-waveform").exists)
-        let options = app.control(withIdentifier: "player-options")
         XCTAssertTrue(options.exists, "skip silence, echo and clips live in the options menu")
         options.click()
         XCTAssertTrue(
@@ -1876,7 +1923,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(voices.exists, "a meeting with two voices offers per-speaker playback")
         voices.click()
         app.menuItems["player-voice-Me"].click()
-        let currentTime = app.control(withIdentifier: "player-current-time")
         let initialTime = String(describing: currentTime.value)
         play.click()
         XCTAssertTrue(
@@ -1887,25 +1933,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "focused playback must jump past the other voice and finish instead of stalling on the jump")
         attachScreenshot(of: app, named: "meeting-detail-waveform")
     }
-
-    @MainActor
-    func testClickingALineOfTextJumpsThere() throws {
-        let app = try launchOnSeededMeeting()
-        defer { finishUITestApplication(app) }
-
-        XCTAssertTrue(app.buttons["player-play-pause"].waitForExistenceFast(timeout: 15))
-        let line = app.staticTexts["El rollout del modelo queda para el viernes."]
-        XCTAssertTrue(line.waitForExistenceFast(timeout: 10))
-        line.click()
-
-        let currentTime = app.control(withIdentifier: "player-current-time")
-        XCTAssertTrue(
-            waitForUITestCondition(timeout: 5) {
-                ["0:03", "0:04", "0:05"].contains(currentTime.value as? String ?? "")
-            },
-            "clicking the words of a line, not only its time, must jump to that moment")
-    }
-
     /// The export menu is the only path to subtitle files, so both the SRT
     /// and VTT items must exist for a seeded diarized meeting.
     @MainActor
@@ -2005,44 +2032,4 @@ final class MeetingDetailUITests: PortavozUITestCase {
         typeKey(.escape, modifierFlags: [], in: app)
     }
 
-    /// Mark a valid range through the real menu while the fresh player stays
-    /// paused; the waveform supplies an interior position without racing EOF.
-    @MainActor
-    func testClipMarkingRevealsExport() throws {
-        let app = try launchOnSeededMeeting()
-        defer { finishUITestApplication(app) }
-
-        XCTAssertTrue(app.buttons["player-play-pause"].waitForExistenceFast(timeout: 15))
-        let currentTime = app.control(withIdentifier: "player-current-time")
-        XCTAssertTrue(app.staticTexts["/ 0:06"].exists, "this journey requires the disposable six-second fixture")
-        XCTAssertTrue(currentTime.waitForValue("0:00", timeout: 5))
-        let options = app.control(withIdentifier: "player-options")
-        options.click()
-        app.menuItems["clip-mark-start"].click()
-        XCTAssertTrue(currentTime.waitForValue("0:00", timeout: 5), "Start must be marked before seeking")
-
-        let waveform = app.control(withIdentifier: "player-waveform")
-        XCTAssertTrue(waveform.waitForHittable(timeout: 5))
-        waveform.click()  // seek to the identified waveform's center without starting playback
-        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
-            guard let clock = currentTime.value as? String else { return false }
-            return ["0:01", "0:02", "0:03", "0:04", "0:05"].contains(clock)
-        }, "End must be strictly between the zero Start and six-second EOF")
-        let beforeMenu = try XCTUnwrap(currentTime.value as? String)
-        options.click()
-        let beforeEnd = try XCTUnwrap(currentTime.value as? String)
-        let evidence = XCTAttachment(string: "fixture=0:06; start=0:00; beforeMenu=\(beforeMenu); beforeEnd=\(beforeEnd)")
-        evidence.name = "clip-cursor-before-end"
-        evidence.lifetime = .keepAlways
-        add(evidence)
-        XCTAssertEqual(beforeEnd, beforeMenu, "the paused cursor must stay fixed while opening the menu")
-        XCTAssertTrue(["0:01", "0:02", "0:03", "0:04", "0:05"].contains(beforeEnd))
-        app.menuItems["clip-mark-end"].click()
-        XCTAssertTrue(currentTime.waitForValue(beforeEnd, timeout: 5))
-
-        XCTAssertTrue(
-            app.buttons["clip-export"].waitForExistenceFast(timeout: 5),
-            "marking a valid in/out range must reveal the export button")
-        attachScreenshot(of: app, named: "clip-paused-export")
-    }
 }

@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 176
+    "expectedCaseCount": 171
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -33,10 +33,9 @@
     "BackgroundWorkUITests/testBackgroundWorkCenterShowsAllOwnersAndRecoversExactFailures()": 25.0,
     "BackgroundWorkUITests/testRecordingDefersDerivedWorkAndStopResumesIt()": 25.0,
     "CommitmentRadarUITests/testFieldQualityObservesARealReviewWithoutAutomatingDecisions()": 20.0,
-    "CommitmentRadarUITests/testRadarFiltersConfirmedWorkAndOpensItsExactSourceMeeting()": 20.0,
     "CommitmentRadarUITests/testReminderAlertOpensCommitmentRadar()": 20.0,
     "CommitmentRadarUITests/testReminderDraftRequiresExplicitAccessAndLeavesDurableReceipt()": 20.0,
-    "CommitmentRadarUITests/testReviewQueueKeepsSuggestionsSeparateAndOpensExactEvidence()": 20.0,
+    "CommitmentRadarUITests/testReviewThenConfirmedWorkKeepTheirFiltersAndOpenExactSources()": 40.0,
     "DictationPolishUITests/testPolishIsOfferedAsTheDefaultTextMode()": 20.0,
     "SelectionRewriteUITests/testRewriteSelectionPreviewsBeforeReplacing()": 20.0,
     "SelectionRewriteUITests/testARecipeRewriteIsNeverPastedOverAChangedSelection()": 20.0,
@@ -71,8 +70,7 @@
     "DictationUITests/testMicrophoneDenialRemainsRecoverableWithoutOpeningAudio()": 20.0,
     "DictationUITests/testMissingMicrophoneAudioShowsFallbackAndAllowsRestart()": 25.0,
     "DictationUITests/testPreparingDictationCanCancelWithoutAListeningClaim()": 15.0,
-    "HomeUITests/testTodayAsksAndRecordsWithoutTyping()": 25.0,
-    "HomeUITests/testTodayShowsAgendaOpenWorkAndRecentMeetingsAboveTheFold()": 25.0,
+    "HomeUITests/testTodayShowsEverythingAboveTheFoldAndActsWithoutTyping()": 50.0,
     "InsightsUITests/testInsightsShowsCompleteLocalDashboard()": 20.0,
     "InterviewAssistUITests/testInterviewAssistGroundsTheCurrentQuestionInExactEvidence()": 25.0,
     "LibraryUITests/testActiveRecordingRemainsReachableAfterBrowsingTheLibrary()": 20.0,
@@ -101,8 +99,7 @@
     "LibraryUITests/testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment()": 20.0,
     "MeetingAudioTrimUITests/testSilentTailRequiresConfirmationAndCutsOnlyAfterConfirmation()": 30.0,
     "MeetingDetailUITests/testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix()": 20.0,
-    "MeetingDetailUITests/testClickingALineOfTextJumpsThere()": 20.0,
-    "MeetingDetailUITests/testClipMarkingRevealsExport()": 20.0,
+    "MeetingDetailUITests/testPlayerMarksAClipJumpsFromALineAndPlaysOneVoice()": 60.0,
     "MeetingDetailUITests/testCompactTranscriptCorrectionCanReachItsOwnAction()": 30.0,
     "MeetingDetailUITests/testCommitmentInboxRequiresEvidenceReviewBeforeConfirmation()": 26.784,
     "MeetingDetailUITests/testCorrectedTranscriptMarksDerivedArtifactsStale()": 20.0,
@@ -119,7 +116,6 @@
     "MeetingDetailUITests/testMostRecentRecipeRemainsVisibleAfterReload()": 20.0,
     "MeetingDetailUITests/testAConfidentVoiceMatchNamesTheSpeakerAndCanBeUndone()": 20.0,
     "MeetingDetailUITests/testNamedSpeakerCanBeRememberedAsCanonicalPerson()": 20.0,
-    "MeetingDetailUITests/testPlayerExposesSkipAndOnlyMyVoice()": 20.0,
     "MeetingDetailUITests/testRecapSheetDraftsFromTheSummaryWithoutTheTranscript()": 20.0,
     "MeetingDetailUITests/testRunningRefineCanBeCanceledWithoutChangingTheTranscript()": 20.0,
     "MeetingDetailUITests/testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument()": 26.5,
@@ -148,8 +144,7 @@
     "SettingsUITests/testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow()": 20.0,
     "SettingsUITests/testAppleSpeechInspectionFailureOffersExplicitRetry()": 20.0,
     "SettingsUITests/testCategoryNavigationRevealsEachPane()": 24.352,
-    "SettingsUITests/testDataPaneExportsAReadableWholeLibraryMarkdownBackup()": 20.0,
-    "SettingsUITests/testDataPaneExportsARedactedLocalSupportFile()": 20.0,
+    "SettingsUITests/testDataPaneExportsARedactedSupportFileAndAReadableBackup()": 40.0,
     "SettingsUITests/testDictationOffersTriggersLanguageAndDictionary()": 20.0,
     "SettingsUITests/testDictationRecoversShortcutConflictAndRefreshesHelp()": 25.0,
     "SettingsUITests/testHeldFnTriggerExplainsTheGlobeKeySetting()": 25.0,

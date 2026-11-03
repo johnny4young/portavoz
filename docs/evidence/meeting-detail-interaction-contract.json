@@ -3434,9 +3434,7 @@
     {
       "feature": "playback-and-clips",
       "tests": [
-        "testClickingALineOfTextJumpsThere",
-        "testClipMarkingRevealsExport",
-        "testPlayerExposesSkipAndOnlyMyVoice"
+        "testPlayerMarksAClipJumpsFromALineAndPlaysOneVoice"
       ],
       "sourceAnchors": [
         {

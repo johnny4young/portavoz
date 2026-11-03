@@ -18,8 +18,9 @@ final class CommitmentRadarUITests: PortavozUITestCase {
         attachScreenshot(of: app, named: "commitment-reminder-open-radar")
     }
 
+    /// One launch, review first, because the confirmed half completes an item.
     @MainActor
-    func testRadarFiltersConfirmedWorkAndOpensItsExactSourceMeeting() throws {
+    func testReviewThenConfirmedWorkKeepTheirFiltersAndOpenExactSources() throws {
         let app = try XCUIApplication.portavoz(
             seedDemo: true,
             seedCommitmentRadar: true)
@@ -30,6 +31,51 @@ final class CommitmentRadarUITests: PortavozUITestCase {
         let radar = app.buttons["library-commitment-radar-button"]
         XCTAssertTrue(radar.waitForExistenceFast(timeout: 10))
         radar.click()
+
+        let reviewMode = app.control(
+            withIdentifier: "commitment-radar-mode-review")
+        XCTAssertTrue(reviewMode.waitForExistenceFast(timeout: 10))
+        reviewMode.click()
+
+        let reviewID = "B5E00000-0000-4000-8000-000000000002"
+        let reviewPage = app.control(withIdentifier: "commitment-review-page")
+        XCTAssertTrue(
+            reviewPage.waitForExistenceFast(timeout: 10),
+            "generated work must appear in the separate review mode")
+        XCTAssertFalse(
+            app.control(withIdentifier: "commitment-radar-owner-filter").exists,
+            "confirmed filters must not leak into generated review")
+        let open = app.control(
+            withIdentifier: "commitment-review-open-\(reviewID)")
+        XCTAssertTrue(
+            open.waitForExistenceFast(timeout: 5),
+            "a suggestion must offer complete evidence review, not confirmation")
+        attachScreenshot(of: app, named: "commitment-review-queue")
+
+        open.click()
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-header-section")
+                .waitForExistenceFast(timeout: 10),
+            "review must reopen the complete source meeting")
+        let citedSegment = app.control(
+            withIdentifier: "transcript-segment-B5B00000-0000-4000-8000-000000000002")
+        XCTAssertTrue(citedSegment.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(
+            citedSegment.waitForSelection(timeout: 10),
+            "current evidence must focus the exact transcript source")
+        let currentTime = app.control(withIdentifier: "player-current-time")
+        XCTAssertTrue(
+            currentTime.waitForValue("0:03", timeout: 10),
+            "evidence review must seek to the persisted citation timestamp")
+        attachScreenshot(of: app, named: "commitment-review-exact-source")
+
+        XCTAssertTrue(radar.waitForHittable(timeout: 10))
+        radar.click()
+        let confirmedMode = app.control(
+            withIdentifier: "commitment-radar-mode-confirmed")
+        XCTAssertTrue(confirmedMode.waitForHittable(timeout: 10))
+        confirmedMode.click()
 
         XCTAssertTrue(
             app.control(withIdentifier: "commitment-radar-title")
@@ -106,7 +152,6 @@ final class CommitmentRadarUITests: PortavozUITestCase {
             "a Radar source must open its exact durable meeting")
         XCTAssertTrue(app.staticTexts["Test meeting"].exists)
     }
-
     @MainActor
     func testReminderDraftRequiresExplicitAccessAndLeavesDurableReceipt() throws {
         let app = try XCUIApplication.portavoz(
@@ -180,58 +225,6 @@ final class CommitmentRadarUITests: PortavozUITestCase {
                 revealing: "settings-skill-receipt-reminder-draft"),
             "the global control center must project the same durable receipt")
         attachScreenshot(of: app, named: "reminder-draft-durable-receipt")
-    }
-
-    @MainActor
-    func testReviewQueueKeepsSuggestionsSeparateAndOpensExactEvidence() throws {
-        let app = try XCUIApplication.portavoz(
-            seedDemo: true,
-            seedCommitmentRadar: true)
-        app.launchPortavoz()
-        defer { finishUITestApplication(app) }
-
-        XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        let radar = app.buttons["library-commitment-radar-button"]
-        XCTAssertTrue(radar.waitForExistenceFast(timeout: 10))
-        radar.click()
-
-        let reviewMode = app.control(
-            withIdentifier: "commitment-radar-mode-review")
-        XCTAssertTrue(reviewMode.waitForExistenceFast(timeout: 10))
-        reviewMode.click()
-
-        let reviewID = "B5E00000-0000-4000-8000-000000000002"
-        let reviewPage = app.control(withIdentifier: "commitment-review-page")
-        XCTAssertTrue(
-            reviewPage.waitForExistenceFast(timeout: 10),
-            "generated work must appear in the separate review mode")
-        XCTAssertFalse(
-            app.control(withIdentifier: "commitment-radar-owner-filter").exists,
-            "confirmed filters must not leak into generated review")
-        let open = app.control(
-            withIdentifier: "commitment-review-open-\(reviewID)")
-        XCTAssertTrue(
-            open.waitForExistenceFast(timeout: 5),
-            "a suggestion must offer complete evidence review, not confirmation")
-        attachScreenshot(of: app, named: "commitment-review-queue")
-
-        open.click()
-
-        XCTAssertTrue(
-            app.control(withIdentifier: "detail-header-section")
-                .waitForExistenceFast(timeout: 10),
-            "review must reopen the complete source meeting")
-        let citedSegment = app.control(
-            withIdentifier: "transcript-segment-B5B00000-0000-4000-8000-000000000002")
-        XCTAssertTrue(citedSegment.waitForExistenceFast(timeout: 10))
-        XCTAssertTrue(
-            citedSegment.waitForSelection(timeout: 10),
-            "current evidence must focus the exact transcript source")
-        let currentTime = app.control(withIdentifier: "player-current-time")
-        XCTAssertTrue(
-            currentTime.waitForValue("0:03", timeout: 10),
-            "evidence review must seek to the persisted citation timestamp")
-        attachScreenshot(of: app, named: "commitment-review-exact-source")
     }
 
     @MainActor

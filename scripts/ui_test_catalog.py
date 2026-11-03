@@ -28,8 +28,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("AutomationUITests", "testRecordingAutomationRoutesStartAndStopThroughVisibleApp"),
     ),
     "home": (
-        test_id("HomeUITests", "testTodayShowsAgendaOpenWorkAndRecentMeetingsAboveTheFold"),
-        test_id("HomeUITests", "testTodayAsksAndRecordsWithoutTyping"),
+        test_id("HomeUITests", "testTodayShowsEverythingAboveTheFoldAndActsWithoutTyping"),
     ),
     "library": (
         test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
@@ -75,13 +74,12 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "commitment-radar": (
         test_id("CommitmentRadarUITests", "testReminderAlertOpensCommitmentRadar"),
-        test_id("CommitmentRadarUITests", "testRadarFiltersConfirmedWorkAndOpensItsExactSourceMeeting"),
-        test_id("CommitmentRadarUITests", "testReviewQueueKeepsSuggestionsSeparateAndOpensExactEvidence"),
+        test_id("CommitmentRadarUITests", "testReviewThenConfirmedWorkKeepTheirFiltersAndOpenExactSources"),
     ),
     "main-shell": (
         test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
-        test_id("CommitmentRadarUITests", "testRadarFiltersConfirmedWorkAndOpensItsExactSourceMeeting"),
-        test_id("HomeUITests", "testTodayShowsAgendaOpenWorkAndRecentMeetingsAboveTheFold"),
+        test_id("CommitmentRadarUITests", "testReviewThenConfirmedWorkKeepTheirFiltersAndOpenExactSources"),
+        test_id("HomeUITests", "testTodayShowsEverythingAboveTheFoldAndActsWithoutTyping"),
         test_id("InsightsUITests", "testInsightsShowsCompleteLocalDashboard"),
         test_id("OnboardingUITests", "testAdvancesFromFirstListenToLocalVoiceEnrollment"),
     ),
@@ -126,9 +124,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "meeting-audio": (
         test_id("MeetingAudioTrimUITests", "testSilentTailRequiresConfirmationAndCutsOnlyAfterConfirmation"),
-        test_id("MeetingDetailUITests", "testPlayerExposesSkipAndOnlyMyVoice"),
-        test_id("MeetingDetailUITests", "testClickingALineOfTextJumpsThere"),
-        test_id("MeetingDetailUITests", "testClipMarkingRevealsExport"),
+        test_id("MeetingDetailUITests", "testPlayerMarksAClipJumpsFromALineAndPlaysOneVoice"),
     ),
     "meeting-correction": (
         test_id("MeetingDetailUITests", "testExplicitApuntadorRefreshUsesCorrectedTranscript"),
@@ -157,8 +153,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "settings-data": (
         test_id("SettingsUITests", "testSyncPaneKeepsOptInAndExistingLibrarySeparate"),
-        test_id("SettingsUITests", "testDataPaneExportsARedactedLocalSupportFile"),
-        test_id("SettingsUITests", "testDataPaneExportsAReadableWholeLibraryMarkdownBackup"),
+        test_id("SettingsUITests", "testDataPaneExportsARedactedSupportFileAndAReadableBackup"),
     ),
     "production-sync": (
         test_id("SettingsUITests", "testSyncPaneKeepsOptInAndExistingLibrarySeparate"),
@@ -355,8 +350,7 @@ DEPENDENCY_FEATURES: dict[str, frozenset[str]] = {
 MEETING_DETAIL_EXTRA_JOURNEYS = (
     test_id("AudioImportUITests", "testSingleMeetingBundleReachesDetailWithoutChangingTheOriginal"),
     test_id("AutomationUITests", "testOpenDictationsShortcutShowsItsSearch"),
-    test_id("CommitmentRadarUITests", "testRadarFiltersConfirmedWorkAndOpensItsExactSourceMeeting"),
-    test_id("CommitmentRadarUITests", "testReviewQueueKeepsSuggestionsSeparateAndOpensExactEvidence"),
+    test_id("CommitmentRadarUITests", "testReviewThenConfirmedWorkKeepTheirFiltersAndOpenExactSources"),
     test_id("DictationHistoryUITests", "testADictationCanBeAddedToAMeetingsNotes"),
     test_id("LibraryUITests", "testActiveRecordingRemainsReachableAfterBrowsingTheLibrary"),
     test_id("LibraryUITests", "testAskConfirmedMemoryLoadsPersonCommitmentsBlockersAndBothCitations"),
@@ -433,6 +427,15 @@ RETIRED_DUPLICATE_TESTS = frozenset({
         "SkillsSettingsUITests",
         "testSkillActivityFiltersExactSkillAndResetsExpansion",
     ),
+    test_id("HomeUITests", "testTodayShowsAgendaOpenWorkAndRecentMeetingsAboveTheFold"),
+    test_id("HomeUITests", "testTodayAsksAndRecordsWithoutTyping"),
+    test_id("SettingsUITests", "testDataPaneExportsARedactedLocalSupportFile"),
+    test_id("SettingsUITests", "testDataPaneExportsAReadableWholeLibraryMarkdownBackup"),
+    test_id("MeetingDetailUITests", "testClipMarkingRevealsExport"),
+    test_id("MeetingDetailUITests", "testClickingALineOfTextJumpsThere"),
+    test_id("MeetingDetailUITests", "testPlayerExposesSkipAndOnlyMyVoice"),
+    test_id("CommitmentRadarUITests", "testReviewQueueKeepsSuggestionsSeparateAndOpensExactEvidence"),
+    test_id("CommitmentRadarUITests", "testRadarFiltersConfirmedWorkAndOpensItsExactSourceMeeting"),
     test_id("MeetingDetailUITests", "testAbandonedAutomaticSummarySaysSoBesideGeneration"),
     test_id("MeetingDetailUITests", "testStructureMenuOffersSeededTemplates"),
     test_id("RecordingAssistUITests", "testBatchedObjectivesRevealLastArrivalAndReplacementCountsAsUnread"),

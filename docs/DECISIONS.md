@@ -22583,3 +22583,31 @@ it cannot answer for a pull request's required check. A manual run of `ci.yml` o
 a release, because the contract rejects several runs of `CI` for one commit; `full_ui` belongs on a branch. Protection moves in order, with the old `ui-test-gate` name
 following `gate` until `main` requires `gate`, and `strict` goes then too.
 
+---
+
+## D624 — Twelve UI journeys become unit tests, and four sets merge
+
+**Context:** twelve journeys proved logic that lived in view state, which only a whole app launch could
+reach. Four sets of journeys could share one launch and paid for a launch each. The Settings hand-off ran
+twice per entry, the caption fixture slept longer than any caption rule needs, and every wait polled the
+accessibility tree continuously.
+
+**Decision:** `SkillActionAttempt` owns a failed Skill action in Settings and in the receipt sheet.
+`SkillActivityQuery` returns to the cheap history window when a lens changes. `RecordingAssistUnread`,
+`latestCancelledSummary` and `skillControlsAreLocked` leave their views. Fifteen unit tests own those
+contracts, and the twelve journeys and the fixtures only they used are removed. Each contract keeps a row in
+the pull request: contract, substitute, evidence.
+
+Audio, Settings data, Commitment Radar and Today each become one journey in one launch, ordered so that an
+early stage cannot change what a later one reads. The Library set stays apart because a release
+qualification names `testSeededMeetingsGroupByRecency`. The correction set stays apart because a failure
+would hide its second half.
+
+The Settings hand-off now runs only when the category is covered, the caption fixture waits 100 ms and then
+20 ms per row, and a wait slower than one second polls every 250 ms.
+
+**Consequences:** the views can still mis-wire the types, which only the remaining journeys and the
+architecture pins would catch. A merged journey that fails names one test for several contracts. The Skills
+history no longer has a journey that opens it through a held read, so the feature handshake keeps its proof
+through the Ask and scale journeys.
+
