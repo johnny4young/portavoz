@@ -2182,16 +2182,23 @@ evidence without exceeding its type-checking budget.
 
 Current-SDK diagnostic closure uses `scripts/run-swift-tests.sh -Xswiftc
 -warnings-as-errors` both locally before committing and on the explicit
-`macos-26`/Xcode 26.6 CI lane. A complete launcher run pools XCTest by class
-(D598): `scripts/run_xctest_pool.py` runs each listed class in its own `xctest`
-process, three at a time, prints every class's output, and fails when a class
-fails, prints no summary, or the executed total differs from the listed total.
+`macos-26`/Xcode 26.6 CI lane. A complete launcher run pools XCTest in batches
+(D619): `scripts/run_xctest_pool.py` groups the listed classes by the durations in
+`scripts/xctest_class_seconds.json`, about 15 seconds to a process, and runs three
+processes at a time. A class fails when its suite fails, when it runs a different
+number of cases than listed, or when it reports nothing for 300 seconds. After a
+crash or a hang, the classes that process never reached run in a new one. The
+nightly clean build sets `PORTAVOZ_XCTEST_BATCH_SEED` to vary which classes share
+a process, and `--record-from <log>` rebuilds the table from an xctest log.
+`scripts/xctest_nightly_only.txt` lists reviewed cases, by exact identifier, that
+only drive a benchmark harness: other runs skip them and report how many, and the
+nightly clean build runs them with `PORTAVOZ_SWIFT_INCLUDE_NIGHTLY_ONLY`.
 Swift Testing suites then run in one process through an anchored filter. Tests
 that write preferences use their own suite domain rather than
 `UserDefaults.standard`, which concurrent processes share on disk.
 `Tests/Tooling/test_run_xctest_pool.py` and `test_run_swift_tests.py` cover the
-class selection, summary parsing, count guard, failure propagation, targeted
-passthrough and the process-group stop. A documentation, website or Python-tooling
+batching, the per-class accounting, crashes, hangs, a process failing after its
+suites, targeted passthrough and the process-group stop. A documentation, website or Python-tooling
 pull request runs only the classes that locate the checkout through `#filePath`
 or a repository root (D600): `Tests/Tooling/test_swift_test_scope.py` checks
 that every Swift test naming a repository path is selected, that build, test,

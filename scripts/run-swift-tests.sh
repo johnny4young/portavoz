@@ -175,7 +175,9 @@ run_tests() {
   fi
   local xctest_status=0 testing_status=0 suites
   python3 scripts/run_xctest_pool.py --bundle "${bundles[0]}" \
-    --listing "$listing" --workers "$workers" || xctest_status=$?
+    --listing "$listing" --workers "$workers" \
+    ${PORTAVOZ_XCTEST_BATCH_SEED:+--batch-seed "$PORTAVOZ_XCTEST_BATCH_SEED"} \
+    ${PORTAVOZ_SWIFT_INCLUDE_NIGHTLY_ONLY:+--include-nightly-only} || xctest_status=$?
   # Swift Testing suites run in their own concurrent process, as before.
   suites="$(python3 - "$listing" <<'PY'
 import re
