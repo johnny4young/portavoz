@@ -1108,6 +1108,10 @@ def apply_budget(selection: Selection, seconds: Mapping[str, float], budget: flo
     return replace(selection, tests=tests, cut=cut)
 
 
+# The branch a stack finally enters.
+DEFAULT_BRANCH_REF = "refs/remotes/origin/main"
+
+
 def merge_root(first: str, second: str) -> str:
     """Their one merge base. Criss-cross history uses the roots' common ancestor, which only widens selection."""
     def lines(*arguments: str) -> list[str]:
@@ -1453,7 +1457,6 @@ def render(selection: Selection, output_format: str) -> str:
                 f"required={'true' if selection.required else 'false'}",
                 f"interruption_controls={'true' if selection.interruption_controls_required else 'false'}",
                 f"tests={tests}",
-                f"locales={locales}",
                 f"scope_unknown={'true' if selection.scope_unknown else 'false'}",
                 f"deferred={selection.deferred_to_nightly}",
                 f"cut={' '.join(selection.cut)}",
@@ -1496,8 +1499,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("paths", nargs="*", help="Changed paths; otherwise --base and --head are diffed")
     result.add_argument("--base", help="Base Git revision")
     result.add_argument("--head", default="HEAD", help="Head Git revision (default: HEAD)")
-    result.add_argument("--pull-request-base", help="Diff from the merge base with this revision and with --default-ref")
-    result.add_argument("--default-ref", default="refs/remotes/origin/main", help="The branch a stack finally enters")
+    result.add_argument("--pull-request-base", help="Diff from the merge base with this revision and with the default branch")
     result.add_argument(
         "--working-tree",
         action="store_true",
@@ -1541,10 +1543,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             ALL_TESTS, SELECTION_LOCALES, ("explicit full-suite request",), interruption_controls=True)
     else:
         if arguments.pull_request_base:
+            head = arguments.head
             try:
-                head = arguments.head
                 own_root = merge_root(arguments.pull_request_base, head)
-                default_root = merge_root(arguments.default_ref, head)
+                default_root = merge_root(DEFAULT_BRANCH_REF, head)
             except (ValueError, OSError, subprocess.SubprocessError) as error:
                 # A parent-branch diff alone would silently omit the parent's changes.
                 print(f"::error title=UI scope::cannot resolve the pull request's bases: {error}", file=sys.stderr)

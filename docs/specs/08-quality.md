@@ -651,11 +651,11 @@ the complete English catalog.
 whatever it cannot prove: hygiene, lint, scope and `build-and-test` must succeed; `ios-portability` must
 skip on a PR and succeed on a manual run; a skipped UI lane needs scope's explicit `required=false` and
 reason; the interruption controls must match the selection. A required UI lane needs its job's success,
-the classifier's `passed`, and a lane receipt of this head and of the attempt that ran, with tests executed
-and none missing. The known automation-mode timeout therefore leaves the PR red instead of green with no
-evidence, and rerunning the failed jobs is allowed on a PR. The UI lane fails as its last step when its tests
-did not pass, so that rerun runs it again; a rerun keeps a passed lane, so the gate reads that lane's own
-attempt. A manual run reports `gate-manual` and cannot answer for a PR's required check. On `main` a manual run
+the classifier's `passed`, and a lane receipt of this head and of the attempt that ran, with tests executed,
+none missing, and the same cases as the runtime receipt. The known automation-mode timeout therefore leaves the PR red instead of green with no
+evidence, and rerunning the failed jobs is allowed on a PR. The UI lane fails as its last step when its evidence
+is not complete, so that rerun runs it again; a rerun keeps a passed lane, so the gate reads that lane's own
+attempt. A manual run reports `gate-manual` and `ui-test-gate-manual`, skipped or not, so it cannot answer for a PR's required check. Receipts last seven days; past that, rerun all jobs. On `main` a manual run
 disqualifies the commit from a release, so `full_ui` belongs on a branch. `main` still takes only a first attempt for a release (`rejectReruns`). `ui-test-gate`
 follows `gate` only until the protection of `main` requires `gate`. Because a prebuilt-products run does not hand the XCTest
 process the app's language, bilingual expectations read
@@ -3319,13 +3319,8 @@ Standard-library unit tests characterize skip, targeted,
 bilingual, harness, and conservative-fallback behavior. `make test-ui-changed` consumes that
 policy locally against committed, staged, unstaged, and untracked paths, so a
 pre-commit smoke cannot silently select nothing; `UI_HEAD` remains an explicit
-committed-range override. Pull requests advance from the newest successful,
-first-attempt ancestor that published one exact-SHA `ui-verification-*`
-artifact after complete selected functional evidence (or a verified no-UI
-selection). The resolver rejects retries, duplicate/expired artifacts,
-non-ancestors, and force-pushed history. Missing API/artifact/history proof
-falls back to the repository base, and manual integration dispatches still
-select the full catalogue.
+committed-range override. Pull requests select from history on every attempt,
+and a manual `full_ui` run selects the full catalogue (D623).
 `scripts/run-ui-tests.sh` performs one `build-for-testing` and
 reuses it with `test-without-building` for each selected locale, retaining an
 xcresult plus content-free runtime and execution receipts per locale under
@@ -7221,7 +7216,8 @@ The initial D409 policy scoped synchronization from the immediately previous PR
 head instead of replaying the whole accumulated branch diff. D429 replaces that
 unproven shortcut with the newest first-attempt exact-SHA verification artifact
 inside current ancestry; missing, expired, duplicate, failed, retried, or
-force-pushed proof falls back to the target branch. Shared/localization/unknown
+force-pushed proof falls back to the target branch. D623 later removes that
+proof, and each attempt selects from history. Shared/localization/unknown
 paths retain their fail-safe expansion, and manual integration dispatch remains
 full. This
 changes feature-band cost, not the release contract: a fresh complete bilingual
@@ -7924,12 +7920,7 @@ test's source-spelling assertion for the executed-case predicate; the package
 test retains its workflow wiring and dependency checks. They do not replace the native
 interruption controls, answer prompts, or make unsafe runs qualify.
 
-Incremental scope is proof-carrying rather than based on the previous push.
-Only a successful first-attempt run with one non-expired exact-SHA verification
-artifact can become the next base; the candidate must be inside the current PR
-ancestry. API uncertainty, duplicate artifacts, retries, failed evidence,
-expired retention, and force-push divergence expand from the PR base. A
-diagnostic rerun can never satisfy the final gate or publish an anchor.
+Scope never narrows from an earlier run: each attempt selects from history (D623).
 
 This split follows retained exact-head evidence rather than relaxing a red
 product test. Run `33230421948` passed 101/101 English cases at `e4767a34`, but
@@ -8807,14 +8798,14 @@ exit-zero restart. Changes to the guard, keyboard, storage, wait or scratch
 sources, the fixture target, the execution classifier or the control's own
 runner select this once, as do explicit full bilingual local runs and full-suite
 dispatches; localization-only and other unrelated full-bilingual fallbacks do not. CI executes the controls on a separate hosted Mac concurrently with the single
-product build. Locale jobs wait for both prerequisites; an unselected controls
-job must be skipped, while a selected job must succeed. The final classifier
-checks both states again before the exact-head verification anchor can publish. Synthetic
+product build. The UI job waits for both prerequisites; an unselected controls
+job must be skipped, while a selected job must succeed. `gate` checks both states
+again. Synthetic
 fixtures request no microphone, authentication or accessibility permission.
 The controls job archives qualification JSON, case logs, exit statuses and
 raw `.xcresult` bundles as one artifact once the controls have run. It excludes
 only the disposable fixture's generated project and DerivedData; an empty
-archive or failed upload fails that job, so locale lanes and the final gate
+archive or failed upload fails that job, so the UI lane and the final gate
 cannot qualify. This avoids transporting thousands of tiny build files
 through the artifact API while preserving failure forensics.
 

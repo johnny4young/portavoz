@@ -319,22 +319,35 @@ def load_execution(path: Path, expected_locale: str) -> dict[str, Any]:
     return execution
 
 
-def lane_receipt_problem(path: Path, locale: str, sha: str, attempt: str) -> str | None:
+def case_identifiers(cases: Any) -> list[Any] | None:
+    if not isinstance(cases, list) or not all(isinstance(case, dict) for case in cases):
+        return None
+    return sorted(str(case.get("identifier")) for case in cases)
+
+
+def lane_receipt_problem(results: Path, locale: str, sha: str, attempt: str) -> str | None:
     """Why the receipt does not prove this head ran everything it selected."""
     try:
-        lane = json.loads(path.read_text(encoding="utf-8"))
+        lane = json.loads((results / f"{locale}-lane.json").read_text(encoding="utf-8"))
+        runtime = json.loads((results / f"{locale}-runtime.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return f"{locale}: evidence-contract: lane receipt is unreadable"
-    if not isinstance(lane, dict):
+    if not isinstance(lane, dict) or not isinstance(runtime, dict) or not isinstance(lane.get("selection"), dict):
         return f"{locale}: evidence-contract: lane receipt shape differs"
     if lane.get("sha") != sha:
         return f"{locale}: evidence-contract: lane receipt belongs to another head"
     if str(lane.get("attempt")) != attempt:
         return f"{locale}: evidence-contract: lane receipt belongs to another attempt"
-    if not lane.get("executed"):
+    executed = case_identifiers(lane.get("executed"))
+    if not executed:
         return f"{locale}: evidence-contract: lane receipt shows zero tests"
     if lane.get("notExecuted") != []:
         return f"{locale}: evidence-contract: lane receipt names selected tests that did not run"
+    selected = lane["selection"].get("selected")
+    if not isinstance(selected, list) or len(selected) != len(executed):
+        return f"{locale}: evidence-contract: lane receipt selected and executed different counts"
+    if executed != case_identifiers(runtime.get("tests")):
+        return f"{locale}: evidence-contract: lane receipt disagrees with the runtime receipt"
     return None
 
 
@@ -400,12 +413,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     for locale in stray_locales:
         failures.append(f"{locale}: unsupported locale lane produced hosted evidence")
         summary_rows.append(f"| {locale} | - | - | unsupported locale | - | - |")
-    if arguments.head_sha is not None:
-        for locale in selected:
-            problem = lane_receipt_problem(
-                arguments.results / f"{locale}-lane.json", locale, arguments.head_sha, arguments.attempt or "")
-            if problem is not None:
-                failures.append(problem)
     for locale in selected:
         outcome = outcomes[locale]
         execution: dict[str, Any] | None = None
@@ -523,6 +530,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"{functional} | advisory {runtime_status} | "
             f"{len(receipt['runtimeAdjustments'])} |"
         )
+
+    # A hosted timeout ran nothing, so its empty receipt says nothing more about the head.
+    if arguments.head_sha is not None and not infrastructure_advisories:
+        for locale in selected:
+            problem = lane_receipt_problem(arguments.results, locale, arguments.head_sha, arguments.attempt or "")
+            if problem is not None:
+                failures.append(problem)
 
     summary_path = arguments.summary
     if summary_path is None and os.environ.get("GITHUB_STEP_SUMMARY"):

@@ -1,6 +1,8 @@
 import itertools
 import json
+import os
 import re
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -276,18 +278,25 @@ class CIWorkflowTests(unittest.TestCase):
         follower = workflow.split("\n  ui-test-gate:\n", 1)[1].split("    steps:\n", 1)[0]
 
         self.assertIn("name: ${{ github.event_name == 'pull_request' && 'gate' || 'gate-manual' }}", gate)
+        # GitHub counts a skipped required check as passing, so skipping is not enough here.
+        self.assertIn("name: ${{ github.event_name == 'pull_request' && 'ui-test-gate' || 'ui-test-gate-manual' }}", follower)
         self.assertIn("if: always() && github.event_name == 'pull_request'", follower)
 
-    def test_a_rerun_of_failed_jobs_runs_a_failed_ui_lane_again(self):
+    def test_a_rerun_of_failed_jobs_runs_again_a_lane_without_complete_evidence(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         lane = workflow.split("\n  ui-tests:\n", 1)[1].split("\n  gate:\n", 1)[0]
         steps = re.findall(r"^      - name: (.*)$", lane, re.MULTILINE)
-        last = lane.split("- name: Fail the lane when its tests did not pass\n", 1)[1]
+        last = lane.split("- name: Fail the lane when its evidence is not complete\n", 1)[1]
+        command = last.split("run: ", 1)[1].strip()
 
-        self.assertEqual(steps[-1], "Fail the lane when its tests did not pass")
+        self.assertEqual(steps[-1], "Fail the lane when its evidence is not complete")
         self.assertIn("if: always()\n", last)
-        self.assertIn("OUTCOME: ${{ steps.ui.outcome }}", last)
-        self.assertIn('run: test "$OUTCOME" = "success"', last)
+        self.assertIn("COMPLETE: ${{ steps.lane.outputs.complete }}", last)
+        for complete, status in (("true", 0), ("false", 1), ("", 1)):
+            with self.subTest(complete=complete):
+                run = subprocess.run(["bash", "-c", command], env={**os.environ, "COMPLETE": complete},
+                                     capture_output=True, timeout=5)
+                self.assertEqual(run.returncode, status)
 
     def test_no_required_job_can_be_green_by_continuing_on_error(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
@@ -412,7 +421,7 @@ class UIPrerequisiteTests(unittest.TestCase):
                 run = self.run_gate(HYGIENE_RESULT=hygiene, LINT_RESULT=lint, SCOPE_RESULT=scope, BUILD_RESULT=build)
                 self.assertEqual(run.returncode == 0, {hygiene, lint, scope, build} == {"success"}, run.stderr)
 
-    def test_a_hosted_failure_stays_red_and_a_rerun_clears_it(self):
+    def test_a_hosted_failure_stays_red_and_names_the_rerun(self):
         run = self.run_gate(UI_RESULT="failure", UI_STATE="infrastructure-advisory", UI_VERIFIED="false")
 
         self.assertNotEqual(run.returncode, 0, run.stdout)
@@ -453,6 +462,13 @@ class UIPrerequisiteTests(unittest.TestCase):
 
 
 class UIArtifactTransportTests(unittest.TestCase):
+    def lane_receipt(self, **change):
+        from Tests.Tooling.test_ui_test_ci_gate import receipt
+
+        cases = [{"identifier": case["identifier"]} for case in receipt("en")["tests"]]
+        return {"sha": "a" * 40, "attempt": 1, "selection": {"selected": ["PortavozUITests/LibraryUITests/testLibrary"]},
+                "executed": cases, "notExecuted": [], **change}
+
     def receipt_paths(self, locale):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
         marker = "      - name: Publish compact classifier receipts\n"
@@ -510,8 +526,7 @@ class UIArtifactTransportTests(unittest.TestCase):
                 (results / f"{locale}-runtime.json").write_text(json.dumps(receipt(locale)))
                 (results / f"{locale}-execution.json").write_text(json.dumps(execution(locale)))
                 (results / f"{locale}-outcome.txt").write_text("success\n")
-                (results / f"{locale}-lane.json").write_text(json.dumps(
-                    {"sha": "a" * 40, "attempt": 1, "executed": [{"identifier": "x"}], "notExecuted": []}))
+                (results / f"{locale}-lane.json").write_text(json.dumps(self.lane_receipt()))
             (results / "en.xcresult").mkdir()
             (results / "en.xcresult/large-result").write_bytes(b"unneeded by the classifier")
             (results / "en.log").write_text("retained diagnostic log")
@@ -548,11 +563,16 @@ class UIArtifactTransportTests(unittest.TestCase):
         self.assertIn("verified=true", outputs)
 
     def test_a_lane_receipt_of_another_head_or_with_gaps_never_qualifies(self):
-        good = {"sha": "a" * 40, "attempt": 1, "executed": [{"identifier": "x"}], "notExecuted": []}
-        for change, message in (({"sha": "b" * 40}, "another head"), ({"attempt": 2}, "another attempt"),
-                                ({"executed": []}, "zero tests"), ({"notExecuted": ["y"]}, "did not run")):
+        cases = (
+            ({"sha": "b" * 40}, "another head"), ({"attempt": 2}, "another attempt"), ({"executed": []}, "zero tests"),
+            ({"notExecuted": ["y"]}, "did not run"), ({"selection": {"selected": ["a", "b"]}}, "different counts"),
+            ({"selection": {"selected": []}}, "different counts"), ({"selection": None}, "shape differs"),
+            ({"executed": [{"identifier": "AnotherUITests/testOther()"}]}, "disagrees with the runtime"),
+        )
+        for change, message in cases:
             with self.subTest(change=change):
-                run, outputs = self.classify_transported_files(replace=("en-lane.json", json.dumps({**good, **change})))
+                run, outputs = self.classify_transported_files(
+                    replace=("en-lane.json", json.dumps(self.lane_receipt(**change))))
                 self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
                 self.assertIn(message, run.stderr)
                 self.assertIn("verified=false", outputs)

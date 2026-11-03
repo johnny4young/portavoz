@@ -22566,8 +22566,8 @@ lane and fails closed, as `docs/specs/08-quality.md` details. Anchors and the re
 attempt selects from history. A PR into `main` uses its merge base. A stacked PR keeps D542's cumulative
 set, and its own diff ranks first so a parent's journeys cannot crowd out what the child changed. Reruns
 are allowed on pull requests, and the known automation-mode timeout now stays red until one passes. A
-UI lane whose tests did not pass fails as its last step, after its receipts, so rerunning failed jobs
-runs it again.
+UI lane whose evidence is not complete fails as its last step, after its receipts, so rerunning failed
+jobs runs it again.
 `main` keeps `rejectReruns`. The locale matrix is gone, since hosted evidence is English only.
 
 Source qualification now accepts `skipped` on a job the contract does not require. Each of the four
@@ -22578,8 +22578,8 @@ every new pull-request job edit a release contract without adding any proof.
 **Consequences:** this replaces D117, D496 and D546, and retires the anchors of D429 and of D622's
 accepted risk: a cut test is selected again on the next push. A change to `ci.yml` now runs the whole
 Swift suite and the UI canaries, including a change only to the lint job. A manual `full_ui` run also
-pays for `build-and-test` and `ios-portability`, and reports `gate-manual`, so it cannot answer for a
-pull request's required check. A manual run of `ci.yml` on a `main` commit disqualifies that commit from
+pays for `build-and-test` and `ios-portability`, and reports `gate-manual` and `ui-test-gate-manual`, so
+it cannot answer for a pull request's required check. A manual run of `ci.yml` on a `main` commit disqualifies that commit from
 a release, because the contract rejects several runs of `CI` for one commit; `full_ui` belongs on a branch. Protection moves in order, with the old `ui-test-gate` name
 following `gate` until `main` requires `gate`, and `strict` goes then too.
 

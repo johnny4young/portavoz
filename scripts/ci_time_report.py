@@ -30,7 +30,8 @@ REPOSITORY = "johnny4young/portavoz"
 WORKFLOWS = ("ci.yml", "ui-tests.yml")
 WORKFLOW_FILES = (ROOT / ".github/workflows/ci.yml",)
 # The API still reads the retired workflow, so its runs keep a limit to be judged against.
-RETIRED_TIMEOUTS = {"swift-scope": 5, "interruption-controls": 30, "scoped-ui-tests": 22, "ui-test-gate": 5}
+RETIRED_TIMEOUTS = {"swift-scope": 5, "interruption-controls": 30, "build-ui-products": 30, "scoped-ui-tests": 22,
+                    "ui-test-gate": 5}
 EVENTS = ("pull_request", "push")
 # Jobs a merge or a publish waits for, by base name. Later CI stages keep or add
 # to these names, so the same report compares before and after.
@@ -63,7 +64,8 @@ INFRASTRUCTURE_STEP = re.compile(
     r"Check Swift cache|Save successful|Record |Create content-free)")
 GATE_JOBS = frozenset({"ui-test-gate", "gate"})
 RERUN_REFUSED_STEP = "Refuse to manufacture evidence on a rerun"
-UI_LANE_FAILED_STEP = "Fail the lane when its tests did not pass"
+UI_LANE_FAILED_STEP = "Fail the lane when its evidence is not complete"
+UI_RECEIPTS_STEP = "Collect the UI lane's receipts"
 CAPACITY_ANNOTATION = "was not acquired by Runner"
 LOG_TIMESTAMP = r"^\S+Z "
 EXACT_HIT = re.compile(LOG_TIMESTAMP + r"Cache hit for: ", re.MULTILINE)
@@ -235,7 +237,7 @@ def classify_outcome(jobs: Sequence[dict[str, Any]], *, timeouts: dict[str, int]
         steps = {step for job in failed for step in job["failed_steps"]}
         if steps == {RERUN_REFUSED_STEP}:
             return "rerun-refused"
-        if advisory and steps <= {UI_LANE_FAILED_STEP}:
+        if UI_RECEIPTS_STEP in steps or (advisory and steps <= {UI_LANE_FAILED_STEP}):
             return "infrastructure"
         if steps and not all(INFRASTRUCTURE_STEP.match(step) for step in steps):
             return "product"

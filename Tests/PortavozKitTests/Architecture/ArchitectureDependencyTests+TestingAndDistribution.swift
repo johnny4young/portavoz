@@ -242,7 +242,6 @@ extension ArchitectureDependencyTests {
         let runtime = try Self.contents(of: "scripts/ui_test_runtime.py")
         let gate = try Self.contents(of: "scripts/ui_test_ci_gate.py")
         let execution = try Self.contents(of: "scripts/ui_test_execution.py")
-        let ci = workflow
         let swiftLint = try Self.contents(of: "scripts/run-ci-swiftlint.sh")
         let xcodegen = try Self.contents(of: "scripts/install-ci-xcodegen.sh")
         let candidate = try Self.contents(of: "scripts/candidate_automation.py")
@@ -312,11 +311,11 @@ extension ArchitectureDependencyTests {
             "Timed out while enabling automation mode"))
         XCTAssertTrue(execution.contains(
             "has_executed_cases = runtime_cases is not None and runtime_cases > 0"))
-        XCTAssertTrue(ci.contains("runs-on: macos-26"))
-        XCTAssertTrue(ci.contains(
+        XCTAssertTrue(workflow.contains("runs-on: macos-26"))
+        XCTAssertTrue(workflow.contains(
             "scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors"))
-        XCTAssertFalse(ci.contains("run: swift build"))
-        XCTAssertFalse(ci.contains("Select newest Xcode"))
+        XCTAssertFalse(workflow.contains("run: swift build"))
+        XCTAssertFalse(workflow.contains("Select newest Xcode"))
         XCTAssertTrue(swiftLint.contains("version=\"0.65.0\""))
         XCTAssertTrue(xcodegen.contains("version=\"2.46.0\""))
         XCTAssertTrue(runtime.contains("RECEIPT_SCHEMA_VERSION = 3"))

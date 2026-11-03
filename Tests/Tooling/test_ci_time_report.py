@@ -28,7 +28,7 @@ PRODUCT_STEPS = {
     "Build the UI host and runner once",
     "Fit the selection to what remains of the job", "Run functional UI evidence",
     "Classify functional evidence and hosted runtime drift",
-    "Require every lane the selection asked for", "Follow the gate", "Fail the lane when its tests did not pass",
+    "Require every lane the selection asked for", "Follow the gate", "Fail the lane when its evidence is not complete",
 }
 NOT_BLOCKING_JOBS = {"ios-portability"}
 
@@ -193,6 +193,12 @@ class OutcomeTests(unittest.TestCase):
                     steps=[("Require every lane the selection asked for", "failure")])]
         self.assertEqual(self.outcome(jobs, advisory=True), "infrastructure")
         self.assertEqual(self.outcome(jobs), "product")
+
+    def test_a_failed_receipt_download_with_every_lane_green_is_infrastructure(self):
+        jobs = [job("gate", "10:05:00", "10:05:00", "10:05:10", conclusion="failure",
+                    steps=[(report.UI_RECEIPTS_STEP, "failure"),
+                           ("Require every lane the selection asked for", "failure")])]
+        self.assertEqual(self.outcome(jobs), "infrastructure")
 
     def test_a_gate_failing_on_a_cancelled_need_is_not_a_failure_of_its_own(self):
         jobs = [job("scoped-ui-tests (en)", "10:00:00", "10:00:00", "10:05:00", conclusion="cancelled"),
@@ -501,6 +507,25 @@ class CollectionTests(unittest.TestCase):
         client = FakeGitHub([run_entry(1, "ui-tests.yml", "10:00:00")], {(1, 1): data}, logs={9: warning})
         self.assertEqual(self.rows(client)[0]["outcome"], "infrastructure")
 
+    def test_the_hosted_timeout_is_read_from_the_gate_and_not_from_the_job_following_it(self):
+        lane = job("ui-tests", "10:00:00", "10:00:00", "10:05:00", conclusion="failure", job_id=10,
+                   steps=[(report.UI_LANE_FAILED_STEP, "failure")])
+        gate = job("gate", "10:05:00", "10:05:00", "10:05:10", conclusion="failure", job_id=9, runner="ubuntu-latest",
+                   steps=[("Require every lane the selection asked for", "failure")])
+        follower = job("ui-test-gate", "10:05:10", "10:05:10", "10:05:20", conclusion="failure", job_id=8,
+                       runner="ubuntu-latest", steps=[("Follow the gate", "failure")])
+        warning = "2026-11-02T10:05:05.0Z ##[warning]en: automation-mode-timeout; functional evidence remains unverified\n"
+        data = self.attempt_data("10:00:00", [lane, gate, follower])
+        client = FakeGitHub([run_entry(1, "ci.yml", "10:00:00")], {(1, 1): data}, logs={9: warning, 8: "nothing\n"})
+        self.assertEqual(self.rows(client)[0]["outcome"], "infrastructure")
+
+    def test_a_retired_job_cancelled_at_its_limit_is_still_a_timeout(self):
+        retired = job("build-ui-products", "10:00:00", "10:00:00", "10:30:00", conclusion="cancelled")
+        data = self.attempt_data("10:00:00", [retired])
+        client = FakeGitHub([run_entry(1, "ci.yml", "10:00:00")], {(1, 1): data}, pages=[[run_entry(1, "ci.yml", "10:00:00")]])
+        rows = report.collect(client, 1, None)
+        self.assertEqual({row["outcome"] for row in rows}, {"timeout"})
+
     def test_a_capacity_annotation_on_a_cancelled_job_marks_infrastructure(self):
         unacquired = job("build-and-test", "10:00:00", "10:00:00", "10:00:00", conclusion="cancelled", runner=None, job_id=11)
         notes = {11: ["The job was not acquired by Runner of type hosted even after multiple attempts"]}
@@ -597,14 +622,6 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertEqual(unclassified, set())
         self.assertEqual({name for name in PRODUCT_STEPS if report.INFRASTRUCTURE_STEP.match(name)}, set())
         self.assertEqual(PRODUCT_STEPS - names, set(), "a renamed or removed step must leave this list")
-
-    def test_every_retired_job_keeps_a_limit_and_the_current_workflow_outranks_it(self):
-        self.assertEqual(set(report.RETIRED_TIMEOUTS) & {"ui-tests", "gate", "scope"}, set())
-        self.assertIn("{**RETIRED_TIMEOUTS, **declared_timeouts()}", (ROOT / "scripts/ci_time_report.py").read_text())
-
-    def test_the_gate_outranks_the_name_following_it_when_reading_an_advisory(self):
-        self.assertIn('_digest(client, attempt, "gate", gate_log_digest, MISSING_GATE_LOG)\n                or _digest(client, attempt, "ui-test-gate"',
-                      (ROOT / "scripts/ci_time_report.py").read_text(encoding="utf-8"))
 
     def test_the_suite_step_exists_and_only_older_runs_can_refuse_a_rerun(self):
         text = "".join(path.read_text(encoding="utf-8") for path in report.WORKFLOW_FILES)

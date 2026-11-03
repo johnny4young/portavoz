@@ -397,11 +397,11 @@ jobs:
           retention-days: 7
 
       # Last, after the receipts: a rerun of failed jobs must run this lane again.
-      - name: Fail the lane when its tests did not pass
+      - name: Fail the lane when its evidence is not complete
         if: always()
         env:
-          OUTCOME: ${{ steps.ui.outcome }}
-        run: test "$OUTCOME" = "success"
+          COMPLETE: ${{ steps.lane.outputs.complete }}
+        run: test "$COMPLETE" = "true"
 
   gate:
     # The one required check. A manual run keeps another name, so it cannot answer for the PR.
@@ -506,7 +506,9 @@ jobs:
           echo "Gate passed (ui=$UI_REQUIRED, result=$UI_RESULT, verified=${UI_VERIFIED:-not-required})."
 
   ui-test-gate:
-    # Old required name, until main's protection requires gate instead.
+    # Old required name, until main's protection requires gate instead. A skip under this
+    # name would count as passing, so a manual run keeps another one here too.
+    name: ${{ github.event_name == 'pull_request' && 'ui-test-gate' || 'ui-test-gate-manual' }}
     needs: gate
     if: always() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest

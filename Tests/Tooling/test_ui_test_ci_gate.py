@@ -66,6 +66,7 @@ class UITestCIGateTests(unittest.TestCase):
         english_outcome: str = "success",
         receipts: dict[str, dict] | None = None,
         executions: dict[str, dict] | None = None,
+        extra_arguments: tuple[str, ...] = (),
     ) -> subprocess.CompletedProcess[str]:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -118,6 +119,7 @@ class UITestCIGateTests(unittest.TestCase):
                     str(summary),
                     "--github-output",
                     str(github_output),
+                    *extra_arguments,
                 ],
                 cwd=ROOT,
                 check=False,
@@ -226,6 +228,35 @@ class UITestCIGateTests(unittest.TestCase):
             self.outputs,
             {"verified": "false", "state": "infrastructure-advisory"},
         )
+
+    def test_the_hosted_timeout_keeps_its_classification_beside_an_empty_lane_receipt(self):
+        result = self.run_gate(
+            english_outcome="failure",
+            receipts={},
+            executions={
+                "en": execution(
+                    "en",
+                    classification="known-host-infrastructure",
+                    exit_status=65,
+                    runtime_present=False,
+                    signature="automation-mode-timeout",
+                )
+            },
+            extra_arguments=("--head-sha", "a" * 40, "--attempt", "1"),
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self.outputs,
+            {"verified": "false", "state": "infrastructure-advisory"},
+        )
+
+    def test_a_requested_lane_receipt_that_is_missing_fails_a_passing_lane(self):
+        result = self.run_gate(extra_arguments=("--head-sha", "a" * 40, "--attempt", "1"))
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("lane receipt is unreadable", result.stderr)
+        self.assertEqual(self.outputs["verified"], "false")
 
     # What replaces a complete run on a harness change must still catch these.
     def test_harness_self_test_catches_an_omitted_selector(self):

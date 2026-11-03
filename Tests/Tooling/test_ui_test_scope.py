@@ -281,7 +281,6 @@ class UITestScopeTests(unittest.TestCase):
 
         self.assertEqual(outputs["required"], "true")
         self.assertEqual(outputs["tests"].split(), list(ui_scope.ALL_TESTS))
-        self.assertEqual(outputs["locales"], "en")
         self.assertLessEqual(
             len(outputs["summary"].encode("utf-8")),
             ui_scope.MAX_SUMMARY_BYTES,
@@ -694,7 +693,7 @@ class UITestScopeTests(unittest.TestCase):
 
     def test_all_selects_every_test_in_english_only(self):
         for output_format, expected in (
-            ("github", {"locales=en", "interruption_controls=true"}),
+            ("github", {"interruption_controls=true"}),
             ("shell", {"export UI_TEST_LOCALES=en"}),
             ("human", {"Locales: en", f"UI tests: {len(ALL_TESTS)}/{len(ALL_TESTS)}"}),
         ):
@@ -2083,8 +2082,8 @@ class PullRequestBaseSelectionTests(unittest.TestCase):
         run, outputs = self.select(newer_main)
 
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertIn("testDictationOffersTriggersLanguageAndDictionary", outputs["tests"])
-        self.assertNotIn("HomeUITests", outputs["tests"])
+        own = ui_scope.select_paths(["Sources/portavoz-app/DictationSection.swift", "docs/GAPS.md"])
+        self.assertEqual(outputs["tests"].split(), list(own.tests))
 
     def test_what_a_child_changed_ranks_before_what_its_parents_changed(self):
         self.git("reset", "-q", "--hard", self.parent)
