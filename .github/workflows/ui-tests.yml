@@ -164,11 +164,14 @@ jobs:
       cut: ${{ steps.fit.outputs.cut }}
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
-      UI_TEST_PRODUCTS_PATH: ${{ runner.temp }}/ui-products/portavoz-ui.xctestproducts
-      UI_TEST_BUILD_RECEIPT: ${{ runner.temp }}/ui-products/build-duration-seconds.txt
     steps:
-      - name: Record when the job started
-        run: echo "UI_JOB_STARTED=$(date +%s)" >> "$GITHUB_ENV"
+      - name: Record when the job started and where its products go
+        run: |
+          {
+            echo "UI_JOB_STARTED=$(date +%s)"
+            echo "UI_TEST_PRODUCTS_PATH=$RUNNER_TEMP/ui-products/portavoz-ui.xctestproducts"
+            echo "UI_TEST_BUILD_RECEIPT=$RUNNER_TEMP/ui-products/build-duration-seconds.txt"
+          } >> "$GITHUB_ENV"
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 

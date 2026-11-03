@@ -142,7 +142,10 @@ class CIWorkflowTests(unittest.TestCase):
         self.assertIn('flags=(-Xswiftc -warnings-as-errors)', builder)
         self.assertIn("--spec project-ui-runner.yml", builder)
         self.assertIn("-testProductsPath", runner)
-        self.assertIn("UI_TEST_PRODUCTS_PATH", scoped_job)
+        self.assertIn('UI_TEST_PRODUCTS_PATH=$RUNNER_TEMP', scoped_job)
+        # GitHub rejects the whole workflow for this context at job level.
+        for job in (scoped_job, gate_job):
+            self.assertNotIn("runner.temp", job.split("    steps:\n", 1)[0])
         self.assertIn("fail-fast: false", scoped_job)
         self.assertIn("locale: ${{ fromJSON(needs.scope.outputs.matrix) }}", scoped_job)
         self.assertEqual(scoped_job.count("run: make test-ui-run"), 1)
