@@ -22493,3 +22493,30 @@ The accepted risk is that a regression in a cut or nightly-only case reaches `ma
 next night. The verification anchor still advances over a cut run, so a later push does not
 reselect what was cut; the nightly alarm from D615 bounds both. A broad change gets less UI proof
 than before and has to dispatch `full_ui` when that matters.
+
+## D621 — A pull request's UI host comes from the SwiftPM build, and the budget from its job
+
+The UI lane compiled the whole app a second time with `xcodebuild`, always cold, in a second
+macOS job that took 8 to 12 minutes before a test ran. No selection could fit a 10-minute job
+around that. The lane now restores the seed `build-and-test` uses, builds `portavoz-app` with the
+same flags, builds only the XCUITest runner from a spec with no app and no packages, and wraps the
+binary into the disposable host. One job on one Mac does all of it, so the products artifact hop
+ends as well.
+
+The host is injected as `UITargetAppPath` in the `xctestrun`. `XCUIApplication(url:)` was tried
+first and dropped `TMPDIR`, which failed 11 of 191 cases; with the injection the catalog passed
+191 of 191 on the old and the new host at the same commit, and a forced crash failed the run and
+left a report. The host's plist comes from `project.yml`, so the two hosts cannot drift on URL type,
+file type or usage strings, and it inherits nothing that acts like the shipping app.
+
+This resolves the budget D620 left fixed. `scope` now ranks the candidates and the job fits them
+after its build, into what remains of 570 seconds less 15 for teardown. A slow build or a cache miss
+runs fewer candidates and names them, instead of overrunning or failing, and never drops a canary. A
+Core change compiled in 148 to 183 seconds in the trial instead of the planned 150, which is accepted
+because the job's whole budget is the limit that matters. The job's ceiling is 22 minutes so that a cold
+build can finish, and 90 for a manual complete run.
+
+Nightly and `make test-ui-release` keep the complete `project.yml` build, because the release
+candidate must exercise it. Both hosts therefore run the catalog, but the SwiftPM host runs all of it
+only on a manual `full_ui`; a host defect in a case no pull request selects could wait for that run.
+The accepted risks are that, and that the host has no metallib, which no UI case loads.

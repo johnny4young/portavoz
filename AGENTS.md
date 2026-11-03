@@ -51,8 +51,9 @@ library) and asserts against `accessibilityIdentifier`s.
   canaries; an edited UI test runs that method, the tests using an edited helper
   and the canaries; the dependency lock runs the canaries and the moved pins'
   owners; shared-harness changes add a self-test; a path with no known owner
-  reports `scope-unknown`. On a PR the canaries always run and candidates fit a
-  test budget; what does not fit is named as `ui-budget-cut` and nightly owns it.
+  reports `scope-unknown`. On a PR the canaries always run and candidates fit what
+  remains of the job after its build; what does not fit is named as `ui-budget-cut`
+  and nightly owns it.
   No path selects the full catalog by itself: it runs nightly on `main` in three
   shards and on demand with
   `gh workflow run ui-tests.yml --ref <branch> -f full_ui=true`. Add a test with

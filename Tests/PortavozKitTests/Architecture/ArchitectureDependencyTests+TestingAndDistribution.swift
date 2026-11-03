@@ -254,11 +254,12 @@ extension ArchitectureDependencyTests {
             + Self.contents(of: "scripts/ui_test_catalog.py")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
-        // D496: one build job publishes the exact products; one matrix lane
-        // per locale restores them; one Linux classifier reads every lane.
+        // D621: one job builds the host from SwiftPM and runs it, with no second
+        // compiler; one Linux classifier reads every lane.
         XCTAssertEqual(
-            workflow.components(separatedBy: "run: make test-ui-build").count - 1,
+            workflow.components(separatedBy: "run: make test-ui-host-products").count - 1,
             1)
+        XCTAssertFalse(workflow.contains("run: make test-ui-build"))
         XCTAssertEqual(
             workflow.components(separatedBy: "run: make test-ui-run").count - 1,
             1)

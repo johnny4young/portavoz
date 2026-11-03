@@ -25,7 +25,8 @@ PRODUCT_STEPS = {
     "Repository, evidence, and CI policy contracts", "Release performance ledger rules", "Select the Swift test scope",
     "Current-SDK build and selected test suite", "Compile transport-neutral iOS 26 surface", "Strict SwiftLint 0.65.0 from checksum-pinned official archive",
     "Validate the selector catalog", "Select UI evidence", "Verify interruption safety at the shared callback",
-    "Build selected UI products once", "Run ${{ matrix.locale }} functional UI evidence",
+    "Build the UI host and runner once",
+    "Fit the selection to what remains of the job", "Run ${{ matrix.locale }} functional UI evidence",
     "Refuse to manufacture evidence on a rerun", "Classify functional evidence and hosted runtime drift",
     "Require selected evidence and allow an honest no-UI skip",
 }
@@ -598,6 +599,13 @@ class TimeoutParsingTests(unittest.TestCase):
         timeouts = report.declared_timeouts()
         for name in ("repository-hygiene", "lint", "scope", "build-and-test", "ui-test-gate", "scoped-ui-tests"):
             self.assertIn(name, timeouts)
+
+    def test_a_timeout_expression_reports_the_pull_request_ceiling(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workflow = Path(directory) / "ui.yml"
+            workflow.write_text("jobs:\n  lane:\n    timeout-minutes: ${{ inputs.full_ui && 90 || 22 }}\n", encoding="utf-8")
+
+            self.assertEqual(report.declared_timeouts((workflow,)), {"lane": 22})
 
 
 if __name__ == "__main__":

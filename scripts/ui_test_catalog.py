@@ -422,6 +422,9 @@ FEATURE_TIERS: dict[str, int] = {
 # Test phase of a pull request's UI lane: what the 9:30 job leaves after setup, the app build
 # and the runner for a view change. xcodebuild adds about 46 s plus 0.22 s a test.
 UI_TEST_BUDGET_SECONDS = 300.0
+# A pull request's UI job; after the build, its candidates get what remains of this.
+UI_JOB_BUDGET_SECONDS = 570.0
+UI_JOB_TEARDOWN_SECONDS = 15.0
 UI_TEST_OVERHEAD_SECONDS = 46.0
 UI_TEST_OVERHEAD_PER_TEST_SECONDS = 0.22
 

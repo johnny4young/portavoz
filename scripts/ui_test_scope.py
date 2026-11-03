@@ -73,6 +73,11 @@ HARNESS_FILES = frozenset({
     ".github/workflows/ui-tests.yml",
     "Makefile",
     "project.yml",
+    "project-ui-runner.yml",
+    "scripts/build-ui-host-products.sh",
+    "scripts/make-ui-host.sh",
+    "scripts/ui_host.py",
+    "scripts/ui_test_fit.py",
     "scripts/candidate_automation.py",
     "scripts/check-ui-test-host.py",
     "scripts/check-ui-interruption-safety.py",
@@ -190,6 +195,7 @@ class Selection:
     # Lower sorts first when the budget chooses; absent for explicit runs.
     priority: Mapping[str, tuple[int, int]] = field(default_factory=dict, hash=False)
     cut: tuple[str, ...] = ()
+    ranked: tuple[str, ...] = ()
 
     @property
     def required(self) -> bool:
@@ -940,6 +946,11 @@ def select_paths(
             )
             continue
 
+        if path == "Tests/Support/MeetingBundleFixture.swift":
+            selected.update(feature_tests({"audio-imports"}))
+            reasons.append(f"{path}: audio-imports")
+            continue
+
         if path.startswith("Tests/PortavozDictationReceiver/"):
             selected.update(feature_tests({"dictation"}))
             reasons.append(f"{path}: native dictation receiver contract")
@@ -1047,29 +1058,56 @@ def feature_tier(test: str) -> int:
     return min((FEATURE_TIERS.get(feature, 2) for feature, tests in FEATURE_TESTS.items() if test in tests), default=2)
 
 
-def apply_budget(selection: Selection, seconds: Mapping[str, float], budget: float = UI_TEST_BUDGET_SECONDS) -> Selection:
-    """Keep the canaries and the best candidates that fit; the rest wait for nightly, never vanish.
+def test_cost(test: str, seconds: Mapping[str, float]) -> float:
+    return seconds[runtime_budget_key(test)] + UI_TEST_OVERHEAD_PER_TEST_SECONDS
 
-    Raises when the canaries alone exceed the budget: emptying them would prove nothing.
-    """
-    def cost(test: str) -> float:
-        return seconds[runtime_budget_key(test)] + UI_TEST_OVERHEAD_PER_TEST_SECONDS
 
-    chosen = list(SMOKE_TESTS) if selection.tests else []
-    used = UI_TEST_OVERHEAD_SECONDS + sum(cost(test) for test in chosen)
-    if chosen and used > budget:
+def require_canaries_fit(seconds: Mapping[str, float], budget: float) -> None:
+    """Emptying the canaries would prove nothing, so a budget they exceed is an error."""
+    used = UI_TEST_OVERHEAD_SECONDS + sum(test_cost(test, seconds) for test in SMOKE_TESTS)
+    if used > budget:
         raise ValueError(f"the canaries need {used:.0f} s against a budget of {budget:.0f} s")
-    candidates = sorted(
+
+
+def ranked_candidates(selection: Selection, seconds: Mapping[str, float]) -> tuple[str, ...]:
+    return tuple(sorted(
         (test for test in selection.tests if test not in SMOKE_TESTS),
-        key=lambda test: (*selection.priority.get(test, (2, 0)), feature_tier(test), cost(test), test))
+        key=lambda test: (*selection.priority.get(test, (2, 0)), feature_tier(test), test_cost(test, seconds), test)))
+
+
+def fit_ranked(tests: Sequence[str], ranked: Sequence[str], seconds: Mapping[str, float],
+               budget: float) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """What runs and what waits for nightly. Anything unranked runs however late the build ended."""
+    chosen = [test for test in tests if test not in ranked]
+    used = UI_TEST_OVERHEAD_SECONDS + sum(test_cost(test, seconds) for test in chosen)
     cut = []
-    for test in candidates:
-        if used + cost(test) <= budget:
+    for test in ranked:
+        if used + test_cost(test, seconds) <= budget:
             chosen.append(test)
-            used += cost(test)
+            used += test_cost(test, seconds)
         else:
             cut.append(test)
-    return replace(selection, tests=tuple(test for test in ALL_TESTS if test in chosen), cut=tuple(cut))
+    return tuple(test for test in ALL_TESTS if test in chosen), tuple(cut)
+
+
+def rank_for_job(selection: Selection, seconds: Mapping[str, float]) -> Selection:
+    """Name the canaries and every candidate; the job fits them once its build has ended."""
+    if not selection.tests:
+        return selection
+    require_canaries_fit(seconds, UI_TEST_BUDGET_SECONDS)
+    chosen = {*SMOKE_TESTS, *selection.tests}
+    return replace(selection, tests=tuple(test for test in ALL_TESTS if test in chosen),
+                   ranked=ranked_candidates(selection, seconds))
+
+
+def apply_budget(selection: Selection, seconds: Mapping[str, float], budget: float = UI_TEST_BUDGET_SECONDS) -> Selection:
+    """Keep the canaries and the best candidates that fit; the rest wait for nightly, never vanish."""
+    if not selection.tests:
+        return selection
+    require_canaries_fit(seconds, budget)
+    ranked = ranked_candidates(selection, seconds)
+    tests, cut = fit_ranked((*SMOKE_TESTS, *ranked), ranked, seconds, budget)
+    return replace(selection, tests=tests, cut=cut)
 
 
 def changed_paths(base: str, head: str) -> list[str]:
@@ -1396,6 +1434,7 @@ def render(selection: Selection, output_format: str) -> str:
                 f"scope_unknown={'true' if selection.scope_unknown else 'false'}",
                 f"deferred={selection.deferred_to_nightly}",
                 f"cut={' '.join(selection.cut)}",
+                f"ranked={' '.join(selection.ranked)}",
                 f"summary={summary}",
             )
         )
@@ -1434,7 +1473,8 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--shard", help="With --all, select balanced shard K of N (for example 2/3)")
     result.add_argument("--format", choices=("human", "github", "shell"), default="human")
     result.add_argument("--validate-catalog", action="store_true", help="Fail if a UI test lacks a selector")
-    result.add_argument("--budget", action="store_true", help="Cut what does not fit a pull request's test budget")
+    result.add_argument("--budget", action="store_true", help="Cut what does not fit a pull request's nominal test budget")
+    result.add_argument("--ranked", action="store_true", help="Rank the candidates for the UI job to fit after its build")
     return result
 
 
@@ -1487,9 +1527,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         if arguments.base:
             ui_changes = ui_test_changes(arguments.base, None if arguments.working_tree else arguments.head, Path.cwd())
         selection = select_paths(paths, changes, root, pin_changes, ui_changes)
-        if arguments.budget:
+        if arguments.budget or arguments.ranked:
             try:
-                selection = apply_budget(selection, hosted_seconds(root))
+                budgeted = apply_budget if arguments.budget else rank_for_job
+                selection = budgeted(selection, hosted_seconds(root))
             except ValueError as error:
                 print(f"UI budget exceeded: {error}", file=sys.stderr)
                 return 2

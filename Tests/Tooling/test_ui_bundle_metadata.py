@@ -43,13 +43,10 @@ class UIBundleMetadataTests(unittest.TestCase):
             self.shipping["CFBundleIdentifier"],
         )
 
-    def test_bundle_fixture_links_its_typed_codec_explicitly(self):
-        products = {
-            product
-            for dependency in self.project["targets"]["PortavozUITests"]["dependencies"]
-            for product in dependency.get("products", [])
-        }
-        self.assertTrue({"PortavozCore", "IntegrationsKit"}.issubset(products))
+    def test_the_ui_bundle_links_no_package(self):
+        dependencies = self.project["targets"]["PortavozUITests"]["dependencies"]
+
+        self.assertEqual([dependency for dependency in dependencies if "package" in dependency], [])
 
 
 if __name__ == "__main__":

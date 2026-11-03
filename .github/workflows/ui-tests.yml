@@ -30,7 +30,7 @@ jobs:
       summary: ${{ steps.select.outputs.summary }}
       scope_unknown: ${{ steps.select.outputs.scope_unknown }}
       deferred: ${{ steps.select.outputs.deferred }}
-      cut: ${{ steps.select.outputs.cut }}
+      ranked: ${{ steps.select.outputs.ranked }}
       base: ${{ steps.verified_base.outputs.base }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -75,11 +75,11 @@ jobs:
           if [[ "$EVENT_NAME" == "workflow_dispatch" && "$FULL_UI" == "true" ]]; then
             python3 scripts/ui_test_scope.py --all --format github >> "$GITHUB_OUTPUT"
           elif [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
-            python3 scripts/ui_test_scope.py --budget \
+            python3 scripts/ui_test_scope.py --ranked \
               --base "$(git merge-base origin/main HEAD)" --head HEAD \
               --format github >> "$GITHUB_OUTPUT"
           else
-            python3 scripts/ui_test_scope.py --budget \
+            python3 scripts/ui_test_scope.py --ranked \
               --base "$VERIFIED_BASE_SHA" --head "$HEAD_SHA" \
               --format github >> "$GITHUB_OUTPUT"
           fi
@@ -92,7 +92,6 @@ jobs:
           VERIFIED_BASE: ${{ steps.verified_base.outputs.summary }}
           SCOPE_UNKNOWN: ${{ steps.select.outputs.scope_unknown }}
           DEFERRED: ${{ steps.select.outputs.deferred }}
-          CUT: ${{ steps.select.outputs.cut }}
           HEAD_REF: ${{ github.head_ref || github.ref_name }}
         run: |
           echo "${VERIFIED_BASE:-manual request}"
@@ -100,10 +99,6 @@ jobs:
           echo "Locales: ${LOCALES:-none}"
           echo "Selectors: ${TESTS:-none}"
           echo "Deferred to nightly: ${DEFERRED:-0}" | tee -a "$GITHUB_STEP_SUMMARY"
-          if [[ -n "$CUT" ]]; then
-            echo "Cut by the budget: $CUT" | tee -a "$GITHUB_STEP_SUMMARY"
-            echo "::notice title=ui-budget-cut::$(wc -w <<< "$CUT" | tr -d ' ') candidates wait for nightly: $CUT"
-          fi
           if [[ "$SCOPE_UNKNOWN" == "true" ]]; then
             echo "::warning title=UI scope unknown::Canaries and what fits of the harness self-test are selected. For the complete catalog: gh workflow run ui-tests.yml --ref $HEAD_REF -f full_ui=true"
           fi
@@ -146,14 +141,35 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  build-ui-products:
-    needs: scope
-    if: needs.scope.outputs.required == 'true'
+  scoped-ui-tests:
+    needs: [scope, interruption-controls]
+    if: >-
+      always() && !cancelled() &&
+      needs.scope.result == 'success' &&
+      needs.scope.outputs.required == 'true' &&
+      ((needs.scope.outputs.interruption_controls == 'true' &&
+        needs.interruption-controls.result == 'success') ||
+       (needs.scope.outputs.interruption_controls == 'false' &&
+        needs.interruption-controls.result == 'skipped'))
     runs-on: macos-26
-    timeout-minutes: 30
+    # The ceiling, not the target: a cold build still has to finish on a pull request.
+    # Only a manual full_ui run holds the complete catalog.
+    timeout-minutes: ${{ inputs.full_ui && 90 || 22 }}
+    strategy:
+      fail-fast: false
+      matrix:
+        locale: ${{ fromJSON(needs.scope.outputs.matrix) }}
+    outputs:
+      tests: ${{ steps.fit.outputs.tests }}
+      cut: ${{ steps.fit.outputs.cut }}
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      UI_TEST_PRODUCTS_PATH: ${{ runner.temp }}/ui-products/portavoz-ui.xctestproducts
+      UI_TEST_BUILD_RECEIPT: ${{ runner.temp }}/ui-products/build-duration-seconds.txt
     steps:
+      - name: Record when the job started
+        run: echo "UI_JOB_STARTED=$(date +%s)" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Verify fixed Tahoe toolchain
@@ -162,76 +178,57 @@ jobs:
       - name: Install checksum-pinned XcodeGen 2.46.0
         run: scripts/install-ci-xcodegen.sh "$RUNNER_TEMP/portavoz-xcodegen"
 
-      # One build feeds every locale lane. The exact products travel as one
-      # xctestproducts bundle so no lane recompiles this head on its own.
-      - name: Build selected UI products once
+      - name: Identify compatible Swift build state
+        id: swift_cache_key
+        run: python3 scripts/ci_swift_cache_key.py --lane build-and-test --commit "$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+
+      # The seed main saves for build-and-test; this lane reads it and never saves.
+      - name: Restore compatible Swift build state
+        id: swift_cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .build
+          key: ${{ steps.swift_cache_key.outputs.key }}
+          restore-keys: |
+            ${{ steps.swift_cache_key.outputs.graph_prefix }}
+            ${{ steps.swift_cache_key.outputs.prefix }}
         env:
-          UI_TESTS: ${{ needs.scope.outputs.tests }}
-          UI_TEST_PRODUCTS_PATH: ${{ runner.temp }}/ui-products/portavoz-ui.xctestproducts
-          UI_TEST_BUILD_RECEIPT: ${{ runner.temp }}/ui-products/build-duration-seconds.txt
-        run: make test-ui-build
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: "2"
 
-      # GitHub artifacts do not preserve the executable bit or symlinks, and
-      # the bundle contains a real .app. tar carries both across the hop.
-      - name: Archive the exact products with their bundle permissions
-        run: tar -czf "$RUNNER_TEMP/ui-products.tar.gz" -C "$RUNNER_TEMP/ui-products" .
-
-      - name: Publish the exact UI products for the locale lanes
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: ui-products-${{ github.run_id }}
-          path: ${{ runner.temp }}/ui-products.tar.gz
-          if-no-files-found: error
-          retention-days: 1
-
-  scoped-ui-tests:
-    needs: [scope, build-ui-products, interruption-controls]
-    if: >-
-      always() && !cancelled() &&
-      needs.scope.result == 'success' &&
-      needs.scope.outputs.required == 'true' &&
-      needs.build-ui-products.result == 'success' &&
-      ((needs.scope.outputs.interruption_controls == 'true' &&
-        needs.interruption-controls.result == 'success') ||
-       (needs.scope.outputs.interruption_controls == 'false' &&
-        needs.interruption-controls.result == 'skipped'))
-    runs-on: macos-26
-    # The scope matrix is English only; the lane runs on its own hosted Mac
-    # against the shared products. A manual full_ui run selects all catalog tests.
-    # This 90-minute job-orchestration ceiling is not a per-test/runtime budget.
-    timeout-minutes: 90
-    strategy:
-      fail-fast: false
-      matrix:
-        locale: ${{ fromJSON(needs.scope.outputs.matrix) }}
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Verify fixed Tahoe toolchain
-        run: scripts/verify-ci-toolchain.sh 26 26.6
-
-      - name: Restore the exact UI products
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: ui-products-${{ github.run_id }}
-          path: ${{ runner.temp }}/ui-archive
-
-      - name: Unpack the products with their bundle permissions
+      - name: Verify cached source freshness
+        if: steps.swift_cache.outputs.cache-matched-key != ''
         run: |
-          mkdir -p "$RUNNER_TEMP/ui-products"
-          tar -xzf "$RUNNER_TEMP/ui-archive/ui-products.tar.gz" \
-            -C "$RUNNER_TEMP/ui-products"
+          if ! python3 scripts/ci_swift_source_stamps.py restore || ! swift package resolve; then
+            echo "::warning::Cached Swift build state failed freshness verification; building cold."
+            rm -rf .build
+          fi
+
+      - name: Build the UI host and runner once
+        run: make test-ui-host-products
+
+      - name: Fit the selection to what remains of the job
+        id: fit
+        env:
+          TESTS: ${{ needs.scope.outputs.tests }}
+          RANKED: ${{ needs.scope.outputs.ranked }}
+        run: |
+          python3 scripts/ui_test_fit.py --tests "$TESTS" --ranked "$RANKED" \
+            --elapsed "$(($(date +%s) - UI_JOB_STARTED))" > "$RUNNER_TEMP/ui-fit.txt"
+          cat "$RUNNER_TEMP/ui-fit.txt" >> "$GITHUB_OUTPUT"
+          cut="$(sed -n 's/^cut=//p' "$RUNNER_TEMP/ui-fit.txt")"
+          left="$(sed -n 's/^left=//p' "$RUNNER_TEMP/ui-fit.txt")"
+          echo "Seconds left after the build: $left" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [[ -n "$cut" ]]; then
+            echo "Cut by the budget: $cut" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "::notice title=ui-budget-cut::$(wc -w <<< "$cut" | tr -d ' ') candidates wait for nightly: $cut"
+          fi
 
       - name: Run ${{ matrix.locale }} functional UI evidence
         id: ui
         continue-on-error: true
         env:
-          UI_TESTS: ${{ needs.scope.outputs.tests }}
+          UI_TESTS: ${{ steps.fit.outputs.tests }}
           UI_TEST_LOCALES: ${{ matrix.locale }}
-          UI_TEST_PRODUCTS_PATH: ${{ runner.temp }}/ui-products/portavoz-ui.xctestproducts
-          UI_TEST_BUILD_RECEIPT: ${{ runner.temp }}/ui-products/build-duration-seconds.txt
           # GitHub-hosted macOS wall-clock variance is reported in the receipt,
           # not promoted to performance authority. Local/stable-Mac integration
           # keeps the same unchanged budgets blocking by default.
@@ -253,9 +250,9 @@ jobs:
         env:
           LOCALE: ${{ matrix.locale }}
           OUTCOME: ${{ steps.ui.outcome }}
-          SELECTED: ${{ needs.scope.outputs.tests }}
+          SELECTED: ${{ steps.fit.outputs.tests }}
           DEFERRED: ${{ needs.scope.outputs.deferred }}
-          CUT: ${{ needs.scope.outputs.cut }}
+          CUT: ${{ steps.fit.outputs.cut }}
           SCOPE_UNKNOWN: ${{ needs.scope.outputs.scope_unknown }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           ATTEMPT: ${{ github.run_attempt }}
@@ -296,6 +293,14 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      # The host's crash report never reaches the result bundle by itself.
+      - name: Collect host crash reports
+        if: always() && steps.lane.outputs.complete != 'true'
+        run: |
+          mkdir -p dist/ui-test-results/crash-reports
+          find "$HOME/Library/Logs/DiagnosticReports" -name 'Portavoz*.ips' \
+            -exec cp {} dist/ui-test-results/crash-reports/ \; 2>/dev/null || true
+
       - name: Preserve ${{ matrix.locale }} UI evidence
         if: always() && steps.lane.outputs.complete != 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -306,7 +311,7 @@ jobs:
           retention-days: 7
 
   ui-test-gate:
-    needs: [scope, build-ui-products, interruption-controls, scoped-ui-tests]
+    needs: [scope, interruption-controls, scoped-ui-tests]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -356,9 +361,8 @@ jobs:
           UI_REQUIRED: ${{ needs.scope.outputs.required }}
           CONTROLS_REQUIRED: ${{ needs.scope.outputs.interruption_controls }}
           CONTROLS_RESULT: ${{ needs.interruption-controls.result }}
-          BUILD_RESULT: ${{ needs.build-ui-products.result }}
           UI_RESULT: ${{ needs.scoped-ui-tests.result }}
-          UI_CUT: ${{ needs.scope.outputs.cut }}
+          UI_CUT: ${{ needs.scoped-ui-tests.outputs.cut }}
           UI_VERIFIED: ${{ steps.classify.outputs.verified }}
           UI_STATE: ${{ steps.classify.outputs.state }}
         run: |
@@ -377,10 +381,6 @@ jobs:
               exit 1
               ;;
           esac
-          if [[ "$UI_REQUIRED" == "true" && "$BUILD_RESULT" != "success" ]]; then
-            echo "The shared UI products did not build: $BUILD_RESULT" >&2
-            exit 1
-          fi
           if [[ "$UI_REQUIRED" == "true" && "$UI_RESULT" != "success" ]]; then
             echo "Selected UI lanes did not complete: $UI_RESULT" >&2
             exit 1
@@ -405,7 +405,7 @@ jobs:
           echo "Scoped UI gate passed (required=$UI_REQUIRED, result=$UI_RESULT, verified=${UI_VERIFIED:-not-required})."
 
   verification-anchor:
-    needs: [scope, ui-test-gate]
+    needs: [scope, scoped-ui-tests, ui-test-gate]
     if: >-
       always() &&
       github.run_attempt == 1 &&
@@ -420,7 +420,7 @@ jobs:
         env:
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           UI_REQUIRED: ${{ needs.scope.outputs.required }}
-          UI_TESTS: ${{ needs.scope.outputs.tests }}
+          UI_TESTS: ${{ needs.scoped-ui-tests.outputs.tests }}
           UI_LOCALES: ${{ needs.scope.outputs.locales }}
         run: |
           python3 scripts/ui_test_verification_anchor.py \

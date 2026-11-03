@@ -115,14 +115,14 @@ def distribution(values: Iterable[int | None]) -> dict[str, int] | None:
 
 
 def declared_timeouts(paths: Iterable[Path] = WORKFLOW_FILES) -> dict[str, int]:
-    """Job `timeout-minutes` by job id, read as text to stay stdlib-only."""
+    """A pull request's `timeout-minutes` by job id, read as text to stay stdlib-only."""
     timeouts: dict[str, int] = {}
     for path in paths:
         job = None
         for line in path.read_text(encoding="utf-8").splitlines():
             if declared := re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line):
                 job = declared.group(1)
-            elif job and (limit := re.match(r"^    timeout-minutes: (\d+)\s*$", line)):
+            elif job and (limit := re.match(r"^    timeout-minutes: (?:\$\{\{.*\|\| )?(\d+)(?: \}\})?\s*$", line)):
                 timeouts[job] = int(limit.group(1))
     return timeouts
 

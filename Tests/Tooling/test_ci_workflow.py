@@ -115,21 +115,14 @@ class CIWorkflowTests(unittest.TestCase):
             "\n  ui-test-gate:\n", 1
         )[0]
 
-        self.assertEqual(scoped_job.count("    timeout-minutes: 90\n"), 1)
-        self.assertNotIn("timeout-minutes: 60", scoped_job)
-        self.assertIn(
-            "90-minute job-orchestration ceiling is not a per-test/runtime budget",
-            scoped_job,
-        )
+        self.assertEqual(scoped_job.count("    timeout-minutes: ${{ inputs.full_ui && 90 || 22 }}\n"), 1)
 
-    def test_locale_lanes_share_one_build_and_one_classifier(self):
+    def test_one_job_builds_the_host_and_runs_it_without_a_second_compiler(self):
         workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
             encoding="utf-8"
         )
         runner = (ROOT / "scripts/run-ui-tests.sh").read_text(encoding="utf-8")
-        build_job = workflow.split("  build-ui-products:\n", 1)[1].split(
-            "\n  scoped-ui-tests:\n", 1
-        )[0]
+        builder = (ROOT / "scripts/build-ui-host-products.sh").read_text(encoding="utf-8")
         scoped_job = workflow.split("  scoped-ui-tests:\n", 1)[1].split(
             "\n  ui-test-gate:\n", 1
         )[0]
@@ -137,14 +130,22 @@ class CIWorkflowTests(unittest.TestCase):
             "\n  verification-anchor:\n", 1
         )[0]
 
-        # Exactly one build owns the products; every lane restores them.
-        self.assertEqual(workflow.count("run: make test-ui-build"), 1)
+        self.assertNotIn("build-ui-products", workflow)
+        self.assertNotIn("run: make test-ui-build", workflow)
+        self.assertNotIn("upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2\n        with:\n          name: ui-products", workflow)
+        self.assertLess(scoped_job.index("Restore compatible Swift build state"),
+                        scoped_job.index("run: make test-ui-host-products"))
+        self.assertLess(scoped_job.index("run: make test-ui-host-products"), scoped_job.index("id: fit"))
+        self.assertLess(scoped_job.index("id: fit"), scoped_job.index("run: make test-ui-run"))
+        self.assertNotIn("actions/cache/save", scoped_job)
+        self.assertIn("-warnings-as-errors", builder)
+        self.assertIn('flags=(-Xswiftc -warnings-as-errors)', builder)
+        self.assertIn("--spec project-ui-runner.yml", builder)
         self.assertIn("-testProductsPath", runner)
-        self.assertIn("UI_TEST_PRODUCTS_PATH", build_job)
+        self.assertIn("UI_TEST_PRODUCTS_PATH", scoped_job)
         self.assertIn("fail-fast: false", scoped_job)
         self.assertIn("locale: ${{ fromJSON(needs.scope.outputs.matrix) }}", scoped_job)
         self.assertEqual(scoped_job.count("run: make test-ui-run"), 1)
-        self.assertNotIn("xcodegen", scoped_job.lower())
         # One Linux classifier reads every lane's receipts and outcome.
         self.assertEqual(workflow.count("scripts/ui_test_ci_gate.py"), 1)
         self.assertIn("scripts/ui_test_ci_gate.py", gate_job)
@@ -265,7 +266,7 @@ class UIPrerequisiteTests(unittest.TestCase):
         import subprocess
 
         environment = dict(os.environ, SCOPE_RESULT="success", UI_REQUIRED="true",
-                           BUILD_RESULT="success", CONTROLS_REQUIRED="true",
+                           CONTROLS_REQUIRED="true",
                            CONTROLS_RESULT="success", UI_RESULT="success",
                            UI_VERIFIED="true", UI_STATE="passed")
         environment.update(overrides)
@@ -274,21 +275,21 @@ class UIPrerequisiteTests(unittest.TestCase):
 
     def test_native_and_product_builds_are_independent_single_owners(self):
         native = self.jobs["interruption-controls"]
-        build = self.jobs["build-ui-products"]
-        for job in (native, build):
-            self.assertIn("    needs: scope\n", job)
-            self.assertIn("runs-on: macos-26", job)
+        build = self.jobs["scoped-ui-tests"]
+        self.assertIn("    needs: scope\n", native)
+        self.assertIn("runs-on: macos-26", native)
+        self.assertIn("runs-on: macos-26", build)
         self.assertIn("if: needs.scope.outputs.interruption_controls == 'true'", native)
         self.assertEqual(native.count("run: make test-ui-interruption-safety "), 1)
         self.assertNotIn("test-ui-build", native)
         self.assertNotIn("test-ui-interruption-safety", build)
-        self.assertEqual(build.count("run: make test-ui-build"), 1)
+        self.assertEqual(build.count("run: make test-ui-host-products"), 1)
         self.assertIn("if: always()", native)
         self.assertIn("name: ui-interruption-safety-${{ github.run_id }}", native)
 
     def test_interruption_evidence_is_archived_by_its_owning_job(self):
         native = self.jobs["interruption-controls"]
-        self.assertNotIn("archive-ui-interruption-evidence", self.jobs["build-ui-products"])
+        self.assertNotIn("archive-ui-interruption-evidence", self.jobs["scoped-ui-tests"])
         self.assertEqual(native.count("scripts/archive-ui-interruption-evidence.sh"), 1)
         self.assertIn("steps.interruption_controls.outcome != 'skipped'", native)
         upload = native.split("      - name: Upload interruption-control evidence\n", 1)[1]
@@ -300,13 +301,12 @@ class UIPrerequisiteTests(unittest.TestCase):
 
     def test_locales_join_both_prerequisites_even_when_native_is_skipped(self):
         lane = self.jobs["scoped-ui-tests"]
-        self.assertIn("needs: [scope, build-ui-products, interruption-controls]", lane)
+        self.assertIn("needs: [scope, interruption-controls]", lane)
         self.assertIn("always() && !cancelled()", lane)
-        self.assertIn("needs.build-ui-products.result == 'success'", lane)
         self.assertIn("needs.interruption-controls.result == 'success'", lane)
         self.assertIn("needs.interruption-controls.result == 'skipped'", lane)
         gate = self.jobs["ui-test-gate"]
-        self.assertIn("needs: [scope, build-ui-products, interruption-controls, scoped-ui-tests]", gate)
+        self.assertIn("needs: [scope, interruption-controls, scoped-ui-tests]", gate)
         self.assertIn("CONTROLS_REQUIRED: ${{ needs.scope.outputs.interruption_controls }}", gate)
         self.assertIn("CONTROLS_RESULT: ${{ needs.interruption-controls.result }}", gate)
         self.assertIn("needs.ui-test-gate.result == 'success'", self.jobs["verification-anchor"])
@@ -324,7 +324,7 @@ class UIPrerequisiteTests(unittest.TestCase):
 
     def test_no_ui_change_requires_no_native_work(self):
         run = self.run_gate(UI_REQUIRED="false", CONTROLS_REQUIRED="false",
-                            CONTROLS_RESULT="skipped", BUILD_RESULT="skipped",
+                            CONTROLS_RESULT="skipped",
                             UI_RESULT="skipped", UI_VERIFIED="", UI_STATE="")
         self.assertEqual(run.returncode, 0, run.stderr)
 
@@ -334,7 +334,7 @@ class UIPrerequisiteTests(unittest.TestCase):
         self.assertIn("cannot require native controls", run.stderr)
 
     def test_other_failures_cannot_hide_behind_successful_native_controls(self):
-        for key in ("SCOPE_RESULT", "BUILD_RESULT", "UI_RESULT"):
+        for key in ("SCOPE_RESULT", "UI_RESULT"):
             for result in ("failure", "cancelled", "skipped", ""):
                 with self.subTest(key=key, result=result):
                     run = self.run_gate(**{key: result})
@@ -535,9 +535,14 @@ class NightlyUIWorkflowTests(unittest.TestCase):
     def test_pull_requests_select_within_the_budget_and_report_what_was_cut(self):
         workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
 
-        self.assertEqual(workflow.count("python3 scripts/ui_test_scope.py --budget"), 2)
+        self.assertEqual(workflow.count("python3 scripts/ui_test_scope.py --ranked"), 2)
+        self.assertNotIn("ui_test_scope.py --budget", workflow)
         self.assertIn("python3 scripts/ui_test_scope.py --all --format github", workflow)
-        self.assertIn("cut: ${{ steps.select.outputs.cut }}", workflow)
+        self.assertIn("ranked: ${{ steps.select.outputs.ranked }}", workflow)
+        self.assertIn("cut: ${{ steps.fit.outputs.cut }}", workflow)
+        self.assertIn("UI_TESTS: ${{ steps.fit.outputs.tests }}", workflow)
+        self.assertIn("UI_TESTS: ${{ needs.scoped-ui-tests.outputs.tests }}", workflow)
+        self.assertIn("UI_CUT: ${{ needs.scoped-ui-tests.outputs.cut }}", workflow)
         self.assertIn("::notice title=ui-budget-cut::", workflow)
         self.assertIn('--cut "$CUT"', workflow)
         self.assertIn("Not run, for nightly to own: $UI_CUT", workflow)

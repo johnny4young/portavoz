@@ -37,7 +37,7 @@ PORTAVOZ_LSREGISTER := /System/Library/Frameworks/CoreServices.framework/Framewo
 	test-exact-path-cross-host exact-path-cross-host test-exact-path-baseline exact-path-baseline \
 	test-meeting-detail-baseline meeting-detail-baseline \
 	test-recording-stress test-model-gated test-ui-real-audio test-ui test-ui-en test-ui-es \
-	test-ui-release test-ui-native-dictation test-ui-scoped test-ui-build test-ui-run test-ui-changed \
+	test-ui-release test-ui-native-dictation test-ui-scoped test-ui-build test-ui-host-products test-ui-run test-ui-changed \
 	test-ui-preflight project app install \
 	production-sync-qualification-app production-sync-qualification-init \
 	production-sync-qualification-stage production-sync-qualification-status \
@@ -828,6 +828,10 @@ test-ui-scoped: test-ui-build
 ## following locale runs reuse these exact products in the same workspace.
 test-ui-build: project
 	UI_TEST_PHASE=build-only UI_TESTS="$(UI_TESTS)" scripts/run-ui-tests.sh
+
+## A pull request's UI products: the app from SwiftPM, only the runner from Xcode.
+test-ui-host-products:
+	scripts/build-ui-host-products.sh
 
 ## Run one or more locales from the prepared products. Preflight happens here,
 ## immediately before automation rather than before a potentially long build.

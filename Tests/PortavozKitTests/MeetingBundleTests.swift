@@ -5,6 +5,20 @@ import XCTest
 @testable import IntegrationsKit
 
 final class MeetingBundleTests: XCTestCase {
+    func testTheUIRunnersPackageFreeFixtureDecodesThroughTheProductionCodec() throws {
+        let title = "Fixture meeting"
+        let texts = ["Primera línea.", "Segunda línea."]
+
+        let bundle = try MeetingBundle.decode(MeetingBundleFixture.data(title: title, texts: texts))
+
+        XCTAssertEqual(MeetingBundleFixture.fileExtension, MeetingBundle.fileExtension)
+        XCTAssertEqual(bundle.formatVersion, MeetingBundle.currentFormatVersion)
+        XCTAssertEqual(bundle.meeting.title, title)
+        XCTAssertEqual(bundle.segments.map(\.text), texts)
+        XCTAssertEqual(bundle.segments.map(\.meetingID), [bundle.meeting.id, bundle.meeting.id])
+        XCTAssertEqual(bundle.segments.map(\.speakerID), [bundle.speakers[0].id, bundle.speakers[0].id])
+    }
+
     private func sample() -> MeetingBundle {
         let meeting = Meeting(
             title: "Sprint Demo · Zephyr",
