@@ -1,9 +1,9 @@
 """The host a pull request's UI lane wraps from SwiftPM, compared with its project owner."""
 
-import json
+import copy
 import plistlib
+import re
 import shutil
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -67,22 +67,98 @@ class XctestrunInjectionTests(unittest.TestCase):
                              ui_host.HOST_IN_TEST_ROOT)
 
 
+def specs():
+    target = {"sources": [{"path": "Tests"}], "type": "bundle", "platform": "macOS",
+              "deploymentTarget": "26.0", "settings": {"base": {"A": "1"}}}
+    receiver = {**target, "type": "application"}
+    runner = {"settings": {"base": {"SWIFT_VERSION": "6.0"}},
+              "targets": {"PortavozUITests": copy.deepcopy(target), "PortavozDictationReceiver": copy.deepcopy(receiver)}}
+    project = {**copy.deepcopy(runner), "packages": {"Portavoz": {"path": "."}}}
+    project["targets"]["Portavoz"] = {
+        "deploymentTarget": "26.0", "settings": {"base": {ui_host.HOST_IDENTIFIER_KEY: IDENTIFIER}},
+        "info": {"properties": {"CFBundleDevelopmentRegion": "en"}}}
+    project["settings"]["base"].update(MARKETING_VERSION="0.1.0", CURRENT_PROJECT_VERSION="1")
+    runner["settings"]["base"].update(MARKETING_VERSION="0.1.0", CURRENT_PROJECT_VERSION="1")
+    return project, runner
+
+
+class RunnerContractTests(unittest.TestCase):
+    def test_a_matching_runner_has_no_problem(self):
+        self.assertEqual(ui_host.contract_problems(*specs()), [])
+
+    def test_runner_drift_from_the_full_project_is_named(self):
+        for key, value in (("sources", [{"path": "Other"}]), ("deploymentTarget", "27.0"),
+                           ("settings", {"base": {"A": "2"}}), ("type", "tool"), ("platform", "iOS")):
+            with self.subTest(key=key):
+                project, runner = specs()
+                project["targets"]["PortavozUITests"][key] = value
+
+                self.assertEqual(ui_host.contract_problems(project, runner), [f"PortavozUITests differs in {key}"])
+
+    def test_shared_settings_drift_is_named(self):
+        project, runner = specs()
+        project["settings"]["base"]["SWIFT_VERSION"] = "6.2"
+
+        self.assertEqual(ui_host.contract_problems(project, runner), ["the shared settings differ"])
+
+    def test_a_runner_with_the_app_or_a_package_is_refused(self):
+        project, runner = specs()
+        runner["targets"]["Portavoz"] = {}
+        runner["packages"] = {"Portavoz": {"path": "."}}
+
+        problems = ui_host.contract_problems(project, runner)
+
+        self.assertIn("the runner must have no app target", problems[0])
+        self.assertIn("the runner must link no package", problems)
+
+    def test_a_host_key_that_acts_like_the_shipping_app_is_refused(self):
+        for key in ui_host.FORBIDDEN_HOST_KEYS:
+            with self.subTest(key=key):
+                project, runner = specs()
+                project["targets"]["Portavoz"]["info"]["properties"][key] = "x"
+
+                self.assertEqual(ui_host.contract_problems(project, runner), [f"the host must not declare {key}"])
+
+
+class WiringTests(unittest.TestCase):
+    def test_the_contract_runs_before_anything_compiles(self):
+        builder = (ROOT / "scripts/build-ui-host-products.sh").read_text(encoding="utf-8")
+
+        self.assertLess(builder.index("scripts/ui_host.py verify"), builder.index("swift build"))
+
+    def test_hygiene_owns_this_module_and_both_scripts(self):
+        hygiene = (ROOT / "scripts/check-repository-hygiene.sh").read_text(encoding="utf-8")
+
+        for line in ("python3 -m unittest Tests.Tooling.test_ui_host", "bash -n scripts/make-ui-host.sh",
+                     "bash -n scripts/build-ui-host-products.sh"):
+            self.assertIn(line, hygiene)
+
+    def test_the_full_project_app_links_what_the_swiftpm_app_links(self):
+        package = (ROOT / "Package.swift").read_text(encoding="utf-8")
+        project = (ROOT / "project.yml").read_text(encoding="utf-8")
+        app = re.search(r'name: "portavoz-app",\s*dependencies: \[(.*?)\n\s*\]', package, re.DOTALL).group(1)
+        linked = set(re.findall(r'^\s*"(\w+)"|[\s,]"(\w+)"(?=,|\s*$)', app, re.MULTILINE))
+        swiftpm = {name for pair in linked for name in pair if name} - {"Sparkle"}
+        section = project.split("    dependencies:\n      - package: Portavoz\n        products:\n", 1)[1]
+        section = section.split("      - package: Sparkle", 1)[0]
+
+        self.assertEqual(set(re.findall(r"- (\w+)", section)), swiftpm)
+        self.assertIn('.product(name: "Sparkle", package: "Sparkle")', app)
+
+
 @unittest.skipUnless(shutil.which("xcodegen"), "XcodeGen is required to parse the UI projects")
 class HostAndRunnerSpecTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.project = ui_host.project_spec()
-        with tempfile.TemporaryDirectory() as directory:
-            output = Path(directory) / "runner.json"
-            subprocess.run(
-                ["xcodegen", "dump", "--spec", str(ROOT / "project-ui-runner.yml"),
-                 "--type", "json", "--no-env", "--quiet", "--file", str(output)],
-                check=True, capture_output=True, text=True, timeout=30)
-            cls.runner = json.loads(output.read_text(encoding="utf-8"))
+        cls.runner = ui_host.runner_spec()
         cls.plist = ui_host.info_plist(cls.project)
         script = (ROOT / "scripts/make-app.sh").read_text(encoding="utf-8")
         cls.shipping = plistlib.loads(
             script.split('cat > "$APP/Contents/Info.plist" << \'PLIST\'\n', 1)[1].split("\nPLIST", 1)[0].encode())
+
+    def test_the_tracked_specs_satisfy_the_contract(self):
+        self.assertEqual(ui_host.contract_problems(self.project, self.runner), [])
 
     def test_the_host_plist_is_project_yml_and_a_complete_bundle(self):
         properties = self.project["targets"]["Portavoz"]["info"]["properties"]
@@ -92,25 +168,13 @@ class HostAndRunnerSpecTests(unittest.TestCase):
         self.assertEqual(self.plist["CFBundleExecutable"], "Portavoz")
         self.assertEqual(self.plist["LSMinimumSystemVersion"], "26.0")
 
-    def test_the_host_inherits_nothing_that_would_act_like_the_shipping_app(self):
-        for key in ("CFBundleDocumentTypes", "SUFeedURL", "SUEnableAutomaticChecks", "SUPublicEDKey"):
-            self.assertNotIn(key, self.plist)
+    def test_the_host_shares_the_shipping_file_type_but_not_its_identity(self):
         self.assertNotEqual(self.plist["CFBundleIdentifier"], self.shipping["CFBundleIdentifier"])
         self.assertEqual(self.plist["UTExportedTypeDeclarations"], self.shipping["UTExportedTypeDeclarations"])
         script = (ROOT / "scripts/make-ui-host.sh").read_text(encoding="utf-8")
         for inherited in ("portavoz-cli", "--options runtime", "make-app.sh", "swift build --product"):
             self.assertNotIn(inherited, script)
         self.assertIn("packaging/portavoz-local.entitlements", script)
-
-    def test_the_runner_has_no_app_and_no_package(self):
-        self.assertEqual(set(self.runner["targets"]), {"PortavozUITests", "PortavozDictationReceiver"})
-        self.assertNotIn("packages", self.runner)
-
-    def test_the_runner_builds_what_the_full_project_builds(self):
-        for name in ("PortavozUITests", "PortavozDictationReceiver"):
-            for key in ("sources", "type", "platform", "deploymentTarget", "settings"):
-                with self.subTest(target=name, key=key):
-                    self.assertEqual(self.runner["targets"][name][key], self.project["targets"][name][key])
 
 
 if __name__ == "__main__":

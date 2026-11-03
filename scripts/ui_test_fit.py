@@ -7,7 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-from ui_test_catalog import UI_JOB_BUDGET_SECONDS, UI_JOB_TEARDOWN_SECONDS  # noqa: E402
+from ui_test_catalog import ALL_TESTS, UI_JOB_BUDGET_SECONDS, UI_JOB_TEARDOWN_SECONDS  # noqa: E402
 from ui_test_scope import fit_ranked, hosted_seconds  # noqa: E402
 
 
@@ -21,6 +21,7 @@ def main() -> int:
     tests, cut = fit_ranked(tuple(args.tests.split()), tuple(args.ranked.split()), hosted_seconds(ROOT), left)
     print(f"tests={' '.join(tests)}")
     print(f"cut={' '.join(cut)}")
+    print(f"deferred={len(ALL_TESTS) - len(tests)}")
     print(f"left={max(0, round(left))}")
     return 0
 

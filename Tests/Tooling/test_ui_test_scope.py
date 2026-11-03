@@ -1612,6 +1612,8 @@ class UITestScopeTests(unittest.TestCase):
         self.assertIn("cut=\n", early)
         self.assertIn("left=0", late)
         self.assertIn(f"cut={candidate}", late)
+        self.assertIn(f"deferred={len(ALL_TESTS) - len(SMOKE_TESTS) - 1}", early)
+        self.assertIn(f"deferred={len(ALL_TESTS) - len(SMOKE_TESTS)}", late)
 
     def test_the_ui_fixture_selects_its_import_journey(self):
         selection = select_paths(["Tests/Support/MeetingBundleFixture.swift"])

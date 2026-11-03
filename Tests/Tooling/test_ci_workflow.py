@@ -138,8 +138,6 @@ class CIWorkflowTests(unittest.TestCase):
         self.assertLess(scoped_job.index("run: make test-ui-host-products"), scoped_job.index("id: fit"))
         self.assertLess(scoped_job.index("id: fit"), scoped_job.index("run: make test-ui-run"))
         self.assertNotIn("actions/cache/save", scoped_job)
-        self.assertIn("-warnings-as-errors", builder)
-        self.assertIn('flags=(-Xswiftc -warnings-as-errors)', builder)
         self.assertIn("--spec project-ui-runner.yml", builder)
         self.assertIn("-testProductsPath", runner)
         self.assertIn('UI_TEST_PRODUCTS_PATH=$RUNNER_TEMP', scoped_job)
@@ -221,8 +219,8 @@ class CIWorkflowTests(unittest.TestCase):
         self.assertIn('if [[ "$SCOPE_UNKNOWN" == "true" ]]; then', explain)
         self.assertIn("::warning title=UI scope unknown::Canaries and what fits of the harness self-test are selected.", explain)
         self.assertIn("-f full_ui=true", explain)
-        self.assertIn('Deferred to nightly: ${DEFERRED:-0}', explain)
-        self.assertIn("$GITHUB_STEP_SUMMARY", explain)
+        fit = ui.split("- name: Fit the selection to what remains of the job\n", 1)[1].split("- name: Run ", 1)[0]
+        self.assertIn('echo "Deferred to nightly: $deferred" | tee -a "$GITHUB_STEP_SUMMARY"', fit)
 
     def test_ui_scope_requires_first_attempt_anchor_and_never_previous_push(self):
         workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
@@ -546,6 +544,9 @@ class NightlyUIWorkflowTests(unittest.TestCase):
         self.assertIn("UI_TESTS: ${{ steps.fit.outputs.tests }}", workflow)
         self.assertIn("UI_TESTS: ${{ needs.scoped-ui-tests.outputs.tests }}", workflow)
         self.assertIn("UI_CUT: ${{ needs.scoped-ui-tests.outputs.cut }}", workflow)
+        self.assertIn("DEFERRED: ${{ steps.fit.outputs.deferred }}", workflow)
+        self.assertIn('Deferred to nightly: $deferred', workflow)
+        self.assertNotIn("needs.scope.outputs.deferred", workflow)
         self.assertIn("::notice title=ui-budget-cut::", workflow)
         self.assertIn('--cut "$CUT"', workflow)
         self.assertIn("Not run, for nightly to own: $UI_CUT", workflow)

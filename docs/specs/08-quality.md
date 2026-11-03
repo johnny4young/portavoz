@@ -616,8 +616,8 @@ by feature tier and fewest seconds. After its build, the UI job's `scripts/ui_te
 while their hosted p90 and xcodebuild's overhead fit what remains of 570 seconds, less 15 for
 teardown (D621). The rest are not dropped: `cut` names them in the job
 summary, a `ui-budget-cut` notice, the gate's result and the lane receipt, and nightly owns them. A
-late build runs the canaries alone and never cuts one, while canaries over the nominal 300 seconds of
-`--budget` fail the selection. `docs/evidence/ui-test-hosted-seconds.json` comes from
+late build runs the canaries alone and never cuts one, while canaries over a nominal 300 seconds
+fail the selection, and `--budget` dry-runs that figure. `docs/evidence/ui-test-hosted-seconds.json` comes from
 `scripts/ui_test_hosted_seconds.py` over nightly logs; a case without one counts at its ceiling. A local `make test-ui-changed`
 does not cut. `testCleanStopReachesAReadyMeetingWithItsTranscriptAndPlayer` proves a
 clean Stop through the production Stop and post-capture adapters, with a disposable
@@ -634,7 +634,9 @@ wraps the app through `scripts/make-ui-host.sh`. `scripts/ui_host.py` writes the
 disposable bundle identifier, URL type, exported file type, localizations, App Intents
 metadata and ad-hoc local entitlements, and has no updater keys, document claim, CLI link or
 metallib. A failed lane uploads the host's crash reports with its result bundle. Nightly and
-`make test-ui-release` still build the full `project.yml`, so both hosts run the catalog. A UI test
+`make test-ui-release` still build the full `project.yml`; the SwiftPM host runs the whole catalog only on
+a manual `full_ui`. `scripts/ui_host.py verify` runs before the build and refuses a runner that drifts from
+`project.yml`, or a host key that would act like the shipping app. A UI test
 imports no package: `Tests/Support/MeetingBundleFixture.swift` writes its bundle by hand and
 `MeetingBundleTests` proves the production codec reads it. Direct-to-main PRs may advance the selection base only from a
 first-attempt verified ancestor. A stacked PR always selects from the merge
@@ -5626,10 +5628,10 @@ correctly failed closed, and no verification anchor was published. The
 preserved English receipt and missing Spanish receipt distinguish orchestration
 exhaustion from a product assertion, skip, malformed receipt, or green retry.
 
-The `scoped-ui-tests` job now has a 90-minute global orchestration ceiling. It
-was sized for one build plus both complete sequential locales with bounded
-hosted variance and cleanup/upload/classification headroom; since D496 each
-locale lane owns that ceiling alone while the build runs in its own job. It is not a product
+The `scoped-ui-tests` job keeps a 90-minute global orchestration ceiling only on a
+manual complete run, and 22 minutes on a pull request (D621). The 90 minutes were sized for one
+build plus both complete sequential locales with bounded
+hosted variance and cleanup/upload/classification headroom. Neither is a product
 or per-test runtime budget: selectors, assertions, test waits, the controlled-
 host per-journey/catalogue/p95 budgets, locale order, artifact preservation,
 first-attempt requirement, no-retry rule, and fail-closed classifier remain
@@ -6559,8 +6561,8 @@ never reads a window title or bounds, dismisses a prompt, resets LaunchServices,
 or terminates another process. Persistent `testmanagerd`, unit-test processes,
 `build-for-testing`, and idle `xcodebuildmcp` helpers are not evidence of an
 active UI run. Eighteen injectable tooling cases and source-policy ratchets pin
-those classifications. D463 gives the hosted bilingual job a 90-minute global
-orchestration ceiling; the current 105-case-per-locale catalogue still runs
+those classifications. D463 gave the hosted bilingual job a 90-minute global
+orchestration ceiling, which D621 keeps only for a manual complete run; the 105-case-per-locale catalogue still runs
 sequentially from one shared build without parallel locale contention. That
 ceiling does not replace or widen any per-test or controlled-host runtime
 budget.

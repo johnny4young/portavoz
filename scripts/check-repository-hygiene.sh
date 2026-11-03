@@ -150,6 +150,7 @@ python3 -m unittest Tests.Tooling.test_ui_interruption_evidence_archive
 python3 -m unittest Tests.Tooling.test_ui_interruption_safety
 python3 -m unittest Tests.Tooling.test_app_payload_permissions
 python3 -m unittest Tests.Tooling.test_ui_bundle_metadata
+python3 -m unittest Tests.Tooling.test_ui_host
 python3 -m unittest Tests.Tooling.test_ui_copy_policy
 python3 -m unittest Tests.Tooling.test_ui_test_verified_base
 python3 -m unittest Tests.Tooling.test_ui_test_verification_anchor
@@ -159,6 +160,8 @@ bash -n scripts/make-production-sync-qualification-app.sh
 bash -n scripts/verify-cloudkit-capabilities.sh
 bash -n scripts/run-release-reliability-gates.sh
 bash -n scripts/run-ui-tests.sh
+bash -n scripts/make-ui-host.sh
+bash -n scripts/build-ui-host-products.sh
 bash -n scripts/pr-evidence.sh
 bash -n scripts/check-swift-cache-size.sh
 bash -n scripts/run-ci-swiftlint.sh

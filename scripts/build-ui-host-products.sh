@@ -10,6 +10,7 @@ receipt="${UI_TEST_BUILD_RECEIPT:?UI_TEST_BUILD_RECEIPT must name the build rece
 flags=(-Xswiftc -warnings-as-errors)
 started=$SECONDS
 
+python3 scripts/ui_host.py verify
 mkdir -p "$(dirname "$products")" "$(dirname "$receipt")"
 rm -rf "$products"
 rm -f "$receipt"

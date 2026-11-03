@@ -1058,13 +1058,13 @@ def feature_tier(test: str) -> int:
     return min((FEATURE_TIERS.get(feature, 2) for feature, tests in FEATURE_TESTS.items() if test in tests), default=2)
 
 
-def test_cost(test: str, seconds: Mapping[str, float]) -> float:
+def case_seconds(test: str, seconds: Mapping[str, float]) -> float:
     return seconds[runtime_budget_key(test)] + UI_TEST_OVERHEAD_PER_TEST_SECONDS
 
 
 def require_canaries_fit(seconds: Mapping[str, float], budget: float) -> None:
     """Emptying the canaries would prove nothing, so a budget they exceed is an error."""
-    used = UI_TEST_OVERHEAD_SECONDS + sum(test_cost(test, seconds) for test in SMOKE_TESTS)
+    used = UI_TEST_OVERHEAD_SECONDS + sum(case_seconds(test, seconds) for test in SMOKE_TESTS)
     if used > budget:
         raise ValueError(f"the canaries need {used:.0f} s against a budget of {budget:.0f} s")
 
@@ -1072,19 +1072,19 @@ def require_canaries_fit(seconds: Mapping[str, float], budget: float) -> None:
 def ranked_candidates(selection: Selection, seconds: Mapping[str, float]) -> tuple[str, ...]:
     return tuple(sorted(
         (test for test in selection.tests if test not in SMOKE_TESTS),
-        key=lambda test: (*selection.priority.get(test, (2, 0)), feature_tier(test), test_cost(test, seconds), test)))
+        key=lambda test: (*selection.priority.get(test, (2, 0)), feature_tier(test), case_seconds(test, seconds), test)))
 
 
 def fit_ranked(tests: Sequence[str], ranked: Sequence[str], seconds: Mapping[str, float],
                budget: float) -> tuple[tuple[str, ...], tuple[str, ...]]:
     """What runs and what waits for nightly. Anything unranked runs however late the build ended."""
     chosen = [test for test in tests if test not in ranked]
-    used = UI_TEST_OVERHEAD_SECONDS + sum(test_cost(test, seconds) for test in chosen)
+    used = UI_TEST_OVERHEAD_SECONDS + sum(case_seconds(test, seconds) for test in chosen)
     cut = []
     for test in ranked:
-        if used + test_cost(test, seconds) <= budget:
+        if used + case_seconds(test, seconds) <= budget:
             chosen.append(test)
-            used += test_cost(test, seconds)
+            used += case_seconds(test, seconds)
         else:
             cut.append(test)
     return tuple(test for test in ALL_TESTS if test in chosen), tuple(cut)

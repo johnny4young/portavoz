@@ -29,7 +29,6 @@ jobs:
       matrix: ${{ steps.select.outputs.matrix }}
       summary: ${{ steps.select.outputs.summary }}
       scope_unknown: ${{ steps.select.outputs.scope_unknown }}
-      deferred: ${{ steps.select.outputs.deferred }}
       ranked: ${{ steps.select.outputs.ranked }}
       base: ${{ steps.verified_base.outputs.base }}
     steps:
@@ -91,14 +90,12 @@ jobs:
           LOCALES: ${{ steps.select.outputs.locales }}
           VERIFIED_BASE: ${{ steps.verified_base.outputs.summary }}
           SCOPE_UNKNOWN: ${{ steps.select.outputs.scope_unknown }}
-          DEFERRED: ${{ steps.select.outputs.deferred }}
           HEAD_REF: ${{ github.head_ref || github.ref_name }}
         run: |
           echo "${VERIFIED_BASE:-manual request}"
           echo "$SUMMARY"
           echo "Locales: ${LOCALES:-none}"
           echo "Selectors: ${TESTS:-none}"
-          echo "Deferred to nightly: ${DEFERRED:-0}" | tee -a "$GITHUB_STEP_SUMMARY"
           if [[ "$SCOPE_UNKNOWN" == "true" ]]; then
             echo "::warning title=UI scope unknown::Canaries and what fits of the harness self-test are selected. For the complete catalog: gh workflow run ui-tests.yml --ref $HEAD_REF -f full_ui=true"
           fi
@@ -220,7 +217,9 @@ jobs:
           cat "$RUNNER_TEMP/ui-fit.txt" >> "$GITHUB_OUTPUT"
           cut="$(sed -n 's/^cut=//p' "$RUNNER_TEMP/ui-fit.txt")"
           left="$(sed -n 's/^left=//p' "$RUNNER_TEMP/ui-fit.txt")"
+          deferred="$(sed -n 's/^deferred=//p' "$RUNNER_TEMP/ui-fit.txt")"
           echo "Seconds left after the build: $left" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Deferred to nightly: $deferred" | tee -a "$GITHUB_STEP_SUMMARY"
           if [[ -n "$cut" ]]; then
             echo "Cut by the budget: $cut" | tee -a "$GITHUB_STEP_SUMMARY"
             echo "::notice title=ui-budget-cut::$(wc -w <<< "$cut" | tr -d ' ') candidates wait for nightly: $cut"
@@ -254,7 +253,7 @@ jobs:
           LOCALE: ${{ matrix.locale }}
           OUTCOME: ${{ steps.ui.outcome }}
           SELECTED: ${{ steps.fit.outputs.tests }}
-          DEFERRED: ${{ needs.scope.outputs.deferred }}
+          DEFERRED: ${{ steps.fit.outputs.deferred }}
           CUT: ${{ steps.fit.outputs.cut }}
           SCOPE_UNKNOWN: ${{ needs.scope.outputs.scope_unknown }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -296,7 +295,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      # The host's crash report never reaches the result bundle by itself.
+      # Keep the host's crash reports beside the result bundle of a lane that did not pass.
       - name: Collect host crash reports
         if: always() && steps.lane.outputs.complete != 'true'
         run: |

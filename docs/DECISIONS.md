@@ -22517,6 +22517,8 @@ because the job's whole budget is the limit that matters. The job's ceiling is 2
 build can finish, and 90 for a manual complete run.
 
 Nightly and `make test-ui-release` keep the complete `project.yml` build, because the release
-candidate must exercise it. Both hosts therefore run the catalog, but the SwiftPM host runs all of it
-only on a manual `full_ui`; a host defect in a case no pull request selects could wait for that run.
-The accepted risks are that, and that the host has no metallib, which no UI case loads.
+candidate must exercise it. The accepted risks are these. The SwiftPM host runs the whole catalog only on
+a manual `full_ui`, so a host defect in a case no pull request selects could wait for that run. The host
+has no metallib, which no UI case loads. A pull request no longer builds the `project.yml` app, so
+only a test tying its products to `Package.swift` guards it before the night. A cache miss can cut even
+an edited test, which is named but not run; the verification anchor still advances over that run.

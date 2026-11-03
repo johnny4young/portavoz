@@ -99,6 +99,16 @@ class SwiftCacheIdentityTests(unittest.TestCase):
                 self.assertIn(f"run: scripts/run-swift-tests.sh {flags}\n", workflow)
         self.assertIn('swift build --build-tests ${build[@]+"${build[@]}"}',
                       (ROOT / "scripts/run-swift-tests.sh").read_text())
+        self.assertIn(f"flags=({flags})\n", (ROOT / "scripts/build-ui-host-products.sh").read_text())
+
+    def test_the_ui_lane_restores_the_seed_exactly_as_build_and_test_does(self):
+        def restore_steps(name):
+            workflow = (ROOT / ".github/workflows" / name).read_text()
+            block = workflow.split("      - name: Identify compatible Swift build state\n", 1)[1]
+            block = block.split("            rm -rf .build\n          fi\n", 1)[0]
+            return [line for line in block.splitlines() if line.strip() and not line.lstrip().startswith("#")]
+
+        self.assertEqual(restore_steps("ui-tests.yml"), restore_steps("ci.yml"))
 
     def test_the_command_reads_the_toolchain_once(self):
         arguments = ["cache", "--lane", "build-and-test", "--commit", COMMIT]
