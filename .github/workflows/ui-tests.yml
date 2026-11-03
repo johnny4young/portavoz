@@ -30,6 +30,7 @@ jobs:
       summary: ${{ steps.select.outputs.summary }}
       scope_unknown: ${{ steps.select.outputs.scope_unknown }}
       deferred: ${{ steps.select.outputs.deferred }}
+      cut: ${{ steps.select.outputs.cut }}
       base: ${{ steps.verified_base.outputs.base }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -74,11 +75,11 @@ jobs:
           if [[ "$EVENT_NAME" == "workflow_dispatch" && "$FULL_UI" == "true" ]]; then
             python3 scripts/ui_test_scope.py --all --format github >> "$GITHUB_OUTPUT"
           elif [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
-            python3 scripts/ui_test_scope.py \
+            python3 scripts/ui_test_scope.py --budget \
               --base "$(git merge-base origin/main HEAD)" --head HEAD \
               --format github >> "$GITHUB_OUTPUT"
           else
-            python3 scripts/ui_test_scope.py \
+            python3 scripts/ui_test_scope.py --budget \
               --base "$VERIFIED_BASE_SHA" --head "$HEAD_SHA" \
               --format github >> "$GITHUB_OUTPUT"
           fi
@@ -91,6 +92,7 @@ jobs:
           VERIFIED_BASE: ${{ steps.verified_base.outputs.summary }}
           SCOPE_UNKNOWN: ${{ steps.select.outputs.scope_unknown }}
           DEFERRED: ${{ steps.select.outputs.deferred }}
+          CUT: ${{ steps.select.outputs.cut }}
           HEAD_REF: ${{ github.head_ref || github.ref_name }}
         run: |
           echo "${VERIFIED_BASE:-manual request}"
@@ -98,8 +100,12 @@ jobs:
           echo "Locales: ${LOCALES:-none}"
           echo "Selectors: ${TESTS:-none}"
           echo "Deferred to nightly: ${DEFERRED:-0}" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [[ -n "$CUT" ]]; then
+            echo "Cut by the budget: $CUT" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "::notice title=ui-budget-cut::$(wc -w <<< "$CUT" | tr -d ' ') candidates wait for nightly: $CUT"
+          fi
           if [[ "$SCOPE_UNKNOWN" == "true" ]]; then
-            echo "::warning title=UI scope unknown::Canaries and the harness self-test are selected. For the complete catalog: gh workflow run ui-tests.yml --ref $HEAD_REF -f full_ui=true"
+            echo "::warning title=UI scope unknown::Canaries and what fits of the harness self-test are selected. For the complete catalog: gh workflow run ui-tests.yml --ref $HEAD_REF -f full_ui=true"
           fi
 
   interruption-controls:
@@ -252,6 +258,7 @@ jobs:
           OUTCOME: ${{ steps.ui.outcome }}
           SELECTED: ${{ needs.scope.outputs.tests }}
           DEFERRED: ${{ needs.scope.outputs.deferred }}
+          CUT: ${{ needs.scope.outputs.cut }}
           SCOPE_UNKNOWN: ${{ needs.scope.outputs.scope_unknown }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           ATTEMPT: ${{ github.run_attempt }}
@@ -259,7 +266,7 @@ jobs:
           python3 scripts/ui_test_lane_receipt.py \
             --locale "$LOCALE" --results dist/ui-test-results --sha "$HEAD_SHA" --attempt "$ATTEMPT" \
             --toolchain "$(xcodebuild -version | tr '\n' ' ')" --outcome "$OUTCOME" \
-            --tests "$SELECTED" --deferred "$DEFERRED" --scope-unknown "$SCOPE_UNKNOWN" \
+            --tests "$SELECTED" --deferred "$DEFERRED" --cut "$CUT" --scope-unknown "$SCOPE_UNKNOWN" \
             --github-output "$GITHUB_OUTPUT"
 
       - name: Record PR screenshots
@@ -354,6 +361,7 @@ jobs:
           CONTROLS_RESULT: ${{ needs.interruption-controls.result }}
           BUILD_RESULT: ${{ needs.build-ui-products.result }}
           UI_RESULT: ${{ needs.scoped-ui-tests.result }}
+          UI_CUT: ${{ needs.scope.outputs.cut }}
           UI_VERIFIED: ${{ steps.classify.outputs.verified }}
           UI_STATE: ${{ steps.classify.outputs.state }}
         run: |
@@ -384,6 +392,9 @@ jobs:
             case "$UI_STATE:$UI_VERIFIED" in
               passed:true)
                 echo "Scoped UI functional evidence is complete."
+                if [[ -n "${UI_CUT:-}" ]]; then
+                  echo "Not run, for nightly to own: $UI_CUT" | tee -a "$GITHUB_STEP_SUMMARY"
+                fi
                 ;;
               infrastructure-advisory:false)
                 echo "::warning::Known hosted UI infrastructure was unavailable; this head will not become a verification anchor."

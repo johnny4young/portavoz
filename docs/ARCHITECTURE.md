@@ -5802,11 +5802,13 @@ invalidation checks; a hit alone is not evidence of a faster or passing build.
 Pull-request UI evidence is selected deterministically from changed paths, and
 no path selects the complete catalogue by itself. Known presentation files and lower-layer
 files with a proven owner map to feature-level XCUITest selectors. Lower-layer
-and unmapped app Swift files without a proven owner run seventeen smoke canaries
-across the main surfaces: unit tests own their behavior. A changed UI-test file
-runs its class and the canaries. A string-catalog change runs the journeys whose
-UI tests quote a changed key or its previous/new English value as Xcode compiles
-it, plus the canaries. A Spanish-only change needs no UI evidence. A dependency
+and unmapped app Swift files without a proven owner run ten smoke canaries
+across the main surfaces: unit tests own their behavior. An edited UI test runs
+that method, the tests using an edited helper and the canaries, and a change
+outside any function runs its class. A string-catalog change runs the tests that
+quote a changed key or its previous/new English value as Xcode compiles
+it, plus the canaries. A pull request always runs the canaries, and the rest must
+fit a test budget; what does not fit is named and left to nightly. A Spanish-only change needs no UI evidence. A dependency
 lock change runs the canaries and the owners of the moved pins. Shared-harness
 changes run the canaries and a harness self-test of the app handoffs. A manifest
 or seed-fixture change, a pin without an owner, an unreadable catalogue or lock,

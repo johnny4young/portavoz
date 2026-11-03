@@ -282,6 +282,40 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testCleanStopReachesAReadyMeetingWithItsTranscriptAndPlayer() throws {
+        let directory = try UITestStorage.makeDirectory()
+        let app = try XCUIApplication.portavoz()
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DATABASE_PATH"] = directory.appendingPathComponent("library.sqlite").path
+        app.launchEnvironment["PORTAVOZ_AUDIO_ROOT"] = directory.appendingPathComponent("audio").path
+        app.launchArguments.append("-simulate-clean-capture")
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+        let record = app.buttons["library-new-recording-button"]
+        XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
+        record.click()
+        let caption = "La captura limpia termina lista para revisar."
+        XCTAssertTrue(app.staticTexts[caption].firstMatch.waitForExistenceFast(timeout: 10))
+        let stop = app.buttons["recording-stop"]
+        XCTAssertTrue(stop.waitForExistenceFast(timeout: 5))
+        stop.click()
+
+        XCTAssertTrue(app.staticTexts[caption].firstMatch.waitForExistenceFast(timeout: 15))
+        XCTAssertTrue(app.control(withIdentifier: "player-play-pause").waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(app.control(withIdentifier: "player-play-pause").isEnabled)
+        XCTAssertFalse(app.control(withIdentifier: "detail-capture-report").exists)
+        // A compact window keeps the summary behind its pane; the full layout shows both.
+        let summaryPane = app.buttons["detail-compact-summary"]
+        if summaryPane.waitForExistenceFast(timeout: 3) {
+            summaryPane.click()
+        }
+        XCTAssertTrue(
+            app.staticTexts["Durable processing finished."].waitForExistenceFast(timeout: 30),
+            "a clean Stop must finish post-capture work without a recovery path")
+        XCTAssertFalse(app.control(withIdentifier: "detail-processing-status").exists)
+        attachScreenshot(of: app, named: "clean-stop-ready")
+    }
+
+    @MainActor
     func testRecordingWarnsWhenRemoteAudioCallbacksStop() throws {
         let app = try XCUIApplication.portavoz(simulateSystemCaptureStall: true)
         app.launchPortavoz()

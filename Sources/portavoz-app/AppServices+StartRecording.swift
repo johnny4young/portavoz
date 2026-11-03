@@ -22,6 +22,8 @@ extension AppServices {
         } else if ProcessInfo.processInfo.arguments.contains("-use-temp-store"),
                   ProcessInfo.processInfo.arguments.contains("-simulate-capture-prefix-failure") {
             runtime = UITestCaptureFailureRuntime(audioRoot: Self.audioRoot)
+        } else if fixtureRequested("-simulate-clean-capture") {
+            runtime = UITestCleanCaptureRuntime(audioRoot: Self.audioRoot)
         } else if isRecordingFailureFixture {
             runtime = UITestStartRecordingFailureRuntime()
         } else if isSystemCaptureStallFixture {

@@ -22479,3 +22479,42 @@ The SwiftPM lane keeps its index: a local cold build without it took 130 s again
 **Consequences:** Pushes close together on `main` run side by side and use more
 macOS slots. Every `main` push and manual run still runs the complete suite, so a
 missed reader fails there instead of on the pull request.
+
+## D621 — A pull request's UI evidence fits a budget, chosen by what changed
+
+Selecting by file left two costs after D616: one edited line in a large UI test file selected
+its whole class, and a broad file name such as `MeetingDetailScene` selected every meeting
+journey. Most of the catalog ran on pull requests though unit tests own much of it, and no
+hosted test proved a clean Stop.
+
+Each case now has one of three homes: canaries and feature groups, nightly only, or on demand.
+The canaries change to ten that cover launch, recovery, clean and failed capture, live
+captions, search and Ask, meeting review, Settings and the menu bar. The clean Stop case is new
+and uses a disposable fixture through the production Stop and post-capture adapters. An edited
+test selects that method and an edited helper the tests that run it, and a lifecycle method, a
+property, a change outside any function or a helper with no visible user falls back to the class. The broad name rules narrow to one owner.
+
+A pull request always runs the canaries, then adds candidates while their observed hosted p90
+and xcodebuild's overhead fit 300 seconds, about what a 9:30 job leaves after setup, the app build
+and the runner for a view change. Edited methods come first, then helper consumers,
+then the tests the most paths map to, then feature tier and fewest seconds. A harness or unknown
+change ranks its self-tests first, though not all five always fit. The result is
+deterministic for the same diff and times. A candidate over the budget is named in the job
+summary, a `ui-budget-cut` notice, the gate's result and the lane receipt, and nightly runs it. Nothing is deleted
+for not fitting, and canaries over the budget fail the selection instead of shrinking it. An
+edited nightly-only method runs on its pull request despite the triage's "never on a PR", because
+its author is the one who needs the answer.
+
+The budget is a fixed test-phase limit, chosen in `scope`, because the UI build still takes about
+ten minutes and a limit on the whole job would fail every run. It moves to what remains of the
+job after the build once the build no longer has its own compiler.
+
+Replayed over the last 120 commits without the dictation group, 29 need no UI, 25 run the canaries
+alone, 19 fit and 47 cut, with a median of 7 cases cut and a test phase of 4:46. While dictation
+remains, its 57 cases rank last, so a broad change names about 45 cut cases, nearly all of them
+dictation.
+
+The accepted risk is that a regression in a cut or nightly-only case reaches `main` until the
+next night. The verification anchor still advances over a cut run, so a later push does not
+reselect what was cut; the nightly alarm from D615 bounds both. A broad change gets less UI proof
+than before and has to dispatch `full_ui` when that matters.

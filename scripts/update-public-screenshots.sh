@@ -8,7 +8,8 @@ selectors='PortavozUITests/PublicShowcaseUITests/testTodayShowcase PortavozUITes
 
 make --no-print-directory test-ui-scoped \
 	UI_TESTS="$selectors" \
-	UI_TEST_LOCALES="en"
+	UI_TEST_LOCALES="en" \
+	UI_TEST_RUNTIME_BUDGET="$repo_root/docs/evidence/ui-test-on-demand-runtime-budget.json"
 
 result_bundle="dist/ui-test-results/en.xcresult"
 [ -d "$result_bundle" ] || {

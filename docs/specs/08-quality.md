@@ -596,13 +596,31 @@ bilingual receipts below are history.
 
 A string-catalog change compares each key's English copy as Xcode compiles it
 into the app under test: an empty value stays empty, a missing value shows the
-key. Added, removed or changed copy selects the journeys quoting the key or
-either value, matched in Swift string-literal form, plus the smoke canaries.
+key. Added, removed or changed copy selects the tests quoting the key or
+either value, matched in Swift string-literal form, plus the smoke canaries; a
+quote in a helper selects the tests using it, and one outside any function its class.
 A changed plural, substitution or unshipped-state English entry, or an
 unreadable catalog, reports `scope-unknown` with the canaries and the harness
 self-test (D616). `test_ui_test_scope`
 covers these cases against synthetic Git revisions and an uncommitted working
 file. They are selector contracts, not real-app UI runs.
+
+`scripts/ui_test_catalog.py` sorts the catalog into three (D621). `PR_TESTS` are the
+canaries and the feature groups, `NIGHTLY_ONLY_TESTS` run every night and on a pull
+request only when the diff edits that method, and `ON_DEMAND_TESTS` run only through
+`make public-screenshots`. An edited test selects that method, and an edited helper the
+tests that run it, through their bodies or other helpers; a lifecycle method, a property,
+a change outside any function or a helper with no visible user selects the class. With
+`--budget`, as `ui-tests.yml` runs it, a pull request always holds the ten canaries and
+adds candidates while their hosted p90 and xcodebuild's overhead fit 300 seconds:
+edited methods and harness self-tests first, then helper consumers, then the tests the most paths map to, then
+by feature tier and fewest seconds. The rest are not dropped: `cut` names them in the job
+summary, a `ui-budget-cut` notice, the gate's result and the lane receipt, and nightly owns them. Canaries
+over the budget fail the selection. `docs/evidence/ui-test-hosted-seconds.json` comes from
+`scripts/ui_test_hosted_seconds.py` over nightly logs; a case without one counts at its ceiling. A local `make test-ui-changed`
+does not cut. `testCleanStopReachesAReadyMeetingWithItsTranscriptAndPlayer` proves a
+clean Stop through the production Stop and post-capture adapters, with a disposable
+`-simulate-clean-capture` capture and summary fixture.
 
 `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates macOS UI runners only when product presentation is
@@ -3225,10 +3243,10 @@ catalog, and `scripts/ui_test_catalog.py` holds its data: tests by feature scope
 canaries, the harness self-test and dependency owners. No path selects the complete
 catalog by itself (D616). Editing the data, the selector or the runtime budget selects no UI
 test; Tooling tests own them. Known app and application files
-select only the scopes they can affect; a changed UI-test file selects its own
-class and the canaries; shared-harness changes select the canaries and
-`HARNESS_SELF_TESTS`; and a lower-layer or unmapped app Swift file without a proven
-owner selects the seventeen `SMOKE_TESTS` canaries (D597); lower-layer files and
+select only the scopes they can affect; an edited UI test selects that method and
+the canaries (D621); shared-harness changes select the canaries and
+`HARNESS_SELF_TESTS`, first in line for the budget; and a lower-layer or unmapped app
+Swift file without a proven owner selects the ten `SMOKE_TESTS` canaries; lower-layer files and
 resources with a proven owner keep their feature scopes. `Package.resolved` selects
 the canaries and the owners of the pins that moved. `Package.swift`, seed fixtures,
 a pin without an owner, an unreadable catalog or lock, unowned resources and app
