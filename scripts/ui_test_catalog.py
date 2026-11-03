@@ -47,6 +47,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("MenuBarUITests", "testPreMeetingBriefMovesFromExactProposalToDurableReceipt"),
     ),
     "recording-recovery": (
+        test_id("LibraryUITests", "testCleanStopReachesAReadyMeetingWithItsTranscriptAndPlayer"),
         test_id("LibraryUITests", "testCaptureFailureSurvivesStopAndRelaunchWithPlayablePrefix"),
         test_id("LibraryUITests", "testOwnedTokenPreviewRetiresWithoutEnteringCanonicalCaption"),
         test_id("LibraryUITests", "testRecordingStartFailureOffersTypedRecovery"),
@@ -321,12 +322,13 @@ MEETING_FEATURES = frozenset(
     for feature in ALL_FEATURES
     if feature.startswith("meeting-") and feature != "meeting-brief"
 )
-# Every pull request that touches the product runs these: launch, recovery, capture
+# Every pull request that touches the product runs these: launch, recovery, clean and failed capture
 # through relaunch, live captions, search and Ask, meeting review, Settings and the menu bar.
 SMOKE_TESTS = (
     test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
     test_id("LibraryUITests", "testDatabaseLaunchFailureOffersSafeRecovery"),
     test_id("LibraryUITests", "testCaptureFailureSurvivesStopAndRelaunchWithPlayablePrefix"),
+    test_id("LibraryUITests", "testCleanStopReachesAReadyMeetingWithItsTranscriptAndPlayer"),
     test_id("LibraryUITests", "testOwnedTokenPreviewRetiresWithoutEnteringCanonicalCaption"),
     test_id("LibraryUITests", "testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState"),
     test_id("MeetingDetailUITests", "testMeetingReviewSurfacesRemainCompleteAndActionable"),

@@ -1500,6 +1500,13 @@ class UITestScopeTests(unittest.TestCase):
 
         self.assertIn("cut=a b\n", rendered)
 
+    def test_hosted_seconds_take_the_nearest_rank_p90_of_each_case(self):
+        import ui_test_hosted_seconds as hosted
+        night = "Test Case '-[PortavozUITests.AUITests testOne]' passed ({} seconds).\n"
+        logs = [night.format(value) for value in (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 20.0)]
+
+        self.assertEqual(hosted.hosted_seconds(logs), {"AUITests/testOne()": 9.0})
+
     def test_changed_ui_test_file_selects_its_class_and_the_canaries(self):
         selection = select_paths(["Tests/PortavozUITests/AudioImportUITests.swift"])
         audio = {test for test in PR_TESTS if "/AudioImportUITests/" in test}

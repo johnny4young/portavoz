@@ -259,7 +259,8 @@ extension AppServices {
 
     func processingPostCaptureSummaryProviderSelection() async -> PostCaptureSummaryProviderSelection? {
         let arguments = ProcessInfo.processInfo.arguments
-        if arguments.contains("-seed-processing"), arguments.contains("-use-temp-store") {
+        if arguments.contains("-seed-processing") || arguments.contains("-simulate-clean-capture"),
+           arguments.contains("-use-temp-store") {
             return PostCaptureSummaryProviderSelection(
                 provider: ProcessingFixtureSummaryProvider(),
                 providerID: ProcessingFixtureSummaryProvider.providerID,

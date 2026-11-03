@@ -22454,3 +22454,35 @@ accepted costs are that a class can now be disturbed by a neighbour in its proce
 A/B runs and the nightly seed have to catch; the table drifts until someone regenerates it with
 `--record-from`, which only affects balance; and a pull request can break a listed harness case
 without knowing until that night.
+
+## D620 — A pull request's UI evidence fits a budget, chosen by what changed
+
+Selecting by file left two costs after D616: one edited line in a large UI test file selected
+its whole class, and a broad file name such as `MeetingDetailScene` selected every meeting
+journey. Most of the catalog ran on pull requests though unit tests own much of it, and no
+hosted test proved a clean Stop.
+
+Each case now has one of three homes: canaries and feature groups, nightly only, or on demand.
+The canaries change to ten that cover launch, recovery, clean and failed capture, live
+captions, search and Ask, meeting review, Settings and the menu bar. The clean Stop case is new
+and uses a disposable fixture through the production Stop and post-capture adapters. An edited
+test selects that method and an edited helper the tests naming it, and a change outside any
+function falls back to the class. The broad name rules narrow to one owner.
+
+A pull request always runs the canaries, then adds candidates while their observed hosted p90
+and xcodebuild's overhead fit 240 seconds. Edited methods come first, then helper consumers,
+then the tests the most paths map to, then feature tier and fewest seconds. The result is
+deterministic for the same diff and times. A candidate over the budget is named in the job
+summary, a `ui-budget-cut` notice and the lane receipt, and nightly runs it. Nothing is deleted
+for not fitting, and canaries over the budget fail the selection instead of shrinking it. An
+edited nightly-only method runs on its pull request despite the triage's "never on a PR", because
+its author is the one who needs the answer.
+
+The budget is a fixed test-phase limit, chosen in `scope`, because the UI build still takes about
+ten minutes and a limit on the whole job would fail every run. It moves to what remains of the
+job after the build once the build no longer has its own compiler.
+
+The accepted risk is that a regression in a cut or nightly-only case reaches `main` until the
+next night. The verification anchor still advances over a cut run, so a later push does not
+reselect what was cut; the nightly alarm from D615 bounds both. A broad change gets less UI proof
+than before and has to dispatch `full_ui` when that matters.

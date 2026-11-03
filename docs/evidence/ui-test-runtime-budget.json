@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 187
+    "expectedCaseCount": 188
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -286,6 +286,7 @@
     "LibraryUITests/testAskConfirmedMemoryLoadsPersonCommitmentsBlockersAndBothCitations()": 20.0,
     "LibraryUITests/testAskConversationAnswersAndSeeksToExactCitation()": 25.105,
     "LibraryUITests/testCaptureFailureSurvivesStopAndRelaunchWithPlayablePrefix()": 30.0,
+    "LibraryUITests/testCleanStopReachesAReadyMeetingWithItsTranscriptAndPlayer()": 30.0,
     "LibraryUITests/testColdRecordingStartsLiveCaptionsWhenModelBecomesReady()": 20.0,
     "LibraryUITests/testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState()": 26.026,
     "LibraryUITests/testDatabaseLaunchFailureOffersSafeRecovery()": 20.0,

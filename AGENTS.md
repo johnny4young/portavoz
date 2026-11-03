@@ -47,13 +47,16 @@ library) and asserts against `accessibilityIdentifier`s.
 - Prefer `make test-ui-changed UI_BASE=origin/main`: known presentation files
   and lower-layer files with a proven owner map to feature-level selectors;
   other lower-layer Swift files and unmapped app Swift files run the smoke
-  canaries; changed English copy runs the journeys that quote it plus the
-  canaries; a changed UI test runs its class and the canaries; the dependency
-  lock runs the canaries and the moved pins' owners; shared-harness changes add
-  a self-test; a path with no known owner reports `scope-unknown`. No path selects
-  the full catalog by itself: it runs nightly on `main` in three shards and on demand with
+  canaries; changed English copy runs the tests that quote it plus the
+  canaries; an edited UI test runs that method, the tests using an edited helper
+  and the canaries; the dependency lock runs the canaries and the moved pins'
+  owners; shared-harness changes add a self-test; a path with no known owner
+  reports `scope-unknown`. On a PR the canaries always run and candidates fit a
+  test budget; what does not fit is named as `ui-budget-cut` and nightly owns it.
+  No path selects the full catalog by itself: it runs nightly on `main` in three
+  shards and on demand with
   `gh workflow run ui-tests.yml --ref <branch> -f full_ui=true`. Add a test with
-  its feature; it does not have to run in full on the PR. An unverified night
+  its feature, or in `NIGHTLY_ONLY_TESTS` when a unit test owns the contract. An unverified night
   opens an issue; evidence older than 48 hours opens another, and new scope
   reductions wait until it closes.
   `make test-ui-en` and `make test-ui-release` are the explicit full-suite gates.

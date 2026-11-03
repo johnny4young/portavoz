@@ -595,13 +595,31 @@ bilingual receipts below are history.
 
 A string-catalog change compares each key's English copy as Xcode compiles it
 into the app under test: an empty value stays empty, a missing value shows the
-key. Added, removed or changed copy selects the journeys quoting the key or
-either value, matched in Swift string-literal form, plus the smoke canaries.
+key. Added, removed or changed copy selects the tests quoting the key or
+either value, matched in Swift string-literal form, plus the smoke canaries; a
+quote in a helper selects the tests using it, and one outside any function its class.
 A changed plural, substitution or unshipped-state English entry, or an
 unreadable catalog, reports `scope-unknown` with the canaries and the harness
 self-test (D616). `test_ui_test_scope`
 covers these cases against synthetic Git revisions and an uncommitted working
 file. They are selector contracts, not real-app UI runs.
+
+`scripts/ui_test_catalog.py` sorts the catalog into three (D620). `PR_TESTS` are the
+canaries and the feature groups, `NIGHTLY_ONLY_TESTS` run every night and on a pull
+request only when the diff edits that method, and `ON_DEMAND_TESTS` run only through
+`make public-screenshots`. An edited test selects that method, and an edited helper the
+tests whose bodies name it; a change outside any function selects the class. With
+`--budget`, as `ui-tests.yml` runs it, a pull request always holds the ten canaries and
+adds candidates while their hosted p90 and xcodebuild's overhead fit 240 seconds:
+edited methods first, then helper consumers, then the tests the most paths map to, then
+by feature tier and fewest seconds. The rest are not dropped: `cut` names them in the job
+summary, a `ui-budget-cut` notice and the lane receipt, and nightly owns them. Canaries
+over the budget fail the selection. `hostedSeconds` in
+`docs/evidence/ui-test-runtime-budget.json` comes from `scripts/ui_test_hosted_seconds.py`
+over nightly logs; a case without one counts at its ceiling. A local `make test-ui-changed`
+does not cut. `testCleanStopReachesAReadyMeetingWithItsTranscriptAndPlayer` proves a
+clean Stop through the production Stop and post-capture adapters, with a disposable
+`-simulate-clean-capture` capture and summary fixture.
 
 `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates macOS UI runners only when product presentation is
