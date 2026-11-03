@@ -22455,7 +22455,7 @@ A/B runs and the nightly seed have to catch; the table drifts until someone rege
 `--record-from`, which only affects balance; and a pull request can break a listed harness case
 without knowing until that night.
 
-## D620 — A pull request's UI evidence fits a budget, chosen by what changed
+## D621 — A pull request's UI evidence fits a budget, chosen by what changed
 
 Selecting by file left two costs after D616: one edited line in a large UI test file selected
 its whole class, and a broad file name such as `MeetingDetailScene` selected every meeting

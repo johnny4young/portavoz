@@ -604,7 +604,7 @@ self-test (D616). `test_ui_test_scope`
 covers these cases against synthetic Git revisions and an uncommitted working
 file. They are selector contracts, not real-app UI runs.
 
-`scripts/ui_test_catalog.py` sorts the catalog into three (D620). `PR_TESTS` are the
+`scripts/ui_test_catalog.py` sorts the catalog into three (D621). `PR_TESTS` are the
 canaries and the feature groups, `NIGHTLY_ONLY_TESTS` run every night and on a pull
 request only when the diff edits that method, and `ON_DEMAND_TESTS` run only through
 `make public-screenshots`. An edited test selects that method, and an edited helper the
@@ -3243,7 +3243,7 @@ canaries, the harness self-test and dependency owners. No path selects the compl
 catalog by itself (D616). Editing the data, the selector or the runtime budget selects no UI
 test; Tooling tests own them. Known app and application files
 select only the scopes they can affect; an edited UI test selects that method and
-the canaries (D620); shared-harness changes select the canaries and
+the canaries (D621); shared-harness changes select the canaries and
 `HARNESS_SELF_TESTS`, first in line for the budget; and a lower-layer or unmapped app
 Swift file without a proven owner selects the ten `SMOKE_TESTS` canaries; lower-layer files and
 resources with a proven owner keep their feature scopes. `Package.resolved` selects
