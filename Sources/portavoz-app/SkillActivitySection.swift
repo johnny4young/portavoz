@@ -70,6 +70,23 @@ struct SkillActivityHistoryWindow: Equatable {
     }
 }
 
+struct SkillActivitySelection: Hashable {
+    var scope: SkillExecutionReviewScope = .recent
+    var skillID: String?
+    var period: SkillExecutionReviewPeriod = .anytime
+}
+
+/// What the history asks for. Any change of lens returns to the cheap window;
+/// a refresh of the same lens keeps what the person expanded.
+struct SkillActivityQuery: Equatable {
+    var selection = SkillActivitySelection() {
+        didSet {
+            if selection != oldValue { window.reset() }
+        }
+    }
+    var window = SkillActivityHistoryWindow()
+}
+
 /// D336/D373/D374 — one status-, exact-Skill-, and update-period-scoped review.
 ///
 /// The returned snapshot must match every selected lens before this view shows

@@ -82,36 +82,6 @@ final class RecordingAssistUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testBatchedObjectivesRevealLastArrivalAndReplacementCountsAsUnread() throws {
-        let app = try XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
-        app.launchArguments += ["-seed-live-companion-ui", "-seed-live-assist-arrivals-ui"]
-        app.launchPortavoz()
-        defer { finishUITestApplication(app) }
-        let record = app.buttons["library-new-recording-button"]
-        XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
-        record.click()
-        XCTAssertTrue(app.waitForLiveTranscriptFrontier())
-        try app.openAssistTab("objectives")
-        XCTAssertTrue(app.resumeLiveTranscriptFixture())
-        XCTAssertTrue(app.waitForLiveTranscriptFixtureToFinish())
-        let objective = app.descendants(matching: .any).matching(NSPredicate(
-            format: "identifier BEGINSWITH 'recording-objective-text-' AND label == %@",
-            "Revisar la evidencia con el equipo y registrar los riesgos pendientes antes de aprobar la versión."))
-            .firstMatch
-        XCTAssertTrue(objective.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(objective.revealVertically(
-            in: app.control(withIdentifier: "recording-assist-panel"), maxScrolls: 0),
-            "the last of two additions in one callback must appear without test-owned scrolling")
-        let companion = app.buttons["recording-assist-tab-companion"]
-        XCTAssertTrue(waitForUITestCondition(timeout: 3) {
-            companion.label.hasSuffix("1")
-        }, "a replacement is unread even when the number of cards stays unchanged")
-        try app.openAssistTab("companion")
-        XCTAssertTrue(companionCard(in: app, question: "Seeded live question 6? Please.").exists)
-        XCTAssertNil(companion.label.rangeOfCharacter(from: .decimalDigits))
-    }
-
-    @MainActor
     func testUnsubmittedNotesAndObjectivesSurviveTabsAndLibraryBrowsing() throws {
         let app = try XCUIApplication.portavoz(
             seedDemo: true, simulateNoAppleIntelligence: true,

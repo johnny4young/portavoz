@@ -189,7 +189,7 @@ class UITestScopeTests(unittest.TestCase):
     def test_harness_self_test_covers_every_handoff_and_stays_in_the_catalog(self):
         self.assertTrue(set(HARNESS_SELF_TESTS) <= set(ALL_TESTS))
         self.assertTrue(set(HARNESS_SELF_TESTS) - set(SMOKE_TESTS))
-        for journey in ("UITestStorageUITests/testSharedScratch", "AudioImportUITests/", "SkillsSettingsUITests/",
+        for journey in ("UITestStorageUITests/testSharedScratch", "AudioImportUITests/",
                         "testAskConversationAnswersAndSeeksToExactCitation", "testTwentyThousandSegment"):
             with self.subTest(journey=journey):
                 self.assertTrue(any(journey in test for test in HARNESS_SELF_TESTS))

@@ -3,12 +3,6 @@ import Foundation
 import PortavozCore
 import SwiftUI
 
-private struct SkillActivitySelection: Hashable {
-    let scope: SkillExecutionReviewScope
-    let skillID: String?
-    let period: SkillExecutionReviewPeriod
-}
-
 /// D317 — the Phase-2 Skills control plane. It projects the real catalogue,
 /// durable policy, and a bounded content-free receipt history; this view never
 /// executes a skill or invents an external consent rule.
@@ -23,22 +17,16 @@ struct SkillsSettingsSection: View {
 
     @State private var snapshot: SkillControlCenterSnapshot?
     @State private var isLoading = false
-    @State private var isMutating = false
-    @State private var controlLoadFailed = false
+    @State private var controlChange = SkillActionAttempt<SkillControlsSubject>()
     @State private var receiptScopeLoadFailed = false
-    @State private var receiptScope: SkillExecutionReviewScope = .recent
-    @State private var receiptSkillID: String?
-    @State private var receiptPeriod: SkillExecutionReviewPeriod = .anytime
-    @State private var receiptHistoryWindow = SkillActivityHistoryWindow()
+    @State private var receiptQuery = SkillActivityQuery()
     @State private var activeLoadID: UUID?
     @State private var proposalSnapshot: SkillOfferReviewSnapshot?
     @State private var proposalsAreLoading = false
     @State private var proposalLoadFailed = false
     @State private var activeProposalLoadID: UUID?
-    @State private var reviewingProposalID: UUID?
-    @State private var proposalReviewFailedID: UUID?
-    @State private var dismissingProposalID: UUID?
-    @State private var proposalDismissalFailedID: UUID?
+    @State private var proposalReview = SkillActionAttempt<UUID>()
+    @State private var proposalDismissal = SkillActionAttempt<UUID>()
     @State private var standingPolicyRevision = 0
     @State private var standingMutationInFlight = false
 
@@ -75,10 +63,10 @@ struct SkillsSettingsSection: View {
                         isLoading: proposalsAreLoading,
                         isMutating: isMutating || auxiliaryMutationInFlight,
                         loadFailed: proposalLoadFailed,
-                        reviewingOfferID: reviewingProposalID,
-                        reviewFailedOfferID: proposalReviewFailedID,
-                        dismissingOfferID: dismissingProposalID,
-                        dismissalFailedOfferID: proposalDismissalFailedID,
+                        reviewingOfferID: proposalReview.inFlight,
+                        reviewFailedOfferID: proposalReview.failed,
+                        dismissingOfferID: proposalDismissal.inFlight,
+                        dismissalFailedOfferID: proposalDismissal.failed,
                         review: { offer in
                             Task { await reviewProposal(offer) }
                         },
@@ -91,9 +79,9 @@ struct SkillsSettingsSection: View {
 
                 Section("Action history") {
                     SkillActivitySection(
-                        receiptScope: $receiptScope,
-                        receiptSkillID: $receiptSkillID,
-                        receiptPeriod: $receiptPeriod,
+                        receiptScope: $receiptQuery.selection.scope,
+                        receiptSkillID: $receiptQuery.selection.skillID,
+                        receiptPeriod: $receiptQuery.selection.period,
                         snapshot: snapshot,
                         skills: snapshot?.skills ?? [],
                         isLoading: isLoading || isMutating
@@ -101,7 +89,7 @@ struct SkillsSettingsSection: View {
                         isMutating: isMutating || auxiliaryMutationInFlight,
                         loadFailed: receiptScopeLoadFailed,
                         focusRequestID: receiptFocusRequestID,
-                        historyWindow: receiptHistoryWindow,
+                        historyWindow: receiptQuery.window,
                         retry: { Task { await load() } },
                         refresh: { Task { await refreshActivity() } },
                         clearFilters: clearActivityFilters,
@@ -110,8 +98,7 @@ struct SkillsSettingsSection: View {
                 }
             }
         }
-        .task(id: activitySelection) {
-            receiptHistoryWindow.reset()
+        .task(id: receiptQuery.selection) {
             await load()
         }
         .task {
@@ -247,7 +234,7 @@ struct SkillsSettingsSection: View {
         let requestedScope = receiptScope
         let requestedSkillID = receiptSkillID
         let requestedPeriod = receiptPeriod
-        let requestedLimit = receiptHistoryWindow.requestedLimit
+        let requestedLimit = receiptQuery.window.requestedLimit
         let loadID = UUID()
         activeLoadID = loadID
         if snapshot?.receiptScope != requestedScope
@@ -270,7 +257,7 @@ struct SkillsSettingsSection: View {
                   receiptScope == requestedScope,
                   receiptSkillID == requestedSkillID,
                   receiptPeriod == requestedPeriod,
-                  receiptHistoryWindow.requestedLimit == requestedLimit
+                  receiptQuery.window.requestedLimit == requestedLimit
             else {
                 return
             }
@@ -283,11 +270,11 @@ struct SkillsSettingsSection: View {
                   receiptScope == requestedScope,
                   receiptSkillID == requestedSkillID,
                   receiptPeriod == requestedPeriod,
-                  receiptHistoryWindow.requestedLimit == requestedLimit
+                  receiptQuery.window.requestedLimit == requestedLimit
             else {
                 return
             }
-            controlLoadFailed = true
+            controlChange.fail(.controls)
             receiptScopeLoadFailed = snapshot != nil
             finishLoad(loadID)
         }
@@ -309,7 +296,7 @@ struct SkillsSettingsSection: View {
     @MainActor
     private func adopt(_ loaded: SkillControlCenterSnapshot) {
         snapshot = loaded
-        controlLoadFailed = false
+        controlChange.clearFailure()
         receiptScopeLoadFailed = loaded.receiptLoadState == .unavailable
     }
 
@@ -323,24 +310,24 @@ struct SkillsSettingsSection: View {
             return
         }
         invalidateActiveLoad()
-        isMutating = true
-        defer { isMutating = false }
+        controlChange.begin(.controls)
+        defer { controlChange.finish(.controls) }
         do {
             guard try await services.manageSkillControl(action) == .updated
             else {
-                controlLoadFailed = true
+                controlChange.fail(.controls)
                 return
             }
             let loaded = try await services.loadSkillControlCenter(
                 receiptScope: receiptScope,
                 receiptSkillID: receiptSkillID,
                 receiptPeriod: receiptPeriod,
-                receiptLimit: receiptHistoryWindow.requestedLimit)
+                receiptLimit: receiptQuery.window.requestedLimit)
             adopt(loaded)
             standingPolicyRevision &+= 1
             await loadProposals()
         } catch {
-            controlLoadFailed = true
+            controlChange.fail(.controls)
         }
     }
 
@@ -351,13 +338,13 @@ struct SkillsSettingsSection: View {
               snapshot.receiptSkillID == receiptSkillID,
               snapshot.receiptPeriod == receiptPeriod,
               snapshot.receiptLoadState == .verified,
-              receiptHistoryWindow.canExpand(
+              receiptQuery.window.canExpand(
                   hasMoreReceipts: snapshot.hasMoreReceipts),
               !isLoading,
               !isMutating,
               !auxiliaryMutationInFlight
         else { return }
-        receiptHistoryWindow.expand()
+        receiptQuery.window.expand()
         await load()
     }
 
@@ -388,8 +375,8 @@ struct SkillsSettingsSection: View {
               !isMutating,
               !auxiliaryMutationInFlight
         else { return }
-        receiptSkillID = nil
-        receiptPeriod = .anytime
+        receiptQuery.selection.skillID = nil
+        receiptQuery.selection.period = .anytime
     }
 
 }
@@ -408,14 +395,9 @@ private extension SkillsSettingsSection {
             }
             guard activeProposalLoadID == loadID else { return }
             proposalSnapshot = loaded
-            if let failedID = proposalDismissalFailedID,
-               !loaded.offers.contains(where: { $0.id == failedID }) {
-                proposalDismissalFailedID = nil
-            }
-            if let failedID = proposalReviewFailedID,
-               !loaded.offers.contains(where: { $0.id == failedID }) {
-                proposalReviewFailedID = nil
-            }
+            let offerExists = { (id: UUID) in loaded.offers.contains { $0.id == id } }
+            proposalDismissal.keepFailure(where: offerExists)
+            proposalReview.keepFailure(where: offerExists)
             proposalLoadFailed = false
             finishProposalLoad(loadID)
         } catch is CancellationError {
@@ -454,17 +436,12 @@ private extension SkillsSettingsSection {
               !auxiliaryMutationInFlight
         else { return }
 
-        dismissingProposalID = offer.id
-        proposalReviewFailedID = nil
-        proposalDismissalFailedID = nil
-        defer {
-            if dismissingProposalID == offer.id {
-                dismissingProposalID = nil
-            }
-        }
+        proposalReview.clearFailure()
+        proposalDismissal.begin(offer.id)
+        defer { proposalDismissal.finish(offer.id) }
         do {
             let outcome = try await services.dismissSkillOfferReview(offer.id)
-            guard !Task.isCancelled, dismissingProposalID == offer.id else {
+            guard !Task.isCancelled, proposalDismissal.isInFlight(offer.id) else {
                 return
             }
             switch outcome {
@@ -474,19 +451,24 @@ private extension SkillsSettingsSection {
         } catch is CancellationError {
             return
         } catch {
-            guard dismissingProposalID == offer.id else { return }
-            proposalDismissalFailedID = offer.id
+            proposalDismissal.fail(offer.id)
         }
     }
 
 }
 
 private extension SkillsSettingsSection {
-    var activitySelection: SkillActivitySelection {
-        SkillActivitySelection(
-            scope: receiptScope,
-            skillID: receiptSkillID,
-            period: receiptPeriod)
+    var receiptScope: SkillExecutionReviewScope { receiptQuery.selection.scope }
+    var receiptSkillID: String? { receiptQuery.selection.skillID }
+    var receiptPeriod: SkillExecutionReviewPeriod { receiptQuery.selection.period }
+    var isMutating: Bool { controlChange.isInFlight }
+    var controlLoadFailed: Bool { controlChange.hasFailed }
+
+    var controlsAreLocked: Bool {
+        skillControlsAreLocked(
+            hasSnapshot: snapshot != nil,
+            isChanging: isMutating || auxiliaryMutationInFlight,
+            hasUnverifiedChange: controlLoadFailed)
     }
 
     @ViewBuilder
@@ -514,9 +496,7 @@ private extension SkillsSettingsSection {
             Toggle("Pause all actions", isOn: pauseBinding)
                 .accessibilityLabel("Pause all actions")
                 .accessibilityIdentifier("settings-skills-pause-all")
-                .disabled(
-                    snapshot == nil || isMutating
-                        || auxiliaryMutationInFlight || controlLoadFailed)
+                .disabled(controlsAreLocked)
             Text(
                 // Keep this as one literal so localization validation sees it.
                 // swiftlint:disable:next line_length
@@ -550,7 +530,7 @@ private extension SkillsSettingsSection {
     }
 
     var proposalMutationInFlight: Bool {
-        reviewingProposalID != nil || dismissingProposalID != nil
+        proposalReview.isInFlight || proposalDismissal.isInFlight
     }
 
     var auxiliaryMutationInFlight: Bool {
@@ -566,18 +546,13 @@ private extension SkillsSettingsSection {
               !auxiliaryMutationInFlight
         else { return }
 
-        reviewingProposalID = offer.id
-        proposalDismissalFailedID = nil
-        proposalReviewFailedID = nil
-        defer {
-            if reviewingProposalID == offer.id {
-                reviewingProposalID = nil
-            }
-        }
+        proposalDismissal.clearFailure()
+        proposalReview.begin(offer.id)
+        defer { proposalReview.finish(offer.id) }
         do {
             let outcome = try await services.resolveSkillOfferReviewDestination(
                 offer.id)
-            guard !Task.isCancelled, reviewingProposalID == offer.id else {
+            guard !Task.isCancelled, proposalReview.isInFlight(offer.id) else {
                 return
             }
             switch outcome {
@@ -589,8 +564,7 @@ private extension SkillsSettingsSection {
         } catch is CancellationError {
             return
         } catch {
-            guard reviewingProposalID == offer.id else { return }
-            proposalReviewFailedID = offer.id
+            proposalReview.fail(offer.id)
         }
     }
 

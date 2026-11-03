@@ -7,6 +7,24 @@ import XCTest
 /// point, so a taller window grew only the captions and eight panels shared one
 /// scroll. These pin the split, the tab set and the single focus slot (D504).
 final class RecordingAssistLayoutTests: XCTestCase {
+    func testAReplacedCardCountsAsUnreadUntilTheCompanionTabShowsIt() {
+        let kept = UUID()
+        let replaced = UUID()
+        let replacement = UUID()
+        var unread = RecordingAssistUnread()
+        unread.observe([kept, replaced], showingCompanion: true)
+
+        unread.observe([kept, replacement], showingCompanion: false)
+
+        XCTAssertEqual(
+            unread.count(in: [kept, replacement]), 1,
+            "a replacement is unread even when the number of cards stays unchanged")
+
+        unread.markSeen([kept, replacement])
+
+        XCTAssertEqual(unread.count(in: [kept, replacement]), 0)
+    }
+
     func testTheAssistAreaGrowsWithTheWindow() {
         let short = RecordingAssistLayout.split(total: 600, fraction: 0.42)
         let tall = RecordingAssistLayout.split(total: 1_000, fraction: 0.42)

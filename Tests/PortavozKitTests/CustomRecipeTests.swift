@@ -38,6 +38,12 @@ final class CustomRecipeTests: XCTestCase {
         XCTAssertEqual(recipe?.id, "custom-fixed-id")
     }
 
+    func testTheStructureMenuSeedsEveryBuiltInTemplate() {
+        XCTAssertEqual(
+            Recipe.all.map(\.id),
+            ["general", "standup", "one-on-one", "planning", "interview", "discovery", "postmortem", "retro"])
+    }
+
     func testBuiltInsAreNotCustom() {
         XCTAssertFalse(Recipe.isCustom(Recipe.general.id))
     }

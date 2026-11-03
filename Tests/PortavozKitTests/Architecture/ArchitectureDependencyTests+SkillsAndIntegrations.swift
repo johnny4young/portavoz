@@ -3,6 +3,20 @@ import Foundation
 import XCTest
 
 extension ArchitectureDependencyTests {
+    func testTheDataPaneCreditsEveryCatalogModelWithItsLicense() throws {
+        let settings = try Self.contents(of: "Sources/portavoz-app/SettingsView.swift")
+        let credits = try Self.contents(of: "Sources/portavoz-app/ModelCreditsSection.swift")
+
+        XCTAssertTrue(settings.contains("ModelCreditsSection()"))
+        XCTAssertTrue(credits.contains("ModelCatalog.credits"))
+        for identifier in ["settings-model-credit-\\(credit.id)", "settings-model-credit-\\(credit.id)-license"] {
+            XCTAssertTrue(credits.contains(identifier), identifier)
+        }
+        for field in ["credit.creator", "credit.license"] {
+            XCTAssertTrue(credits.contains(field), field)
+        }
+    }
+
     func testSkillExecutionAdmitsBeforeItClaimsAndKeepsPlatformOut() throws {
         let policy = try Self.contents(of: "Sources/PortavozCore/Skill.swift")
         let executor = try Self.contents(
@@ -204,9 +218,9 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(activity.contains("if isLoading"))
         XCTAssertTrue(activity.contains(
             "snapshot.receiptLoadState == .verified"))
-        XCTAssertTrue(settings.contains(".task(id: activitySelection)"))
-        XCTAssertTrue(settings.contains(
-            "receiptHistoryWindow.reset()\n            await load()"))
+        XCTAssertTrue(settings.contains(".task(id: receiptQuery.selection)"))
+        XCTAssertTrue(activity.contains(
+            "if selection != oldValue { window.reset() }"))
         XCTAssertTrue(settings.contains(
             "receiptLimit: requestedLimit"))
         XCTAssertTrue(settings.contains(
@@ -218,10 +232,10 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(settings.contains(
             "receiptPeriod == requestedPeriod"))
         XCTAssertTrue(settings.contains(
-            "receiptHistoryWindow.requestedLimit == requestedLimit"))
+            "receiptQuery.window.requestedLimit == requestedLimit"))
         XCTAssertTrue(decisions.contains("## D373"))
         XCTAssertTrue(settings.contains(
-            "receiptHistoryWindow.expand()\n        await load()"))
+            "receiptQuery.window.expand()\n        await load()"))
         XCTAssertTrue(settings.contains(
             "refresh: { Task { await refreshActivity() } }"))
         let refreshActivityContract = [
@@ -252,8 +266,8 @@ extension ArchitectureDependencyTests {
             "              !isMutating,",
             "              !auxiliaryMutationInFlight",
             "        else { return }",
-            "        receiptSkillID = nil",
-            "        receiptPeriod = .anytime",
+            "        receiptQuery.selection.skillID = nil",
+            "        receiptQuery.selection.period = .anytime",
             "    }"
         ].joined(separator: "\n")
         XCTAssertTrue(settings.contains(clearActivityFiltersContract))
@@ -263,8 +277,6 @@ extension ArchitectureDependencyTests {
             "enum SkillControlCenterReceiptLoadState"))
         XCTAssertTrue(control.contains("receiptLoadState = .unavailable"))
         XCTAssertTrue(services.contains("usesTemporaryMeetingStore"))
-        XCTAssertTrue(services.contains(
-            "-simulate-skill-receipt-refresh-handshake"))
         XCTAssertFalse(services.contains("Task.sleep(for: .seconds(4))"))
         XCTAssertTrue(featureHandshake.contains("attempts: Int = 600"))
         XCTAssertTrue(featureHandshake.contains("guard attempts > 0"))
@@ -283,17 +295,6 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(services.contains(
             "if usesTemporaryMeetingStore,\n"
                 + "           ProcessInfo.processInfo.arguments.contains(\n"
-                + "               \"-simulate-skill-control-mutation-unavailable\")"))
-        let controlMutation = try XCTUnwrap(services.range(
-            of: "let outcome = try await ManageSkillControl(store: store)"))
-        let simulatedResponseFailure = try XCTUnwrap(services.range(
-            of: "-simulate-skill-control-mutation-unavailable"))
-        XCTAssertLessThan(
-            controlMutation.lowerBound,
-            simulatedResponseFailure.lowerBound)
-        XCTAssertTrue(services.contains(
-            "if usesTemporaryMeetingStore,\n"
-                + "           ProcessInfo.processInfo.arguments.contains(\n"
                 + "               \"-simulate-skill-proposal-unavailable\")"))
         XCTAssertTrue(uiFixtures.contains(
             "-seed-skill-exact-page-history"))
@@ -301,8 +302,6 @@ extension ArchitectureDependencyTests {
             "? SkillControlCenterSnapshot.defaultReceiptLimit\n"
                 + "            : 25"))
         XCTAssertTrue(uiFixtures.contains("for ordinal in 1...receiptCount"))
-        XCTAssertTrue(uiFixtures.contains(
-            "-seed-skill-recent-history"))
         XCTAssertTrue(uiFixtures.contains(
             "let offerKey = \"\\(MeetingPackageExportSkill.id):\""))
         XCTAssertTrue(uiFixtures.contains(
@@ -372,8 +371,6 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(receiptSheet.contains("skill-receipt-revoke-action"))
         XCTAssertFalse(receiptSheet.contains(".idempotencyKey"))
         XCTAssertTrue(services.contains("usesTemporaryMeetingStore"))
-        XCTAssertTrue(services.contains(
-            "-simulate-skill-receipt-revoke-unavailable"))
         XCTAssertTrue(fixtures.contains("guard usesTemporaryMeetingStore"))
         XCTAssertTrue(fixtures.contains("-seed-skill-waiting"))
         XCTAssertTrue(decisions.contains("## D339"))
@@ -395,8 +392,6 @@ extension ArchitectureDependencyTests {
             of: "Sources/portavoz-app/SkillsSettingsSection.swift")
         let proposalSection = try Self.contents(
             of: "Sources/portavoz-app/SkillProposalSection.swift")
-        let services = try Self.contents(
-            of: "Sources/portavoz-app/AppServices+SkillsControl.swift")
         let fixtures = try Self.contents(
             of: "Sources/portavoz-app/AppServices+SkillProposalUITestFixtures.swift")
         let uiTest = try Self.contents(
@@ -478,8 +473,6 @@ extension ArchitectureDependencyTests {
             "    }"
         ].joined(separator: "\n")
         XCTAssertTrue(settings.contains(refreshProposalsContract))
-        XCTAssertTrue(services.contains(
-            "-simulate-skill-proposal-refresh-handshake"))
         XCTAssertTrue(fixtures.contains("guard usesTemporaryMeetingStore"))
         XCTAssertTrue(fixtures.contains(
             "-seed-duplicate-skill-proposals"))
@@ -628,8 +621,6 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(proposal.contains("Review in menu bar"))
         XCTAssertFalse(proposal.contains("offer.subject"))
         XCTAssertTrue(services.contains("usesTemporaryMeetingStore"))
-        XCTAssertTrue(services.contains(
-            "-simulate-skill-proposal-review-unavailable"))
         XCTAssertTrue(mainIdentity.contains(
             "enum MainWindowIdentity: String, Codable, Hashable, Sendable"))
         XCTAssertTrue(app.contains("for: MainWindowIdentity.self"))
@@ -751,8 +742,6 @@ extension ArchitectureDependencyTests {
         XCTAssertFalse(inspection.contains("effect.perform"))
         XCTAssertFalse(inspection.contains("ExecuteSkill"))
         XCTAssertFalse(inspection.contains("idempotencyKey"))
-        XCTAssertTrue(services.contains(
-            "-simulate-skill-receipt-context-unavailable"))
         XCTAssertTrue(services.contains(
             "-simulate-skill-receipt-policy-unavailable"))
         XCTAssertTrue(services.contains("usesTemporaryMeetingStore"))

@@ -16,12 +16,9 @@ struct SkillReceiptInspectionSheet: View {
     @State private var inspection: SkillControlCenterReceiptInspection?
     @State private var isLoading = false
     @State private var loadFailed = false
-    @State private var isRevoking = false
-    @State private var revocationFailed = false
-    @State private var isResolvingRecovery = false
-    @State private var recoveryFailed = false
-    @State private var isResolvingContext = false
-    @State private var contextFailed = false
+    @State private var revocation = SkillActionAttempt<UUID>()
+    @State private var recoveryResolution = SkillActionAttempt<UUID>()
+    @State private var contextResolution = SkillActionAttempt<UUID>()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -323,6 +320,13 @@ struct SkillReceiptInspectionSheet: View {
                 inspection?.failureCategory ?? receipt.failureCategory)
     }
 
+    private var isRevoking: Bool { revocation.isInFlight }
+    private var revocationFailed: Bool { revocation.hasFailed }
+    private var isResolvingRecovery: Bool { recoveryResolution.isInFlight }
+    private var recoveryFailed: Bool { recoveryResolution.hasFailed }
+    private var isResolvingContext: Bool { contextResolution.isInFlight }
+    private var contextFailed: Bool { contextResolution.hasFailed }
+
     private var isResolvingReceiptAction: Bool {
         isRevoking || isResolvingRecovery || isResolvingContext
     }
@@ -338,8 +342,8 @@ private extension SkillReceiptInspectionSheet {
             inspection = try await services.loadSkillReceiptInspection(
                 proposalID: receipt.proposalID)
             loadFailed = false
-            contextFailed = false
-            recoveryFailed = false
+            contextResolution.clearFailure()
+            recoveryResolution.clearFailure()
         } catch {
             inspection = nil
             loadFailed = true
@@ -353,9 +357,8 @@ private extension SkillReceiptInspectionSheet {
               !isResolvingRecovery,
               !isResolvingContext
         else { return }
-        isRevoking = true
-        revocationFailed = false
-        defer { isRevoking = false }
+        revocation.begin(receipt.proposalID)
+        defer { revocation.finish(receipt.proposalID) }
         do {
             _ = try await services.revokeWaitingSkillExecution(
                 proposalID: receipt.proposalID)
@@ -365,7 +368,7 @@ private extension SkillReceiptInspectionSheet {
         } catch is CancellationError {
             return
         } catch {
-            revocationFailed = true
+            revocation.fail(receipt.proposalID)
         }
     }
 
@@ -400,9 +403,8 @@ private extension SkillReceiptInspectionSheet {
               !isResolvingRecovery,
               !isResolvingContext
         else { return }
-        isResolvingRecovery = true
-        recoveryFailed = false
-        defer { isResolvingRecovery = false }
+        recoveryResolution.begin(receipt.proposalID)
+        defer { recoveryResolution.finish(receipt.proposalID) }
         do {
             let outcome = try await services
                 .resolveSkillReceiptRecoveryDestination(
@@ -410,16 +412,16 @@ private extension SkillReceiptInspectionSheet {
             guard !Task.isCancelled else { return }
             switch outcome {
             case .unavailable:
-                recoveryFailed = true
+                recoveryResolution.fail(receipt.proposalID)
             case .destination(let destination):
-                isResolvingRecovery = false
+                recoveryResolution.finish(receipt.proposalID)
                 openReceiptDestination(destination)
                 dismiss()
             }
         } catch is CancellationError {
             return
         } catch {
-            recoveryFailed = true
+            recoveryResolution.fail(receipt.proposalID)
         }
     }
 
@@ -433,9 +435,8 @@ private extension SkillReceiptInspectionSheet {
               !isResolvingRecovery,
               !isResolvingContext
         else { return }
-        isResolvingContext = true
-        contextFailed = false
-        defer { isResolvingContext = false }
+        contextResolution.begin(receipt.proposalID)
+        defer { contextResolution.finish(receipt.proposalID) }
         do {
             let outcome = try await services
                 .resolveSkillReceiptContextDestination(
@@ -443,16 +444,16 @@ private extension SkillReceiptInspectionSheet {
             guard !Task.isCancelled else { return }
             switch outcome {
             case .unavailable:
-                contextFailed = true
+                contextResolution.fail(receipt.proposalID)
             case .destination(let destination):
-                isResolvingContext = false
+                contextResolution.finish(receipt.proposalID)
                 openReceiptDestination(destination)
                 dismiss()
             }
         } catch is CancellationError {
             return
         } catch {
-            contextFailed = true
+            contextResolution.fail(receipt.proposalID)
         }
     }
 

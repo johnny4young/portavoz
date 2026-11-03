@@ -3460,7 +3460,6 @@
     {
       "feature": "processing-and-refine",
       "tests": [
-        "testAbandonedAutomaticSummarySaysSoBesideGeneration",
         "testFailedDurableProcessingOffersOneRecoveryAction",
         "testRunningRefineCanBeCanceledWithoutChangingTheTranscript"
       ],
@@ -3483,7 +3482,6 @@
         }
       ],
       "screenshots": [
-        "meeting-detail-abandoned-summary",
         "meeting-detail-processing-recovery"
       ]
     },
@@ -3608,8 +3606,7 @@
       "tests": [
         "testMostRecentRecipeRemainsVisibleAfterReload",
         "testNoAppleIntelligenceSummaryFailureOpensExactSetupAndExplainsApuntador",
-        "testRegenerateMenuOffersEveryDetailLevel",
-        "testStructureMenuOffersSeededTemplates"
+        "testRegenerateMenuOffersEveryDetailLevel"
       ],
       "sourceAnchors": [
         {

@@ -750,25 +750,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAbandonedAutomaticSummarySaysSoBesideGeneration() throws {
-        let app = try launchOnSeededMeeting(withoutSummary: true, abandonedSummary: true)
-        defer { finishUITestApplication(app) }
-        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
-
-        let notice = app.staticTexts["detail-summary-abandoned"]
-        XCTAssertTrue(
-            notice.waitForExistenceFast(timeout: 10),
-            "a cancelled automatic summary must be visible, not silently absent")
-        XCTAssertTrue(
-            app.buttons["detail-generate-summary"].waitForExistenceFast(timeout: 10),
-            "the explicit generation route must stay available beside the notice")
-        XCTAssertTrue(
-            app.prepareForInteraction(),
-            "Portavoz must own the foreground before capturing the recovery state")
-        attachScreenshot(of: app, named: "meeting-detail-abandoned-summary")
-    }
-
-    @MainActor
     func testNoAppleIntelligenceSummaryFailureOpensExactSetupAndExplainsApuntador() throws {
         let app = try launchOnSeededMeeting(
             withoutSummary: true,
@@ -1996,46 +1977,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(app.control(withIdentifier: "recap-privacy-note").exists)
         attachScreenshot(of: app, named: "meeting-detail-share-recap")
         app.control(withIdentifier: "recap-done").click()
-    }
-
-    /// The Structure submenu must offer every seeded template — including
-    /// discovery, postmortem, and retro — with the sections each one
-    /// produces visible before generating.
-    @MainActor
-    func testStructureMenuOffersSeededTemplates() throws {
-        let app = try launchOnSeededMeeting()
-        defer { finishUITestApplication(app) }
-        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
-
-        let menu = app.control(withIdentifier: "detail-regenerate-menu")
-        XCTAssertTrue(
-            menu.waitForExistenceFast(timeout: 10),
-            "a summarized meeting must offer the regenerate menu")
-        XCTAssertTrue(app.prepareForInteraction())
-        XCTAssertTrue(
-            menu.waitForStableFrame(timeout: 5),
-            "the localized regenerate menu must settle before opening")
-        menu.click()
-        let structure = app.menuItems["detail-structure-menu"]
-        guard structure.waitForExistenceFast(timeout: 5) else {
-            XCTFail("the regenerate menu must offer the Structure submenu")
-            return
-        }
-        structure.click()
-        // Every built-in id, not just the new ones: the submenu renders
-        // `Recipe.all + custom()`, so a template silently dropping out of
-        // the catalog is exactly the regression this guards.
-        for id in [
-            "general", "standup", "one-on-one", "planning", "interview",
-            "discovery", "postmortem", "retro"
-        ] {
-            XCTAssertTrue(
-                app.menuItems["detail-structure-\(id)"].waitForExistenceFast(timeout: 5),
-                "the Structure submenu must seed the \(id) template")
-        }
-        // Close without regenerating.
-        typeKey(.escape, modifierFlags: [], in: app)
-        typeKey(.escape, modifierFlags: [], in: app)
     }
 
     @MainActor

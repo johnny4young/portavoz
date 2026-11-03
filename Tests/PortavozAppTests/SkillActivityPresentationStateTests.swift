@@ -127,6 +127,49 @@ final class SkillActivityPresentationStateTests: XCTestCase {
         XCTAssertFalse(window.isExpanded)
     }
 
+    func testChangingTheStatusLensReturnsToTheCheapWindow() {
+        var query = SkillActivityQuery()
+        query.window.expand()
+
+        query.selection.scope = .waiting
+
+        XCTAssertFalse(query.window.isExpanded)
+    }
+
+    func testChangingTheSkillOrPeriodLensReturnsToTheCheapWindow() {
+        var bySkill = SkillActivityQuery()
+        bySkill.window.expand()
+        bySkill.selection.skillID = "meeting-package-export"
+        XCTAssertFalse(bySkill.window.isExpanded)
+
+        var byPeriod = SkillActivityQuery()
+        byPeriod.window.expand()
+        byPeriod.selection.period = .pastWeek
+        XCTAssertFalse(byPeriod.window.isExpanded)
+    }
+
+    func testRewritingTheSameLensKeepsWhatThePersonExpanded() {
+        var query = SkillActivityQuery()
+        query.window.expand()
+
+        query.selection.scope = query.selection.scope
+        query.selection = SkillActivitySelection()
+
+        XCTAssertTrue(query.window.isExpanded)
+    }
+
+    func testAnActivityReadNeverLocksVerifiedControls() {
+        XCTAssertFalse(
+            skillControlsAreLocked(hasSnapshot: true, isChanging: false, hasUnverifiedChange: false),
+            "a reload of history or suggestions must leave verified controls usable")
+    }
+
+    func testAChangeOrAnUnreadPolicyLocksTheControls() {
+        XCTAssertTrue(skillControlsAreLocked(hasSnapshot: false, isChanging: false, hasUnverifiedChange: false))
+        XCTAssertTrue(skillControlsAreLocked(hasSnapshot: true, isChanging: true, hasUnverifiedChange: false))
+        XCTAssertTrue(skillControlsAreLocked(hasSnapshot: true, isChanging: false, hasUnverifiedChange: true))
+    }
+
     func testOnlyVerifiedTerminalActivityStatesAllowExplicitRefresh() {
         XCTAssertFalse(SkillActivityPresentationState.loading.allowsExplicitRefresh)
         XCTAssertFalse(SkillActivityPresentationState.unavailable.allowsExplicitRefresh)
