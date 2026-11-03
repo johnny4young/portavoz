@@ -22368,7 +22368,8 @@ catalog, and nothing dispatches it automatically.
 
 This supersedes D601's complete run for the lock, unknown keys and resources, D597's
 complete run for shared-harness, fixture, build and language-switch changes, and D549's
-complete run for the Meeting Detail column. The gate's detection of an omitted selector,
+complete run for the Meeting Detail column. The gate now compares selected and executed
+cases itself. Its detection of an omitted selector,
 zero tests, a crashed host and a cancelled lane is pinned in Tooling, which is what makes
 this reduction acceptable.
 

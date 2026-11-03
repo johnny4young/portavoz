@@ -773,6 +773,9 @@ def select_paths(
 
         if path in HARNESS_FILES or path.startswith(INTERRUPTION_FIXTURE_PREFIX):
             selected.update(CONSERVATIVE_TESTS)
+            # A production file in the harness still owes its own journeys.
+            if path.startswith("Sources/portavoz-app/"):
+                selected.update(feature_tests(app_features(Path(path).name)))
             reasons.append(f"{path}: canaries and harness self-test")
             continue
 

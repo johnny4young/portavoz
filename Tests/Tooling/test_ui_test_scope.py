@@ -1139,7 +1139,6 @@ class UITestScopeTests(unittest.TestCase):
     def test_window_placement_runs_the_harness_self_test(self):
         for path in (
             "Sources/portavoz-app/UITestWindowPlacement.swift",
-            "Sources/portavoz-app/SettingsSkillReceiptNavigation.swift",
         ):
             with self.subTest(path=path):
                 selection = select_paths([path])
@@ -1298,9 +1297,15 @@ class UITestScopeTests(unittest.TestCase):
                 self.assertEqual(set(selection.tests), set(CONSERVATIVE_TESTS))
                 self.assertEqual(selection.locales, ("en",))
 
+    def test_a_production_harness_file_keeps_its_own_journeys(self):
+        selection = select_paths(["Sources/portavoz-app/SettingsSkillReceiptNavigation.swift"])
+
+        self.assertTrue(set(CONSERVATIVE_TESTS) <= set(selection.tests))
+        self.assertTrue(set(FEATURE_TESTS["settings-skills"]) <= set(selection.tests))
+
     def test_harness_change_runs_the_canaries_and_the_self_test(self):
         self.assertIn("scripts/candidate_automation.py", HARNESS_FILES)
-        for path in sorted(HARNESS_FILES):
+        for path in sorted(HARNESS_FILES - {"Sources/portavoz-app/SettingsSkillReceiptNavigation.swift"}):
             selection = select_paths([path])
             self.assertEqual(set(selection.tests), set(CONSERVATIVE_TESTS), path)
             self.assertFalse(selection.scope_unknown, path)

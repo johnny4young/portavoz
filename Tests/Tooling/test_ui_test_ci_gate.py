@@ -239,6 +239,26 @@ class UITestCIGateTests(unittest.TestCase):
         self.assertIn("evidence-contract violations", result.stderr)
         self.assertEqual(self.outputs["verified"], "false")
 
+    def test_gate_catches_an_omitted_selector_the_producer_did_not_report(self):
+        document = receipt("en")
+        document["selectorCount"] = 2
+        consistent = execution("en")
+        consistent["selectorCount"] = 2
+        result = self.run_gate(receipts={"en": document}, executions={"en": consistent})
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("executed 1 of 2 selected cases", result.stderr)
+        self.assertEqual(self.outputs["verified"], "false")
+
+    def test_a_complete_run_without_selectors_is_not_an_omission(self):
+        document = receipt("en")
+        document["selectorCount"] = 0
+        unselected = execution("en")
+        unselected["selectorCount"] = 0
+        result = self.run_gate(receipts={"en": document}, executions={"en": unselected})
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_harness_self_test_catches_zero_tests(self):
         document = receipt("en")
         document.update(caseCount=0, tests=[])

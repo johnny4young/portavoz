@@ -194,7 +194,7 @@ class CIWorkflowTests(unittest.TestCase):
         explain = ui.split("- name: Explain the selection\n", 1)[1].split("\n  interruption-controls:", 1)[0]
 
         self.assertIn('if [[ "$SCOPE_UNKNOWN" == "true" ]]; then', explain)
-        self.assertIn("::warning title=UI scope unknown::", explain)
+        self.assertIn("::warning title=UI scope unknown::Canaries and the harness self-test are selected.", explain)
         self.assertIn("-f full_ui=true", explain)
         self.assertIn('Deferred to nightly: ${DEFERRED:-0}', explain)
         self.assertIn("$GITHUB_STEP_SUMMARY", explain)

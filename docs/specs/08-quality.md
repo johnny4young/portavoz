@@ -60,8 +60,8 @@ one traversal; extraction rejects missing or duplicate identifiers and retains
 value-first text semantics. The Topic and Skills phases share this bounded
 observation helper. Citation clicks
 and exact playback seeks still use live elements, and no snapshot crosses a
-user action. A change to the shared snapshot helper alone requires the complete
-catalog; neighboring changes cannot supply its missing scope.
+user action. A change to the shared snapshot helper alone runs the canaries and
+the harness self-test (D616), and the complete catalog runs nightly.
 The existing iterative snapshot traversal is shared with detail
 evidence and publication-receipt tests without changing those assertions. This
 reduces repeated cross-process observations, not launches, jobs, screenshots,
@@ -3204,7 +3204,8 @@ the command for a full run; a parse error is never zero tests. Every selection
 reports how many cases it defers to nightly. `full_ui` on the Scoped UI dispatch
 runs the complete catalog, and false runs the selection against `main`. The gate's
 detection of an omitted selector, zero tests, a crashed host and a cancelled lane is
-pinned in `test_ui_test_ci_gate`.
+pinned in `test_ui_test_ci_gate`; the gate compares selected and executed cases
+itself instead of trusting the receipt's diagnostics.
 The string catalog compares English keys between the base and head revisions:
 UI tests that quote a changed key, or one of its literal fragments of at least
 twelve characters between placeholders, are selected with the canaries; a

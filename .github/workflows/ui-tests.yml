@@ -97,7 +97,7 @@ jobs:
           echo "Selectors: ${TESTS:-none}"
           echo "Deferred to nightly: ${DEFERRED:-0}" | tee -a "$GITHUB_STEP_SUMMARY"
           if [[ "$SCOPE_UNKNOWN" == "true" ]]; then
-            echo "::warning title=UI scope unknown::Canaries and the harness self-test ran. For the complete catalog: gh workflow run ui-tests.yml --ref $HEAD_REF -f full_ui=true"
+            echo "::warning title=UI scope unknown::Canaries and the harness self-test are selected. For the complete catalog: gh workflow run ui-tests.yml --ref $HEAD_REF -f full_ui=true"
           fi
 
   interruption-controls:
