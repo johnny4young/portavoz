@@ -241,7 +241,7 @@ class LogDigestTests(unittest.TestCase):
             ("Cache hit for: swift-build-v2-x", "exact"),
             ("Cache hit for restore-key: swift-build-v2-x", "fallback"),
             ("Cache not found for input keys: swift-build-v2-x", "miss"),
-            ("Cache found and can be restored from key: swift-build-v2-x", "cold-policy"),
+            ("  lookup-only: true", "cold-policy"),
         ):
             with self.subTest(line=line):
                 self.assertEqual(report.build_log_digest(self.STAMP + line + "\n")["cache"], expected)

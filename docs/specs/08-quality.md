@@ -443,41 +443,27 @@ window, so the recorded baseline `docs/evidence/ci-time-baseline-20261102.json`
 reproduces with one command at the commit that recorded it while GitHub retains
 the job logs; later commits may change which jobs block and their timeouts.
 
-### Hosted CI time report
-
-`scripts/ci_time_report.py` measures the newest 50 finished heads per event and
-all their attempts through read-only `gh api` calls. Execution is the longest
-blocking job of an attempt, queue is each job's wait from `created_at` to
-`started_at`, and total runs from attempt start to the last blocking job. It
-reports nearest-rank p50, p90, p95, maximum and N per overlapping cohort (cache
-state from the restore action's log, dependency or Xcode change, interruption
-controls, documentation only, Core or app change) and per critical path. A
-cohort with no samples prints `no evidence`. The 10-minute execution and 20-minute
-total targets exclude only Xcode pin changes and interruption controls; a cache
-miss, a dependency bump or a documentation head still counts. Outcomes separate
-product, infrastructure (including a hosted outage the UI gate accepts), timeout,
-cancelled, refused rerun and superseded; only a pull request attempt can be
-superseded, because `main` commits no longer replace each other (D620). A superseded
-attempt is counted but not measured, and a timeout or failure stays in the distribution. `--until` pins the
-window, so the recorded baseline `docs/evidence/ci-time-baseline-20261102.json`
-reproduces with one command at the commit that recorded it while GitHub retains
-the job logs; later commits may change which jobs block and their timeouts.
-
-### Compatible Swift build reuse, not test-result reuse (D557, D596)
+### Compatible Swift build reuse, not test-result reuse (D557, D596, D618)
 
 The current-SDK job restores only `.build` with commit-pinned
 `actions/cache` restore/save actions. `scripts/ci_swift_cache_key.py` binds each
-seed's identity prefix to its lane, absolute workspace and developer paths, CPU
-architecture, macOS version/build, runner image/version, Xcode and Swift build,
-macOS SDK path/build, `Package.swift`, `Package.resolved`, the CI workflow, test
-launcher, toolchain verifier, cache-key and source-freshness implementations. Unknown lanes,
-missing inputs, failed/empty tool reads and timeouts fail key generation; no
-broad key substitutes for an unknown identity. Each successful `main` commit
-saves one seed as that prefix plus its full commit SHA; a pull request restores
-the newest saved seed through the exact prefix, never across identities; a
-lookup-only probe stops a `main` rerun from saving its commit twice. A
-dependency or build-policy change starts cold. Ordinary source changes keep the
-prefix. After a successful suite,
+seed's identity prefix to its lane, the versioned build contract with its exact
+compiler flags, absolute workspace and developer paths, CPU architecture, macOS
+version/build, runner image/version, Xcode and Swift build and macOS SDK path/build.
+Editing a workflow or script no longer changes it; a Tooling test ties the contract's
+flags to every workflow that compiles. `Package.swift` and `Package.resolved` form a
+second level. Unknown lanes, missing inputs, failed/empty tool reads and timeouts fail
+key generation; no broad key substitutes for an unknown identity. Each successful `main`
+commit saves one seed as identity, graph and full commit SHA, and an exact hit stops a
+rerun from saving it twice. Every run restores the newest seed of its graph, then of its
+identity, never across identities or flags, so a dependency change recompiles what moved
+instead of starting cold. `main` no longer builds cold. The nightly
+`clean-build-and-test` job builds from nothing, runs the complete suite and saves a seed
+under the graph as `clean-<commit>`, which later runs continue from, and
+is the clean-build authority; a green incremental build proves nothing about a clean one.
+A seed whose fingerprints fail or that `swift package resolve` refuses is discarded before
+the build, because an older pin can make SwiftPM reject a valid manifest.
+A graph over 6 GiB saves nothing and warns. After a successful suite,
 `scripts/ci_swift_source_stamps.py snapshot` records SHA-256, size, permissions and
 nanosecond mtime for tracked `Sources/`, `Tests/`, `Vendor/`, and package
 manifest/lock inputs inside `.build`. The vendor inventory includes the
@@ -491,7 +477,7 @@ checkout and belonging to the inventory. Because that walk resolves includes
 only relative to the including file, a manifest guard rejects target paths
 outside `Sources/`/`Tests/`, `headerSearchPath`, and `unsafeFlags` until the
 inventory and walker learn them. This is input-coverage evidence, not a
-measured CI speedup. On an exact PR cache hit,
+measured CI speedup. On a restored seed,
 `restore` intersects that receipt with the current Git inventory and restores
 mtime only for byte-identical, same-mode inputs. Changed/new inputs receive
 fresh timestamps even when their size and incoming mtime happen to match the old
@@ -509,8 +495,9 @@ warnings-as-errors. No `--skip-build`, test filtering, retries, smaller test
 counts or cached success receipts are introduced. The fixed OS/toolchain matrix,
 iOS compile, strict lint, Linux policy tests, UI scopes/locales/assertions,
 first-attempt rules and runtime budgets are unchanged. Every `main` push or
-manual run on `main` skips restore and **still compiles cold**; only those runs
-record fingerprints, measure and save a seed. Pull requests restore but never save:
+manual run on `main` restores like any other run, and only those runs record
+fingerprints, measure and save a seed; the nightly clean build is the cold-build
+evidence. Pull requests restore but never save:
 a PR-created cache would be reachable only from its own merge ref under GitHub's
 [cache access rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#restrictions-for-accessing-a-cache)
 while consuming the shared repository quota. No privileged trigger or broader
@@ -519,7 +506,8 @@ When freshness restoration rejects a hit, the step emits a warning, deletes the
 restored `.build` and the unchanged complete command compiles cold; an immutable
 seed therefore cannot keep a PR red. A failed build/test is not
 retried cold to manufacture a pass. Save occurs only after the full suite passes
-and only at or below a 6 GiB on-disk graph limit; oversized graphs remain uncached.
+and only at or below a 6 GiB on-disk graph limit; an oversized graph warns and saves
+nothing.
 The segment download timeout is two minutes. No repository cache billing or
 quota setting changes. Downloaded model caches, the user library, secrets, UI
 result bundles and release products are outside the cached path. Checked-in
@@ -529,7 +517,7 @@ The ordinary unprivileged Swift test build is not an artifact suitable for relea
 `Tests/Tooling/test_ci_swift_cache.py` exercises each identity input, lane/host
 separation, malformed or unavailable tool identity, exact CLI output, the
 per-commit key under one prefix and malformed commits, missing lockfiles,
-unconditional test ownership, cold-main and main-only seeding policy,
+unconditional test ownership, restore order and main-only seeding policy,
 the actual shell size gate at/beyond its boundary and on measurement failure, and
 the actual freshness step discarding a rejected graph without failing the job. Repository hygiene
 owns these tests before either macOS test lane starts. Source-freshness tests
@@ -3245,8 +3233,8 @@ change that only edits Spanish values selects nothing. The nightly workflow runs
 `main` as three shards balanced greedily by
 `docs/evidence/ui-test-runtime-budget.json` (`--all --shard K/N`), classifies
 each shard with the pull-request gate, fails any shard whose result is not
-verified evidence, and runs the interruption controls, holding at most three
-macOS runners at once. It fires off-peak at 03:23 UTC. Its `alert` job opens or
+verified evidence, and runs the interruption controls and the clean build with the
+complete Swift suite, holding at most three macOS runners at once. It fires off-peak at 03:23 UTC. Its `alert` job opens or
 updates one issue when any needed job ended as anything but success, cancelled
 included. `ui-nightly-watch.yml` runs on every `main` push, on its own schedule
 and by dispatch, because a schedule that never fires cannot report itself: it

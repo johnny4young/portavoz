@@ -27,7 +27,7 @@ class SwiftCacheIdentityTests(unittest.TestCase):
         self.scratch = tempfile.TemporaryDirectory()
         self.addCleanup(self.scratch.cleanup)
         self.root = Path(self.scratch.name)
-        for name in cache.INPUTS:
+        for name in cache.GRAPH_INPUTS:
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(name)
@@ -48,11 +48,11 @@ class SwiftCacheIdentityTests(unittest.TestCase):
 
     def test_key_is_deterministic_bounded_and_safe_for_github_output(self):
         self.assertEqual(self.key(), self.key())
-        self.assertRegex(self.key(), r"^swift-build-v2-build-and-test-[a-f0-9]{64}-[0-9a-f]{40}$")
+        self.assertRegex(self.key(), r"^swift-build-v3-build-and-test-[a-f0-9]{64}-[a-f0-9]{16}-[0-9a-f]{40}$")
         self.assertLess(len(self.key()), 512)
 
     def test_each_main_commit_seeds_its_own_entry_under_one_graph_prefix(self):
-        prefix = cache.cache_prefix(self.root, "build-and-test")
+        prefix = cache.graph_prefix(self.root, "build-and-test")
         other = "b" * 40
         self.assertEqual(self.key(), prefix + COMMIT)
         self.assertEqual(self.key(commit=other), prefix + other)
@@ -60,16 +60,61 @@ class SwiftCacheIdentityTests(unittest.TestCase):
             with self.subTest(commit=commit), self.assertRaises(ValueError):
                 self.key(commit=commit)
 
-    def test_each_build_policy_input_invalidates_the_key(self):
+    def test_a_moved_dependency_changes_the_key_but_keeps_the_toolchain_prefix(self):
         baseline = self.key()
-        for name in cache.INPUTS:
+        prefix = cache.cache_prefix(self.root, "build-and-test")
+        graph = cache.graph_prefix(self.root, "build-and-test")
+        for name in cache.GRAPH_INPUTS:
             with self.subTest(name=name):
                 path = self.root / name
                 original = path.read_bytes()
                 path.write_bytes(original + b"\nchanged")
                 self.assertNotEqual(self.key(), baseline)
+                self.assertNotEqual(cache.graph_prefix(self.root, "build-and-test"), graph)
+                self.assertEqual(cache.cache_prefix(self.root, "build-and-test"), prefix)
+                self.assertTrue(self.key().startswith(prefix))
                 path.write_bytes(original)
                 self.assertEqual(self.key(), baseline)
+
+    def test_flags_are_part_of_the_toolchain_identity(self):
+        baseline = cache.cache_prefix(self.root, "build-and-test")
+        changed = {**cache.BUILD_CONTRACT, "flags": ()}
+        with patch.object(cache, "BUILD_CONTRACT", changed):
+            self.assertNotEqual(cache.cache_prefix(self.root, "build-and-test"), baseline)
+
+    def test_editing_a_workflow_or_script_keeps_the_seed(self):
+        baseline = self.key()
+        for name in (".github/workflows/ci.yml", "scripts/run-swift-tests.sh", "scripts/ci_swift_cache_key.py"):
+            with self.subTest(name=name):
+                path = self.root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("changed")
+                self.assertEqual(self.key(), baseline)
+
+    def test_every_compiling_workflow_uses_the_contract_flags(self):
+        flags = " ".join(cache.BUILD_CONTRACT["flags"])
+        for name in ("ci.yml", "ui-nightly.yml"):
+            with self.subTest(name=name):
+                workflow = (ROOT / ".github/workflows" / name).read_text()
+                self.assertIn(f"run: scripts/run-swift-tests.sh {flags}\n", workflow)
+        self.assertIn('swift build --build-tests ${build[@]+"${build[@]}"}',
+                      (ROOT / "scripts/run-swift-tests.sh").read_text())
+
+    def test_the_command_reads_the_toolchain_once(self):
+        arguments = ["cache", "--lane", "build-and-test", "--commit", COMMIT]
+        with patch.object(cache, "ROOT", self.root), patch("sys.argv", arguments), patch.object(
+                cache, "cache_prefix", wraps=cache.cache_prefix) as prefix:
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(cache.main(), 0)
+        self.assertEqual(prefix.call_count, 1)
+
+    def test_a_clean_seed_is_restorable_through_the_graph_prefix(self):
+        clean = cache.clean_cache_key(self.root, "build-and-test", COMMIT)
+
+        self.assertTrue(clean.startswith(cache.graph_prefix(self.root, "build-and-test")))
+        self.assertNotEqual(clean, self.key())
+        with self.assertRaises(ValueError):
+            cache.clean_cache_key(self.root, "build-and-test", "nope")
 
     def test_lane_image_architecture_and_developer_directory_are_separate(self):
         baseline = self.key()
@@ -132,8 +177,10 @@ class SwiftCacheIdentityTests(unittest.TestCase):
             with contextlib.redirect_stdout(output):
                 self.assertEqual(cache.main(), 0)
             prefix = cache.cache_prefix(self.root, "build-and-test")
-            self.assertEqual(output.getvalue(), f"prefix={prefix}\nkey={self.key()}\n")
-            with patch.object(cache, "cache_key", side_effect=ValueError("invalid")):
+            graph = cache.graph_prefix(self.root, "build-and-test")
+            clean = cache.clean_cache_key(self.root, "build-and-test", COMMIT)
+            self.assertEqual(output.getvalue(), f"prefix={prefix}\ngraph_prefix={graph}\nkey={self.key()}\nclean_key={clean}\n")
+            with patch.object(cache, "graph_digest", side_effect=ValueError("invalid")):
                 with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
                     cache.main()
                 self.assertEqual(error.exception.code, 1)
@@ -167,7 +214,7 @@ class SwiftCacheWorkflowTests(unittest.TestCase):
                 self.assertEqual("actions/cache/restore@" in job, name in cache.LANES)
                 self.assertEqual("actions/cache/save@" in job, name in cache.LANES)
 
-    def test_main_is_cold_prs_restore_one_graph_and_tests_are_unconditional(self):
+    def test_every_run_restores_its_graph_then_its_toolchain_and_tests_are_unconditional(self):
         for lane in cache.LANES:
             with self.subTest(lane=lane):
                 job = self.jobs[lane]
@@ -184,9 +231,9 @@ class SwiftCacheWorkflowTests(unittest.TestCase):
                 self.assertIn(f'--lane {lane} --commit "$GITHUB_SHA"', identity)
                 restore = next(step for step in steps if "actions/cache/restore@" in step)
                 self.assertNotIn("if:", restore)
-                self.assertIn("restore-keys: ${{ github.event_name == 'pull_request' && "
-                              "steps.swift_cache_key.outputs.prefix || '' }}", restore)
-                self.assertIn("lookup-only: ${{ github.event_name != 'pull_request' }}", restore)
+                self.assertIn("restore-keys: |\n            ${{ steps.swift_cache_key.outputs.graph_prefix }}\n"
+                              "            ${{ steps.swift_cache_key.outputs.prefix }}\n", restore)
+                self.assertNotIn("lookup-only", restore)
                 self.assertIn('SEGMENT_DOWNLOAD_TIMEOUT_MINS: "2"', restore)
                 self.assertEqual(job.count("restore-keys:"), 1)
                 self.assertNotIn("enableCrossOsArchive", job)
@@ -198,8 +245,7 @@ class SwiftCacheWorkflowTests(unittest.TestCase):
                 self.assertLess(job.index("run: scripts/run-swift-tests.sh"), job.index("id: swift_cache_size"))
                 self.assertLess(job.index("id: swift_cache_size"), job.index("actions/cache/save@"))
                 freshness = next(step for step in steps if 'ci_swift_source_stamps.py restore' in step)
-                self.assertIn("if: github.event_name == 'pull_request' && "
-                              "steps.swift_cache.outputs.cache-matched-key != ''", freshness)
+                self.assertIn("if: steps.swift_cache.outputs.cache-matched-key != ''", freshness)
                 self.assertLess(job.index('ci_swift_source_stamps.py restore'), job.index('run: scripts/run-swift-tests.sh'))
                 snapshot = next(step for step in steps if 'ci_swift_source_stamps.py snapshot' in step)
                 self.assertIn(MAIN_ONLY, snapshot)
@@ -210,23 +256,25 @@ class SwiftCacheWorkflowTests(unittest.TestCase):
         for lane in cache.LANES:
             step = self.jobs[lane].split("      - name: Check Swift cache size\n", 1)[1].split("      - name:", 1)[0]
             self.assertIn(MAIN_ONLY, step)
-            shell = textwrap.dedent(step.split("        run: |\n", 1)[1])
-            with tempfile.TemporaryDirectory() as directory:
-                root = Path(directory)
-                binary = root / "du"
-                binary.write_text('#!/bin/sh\nprintf "%s\\t.build\\n" "$SIZE"\nexit "$DU_EXIT"\n')
-                binary.chmod(0o755)
-                for size, status, admitted in ((1, 0, True), (6291456, 0, True),
-                                               (6291457, 0, False), (1, 1, False)):
-                    with self.subTest(lane=lane, size=size, status=status):
-                        output = root / "output"
-                        output.write_text("")
-                        env = dict(os.environ, PATH=f"{root}:{os.environ['PATH']}",
-                                   SIZE=str(size), DU_EXIT=str(status), GITHUB_OUTPUT=str(output))
-                        result = subprocess.run(["bash", "-euo", "pipefail", "-c", shell],
-                                                env=env, capture_output=True, text=True, timeout=5)
-                        self.assertEqual(output.read_text() == "save=true\n", admitted)
-                        self.assertEqual(result.returncode == 0, status == 0)
+            self.assertIn("run: scripts/check-swift-cache-size.sh", step)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            binary = root / "du"
+            binary.write_text('#!/bin/sh\nprintf "%s\\t.build\\n" "$SIZE"\nexit "$DU_EXIT"\n')
+            binary.chmod(0o755)
+            for size, status, admitted in ((1, 0, True), (6291456, 0, True), (6291457, 0, False), (1, 1, False)):
+                with self.subTest(size=size, status=status):
+                    output = root / "output"
+                    output.write_text("")
+                    env = dict(os.environ, PATH=f"{root}:{os.environ['PATH']}",
+                               SIZE=str(size), DU_EXIT=str(status), GITHUB_OUTPUT=str(output))
+                    result = subprocess.run([str(ROOT / "scripts/check-swift-cache-size.sh")], env=env,
+                                            capture_output=True, text=True, timeout=5)
+                    self.assertEqual(output.read_text() == "save=true\n", admitted)
+                    self.assertEqual(result.returncode == 0, status == 0)
+                    self.assertNotIn("build cold", result.stdout)
+                    self.assertEqual("::warning title=Swift cache too large::" in result.stdout,
+                                     status == 0 and not admitted)
 
     def test_only_main_pushes_can_produce_a_cache_seed(self):
         for lane in cache.LANES:
@@ -252,6 +300,8 @@ class SwiftCacheWorkflowTests(unittest.TestCase):
                     binary.mkdir()
                     (binary / "python3").write_text('#!/bin/sh\nexit "$RESTORE_EXIT"\n')
                     (binary / "python3").chmod(0o755)
+                    (binary / "swift").write_text('#!/bin/sh\n[ "$*" = "package resolve" ] || exit 9\nexit 0\n')
+                    (binary / "swift").chmod(0o755)
                     (root / ".build/debug").mkdir(parents=True)
                     env = dict(os.environ, PATH=f"{binary}:{os.environ['PATH']}", RESTORE_EXIT=str(status))
                     result = subprocess.run(["bash", "-eo", "pipefail", "-c", shell], cwd=root,
@@ -259,6 +309,26 @@ class SwiftCacheWorkflowTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr)
                     self.assertEqual((root / ".build").exists(), status == 0)
                     self.assertEqual("::warning::" in result.stdout, status != 0)
+
+    def test_a_seed_swiftpm_cannot_resolve_is_discarded_before_the_build(self):
+        for lane in cache.LANES:
+            step = self.jobs[lane].split("      - name: Verify cached source freshness\n", 1)[1].split("      - name:", 1)[0]
+            shell = textwrap.dedent(step.split("        run: |\n", 1)[1])
+            with self.subTest(lane=lane), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                binary = root / "bin"
+                binary.mkdir()
+                (binary / "python3").write_text("#!/bin/sh\nexit 0\n")
+                (binary / "python3").chmod(0o755)
+                (binary / "swift").write_text("#!/bin/sh\necho 'Disabled default traits' >&2\nexit 1\n")
+                (binary / "swift").chmod(0o755)
+                (root / ".build/debug").mkdir(parents=True)
+                env = dict(os.environ, PATH=f"{binary}:{os.environ['PATH']}")
+                result = subprocess.run(["bash", "-eo", "pipefail", "-c", shell], cwd=root,
+                                        env=env, capture_output=True, text=True, timeout=5)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertFalse((root / ".build").exists())
+                self.assertIn("::warning::", result.stdout)
 
     def test_cache_policy_runs_in_repository_hygiene(self):
         hygiene = (ROOT / "scripts/check-repository-hygiene.sh").read_text()

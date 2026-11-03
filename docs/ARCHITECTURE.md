@@ -5777,14 +5777,13 @@ fixed SHA-256 digests instead of floating Homebrew state.
 Third-party GitHub Actions are pinned to immutable full commit SHAs with their
 human-readable versions in comments; repository hygiene rejects mutable tags.
 
-The two complete Swift test lanes may restore a compatible SwiftPM `.build`
-graph on pull requests. Cache identity binds the lane, absolute workspace,
-architecture, macOS build, runner image, Xcode/Swift/macOS SDK and build-policy
-inputs, including the dependency lock. Every push to `main` builds cold and,
-after the complete suite passes, saves one seed under that identity plus its
-commit; a lookup-only probe keeps a rerun from saving the same commit
-twice. A pull request restores the newest saved seed whose identity prefix
-matches exactly; cancelled, failed or oversize `main` runs save nothing, so that
+The Swift test lane restores a compatible SwiftPM `.build` graph on every run. Cache
+identity binds the lane, a versioned build contract with its exact flags, absolute
+workspace, architecture, macOS build, runner image and Xcode/Swift/macOS SDK. The
+manifest and lock form a second level. A run restores the newest seed of its graph, then
+of its identity. Every push to `main` saves one seed after the complete suite passes, and
+the nightly clean build saves another, so a clean build still happens every day. Cancelled,
+failed or oversize `main` runs save nothing, so that
 seed can be a few commits behind. There is no cross-identity restore, cached test verdict or conditional
 test execution. A successful build records tracked source fingerprints. Only
 matching bytes, size and permissions recover their prior timestamps; changed or

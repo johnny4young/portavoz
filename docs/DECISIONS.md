@@ -22398,6 +22398,33 @@ synthetic fixtures, and the script shows each one before `--publish` can push it
 The accepted cost is that a passing lane leaves no bundle to inspect, and a hygiene failure
 can spend a macOS runner that the old order would have saved.
 
+## D618 — Cache identity follows the build contract, and `main` restores too
+
+A miss cost a pull request about 16 minutes and hit 36% of them. The identity hashed the
+CI workflow and three scripts, so any edit to them started every run cold, a dependency
+change had no fallback, and `main` compiled cold by policy for 11 minutes on every push.
+
+The identity now holds a versioned build contract with the exact compiler flags, plus the
+toolchain, SDK, workspace, architecture and runner image. A Tooling test ties those flags to
+every workflow that compiles. `Package.swift` and `Package.resolved` form a second level: a
+run restores the newest seed of its graph, then of its identity, and discards a seed that
+`swift package resolve` refuses, because an older pin can make SwiftPM reject a valid
+manifest and no rerun could clear it. `main` restores like any other run. The nightly `clean-build-and-test` job builds from nothing, runs the complete
+suite and saves its own seed, so a clean build runs every day and later runs continue from
+it. A `main` run that overlaps the nightly can save after it and delay that reset by a day;
+always preferring the clean seed would make every run restore state up to a day old. An
+oversize graph now warns instead of silently saving nothing.
+
+`ImageVersion` stays in the identity. Restoring across runner images has never been tried,
+and it could recompile almost everything if the SDK's timestamps change, so it leaves only
+after a measured restore across two images.
+
+This supersedes D557's cold `main` and D596's restore through the exact graph. The accepted
+risks are that a green incremental build does not prove a clean one until that night, and that
+the clean seed coexists with the same commit's `main` seed, because seeds are immutable and
+skipping it would end the protection against drift. That costs one more entry of about 1.85 GB
+a day against the 10 GB cache limit. Release evidence still never consumes this cache.
+
 ## D620 — Every `main` commit gets its own CI run, and CI-only diffs run the checkout readers
 
 **Context:** `ci.yml` shared one concurrency group per ref with
