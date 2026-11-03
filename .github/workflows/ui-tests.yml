@@ -28,6 +28,8 @@ jobs:
       locales: ${{ steps.select.outputs.locales }}
       matrix: ${{ steps.select.outputs.matrix }}
       summary: ${{ steps.select.outputs.summary }}
+      scope_unknown: ${{ steps.select.outputs.scope_unknown }}
+      deferred: ${{ steps.select.outputs.deferred }}
       base: ${{ steps.verified_base.outputs.base }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -242,8 +244,41 @@ jobs:
           mkdir -p dist/ui-test-results
           printf '%s\n' "$OUTCOME" > "dist/ui-test-results/$LOCALE-outcome.txt"
 
-      # The classifier reads these three files, not hundreds of MB of
-      # xcresult attachments. Preserve the full forensic artifact separately.
+      - name: Record the lane receipt
+        id: lane
+        if: always()
+        env:
+          LOCALE: ${{ matrix.locale }}
+          OUTCOME: ${{ steps.ui.outcome }}
+          SELECTED: ${{ needs.scope.outputs.tests }}
+          DEFERRED: ${{ needs.scope.outputs.deferred }}
+          SCOPE_UNKNOWN: ${{ needs.scope.outputs.scope_unknown }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          python3 scripts/ui_test_lane_receipt.py \
+            --locale "$LOCALE" --results dist/ui-test-results --sha "$HEAD_SHA" --attempt "$ATTEMPT" \
+            --toolchain "$(xcodebuild -version | tr '\n' ' ')" --outcome "$OUTCOME" \
+            --tests "$SELECTED" --deferred "$DEFERRED" --scope-unknown "$SCOPE_UNKNOWN" \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Record PR screenshots
+        if: always()
+        env:
+          LOCALE: ${{ matrix.locale }}
+        run: python3 scripts/pr_screenshots.py --result "dist/ui-test-results/$LOCALE.xcresult" --output dist/pr-screenshots
+
+      - name: Publish PR screenshots
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pr-screenshots-${{ github.run_id }}
+          path: dist/pr-screenshots
+          if-no-files-found: ignore
+          retention-days: 14
+
+      # The classifier reads these files, not hundreds of MB of xcresult
+      # attachments, which are kept only when the lane did not pass.
       - name: Publish compact classifier receipts
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -253,11 +288,12 @@ jobs:
             dist/ui-test-results/${{ matrix.locale }}-runtime.json
             dist/ui-test-results/${{ matrix.locale }}-execution.json
             dist/ui-test-results/${{ matrix.locale }}-outcome.txt
+            dist/ui-test-results/${{ matrix.locale }}-lane.json
           if-no-files-found: error
           retention-days: 7
 
       - name: Preserve ${{ matrix.locale }} UI evidence
-        if: always()
+        if: always() && steps.lane.outputs.complete != 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: scoped-ui-${{ matrix.locale }}-${{ github.run_id }}

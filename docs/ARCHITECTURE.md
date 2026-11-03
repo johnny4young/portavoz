@@ -5819,7 +5819,10 @@ verified evidence; a hosted-automation advisory fails the run. An unverified or
 cancelled night opens or updates one issue, and `ui-nightly-watch.yml` keeps
 another open while verified evidence on `main` is older than 48 hours.
 Pull requests run the interruption controls only when one of their behavior
-files changes. XCUITest runs in
+files changes. Repository hygiene runs beside the macOS lanes instead of before
+them. Each UI lane keeps a small receipt of what it selected and ran on every run,
+`pr-*` screenshots travel in their own artifact, and the large result bundle is kept
+only when a lane did not pass. XCUITest runs in
 English only: Spanish parity is a unit-test property of the string catalogs
 (every key translated, matching placeholders, every visible literal
 cataloged, Spanish equal to English only for an explicit list of terms), and

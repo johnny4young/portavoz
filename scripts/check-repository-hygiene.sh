@@ -142,6 +142,7 @@ python3 -m unittest Tests.Tooling.test_ci_time_report
 python3 -m unittest Tests.Tooling.test_ci_swift_source_stamps
 python3 -m unittest Tests.Tooling.test_ios_portability
 python3 -m unittest Tests.Tooling.test_ui_nightly_health
+python3 -m unittest Tests.Tooling.test_pr_evidence
 python3 -m unittest Tests.Tooling.test_swift_test_scope
 python3 -m unittest Tests.Tooling.test_ui_test_ci_gate
 python3 -m unittest Tests.Tooling.test_ui_test_execution
@@ -158,6 +159,7 @@ bash -n scripts/make-production-sync-qualification-app.sh
 bash -n scripts/verify-cloudkit-capabilities.sh
 bash -n scripts/run-release-reliability-gates.sh
 bash -n scripts/run-ui-tests.sh
+bash -n scripts/pr-evidence.sh
 bash -n scripts/run-ci-swiftlint.sh
 bash -n scripts/install-ci-xcodegen.sh
 bash -n scripts/verify-ci-toolchain.sh
