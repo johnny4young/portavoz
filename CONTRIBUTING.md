@@ -15,9 +15,9 @@ the process in [SECURITY.md](SECURITY.md), never through a public issue.
   test targets; a strict production build alone does not cover them.
 - **UI evidence follows impact.** Give every interactive control an
   `accessibilityIdentifier`; use `make test-ui-changed UI_BASE=origin/main` to
-  run the feature-level XCUITest selectors chosen from the diff. Localization
-  and shared-harness changes expand to the complete English suite
-  automatically; Spanish is checked by `LocalizationTests`, not by a UI pass.
+  run the feature-level XCUITest selectors chosen from the diff. No diff runs the
+  complete English suite: it runs nightly and with `full_ui` on a dispatch.
+  Spanish is checked by `LocalizationTests`, not by a UI pass.
 - **Domain types live in `PortavozCore`**; workflows live in `ApplicationKit`.
   Kits depend on Core, never on `ApplicationKit` or on each other, except the
   edges in the [module graph](docs/ARCHITECTURE.md#current-module-graph):
@@ -48,5 +48,5 @@ the process in [SECURITY.md](SECURITY.md), never through a public issue.
    ```
 
    Use `make test-ui-release` only for an intentional full release gate.
-   The selector falls back to the complete English suite for an unknown
-   production path rather than incorrectly skipping UI validation.
+   For an unknown production path the selector runs the canaries and a harness
+   self-test and reports `scope-unknown`, rather than skipping UI validation.

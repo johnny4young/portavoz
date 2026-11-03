@@ -607,6 +607,7 @@ extension ArchitectureDependencyTests {
         let uiTest = try Self.contents(
             of: "Tests/PortavozUITests/LibraryUITests.swift")
         let scope = try Self.contents(of: "scripts/ui_test_scope.py")
+            + Self.contents(of: "scripts/ui_test_catalog.py")
         let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
         let intelligence = try Self.contents(
             of: "docs/specs/04-intelligence.md")
@@ -673,6 +674,7 @@ extension ArchitectureDependencyTests {
         let uiTest = try Self.contents(
             of: "Tests/PortavozUITests/LibraryUITests.swift")
         let scope = try Self.contents(of: "scripts/ui_test_scope.py")
+            + Self.contents(of: "scripts/ui_test_catalog.py")
         let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
         let intelligence = try Self.contents(
             of: "docs/specs/04-intelligence.md")
@@ -741,6 +743,7 @@ extension ArchitectureDependencyTests {
         let uiTest = try Self.contents(
             of: "Tests/PortavozUITests/LibraryUITests.swift")
         let scope = try Self.contents(of: "scripts/ui_test_scope.py")
+            + Self.contents(of: "scripts/ui_test_catalog.py")
         let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
         let intelligence = try Self.contents(
             of: "docs/specs/04-intelligence.md")
@@ -822,6 +825,7 @@ extension ArchitectureDependencyTests {
         let uiTest = try Self.contents(
             of: "Tests/PortavozUITests/LibraryUITests.swift")
         let scope = try Self.contents(of: "scripts/ui_test_scope.py")
+            + Self.contents(of: "scripts/ui_test_catalog.py")
         let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
         let intelligence = try Self.contents(
             of: "docs/specs/04-intelligence.md")

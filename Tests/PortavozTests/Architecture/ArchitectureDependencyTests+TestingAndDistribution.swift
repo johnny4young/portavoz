@@ -247,6 +247,7 @@ extension ArchitectureDependencyTests {
         let xcodegen = try Self.contents(of: "scripts/install-ci-xcodegen.sh")
         let candidate = try Self.contents(of: "scripts/candidate_automation.py")
         let scope = try Self.contents(of: "scripts/ui_test_scope.py")
+            + Self.contents(of: "scripts/ui_test_catalog.py")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         // D496: one build job publishes the exact products; one matrix lane
@@ -345,7 +346,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(candidate.contains("UI_RECEIPT_SCHEMA_VERSION = 3"))
         XCTAssertTrue(candidate.contains(
             "UI_HARNESS_NOISE_THRESHOLD_SECONDS = 1.0"))
-        XCTAssertTrue(scope.contains("FULL_HARNESS_FILES"))
+        XCTAssertTrue(scope.contains("HARNESS_FILES"))
         XCTAssertTrue(scope.contains("scripts/ui_test_runtime.py"))
         XCTAssertTrue(scope.contains("scripts/ui_test_ci_gate.py"))
         XCTAssertTrue(scope.contains("scripts/candidate_automation.py"))

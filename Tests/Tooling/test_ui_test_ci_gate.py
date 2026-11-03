@@ -227,6 +227,37 @@ class UITestCIGateTests(unittest.TestCase):
             {"verified": "false", "state": "infrastructure-advisory"},
         )
 
+    # What replaces a complete run on a harness change must still catch these.
+    def test_harness_self_test_catches_an_omitted_selector(self):
+        document = receipt("en")
+        document["selectorCount"] = 2
+        document["budgetStatus"] = "failed"
+        document["budgetViolations"] = ["scoped run: result contains 1 cases for 2 selectors"]
+        result = self.run_gate(receipts={"en": document})
+
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(self.outputs["verified"], "false")
+
+    def test_harness_self_test_catches_zero_tests(self):
+        document = receipt("en")
+        document.update(caseCount=0, tests=[])
+        result = self.run_gate(receipts={"en": document})
+
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(self.outputs["verified"], "false")
+
+    def test_harness_self_test_catches_a_crashed_host(self):
+        result = self.run_gate(english_outcome="failure", receipts={"en": receipt("en", result="Failed")})
+
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(self.outputs["verified"], "false")
+
+    def test_harness_self_test_catches_a_cancelled_lane(self):
+        result = self.run_gate(english_outcome="cancelled")
+
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(self.outputs["verified"], "false")
+
     def test_selected_locale_cannot_be_skipped(self):
         result = self.run_gate(english_outcome="skipped")
 

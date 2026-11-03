@@ -579,7 +579,8 @@ into the app under test: an empty value stays empty, a missing value shows the
 key. Added, removed or changed copy selects the journeys quoting the key or
 either value, matched in Swift string-literal form, plus the smoke canaries.
 A changed plural, substitution or unshipped-state English entry, or an
-unreadable catalog, selects the complete English suite. `test_ui_test_scope`
+unreadable catalog, reports `scope-unknown` with the canaries and the harness
+self-test (D616). `test_ui_test_scope`
 covers these cases against synthetic Git revisions and an uncommitted working
 file. They are selector contracts, not real-app UI runs.
 
@@ -3186,19 +3187,28 @@ Disposable launches isolate auxiliary sensitive state as well as SQLite:
 Settings and Meeting Detail never inspect the host participant-voice gallery
 or its Keychain key while `-use-temp-store` is active.
 
-`scripts/ui_test_scope.py` is the executable PR-impact policy for all 103 UI
-tests. Each test belongs to a feature scope. Known app and application files
+`scripts/ui_test_scope.py` is the executable PR-impact policy for the UI
+catalog, and `scripts/ui_test_catalog.py` holds its data: tests by feature scope,
+canaries, the harness self-test and dependency owners. No diff selects the complete
+catalog (D616). Editing the data, the selector or the runtime budget selects no UI
+test; Tooling tests own them. Known app and application files
 select only the scopes they can affect; a changed UI-test file selects its own
-class; shared-harness changes select the complete English catalogue; and
-a lower-layer or unmapped app Swift file without a proven owner selects the
-seventeen `SMOKE_TESTS` canaries (D597); lower-layer files and resources with a
-proven owner keep their feature scopes. `Package.resolved`, unowned resources
-and app resources such as `Info.plist` select the complete English catalogue.
+class and the canaries; shared-harness changes select the canaries and
+`HARNESS_SELF_TESTS`; and a lower-layer or unmapped app Swift file without a proven
+owner selects the seventeen `SMOKE_TESTS` canaries (D597); lower-layer files and
+resources with a proven owner keep their feature scopes. `Package.resolved` selects
+the canaries and the owners of the pins that moved. `Package.swift`, seed fixtures,
+a pin without an owner, an unreadable catalog or lock, unowned resources and app
+resources such as `Info.plist` report `scope-unknown` with the conservative set and
+the command for a full run; a parse error is never zero tests. Every selection
+reports how many cases it defers to nightly. `full_ui` on the Scoped UI dispatch
+runs the complete catalog, and false runs the selection against `main`. The gate's
+detection of an omitted selector, zero tests, a crashed host and a cancelled lane is
+pinned in `test_ui_test_ci_gate`.
 The string catalog compares English keys between the base and head revisions:
 UI tests that quote a changed key, or one of its literal fragments of at least
 twelve characters between placeholders, are selected with the canaries; a
-change that only edits Spanish values selects nothing, and an unreadable diff
-selects everything (D601). The nightly workflow runs the complete catalogue on
+change that only edits Spanish values selects nothing. The nightly workflow runs the complete catalogue on
 `main` as three shards balanced greedily by
 `docs/evidence/ui-test-runtime-budget.json` (`--all --shard K/N`), classifies
 each shard with the pull-request gate, fails any shard whose result is not
@@ -3215,16 +3225,15 @@ instead of reading as healthy (D615). Pull requests run the interruption control
 only when one of their behavior files changes: `INTERRUPTION_CONTROL_FILES` no
 longer lists the workflow, the Makefile or the selector, and the nightly run still
 covers those owners. The
-Meeting Detail primary column also selects the complete English suite: its
-pane layout decides which detail content exists for every journey that opens a
-meeting, including recording-recovery and Skills journeys (D549). Docs,
+Meeting Detail primary column selects the journeys that open a meeting, including
+recording input, recovery and Skills, because its pane layout decides which detail
+content exists for them (D549, D616). Docs,
 governance, site, CLI, the two reviewed dictation-validation corpus files, and
 package-test-only diffs select no UI runner. CLI paths are excluded before the
 generic production-Swift fallback. The live benchmark also selects no UI runner:
 only the headless `--bench-live` mode and the CLI call it, and a policy test fails
 if any other app or UI-test file starts to. Unknown
-TranscriptionKit files and new corpus siblings still expand to the complete
-English catalogue. Catalog
+TranscriptionKit files and new corpus siblings report `scope-unknown`. Catalog
 validation fails for an added or renamed unscoped test, empty or duplicate
 scope, missing production owner, retired known-overlap journey, no-UI fixture
 directory named by app or UI-test Swift, or missing/stale runtime budget. The
