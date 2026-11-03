@@ -22455,7 +22455,7 @@ A/B runs and the nightly seed have to catch; the table drifts until someone rege
 `--record-from`, which only affects balance; and a pull request can break a listed harness case
 without knowing until that night.
 
-## D620 — A pull request's UI evidence fits a budget, chosen by what changed
+## D621 — A pull request's UI evidence fits a budget, chosen by what changed
 
 Selecting by file left two costs after D616: one edited line in a large UI test file selected
 its whole class, and a broad file name such as `MeetingDetailScene` selected every meeting
@@ -22494,7 +22494,7 @@ next night. The verification anchor still advances over a cut run, so a later pu
 reselect what was cut; the nightly alarm from D615 bounds both. A broad change gets less UI proof
 than before and has to dispatch `full_ui` when that matters.
 
-## D621 — A pull request's UI host comes from the SwiftPM build, and the budget from its job
+## D622 — A pull request's UI host comes from the SwiftPM build, and the budget from its job
 
 The UI lane compiled the whole app a second time with `xcodebuild`, always cold, in a second
 macOS job that took 8 to 12 minutes before a test ran. No selection could fit a 10-minute job
@@ -22509,7 +22509,7 @@ first and dropped `TMPDIR`, which failed 11 of 191 cases; with the injection the
 left a report. The host's plist comes from `project.yml`, so the two hosts cannot drift on URL type,
 file type or usage strings, and it inherits nothing that acts like the shipping app.
 
-This resolves the budget D620 left fixed. `scope` now ranks the candidates and the job fits them
+This resolves the budget D621 left fixed. `scope` now ranks the candidates and the job fits them
 after its build, into what remains of 570 seconds less 15 for teardown. A slow build or a cache miss
 runs fewer candidates and names them, instead of overrunning or failing, and never drops a canary. A
 Core change compiled in 148 to 183 seconds in the trial instead of the planned 150, which is accepted

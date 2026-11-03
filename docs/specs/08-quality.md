@@ -604,7 +604,7 @@ self-test (D616). `test_ui_test_scope`
 covers these cases against synthetic Git revisions and an uncommitted working
 file. They are selector contracts, not real-app UI runs.
 
-`scripts/ui_test_catalog.py` sorts the catalog into three (D620). `PR_TESTS` are the
+`scripts/ui_test_catalog.py` sorts the catalog into three (D621). `PR_TESTS` are the
 canaries and the feature groups, `NIGHTLY_ONLY_TESTS` run every night and on a pull
 request only when the diff edits that method, and `ON_DEMAND_TESTS` run only through
 `make public-screenshots`. An edited test selects that method, and an edited helper the
@@ -614,7 +614,7 @@ request always holds the ten canaries. `ui_test_scope.py --ranked`, as `scope` r
 the candidates: edited methods and harness self-tests first, then helper consumers, then the tests the most paths map to, then
 by feature tier and fewest seconds. After its build, the UI job's `scripts/ui_test_fit.py` adds them
 while their hosted p90 and xcodebuild's overhead fit what remains of 570 seconds, less 15 for
-teardown (D621). The rest are not dropped: `cut` names them in the job
+teardown (D622). The rest are not dropped: `cut` names them in the job
 summary, a `ui-budget-cut` notice, the gate's result and the lane receipt, and nightly owns them. A
 late build runs the canaries alone and never cuts one, while canaries over a nominal 300 seconds
 fail the selection, and `--budget` dry-runs that figure. `docs/evidence/ui-test-hosted-seconds.json` comes from
@@ -627,7 +627,7 @@ clean Stop through the production Stop and post-capture adapters, with a disposa
 the PR diff and allocates a macOS UI runner only when product presentation is
 affected. One job restores the `build-and-test` seed read-only, runs
 `scripts/build-ui-host-products.sh` and then `test-without-building`, and one Linux classifier
-gates on its receipts (D496, D621). That script builds `portavoz-app` with SwiftPM under the seed's
+gates on its receipts (D496, D622). That script builds `portavoz-app` with SwiftPM under the seed's
 flags, builds the runner from `project-ui-runner.yml`, which has no app target and no package, and
 wraps the app through `scripts/make-ui-host.sh`. `scripts/ui_host.py` writes the host's plist from
 `project.yml` and sets it as the `UITargetAppPath` of the `xctestrun`. The host keeps the
@@ -3255,7 +3255,7 @@ canaries, the harness self-test and dependency owners. No path selects the compl
 catalog by itself (D616). Editing the data, the selector or the runtime budget selects no UI
 test; Tooling tests own them. Known app and application files
 select only the scopes they can affect; an edited UI test selects that method and
-the canaries (D620); shared-harness changes select the canaries and
+the canaries (D621); shared-harness changes select the canaries and
 `HARNESS_SELF_TESTS`, first in line for the budget; and a lower-layer or unmapped app
 Swift file without a proven owner selects the ten `SMOKE_TESTS` canaries; lower-layer files and
 resources with a proven owner keep their feature scopes. `Package.resolved` selects
@@ -5629,7 +5629,7 @@ preserved English receipt and missing Spanish receipt distinguish orchestration
 exhaustion from a product assertion, skip, malformed receipt, or green retry.
 
 The `scoped-ui-tests` job keeps a 90-minute global orchestration ceiling only on a
-manual complete run, and 22 minutes on a pull request (D621). The 90 minutes were sized for one
+manual complete run, and 22 minutes on a pull request (D622). The 90 minutes were sized for one
 build plus both complete sequential locales with bounded
 hosted variance and cleanup/upload/classification headroom. Neither is a product
 or per-test runtime budget: selectors, assertions, test waits, the controlled-
@@ -6562,7 +6562,7 @@ or terminates another process. Persistent `testmanagerd`, unit-test processes,
 `build-for-testing`, and idle `xcodebuildmcp` helpers are not evidence of an
 active UI run. Eighteen injectable tooling cases and source-policy ratchets pin
 those classifications. D463 gave the hosted bilingual job a 90-minute global
-orchestration ceiling, which D621 keeps only for a manual complete run; the 105-case-per-locale catalogue still runs
+orchestration ceiling, which D622 keeps only for a manual complete run; the 105-case-per-locale catalogue still runs
 sequentially from one shared build without parallel locale contention. That
 ceiling does not replace or widen any per-test or controlled-host runtime
 budget.
