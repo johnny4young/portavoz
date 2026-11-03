@@ -22581,8 +22581,9 @@ Swift suite and the UI canaries, including a change only to the lint job. A manu
 pays for `build-and-test` and `ios-portability`, and reports `gate-manual`, so
 it cannot answer for a pull request's required check. A manual run of `ci.yml` on a `main` commit disqualifies that commit from
 a release, because the contract rejects several runs of `CI` for one commit; `full_ui` belongs on a branch. `main` requires only `gate` and no longer `strict`, so a merge does not rerun
-every open pull request; the old `ui-test-gate` name is gone. Fork and Dependabot pull requests had not run
-through the gate when protection moved.
+every open pull request; the old `ui-test-gate` name is gone. Two pull requests that each passed can now break `main` together, which
+only `main`'s own run shows; merges then stop by agreement, not by protection, until it is repaired or reverted.
+Fork and Dependabot pull requests had not run through the gate when protection moved.
 
 ---
 

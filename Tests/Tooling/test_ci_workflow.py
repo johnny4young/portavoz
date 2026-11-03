@@ -270,7 +270,7 @@ class CIWorkflowTests(unittest.TestCase):
             body = workflow.split(f"\n  {job}:\n", 1)[1]
             self.assertIn("github.event_name != 'push'", body.split("    steps:\n", 1)[0], job)
 
-    def test_only_a_pull_request_reports_the_required_check_names(self):
+    def test_only_a_pull_request_reports_the_required_check_name(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         gate = workflow.split("\n  gate:\n", 1)[1].split("    steps:\n", 1)[0]
 
