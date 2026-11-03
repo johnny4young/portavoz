@@ -10,9 +10,11 @@ on:
 permissions:
   contents: read
 
+# A newer head replaces an older one only inside a pull request. Each main commit
+# owns its group because a shared one would drop a pending run even without cancelling.
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   repository-hygiene:

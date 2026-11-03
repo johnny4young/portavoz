@@ -22397,3 +22397,28 @@ synthetic fixtures, and the script shows each one before `--publish` can push it
 
 The accepted cost is that a passing lane leaves no bundle to inspect, and a hygiene failure
 can spend a macOS runner that the old order would have saved.
+
+## D620 — Every `main` commit gets its own CI run, and CI-only diffs run the checkout readers
+
+**Context:** `ci.yml` shared one concurrency group per ref with
+`cancel-in-progress: true`, so a merge cancelled the run of the previous `main`
+commit, and two commits lost theirs on 2 November. Source integration needs a
+first-attempt run for each commit it publishes. Separately, 9 of the last 120
+`main` commits changed workflows, scripts or the `Makefile`, alone or with
+documentation and tooling, and a pull request with that diff runs the complete
+suite although none of those files is compiled.
+
+**Decision:** A pull request still replaces its older run. Outside a pull request
+the group is the commit, because a shared group drops a pending run even without
+cancelling. D600 widens: `.github/`, `scripts/` and the `Makefile` also select the
+checkout readers, except the files that build or run the suite
+(`RUNS_THE_SUITE`). The `docs-only` cohort of `ci_time_report.py` keeps its own
+list, so it stays comparable with the recorded baseline, and only a pull request
+counts as superseded. UI products travel as one zstd archive uploaded without a
+second compression, and the hosted UI products build stops writing an index store.
+The SwiftPM lane keeps its index: a local cold build without it took 130 s against
+121 s and saved 4% of the graph, so there was nothing to gain.
+
+**Consequences:** Pushes close together on `main` run side by side and use more
+macOS slots. Every `main` push and manual run still runs the complete suite, so a
+missed reader fails there instead of on the pull request.

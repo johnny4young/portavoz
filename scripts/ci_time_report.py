@@ -24,7 +24,6 @@ from typing import Any, Callable, Iterable, Sequence
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-from swift_test_scope import contract_only  # noqa: E402
 from ui_test_runtime import percentile, write_receipt  # noqa: E402
 
 REPOSITORY = "johnny4young/portavoz"
@@ -51,6 +50,8 @@ COHORTS = (
 )
 # Only these two leave the SLO; a dependency bump, a docs head or a cache miss still counts.
 SLO_EXEMPT = frozenset({"xcode-pin", "interruption"})
+# Fixed here so the cohort stays comparable across changes to what the test scope narrows.
+DOCS_ONLY_PREFIXES = ("docs/", "site/", "Tests/Tooling/", ".github/ISSUE_TEMPLATE/")
 DEPENDENCY_FILES = frozenset({"Package.swift", "Package.resolved"})
 XCODE_PIN_FILE = "scripts/verify-ci-toolchain.sh"
 XCODE_PIN = re.compile(r"^[-+].*Xcode_\d", re.MULTILINE)
@@ -244,6 +245,10 @@ class HeadChanges:
     xcode_pin: bool = False
 
 
+def docs_only(path: str) -> bool:
+    return path == "LICENSE" or path.startswith(DOCS_ONLY_PREFIXES) or ("/" not in path and path.endswith(".md"))
+
+
 def change_cohorts(changes: HeadChanges) -> set[str]:
     if changes.files is None:
         return {"files-unknown"}
@@ -252,7 +257,7 @@ def change_cohorts(changes: HeadChanges) -> set[str]:
         cohorts |= {"xcode-pin", "toolchain-deps"}
     if DEPENDENCY_FILES.intersection(changes.files):
         cohorts.add("toolchain-deps")
-    if changes.files and all(contract_only(path) for path in changes.files):
+    if changes.files and all(docs_only(path) for path in changes.files):
         cohorts.add("docs-only")
     if any(path.startswith("Sources/PortavozCore/") for path in changes.files):
         cohorts.add("core-change")
@@ -352,7 +357,9 @@ def attempt_row(head: HeadAttempt, *, changes: HeadChanges, build: dict[str, Any
 
 
 def was_superseded(head: HeadAttempt, branch_runs: Sequence[str]) -> bool:
-    """A new run on the branch cancels the old one, so it must appear while the old one ran."""
+    """A new run on a pull request cancels the old one, so it must appear while the old one ran."""
+    if head.event != "pull_request":
+        return False
     starts = [parse_time(run.start) for run in head.runs]
     ends = [parse_time(job["completed_at"]) for run in head.runs for job in run.jobs if job.get("completed_at")]
     # A run cancelled before any job started has only its own end.

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Select the Swift test classes a pull request can affect.
 
-A diff confined to documentation, the website or Python tooling cannot change
-compiled code, but Swift tests that read repository files can still fail on it.
+A diff confined to documentation, the website, CI configuration or tooling cannot
+change compiled code, but Swift tests that read repository files can still fail on it.
 Such a diff runs only the classes whose sources read the checkout; any other
 diff, or anything this policy cannot read, runs the complete suite.
 """
@@ -17,8 +17,19 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 TESTS = "Tests/PortavozTests"
-CONTRACT_ONLY_PREFIXES = ("docs/", "site/", "Tests/Tooling/", ".github/ISSUE_TEMPLATE/")
-CONTRACT_ONLY_FILES = frozenset({"LICENSE"})
+CONTRACT_ONLY_PREFIXES = ("docs/", "site/", "Tests/Tooling/", ".github/", "scripts/")
+CONTRACT_ONLY_FILES = frozenset({"LICENSE", "Makefile"})
+# These decide how the Swift suite builds or runs, so changing one needs the whole suite.
+RUNS_THE_SUITE = frozenset({
+    ".github/workflows/ci.yml",
+    "scripts/apuntador_web_fixture.py",
+    "scripts/ci_swift_cache_key.py",
+    "scripts/ci_swift_source_stamps.py",
+    "scripts/run-swift-tests.sh",
+    "scripts/run_xctest_pool.py",
+    "scripts/swift_test_scope.py",
+    "scripts/verify-ci-toolchain.sh",
+})
 # A source that locates the checkout can read any tracked file.
 READS_CHECKOUT = re.compile(r"#filePath|\brepoRoot\b|\brepositoryRoot\b")
 DECLARATION = re.compile(r"^\s*(?:@\w+\s+)*(?:final\s+)?(?:class|struct|extension)\s+(\w+)\b", re.MULTILINE)
@@ -26,6 +37,8 @@ MODULE = "PortavozTests"
 
 
 def contract_only(path: str) -> bool:
+    if path in RUNS_THE_SUITE:
+        return False
     if path in CONTRACT_ONLY_FILES or path.startswith(CONTRACT_ONLY_PREFIXES):
         return True
     return "/" not in path and path.endswith(".md")
