@@ -1,27 +1,30 @@
 #!/usr/bin/env python3
 """Select the smallest safe Portavoz XCUITest set for a Git diff.
 
-Known presentation files map to feature-level tests. Lower-layer Swift,
-unrecognized app files, the dependency lock and localized copy run the smoke
-canaries plus any owner they name; shared harness files add the harness
-self-test. A path nothing can map is reported as scope-unknown, never as zero
-tests. No path selects the complete catalog by itself: nightly owns it and a
-person can dispatch it. Every selection runs in English only. Documentation, governance,
-CLI, and package-test-only changes do not spend a macOS UI runner.
+Known presentation files map to their feature's tests, an edited UI test to that
+method and the tests using an edited helper, and localized copy to the tests quoting
+it. Lower-layer Swift and unrecognized app files run the smoke canaries plus any
+owner they name; shared harness files add the harness self-test. A path nothing can
+map is reported as scope-unknown, never as zero tests. With --budget, a pull request
+always runs the canaries, and candidates that do not fit its test budget are cut and
+reported for nightly to own. No path selects the complete catalog by itself. Every
+selection runs in English only. Documentation, governance, CLI, and
+package-test-only changes do not spend a macOS UI runner.
 """
 
 from __future__ import annotations
 
 import argparse
+import collections
 import hashlib
 import json
 import re
 import shlex
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Iterable, Mapping, Sequence
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from ui_test_catalog import (  # noqa: E402
@@ -30,19 +33,30 @@ from ui_test_catalog import (  # noqa: E402
     DEPENDENCY_FEATURES,
     FEATURE_SOURCE_SENTINELS,
     FEATURE_TESTS,
+    FEATURE_TIERS,
     HARNESS_SELF_TESTS,
     MEETING_DETAIL_EXTRA_JOURNEYS,
     MEETING_FEATURES,
+    NIGHTLY_ONLY_TESTS,
+    ON_DEMAND_TESTS,
     PERMISSION_GATED_TESTS,
+    PR_TESTS,
     RETIRED_DUPLICATE_TESTS,
-    SETTINGS_FEATURES,
     SMOKE_TESTS,
     TARGET,
+    UI_TEST_BUDGET_SECONDS,
+    UI_TEST_OVERHEAD_PER_TEST_SECONDS,
+    UI_TEST_OVERHEAD_SECONDS,
     test_id,
 )
 
 
 MAX_SUMMARY_BYTES = 16 * 1024
+SWIFT_FUNCTION = re.compile(
+    r"^(\s*)(?:@[\w.]+(?:\([^)]*\))?\s+)*"
+    r"(?:(?:private|fileprivate|internal|public|package|static|class|final|override|nonisolated|mutating)\s+)*"
+    r"func\s+(\w+)")
+HUNK = re.compile(r"^@@ -\S+ \+(\d+)(?:,(\d+))? @@")
 
 
 # What a change here breaks shows up first in the self-test, and in any journey
@@ -117,12 +131,6 @@ APUNTADOR_LEAK_EVIDENCE_FILES = frozenset({
     "scripts/run-apuntador-leak-baseline.sh",
     "docs/evidence/apuntador-leak-baseline.json",
 })
-APUNTADOR_LEAK_UI_FEATURES = frozenset({
-    "ask",
-    "background-work",
-    "live-assist",
-})
-
 NO_UI_PREFIXES = (
     ".design-sync/",
     ".github/ISSUE_TEMPLATE/",
@@ -169,6 +177,9 @@ class Selection:
     reasons: tuple[str, ...]
     interruption_controls: bool = False
     scope_unknown: bool = False
+    # Lower sorts first when the budget chooses; absent for explicit runs.
+    priority: Mapping[str, tuple[int, int]] = field(default_factory=dict)
+    cut: tuple[str, ...] = ()
 
     @property
     def required(self) -> bool:
@@ -188,12 +199,83 @@ def feature_tests(features: Iterable[str]) -> set[str]:
     return {test for feature in features for test in FEATURE_TESTS[feature]}
 
 
-def tests_for_ui_test_file(path: str) -> set[str]:
+def ui_test_class(path: str) -> str | None:
     match = re.fullmatch(r"Tests/PortavozUITests/(\w+UITests)\.swift", path)
-    if match is None:
+    return match.group(1) if match else None
+
+
+def tests_for_ui_test_file(path: str) -> set[str]:
+    """Every test of a changed class within a pull request's reach."""
+    name = ui_test_class(path)
+    if name is None:
         return set()
-    prefix = f"{TARGET}/{match.group(1)}/"
-    return {test for test in ALL_TESTS if test.startswith(prefix)}
+    return {test for test in PR_TESTS if test.startswith(f"{TARGET}/{name}/")}
+
+
+def function_spans(source: str) -> list[tuple[str, int, int]]:
+    """Each Swift function's name and 1-based first and last lines, closed by its own indent."""
+    lines = source.splitlines()
+    spans = []
+    for index, line in enumerate(lines):
+        match = SWIFT_FUNCTION.match(line)
+        if match is None:
+            continue
+        closing = f"{match.group(1)}}}"
+        last = index
+        if line.count("{") == 0 or line.count("{") != line.count("}"):
+            last = next((later for later in range(index + 1, len(lines)) if lines[later].startswith(closing)), index)
+        spans.append((match.group(2), index + 1, last + 1))
+    return spans
+
+
+def enclosing_function(spans: Sequence[tuple[str, int, int]], line: int) -> str | None:
+    # A nested function belongs to the test around it, which starts first.
+    return next((name for name, first, last in spans if first <= line <= last), None)
+
+
+def ui_test_changes(base: str, head: str | None, root: Path) -> dict[str, set[str] | None]:
+    """Functions a diff touches per UI test source; None when a change falls outside any of them."""
+    command = ["git", "diff", "--unified=0", "--no-color", "--no-renames", base]
+    if head is not None:
+        command.append(head)
+    output = subprocess.run([*command, "--", "Tests/PortavozUITests"], check=True, capture_output=True,
+                            text=True, cwd=root).stdout
+    touched: dict[str, list[int]] = {}
+    path = None
+    for line in output.splitlines():
+        if line.startswith("+++ "):
+            path = line[6:] if line.startswith("+++ b/") else None
+            if path:
+                touched[path] = []
+        elif path and (hunk := HUNK.match(line)):
+            first, count = int(hunk.group(1)), int(hunk.group(2) or 1)
+            touched[path].extend(range(first, first + max(count, 1)))
+    changes: dict[str, set[str] | None] = {}
+    for path, numbers in touched.items():
+        if head is None:
+            source = (root / path).read_text(encoding="utf-8")
+        else:
+            source = subprocess.run(["git", "show", f"{head}:{path}"], check=True, capture_output=True,
+                                    text=True, cwd=root).stdout
+        spans = function_spans(source)
+        names = [enclosing_function(spans, number) for number in numbers]
+        changes[path] = None if None in names else {name for name in names if name}
+    return changes
+
+
+def tests_using(helpers: set[str], root: Path) -> set[str]:
+    """Reachable tests whose own bodies name one of these helpers."""
+    if not helpers:
+        return set()
+    pattern = re.compile(r"\b(?:" + "|".join(map(re.escape, sorted(helpers))) + r")\b")
+    found = set()
+    for source in sorted((root / "Tests/PortavozUITests").glob("*UITests.swift")):
+        lines = source.read_text(encoding="utf-8").splitlines()
+        for name, first, last in function_spans("\n".join(lines)):
+            selector = test_id(source.stem, name)
+            if selector in PR_TESTS and pattern.search("\n".join(lines[first:last])):
+                found.add(selector)
+    return found
 
 
 def app_features(filename: str) -> set[str]:
@@ -220,11 +302,9 @@ def app_features(filename: str) -> set[str]:
         "benchresourceprocesswatchdog.swift",
         "benchresourcescenarioprobe.swift",
     }:
-        # These hidden isolated-benchmark owners have no presentation. Their
-        # safe UI proof is normal/failing launch plus one canary per root
-        # destination; benchmark behavior is covered by unit and disposable
-        # Release-app evidence rather than every product journey.
-        return {"launch-recovery", "main-shell"}
+        # These hidden isolated-benchmark owners have no presentation, and unit
+        # and disposable Release-app evidence cover their behavior: canaries only.
+        return set()
     if lowered.startswith("productionsyncqualification"):
         # The hidden exact-app owner has no presentation and runs only with a
         # disposable shell. Its safe real-app canary is the existing explicit
@@ -292,7 +372,8 @@ def app_features(filename: str) -> set[str]:
     if "livetranscriptionattacher" in lowered:
         return {"recording-recovery"}
     if "showcase" in lowered:
-        return {"public-showcase"}
+        # Screenshot fixtures: their generators run on demand, the canaries cover the launch.
+        return set()
     # Dictation owns controller/panel and native delivery journeys, not just
     # the Settings controls. Keep this ahead of generic presentation buckets.
     if any(
@@ -456,9 +537,13 @@ def app_features(filename: str) -> set[str]:
     if any(token in lowered for token in ("speaker", "meetingname", "voicememory")):
         return {"meeting-naming", "meeting-health", "settings-voice"}
     if any(token in lowered for token in ("meetingdetail", "meetinghealth", "mirrorcard", "refine")):
-        return set(MEETING_FEATURES)
+        return {"meeting-processing"}
+    if lowered == "audiosection.swift":
+        return {"settings-audio"}
+    if lowered == "settingsvoicesection.swift":
+        return {"settings-voice"}
     if any(token in lowered for token in ("settings", "section", "localdata", "whispermodel", "mlxmodel")):
-        return set(SETTINGS_FEATURES)
+        return {"settings-navigation"}
     return set()
 
 
@@ -641,22 +726,10 @@ def lower_layer_features(path: str) -> set[str]:
         return {"library", "recording-recovery", "settings-audio"}
     if any(token in lowered for token in ("playback", "waveform", "audio")):
         return {"meeting-audio", "settings-audio"}
-    if any(
-        token in lowered
-        for token in ("summary", "summaries", "companion", "intelligence")
-    ):
-        return {
-            "ask",
-            "insights",
-            "library",
-            "meeting-brief",
-            "meeting-correction",
-            "meeting-summary",
-            "meeting-evidence",
-            "meeting-processing",
-            "public-showcase",
-            "settings-intelligence",
-        }
+    if "companion" in lowered:
+        return {"ask", "meeting-correction", "meeting-processing"}
+    if any(token in lowered for token in ("summary", "summaries", "intelligence")):
+        return {"ask", "meeting-processing"}
     if any(token in lowered for token in ("voice", "speaker", "person")):
         return {"meeting-naming", "meeting-health", "settings-voice", "onboarding"}
     if "sync" in lowered:
@@ -707,17 +780,28 @@ def swift_literal(text: str) -> str:
 
 
 def copy_tests(changed_keys: Iterable[str], root: Path) -> set[str]:
-    """UI tests whose sources quote a changed English string or a long literal part of it."""
+    """Reachable tests that quote a changed English string or a long literal part of it."""
     needles = set()
     for key in changed_keys:
         parts = [swift_literal(part.strip()) for part in PLACEHOLDER.split(key) if len(part.strip()) >= 12]
         needles.update(parts or [f'"{swift_literal(key)}"'])
     selected: set[str] = set()
+    helpers: set[str] = set()
     for source in sorted((root / "Tests/PortavozUITests").glob("*UITests.swift")):
         text = source.read_text(encoding="utf-8")
-        if any(needle in text for needle in needles):
-            selected |= tests_for_ui_test_file(source.relative_to(root).as_posix())
-    return selected
+        spans = function_spans(text)
+        for number, line in enumerate(text.splitlines(), start=1):
+            if not any(needle in line for needle in needles):
+                continue
+            name = enclosing_function(spans, number)
+            selector = test_id(source.stem, name) if name else None
+            if name is None:
+                selected |= tests_for_ui_test_file(source.relative_to(root).as_posix())
+            elif selector in PR_TESTS:
+                selected.add(selector)
+            elif not name.startswith("test"):
+                helpers.add(name)
+    return selected | tests_using(helpers, root)
 
 
 def select_paths(
@@ -725,8 +809,11 @@ def select_paths(
     catalog_changes: set[str] | None = None,
     root: Path | None = None,
     dependency_changes: set[str] | None = None,
+    ui_changes: Mapping[str, set[str] | None] | None = None,
 ) -> Selection:
-    selected: set[str] = set()
+    selected: collections.Counter[str] = collections.Counter()
+    edited: set[str] = set()
+    consumers: set[str] = set()
     reasons: list[str] = []
     interruption_controls = False
     scope_unknown = False
@@ -736,6 +823,11 @@ def select_paths(
         scope_unknown = True
         selected.update(CONSERVATIVE_TESTS)
         reasons.append(f"scope-unknown: {reason}")
+
+    def helpers_changed(path: str) -> None:
+        names = (ui_changes or {}).get(path) or set()
+        consumers.update(tests_using({name for name in names if not name.startswith("test")},
+                                     root or Path(__file__).resolve().parent.parent))
 
     for raw_path in paths:
         path = raw_path.strip().removeprefix("./")
@@ -775,6 +867,7 @@ def select_paths(
 
         if path in HARNESS_FILES or path.startswith(INTERRUPTION_FIXTURE_PREFIX):
             selected.update(CONSERVATIVE_TESTS)
+            helpers_changed(path)
             # A production file in the harness still owes its own journeys.
             if path.startswith("Sources/portavoz-app/"):
                 selected.update(feature_tests(app_features(Path(path).name)))
@@ -783,27 +876,20 @@ def select_paths(
 
         if path == "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift":
             selected.update(feature_tests(MEETING_DETAIL_LAYOUT_FEATURES))
-            selected.update(MEETING_DETAIL_EXTRA_JOURNEYS)
+            selected.update(test for test in MEETING_DETAIL_EXTRA_JOURNEYS if test in PR_TESTS)
             reasons.append(f"{path}: journeys that open a meeting")
             continue
 
         if path in APUNTADOR_LEAK_EVIDENCE_FILES:
-            selected.update(feature_tests(APUNTADOR_LEAK_UI_FEATURES))
-            reasons.append(
-                f"{path}: Apuntador leak-matrix journeys"
-            )
+            selected.update(SMOKE_TESTS)
+            reasons.append(f"{path}: benchmark owner, canaries only")
             continue
 
         if path in {
             "Fixtures/ApuntadorWeb/public-local-v1.json",
             "Tests/PortavozUITests/ApuntadorWebFixtureSupport.swift",
         }:
-            selected.add(
-                test_id(
-                    "LibraryUITests",
-                    "testAskConversationAnswersAndSeeksToExactCitation",
-                )
-            )
+            selected.update([test_id("LibraryUITests", "testAskConversationAnswersAndSeeksToExactCitation")])
             reasons.append(
                 f"{path}: deterministic Web Ask journey"
             )
@@ -829,8 +915,19 @@ def select_paths(
             reasons.append(f"{path}: Ask and Skills handshake contracts")
             continue
 
+        name = ui_test_class(path)
+        if name is not None and (ui_changes or {}).get(path) is not None:
+            methods = {test_id(name, method) for method in ui_changes[path] if method.startswith("test")}
+            # An edited nightly-only method runs: its author is the one who needs the answer.
+            edited.update(methods & set(ALL_TESTS))
+            selected.update(methods & set(ALL_TESTS))
+            selected.update(SMOKE_TESTS)
+            helpers_changed(path)
+            reasons.append(f"{path}: {len(methods)} edited methods, helper consumers and canaries")
+            continue
         changed_ui_tests = tests_for_ui_test_file(path)
         if changed_ui_tests:
+            edited.update(changed_ui_tests)
             selected.update(changed_ui_tests)
             selected.update(SMOKE_TESTS)
             reasons.append(f"{path}: changed UI-test contract and canaries")
@@ -884,14 +981,50 @@ def select_paths(
         # they do not look like a view, so they are never a claim of no UI impact.
         unknown(f"{path}: unknown executable impact")
 
+    selected.update(consumers)
     ordered_tests = tuple(test for test in ALL_TESTS if test in selected)
+    rank = lambda test: 0 if test in edited else 1 if test in consumers else 2  # noqa: E731
     return Selection(
         ordered_tests,
         SELECTION_LOCALES if ordered_tests else (),
         tuple(dict.fromkeys(reasons)),
         interruption_controls=interruption_controls,
         scope_unknown=scope_unknown,
+        priority={test: (rank(test), -selected[test]) for test in ordered_tests},
     )
+
+
+def hosted_seconds(root: Path) -> dict[str, float]:
+    """Observed hosted p90 per case; a case no night has timed yet counts at its ceiling."""
+    budgets = json.loads((root / "docs/evidence/ui-test-runtime-budget.json").read_text(encoding="utf-8"))
+    return {**budgets["testBudgetsSeconds"], **budgets.get("hostedSeconds", {})}
+
+
+def feature_tier(test: str) -> int:
+    return min((FEATURE_TIERS.get(feature, 2) for feature, tests in FEATURE_TESTS.items() if test in tests), default=2)
+
+
+def apply_budget(selection: Selection, seconds: Mapping[str, float], budget: float = UI_TEST_BUDGET_SECONDS) -> Selection:
+    """Keep the canaries and the best candidates that fit; the rest wait for nightly, never vanish.
+
+    Raises when the canaries alone exceed the budget: emptying them would prove nothing.
+    """
+    cost = lambda test: seconds[runtime_budget_key(test)] + UI_TEST_OVERHEAD_PER_TEST_SECONDS  # noqa: E731
+    chosen = list(SMOKE_TESTS) if selection.tests else []
+    used = UI_TEST_OVERHEAD_SECONDS + sum(cost(test) for test in chosen)
+    if chosen and used > budget:
+        raise ValueError(f"the canaries need {used:.0f} s against a budget of {budget:.0f} s")
+    candidates = sorted(
+        (test for test in selection.tests if test not in SMOKE_TESTS),
+        key=lambda test: (*selection.priority.get(test, (2, 0)), feature_tier(test), cost(test), test))
+    cut = []
+    for test in candidates:
+        if used + cost(test) <= budget:
+            chosen.append(test)
+            used += cost(test)
+        else:
+            cut.append(test)
+    return replace(selection, tests=tuple(test for test in ALL_TESTS if test in chosen), cut=tuple(cut))
 
 
 def changed_paths(base: str, head: str) -> list[str]:
@@ -985,7 +1118,7 @@ def discovered_test_catalog(root: Path) -> set[str]:
 
 
 def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> None:
-    expected = set(ALL_TESTS) | PERMISSION_GATED_TESTS
+    expected = set(ALL_TESTS) | PERMISSION_GATED_TESTS | set(ON_DEMAND_TESTS)
     discovered = discovered_test_catalog(root)
     missing = sorted(discovered - expected)
     stale = sorted(expected - discovered)
@@ -998,8 +1131,10 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         feature for feature, tests in FEATURE_TESTS.items() if not tests
     )
     retired = sorted(discovered & RETIRED_DUPLICATE_TESTS)
-    permission_overlap = sorted(set(ALL_TESTS) & PERMISSION_GATED_TESTS)
+    permission_overlap = sorted(set(ALL_TESTS) & (PERMISSION_GATED_TESTS | set(ON_DEMAND_TESTS)))
     smoke_errors = sorted((set(SMOKE_TESTS) | set(HARNESS_SELF_TESTS)) - set(ALL_TESTS))
+    smoke_errors += sorted(set(SMOKE_TESTS) & set(NIGHTLY_ONLY_TESTS))
+    tier_errors = sorted(FEATURE_TIERS.keys() - ALL_FEATURES)
     if len(SMOKE_TESTS) != len(set(SMOKE_TESTS)):
         smoke_errors.append("duplicate smoke canary")
     lock = root / "Package.resolved"
@@ -1040,7 +1175,7 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         else:
             budget = json.loads(budget_path.read_text(encoding="utf-8"))
             runtime_ids = set(budget.get("testBudgetsSeconds", {}))
-            expected_runtime_ids = {runtime_budget_key(selector) for selector in ALL_TESTS}
+            expected_runtime_ids = {runtime_budget_key(selector) for selector in (*ALL_TESTS, *ON_DEMAND_TESTS)}
             missing_budgets = sorted(expected_runtime_ids - runtime_ids)
             stale_budgets = sorted(runtime_ids - expected_runtime_ids)
             budget_count = budget.get("catalog", {}).get("expectedCaseCount")
@@ -1092,6 +1227,7 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         or reachable_fixtures
         or runtime_budget_errors
         or smoke_errors
+        or tier_errors
         or dependency_errors
     ):
         details = []
@@ -1114,6 +1250,8 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         if reachable_fixtures:
             details.append("no-UI fixtures reachable from UI sources: " + ", ".join(reachable_fixtures))
         details.extend(runtime_budget_errors)
+        if tier_errors:
+            details.append("tiers for features that do not exist: " + ", ".join(tier_errors))
         if smoke_errors:
             details.append("smoke canaries outside the catalog: " + ", ".join(smoke_errors))
         if dependency_errors:
@@ -1206,6 +1344,7 @@ def render(selection: Selection, output_format: str) -> str:
                 f"matrix={json.dumps(list(selection.locales))}",
                 f"scope_unknown={'true' if selection.scope_unknown else 'false'}",
                 f"deferred={selection.deferred_to_nightly}",
+                f"cut={' '.join(selection.cut)}",
                 f"summary={summary}",
             )
         )
@@ -1226,6 +1365,7 @@ def render(selection: Selection, output_format: str) -> str:
         f"Locales: {locales}\n"
         f"Selectors:\n  " + "\n  ".join(selection.tests) + f"\nReasons: {summary}\n"
         f"Deferred to nightly: {selection.deferred_to_nightly}"
+        + (f"\nCut by the budget: {len(selection.cut)}\n  " + "\n  ".join(selection.cut) if selection.cut else "")
     )
 
 
@@ -1243,6 +1383,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--shard", help="With --all, select balanced shard K of N (for example 2/3)")
     result.add_argument("--format", choices=("human", "github", "shell"), default="human")
     result.add_argument("--validate-catalog", action="store_true", help="Fail if a UI test lacks a selector")
+    result.add_argument("--budget", action="store_true", help="Cut what does not fit a pull request's test budget")
     return result
 
 
@@ -1291,7 +1432,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         pin_changes = None
         if arguments.base and "Package.resolved" in paths:
             pin_changes = dependency_changes(arguments.base, None if arguments.working_tree else arguments.head, root)
-        selection = select_paths(paths, changes, root, pin_changes)
+        ui_changes = None
+        if arguments.base:
+            ui_changes = ui_test_changes(arguments.base, None if arguments.working_tree else arguments.head, Path.cwd())
+        selection = select_paths(paths, changes, root, pin_changes, ui_changes)
+        if arguments.budget:
+            try:
+                selection = apply_budget(selection, hosted_seconds(root))
+            except ValueError as error:
+                print(f"UI budget exceeded: {error}", file=sys.stderr)
+                return 2
     print(render(selection, arguments.format))
     return 0
 

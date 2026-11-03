@@ -22,7 +22,7 @@ CASE_KEYS = frozenset({"identifier", "result", "durationSeconds"})
 
 
 def lane_receipt(*, locale: str, sha: str, attempt: int, toolchain: str, outcome: str, tests: str, deferred: int,
-                 scope_unknown: bool, runtime: dict[str, Any] | None) -> dict[str, Any]:
+                 cut: str = "", scope_unknown: bool, runtime: dict[str, Any] | None) -> dict[str, Any]:
     selected = {runtime_budget_key(selector): selector for selector in tests.split()}
     executed = [{key: case[key] for key in sorted(CASE_KEYS)}
                 for case in (runtime or {}).get("tests", [])]
@@ -34,7 +34,8 @@ def lane_receipt(*, locale: str, sha: str, attempt: int, toolchain: str, outcome
         "attempt": attempt,
         "toolchain": toolchain,
         "outcome": outcome,
-        "selection": {"selected": sorted(selected.values()), "deferred": deferred, "scopeUnknown": scope_unknown},
+        "selection": {"selected": sorted(selected.values()), "deferred": deferred, "cut": sorted(cut.split()),
+                      "scopeUnknown": scope_unknown},
         "runtimeReceiptPresent": runtime is not None,
         "testDurationSeconds": (runtime or {}).get("testDurationSeconds"),
         "executed": executed,
@@ -69,12 +70,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--outcome", required=True)
     parser.add_argument("--tests", default="")
     parser.add_argument("--deferred", type=int, default=0)
+    parser.add_argument("--cut", default="")
     parser.add_argument("--scope-unknown", choices=("true", "false"), default="false")
     parser.add_argument("--github-output", type=Path)
     arguments = parser.parse_args(argv)
     receipt = lane_receipt(
         locale=arguments.locale, sha=arguments.sha, attempt=arguments.attempt, toolchain=arguments.toolchain.strip(),
-        outcome=arguments.outcome, tests=arguments.tests, deferred=arguments.deferred,
+        outcome=arguments.outcome, tests=arguments.tests, deferred=arguments.deferred, cut=arguments.cut,
         scope_unknown=arguments.scope_unknown == "true",
         runtime=read_runtime(arguments.results / f"{arguments.locale}-runtime.json"))
     write_receipt(arguments.results / f"{arguments.locale}-lane.json", receipt)
