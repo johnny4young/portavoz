@@ -76,6 +76,33 @@ struct ModelStoreSharedTests {
         #expect(try Data(contentsOf: file) == damaged)
     }
 
+    @Test func aFailedDownloadKeepsTheFilesItAlreadyFinished() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let first = Data("first".utf8), second = Data("second".utf8)
+        let remote = fixture.offlineDescriptorBase
+        let artifact = { (path: String, bytes: Data) in
+            ModelArtifact(
+                path: path, sha256: SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined(),
+                sizeBytes: bytes.count)
+        }
+        let descriptor = ModelDescriptor(
+            id: "resume-fixture", tasks: [.liveTranscription], displayName: "Resume fixture",
+            folderName: "resume-fixture", resolveBase: remote, revision: "fixture",
+            artifacts: [artifact("a.bin", first), artifact("b.bin", second)],
+            minimumRAMGB: 0, license: "fixture")
+        try first.write(to: remote.appendingPathComponent("a.bin"))
+        let store = fixture.store(Self.portavoz)
+        await #expect(throws: ModelStore.ModelStoreError.self) { try await store.ensureAvailable(descriptor) }
+
+        try FileManager.default.removeItem(at: remote.appendingPathComponent("a.bin"))
+        try second.write(to: remote.appendingPathComponent("b.bin"))
+        let directory = try await store.ensureAvailable(descriptor)
+
+        #expect(try Data(contentsOf: directory.appendingPathComponent("a.bin")) == first)
+        #expect(try Data(contentsOf: directory.appendingPathComponent("b.bin")) == second)
+    }
+
     @Test func aModelFromAnotherAppNeedsNoDownload() async throws {
         let fixture = try Fixture()
         defer { fixture.remove() }
