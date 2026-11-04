@@ -157,6 +157,14 @@ missing action. Diagnose native geometry and editing handoff at that call site;
 do not waive the control, replace its failed receipt with a retry, or infer
 complete local UI qualification from separate native dictation journeys.
 
+### Dictation coexistence with a real second app
+
+`DictationCoexistenceTests` proves the ownership rows with a second process, not a
+second app (D629). Still needing an installed Secreteo Dev build, with the physical
+test reserved: both apps launching at login, holding Fn and the mouse trigger with
+both apps running, real sleep and wake during a session, removing the other app from
+disk, Portavoz Dev beside Portavoz Release, and a real Portavoz 1.3 with dictation on.
+
 ### Release notes in the real update window
 
 The real `generate_appcast` embeds and signs the notes (D630), but they have not been
