@@ -189,6 +189,8 @@ final class AppServices {
     var rewriteSelectionShortcutUnavailable = false
     /// Rewrites a selection in another app with Polish or a recipe.
     let selectionRewrite = SelectionRewriteController()
+    /// Whether this app may capture and deliver globally right now.
+    @ObservationIgnored let dictationOwnership: DictationOwnershipCoordinator
     /// IntelligenceKit owns container mechanics; composition owns the one
     /// process runtime and every residency transition around it.
     @ObservationIgnored let mlxSummaryRuntime = MLXSummaryRuntime()
@@ -287,6 +289,7 @@ final class AppServices {
     ) throws {
         self.dictation = dictation
         self.defaults = defaults
+        dictationOwnership = .live(defaults: defaults, usesTemporaryStore: arguments.contains("-use-temp-store"))
         let storagePolicy = Self.prepareStoragePolicy(
             arguments: arguments,
             environment: environment,

@@ -16,5 +16,7 @@ public enum DictationDeliveryOutcome: Sendable, Equatable {
         case clipboardUnavailable
         case eventUnavailable
         case cancelled
+        /// Another app became the dictation owner before this delivery.
+        case ownershipChanged
     }
 }

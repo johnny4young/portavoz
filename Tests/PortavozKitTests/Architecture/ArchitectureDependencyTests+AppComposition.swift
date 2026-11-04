@@ -460,9 +460,17 @@ extension ArchitectureDependencyTests {
             appDelegate.components(separatedBy: "private func dictationIntentRequested").last?
                 .components(separatedBy: "static func dictationIntentOutcome").first)
         XCTAssertFalse(dictationHandler.contains("NSApp.activate"))
-        XCTAssertTrue(dictationHandler.contains("services.dictationAdmission.isEligible()"))
+        XCTAssertTrue(dictationHandler.contains("services.dictationAdmission.refusalNow()"))
+        for trigger in [
+            "DictationController+Hotkey.swift", "DictationController+ModifierKey.swift", "DictationController.swift",
+            "AppServices+PasteLastDictation.swift", "AppServices+SelectionRewrite.swift",
+        ] {
+            XCTAssertTrue(
+                try Self.contents(of: "Sources/portavoz-app/\(trigger)").contains("dictationTriggersMayArm"),
+                "\(trigger) arms a global trigger, which only the owner may do")
+        }
         XCTAssertTrue(
-            try Self.contents(of: "Sources/portavoz-app/DictationAdmission.swift")
+            try Self.contents(of: "Sources/portavoz-app/DictationOwnershipCoordinator.swift")
                 .contains("waitForRestoration(on: .general)"),
             "A lease covers the clipboard restore that a delivery schedules")
         XCTAssertFalse(

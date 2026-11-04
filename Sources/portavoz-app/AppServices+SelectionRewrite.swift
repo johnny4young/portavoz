@@ -20,7 +20,7 @@ extension AppServices {
     func syncRewriteSelectionShortcut() {
         rewriteSelectionHotkey?.unregister()
         rewriteSelectionHotkey = nil
-        let wanted = defaults.bool(forKey: DictationController.defaultsKey)
+        let wanted = dictationTriggersMayArm && defaults.bool(forKey: DictationController.defaultsKey)
             && defaults.bool(forKey: RewriteSelectionShortcut.defaultsKey)
         // Disposable launches never register Carbon hotkeys.
         guard wanted, !usesTemporaryMeetingStore else {

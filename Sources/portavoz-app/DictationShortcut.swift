@@ -36,6 +36,7 @@ final class DictationShortcut {
 
     func sync(
         defaults: UserDefaults = .standard,
+        mayArm: Bool = true,
         registrar: Registrar?,
         onPress: @escaping () -> Void,
         onRelease: @escaping () -> Void
@@ -46,7 +47,7 @@ final class DictationShortcut {
         let restored = HotkeySetting.restore(from: defaults)
         setting = restored.setting
         usedFallback = restored.usedFallback
-        guard defaults.bool(forKey: DictationController.defaultsKey) else {
+        guard mayArm, defaults.bool(forKey: DictationController.defaultsKey) else {
             availability = .disabled
             return
         }

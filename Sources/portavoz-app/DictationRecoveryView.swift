@@ -66,6 +66,8 @@ struct DictationRecoveryView: View {
             return L10n.text("Release Command, Option, Control, and Shift, then try again.")
         case .focusUnavailable:
             return L10n.text("The original field can't be verified. Your text is still available to copy.")
+        case .ownershipChanged:
+            return L10n.text("Another app took over dictation, so nothing was inserted. Copy your text to keep it.")
         case .clipboardUnavailable, .eventUnavailable, .cancelled, .emptyText:
             return L10n.text("Delivery didn't complete. Reinsert into the original field, or copy your text.")
         }
@@ -78,7 +80,7 @@ struct DictationRecoveryView: View {
             L10n.text("The destination changed. Copy your text to keep it.")
         case .modifiersStillPressed, .clipboardUnavailable, .eventUnavailable, .cancelled, .emptyText:
             L10n.text("Delivery didn't complete. Copy your text to keep it.")
-        case .secureField, .focusUnavailable:
+        case .secureField, .focusUnavailable, .ownershipChanged:
             nil
         }
     }

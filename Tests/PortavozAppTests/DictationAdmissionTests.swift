@@ -12,6 +12,16 @@ extension DictationAdmission {
     static var open: Self {
         Self(acquire: { _ in .success(DictationLease()) }, isEligible: { true })
     }
+
+    /// The preference alone, for tests of routing rather than of ownership.
+    static func preference(in defaults: UserDefaults) -> Self {
+        let isOn = { defaults.bool(forKey: DictationController.defaultsKey) }
+        return Self(
+            acquire: { kind in
+                kind == .practice || isOn() ? .success(DictationLease()) : .failure(.dictationOff)
+            },
+            isEligible: isOn)
+    }
 }
 
 extension AppServices {
@@ -349,19 +359,20 @@ struct DictationAdmissionTests {
     }
 
     @Test
-    func compositionReadsItsOwnDefaultsForPrewarmAndAdmission() throws {
+    func compositionReadsOwnershipForPrewarmAndAdmission() throws {
         let suite = "dictation-admission-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(true, forKey: DictationController.defaultsKey)
         let services = try AppServices(
             arguments: ["-use-temp-store"], environment: [:], defaults: defaults,
             dictation: DictationController(presentsPanel: false))
 
-        #expect(!services.dictationPrewarmConditions.dictationEnabled)
+        #expect(!services.dictationPrewarmConditions.dictationEnabled, "Nothing is owned before the claim")
         #expect(!services.makeDictationSessionDependencies().admission.isEligible())
         #expect(!services.makeSelectionRewriteDependencies().admission.isEligible())
 
-        defaults.set(true, forKey: DictationController.defaultsKey)
+        services.dictationOwnership.start()
 
         #expect(services.dictationPrewarmConditions.dictationEnabled)
         #expect(services.makeDictationSessionDependencies().admission.isEligible())

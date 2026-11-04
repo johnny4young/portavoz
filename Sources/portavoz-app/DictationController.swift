@@ -140,7 +140,7 @@ final class DictationController {
         services: AppServices,
         promptIfNeeded: Bool = false
     ) {
-        let enabled = UserDefaults.standard.bool(forKey: Self.defaultsKey)
+        let enabled = services.dictationTriggersMayArm && UserDefaults.standard.bool(forKey: Self.defaultsKey)
         let storedButton = MouseButtonSetting.load()
         let desiredButton = enabled
             && MouseButtonSetting.isEligible(storedButton) ? storedButton : nil
@@ -148,7 +148,7 @@ final class DictationController {
 
         // Rebinding or disabling while the mouse owns capture would otherwise
         // discard the matching release event and strand a listening session.
-        if mouseOwnsSession, isActive {
+        if mouseOwnsSession, isActive, !yieldsToHandoff {
             cancel()
         }
         mousePTT?.invalidate()
@@ -165,13 +165,18 @@ final class DictationController {
         }
         guard let ptt = MouseButtonPTT(
             button: desiredButton,
+            // Admission does file I/O, so it leaves the event tap callback.
             onPress: { [weak self, weak services] in
-                guard let self, let services else { return }
-                self.handleMouse(.press, services: services)
+                DispatchQueue.main.async {
+                    guard let self, let services else { return }
+                    self.handleMouse(.press, services: services)
+                }
             },
             onRelease: { [weak self, weak services] in
-                guard let self, let services else { return }
-                self.handleMouse(.release, services: services)
+                DispatchQueue.main.async {
+                    guard let self, let services else { return }
+                    self.handleMouse(.release, services: services)
+                }
             })
         else { return }
         mousePTT = ptt
@@ -188,6 +193,11 @@ final class DictationController {
     /// mid-phoneme.
     private static let stopTail: Duration = .milliseconds(250)
     private var microphoneReadiness: DictationMicrophoneReadiness?
+    var sessionLease: DictationLease?
+    var yieldsToHandoff = false
+    var handoffGrace: Task<Void, Never>?
+    var sessionIsPractice: Bool { dependencies?.admissionKind == .practice }
+    var sessionHandoffGrace: Duration? { dependencies?.handoffGrace }
 
     /// Hotkey press: start listening, or finish-and-insert if already on.
     func toggle(services: AppServices) {
@@ -222,6 +232,7 @@ final class DictationController {
               case .success(let lease) = dependencies.admission.acquire(dependencies.admissionKind)
         else { return }
         discardPreviousDelivery()
+        adopt(lease)
         self.dependencies = dependencies
         sessionFeedbackWait = dependencies.waitForFeedbackDismissal
         measurement = dependencies.measurementSink.map {
@@ -461,13 +472,17 @@ final class DictationController {
             presentNoSpeech(text, id: sessionID)
             return
         }
-        if await correctsLastInsertion(original: original, sessionID: sessionID, dependencies: dependencies) { return }
+        let mayDeliver = !yieldsToHandoff && sessionLease?.revalidate() != false
+        if mayDeliver, await correctsLastInsertion(
+            original: original, sessionID: sessionID, dependencies: dependencies) { return }
         guard activeSessionID == sessionID, let delivery = await textToDeliver(
             text, original: original, sessionID: sessionID, dependencies: dependencies, capture: capture)
         else { return }
         let delivered = delivery.text
         measurement?.record(.deliveryStarted)
-        let result = await destination.insert(delivered)
+        // Read again here: polish may have taken a while since the check above.
+        let stillOwner = mayDeliver && !yieldsToHandoff && sessionLease?.revalidate() != false
+        let result = stillOwner ? await destination.insert(delivered) : .refused(.ownershipChanged)
         measurement?.finishDelivery(result)
         guard activeSessionID == sessionID else { return }
         completeSession(id: sessionID)
@@ -717,7 +732,7 @@ extension DictationController {
         self.destination = destination
         isRetryingDelivery = true
         retryDeliveryTask = Task { [weak self] in
-            let result = await destination.insert(text)
+            let result = lease.revalidate() ? await destination.insert(text) : .refused(.ownershipChanged)
             if let self, self.deliveryID == id, !Task.isCancelled {
                 self.isRetryingDelivery = false
                 self.presentDelivery(result, text: text, id: id)

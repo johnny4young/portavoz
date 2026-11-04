@@ -5213,6 +5213,26 @@ replay's insert. The result is already on screen by then. Rewrite releases after
 another lease to replace, and asks for admission before cancelling the one in progress, so a refusal leaves it
 open. A posted Copy puts the clipboard back even if its caller was cancelled.
 
+### Dictation ownership (D627)
+
+`DictationOwnershipCoordinator` adapts the `DictationOwnership` package to `DictationAdmission`. `-use-temp-store`
+gives it a scratch root per launch; no argument or environment value moves a shipped build's root. `start()` claims
+at first run and publishes the state, and `OwnershipObserver` republishes it on the change notification, on its own
+timer, and each second while a lease is held. Activation and wake call `reevaluate()`. A state change runs
+`syncDictationTriggers()`, whose gate is `dictationTriggersMayArm`, and leaving `owned` releases an idle live-speech
+model. `applyDictationEnabled` runs `preferenceTurnedOn` or `turnOff`, and turning on with no owner is a handoff
+whose step 5 arms the triggers before the commit.
+
+`acquire` shares a held lease only while its `working` count is zero, which `DictationLease` drops when
+`releaseAfterDelivery()` begins, and only for `global`. A join requires `revalidate()` and `status() == .owned`,
+and a refused join leaves the lock with the earlier session. `DictationClipboard.copySelection` waits for a pending
+restore, and `TextInserter` already did before borrowing, so dictated text is never saved as the user's clipboard.
+
+`ownershipIntentSeen()` cancels a preparing or practice session and starts a 5-second grace for a listening one, after
+which `yieldToHandoff()` stops the microphone and delivery becomes `.refused(.ownershipChanged)`, which keeps the
+words in recovery. A mouse or modifier that disarms during the grace does not cancel the session. Intents ask
+`refusalNow()` before answering, while no session is active. Rewrite holds no lease between read and replace.
+
 ### Dictation actions in Shortcuts (D583)
 
 The delegate answers `PortavozAppIntentBridge.dictationRequested` without

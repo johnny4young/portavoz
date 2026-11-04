@@ -36,6 +36,10 @@ let package = Package(
             url: "https://github.com/johnny4young/FluidAudio.git",
             revision: "16ff239818ddb6787629dab38ae43e8bdd0e7546",
             traits: ["Diarizer"]),
+        // Cooperative dictation ownership (MIT), shared with Secreteo. Leaves with dictation in 2.0.
+        .package(
+            url: "https://github.com/johnny4young/secreteo.git",
+            revision: "9f1015452ae92eeb023793c37d95d60ae7a33ef6"),
         // SQLite toolkit (MIT) — D4: GRDB + FTS5, never SwiftData.
         .package(url: "https://github.com/groue/GRDB.swift.git", .upToNextMajor(from: "7.11.1")),
         // Whisper on CoreML (MIT) for the quality re-pass (D7). Pinned
@@ -157,6 +161,7 @@ let package = Package(
                 "TranscriptionKit", "DiarizationKit", "IntelligenceKit",
                 "StorageKit", "IntegrationsKit", "AudioPlaybackKit", "PortavozCLIKit",
                 .product(name: "Sparkle", package: "Sparkle"),
+                .product(name: "DictationOwnership", package: "secreteo"),
             ]
         ),
 

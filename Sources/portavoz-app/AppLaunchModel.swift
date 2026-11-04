@@ -201,11 +201,9 @@ final class AppLaunchModel {
                 arguments: arguments)
             await services.configureInitialSummaryProviderIfNeeded()
         }
-        services.dictation.syncHotkey(services: services)
-        services.syncPasteLastShortcut()
-        services.syncRewriteSelectionShortcut()
-        services.dictation.syncMousePTT(services: services)
-        services.dictation.syncModifierPTT(services: services)
+        services.connectDictationOwnership()
+        services.dictationOwnership.start()
+        services.syncDictationTriggers()
         services.prewarmDictationIfConfigured()
 
         // The AppKit delegate may already have observed application launch

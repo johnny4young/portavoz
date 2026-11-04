@@ -22649,3 +22649,29 @@ session.
 one in progress alone, and a refused replace keeps the rewrite to copy. Turning dictation off while words wait
 in recovery now refuses Reinsert with no explanation, and Copy remains. Triggers still register from the
 preference alone, because a stale one is refused here.
+
+## D627 — One dictation owner per Mac, through a shared cooperative lock
+
+**Context:** two apps on the same Fn hold would start two sessions and paste twice. Secreteo publishes the
+protocol and its reference implementation in `docs/specs/ownership-protocol.md`, and it needs Portavoz to take
+part before it can arm global triggers.
+
+**Decision:** Portavoz depends on the `DictationOwnership` product of `johnny4young/secreteo`, MIT, pinned to one
+revision, and removes it with dictation. `DictationOwnershipCoordinator` adapts it to `DictationAdmission`, in a
+scratch folder for disposable launches. Only the owner arms triggers and prewarms. Portavoz claims ownership at
+first run when its preference is on, except a Dev build, and never writes that preference because of ownership.
+Readiness is always true here: a missing permission or model keeps failing through the session's normal path.
+
+A session asks once and is refused `busy` while another captures, transcribes or delivers, or until Stop has
+drained after a cancel. While the last session only waits for the clipboard restore, a new `global` session shares
+the held lock, after repeating admission on it, so dictating again right after a paste keeps working. The lock is
+released after the last session ends. On a live intent, a session still preparing and a practice session cancel
+at once, one listening gets 5 seconds and then keeps its words in recovery, and one past the microphone runs to
+the end. Every delivery revalidates owner and generation first. A Rewrite replace also compares the generation
+with its read, so a handoff there and back refuses it. Mouse and modifier triggers leave the event tap callback
+before admission, because admission does file I/O.
+
+**Consequences:** a build of Portavoz before this one has no lock, so another build reports it as an active legacy
+peer and stands down while it runs with dictation on. Until the visible row exists, a Dev build with its preference
+already on owns nothing until the preference is turned off and on again. A pressed trigger that is refused does
+nothing visible. A press during the wait for Stop after Esc is refused.

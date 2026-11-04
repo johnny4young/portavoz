@@ -163,7 +163,9 @@ exercise actual settings-write admission without opening a host window.
 
 Every global dictation capture and delivery takes a lease from one app-owned
 admission port first, whichever trigger asked. Refusing never writes the user's
-preference.
+preference. The port is a cooperative per-user lock shared with Secreteo through
+the pinned `DictationOwnership` package: only the owner arms global triggers or
+prewarms a model, and it is not a security boundary.
 
 The macOS dictation controller supports an explicitly injected, content-free
 session observation sink. Its bounded recorder lives in the app beside the

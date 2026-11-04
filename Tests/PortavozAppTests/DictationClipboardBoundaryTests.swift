@@ -54,6 +54,27 @@ final class DictationClipboardBoundaryTests: XCTestCase {
         }
     }
 
+    func testACopyWaitsForTheRestoreOfAnEarlierPaste() async throws {
+        let board = makeBoard()
+        defer { board.releaseGlobally() }
+        board.setString("mine", forType: .string)
+        let clipboard = DictationClipboard.shared
+        let loan = try XCTUnwrap(clipboard.borrow("dictated", on: board))
+        clipboard.restoreLater(loan, on: board, after: .milliseconds(50))
+        var contentsAtPost: String?
+
+        let copied = await clipboard.copySelection(on: board, timeout: .seconds(5)) {
+            contentsAtPost = board.string(forType: .string)
+            board.clearContents()
+            board.setString("selected", forType: .string)
+            return true
+        }
+
+        XCTAssertEqual(contentsAtPost, "mine", "Dictated text must never be saved as the user's clipboard")
+        XCTAssertEqual(copied, "selected")
+        XCTAssertEqual(board.string(forType: .string), "mine")
+    }
+
     func testAGivenUpCopyStillPutsTheClipboardBack() async {
         let board = makeBoard()
         defer { board.releaseGlobally() }
