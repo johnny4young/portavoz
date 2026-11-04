@@ -244,6 +244,7 @@ final class DictationController {
             scheduleFeedbackDismiss(after: .seconds(6), wait: dependencies.waitForFeedbackDismissal)
             return
         }
+        dependencies.sessionAdmitted()
         // Capture the destination BEFORE the non-activating panel appears —
         // the frontmost app is still the one the user will dictate into.
         let destination = dependencies.captureDestination()
@@ -276,10 +277,10 @@ final class DictationController {
         let capture = DictationCaptureOwnership(finish: dependencies.beginCapture())
         let measurement = self.measurement
         session = Task { [weak self] in
-            defer { lease.release() }
-            defer { capture.end() }
             await self?.runSession(
                 id: sessionID, dependencies: dependencies, measurement: measurement, capture: capture)
+            capture.end()
+            await lease.releaseAfterDelivery()
         }
     }
 
@@ -697,7 +698,7 @@ extension DictationController {
     /// in recovery are that text, so they paste where the user is now.
     func pasteLastDictation(using dependencies: DictationSessionDependencies, alternate: Bool = false) {
         guard !isActive, retryDeliveryTask == nil,
-              case .success(let lease) = dependencies.admission.acquire(.global)
+              case .success(let lease) = dependencies.admission.acquire(dependencies.admissionKind)
         else { return }
         guard let text = alternate ? lastText.takeCurrentAlternate() : pastableText(), dependencies.canInsert() else {
             lease.release()
@@ -716,12 +717,13 @@ extension DictationController {
         self.destination = destination
         isRetryingDelivery = true
         retryDeliveryTask = Task { [weak self] in
-            defer { lease.release() }
             let result = await destination.insert(text)
-            guard let self, self.deliveryID == id, !Task.isCancelled else { return }
-            self.isRetryingDelivery = false
-            self.presentDelivery(result, text: text, id: id)
-            self.retryDeliveryTask = nil
+            if let self, self.deliveryID == id, !Task.isCancelled {
+                self.isRetryingDelivery = false
+                self.presentDelivery(result, text: text, id: id)
+                self.retryDeliveryTask = nil
+            }
+            await lease.releaseAfterDelivery()
         }
     }
 
@@ -845,7 +847,7 @@ private extension DictationController {
     func correctsLastInsertion(
         original: String, sessionID: UUID, dependencies: DictationSessionDependencies
     ) async -> Bool {
-        guard !dependencies.deliversInternally,
+        guard !dependencies.deliversInternally, dependencies.admissionKind == .global,
               DictationCorrections.isEnabled(in: dependencies.defaults),
               let command = DictationCorrectionCommand.parse(
                   DictationTextRules.apply(original, replacements: [], removeFillers: true)),

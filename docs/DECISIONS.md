@@ -22639,10 +22639,13 @@ preference.
 
 **Decision:** `DictationAdmission` answers every session, retry, Paste last and Rewrite with a `DictationLease`
 or a refusal, and answers prewarm and Intents with `isEligible`. The rule stays the preference. The practice
-field asks as `practice`, which runs with the preference off. A session's lease lasts through delivery and Stop.
-Rewrite holds one only while reading the selection and while replacing it, never during the choice or preview,
-which can wait on a person indefinitely and include a spoken instruction with its own session.
+field asks as `practice`, which runs with the preference off and cannot edit an earlier insertion in another
+app. A session's lease lasts through delivery, the delayed clipboard restore and Stop. The result shows at once,
+and only the lease waits. Rewrite holds one only while reading the selection and while replacing it, never during
+the choice or preview, which can wait on a person indefinitely and include a spoken instruction with its own
+session.
 
-**Consequences:** a refused trigger does nothing and leaves words in recovery in place. A refused replace keeps
-the rewrite to copy. Turning dictation off while words wait in recovery now refuses Reinsert, and Copy remains.
-Triggers still register from the preference alone, because a stale one is refused here.
+**Consequences:** a refused trigger does nothing and leaves words in recovery in place. A refused Rewrite leaves
+one in progress alone, and a refused replace keeps the rewrite to copy. Turning dictation off while words wait
+in recovery now refuses Reinsert with no explanation, and Copy remains. Triggers still register from the
+preference alone, because a stale one is refused here.

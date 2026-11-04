@@ -11,18 +11,27 @@ enum DictationAdmissionRefusal: Error, Equatable, Sendable {
     case dictationOff
 }
 
-/// The right to run one operation, held until its delivery and Stop have finished.
+/// The right to run one operation, held until its delivery, its clipboard restore
+/// and Stop have finished.
 @MainActor
 final class DictationLease {
+    private let settle: () async -> Void
     private var end: (() -> Void)?
 
-    init(end: @escaping () -> Void = {}) {
+    init(settle: @escaping () async -> Void = {}, end: @escaping () -> Void = {}) {
+        self.settle = settle
         self.end = end
     }
 
     func release() {
         end?()
         end = nil
+    }
+
+    /// A cancelled caller cannot cut this short: the clipboard is still on loan.
+    func releaseAfterDelivery() async {
+        await Task { await settle() }.value
+        release()
     }
 }
 
@@ -34,16 +43,18 @@ struct DictationAdmission {
     /// For work that needs no lease: prewarm and answering an Intent.
     var isEligible: () -> Bool
 
-    static func preference(in defaults: UserDefaults) -> Self {
+    static func preference(in defaults: UserDefaults, settle: @escaping () async -> Void = {}) -> Self {
         let isOn = { defaults.bool(forKey: DictationController.defaultsKey) }
         return Self(
             acquire: { kind in
-                kind == .practice || isOn() ? .success(DictationLease()) : .failure(.dictationOff)
+                kind == .practice || isOn() ? .success(DictationLease(settle: settle)) : .failure(.dictationOff)
             },
             isEligible: isOn)
     }
 }
 
 extension AppServices {
-    var dictationAdmission: DictationAdmission { .preference(in: defaults) }
+    var dictationAdmission: DictationAdmission {
+        .preference(in: defaults) { _ = await DictationClipboard.shared.waitForRestoration(on: .general) }
+    }
 }

@@ -76,17 +76,20 @@ final class DictationClipboard {
               let original = PasteboardSnapshot(of: pasteboard) else { return nil }
         let before = pasteboard.changeCount
         guard post() else { return nil }
-        let deadline = ContinuousClock.now.advanced(by: timeout)
-        while pasteboard.changeCount == before, ContinuousClock.now < deadline {
-            do { try await Task.sleep(for: .milliseconds(20)) } catch { return nil }
-        }
-        let copied = pasteboard.changeCount
-        guard copied != before else { return nil }
-        let text = pasteboard.string(forType: .string)
-        if !original.restore(to: pasteboard, expectedChangeCount: copied) {
-            Self.logger.error("The copied selection was not replaced by the original clipboard.")
-        }
-        return text
+        // Copy is on its way: the board goes back even if the caller has given up.
+        return await Task {
+            let deadline = ContinuousClock.now.advanced(by: timeout)
+            while pasteboard.changeCount == before, ContinuousClock.now < deadline {
+                do { try await Task.sleep(for: .milliseconds(20)) } catch { return nil }
+            }
+            let copied = pasteboard.changeCount
+            guard copied != before else { return nil }
+            let text = pasteboard.string(forType: .string)
+            if !original.restore(to: pasteboard, expectedChangeCount: copied) {
+                Self.logger.error("The copied selection was not replaced by the original clipboard.")
+            }
+            return text
+        }.value
     }
 
     func isCurrent(_ loan: Loan, on pasteboard: NSPasteboard) -> Bool {

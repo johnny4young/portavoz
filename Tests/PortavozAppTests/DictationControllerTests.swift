@@ -428,7 +428,7 @@ final class DictationControllerTests: XCTestCase {
         XCTAssertNil(DictationUITestFixture(arguments: [], usesTemporaryStore: true))
         XCTAssertNotNil(DictationUITestFixture(
             arguments: ["-seed-dictation"], usesTemporaryStore: true))
-        XCTAssertFalse(DictationUITestFixture.dependencies(fixture: nil, beginCapture: { {} }).canInsert())
+        XCTAssertFalse(DictationUITestFixture.dependencies(fixture: nil, admission: .open, beginCapture: { {} }).canInsert())
         let failureArguments = ["-seed-dictation", "-seed-dictation-capture-failure"]
         XCTAssertNil(DictationUITestFixture(arguments: failureArguments, usesTemporaryStore: false))
         XCTAssertNil(DictationUITestFixture(
@@ -449,7 +449,7 @@ final class DictationControllerTests: XCTestCase {
             for arguments in [[], ["-seed-dictation"], ["-seed-dictation-recovery"], flags] {
                 let fixture = DictationUITestFixture(arguments: arguments, usesTemporaryStore: temporary)
                 let dependencies = DictationUITestFixture.dependencies(
-                    fixture: fixture, beginCapture: { {} }, environment: [key: board.name.rawValue])
+                    fixture: fixture, admission: .open, beginCapture: { {} }, environment: [key: board.name.rawValue])
                 let expectedCopy = temporary && arguments == flags
                 let destination = dependencies.captureDestination()
                 let delivery = await destination.insert("No native events")
@@ -461,7 +461,7 @@ final class DictationControllerTests: XCTestCase {
         }
         let fixture = DictationUITestFixture(arguments: flags, usesTemporaryStore: true)
         for invalid in ["", "NSGeneralPboard", DictationNativeUITestFixture.pasteboardPrefix + "invalid"] {
-            let dependencies = DictationUITestFixture.dependencies(fixture: fixture, beginCapture: { {} }, environment: [key: invalid])
+            let dependencies = DictationUITestFixture.dependencies(fixture: fixture, admission: .open, beginCapture: { {} }, environment: [key: invalid])
             XCTAssertFalse(dependencies.copyText("First"))
             XCTAssertFalse(dependencies.copyText("Second"))
         }
@@ -558,7 +558,7 @@ final class DictationControllerHarness {
             },
             copyText: { _ in false },
             defaults: defaults, now: { [weak self] in self?.now ?? .distantPast },
-            admission: DictationUITestFixture.openAdmission,
+            admission: DictationAdmission.open,
             beginCapture: { {} },
             measurementSink: { [weak self] in self?.measurements.append($0) })
     }

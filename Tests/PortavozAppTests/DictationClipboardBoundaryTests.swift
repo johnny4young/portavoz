@@ -3,6 +3,7 @@ import PortavozCore
 import XCTest
 
 @testable import portavoz_app
+@testable import PortavozTestSupport
 
 @MainActor
 final class DictationClipboardBoundaryTests: XCTestCase {
@@ -53,6 +54,28 @@ final class DictationClipboardBoundaryTests: XCTestCase {
         }
     }
 
+    func testAGivenUpCopyStillPutsTheClipboardBack() async {
+        let board = makeBoard()
+        defer { board.releaseGlobally() }
+        board.setString("mine", forType: .string)
+        var posted = false
+        let copy = Task { @MainActor in
+            await DictationClipboard.shared.copySelection(on: board, timeout: .seconds(5)) {
+                posted = true
+                return true
+            }
+        }
+        _ = await TestPolling.until { posted }
+        XCTAssertTrue(posted)
+
+        copy.cancel()
+        board.clearContents()
+        board.setString("selected", forType: .string)
+        _ = await copy.value
+
+        XCTAssertEqual(board.string(forType: .string), "mine")
+    }
+
     func testFreshItemsAllowRepeatedRestorationAndExpectedOwnerRefusesForeignWrite() async throws {
         let board = makeBoard()
         defer { board.releaseGlobally() }
@@ -99,7 +122,7 @@ final class DictationClipboardBoundaryTests: XCTestCase {
                 let fixture = DictationUITestFixture(arguments: flags, usesTemporaryStore: temporary)
                 XCTAssertEqual(fixture?.exerciseClipboard == true, temporary && flags.count == 2)
                 for name in ["", "NSGeneralPboard", "app.portavoz.dictation-test.invalid"] {
-                    let dependencies = DictationUITestFixture.dependencies(fixture: fixture, beginCapture: { {} }, environment: [
+                    let dependencies = DictationUITestFixture.dependencies(fixture: fixture, admission: .open, beginCapture: { {} }, environment: [
                         DictationNativeUITestFixture.environmentKey: name
                     ])
                     let outcome = await dependencies.captureDestination().insert("Must not touch real data")
