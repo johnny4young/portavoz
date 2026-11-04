@@ -22692,7 +22692,7 @@ since only the owner arms one. Nothing in this path writes the preference or sta
 row, so someone who turns dictation on there while another app owns it finds out in Settings or the menu bar. A reset by another app that this one never observed can
 still leave an old Rewrite preview with a matching generation, a limit the protocol documents.
 
-## D629 — The coexistence matrix runs on every change against a second process
+## D629 — The coexistence matrix runs against a second process with the Swift tests
 
 **Context:** two dictation apps on one Mac must admit at most one global capture or delivery, and the ownership tests
 ran both participants in one process, where the kernel's per-process lock rules and cross-process notifications are not
@@ -22703,6 +22703,6 @@ linking the same pinned `DictationOwnership` package, on real locks and notifica
 and exit are real signals to that process. Rows that need real triggers, a microphone route or an installed app stay in
 `GAPS.md` until they run against a Secreteo Dev build.
 
-**Consequences:** the matrix runs in the normal Swift test gate in about two seconds with no screen or microphone. It
+**Consequences:** the matrix runs in the normal Swift test gate in a few seconds with no screen or microphone. It
 proves the protocol and this app's reaction, not a key press reaching two event taps. The peer and its tests leave with
 dictation in 2.0.

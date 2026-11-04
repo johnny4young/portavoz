@@ -88,18 +88,25 @@ private final class Peer: Sendable {
                 held = nil
             }
             return "released"
+        case "missing":
+            let missing = words.last
+            conditions.withLock { $0.missingForReadiness = missing }
+            return "ok"
+        case "turn-off":
+            conditions.withLock { $0.preferenceIsOn = false }
+            return String(describing: await ownership.turnOff())
+        default: return await runLongCommand(words)
+        }
+    }
+
+    private func runLongCommand(_ words: [String]) async -> String {
+        switch words.first {
         case "take": return String(describing: await ownership.takeOwnership(userConfirmed: true, triggers: Triggers()))
         case "take-unconfirmed":
             return String(describing: await ownership.takeOwnership(userConfirmed: false, triggers: Triggers()))
         case "take-and-die-arming":
             return String(describing: await ownership.takeOwnership(
                 userConfirmed: true, triggers: Triggers(diesWhenArming: true)))
-        case "turn-off": return String(describing: await ownership.turnOff())
-        case "relinquish": return String(describing: await ownership.relinquishForRemoval())
-        case "missing":
-            let missing = words.last
-            conditions.withLock { $0.missingForReadiness = missing }
-            return "ok"
         case "yield-on-intent": return await yieldOnIntent()
         case "sessions": return startSessions(leased: words.last != "unleased")
         case "stop-sessions": return await stopSessions()
