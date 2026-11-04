@@ -108,7 +108,10 @@ struct MenuBarContent: View {
                     services.pendingRoute = .recording(nil)
                 }
             }
-            if UserDefaults.standard.bool(forKey: DictationController.defaultsKey) {
+            if UserDefaults.standard.bool(forKey: DictationController.defaultsKey),
+               !services.dictationOwnership.armsTriggers {
+                DictationOwnerRow(identifierPrefix: "menu-bar-dictation")
+            } else if UserDefaults.standard.bool(forKey: DictationController.defaultsKey) {
                 quickAction("Dictate", "waveform", tint: PVDesign.accent) {
                     services.dictation.toggle(services: services)
                 }

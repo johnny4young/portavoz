@@ -45,6 +45,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## November 4, 2026
+
+- **🤝 One dictation app at a time** — if another app handles dictation on your Mac, Portavoz says so in Settings and the menu bar, never pastes twice, and lets you switch back with one click.
+
 ## November 2, 2026
 
 - **💬 Short answers stay in** — a quiet “Sí”, “OK” or “De acuerdo” into your microphone stays in the transcript instead of being dropped as noise.

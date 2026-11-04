@@ -555,6 +555,8 @@ enum PortavozDictationSearchAction {
 enum PortavozDictationIntentError: Error, Equatable, CustomLocalizedStringResourceConvertible {
     case notReady
     case dictationOff
+    case otherAppOwnsDictation
+    case dictationUnavailable
     case busy
     case nothingToPaste
     case notShared
@@ -565,6 +567,10 @@ enum PortavozDictationIntentError: Error, Equatable, CustomLocalizedStringResour
             "Portavoz is still opening. Run the action again in a moment."
         case .dictationOff:
             "Dictation is off. Turn it on in Portavoz Settings › Audio & dictation."
+        case .otherAppOwnsDictation:
+            "Another app is handling dictation. Choose Use Portavoz in Portavoz Settings › Audio & dictation."
+        case .dictationUnavailable:
+            "Dictation is unavailable on this Mac right now."
         case .busy:
             "Portavoz is finishing the current dictation. Run the action again when it's done."
         case .nothingToPaste:
@@ -636,6 +642,8 @@ enum PortavozAppIntentBridge {
         case accepted
         case notReady
         case dictationOff
+        case otherAppOwnsDictation
+        case dictationUnavailable
         case busy
         case nothingToPaste
 
@@ -644,6 +652,8 @@ enum PortavozAppIntentBridge {
             case .accepted: return
             case .notReady: throw PortavozDictationIntentError.notReady
             case .dictationOff: throw PortavozDictationIntentError.dictationOff
+            case .otherAppOwnsDictation: throw PortavozDictationIntentError.otherAppOwnsDictation
+            case .dictationUnavailable: throw PortavozDictationIntentError.dictationUnavailable
             case .busy: throw PortavozDictationIntentError.busy
             case .nothingToPaste: throw PortavozDictationIntentError.nothingToPaste
             }

@@ -5237,6 +5237,16 @@ preview calls `releaseGlobalKeys()` when ownership is lost and `revokeReplace()`
 `start()` and `reevaluate()` take the capture lock for a claim or a turn-off only while one is pending, so another
 app's key press does not meet a lock taken just to look. Application launch and termination are hints too.
 
+### Dictation owner row (D628)
+
+`DictationOwnerRow` renders `DictationOwnerStatus`, derived from the coordinator's state and the owner it reads from
+`ownership.json`, with identifiers `settings-dictation-owner-*` and `menu-bar-dictation-owner-*`. `takeDictationOwnership()`
+runs `comeBack`, the protocol's confirmed handoff, and `DictationHandoffProblem` keeps a failed one on screen.
+`resetDictationOwnership()` runs `resetCorruptState`. `-seed-dictation-owner-secreteo` and
+`-seed-dictation-ownership-damaged` write the disposable launch's scratch state before `start()`, and never the real
+folder. `retryUndeliveredText()` moves to `.recovery(.ownershipChanged)` on a lasting refusal, `sayHow()` asks
+`refusalNow()` first, and `DictationAdmissionRefusal.message` holds the shared copy.
+
 ### Dictation actions in Shortcuts (D583)
 
 The delegate answers `PortavozAppIntentBridge.dictationRequested` without

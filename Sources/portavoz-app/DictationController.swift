@@ -81,7 +81,7 @@ final class DictationController {
     private(set) var recoveryText = ""
     private(set) var copyStatus: CopyStatus = .idle
     private(set) var isRetryingDelivery = false
-    var canRetryDelivery: Bool { destination?.canRetry == true }
+    var canRetryDelivery: Bool { destination?.canRetry == true && phase != .recovery(.ownershipChanged) }
     private(set) var destination: CapturedDictationDestination?
     private var dependencies: DictationSessionDependencies?
     private(set) var deliveryID: UUID?
@@ -694,9 +694,16 @@ extension DictationController {
 
     func retryUndeliveredText() {
         guard case .recovery = phase, !isRetryingDelivery,
-              let id = deliveryID, let destination, destination.canRetry,
-              case .success(let lease) = dependencies?.admission.acquire(.global) else { return }
-        replay(recoveryText, into: destination, id: id, lease: lease)
+              let id = deliveryID, let destination, destination.canRetry else { return }
+        switch dependencies?.admission.acquire(.global) {
+        case .success(let lease):
+            replay(recoveryText, into: destination, id: id, lease: lease)
+        case .failure(.busy), .none:
+            break
+        case .failure:
+            // Says why, and Reinsert goes away: only Copy can help from here.
+            phase = .recovery(.ownershipChanged)
+        }
     }
 
     /// Pastes the remembered text into whatever is focused now, through the

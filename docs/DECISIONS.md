@@ -22674,8 +22674,20 @@ and its replace when the state turns corrupt. Mouse and modifier triggers leave 
 before admission, because admission does file I/O.
 
 **Consequences:** a build of Portavoz before this one has no lock, so another build reports it as an active legacy
-peer and stands down while it runs with dictation on. Until the visible row exists, a Dev build with its preference
-already on owns nothing until the preference is turned off and on again, nothing can take ownership back from an owner
-that quit, and corrupt state has no reset. A pressed trigger that is refused does nothing visible. A press during the
-wait for Stop after Esc is refused. Because readiness is always true, an owner with a revoked permission stays `owned`
+peer and stands down while it runs with dictation on. A pressed trigger that is refused does nothing visible. A press during the wait for Stop after Esc is refused. Because readiness is always true, an owner with a revoked permission stays `owned`
 rather than reporting `unavailable`.
+
+## D628 — Settings and the menu bar say who handles dictation, and only the user moves it
+
+**Context:** with the lock in place, a person whose preference is on could have disarmed triggers, a menu item that did
+nothing, and no way back from an owner that quit, while a damaged state file left dictation dead with no explanation.
+
+**Decision:** while dictation is on and this app does not own it, `DictationOwnerRow` says who does, in Settings and in
+place of the menu bar's dictation actions. It offers Use Portavoz, Open that app when it is installed, and Reset for
+damaged state. Refusals from visible controls explain themselves: Reinsert moves to a recovery that offers only Copy, Say
+how leaves a notice and its choices, and an Intent names the reason. A global trigger that is refused stays silent,
+since only the owner arms one. Nothing in this path writes the preference or starts the microphone.
+
+**Consequences:** Portavoz names only apps the protocol knows, and an unknown owner reads as another app. `busy` from
+Reinsert does nothing visible, because it passes in a moment. A reset by another app that this one never observed can
+still leave an old Rewrite preview with a matching generation, a limit the protocol documents.

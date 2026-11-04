@@ -202,6 +202,7 @@ final class AppLaunchModel {
             await services.configureInitialSummaryProviderIfNeeded()
         }
         services.connectDictationOwnership()
+        services.dictationOwnership.seedForUITests(arguments: ProcessInfo.processInfo.arguments)
         services.dictationOwnership.start()
         services.syncDictationTriggers()
 

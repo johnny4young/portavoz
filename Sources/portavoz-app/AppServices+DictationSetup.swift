@@ -12,15 +12,28 @@ extension AppServices {
         Task { [weak self] in
             guard let self else { return }
             await dictationOwnership.preferenceChanged(
-                isOn: enabled,
-                arm: {
-                    self.syncDictationTriggers()
-                    return self.dictation.shortcut.availability != .unavailable
-                },
-                disarm: { self.syncDictationTriggers() })
+                isOn: enabled, arm: armDictationTriggers, disarm: { self.syncDictationTriggers() })
             // The first sync above ran before this app owned anything, so it could not prompt.
             syncDictationTriggers(promptIfNeeded: enabled)
         }
+    }
+
+    func takeDictationOwnership() {
+        Task { [weak self] in
+            guard let self else { return }
+            await dictationOwnership.comeBack(
+                arm: armDictationTriggers, disarm: { self.syncDictationTriggers() })
+            syncDictationTriggers(promptIfNeeded: true)
+        }
+    }
+
+    func resetDictationOwnership() {
+        Task { await dictationOwnership.resetDamagedState() }
+    }
+
+    private func armDictationTriggers() -> Bool {
+        syncDictationTriggers()
+        return dictation.shortcut.availability != .unavailable
     }
 
     /// Disposable launches can start with history on, optionally with two saved rows.

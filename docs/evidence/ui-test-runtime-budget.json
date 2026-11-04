@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 171
+    "expectedCaseCount": 174
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -145,7 +145,10 @@
     "SettingsUITests/testAppleSpeechInspectionFailureOffersExplicitRetry()": 20.0,
     "SettingsUITests/testCategoryNavigationRevealsEachPane()": 24.352,
     "SettingsUITests/testDataPaneExportsARedactedSupportFileAndAReadableBackup()": 40.0,
+    "SettingsUITests/testDamagedDictationStateOffersAReset()": 25.0,
+    "SettingsUITests/testMenuBarSaysWhoHandlesDictationInsteadOfOfferingIt()": 25.0,
     "SettingsUITests/testDictationOffersTriggersLanguageAndDictionary()": 20.0,
+    "SettingsUITests/testDictationOwnedElsewhereOffersToComeBack()": 25.0,
     "SettingsUITests/testDictationRecoversShortcutConflictAndRefreshesHelp()": 25.0,
     "SettingsUITests/testHeldFnTriggerExplainsTheGlobeKeySetting()": 25.0,
     "SettingsUITests/testParakeetUltraIsAnExplicitDictationOnlyDownload()": 25.0,

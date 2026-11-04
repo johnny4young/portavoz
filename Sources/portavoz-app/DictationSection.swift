@@ -32,6 +32,7 @@ struct DictationSection: View {
                 .accessibilityIdentifier("settings-dictation-toggle")
                 .onChange(of: enabled) { services.applyDictationEnabled(enabled) }
             if enabled {
+                DictationOwnerRow(identifierPrefix: "settings-dictation")
                 DictationShortcutSettings(shortcut: services.dictation.shortcut) {
                     services.dictation.syncHotkey(services: services)
                 }

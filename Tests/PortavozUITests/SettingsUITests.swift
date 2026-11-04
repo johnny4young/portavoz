@@ -459,6 +459,62 @@ final class SettingsUITests: PortavozUITestCase {
     /// push-to-talk mouse button), the {es,en} language preference picker,
     /// the filler filter, and the deterministic dictionary quick-add.
     @MainActor
+    func testDictationOwnedElsewhereOffersToComeBack() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
+        app.launchArguments.append("-seed-dictation-owner-secreteo")
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        openCategory("settings-category-audio", revealing: "settings-dictation-toggle", in: app)
+        let status = app.staticTexts["settings-dictation-owner-status"]
+        XCTAssertTrue(status.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(renderedText(of: status).contains("Secreteo"))
+        attachScreenshot(of: app, named: "pr-dictation-owner-row")
+
+        app.buttons["settings-dictation-owner-use-portavoz"].click()
+
+        XCTAssertTrue(status.waitForDisappearance(timeout: 10))
+    }
+
+    @MainActor
+    func testDamagedDictationStateOffersAReset() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
+        app.launchArguments.append("-seed-dictation-ownership-damaged")
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        openCategory("settings-category-audio", revealing: "settings-dictation-toggle", in: app)
+        let reset = app.buttons["settings-dictation-owner-reset"]
+        XCTAssertTrue(reset.waitForExistenceFast(timeout: 10))
+        attachScreenshot(of: app, named: "pr-dictation-owner-damaged")
+
+        reset.click()
+
+        XCTAssertTrue(app.buttons["settings-dictation-owner-use-portavoz"].waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(reset.waitForDisappearance(timeout: 10))
+    }
+
+    @MainActor
+    func testMenuBarSaysWhoHandlesDictationInsteadOfOfferingIt() throws {
+        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
+        app.launchArguments.append("-seed-dictation-owner-secreteo")
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        let status = app.staticTexts["menu-bar-dictation-owner-status"]
+        XCTAssertTrue(status.waitForExistenceFast(timeout: 10))
+        XCTAssertFalse(app.buttons["menu-bar-dictate"].exists)
+        attachScreenshot(of: app, named: "pr-dictation-owner-menu")
+
+        app.buttons["menu-bar-dictation-owner-use-portavoz"].click()
+
+        XCTAssertTrue(app.buttons["menu-bar-dictate"].waitForExistenceFast(timeout: 10))
+    }
+
+    @MainActor
     func testDictationOffersTriggersLanguageAndDictionary() throws {
         let app = try XCUIApplication.portavoz(openSettings: true)
         // AppServices merges these values into the process's volatile

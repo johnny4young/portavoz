@@ -11,6 +11,16 @@
         }
       }
     },
+    "%@ is handling dictation.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ se encarga del dictado."
+          }
+        }
+      }
+    },
     "%@ kept": {
       "localizations": {
         "es": {
@@ -591,6 +601,16 @@
         }
       }
     },
+    "An older Portavoz is dictating. Update it, or turn off dictation in it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una versión anterior de Portavoz está dictando. Actualízala o apaga su dictado."
+          }
+        }
+      }
+    },
     "Another app already uses ⌃⌥⌘R. Rewrite the selection from the menu bar instead.": {
       "localizations": {
         "es": {
@@ -601,12 +621,52 @@
         }
       }
     },
+    "Another app is using a dictation shortcut, so nothing changed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otra app está usando un atajo de dictado, así que nada cambió."
+          }
+        }
+      }
+    },
+    "Another app is handling dictation. Choose Use Portavoz in Portavoz Settings › Audio & dictation.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otra app se encarga del dictado. Elige Usar Portavoz en Ajustes de Portavoz › Audio y dictado."
+          }
+        }
+      }
+    },
+    "Another app is handling dictation.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otra app se encarga del dictado."
+          }
+        }
+      }
+    },
     "Another app took over dictation, so nothing was inserted. Copy your text to keep it.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Otra app se encargó del dictado, así que no se insertó nada. Copia tu texto para conservarlo."
+          }
+        }
+      }
+    },
+    "Another dictation is still running. Try again when it ends.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todavía hay otro dictado en curso. Inténtalo de nuevo cuando termine."
           }
         }
       }
@@ -1927,6 +1987,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "Borrado “%@”."
+          }
+        }
+      }
+    },
+    "Dictation is unavailable on this Mac right now.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El dictado no está disponible en esta Mac por ahora."
+          }
+        }
+      }
+    },
+    "Dictation is off. Turn it on in Settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El dictado está apagado. Actívalo en Ajustes."
+          }
+        }
+      }
+    },
+    "Dictation is busy. Try again in a moment.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El dictado está ocupado. Inténtalo de nuevo en un momento."
+          }
+        }
+      }
+    },
+    "Dictation could not switch. Try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El dictado no pudo cambiar. Inténtalo de nuevo."
           }
         }
       }
@@ -8469,6 +8569,16 @@
         }
       }
     },
+    "No app is handling dictation.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ninguna app se encarga del dictado."
+          }
+        }
+      }
+    },
     "No audio was captured. Check Portavoz microphone and system audio recording permissions.": {
       "localizations": {
         "es": {
@@ -9395,6 +9505,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Abrir"
+          }
+        }
+      }
+    },
+    "Open %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir %@"
           }
         }
       }
@@ -14841,6 +14961,16 @@
         }
       }
     },
+    "Switching dictation…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiando el dictado…"
+          }
+        }
+      }
+    },
     "Sync": {
       "localizations": {
         "es": {
@@ -15737,6 +15867,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Las fuentes no respaldan una respuesta. Las coincidencias exactas siguen visibles."
+          }
+        }
+      }
+    },
+    "The state dictation shares between apps is damaged.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El estado que el dictado comparte entre apps está dañado."
           }
         }
       }
@@ -17001,6 +17141,16 @@
         }
       }
     },
+    "Update Portavoz to dictate here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualiza Portavoz para dictar aquí."
+          }
+        }
+      }
+    },
     "Updated": {
       "localizations": {
         "es": {
@@ -17077,6 +17227,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Usar mi primera escucha"
+          }
+        }
+      }
+    },
+    "Use Portavoz": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar Portavoz"
           }
         }
       }

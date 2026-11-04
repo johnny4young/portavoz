@@ -127,7 +127,9 @@ final class PortavozAppDelegate:
         hasPastableText: Bool
     ) -> PortavozAppIntentBridge.DictationRequestOutcome {
         switch refusal {
-        case .dictationOff, .notOwner, .unavailable: return .dictationOff
+        case .dictationOff: return .dictationOff
+        case .notOwner: return .otherAppOwnsDictation
+        case .unavailable: return .dictationUnavailable
         case .busy, .transferring: return .busy
         case nil: break
         }
