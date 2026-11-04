@@ -1173,6 +1173,11 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(set(selection.tests), set(FEATURE_TESTS["dictation"]))
         self.assertEqual(selection.locales, ("en",))
 
+    def test_the_coexistence_peer_is_a_headless_test_process(self):
+        selection = select_paths(["Tests/DictationPeer/DictationPeer.swift"])
+        self.assertEqual(selection.tests, ())
+        self.assertFalse(selection.scope_unknown)
+
     def test_native_delivery_journeys_are_discoverable_explicit_gates_not_hosted_passes(self):
         native = ui_scope.test_id(
             "DictationUITests", "testNativeInserterUsesDisposableReceiverAndClipboard"

@@ -223,14 +223,21 @@ let package = Package(
             path: "Tests",
             exclude: [
                 "PortavozAppTests", "PortavozTestSupport", "PortavozUITests", "PortavozDictationReceiver",
-                "UIInterruptionFixtures", "Tooling",
+                "UIInterruptionFixtures", "Tooling", "DictationPeer",
             ],
             sources: ["PortavozKitTests", "Support"]
+        ),
+        // Another dictation app on the same Mac, for the coexistence tests. Leaves with dictation in 2.0.
+        .executableTarget(
+            name: "dictation-peer",
+            dependencies: [.product(name: "DictationOwnership", package: "secreteo")],
+            path: "Tests/DictationPeer"
         ),
         .testTarget(
             name: "PortavozAppTests",
             dependencies: [
                 "portavoz-app",
+                "dictation-peer",
                 "PortavozCLIKit",
                 "PortavozTestSupport",
                 "ApplicationKit",

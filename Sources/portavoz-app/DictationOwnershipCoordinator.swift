@@ -81,16 +81,21 @@ final class DictationOwnershipCoordinator {
     }
 
     /// Portavoz before the protocol runs dictation with no lock, so another build of it can only refuse.
-    private static func legacyPeers(excluding identifier: String) -> NonCooperatingPeers {
+    static func legacyPeers(
+        excluding identifier: String,
+        running: @escaping @Sendable () -> [RunningApp] = {
+            NSWorkspace.shared.runningApplications.compactMap { app in
+                app.bundleIdentifier.map { RunningApp(identifier: $0, bundleURL: app.bundleURL) }
+            }
+        },
+        preferenceIsOn: @escaping @Sendable (KnownPeer) -> Bool = NonCooperatingPeers.storedPreference
+    ) -> NonCooperatingPeers {
         NonCooperatingPeers(
             known: shippedIdentifiers
                 .filter { $0 != identifier }
                 .map { KnownPeer(identifier: $0, preferenceKey: DictationController.defaultsKey) },
-            running: {
-                NSWorkspace.shared.runningApplications.compactMap { app in
-                    app.bundleIdentifier.map { RunningApp(identifier: $0, bundleURL: app.bundleURL) }
-                }
-            })
+            running: running,
+            preferenceIsOn: preferenceIsOn)
     }
 
     var admission: DictationAdmission {
@@ -249,9 +254,13 @@ final class DictationOwnershipCoordinator {
             return .success(lease(sharing: held))
         }
         switch ownership.acquire(kind == .global ? .global : .practice) {
-        case .refused(.notOwner) where ownership.status() == .off:
-            // The library asks about the owner first, but what stops this app is its own preference.
-            return .failure(.dictationOff)
+        case .refused(.notOwner):
+            // The library asks about the owner first, but what stops this app can be its own state.
+            switch ownership.status() {
+            case .off: return .failure(.dictationOff)
+            case .unavailable(let reason): return .failure(.unavailable(reason))
+            default: return .failure(.notOwner)
+            }
         case .refused(let refusal):
             return .failure(Self.refusal(for: refusal))
         case .admitted(let lease):
