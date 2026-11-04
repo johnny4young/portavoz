@@ -5245,10 +5245,37 @@ runs `comeBack`, the protocol's confirmed handoff, and `DictationHandoffProblem`
 `resetDictationOwnership()` runs `resetCorruptState`. `-seed-dictation-owner-secreteo` and
 `-seed-dictation-ownership-damaged` write the disposable launch's scratch state before `start()`, and never the real
 folder. `retryUndeliveredText()` keeps a refusal in `retryRefusal` and stays in its recovery, `sayHow()` asks
-`refusalNow()` first, and `DictationAdmissionRefusal.message` holds the shared copy. A non-owner with its preference off
-is refused `.dictationOff`, though the library asks about the owner first. `offersDictationActions` follows committed
+`refusalNow()` first, and `DictationAdmissionRefusal.message` holds the shared copy. `offersDictationActions` follows committed
 ownership, and the coordinator registers for the change notification itself, because an owner can change with no change
 in state or intent.
+
+### Coexistence with a second dictation app (D629)
+
+`DictationCoexistenceTests` runs the real coordinator against `dictation-peer`, a second process that plays the other
+app on the real locks and notifications of a scratch folder. Portavoz's triggers, microphone and insertion are the
+controller harness, so these rows prove the protocol and this app's reaction to it, not the keyboard or the audio route.
+
+| Row | Expected in Portavoz |
+|---|---|
+| Simultaneous launch | One owner at generation 1, one admission between the two |
+| Toggle with both alive, and back | Generation rises by one per change, `previous` names the last owner, one arm |
+| Peer session during a handoff | `busy` until it yields; a peer that never yields times out with nothing changed |
+| Session preparing | Cancelled, and the peer takes over |
+| Session listening | Words in recovery, no paste, the peer takes over |
+| Session delivering | One paste, new sessions refused, the handoff waits for the clipboard restore |
+| Late release of a refused press | Nothing happens, and the peer's lease stays valid |
+| SIGKILL holding a lease, or in practice | Lock free, owner unchanged, recovered only by Use Portavoz |
+| SIGKILL before or after the commit | Before: the intent expires and Portavoz stays owner. After: the peer stays owner |
+| Sleep and wake | A frozen holder stays exclusive; an intent past its expiry is ignored on wake |
+| Upgrade | A relaunch keeps the owner; a newer state file refuses and stays byte-identical |
+| Uninstall | Nobody owns it, nothing arms, and Use Portavoz is offered only with the preference on |
+| Permission revoked or engine missing | A peer not ready cannot take over; an owning peer is refused and keeps ownership |
+| Dev and Release | Dev needs a confirmed handoff, and a Dev launch never takes over Release |
+| Older Portavoz with dictation on | `unavailable(legacyPeerActive)`, nothing armed, practice allowed, claimed once it quits |
+
+Portavoz itself reports no missing readiness (D627), so a revoked permission here leaves it `owned`, and the session
+reports the permission through its normal path. A non-owner whose own state is `off` or `unavailable` is refused with
+that state rather than `notOwner`, because the library asks about the owner first.
 
 ### Dictation actions in Shortcuts (D583)
 

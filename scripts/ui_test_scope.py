@@ -143,6 +143,7 @@ NO_UI_PREFIXES = (
     "Tests/Tooling/",
     "Tests/PortavozKitTests/",
     "Tests/PortavozAppTests/",
+    "Tests/DictationPeer/",
     "Tests/PortavozTestSupport/",
     "Sources/portavoz-cli/",
     "Sources/portavoz-cli-main/",

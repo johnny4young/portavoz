@@ -249,9 +249,13 @@ final class DictationOwnershipCoordinator {
             return .success(lease(sharing: held))
         }
         switch ownership.acquire(kind == .global ? .global : .practice) {
-        case .refused(.notOwner) where ownership.status() == .off:
-            // The library asks about the owner first, but what stops this app is its own preference.
-            return .failure(.dictationOff)
+        case .refused(.notOwner):
+            // The library asks about the owner first, but what stops this app can be its own state.
+            switch ownership.status() {
+            case .off: return .failure(.dictationOff)
+            case .unavailable(let reason): return .failure(.unavailable(reason))
+            default: return .failure(.notOwner)
+            }
         case .refused(let refusal):
             return .failure(Self.refusal(for: refusal))
         case .admitted(let lease):
