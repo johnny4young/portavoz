@@ -662,7 +662,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(try Self.contents(of: "Sources/portavoz-app/AppLaunchModel.swift")
             .contains("modelStore.collectUnused(keeping: ModelCatalog.all)"))
         XCTAssertTrue(try Self.contents(of: "Sources/portavoz-cli/CLI.swift")
-            .contains("await CLISupport.collectUnusedModels()"))
+            .contains("await CLISupport.collectUnusedModels(arguments: arguments)"))
 
         let directStores = try Self.sourceMatches(
             under: "Sources/portavoz-app",

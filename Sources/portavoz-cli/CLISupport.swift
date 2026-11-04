@@ -15,8 +15,15 @@ enum CLISupport {
     private static let consumer = ModelStore.Consumer(identifier: "app.portavoz.cli", displayName: "Portavoz CLI")
 
     /// The app does this for its own claims; nothing else would for the CLI's.
-    static func collectUnusedModels() async {
-        try? await modelStore(fromModelsDir: nil).collectUnused(keeping: ModelCatalog.all)
+    static func collectUnusedModels(arguments: [String]) async {
+        try? await collectionStore(arguments: arguments).collectUnused(keeping: ModelCatalog.all)
+    }
+
+    /// A run pointed at its own folder must leave the shared store alone.
+    static func collectionStore(arguments: [String]) -> ModelStore {
+        let flag = arguments.firstIndex(of: "--models-dir")
+        let path = flag.flatMap { arguments.indices.contains($0 + 1) ? arguments[$0 + 1] : nil }
+        return modelStore(fromModelsDir: path)
     }
 
     /// Downloads/verifies the recommended model (printing progress) and

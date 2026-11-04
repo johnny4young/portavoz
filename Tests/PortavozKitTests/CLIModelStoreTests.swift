@@ -25,4 +25,13 @@ struct CLIModelStoreTests {
 
         #expect(installation != nil)
     }
+
+    @Test func collectionFollowsTheModelsFolderARunAskedFor() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+
+        let store = CLISupport.collectionStore(arguments: ["--file", "a.wav", "--models-dir", root.path])
+        let directory = try await store.directory(for: ModelCatalog.sileroVAD)
+
+        #expect(directory.standardizedFileURL.path.hasPrefix(root.standardizedFileURL.path + "/"))
+    }
 }

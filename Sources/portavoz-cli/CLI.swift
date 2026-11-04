@@ -19,7 +19,7 @@ public enum PortavozCLI {
             return
         }
         arguments.removeFirst()
-        await CLISupport.collectUnusedModels()
+        await CLISupport.collectUnusedModels(arguments: arguments)
 
         switch command {
         case "devices":

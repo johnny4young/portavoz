@@ -174,7 +174,10 @@ tests.
 
 Portavoz takes no `LocalModelStore` lease on a model it has loaded, so only claims
 protect it, and removal by another app for all consumers can delete it while it is
-resident. Leases need wiring to the model-memory residency, not to a check.
+resident or between preparing and loading it. A Whisper tokenizer missing at that
+moment makes WhisperKit reach for its own download. Leases need wiring to the
+model-memory residency, not to a check. Two processes with the same consumer, such as
+two copies of one build, can also let an adoption already staging undo a removal.
 
 ### Release notes in the real update window
 
