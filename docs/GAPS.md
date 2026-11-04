@@ -165,6 +165,12 @@ test reserved: both apps launching at login, holding Fn and the mouse trigger wi
 both apps running, real sleep and wake during a session, removing the other app from
 disk, Portavoz Dev beside Portavoz Release, and a real Portavoz 1.3 with dictation on.
 
+### Release notes in the real update window
+
+The real `generate_appcast` embeds and signs the notes (D630), but they have not been
+seen in Sparkle's update window. A release candidate needs one look at emoji, list
+spacing and dark mode, from an older build updating to it.
+
 ### Clipboard preservation boundaries
 
 Ordered bounded snapshots and exclusive paste loans now protect rich-item identity

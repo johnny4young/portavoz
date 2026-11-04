@@ -34,7 +34,7 @@ def require_regular_file(path: Path, label: str) -> os.stat_result:
     return stat
 
 
-def validate_appcast(appcast: Path, version: str, build: str, dmg: Path) -> None:
+def validate_appcast(appcast: Path, version: str, build: str, dmg: Path, notes: Path) -> None:
     appcast_stat = require_regular_file(appcast, "release appcast")
     dmg_stat = require_regular_file(dmg, "release DMG")
     if appcast_stat.st_size <= 0 or appcast_stat.st_size > MAXIMUM_APPCAST_BYTES:
@@ -64,6 +64,15 @@ def validate_appcast(appcast: Path, version: str, build: str, dmg: Path) -> None
         raise AppcastValidationError(
             f"release appcast must require macOS {MINIMUM_SYSTEM_VERSION} or newer"
         )
+
+    # Embedded, so an updater never has to fetch notes from a file the release does not attach.
+    require_regular_file(notes, "release notes")
+    try:
+        expected_notes = notes.read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeError) as error:
+        raise AppcastValidationError("release notes cannot be read") from error
+    if not expected_notes or (item.findtext("description") or "").strip() != expected_notes:
+        raise AppcastValidationError("release appcast does not embed the release notes")
 
     enclosures = item.findall("enclosure")
     if len(enclosures) != 1:
@@ -105,6 +114,7 @@ def parse_args(arguments: list[str]) -> argparse.Namespace:
     parser.add_argument("--version", required=True)
     parser.add_argument("--build", required=True)
     parser.add_argument("--dmg", required=True, type=Path)
+    parser.add_argument("--notes", required=True, type=Path)
     return parser.parse_args(arguments)
 
 
@@ -116,6 +126,7 @@ def main(arguments: list[str] | None = None) -> int:
             options.version,
             options.build,
             options.dmg,
+            options.notes,
         )
     except AppcastValidationError as error:
         print(f"error: {error}", file=sys.stderr)

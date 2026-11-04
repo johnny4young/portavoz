@@ -22706,3 +22706,15 @@ and exit are real signals to that process. Rows that need real triggers, a micro
 **Consequences:** the matrix runs in the normal Swift test gate in a few seconds with no screen or microphone. It
 proves the protocol and this app's reaction, not a key press reaching two event taps. The peer and its tests leave with
 dictation in 2.0.
+
+## D630 — The update window shows notes embedded in the appcast
+
+**Context:** the appcast offered an update with no notes, so someone updating saw a version number and nothing else, and
+a dictation change between versions needs a place to be told.
+
+**Decision:** `scripts/release_notes.py` renders the release's section of `CHANGELOG.md` as an HTML fragment, and
+`make-release.sh` passes it to `generate_appcast --embed-release-notes`. A version with no section stops before the build,
+and `verify_release_appcast.py` refuses an appcast whose description differs from that fragment.
+
+**Consequences:** the changelog section has to exist in the release commit. No file beyond the DMG and the appcast needs
+attaching, and the fragment stays in `dist/release/`. The appcast keeps one item, so only the newest notes are shown.

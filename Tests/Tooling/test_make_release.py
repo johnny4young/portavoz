@@ -121,6 +121,61 @@ class MakeReleaseTests(unittest.TestCase):
             self.assertIn("must require macOS 26.0 or newer", result.stderr)
             self.assertNotIn("Release 1.0.0 ready", result.stdout)
 
+    def test_a_version_missing_from_the_changelog_fails_before_build(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = self.make_repository(Path(directory))
+            (repository / "CHANGELOG.md").write_text("## 0.9.0 — May 1, 2026\n\n- Older\n", encoding="utf-8")
+
+            result = self.run_release(repository, self.make_signer(repository))
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("no section for 1.0.0", result.stderr)
+            self.assertFalse((repository / "build-called").exists())
+
+    def test_appcast_without_the_embedded_notes_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = self.make_repository(Path(directory))
+            signer = self.make_signer(repository, description="")
+
+            result = self.run_release(repository, signer)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("does not embed the release notes", result.stderr)
+            self.assertNotIn("Release 1.0.0 ready", result.stdout)
+
+    def test_appcast_with_other_notes_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = self.make_repository(Path(directory))
+            signer = self.make_signer(repository, description="<description>Older notes</description>")
+
+            result = self.run_release(repository, signer)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("does not embed the release notes", result.stderr)
+            self.assertNotIn("Release 1.0.0 ready", result.stdout)
+
+    def test_unreadable_notes_fail_with_an_error_line(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = self.make_repository(Path(directory))
+            signer = self.make_signer(repository, corrupts_notes=True)
+
+            result = self.run_release(repository, signer)
+
+            self.assertEqual(result.returncode, 64)
+            self.assertIn("error: release notes cannot be read", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+
+    def test_the_signer_is_asked_to_embed_the_notes_beside_the_archive(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = self.make_repository(Path(directory))
+
+            result = self.run_release(repository, self.make_signer(repository))
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("--embed-release-notes", (repository / "signer-arguments").read_text(encoding="utf-8"))
+            notes = repository / "dist" / "release" / "Portavoz-1.0.0.html"
+            self.assertIn("<strong>Fixes</strong>", notes.read_text(encoding="utf-8"))
+
     def test_exact_signed_appcast_allows_release_completion(self):
         with tempfile.TemporaryDirectory() as directory:
             repository = self.make_repository(Path(directory))
@@ -144,7 +199,12 @@ class MakeReleaseTests(unittest.TestCase):
         tools.mkdir()
         casks.mkdir(parents=True)
 
+        (repository / "CHANGELOG.md").write_text(
+            "## 1.0.0 — May 2, 2026\n\n- **Fixes** — they help\n\n## 0.9.0 — May 1, 2026\n\n- Older\n",
+            encoding="utf-8",
+        )
         shutil.copy2(SCRIPT, scripts / SCRIPT.name)
+        shutil.copy2(REPOSITORY / "scripts" / "release_notes.py", scripts / "release_notes.py")
         shutil.copy2(REPOSITORY / "scripts" / "render-cask.sh", scripts / "render-cask.sh")
         shutil.copy2(
             REPOSITORY / "scripts" / "verify_release_appcast.py",
@@ -193,6 +253,8 @@ printf 'dmg' > 'dist/Portavoz-{self.version}.dmg'
         length: int = 3,
         minimum_system: str = "26.0",
         symlink_appcast: bool = False,
+        description: str | None = None,
+        corrupts_notes: bool = False,
     ) -> Path:
         signer = repository / "tools" / "generate_appcast"
         resolved_version = self.version if version is None else version
@@ -216,12 +278,19 @@ printf 'dmg' > 'dist/Portavoz-{self.version}.dmg'
             if symlink_appcast
             else ""
         )
+        resolved_description = (
+            f'<description><![CDATA[$(cat "$release_dir/Portavoz-{self.version}.html")]]></description>'
+            if description is None
+            else description
+        )
+        corrupt_notes = f"""printf '\\377' > "$release_dir/Portavoz-{self.version}.html\"""" if corrupts_notes else ""
         self.write_executable(
             signer,
             f"""#!/bin/bash
 set -euo pipefail
+printf '%s\\n' "$*" > signer-arguments
 release_dir="${{!#}}"
-cat > {appcast_destination} <<'XML'
+cat > {appcast_destination} <<XML
 <?xml version="1.0" standalone="yes"?>
 <rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
@@ -229,12 +298,14 @@ cat > {appcast_destination} <<'XML'
       <sparkle:version>{resolved_build}</sparkle:version>
       <sparkle:shortVersionString>{resolved_version}</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>{minimum_system}</sparkle:minimumSystemVersion>
+      {resolved_description}
       <enclosure url="{resolved_url}" length="{length}" type="application/octet-stream" sparkle:edSignature="{resolved_signature}"/>
     </item>
   </channel>
 </rss>
 XML
 {link_appcast}
+{corrupt_notes}
 """,
         )
         return signer
