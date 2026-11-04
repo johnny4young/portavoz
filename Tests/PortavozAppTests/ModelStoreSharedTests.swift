@@ -1,6 +1,7 @@
 import CryptoKit
 import Foundation
 @testable import ModelStoreKit
+import PortavozTestSupport
 import Testing
 
 struct ModelStoreSharedTests {
@@ -21,16 +22,69 @@ struct ModelStoreSharedTests {
         #expect(fixture.legacyFileExists, "the legacy copy stays for an older build")
     }
 
-    @Test func aPartialLegacyInstallNeverStartsADownloadFromACheck() async throws {
+    @Test func aDamagedLegacyInstallNeverStartsADownloadFromACheck() async throws {
         let fixture = try Fixture()
         defer { fixture.remove() }
-        try fixture.writeLegacy(corrupting: true)
+        try fixture.writeLegacy(.sameSizeDamage)
         let store = fixture.store(Self.portavoz, legacy: true)
 
         let report = await store.verify(fixture.descriptor)
 
         #expect(!report.isComplete)
-        #expect(fixture.storeIsEmpty, "a check placed nothing and downloaded nothing")
+        #expect(fixture.storeIsEmpty, "the download source was there and the check did not use it")
+    }
+
+    @Test func aPartialLegacyInstallNeverStartsADownloadFromACheck() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        try fixture.writeLegacy(.truncated)
+        let store = fixture.store(Self.portavoz, legacy: true)
+
+        let report = await store.verify(fixture.descriptor)
+
+        #expect(!report.isComplete)
+        #expect(fixture.storeIsEmpty)
+    }
+
+    @Test func aFolderOfOldModelsSeedsANewStoreInTheSameFolder() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        try fixture.writeLegacy()
+        let store = ModelStore(rootDirectory: fixture.legacyRoot, consumer: Self.portavoz, legacyRoot: fixture.legacyRoot)
+        try FileManager.default.removeItem(at: fixture.offlineDescriptorBase)
+
+        let installation = await store.verifiedInstallation(fixture.descriptor)
+
+        #expect(installation != nil)
+    }
+
+    @Test func aFailedRepairKeepsTheInstalledBytes() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let store = fixture.store(Self.portavoz)
+        let directory = try await store.ensureAvailable(fixture.descriptor)
+        let file = directory.appendingPathComponent("weights.bin")
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: file.path)
+        let damaged = Data("damaged installed copy".utf8)
+        try damaged.write(to: file)
+        try FileManager.default.removeItem(at: fixture.offlineDescriptorBase)
+
+        await #expect(throws: ModelStore.ModelStoreError.self) {
+            try await store.ensureAvailable(fixture.descriptor)
+        }
+
+        #expect(try Data(contentsOf: file) == damaged)
+    }
+
+    @Test func aModelFromAnotherAppNeedsNoDownload() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let store = fixture.store(Self.portavoz)
+        #expect(await store.needsDownload(fixture.descriptor))
+
+        _ = try await fixture.store(Self.other).ensureAvailable(fixture.descriptor)
+
+        #expect(await store.needsDownload(fixture.descriptor) == false)
     }
 
     @Test func aModelFromAnotherAppReadsAsMissingUntilThisAppAsksForIt() async throws {
@@ -102,7 +156,7 @@ struct ModelStoreSharedTests {
         #expect(fixture.storeIsEmpty)
     }
 
-    @Test func theCatalogListsEveryPinAndEachIsAValidSharedManifest() throws {
+    @Test func theCatalogListsEveryPinAndEachIsAValidSharedManifest() async throws {
         let sources = try FileManager.default.contentsOfDirectory(atPath: Self.catalogFolder.path)
             .filter { $0.hasSuffix(".swift") }
             .map { try String(contentsOf: Self.catalogFolder.appendingPathComponent($0), encoding: .utf8) }
@@ -111,8 +165,10 @@ struct ModelStoreSharedTests {
 
         #expect(ModelCatalog.all.count == declared, "a pin outside the list would lose its claim after 14 days")
         #expect(Set(ModelCatalog.all.map(\.id)).count == ModelCatalog.all.count)
+        let scratch = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = ModelStore(rootDirectory: scratch, consumer: .tests)
         for descriptor in ModelCatalog.all {
-            #expect(descriptor.manifest.digest.count == 64)
+            _ = try await store.directory(for: descriptor)
         }
     }
 
@@ -161,10 +217,18 @@ struct ModelStoreSharedTests {
             return ModelStore(rootDirectory: storeRoot, consumer: consumer, legacyRoot: legacy ? legacyRoot : nil)
         }
 
-        func writeLegacy(corrupting: Bool = false) throws {
+        enum LegacyState { case complete, sameSizeDamage, truncated }
+
+        func writeLegacy(_ state: LegacyState = .complete) throws {
             try FileManager.default.createDirectory(
                 at: legacyFile.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try (corrupting ? Data("damaged".utf8) : Self.bytes).write(to: legacyFile)
+            let bytes: Data
+            switch state {
+            case .complete: bytes = Self.bytes
+            case .sameSizeDamage: bytes = Data(repeating: 0, count: Self.bytes.count)
+            case .truncated: bytes = Self.bytes.prefix(3)
+            }
+            try bytes.write(to: legacyFile)
         }
 
         func remove() {

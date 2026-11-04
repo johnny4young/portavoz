@@ -1,3 +1,4 @@
+import CryptoKit
 import FluidAudio
 import Foundation
 import PortavozCore
@@ -236,12 +237,16 @@ final class ModelStoreTests: XCTestCase {
             "replacing Portavoz.app must not remove downloaded models")
     }
 
-    func testSHA256MatchesKnownVector() throws {
-        let file = workspace.appendingPathComponent("abc.txt")
-        try Data("abc".utf8).write(to: file)
-        XCTAssertEqual(
-            try ModelStore.sha256(of: file),
-            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+    func testSharedRootSurvivesApplicationBundleReplacement() async throws {
+        let store = ModelStore.userLibrary(consumer: .tests)
+        let directory = try await store.directory(for: ModelCatalog.parakeetTdtV3).standardizedFileURL
+        let root = URL.applicationSupportDirectory.standardizedFileURL
+            .appendingPathComponent("com.johnny4young.local-models").path + "/"
+
+        XCTAssertTrue(directory.path.hasPrefix(root), "models live where every app expects them, not in a cache")
+        XCTAssertFalse(
+            directory.path.hasPrefix(Bundle.main.bundleURL.standardizedFileURL.path + "/"),
+            "replacing Portavoz.app must not remove downloaded models")
     }
 
     /// End-to-end offline: "downloads" from file:// URLs, verifies, installs.
@@ -283,12 +288,9 @@ final class ModelStoreTests: XCTestCase {
         XCTAssertTrue(healed.isComplete)
         let healedInstallation = await store.verifiedInstallation(descriptor)
         XCTAssertNotNil(healedInstallation)
-        let weightDirectory = directory
-            .appendingPathComponent("bundle.mlmodelc/weights")
-        let leftovers = try FileManager.default.contentsOfDirectory(
-            atPath: weightDirectory.path)
-            .filter { $0.contains(".download-") }
-        XCTAssertTrue(leftovers.isEmpty, "atomic repair must remove sibling staging files")
+        let staging = workspace.appendingPathComponent("store/v1.noindex/staging")
+        let leftovers = try FileManager.default.contentsOfDirectory(atPath: staging.path)
+        XCTAssertTrue(leftovers.isEmpty, "atomic repair must remove its staging work")
     }
 
     func testVerifiedLifecycleCachesOnlySuccessAndSupportsExplicitReverification() async throws {
@@ -536,18 +538,21 @@ final class ModelStoreTests: XCTestCase {
             artifacts: [
                 ModelArtifact(
                     path: "bundle.mlmodelc/weights/weight.bin",
-                    sha256: try ModelStore.sha256(
-                        of: source.appendingPathComponent("bundle.mlmodelc/weights/weight.bin")),
+                    sha256: Self.sha256(weight),
                     sizeBytes: weight.count),
                 ModelArtifact(
                     path: "vocab.json",
-                    sha256: try ModelStore.sha256(of: source.appendingPathComponent("vocab.json")),
+                    sha256: Self.sha256(vocab),
                     sizeBytes: vocab.count),
             ],
             minimumRAMGB: 1,
             license: "MIT"
         )
         return (descriptor, source)
+    }
+
+    private static func sha256(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 }
 

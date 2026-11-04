@@ -1680,8 +1680,9 @@ Production model artifacts live in the stable user-domain
 `~/Library/Application Support/com.johnny4young.local-models` root, outside both
 `Portavoz.app` and `Portavoz Dev.app`, and shared with other apps on the Mac. The
 legacy `Portavoz/Models` folder is read only as a seed. Replacing either application bundle
-therefore does not remove a verified model; only the explicit model-delete
-workflow mutates that installation. Refine, Import, Settings, and CLI describe
+therefore does not remove a verified model. Only the explicit model-delete
+workflow and, at launch, the collection of claims an update re-pinned change an
+installation. Refine, Import, Settings, and CLI describe
 the operation as local verification until `ModelStore` reports missing or
 corrupt artifacts; only that latter activity is labeled as a download. Download
 percentage is never synthesized for a checksum-only pass.

@@ -122,8 +122,7 @@ extension BenchMode {
         Task.detached {
             do {
                 print("model: \(descriptor.displayName)")
-                let directory = try await ModelStore.userLibrary(
-                    consumer: .init(identifier: "app.portavoz.bench", displayName: "Portavoz benchmark"))
+                let directory = try await AppServices.makeModelStore(usesTemporaryStore: false)
                     .ensureAvailable(descriptor)
                 let request =
                     useRealMeeting ? try await realMeetingRequest() : syntheticRequest()

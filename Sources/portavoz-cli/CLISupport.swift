@@ -6,11 +6,17 @@ import TranscriptionKit
 /// swift-argument-parser while the CLI is still a dev harness.
 enum CLISupport {
     static func modelStore(fromModelsDir path: String?) -> ModelStore {
-        let consumer = ModelStore.Consumer(identifier: "app.portavoz.cli", displayName: "Portavoz CLI")
-        if let path {
-            return ModelStore(rootDirectory: URL(fileURLWithPath: path, isDirectory: true), consumer: consumer)
-        }
-        return .userLibrary(consumer: consumer)
+        guard let path else { return .userLibrary(consumer: consumer) }
+        // A folder from before the shared store keeps its models: they seed the new layout.
+        let root = URL(fileURLWithPath: path, isDirectory: true)
+        return ModelStore(rootDirectory: root, consumer: consumer, legacyRoot: root)
+    }
+
+    private static let consumer = ModelStore.Consumer(identifier: "app.portavoz.cli", displayName: "Portavoz CLI")
+
+    /// The app does this for its own claims; nothing else would for the CLI's.
+    static func collectUnusedModels() async {
+        try? await modelStore(fromModelsDir: nil).collectUnused(keeping: ModelCatalog.all)
     }
 
     /// Downloads/verifies the recommended model (printing progress) and
@@ -38,8 +44,7 @@ enum CLISupport {
         _ descriptor: ModelDescriptor,
         store: ModelStore
     ) async throws -> URL {
-        let report = await store.verify(descriptor)
-        if !report.isComplete {
+        if await store.needsDownload(descriptor) {
             let megabytes = descriptor.totalSizeBytes / 1_000_000
             print("Downloading \(descriptor.displayName) (\(megabytes) MB, sha256-verified)…")
         }

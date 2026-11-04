@@ -172,6 +172,10 @@ folder, loading every engine from read-only files, and the first Core ML
 specialization after the path change still need a real install and the gated model
 tests.
 
+Portavoz takes no `LocalModelStore` lease on a model it has loaded, so only claims
+protect it, and removal by another app for all consumers can delete it while it is
+resident. Leases need wiring to the model-memory residency, not to a check.
+
 ### Release notes in the real update window
 
 The real `generate_appcast` embeds and signs the notes (D630), but they have not been

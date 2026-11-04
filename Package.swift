@@ -196,6 +196,7 @@ let package = Package(
                 "ApplicationKit",
                 "DiarizationKit",
                 "IntelligenceKit",
+                "ModelStoreKit",
                 "PlatformKit",
                 "PortavozCore",
                 "StorageKit",

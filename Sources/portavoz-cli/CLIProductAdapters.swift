@@ -80,8 +80,7 @@ private enum CLIModelLoader {
         progress: @escaping AudioAnalysisProgressHandler
     ) async throws -> ParakeetEngine {
         let descriptor = ModelCatalog.parakeetTdtV3
-        let report = await store.verify(descriptor)
-        if !report.isComplete {
+        if await store.needsDownload(descriptor) {
             await progress(.downloadingModel(
                 name: descriptor.displayName,
                 megabytes: descriptor.totalSizeBytes / 1_000_000))
@@ -109,8 +108,7 @@ private enum CLIModelLoader {
         progress: @escaping AudioAnalysisProgressHandler
     ) async throws -> WhisperEngine {
         let descriptor = ModelCatalog.whisperLargeV3Turbo
-        let report = await store.verify(descriptor)
-        if !report.isComplete {
+        if await store.needsDownload(descriptor) {
             await progress(.downloadingModel(
                 name: descriptor.displayName,
                 megabytes: descriptor.totalSizeBytes / 1_000_000))
@@ -138,8 +136,7 @@ private enum CLIModelLoader {
         progress: @escaping AudioAnalysisProgressHandler
     ) async throws -> PyannoteDiarizer {
         let descriptor = ModelCatalog.speakerDiarization
-        let report = await store.verify(descriptor)
-        if !report.isComplete {
+        if await store.needsDownload(descriptor) {
             await progress(.downloadingModel(
                 name: descriptor.displayName,
                 megabytes: descriptor.totalSizeBytes / 1_000_000))

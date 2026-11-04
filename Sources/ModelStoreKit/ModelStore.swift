@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 import LocalModelStore
 
@@ -108,6 +107,8 @@ public actor ModelStore {
     }
 
     private let backing: Result<LocalModelStore, Error>
+    /// The same store with no network, so adopting a legacy install can only place files.
+    private let adopter: LocalModelStore?
     private let legacyRoot: URL?
 
     /// Where Portavoz kept models before the shared store. Read as a seed, so an
@@ -128,12 +129,10 @@ public actor ModelStore {
     }
 
     private init(location: StoreLocation, consumer: Consumer, legacyRoot: URL?, session: URLSession) {
-        backing = Result {
-            try LocalModelStore(
-                location: location,
-                consumer: StoreConsumer(bundleID: consumer.identifier, displayName: consumer.displayName),
-                session: session)
-        }
+        let storeConsumer = StoreConsumer(bundleID: consumer.identifier, displayName: consumer.displayName)
+        backing = Result { try LocalModelStore(location: location, consumer: storeConsumer, session: session) }
+        adopter = legacyRoot == nil ? nil : try? LocalModelStore(
+            location: location, consumer: storeConsumer, session: Self.offlineSession)
         self.legacyRoot = legacyRoot
     }
 
@@ -149,7 +148,7 @@ public actor ModelStore {
         guard let store = try? store() else {
             return VerificationReport(missing: manifest.artifacts.map(\.path), corrupted: [])
         }
-        await adoptLegacyInstall(descriptor, into: store)
+        await adoptLegacyInstall(descriptor)
         guard await isClaimed(manifest, in: store) else {
             return VerificationReport(missing: manifest.artifacts.map(\.path), corrupted: [])
         }
@@ -190,6 +189,12 @@ public actor ModelStore {
                     currentPath: state.currentPath))
             }
         }
+    }
+
+    /// Whether getting this model would fetch bytes. False when another app installed it.
+    public func needsDownload(_ descriptor: ModelDescriptor) async -> Bool {
+        guard await !verify(descriptor).isComplete, let store = try? store() else { return false }
+        return await store.verifiedInstallation(descriptor.manifest) == nil
     }
 
     /// Removes this app's copy, including its legacy one so it is not adopted again.
@@ -233,20 +238,29 @@ public actor ModelStore {
         return await store.inventory().contains { $0.key == key && $0.isClaimedByThisConsumer }
     }
 
-    /// Only a complete legacy install counts: checking must never start a download.
-    private func adoptLegacyInstall(_ descriptor: ModelDescriptor, into store: LocalModelStore) async {
+    /// Sizes rule out a partial install without reading it. A file that still fails its
+    /// hash ends the attempt, because this store cannot download.
+    private func adoptLegacyInstall(_ descriptor: ModelDescriptor) async {
         let manifest = descriptor.manifest
-        guard let legacy = legacyDirectory(for: descriptor),
-              FileManager.default.fileExists(atPath: legacy.path),
-              await !isClaimed(manifest, in: store) else { return }
-        let isComplete = await Task.detached(priority: .utility) {
-            descriptor.artifacts.allSatisfy { artifact in
-                (try? Self.sha256(of: legacy.appendingPathComponent(artifact.path))) == artifact.sha256
-            }
-        }.value
-        guard isComplete else { return }
-        _ = try? await store.ensureAvailable(manifest, seeds: [legacy])
+        guard let adopter, let legacy = legacyDirectory(for: descriptor),
+              Self.holdsExpectedSizes(descriptor, in: legacy),
+              await !isClaimed(manifest, in: adopter) else { return }
+        _ = try? await adopter.ensureAvailable(manifest, seeds: [legacy])
     }
+
+    private static func holdsExpectedSizes(_ descriptor: ModelDescriptor, in directory: URL) -> Bool {
+        descriptor.artifacts.allSatisfy { artifact in
+            let file = directory.appendingPathComponent(artifact.path)
+            let size = try? FileManager.default.attributesOfItem(atPath: file.path)[.size] as? Int
+            return size == artifact.sizeBytes
+        }
+    }
+
+    private static let offlineSession: URLSession = {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [OfflineURLProtocol.self]
+        return URLSession(configuration: configuration)
+    }()
 
     private func translatingErrors<T: Sendable>(_ operation: () async throws -> T) async throws -> T {
         do {
@@ -270,18 +284,12 @@ public actor ModelStore {
         if let underlying = error.userInfo[NSUnderlyingErrorKey] as? NSError { causes.append(underlying) }
         return causes.contains { isOutOfSpace($0) }
     }
+}
 
-    /// Streaming SHA-256 (1 MiB reads) so a 445 MB weight file never has to
-    /// fit in memory.
-    static func sha256(of url: URL) throws -> String {
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { try? handle.close() }
-
-        var hasher = SHA256()
-        while true {
-            guard let data = try handle.read(upToCount: 1 << 20), !data.isEmpty else { break }
-            hasher.update(data: data)
-        }
-        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
-    }
+/// Refuses every request before it reaches the network.
+private final class OfflineURLProtocol: URLProtocol, @unchecked Sendable {
+    override static func canInit(with request: URLRequest) -> Bool { true }
+    override static func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() { client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet)) }
+    override func stopLoading() {}
 }

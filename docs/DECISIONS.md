@@ -22732,7 +22732,7 @@ nothing downloads. `Portavoz/Models` is a read-only seed: a complete install the
 it is checked, a partial one never starts a download from a check, and removing a model also removes its seed so it is
 not adopted again.
 
-**Consequences:** an existing install moves without a download, at the cost of hashing it once and Core ML specializing
-each model again because its path changed. Older Portavoz builds keep using the legacy folder. Published files are
+**Consequences:** an existing install moves without a download, at the cost of hashing it while it is placed and Core
+ML specializing each model again because its path changed. Adoption runs with no network, so a check can never download. Older Portavoz builds keep using the legacy folder. Published files are
 read-only, and verification, not their mode, is what detects tampering. A pin missing from `ModelCatalog.all` loses its
 claim 14 days after launch, so a test holds that list against the catalog sources.

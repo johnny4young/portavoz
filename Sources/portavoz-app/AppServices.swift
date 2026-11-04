@@ -579,7 +579,7 @@ final class AppServices {
     }
 }
 
-private extension AppServices {
+extension AppServices {
     static func makeModelStore(usesTemporaryStore: Bool) -> ModelStore {
         let identifier = Bundle.main.bundleIdentifier ?? "app.portavoz.mac.unbundled"
         let consumer = ModelStore.Consumer(
@@ -591,7 +591,9 @@ private extension AppServices {
             isDirectory: true)
         return ModelStore(rootDirectory: rootDirectory, consumer: consumer)
     }
+}
 
+private extension AppServices {
     static func makeModelServices(
         usesTemporaryStore: Bool
     ) -> (ModelStore, VerifiedModelLifecycle) {

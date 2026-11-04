@@ -25,6 +25,7 @@ struct ModelStoreDownloadFailureTests {
         let contents = try FileManager.default.contentsOfDirectory(
             atPath: fixture.artifact.deletingLastPathComponent().path)
         #expect(contents == [filename], "A failed transfer must not publish or stage any artifact")
+        #expect(try fixture.storeLeftovers().isEmpty, "A failed transfer leaves nothing in the store")
     }
 
     @MainActor
@@ -56,6 +57,7 @@ struct ModelStoreDownloadFailureTests {
             Issue.record("Unexpected transfer error: \(type(of: error))")
         }
         #expect(try Data(contentsOf: fixture.artifact) == fixture.previousBytes)
+        #expect(try fixture.storeLeftovers().isEmpty, "A failed transfer leaves nothing in the store")
     }
 
     @Test func aFullDiskIsRecognizedThroughItsCauseAndOtherErrorsAreNot() {
@@ -74,6 +76,16 @@ struct ModelStoreDownloadFailureTests {
         let root: URL
         let artifact: URL
         let previousBytes: Data
+
+        /// Anything published or still staged. Lock and claim bookkeeping does not count.
+        func storeLeftovers() throws -> [String] {
+            let version = root.appendingPathComponent("store/v1.noindex")
+            return try ["models", "staging"].flatMap { folder -> [String] in
+                let url = version.appendingPathComponent(folder)
+                guard FileManager.default.fileExists(atPath: url.path) else { return [] }
+                return try FileManager.default.contentsOfDirectory(atPath: url.path)
+            }
+        }
     }
 
     private func makeFixture(filename: String) throws -> Fixture {

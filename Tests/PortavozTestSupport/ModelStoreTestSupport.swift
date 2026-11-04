@@ -1,11 +1,11 @@
 import Foundation
 import ModelStoreKit
 
-extension ModelStore.Consumer {
+public extension ModelStore.Consumer {
     static let tests = ModelStore.Consumer(identifier: "app.portavoz.tests", displayName: "Portavoz tests")
 }
 
-extension ModelStore {
+public extension ModelStore {
     /// Real models for gated tests, cloned from the legacy install into a scratch
     /// store, so a test never claims or changes anything in the shared one.
     static func gatedTests() -> ModelStore {
