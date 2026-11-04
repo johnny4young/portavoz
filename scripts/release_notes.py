@@ -10,6 +10,10 @@ import re
 import sys
 
 
+# Everything else would reach the update window as raw text or end the list early.
+UNSUPPORTED = re.compile(r"^(?:#|\s+\S)|\]\(")
+
+
 class ReleaseNotesError(Exception):
     pass
 
@@ -17,7 +21,7 @@ class ReleaseNotesError(Exception):
 def section(changelog: str, version: str) -> list[str]:
     """The lines under `## <version> — <date>`, up to the next heading of that level."""
     heading = re.compile(rf"^## {re.escape(version)} — \S")
-    lines = changelog.splitlines()
+    lines = changelog.split("\n")
     start = next((index for index, line in enumerate(lines) if heading.match(line)), None)
     if start is None:
         raise ReleaseNotesError(f"CHANGELOG.md has no section for {version}")
@@ -39,6 +43,8 @@ def render(changelog: str, version: str) -> str:
     output: list[str] = []
     in_list = False
     for line in section(changelog, version):
+        if UNSUPPORTED.search(line):
+            raise ReleaseNotesError(f"CHANGELOG.md section for {version} has Markdown the notes cannot show: {line}")
         stripped = line.strip()
         if stripped.startswith("- "):
             if not in_list:
@@ -66,10 +72,10 @@ def main(arguments: list[str] | None = None) -> int:
     options = parser.parse_args(arguments)
     try:
         notes = render(options.changelog.read_text(encoding="utf-8"), options.version)
-    except (OSError, ReleaseNotesError) as error:
+        options.output.write_text(notes, encoding="utf-8")
+    except (OSError, UnicodeError, ReleaseNotesError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 64
-    options.output.write_text(notes, encoding="utf-8")
     return 0
 
 

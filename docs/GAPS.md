@@ -157,6 +157,12 @@ missing action. Diagnose native geometry and editing handoff at that call site;
 do not waive the control, replace its failed receipt with a retry, or infer
 complete local UI qualification from separate native dictation journeys.
 
+### Release notes in the real update window
+
+The real `generate_appcast` embeds and signs the notes (D630), but they have not been
+seen in Sparkle's update window. A release candidate needs one look at emoji, list
+spacing and dark mode, from an older build updating to it.
+
 ### Clipboard preservation boundaries
 
 Ordered bounded snapshots and exclusive paste loans now protect rich-item identity

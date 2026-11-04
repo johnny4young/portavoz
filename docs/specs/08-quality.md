@@ -8249,6 +8249,11 @@ must still execute all eight proofs; these fixtures do not certify physical
 capture, Sequoia/Tahoe hardware, TCC, VoiceOver/Voice Control, signed
 distribution, production CloudKit, provider behavior, or field use.
 
+**D630 embedded release notes.** `scripts/release_notes.py` renders one `## <version> — <date>` section of `CHANGELOG.md`,
+refusing a missing or empty section and Markdown it cannot show, and `make-release.sh` stops on that before the build.
+`verify_release_appcast.py` refuses an appcast whose description is absent or differs from the rendered notes.
+`test_release_notes` and `test_make_release` run in hygiene.
+
 **D445 fail-closed release appcast.** A retained red orchestration test ran the
 real release shell owner inside an isolated repository with deterministic Git,
 build, DMG, cask, and signer stubs. Before the fix, a missing signer still

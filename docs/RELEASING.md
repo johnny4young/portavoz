@@ -68,7 +68,7 @@ scripts/check-repository-hygiene.sh
   must show `"conclusion":"success"` with `headSha` equal to `git rev-parse HEAD`.
   Otherwise dispatch it (`gh workflow run ui-nightly.yml --ref main`) and wait;
   a red nightly blocks the release until it is fixed.
-- **CHANGELOG.md** has every user-visible change since the last release, newest first.
+- **CHANGELOG.md** has every user-visible change since the last release, newest first, and a `## <version> — <date>` section for this release, committed before the build, because the appcast embeds it.
 - Decide the **version** (SemVer): patch for fixes, minor for features. Last tag: `git tag --list 'v*' | sort -V | tail -1`.
 - The release host's selected Xcode must pass the same strict gates as CI. Xcode 27 needs the separately downloaded Metal Toolchain (`xcodebuild -downloadComponent MetalToolchain`) because `mlx-swift` compiles Metal kernels, and a fresh Xcode needs its license accepted before `swift` runs at all.
 - Stray SwiftPM artifacts (`*.d`, `*.dia`, `*.swiftdeps`) sometimes leak to the repo root from an Xcode/XCUITest build — they are **not** git-ignored, so delete them before releasing.
@@ -283,7 +283,7 @@ scripts/make-release.sh "$PORTAVOZ_RELEASE_VERSION"
    changelog section, rendered by `scripts/release_notes.py`, as its description.
 5. Renders the Homebrew **cask** with the real version + sha256.
 
-Output lands in **`dist/release/`**: `Portavoz-<version>.dmg`, `appcast.xml`, `portavoz.rb`.
+Output lands in **`dist/release/`**: `Portavoz-<version>.dmg`, `appcast.xml`, `portavoz.rb`, and `Portavoz-<version>.html`, the notes `appcast.xml` already embeds, which is not attached to the release.
 
 It takes several minutes (the Swift release build + Apple notarization). Run it
 in the background and wait for `Release <version> ready in dist/release/`.

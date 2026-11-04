@@ -66,7 +66,11 @@ def validate_appcast(appcast: Path, version: str, build: str, dmg: Path, notes: 
         )
 
     # Embedded, so an updater never has to fetch notes from a file the release does not attach.
-    expected_notes = require_regular_file(notes, "release notes") and notes.read_text(encoding="utf-8").strip()
+    require_regular_file(notes, "release notes")
+    try:
+        expected_notes = notes.read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeError) as error:
+        raise AppcastValidationError("release notes cannot be read") from error
     if not expected_notes or (item.findtext("description") or "").strip() != expected_notes:
         raise AppcastValidationError("release appcast does not embed the release notes")
 

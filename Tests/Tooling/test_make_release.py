@@ -135,13 +135,35 @@ class MakeReleaseTests(unittest.TestCase):
     def test_appcast_without_the_embedded_notes_fails_closed(self):
         with tempfile.TemporaryDirectory() as directory:
             repository = self.make_repository(Path(directory))
-            signer = self.make_signer(repository, embeds_notes=False)
+            signer = self.make_signer(repository, description="")
 
             result = self.run_release(repository, signer)
 
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("does not embed the release notes", result.stderr)
             self.assertNotIn("Release 1.0.0 ready", result.stdout)
+
+    def test_appcast_with_other_notes_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = self.make_repository(Path(directory))
+            signer = self.make_signer(repository, description="<description>Older notes</description>")
+
+            result = self.run_release(repository, signer)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("does not embed the release notes", result.stderr)
+            self.assertNotIn("Release 1.0.0 ready", result.stdout)
+
+    def test_unreadable_notes_fail_with_an_error_line(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = self.make_repository(Path(directory))
+            signer = self.make_signer(repository, corrupts_notes=True)
+
+            result = self.run_release(repository, signer)
+
+            self.assertEqual(result.returncode, 64)
+            self.assertIn("error: release notes cannot be read", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
 
     def test_the_signer_is_asked_to_embed_the_notes_beside_the_archive(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -231,7 +253,8 @@ printf 'dmg' > 'dist/Portavoz-{self.version}.dmg'
         length: int = 3,
         minimum_system: str = "26.0",
         symlink_appcast: bool = False,
-        embeds_notes: bool = True,
+        description: str | None = None,
+        corrupts_notes: bool = False,
     ) -> Path:
         signer = repository / "tools" / "generate_appcast"
         resolved_version = self.version if version is None else version
@@ -255,11 +278,12 @@ printf 'dmg' > 'dist/Portavoz-{self.version}.dmg'
             if symlink_appcast
             else ""
         )
-        description = (
+        resolved_description = (
             f'<description><![CDATA[$(cat "$release_dir/Portavoz-{self.version}.html")]]></description>'
-            if embeds_notes
-            else ""
+            if description is None
+            else description
         )
+        corrupt_notes = f"""printf '\\377' > "$release_dir/Portavoz-{self.version}.html\"""" if corrupts_notes else ""
         self.write_executable(
             signer,
             f"""#!/bin/bash
@@ -274,13 +298,14 @@ cat > {appcast_destination} <<XML
       <sparkle:version>{resolved_build}</sparkle:version>
       <sparkle:shortVersionString>{resolved_version}</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>{minimum_system}</sparkle:minimumSystemVersion>
-      {description}
+      {resolved_description}
       <enclosure url="{resolved_url}" length="{length}" type="application/octet-stream" sparkle:edSignature="{resolved_signature}"/>
     </item>
   </channel>
 </rss>
 XML
 {link_appcast}
+{corrupt_notes}
 """,
         )
         return signer
