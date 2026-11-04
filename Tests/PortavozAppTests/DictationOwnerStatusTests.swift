@@ -2,6 +2,7 @@ import DictationOwnership
 import Foundation
 import PortavozCore
 import Testing
+import notify
 
 @testable import portavoz_app
 @testable import PortavozTestSupport
@@ -48,8 +49,8 @@ struct DictationOwnerStatusTests {
     }
 
     @Test(arguments: [
-        (ParticipantState.owned, nil as String?, DictationOwnerStatus.ownedHere),
-        (.off, "com.johnny4young.secreteo", .ownedHere),
+        (ParticipantState.owned, nil as String?, DictationOwnerStatus.noNotice),
+        (.off, "com.johnny4young.secreteo", .noNotice),
         (.available, "com.johnny4young.secreteo", .otherApp(identifier: "com.johnny4young.secreteo")),
         (.available, nil, .nobody),
         (.transferring, nil, .switching),
@@ -68,7 +69,7 @@ struct DictationOwnerStatusTests {
         #expect(known.contains("Secreteo"))
         let unknown = try #require(DictationOwnerStatus.otherApp(identifier: "com.example.other").message)
         #expect(!unknown.contains("com.example"))
-        #expect(DictationOwnerStatus.ownedHere.message == nil)
+        #expect(DictationOwnerStatus.noNotice.message == nil)
         #expect(DictationOwnerStatus.nobody.offersToComeBack)
         #expect(!DictationOwnerStatus.damaged.offersToComeBack)
         #expect(!DictationOwnerStatus.switching.offersToComeBack)
@@ -138,6 +139,105 @@ struct DictationOwnerStatusTests {
         #expect(coordinator.ownerStatus == .otherApp(identifier: Self.secreteo))
     }
 
+    @Test
+    func aNonOwnerWithDictationOffIsToldDictationIsOff() throws {
+        let scratch = Scratch()
+        let ownership = DictationOwnership(
+            participant: Self.portavoz, root: scratch.root,
+            conditions: {
+                ParticipantConditions(preferenceIsOn: false, missingForReadiness: nil, legacyPeerIsActive: false)
+            },
+            notificationName: "app.portavoz.owner-tests.\(scratch.root.lastPathComponent)")
+        let coordinator = DictationOwnershipCoordinator(ownership: ownership, root: scratch.root) {}
+        coordinator.start()
+
+        #expect(throws: DictationAdmissionRefusal.dictationOff) { try coordinator.admission.acquire(.global).get() }
+    }
+
+    @Test
+    func anOwnerThatTurnsOffUpdatesTheRowWithNoStateChange() async throws {
+        let scratch = Scratch()
+        let name = "app.portavoz.owner-tests.\(scratch.root.lastPathComponent)"
+        let coordinator = DictationOwnershipCoordinator(
+            ownership: scratch.participant(Self.portavoz), root: scratch.root, notificationName: name) {}
+        coordinator.seedForUITests(arguments: ["-seed-dictation-owner-secreteo"])
+        coordinator.start()
+        #expect(coordinator.ownerStatus == .otherApp(identifier: Self.secreteo))
+        // The observer's first report reads the owner too, so it has to land before the change.
+        try await Task.sleep(for: .milliseconds(300))
+        let state = OwnershipState(owner: nil, generation: 2, previous: Self.secreteo, intent: nil)
+        try JSONEncoder().encode(state)
+            .write(to: scratch.root.appendingPathComponent("ownership.json"), options: .atomic)
+
+        notify_post(name)
+
+        try await eventually { coordinator.ownerStatus == .nobody }
+    }
+
+    @Test
+    func theMenuOffersDictationOnlyAfterTheHandoffCommits() async {
+        let scratch = Scratch()
+        let coordinator = scratch.coordinator()
+        coordinator.seedForUITests(arguments: ["-seed-dictation-owner-secreteo"])
+        coordinator.start()
+        var offeredWhileArming: Bool?
+
+        await coordinator.comeBack(
+            arm: {
+                offeredWhileArming = coordinator.offersDictationActions
+                return true
+            },
+            disarm: {})
+
+        #expect(offeredWhileArming == false)
+        #expect(coordinator.offersDictationActions)
+    }
+
+    @Test
+    func aSecondClickDoesNotDisturbTheHandoffInFlight() async throws {
+        let scratch = Scratch()
+        let coordinator = scratch.coordinator()
+        coordinator.seedForUITests(arguments: ["-seed-dictation-owner-secreteo"])
+        coordinator.start()
+        guard case .admitted(let held) = scratch.participant(Self.secreteo).acquire(.global) else {
+            Issue.record("The other app could not take the lock")
+            return
+        }
+        let first = Task { await coordinator.comeBack(arm: { true }, disarm: {}) }
+        try await eventually {
+            coordinator.reevaluate()
+            return coordinator.state == .transferring
+        }
+
+        await coordinator.comeBack(arm: { true }, disarm: {})
+
+        #expect(coordinator.handoffProblem == nil)
+        held.release()
+        await first.value
+        #expect(coordinator.state == .owned)
+    }
+
+    @Test
+    func aHandoffProblemGoesAwayWhenTheStateMovesOn() async throws {
+        let scratch = Scratch()
+        let coordinator = scratch.coordinator(deadline: .milliseconds(50))
+        coordinator.seedForUITests(arguments: ["-seed-dictation-owner-secreteo"])
+        coordinator.start()
+        guard case .admitted(let held) = scratch.participant(Self.secreteo).acquire(.global) else {
+            Issue.record("The other app could not take the lock")
+            return
+        }
+        await coordinator.comeBack(arm: { true }, disarm: {})
+        held.release()
+        #expect(coordinator.handoffProblem == .busy)
+        try Data("{".utf8).write(to: scratch.root.appendingPathComponent("ownership.json"), options: .atomic)
+
+        coordinator.reevaluate()
+
+        #expect(coordinator.ownerStatus == .damaged)
+        #expect(coordinator.handoffProblem == nil)
+    }
+
     @Test(arguments: [
         (HandoffOutcome.completed(generation: 2), nil as DictationHandoffProblem?),
         (.alreadyOwner, nil),
@@ -171,7 +271,7 @@ struct DictationOwnerStatusTests {
 
     @Test(arguments: [
         (DictationAdmissionRefusal.dictationOff, PortavozAppIntentBridge.DictationRequestOutcome.dictationOff),
-        (.notOwner, .otherAppOwnsDictation),
+        (.notOwner, .notDictationOwner),
         (.unavailable(.ioError), .dictationUnavailable),
         (.busy, .busy),
         (.transferring, .busy),
@@ -184,33 +284,42 @@ struct DictationOwnerStatusTests {
     }
 
     @Test
-    func aRefusedReinsertExplainsItselfAndLeavesOnlyCopy() async throws {
+    func aRefusedReinsertSaysWhyAndCanStillRunLater() async throws {
         let harness = DictationControllerHarness(text: "No borres estas notas.")
         defer { harness.controller.cancel() }
         var refusal: DictationAdmissionRefusal?
+        var accepts = false
+        var delivered: [String] = []
         var dependencies = harness.dependencies
         dependencies.admission = DictationAdmission(
             acquire: { _ in refusal.map { .failure($0) } ?? .success(DictationLease()) }, isEligible: { true })
         dependencies.captureDestination = {
-            CapturedDictationDestination(name: "Receiver", canRetry: true) { _ in .refused(.targetChanged) }
+            CapturedDictationDestination(name: "Receiver", canRetry: true) { text in
+                guard accepts else { return .refused(.targetChanged) }
+                delivered.append(text)
+                return .verified
+            }
         }
         harness.controller.toggle(using: dependencies)
         try await eventually { harness.controller.partialText == harness.text }
         harness.now = harness.now.addingTimeInterval(1)
         harness.controller.toggle(using: dependencies)
         try await eventually { harness.controller.phase == .recovery(.targetChanged) }
+
+        refusal = .transferring
+        harness.controller.retryUndeliveredText()
+
+        #expect(harness.controller.phase == .recovery(.targetChanged), "Its real failure stays")
+        #expect(harness.controller.retryRefusal == .transferring)
+        #expect(harness.controller.recoveryText == harness.text)
         #expect(harness.controller.canRetryDelivery)
 
-        refusal = .busy
-        harness.controller.retryUndeliveredText()
-        #expect(harness.controller.phase == .recovery(.targetChanged), "Busy passes in a moment")
-
-        refusal = .notOwner
+        refusal = nil
+        accepts = true
         harness.controller.retryUndeliveredText()
 
-        #expect(harness.controller.phase == .recovery(.ownershipChanged))
-        #expect(harness.controller.recoveryText == harness.text)
-        #expect(!harness.controller.canRetryDelivery)
+        #expect(harness.controller.retryRefusal == nil)
+        try await eventually { delivered == [harness.text] }
     }
 
     @Test

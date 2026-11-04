@@ -204,7 +204,8 @@ final class AppLaunchModel {
         services.connectDictationOwnership()
         services.dictationOwnership.seedForUITests(arguments: ProcessInfo.processInfo.arguments)
         services.dictationOwnership.start()
-        services.syncDictationTriggers()
+        // Becoming the owner already synced them, and a second registration would hide a conflict.
+        if !services.dictationOwnership.state.armsTriggers { services.syncDictationTriggers() }
 
         // The AppKit delegate may already have observed application launch
         // while the database was unavailable. Re-publish, without consuming,

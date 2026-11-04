@@ -5244,8 +5244,11 @@ app's key press does not meet a lock taken just to look. Application launch and 
 runs `comeBack`, the protocol's confirmed handoff, and `DictationHandoffProblem` keeps a failed one on screen.
 `resetDictationOwnership()` runs `resetCorruptState`. `-seed-dictation-owner-secreteo` and
 `-seed-dictation-ownership-damaged` write the disposable launch's scratch state before `start()`, and never the real
-folder. `retryUndeliveredText()` moves to `.recovery(.ownershipChanged)` on a lasting refusal, `sayHow()` asks
-`refusalNow()` first, and `DictationAdmissionRefusal.message` holds the shared copy.
+folder. `retryUndeliveredText()` keeps a refusal in `retryRefusal` and stays in its recovery, `sayHow()` asks
+`refusalNow()` first, and `DictationAdmissionRefusal.message` holds the shared copy. A non-owner with its preference off
+is refused `.dictationOff`, though the library asks about the owner first. `offersDictationActions` follows committed
+ownership, and the coordinator registers for the change notification itself, because an owner can change with no change
+in state or intent.
 
 ### Dictation actions in Shortcuts (D583)
 

@@ -81,7 +81,9 @@ final class DictationController {
     private(set) var recoveryText = ""
     private(set) var copyStatus: CopyStatus = .idle
     private(set) var isRetryingDelivery = false
-    var canRetryDelivery: Bool { destination?.canRetry == true && phase != .recovery(.ownershipChanged) }
+    var canRetryDelivery: Bool { destination?.canRetry == true }
+    /// Why the last Reinsert did not run. It can pass, so Reinsert stays.
+    private(set) var retryRefusal: DictationAdmissionRefusal?
     private(set) var destination: CapturedDictationDestination?
     private var dependencies: DictationSessionDependencies?
     private(set) var deliveryID: UUID?
@@ -396,6 +398,7 @@ final class DictationController {
         targetApp = nil
         copyStatus = .idle
         isRetryingDelivery = false
+        retryRefusal = nil
         measurement?.finish(.cancelled)
         measurement = nil
         sessionFeedbackWait = nil
@@ -697,12 +700,12 @@ extension DictationController {
               let id = deliveryID, let destination, destination.canRetry else { return }
         switch dependencies?.admission.acquire(.global) {
         case .success(let lease):
+            retryRefusal = nil
             replay(recoveryText, into: destination, id: id, lease: lease)
-        case .failure(.busy), .none:
+        case .failure(let refusal):
+            retryRefusal = refusal
+        case .none:
             break
-        case .failure:
-            // Says why, and Reinsert goes away: only Copy can help from here.
-            phase = .recovery(.ownershipChanged)
         }
     }
 
@@ -1283,6 +1286,7 @@ extension DictationController {
         retryDeliveryTask?.cancel()
         retryDeliveryTask = nil
         isRetryingDelivery = false
+        retryRefusal = nil
         deliveryID = nil
         destination = nil
         recoveryText = ""

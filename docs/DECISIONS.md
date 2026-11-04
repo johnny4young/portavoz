@@ -22684,10 +22684,10 @@ nothing, and no way back from an owner that quit, while a damaged state file lef
 
 **Decision:** while dictation is on and this app does not own it, `DictationOwnerRow` says who does, in Settings and in
 place of the menu bar's dictation actions. It offers Use Portavoz, Open that app when it is installed, and Reset for
-damaged state. Refusals from visible controls explain themselves: Reinsert moves to a recovery that offers only Copy, Say
-how leaves a notice and its choices, and an Intent names the reason. A global trigger that is refused stays silent,
+damaged state. Refusals from visible controls explain themselves: Reinsert stays and says why it did not run, because the
+refusal can pass, Say how leaves a notice and its choices, and an Intent names the reason. A global trigger that is refused stays silent,
 since only the owner arms one. Nothing in this path writes the preference or starts the microphone.
 
-**Consequences:** Portavoz names only apps the protocol knows, and an unknown owner reads as another app. `busy` from
-Reinsert does nothing visible, because it passes in a moment. A reset by another app that this one never observed can
+**Consequences:** Portavoz names only apps the protocol knows, and an unknown owner reads as another app. Onboarding has no
+row, so someone who turns dictation on there while another app owns it finds out in Settings or the menu bar. A reset by another app that this one never observed can
 still leave an old Rewrite preview with a matching generation, a limit the protocol documents.

@@ -631,12 +631,22 @@
         }
       }
     },
-    "Another app is handling dictation. Choose Use Portavoz in Portavoz Settings › Audio & dictation.": {
+    "Portavoz isn't handling dictation right now.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Otra app se encarga del dictado. Elige Usar Portavoz en Ajustes de Portavoz › Audio y dictado."
+            "value": "Portavoz no se encarga del dictado por ahora."
+          }
+        }
+      }
+    },
+    "Portavoz isn't handling dictation. Choose Use Portavoz in Portavoz Settings › Audio & dictation.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz no se encarga del dictado. Elige Usar Portavoz en Ajustes de Portavoz › Audio y dictado."
           }
         }
       }

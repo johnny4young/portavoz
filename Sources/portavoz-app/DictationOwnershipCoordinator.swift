@@ -2,6 +2,7 @@ import AppKit
 import DictationOwnership
 import Foundation
 import Observation
+import notify
 
 /// Portavoz's side of the cooperative ownership protocol: at most one global capture
 /// or delivery per macOS user, across this app, Secreteo and their Dev builds.
@@ -17,6 +18,9 @@ final class DictationOwnershipCoordinator {
 
     @ObservationIgnored private let ownership: DictationOwnership
     @ObservationIgnored private let root: URL
+    @ObservationIgnored private let notificationName: String
+    @ObservationIgnored private var ownerChangeToken: Int32?
+    @ObservationIgnored private var isComingBack = false
     @ObservationIgnored private let settle: () async -> Void
     @ObservationIgnored private var observer: OwnershipObserver?
     @ObservationIgnored private var held: SharedLease?
@@ -31,10 +35,12 @@ final class DictationOwnershipCoordinator {
 
     init(
         ownership: DictationOwnership, root: URL = DictationOwnership.defaultRoot,
+        notificationName: String = DictationOwnership.notificationName,
         settle: @escaping () async -> Void
     ) {
         self.ownership = ownership
         self.root = root
+        self.notificationName = notificationName
         self.settle = settle
     }
 
@@ -61,14 +67,15 @@ final class DictationOwnershipCoordinator {
                 legacyPeerIsActive: peers?.activePeer() != nil)
         }
         let scratch = UUID().uuidString
+        let notificationName = isReal
+            ? DictationOwnership.notificationName : "app.portavoz.dictation-ownership.scratch.\(scratch)"
         let root = isReal ? DictationOwnership.defaultRoot : FileManager.default.temporaryDirectory
             .appendingPathComponent("dictation-ownership-\(scratch)", isDirectory: true)
         let ownership = isReal
             ? DictationOwnership(participant: participant, conditions: conditions)
             : DictationOwnership(
-                participant: participant, root: root, conditions: conditions,
-                notificationName: "app.portavoz.dictation-ownership.scratch.\(scratch)")
-        return DictationOwnershipCoordinator(ownership: ownership, root: root) {
+                participant: participant, root: root, conditions: conditions, notificationName: notificationName)
+        return DictationOwnershipCoordinator(ownership: ownership, root: root, notificationName: notificationName) {
             _ = await DictationClipboard.shared.waitForRestoration(on: .general)
         }
     }
@@ -93,6 +100,8 @@ final class DictationOwnershipCoordinator {
     }
 
     var armsTriggers: Bool { state.armsTriggers || armsForHandoff }
+    /// Committed ownership only: during a handoff the triggers arm first, and these actions would be refused.
+    var offersDictationActions: Bool { state.armsTriggers }
     var ownerStatus: DictationOwnerStatus { DictationOwnerStatus(state: state, owner: owner) }
     /// Watching continues until the last release, whoever released first.
     var holdsLease: Bool { held != nil }
@@ -108,6 +117,13 @@ final class DictationOwnershipCoordinator {
         }
         self.observer = observer
         Task { await observer.start() }
+        // The observer reports state and intent, and an owner can change with neither.
+        var token: Int32 = 0
+        if notify_register_dispatch(notificationName, &token, .main, { [weak self] _ in
+            MainActor.assumeIsolated { self?.readOwner() }
+        }) == NOTIFY_STATUS_OK {
+            ownerChangeToken = token
+        }
         // Nothing else re-reads while idle, and a legacy peer quitting frees this app.
         workspaceObservers = [
             NSWorkspace.didWakeNotification, NSWorkspace.didLaunchApplicationNotification,
@@ -164,11 +180,14 @@ final class DictationOwnershipCoordinator {
 
     /// The user chose this app, from another owner or from nobody.
     func comeBack(arm: @escaping @MainActor () -> Bool, disarm: @escaping @MainActor () -> Void) async {
+        guard !isComingBack else { return }
+        isComingBack = true
+        defer { isComingBack = false }
         handoffProblem = nil
         let outcome = await ownership.takeOwnership(
             userConfirmed: true, triggers: handoffTriggers(arm: arm, disarm: disarm))
-        handoffProblem = DictationHandoffProblem(outcome)
         finishChange()
+        handoffProblem = DictationHandoffProblem(outcome)
         await observer?.reevaluate()
     }
 
@@ -230,6 +249,9 @@ final class DictationOwnershipCoordinator {
             return .success(lease(sharing: held))
         }
         switch ownership.acquire(kind == .global ? .global : .practice) {
+        case .refused(.notOwner) where ownership.status() == .off:
+            // The library asks about the owner first, but what stops this app is its own preference.
+            return .failure(.dictationOff)
         case .refused(let refusal):
             return .failure(Self.refusal(for: refusal))
         case .admitted(let lease):
@@ -270,13 +292,19 @@ final class DictationOwnershipCoordinator {
     }
 
     private func publish(_ new: ParticipantState) {
-        // Reads need no lock, because each write is an atomic rename.
-        owner = (try? Data(contentsOf: root.appendingPathComponent("ownership.json")))
-            .flatMap { try? OwnershipState.decoded(from: $0).get().owner }
+        readOwner()
         let previous = state
         guard new != previous else { return }
         state = new
+        handoffProblem = nil
         onStateChange(previous)
+    }
+
+    /// Reads need no lock, because each write is an atomic rename.
+    private func readOwner() {
+        let read = (try? Data(contentsOf: root.appendingPathComponent("ownership.json")))
+            .flatMap { try? OwnershipState.decoded(from: $0).get().owner }
+        if read != owner { owner = read }
     }
 
     private func refusal(for state: ParticipantState) -> DictationAdmissionRefusal {

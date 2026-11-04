@@ -5,7 +5,7 @@ import SwiftUI
 /// What to say when dictation is on here but this app may not capture. Nothing turns
 /// on the microphone by itself, and only the user's action moves ownership.
 enum DictationOwnerStatus: Equatable {
-    case ownedHere
+    case noNotice
     case otherApp(identifier: String?)
     case nobody
     case switching
@@ -16,7 +16,7 @@ enum DictationOwnerStatus: Equatable {
 
     init(state: ParticipantState, owner: String?) {
         switch state {
-        case .owned, .off: self = .ownedHere
+        case .owned, .off: self = .noNotice
         case .transferring: self = .switching
         case .available, .preparing: self = owner.map { .otherApp(identifier: $0) } ?? .nobody
         case .unavailable(.legacyPeerActive): self = .olderBuildActive
@@ -39,7 +39,7 @@ enum DictationOwnerStatus: Equatable {
 
     var message: String? {
         switch self {
-        case .ownedHere:
+        case .noNotice:
             nil
         case .otherApp(let identifier):
             Self.appName(for: identifier).map { L10n.format("%@ is handling dictation.", $0) }
@@ -139,7 +139,7 @@ extension DictationAdmissionRefusal {
         switch self {
         case .busy, .transferring: L10n.text("Dictation is busy. Try again in a moment.")
         case .dictationOff: L10n.text("Dictation is off. Turn it on in Settings.")
-        case .notOwner: L10n.text("Another app is handling dictation.")
+        case .notOwner: L10n.text("Portavoz isn't handling dictation right now.")
         case .unavailable: L10n.text("Dictation is unavailable on this Mac right now.")
         }
     }
