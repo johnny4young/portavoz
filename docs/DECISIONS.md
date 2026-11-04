@@ -22629,3 +22629,20 @@ settings were not measured apart. A failure in that lane leaves screenshots and 
 project runs keep their video, so nightly seconds overstate the lane and its fit errs toward cutting a case. A
 race visible only during a window animation is no longer exercised by any run, the release gate included, in
 exchange for fewer waits on moving controls.
+
+## D626 — One admission port for every dictation capture and delivery
+
+**Context:** nothing in `DictationController` checked `globalDictationEnabled`. Triggers, the menu and Intents
+each guarded themselves, and the practice field, Rewrite and retry reached the controller directly. Another
+app that dictates needs one place where Portavoz can refuse, and that place cannot be a write to the user's
+preference.
+
+**Decision:** `DictationAdmission` answers every session, retry, Paste last and Rewrite with a `DictationLease`
+or a refusal, and answers prewarm and Intents with `isEligible`. The rule stays the preference. The practice
+field asks as `practice`, which runs with the preference off. A session's lease lasts through delivery and Stop.
+Rewrite holds one only while reading the selection and while replacing it, never during the choice or preview,
+which can wait on a person indefinitely and include a spoken instruction with its own session.
+
+**Consequences:** a refused trigger does nothing and leaves words in recovery in place. A refused replace keeps
+the rewrite to copy. Turning dictation off while words wait in recovery now refuses Reinsert, and Copy remains.
+Triggers still register from the preference alone, because a stale one is refused here.

@@ -5198,6 +5198,18 @@ alone. Disposable launches use a scratch directory, and `-seed-command-line-tool
 adds a stand-in tool so the install journey runs without touching the home
 directory.
 
+### Dictation admission (D626)
+
+`DictationAdmission` is the one port for global capture and delivery. `DictationController.start(using:)`,
+`retryUndeliveredText()`, `pasteLastDictation(using:alternate:)` and `SelectionRewriteController` take a
+`DictationLease` from `acquire(_:)` before anything else happens, so a refusal opens no microphone, keeps
+recovery text and does not consume Paste last. A hotkey or modifier release after a refused press finds no
+session and does nothing. `DictationPracticeField.route` asks as `.practice`, which the preference does not
+gate. Prewarm and `dictationIntentOutcome` read `isEligible`. A session releases its lease after its task ends,
+which is after delivery and the microphone's Stop. A replay releases it when its insert returns. Rewrite releases
+it after reading the selection and takes another to replace, so a refused replace fails with the rewrite still
+available to copy.
+
 ### Dictation actions in Shortcuts (D583)
 
 The delegate answers `PortavozAppIntentBridge.dictationRequested` without

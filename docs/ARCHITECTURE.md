@@ -161,6 +161,10 @@ SwiftUI only renders preparation, fallback and failure states. Composition
 accepts the process-scoped controller as an initializer dependency so tests can
 exercise actual settings-write admission without opening a host window.
 
+Every global dictation capture and delivery takes a lease from one app-owned
+admission port first, whichever trigger asked. Refusing never writes the user's
+preference.
+
 The macOS dictation controller supports an explicitly injected, content-free
 session observation sink. Its bounded recorder lives in the app beside the
 platform/controller seam, not in a capability module or global telemetry bus.

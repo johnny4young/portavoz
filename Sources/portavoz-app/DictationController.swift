@@ -218,14 +218,10 @@ final class DictationController {
         // An unverified dispatch was already sent: its notice is non-modal and
         // a new dictation replaces it (never re-sending the old output).
         if case .recovery = phase { showPanel(); return }
-        guard phase != .delivering else { return }
-        retryDeliveryTask?.cancel()
-        retryDeliveryTask = nil
-        isRetryingDelivery = false
-        deliveryID = nil
-        destination = nil
-        recoveryText = ""
-        copyStatus = .idle
+        guard phase != .delivering,
+              case .success(let lease) = dependencies.admission.acquire(dependencies.admissionKind)
+        else { return }
+        discardPreviousDelivery()
         self.dependencies = dependencies
         sessionFeedbackWait = dependencies.waitForFeedbackDismissal
         measurement = dependencies.measurementSink.map {
@@ -237,6 +233,7 @@ final class DictationController {
         // The paste needs Accessibility; ask BEFORE recording so the user
         // never dictates into a void.
         guard dependencies.canInsert() else {
+            lease.release()
             self.dependencies = nil
             measurement?.finish(.permissionDenied)
             phase = .failed(L10n.text(
@@ -279,10 +276,21 @@ final class DictationController {
         let capture = DictationCaptureOwnership(finish: dependencies.beginCapture())
         let measurement = self.measurement
         session = Task { [weak self] in
+            defer { lease.release() }
             defer { capture.end() }
             await self?.runSession(
                 id: sessionID, dependencies: dependencies, measurement: measurement, capture: capture)
         }
+    }
+
+    private func discardPreviousDelivery() {
+        retryDeliveryTask?.cancel()
+        retryDeliveryTask = nil
+        isRetryingDelivery = false
+        deliveryID = nil
+        destination = nil
+        recoveryText = ""
+        copyStatus = .idle
     }
 
     private func runSession(
@@ -679,8 +687,9 @@ extension DictationController {
 
     func retryUndeliveredText() {
         guard case .recovery = phase, !isRetryingDelivery,
-              let id = deliveryID, let destination, destination.canRetry else { return }
-        replay(recoveryText, into: destination, id: id)
+              let id = deliveryID, let destination, destination.canRetry,
+              case .success(let lease) = dependencies?.admission.acquire(.global) else { return }
+        replay(recoveryText, into: destination, id: id, lease: lease)
     }
 
     /// Pastes the remembered text into whatever is focused now, through the
@@ -688,19 +697,26 @@ extension DictationController {
     /// in recovery are that text, so they paste where the user is now.
     func pasteLastDictation(using dependencies: DictationSessionDependencies, alternate: Bool = false) {
         guard !isActive, retryDeliveryTask == nil,
-              let text = alternate ? lastText.takeCurrentAlternate() : pastableText(), dependencies.canInsert()
+              case .success(let lease) = dependencies.admission.acquire(.global)
         else { return }
+        guard let text = alternate ? lastText.takeCurrentAlternate() : pastableText(), dependencies.canInsert() else {
+            lease.release()
+            return
+        }
         cancelFeedbackDismissal()
         self.dependencies = dependencies
         let id = UUID()
         deliveryID = id
-        replay(text, into: dependencies.captureDestination(), id: id)
+        replay(text, into: dependencies.captureDestination(), id: id, lease: lease)
     }
 
-    private func replay(_ text: String, into destination: CapturedDictationDestination, id: UUID) {
+    private func replay(
+        _ text: String, into destination: CapturedDictationDestination, id: UUID, lease: DictationLease
+    ) {
         self.destination = destination
         isRetryingDelivery = true
         retryDeliveryTask = Task { [weak self] in
+            defer { lease.release() }
             let result = await destination.insert(text)
             guard let self, self.deliveryID == id, !Task.isCancelled else { return }
             self.isRetryingDelivery = false

@@ -42,7 +42,8 @@ extension AppServices {
             ).map(\.replacement)
         }
         var dependencies = usesTemporaryMeetingStore
-            ? SelectionRewriteUITestFixture(arguments: ProcessInfo.processInfo.arguments).dependencies(recipes: recipes)
+            ? SelectionRewriteUITestFixture(arguments: ProcessInfo.processInfo.arguments)
+                .dependencies(admission: dictationAdmission, recipes: recipes)
             : liveSelectionRewriteDependencies(recipes: recipes, terms: terms)
         dependencies.startDictation = { [weak self] in
             guard let self else { return }
@@ -57,6 +58,7 @@ extension AppServices {
         recipes: @escaping () -> [DictationRecipe], terms: @escaping () -> [String]
     ) -> SelectionRewriteController.Dependencies {
         SelectionRewriteController.Dependencies(
+            admission: dictationAdmission,
             capture: { await TextInserter.captureSelection() },
             polish: { [polisher = dictationPolisher] text, protectedTerms, recipe in
                 await PolishDictation(polisher: polisher, timeout: SelectionRewriteController.timeout)(
@@ -81,10 +83,13 @@ struct SelectionRewriteUITestFixture {
         selectionChanges = arguments.contains("-seed-rewrite-selection-changes")
     }
 
-    func dependencies(recipes: @escaping () -> [DictationRecipe]) -> SelectionRewriteController.Dependencies {
+    func dependencies(
+        admission: DictationAdmission, recipes: @escaping () -> [DictationRecipe]
+    ) -> SelectionRewriteController.Dependencies {
         let selectsNothing = selectsNothing
         let selectionChanges = selectionChanges
         return SelectionRewriteController.Dependencies(
+            admission: admission,
             capture: {
                 guard !selectsNothing else { return .failure(.nothingSelected) }
                 return .success(CapturedSelection(

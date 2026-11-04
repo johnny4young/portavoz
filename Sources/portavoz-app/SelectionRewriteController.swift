@@ -24,6 +24,8 @@ final class SelectionRewriteController {
 
     @MainActor
     struct Dependencies {
+        /// A lease covers reading the selection and replacing it, never the wait in between.
+        var admission: DictationAdmission
         var capture: () async -> Result<CapturedSelection, SelectionRewriteFailure>
         var polish: (_ text: String, _ protectedTerms: [String], _ recipe: String?) async -> DictationPolishOutcome
         var recipes: () -> [DictationRecipe]
@@ -68,12 +70,14 @@ final class SelectionRewriteController {
 
     func start(using dependencies: Dependencies) {
         cancel()
+        guard case .success(let lease) = dependencies.admission.acquire(.global) else { return }
         self.dependencies = dependencies
         let id = generation
         phase = .capturing
         show()
         task = Task { [weak self] in
             let captured = await dependencies.capture()
+            lease.release()
             guard let self, self.generation == id else { return }
             switch captured {
             case .success(let selection):
@@ -194,9 +198,13 @@ final class SelectionRewriteController {
 
     /// Replaces only the exact selection the rewrite started from.
     func replace() {
-        guard case .preview(let text) = phase, let selection else { return }
+        guard case .preview(let text) = phase, let selection, let dependencies else { return }
         if let failure = selection.revalidate() {
             fail(Self.message(for: failure))
+            return
+        }
+        guard case .success(let lease) = dependencies.admission.acquire(.global) else {
+            fail(L10n.text("Nothing was replaced. Copy the rewrite instead."))
             return
         }
         releaseKeys()
@@ -205,6 +213,7 @@ final class SelectionRewriteController {
         let id = generation
         task = Task { [weak self] in
             let outcome = await selection.destination.insert(text)
+            lease.release()
             guard let self, self.generation == id else { return }
             switch outcome {
             case .verified, .dispatched:

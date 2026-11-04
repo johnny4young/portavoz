@@ -31,6 +31,7 @@ struct SelectionRewriteControllerTests {
         polish: @escaping (String, String?) async -> DictationPolishOutcome
     ) -> SelectionRewriteController.Dependencies {
         SelectionRewriteController.Dependencies(
+            admission: DictationUITestFixture.openAdmission,
             capture: {
                 capture.map { text in
                     CapturedSelection(
@@ -189,6 +190,7 @@ struct SelectionRewriteSayHowTests {
 
     private func dependencies(_ recorder: Recorder) -> SelectionRewriteController.Dependencies {
         var dependencies = SelectionRewriteController.Dependencies(
+            admission: DictationUITestFixture.openAdmission,
             capture: {
                 .success(CapturedSelection(
                     text: "so we ship it tomorrow", source: .accessibility, applicationName: "Receiver",

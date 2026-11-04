@@ -558,6 +558,7 @@ final class DictationControllerHarness {
             },
             copyText: { _ in false },
             defaults: defaults, now: { [weak self] in self?.now ?? .distantPast },
+            admission: DictationUITestFixture.openAdmission,
             beginCapture: { {} },
             measurementSink: { [weak self] in self?.measurements.append($0) })
     }

@@ -17,7 +17,7 @@ extension AppServices {
         var dependencies: DictationSessionDependencies
         if usesTemporaryMeetingStore {
             dependencies = DictationUITestFixture.dependencies(
-                fixture: dictationUITestFixture, beginCapture: beginCapture)
+                fixture: dictationUITestFixture, admission: dictationAdmission, beginCapture: beginCapture)
             dependencies.waitForFeedbackDismissal = DictationUITestFixture.waitHoldingUnverifiedNotices
             dependencies.storesPreferencesTemporarily = true
             dependencies.polishDictation = DictationUITestFixture.polishing(dictationUITestFixture)
@@ -112,8 +112,14 @@ final class DictationUITestFixture {
     }
 
     @MainActor
+    /// For harnesses that drive the controller directly; a disposable launch passes its real port.
+    static var openAdmission: DictationAdmission {
+        DictationAdmission(acquire: { _ in .success(DictationLease()) }, isEligible: { true })
+    }
+
     static func dependencies(
-        fixture: DictationUITestFixture?, beginCapture: @escaping () -> () -> Void,
+        fixture: DictationUITestFixture?, admission: DictationAdmission = openAdmission,
+        beginCapture: @escaping () -> () -> Void,
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> DictationSessionDependencies {
         let boardName = DictationNativeUITestFixture.validPasteboardName(
@@ -177,7 +183,7 @@ final class DictationUITestFixture {
             },
             defaults: .standard,
             now: fixtureClock(fixture),
-            beginCapture: beginCapture, makeSpeechGate: { noSpeechGate(fixture) })
+            admission: admission, beginCapture: beginCapture, makeSpeechGate: { noSpeechGate(fixture) })
     }
 
     static func polishing(

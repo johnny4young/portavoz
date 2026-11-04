@@ -12,7 +12,7 @@ final class DictationHistoryRecordingTests: XCTestCase {
         await services.dictationHistory.load()
         await services.dictationHistory.update(isEnabled: true)
 
-        try await dictate(controller, using: services.makeDictationSessionDependencies())
+        try await dictate(controller, using: services.admittedDictationDependencies())
         let saved = await eventually { services.dictationHistory.records.count == 1 }
 
         XCTAssertTrue(saved)
@@ -28,14 +28,14 @@ final class DictationHistoryRecordingTests: XCTestCase {
     func testNothingIsSavedWhenHistoryIsOffOrTheSessionIsPractice() async throws {
         let (controller, services) = try makeServices()
         await services.dictationHistory.load()
-        try await dictate(controller, using: services.makeDictationSessionDependencies())
+        try await dictate(controller, using: services.admittedDictationDependencies())
         XCTAssertEqual(controller.deliveryPrivacyLine, L10n.text("Nothing was saved in Portavoz."))
 
         await services.dictationHistory.update(isEnabled: true)
         let holder = UUID()
         services.dictationPractice.show(holder, isKey: true)
         defer { services.dictationPractice.hide(holder) }
-        let practice = services.dictationPractice.route(services.makeDictationSessionDependencies(), appIsActive: true)
+        let practice = services.dictationPractice.route(services.admittedDictationDependencies(), appIsActive: true)
         try await dictate(controller, using: practice)
 
         await services.dictationHistory.load()
@@ -47,7 +47,7 @@ final class DictationHistoryRecordingTests: XCTestCase {
         let (controller, services) = try makeServices()
         await services.dictationHistory.load()
         await services.dictationStats.update(isEnabled: true)
-        let dependencies = services.makeDictationSessionDependencies()
+        let dependencies = services.admittedDictationDependencies()
         // The session clock may be a fixture; count on the day it reports.
         let day = [DictationStatsCalendar.day(of: dependencies.now(), calendar: .current)]
 
@@ -66,7 +66,7 @@ final class DictationHistoryRecordingTests: XCTestCase {
         let holder = UUID()
         services.dictationPractice.show(holder, isKey: true)
         defer { services.dictationPractice.hide(holder) }
-        let practice = services.dictationPractice.route(services.makeDictationSessionDependencies(), appIsActive: true)
+        let practice = services.dictationPractice.route(services.admittedDictationDependencies(), appIsActive: true)
         try await dictate(controller, using: practice)
         try await Task.sleep(for: .milliseconds(200))
         let afterPractice = try await services.store.dictationStatsSummary(days: day).totals
