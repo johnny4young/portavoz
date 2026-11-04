@@ -22725,7 +22725,7 @@ attaching, and the fragment stays in `dist/release/`. The appcast keeps one item
 by accident of that one path, and a second app on the same Mac would download the same model again. Removing Portavoz
 through `brew zap` must not delete models another app uses.
 
-**Decision:** `ModelStore` keeps its API and delegates to the MIT `LocalModelStore` package at the fixed version 0.1.0,
+**Decision:** `ModelStore` keeps its API and delegates to the MIT `LocalModelStore` package at the fixed version 0.1.1,
 in `~/Library/Application Support/com.johnny4young.local-models`. Every store names its consumer and has no default
 location. Bytes on disk are not consent: a model this consumer never claimed reads as missing until it asks, and then
 nothing downloads. `Portavoz/Models` is a read-only seed: a complete install there is hashed and cloned the first time
@@ -22733,6 +22733,6 @@ it is checked, a partial one never starts a download from a check, and removing 
 not adopted again.
 
 **Consequences:** an existing install moves without a download, at the cost of hashing it while it is placed and Core
-ML specializing each model again because its path changed. Adoption runs with no network, so a check can never download. Older Portavoz builds keep using the legacy folder. Published files are
+ML specializing each model again because its path changed. Adoption runs with no network, so a check can never download. A failed download keeps the files it finished for the next attempt. Older Portavoz builds keep using the legacy folder. Published files are
 read-only, and verification, not their mode, is what detects tampering. A pin missing from `ModelCatalog.all` loses its
 claim 14 days after launch, so a test holds that list against the catalog sources.
