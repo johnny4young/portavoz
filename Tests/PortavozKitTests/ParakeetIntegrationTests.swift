@@ -15,11 +15,11 @@ final class ParakeetIntegrationTests: XCTestCase {
         try XCTSkipUnless(
             ProcessInfo.processInfo.environment["PORTAVOZ_MODEL_TESTS"] == "1",
             "set PORTAVOZ_MODEL_TESTS=1 (and install the model) to run")
-        let store = ModelStore()
+        let store = ModelStore.gatedTests()
         let descriptor = ModelCatalog.parakeetTdtV3
         let report = await store.verify(descriptor)
         try XCTSkipUnless(report.isComplete, "model not installed; run: portavoz-cli models download")
-        let directory = await store.directory(for: descriptor)
+        let directory = try await store.directory(for: descriptor)
         return try await ParakeetEngine.load(fromVerifiedDirectory: directory)
     }
 

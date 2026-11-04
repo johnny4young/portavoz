@@ -58,28 +58,13 @@ struct ModelStoreDownloadFailureTests {
         #expect(try Data(contentsOf: fixture.artifact) == fixture.previousBytes)
     }
 
-    @Test func localWritesReportAFullDiskAndPassOtherErrorsThrough() throws {
-        do {
-            try ModelStore.storing("Encoder.mlmodelc/weights/weight.bin") {
-                throw NSError(domain: NSCocoaErrorDomain, code: NSFileWriteUnknownError, userInfo: [
-                    NSUnderlyingErrorKey: NSError(domain: NSPOSIXErrorDomain, code: Int(ENOSPC))
-                ])
-            }
-            Issue.record("A full disk must be thrown")
-        } catch let error as ModelStore.ModelStoreError {
-            guard case .outOfSpace(let path) = error else {
-                Issue.record("A full disk must be reported as out of space, not \(error)")
-                return
-            }
-            #expect(path == "Encoder.mlmodelc/weights/weight.bin")
-            #expect(ModelStore.isOutOfSpace(error as NSError), "the typed case still reads as out of space")
-        }
-        do {
-            try ModelStore.storing("vocab.json") { throw NSError(domain: NSPOSIXErrorDomain, code: Int(EACCES)) }
-            Issue.record("A permission error must be thrown")
-        } catch let error as NSError {
-            #expect(error.domain == NSPOSIXErrorDomain && error.code == Int(EACCES), "only a full disk is rewrapped")
-        }
+    @Test func aFullDiskIsRecognizedThroughItsCauseAndOtherErrorsAreNot() {
+        let nested = NSError(domain: NSCocoaErrorDomain, code: NSFileWriteUnknownError, userInfo: [
+            NSUnderlyingErrorKey: NSError(domain: NSPOSIXErrorDomain, code: Int(ENOSPC))
+        ])
+        #expect(ModelStore.isOutOfSpace(nested))
+        #expect(ModelStore.isOutOfSpace(ModelStore.ModelStoreError.outOfSpace(path: "vocab.json") as NSError))
+        #expect(!ModelStore.isOutOfSpace(NSError(domain: NSPOSIXErrorDomain, code: Int(EACCES))))
     }
 
     private struct Fixture {
@@ -101,7 +86,8 @@ struct ModelStoreDownloadFailureTests {
                 ModelArtifact(path: filename, sha256: String(repeating: "0", count: 64), sizeBytes: 1)
             ],
             minimumRAMGB: 0, license: "fixture")
-        let artifact = root.appendingPathComponent(descriptor.folderName).appendingPathComponent(filename)
+        let legacyRoot = root.appendingPathComponent("legacy", isDirectory: true)
+        let artifact = legacyRoot.appendingPathComponent(descriptor.folderName).appendingPathComponent(filename)
         let previousBytes = Data("Existing corrupt artifact must survive a failed repair".utf8)
         do {
             try FileManager.default.createDirectory(
@@ -114,7 +100,10 @@ struct ModelStoreDownloadFailureTests {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [ModelStoreDownloadFailureProtocol.self]
         let session = URLSession(configuration: configuration)
-        return Fixture(store: ModelStore(rootDirectory: root, session: session), session: session,
+        let store = ModelStore(
+            rootDirectory: root.appendingPathComponent("store", isDirectory: true), consumer: .tests,
+            legacyRoot: legacyRoot, session: session)
+        return Fixture(store: store, session: session,
                        descriptor: descriptor, root: root, artifact: artifact, previousBytes: previousBytes)
     }
 }

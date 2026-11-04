@@ -6,10 +6,11 @@ import TranscriptionKit
 /// swift-argument-parser while the CLI is still a dev harness.
 enum CLISupport {
     static func modelStore(fromModelsDir path: String?) -> ModelStore {
+        let consumer = ModelStore.Consumer(identifier: "app.portavoz.cli", displayName: "Portavoz CLI")
         if let path {
-            return ModelStore(rootDirectory: URL(fileURLWithPath: path, isDirectory: true))
+            return ModelStore(rootDirectory: URL(fileURLWithPath: path, isDirectory: true), consumer: consumer)
         }
-        return ModelStore()
+        return .userLibrary(consumer: consumer)
     }
 
     /// Downloads/verifies the recommended model (printing progress) and

@@ -175,7 +175,7 @@ final class SileroVoiceActivityDetectorTests: XCTestCase {
         guard let root = ProcessInfo.processInfo.environment["PORTAVOZ_TEST_SILERO_MODEL_ROOT"] else {
             throw XCTSkip("Install the pinned Silero fixture for this real-model lane")
         }
-        let store = ModelStore(rootDirectory: URL(fileURLWithPath: root))
+        let store = ModelStore(rootDirectory: URL(fileURLWithPath: root), consumer: .tests)
         let detector = try await SileroVoiceActivityDetector.load(
             from: store, channel: .microphone)
         let result = try await detector.process(AudioChunk(
@@ -192,7 +192,7 @@ final class SileroVoiceActivityDetectorTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: root) }
         do {
             _ = try await SileroVoiceActivityDetector.load(
-                from: ModelStore(rootDirectory: root), channel: .microphone)
+                from: ModelStore(rootDirectory: root, consumer: .tests), channel: .microphone)
             XCTFail("A missing model must not trigger FluidAudio ModelHub")
         } catch VoiceActivityDetectionError.modelNotInstalled {
         } catch {
@@ -210,7 +210,7 @@ final class SileroVoiceActivityDetectorTests: XCTestCase {
         let samples = try AudioConverter().resampleAudioFile(URL(fileURLWithPath: audioPath))
         XCTAssertGreaterThan(samples.count, 16_000)
         let detector = try await SileroVoiceActivityDetector.load(
-            from: ModelStore(rootDirectory: URL(fileURLWithPath: root)),
+            from: ModelStore(rootDirectory: URL(fileURLWithPath: root), consumer: .tests),
             channel: .microphone)
         var observations: [VoiceActivityObservation] = []
         for start in stride(from: 0, to: samples.count, by: 4_096) {

@@ -577,11 +577,11 @@ final class VoiceIdentityIntegrationTests: XCTestCase {
             throw XCTSkip("set PORTAVOZ_TEST_ENROLL_WAV and PORTAVOZ_TEST_CONVERSATION_WAV")
         }
 
-        let modelStore = ModelStore()
+        let modelStore = ModelStore.gatedTests()
         let descriptor = ModelCatalog.speakerDiarization
         let report = await modelStore.verify(descriptor)
         try XCTSkipUnless(report.isComplete, "diarization model not installed")
-        let directory = await modelStore.directory(for: descriptor)
+        let directory = try await modelStore.directory(for: descriptor)
 
         // Enroll from the solo clip.
         let enroller = try PyannoteDiarizer.load(fromVerifiedDirectory: directory)

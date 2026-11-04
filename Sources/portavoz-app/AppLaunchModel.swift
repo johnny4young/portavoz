@@ -1,4 +1,5 @@
 import Foundation
+import ModelStoreKit
 import Observation
 import StorageKit
 
@@ -179,6 +180,9 @@ final class AppLaunchModel {
         guard !runsIsolatedBenchmark else { return }
 
         services.startResourcePressureMonitoring()
+        Task(priority: .utility) { [modelStore = services.modelStore] in
+            try? await modelStore.collectUnused(keeping: ModelCatalog.all)
+        }
         Task { await services.standingPreMeetingBriefs.start() }
         services.requestSearchReconciliation()
         Task { await services.loadDictationHistory() }

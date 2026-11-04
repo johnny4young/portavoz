@@ -165,6 +165,13 @@ test reserved: both apps launching at login, holding Fn and the mouse trigger wi
 both apps running, real sleep and wake during a session, removing the other app from
 disk, Portavoz Dev beside Portavoz Release, and a real Portavoz 1.3 with dictation on.
 
+### Shared model store on a real library
+
+Fixtures prove adoption, consent and removal (D631). Moving a real `Portavoz/Models`
+folder, loading every engine from read-only files, and the first Core ML
+specialization after the path change still need a real install and the gated model
+tests.
+
 ### Release notes in the real update window
 
 The real `generate_appcast` embeds and signs the notes (D630), but they have not been

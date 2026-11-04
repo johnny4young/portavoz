@@ -40,6 +40,8 @@ let package = Package(
         .package(
             url: "https://github.com/johnny4young/secreteo.git",
             revision: "9f1015452ae92eeb023793c37d95d60ae7a33ef6"),
+        // The on-disk model store shared with Secreteo (MIT).
+        .package(url: "https://github.com/johnny4young/local-model-store.git", exact: "0.1.0"),
         // SQLite toolkit (MIT) — D4: GRDB + FTS5, never SwiftData.
         .package(url: "https://github.com/groue/GRDB.swift.git", .upToNextMajor(from: "7.11.1")),
         // Whisper on CoreML (MIT) for the quality re-pass (D7). Pinned
@@ -77,7 +79,9 @@ let package = Package(
 
         // Curated model registry + sha256-verified downloads, shared by every
         // Kit that loads ML models (transcription, diarization, summaries).
-        .target(name: "ModelStoreKit", dependencies: ["PortavozCore"]),
+        .target(
+            name: "ModelStoreKit",
+            dependencies: ["PortavozCore", .product(name: "LocalModelStore", package: "local-model-store")]),
 
         .target(name: "AudioCaptureKit", dependencies: ["PortavozCore"]),
         .target(

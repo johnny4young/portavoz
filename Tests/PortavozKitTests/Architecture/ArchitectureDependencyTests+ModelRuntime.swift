@@ -649,7 +649,7 @@ extension ArchitectureDependencyTests {
             of: "Sources/portavoz-app/AppServices+Application.swift")
 
         XCTAssertTrue(store.contains("func verifiedInstallation("))
-        XCTAssertTrue(store.contains("guard verify(descriptor).isComplete"))
+        XCTAssertTrue(store.contains("guard await verify(descriptor).isComplete"))
         XCTAssertTrue(lifecycle.contains("store.verifiedInstallation(descriptor)"))
         XCTAssertFalse(lifecycle.contains("FileManager"))
         XCTAssertTrue(services.contains("let modelStore: ModelStore"))
@@ -661,7 +661,7 @@ extension ArchitectureDependencyTests {
 
         let directStores = try Self.sourceMatches(
             under: "Sources/portavoz-app",
-            pattern: #"\bModelStore\s*\(\s*\)"#)
+            pattern: #"\bModelStore\.userLibrary\s*\(|return \.userLibrary\s*\("#)
         XCTAssertEqual(
             directStores.sorted(),
             ["AppServices.swift", "BenchMode.swift"],
