@@ -17,11 +17,17 @@ struct MenuBarContent: View {
     }
 
     private var recording: Bool { services.recording.phase == .recording }
+    private var dictationIsOn: Bool { UserDefaults.standard.bool(forKey: DictationController.defaultsKey) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             statusHeader
             quickActions
+            if dictationIsOn, !services.dictationOwnership.offersDictationActions {
+                DictationOwnerRow(identifierPrefix: "menu-bar-dictation")
+                    .font(.caption)
+                    .padding(.top, 8)
+            }
             if let fixture = services.dictationNativeUITestFixture {
                 Button("Dictate") {
                     fixture.start(controller: services.dictation,
@@ -108,7 +114,7 @@ struct MenuBarContent: View {
                     services.pendingRoute = .recording(nil)
                 }
             }
-            if UserDefaults.standard.bool(forKey: DictationController.defaultsKey) {
+            if dictationIsOn, services.dictationOwnership.offersDictationActions {
                 quickAction("Dictate", "waveform", tint: PVDesign.accent) {
                     services.dictation.toggle(services: services)
                 }

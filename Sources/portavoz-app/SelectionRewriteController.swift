@@ -109,8 +109,13 @@ final class SelectionRewriteController {
     var capturesInstruction: Bool { phase == .choosing || phase == .listening }
 
     func sayHow() {
-        guard phase == .choosing else { return }
-        dependencies?.startDictation()
+        guard phase == .choosing, let dependencies else { return }
+        if let refusal = dependencies.admission.refusalNow() {
+            notice = refusal.message
+            show()
+            return
+        }
+        dependencies.startDictation()
     }
 
     func finishSayingHow() {

@@ -31,6 +31,12 @@ struct DictationRecoveryView: View {
             .frame(maxHeight: .infinity)
             DictationCopyStatusLabel(status: controller.copyStatus)
                 .accessibilityIdentifier("dictation-recovery-copy-status")
+            if let refusal = controller.retryRefusal {
+                Text(refusal.message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("dictation-recovery-refusal")
+            }
             HStack(spacing: 8) {
                 Button("Copy", action: controller.copyPendingText)
                     .accessibilityIdentifier("dictation-recovery-copy")

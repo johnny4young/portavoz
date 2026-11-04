@@ -35,7 +35,7 @@ struct DictationOwnershipCoordinatorTests {
         func coordinator() -> DictationOwnershipCoordinator {
             let ownership = participant(DictationOwnershipCoordinatorTests.portavoz)
             lastOwnership = ownership
-            let coordinator = DictationOwnershipCoordinator(ownership: ownership) { [self] in await settle() }
+            let coordinator = DictationOwnershipCoordinator(ownership: ownership, root: root) { [self] in await settle() }
             coordinator.start()
             return coordinator
         }
@@ -149,6 +149,18 @@ struct DictationOwnershipCoordinatorTests {
         second.release()
 
         #expect(!coordinator.holdsLease)
+    }
+
+    @Test
+    func theOwnerIsReadFromTheStateFile() async {
+        let scratch = Scratch()
+        let coordinator = scratch.coordinator()
+        #expect(coordinator.owner == Self.portavoz)
+
+        _ = await scratch.participant(Self.other).takeOwnership(userConfirmed: true, triggers: Triggers())
+        coordinator.reevaluate()
+
+        #expect(coordinator.owner == Self.other)
     }
 
     @Test

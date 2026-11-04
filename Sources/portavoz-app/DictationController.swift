@@ -82,6 +82,8 @@ final class DictationController {
     private(set) var copyStatus: CopyStatus = .idle
     private(set) var isRetryingDelivery = false
     var canRetryDelivery: Bool { destination?.canRetry == true }
+    /// Why the last Reinsert did not run. It can pass, so Reinsert stays.
+    private(set) var retryRefusal: DictationAdmissionRefusal?
     private(set) var destination: CapturedDictationDestination?
     private var dependencies: DictationSessionDependencies?
     private(set) var deliveryID: UUID?
@@ -396,6 +398,7 @@ final class DictationController {
         targetApp = nil
         copyStatus = .idle
         isRetryingDelivery = false
+        retryRefusal = nil
         measurement?.finish(.cancelled)
         measurement = nil
         sessionFeedbackWait = nil
@@ -694,9 +697,16 @@ extension DictationController {
 
     func retryUndeliveredText() {
         guard case .recovery = phase, !isRetryingDelivery,
-              let id = deliveryID, let destination, destination.canRetry,
-              case .success(let lease) = dependencies?.admission.acquire(.global) else { return }
-        replay(recoveryText, into: destination, id: id, lease: lease)
+              let id = deliveryID, let destination, destination.canRetry else { return }
+        switch dependencies?.admission.acquire(.global) {
+        case .success(let lease):
+            retryRefusal = nil
+            replay(recoveryText, into: destination, id: id, lease: lease)
+        case .failure(let refusal):
+            retryRefusal = refusal
+        case .none:
+            break
+        }
     }
 
     /// Pastes the remembered text into whatever is focused now, through the
@@ -1276,6 +1286,7 @@ extension DictationController {
         retryDeliveryTask?.cancel()
         retryDeliveryTask = nil
         isRetryingDelivery = false
+        retryRefusal = nil
         deliveryID = nil
         destination = nil
         recoveryText = ""

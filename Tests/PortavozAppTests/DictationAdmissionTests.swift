@@ -265,6 +265,7 @@ struct DictationAdmissionTests {
         harness.controller.retryUndeliveredText()
 
         #expect(harness.controller.phase == .recovery(.targetChanged))
+        #expect(harness.controller.retryRefusal == .dictationOff)
         #expect(harness.controller.recoveryText == harness.text)
         #expect(!harness.controller.isRetryingDelivery)
         #expect(delivered.isEmpty)
