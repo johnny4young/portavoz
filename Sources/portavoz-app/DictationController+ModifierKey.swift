@@ -17,7 +17,7 @@ extension DictationController {
         let desired = enabled ? ModifierKeySetting.load() : .off
         if modifierTrigger.ptt != nil, modifierTrigger.setting == desired { return }
         // Rebinding while the modifier owns capture would strand its release.
-        if modifierTrigger.ownsSession, isActive, !yieldsToHandoff { cancel() }
+        if modifierTrigger.ownsSession { retireTriggerOwnedSession() }
         modifierTrigger.ptt?.invalidate()
         modifierTrigger.ptt = nil
         modifierTrigger.setting = .off

@@ -289,7 +289,6 @@ final class AppServices {
     ) throws {
         self.dictation = dictation
         self.defaults = defaults
-        dictationOwnership = .live(defaults: defaults, usesTemporaryStore: arguments.contains("-use-temp-store"))
         let storagePolicy = Self.prepareStoragePolicy(
             arguments: arguments,
             environment: environment,
@@ -300,6 +299,7 @@ final class AppServices {
         recording = RecordingController(defaults: defaults)
         let usesTemporaryStore = storagePolicy.usesTemporaryMeetingStore
         usesTemporaryMeetingStore = usesTemporaryStore
+        dictationOwnership = .live(defaults: defaults, usesTemporaryStore: usesTemporaryStore)
         dictationShortcutUITestFixture = DictationShortcutUITestFixture(
             arguments: arguments, usesTemporaryStore: usesTemporaryStore)
 

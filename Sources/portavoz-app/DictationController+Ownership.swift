@@ -9,12 +9,12 @@ extension DictationController {
 
     /// Another app asked for ownership: each stage follows the protocol's handoff table.
     func ownershipIntentSeen() {
-        guard isActive, phase != .delivering else { return }
+        guard isActive else { return }
         if sessionIsPractice || phase == .preparing {
             cancel()
             return
         }
-        guard handoffGrace == nil, let grace = sessionHandoffGrace else { return }
+        guard microphoneIsOpen, handoffGrace == nil, let grace = sessionHandoffGrace else { return }
         handoffGrace = Task { [weak self] in
             do {
                 try await Task.sleep(for: grace, clock: .continuous)
@@ -30,9 +30,20 @@ extension DictationController {
         handoffGrace = nil
     }
 
+    /// A trigger going away during a handoff would strand its release: end the session now and
+    /// keep the words. With no handoff, this is an ordinary rebind or disable.
+    func retireTriggerOwnedSession() {
+        guard isActive else { return }
+        if handoffGrace != nil || yieldsToHandoff {
+            yieldToHandoff()
+        } else {
+            cancel()
+        }
+    }
+
     /// The words go to recovery instead of the field, so a handoff never loses them.
-    private func yieldToHandoff() {
-        guard phase == .listening else { return }
+    func yieldToHandoff() {
+        guard microphoneIsOpen else { return }
         yieldsToHandoff = true
         finishAndInsert()
     }

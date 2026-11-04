@@ -22666,12 +22666,16 @@ A session asks once and is refused `busy` while another captures, transcribes or
 drained after a cancel. While the last session only waits for the clipboard restore, a new `global` session shares
 the held lock, after repeating admission on it, so dictating again right after a paste keeps working. The lock is
 released after the last session ends. On a live intent, a session still preparing and a practice session cancel
-at once, one listening gets 5 seconds and then keeps its words in recovery, and one past the microphone runs to
-the end. Every delivery revalidates owner and generation first. A Rewrite replace also compares the generation
-with its read, so a handoff there and back refuses it. Mouse and modifier triggers leave the event tap callback
+at once, one listening gets 5 seconds and then keeps its words in recovery with no polish or translation, and one
+past the microphone runs to the end. Losing a trigger during a handoff ends its session the same way. Every delivery
+revalidates owner and generation first. A Rewrite replace also compares the generation
+with its read, so a handoff there and back refuses it, and a preview gives up its global keys when ownership is lost
+and its replace when the state turns corrupt. Mouse and modifier triggers leave the event tap callback
 before admission, because admission does file I/O.
 
 **Consequences:** a build of Portavoz before this one has no lock, so another build reports it as an active legacy
 peer and stands down while it runs with dictation on. Until the visible row exists, a Dev build with its preference
-already on owns nothing until the preference is turned off and on again. A pressed trigger that is refused does
-nothing visible. A press during the wait for Stop after Esc is refused.
+already on owns nothing until the preference is turned off and on again, nothing can take ownership back from an owner
+that quit, and corrupt state has no reset. A pressed trigger that is refused does nothing visible. A press during the
+wait for Stop after Esc is refused. Because readiness is always true, an owner with a revoked permission stays `owned`
+rather than reporting `unavailable`.

@@ -5228,10 +5228,14 @@ whose step 5 arms the triggers before the commit.
 and a refused join leaves the lock with the earlier session. `DictationClipboard.copySelection` waits for a pending
 restore, and `TextInserter` already did before borrowing, so dictated text is never saved as the user's clipboard.
 
-`ownershipIntentSeen()` cancels a preparing or practice session and starts a 5-second grace for a listening one, after
-which `yieldToHandoff()` stops the microphone and delivery becomes `.refused(.ownershipChanged)`, which keeps the
-words in recovery. A mouse or modifier that disarms during the grace does not cancel the session. Intents ask
-`refusalNow()` before answering, while no session is active. Rewrite holds no lease between read and replace.
+`ownershipIntentSeen()` cancels a preparing or practice session and starts a 5-second grace while `microphoneIsOpen`,
+after which `yieldToHandoff()` stops the microphone. Delivery then skips the speech gate, corrections, polish and
+translation and becomes `.refused(.ownershipChanged)`, which keeps the words in recovery, even for a spoken Rewrite
+instruction. A mouse or modifier disarmed during the grace yields at once instead of cancelling. Intents ask
+`refusalNow()` before answering, while no session is active. Rewrite holds no lease between read and replace; a
+preview calls `releaseGlobalKeys()` when ownership is lost and `revokeReplace()` when the state is seen corrupt.
+`start()` and `reevaluate()` take the capture lock for a claim or a turn-off only while one is pending, so another
+app's key press does not meet a lock taken just to look. Application launch and termination are hints too.
 
 ### Dictation actions in Shortcuts (D583)
 

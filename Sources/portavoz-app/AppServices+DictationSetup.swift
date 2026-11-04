@@ -18,7 +18,8 @@ extension AppServices {
                     return self.dictation.shortcut.availability != .unavailable
                 },
                 disarm: { self.syncDictationTriggers() })
-            syncDictationTriggers()
+            // The first sync above ran before this app owned anything, so it could not prompt.
+            syncDictationTriggers(promptIfNeeded: enabled)
         }
     }
 

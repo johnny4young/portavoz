@@ -17,19 +17,32 @@ final class DictationOwnershipCoordinator {
     @ObservationIgnored private let settle: () async -> Void
     @ObservationIgnored private var observer: OwnershipObserver?
     @ObservationIgnored private var held: SharedLease?
-    @ObservationIgnored private var wakeObserver: (any NSObjectProtocol)?
+    @ObservationIgnored private var workspaceObservers: [any NSObjectProtocol] = []
     /// Step 5 of a handoff arms the triggers just before this app becomes the owner.
     @ObservationIgnored private var armsForHandoff = false
+    @ObservationIgnored private var hasStarted = false
+    /// Both of these take the capture lock even to change nothing, so each runs only while it can
+    /// still matter: another app's key press must not meet a lock this app took just to look.
+    @ObservationIgnored private var claimIsPending = true
+    @ObservationIgnored private var turnOffIsPending = true
 
     init(ownership: DictationOwnership, settle: @escaping () async -> Void) {
         self.ownership = ownership
         self.settle = settle
     }
 
-    /// Disposable launches get a scratch folder, so they can never touch the real owner.
+    private static let shippedIdentifiers = ["app.portavoz.mac", "app.portavoz.mac.dev"]
+
+    /// Only a shipped build with a real library touches the real owner. Disposable
+    /// launches and test hosts get a scratch folder and notification of their own.
+    static func usesRealOwner(identifier: String, usesTemporaryStore: Bool) -> Bool {
+        !usesTemporaryStore && shippedIdentifiers.contains(identifier)
+    }
+
     static func live(defaults: UserDefaults, usesTemporaryStore: Bool) -> DictationOwnershipCoordinator {
-        let identifier = Bundle.main.bundleIdentifier ?? "app.portavoz.mac.unbundled"
-        let peers = usesTemporaryStore ? nil : legacyPeers(excluding: identifier)
+        let participant = Bundle.main.bundleIdentifier ?? "app.portavoz.mac.unbundled"
+        let isReal = usesRealOwner(identifier: participant, usesTemporaryStore: usesTemporaryStore)
+        let peers = isReal ? legacyPeers(excluding: participant) : nil
         // UserDefaults is thread-safe, and the protocol reads conditions off the main actor.
         nonisolated(unsafe) let preferences = defaults
         let preferenceKey = DictationController.defaultsKey
@@ -40,13 +53,15 @@ final class DictationOwnershipCoordinator {
                 missingForReadiness: nil,
                 legacyPeerIsActive: peers?.activePeer() != nil)
         }
-        let ownership = usesTemporaryStore
-            ? DictationOwnership(
-                participant: identifier,
+        let scratch = UUID().uuidString
+        let ownership = isReal
+            ? DictationOwnership(participant: participant, conditions: conditions)
+            : DictationOwnership(
+                participant: participant,
                 root: FileManager.default.temporaryDirectory
-                    .appendingPathComponent("dictation-ownership-\(UUID().uuidString)", isDirectory: true),
-                conditions: conditions)
-            : DictationOwnership(participant: identifier, conditions: conditions)
+                    .appendingPathComponent("dictation-ownership-\(scratch)", isDirectory: true),
+                conditions: conditions,
+                notificationName: "app.portavoz.dictation-ownership.scratch.\(scratch)")
         return DictationOwnershipCoordinator(ownership: ownership) {
             _ = await DictationClipboard.shared.waitForRestoration(on: .general)
         }
@@ -55,7 +70,7 @@ final class DictationOwnershipCoordinator {
     /// Portavoz before the protocol runs dictation with no lock, so another build of it can only refuse.
     private static func legacyPeers(excluding identifier: String) -> NonCooperatingPeers {
         NonCooperatingPeers(
-            known: ["app.portavoz.mac", "app.portavoz.mac.dev"]
+            known: shippedIdentifiers
                 .filter { $0 != identifier }
                 .map { KnownPeer(identifier: $0, preferenceKey: DictationController.defaultsKey) },
             running: {
@@ -72,31 +87,58 @@ final class DictationOwnershipCoordinator {
     }
 
     var armsTriggers: Bool { state.armsTriggers || armsForHandoff }
+    /// Watching continues until the last release, whoever released first.
+    var holdsLease: Bool { held != nil }
 
     func start() {
-        _ = ownership.claimAtFirstRun()
+        guard !hasStarted else { return }
+        hasStarted = true
+        claimIfPending()
         publish(ownership.status())
-        guard observer == nil else { return }
+        turnOffIfPending()
         let observer = OwnershipObserver(ownership: ownership) { [weak self] snapshot in
             Task { @MainActor [weak self] in self?.apply(snapshot) }
         }
         self.observer = observer
         Task { await observer.start() }
-        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
-            forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.reevaluate() }
+        // Nothing else re-reads while idle, and a legacy peer quitting frees this app.
+        workspaceObservers = [
+            NSWorkspace.didWakeNotification, NSWorkspace.didLaunchApplicationNotification,
+            NSWorkspace.didTerminateApplicationNotification
+        ].map { name in
+            let center = NSWorkspace.shared.notificationCenter
+            return center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.reevaluate() }
+            }
         }
     }
 
     /// A hint, as is activation or wake: the state is read again and nothing is decided from it.
     func reevaluate() {
-        _ = ownership.claimAtFirstRun()
+        guard hasStarted else { return }
+        claimIfPending()
         publish(ownership.status())
-        if state == .off {
-            Task { [ownership] in _ = await ownership.turnOff() }
-        }
+        turnOffIfPending()
         Task { [observer] in await observer?.reevaluate() }
+    }
+
+    private func claimIfPending() {
+        guard claimIsPending else { return }
+        // A legacy peer can go away, and then the claim still applies.
+        if case .unavailable = ownership.status() { return }
+        switch ownership.claimAtFirstRun() {
+        case .busy, .failed: break
+        case .changed, .noChange: claimIsPending = false
+        }
+    }
+
+    private func turnOffIfPending() {
+        guard turnOffIsPending, state == .off else { return }
+        turnOffIsPending = false
+        Task { [ownership] in
+            let change = await ownership.turnOff()
+            if change == .busy || change == .failed { turnOffIsPending = true }
+        }
     }
 
     /// The user's own action in Settings or onboarding.
@@ -115,7 +157,8 @@ final class DictationOwnershipCoordinator {
                 })
             _ = await ownership.preferenceTurnedOn(triggers: triggers)
         } else {
-            _ = await ownership.turnOff()
+            let change = await ownership.turnOff()
+            turnOffIsPending = change == .busy || change == .failed
         }
         armsForHandoff = false
         publish(ownership.status())
@@ -126,10 +169,11 @@ final class DictationOwnershipCoordinator {
         if let held {
             // A new session shares the lease only while the last one waits for the clipboard,
             // and repeats admission on the held lock, so sessions in a row cannot hold off a handoff.
+            // This actor is what keeps a join and the last release from interleaving.
             guard kind == .global, held.lease.kind == .global, held.working == 0 else { return .failure(.busy) }
             let current = ownership.status()
             guard current == .owned else { return .failure(refusal(for: current)) }
-            guard held.lease.revalidate() else { return .failure(.busy) }
+            guard held.lease.revalidate() else { return .failure(.unavailable(.ioError)) }
             held.holders += 1
             held.working += 1
             return .success(lease(sharing: held))
@@ -140,7 +184,7 @@ final class DictationOwnershipCoordinator {
         case .admitted(let lease):
             let shared = SharedLease(lease: lease)
             held = shared
-            reportHolding(true)
+            reportHolding()
             return .success(self.lease(sharing: shared))
         }
     }
@@ -157,12 +201,16 @@ final class DictationOwnershipCoordinator {
                 shared.lease.release()
                 guard let self, self.held === shared else { return }
                 self.held = nil
-                self.reportHolding(false)
+                self.reportHolding()
             })
     }
 
-    private func reportHolding(_ holding: Bool) {
-        Task { [observer] in await observer?.setHoldingLease(holding) }
+    /// Reads the value when it runs, because these tasks can overtake each other.
+    private func reportHolding() {
+        Task { [weak self] in
+            guard let self else { return }
+            await observer?.setHoldingLease(holdsLease)
+        }
     }
 
     private func apply(_ snapshot: OwnershipObserver.Snapshot) {

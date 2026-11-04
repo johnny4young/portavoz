@@ -338,6 +338,7 @@ DEPENDENCY_FEATURES: dict[str, frozenset[str]] = {
     "fluidaudio": frozenset({"recording-recovery", "settings-audio", "settings-voice"}),
     "grdb.swift": frozenset({"launch-recovery", "library", "settings-data"}),
     "mlx-swift": _SUMMARY_MODEL_FEATURES,
+    "secreteo": frozenset({"dictation"}),
     "mlx-swift-lm": _SUMMARY_MODEL_FEATURES,
     "sparkle": frozenset({"main-shell", "settings-navigation"}),
     "swift-huggingface": _SUMMARY_MODEL_FEATURES,

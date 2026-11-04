@@ -57,6 +57,7 @@ final class SelectionRewriteController {
     private(set) var spokenInstruction: String?
     @ObservationIgnored private var selection: CapturedSelection?
     @ObservationIgnored private var selectionGeneration: Int?
+    @ObservationIgnored private var replaceIsRevoked = false
     @ObservationIgnored private var dependencies: Dependencies?
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private var keys: [any GlobalHotkeyRegistration] = []
@@ -73,6 +74,7 @@ final class SelectionRewriteController {
         guard case .success(let lease) = dependencies.admission.acquire(.global) else { return }
         cancel()
         selectionGeneration = lease.generation
+        replaceIsRevoked = false
         self.dependencies = dependencies
         let id = generation
         phase = .capturing
@@ -210,7 +212,7 @@ final class SelectionRewriteController {
             return
         }
         // The same owner after a handoff there and back is still a different session.
-        guard lease.generation == selectionGeneration, lease.revalidate() else {
+        guard !replaceIsRevoked, lease.generation == selectionGeneration, lease.revalidate() else {
             lease.release()
             fail(L10n.text("Nothing was replaced. Copy the rewrite instead."))
             return
@@ -236,6 +238,16 @@ final class SelectionRewriteController {
         case .refused:
             fail(L10n.text("Nothing was replaced. Copy the rewrite instead."))
         }
+    }
+
+    /// A non-owner gives up exclusive shortcuts. The panel's own buttons stay, and Copy with them.
+    func releaseGlobalKeys() {
+        releaseKeys()
+    }
+
+    /// A reset restarts generations, so a preview from before one could match again later.
+    func revokeReplace() {
+        replaceIsRevoked = true
     }
 
     func copyResult() {

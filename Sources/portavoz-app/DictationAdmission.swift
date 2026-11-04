@@ -100,6 +100,12 @@ extension AppServices {
         dictationOwnership.onStateChange = { [weak self] previous in
             guard let self else { return }
             syncDictationTriggers()
+            if previous.armsTriggers, !dictationOwnership.state.armsTriggers {
+                selectionRewrite.releaseGlobalKeys()
+            }
+            if case .unavailable(.corruptState) = dictationOwnership.state {
+                selectionRewrite.revokeReplace()
+            }
             if previous.allowsPrewarm, !dictationOwnership.state.allowsPrewarm {
                 Task { await self.releaseIdleModel(.liveSpeech) }
             } else {

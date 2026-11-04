@@ -204,7 +204,6 @@ final class AppLaunchModel {
         services.connectDictationOwnership()
         services.dictationOwnership.start()
         services.syncDictationTriggers()
-        services.prewarmDictationIfConfigured()
 
         // The AppKit delegate may already have observed application launch
         // while the database was unavailable. Re-publish, without consuming,
