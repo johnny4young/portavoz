@@ -22691,3 +22691,15 @@ since only the owner arms one. Nothing in this path writes the preference or sta
 **Consequences:** Portavoz names only apps the protocol knows, and an unknown owner reads as another app. Onboarding has no
 row, so someone who turns dictation on there while another app owns it finds out in Settings or the menu bar. A reset by another app that this one never observed can
 still leave an old Rewrite preview with a matching generation, a limit the protocol documents.
+
+## D630 — The update window shows notes embedded in the appcast
+
+**Context:** the appcast offered an update with no notes, so someone updating saw a version number and nothing else, and
+a dictation change between versions needs a place to be told.
+
+**Decision:** `scripts/release_notes.py` renders the release's section of `CHANGELOG.md` as an HTML fragment, and
+`make-release.sh` passes it to `generate_appcast --embed-release-notes`. A version with no section stops before the build,
+and `verify_release_appcast.py` refuses an appcast whose description differs from that fragment.
+
+**Consequences:** the changelog section has to exist in the release commit. No file beyond the DMG and the appcast needs
+attaching, and the fragment stays in `dist/release/`. The appcast keeps one item, so only the newest notes are shown.

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Cuts a release: version-stamps the bundle, builds the DMG, generates the
-# Sparkle appcast, and fills in the Homebrew cask. Everything lands in
+# Sparkle appcast with the release's notes, and fills in the Homebrew cask. Everything lands in
 # dist/release/ ready to attach to the GitHub release.
 #
 #   scripts/make-release.sh 0.1.0
@@ -40,6 +40,11 @@ require_exact_source_checkout() {
 
 require_exact_source_checkout "preflight"
 
+# Before the long build, because a release with no notes would stop only after notarizing.
+NOTES_DRAFT="$(mktemp)"
+trap 'rm -f "$NOTES_DRAFT"' EXIT
+scripts/release_notes.py --changelog CHANGELOG.md --version "$VERSION" --output "$NOTES_DRAFT"
+
 : "${PORTAVOZ_PROVISIONING_PROFILE:?A release requires the Developer ID CloudKit provisioning profile}"
 : "${PORTAVOZ_SIGN_IDENTITY:?A release requires a Developer ID Application identity}"
 : "${PORTAVOZ_NOTARY_PROFILE:?A release requires a notarytool keychain profile}"
@@ -64,13 +69,18 @@ rm -rf "$RELEASE_DIR"
 mkdir -p "$RELEASE_DIR"
 mv "dist/Portavoz-$VERSION.dmg" "$RELEASE_DIR/"
 
+# generate_appcast pairs notes with the archive of the same name.
+NOTES="$RELEASE_DIR/Portavoz-$VERSION.html"
+cp "$NOTES_DRAFT" "$NOTES"
+
 # Sparkle appcast (EdDSA-signed with the 'portavoz' Keychain key).
-"$GENERATE_APPCAST" --account portavoz "$RELEASE_DIR"
+"$GENERATE_APPCAST" --account portavoz --embed-release-notes "$RELEASE_DIR"
 scripts/verify_release_appcast.py \
   --appcast "$RELEASE_DIR/appcast.xml" \
   --version "$VERSION" \
   --build "$BUILD" \
-  --dmg "$RELEASE_DIR/Portavoz-$VERSION.dmg"
+  --dmg "$RELEASE_DIR/Portavoz-$VERSION.dmg" \
+  --notes "$NOTES"
 
 # Homebrew cask with real version + sha256.
 SHA256="$(shasum -a 256 "$RELEASE_DIR/Portavoz-$VERSION.dmg" | cut -d' ' -f1)"

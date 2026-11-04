@@ -47,6 +47,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 4, 2026
 
+- **📝 What changed, before you update** — the update window now shows the notes for the new version
 - **🤝 One dictation app at a time** — if another app handles dictation on your Mac, Portavoz says so in Settings and the menu bar, never pastes twice, and lets you switch back with one click.
 
 ## November 2, 2026
