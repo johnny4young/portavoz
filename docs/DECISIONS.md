@@ -22611,3 +22611,19 @@ architecture pins would catch. A merged journey that fails names one test for se
 history no longer has a journey that opens it through a held read, so the feature handshake keeps its proof
 through the Ask and scale journeys.
 
+## D625 — A pull request's UI lane captures screenshots, and no journey waits out an animation
+
+**Context:** the complete English catalog took 3,531 seconds on hosted runners, and a pull request has about
+nine minutes for it. Every case recorded video that only a failure ever reads, and every launch played window
+and scroll animations that no journey asserts.
+
+**Decision:** `scripts/ui_host.py` sets `PreferredScreenCaptureFormat` to `screenshots` on the xctestrun of the
+SwiftPM host, which a pull request and a manual `full_ui` run use. Every launch passes `-NSAutomaticWindowAnimationsEnabled NO`, `-NSWindowResizeTime 0.001` and
+`-NSScrollAnimationEnabled NO`. Assertions, budgets and thresholds do not change.
+
+**Consequences:** the same head ran the 171 cases in 3,531 and then 2,468 seconds, all passing in both. That
+is one sample per arm on different hosts: 30% raw and 16-23% without the 5-20 largest swings, and the two
+settings were not measured apart. A failure in that lane leaves screenshots and no video; nightly and local
+project runs keep their video, so nightly seconds overstate the lane and its fit errs toward cutting a case. A
+race visible only during a window animation is no longer exercised by any run, the release gate included, in
+exchange for fewer waits on moving controls.
