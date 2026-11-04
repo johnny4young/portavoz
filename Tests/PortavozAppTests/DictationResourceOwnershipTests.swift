@@ -15,7 +15,7 @@ final class DictationResourceOwnershipTests: XCTestCase {
         let controller = DictationController(presentsPanel: false)
         defer { controller.cancel() }
         var finished = false
-        var dependencies = services.makeDictationSessionDependencies()
+        var dependencies = services.admittedDictationDependencies()
         let acquire = dependencies.acquireRuntime
         dependencies.acquireRuntime = {
             let runtime = try await acquire()
@@ -54,7 +54,7 @@ final class DictationResourceOwnershipTests: XCTestCase {
         let controller = DictationController(presentsPanel: false)
         defer { controller.cancel(); services.recordingPhaseDidChange(.idle) }
         var retired = false
-        var dependencies = services.makeDictationSessionDependencies()
+        var dependencies = services.admittedDictationDependencies()
         let begin = dependencies.beginCapture
         dependencies.beginCapture = {
             let finish = begin()
@@ -81,7 +81,7 @@ final class DictationResourceOwnershipTests: XCTestCase {
         let microphone = OwnershipHeldMicrophone()
         defer { controller.cancel(); Task { await microphone.releaseStop() } }
         var firstRetired = false
-        var first = services.makeDictationSessionDependencies()
+        var first = services.admittedDictationDependencies()
         first.makeMicrophone = { .init(source: microphone, warmUp: {}) }
         let begin = first.beginCapture
         first.beginCapture = {
@@ -97,7 +97,7 @@ final class DictationResourceOwnershipTests: XCTestCase {
         XCTAssertFalse(firstRetired)
         XCTAssertNotEqual(services.resourceCaptureState.current, .inactive)
 
-        controller.toggle(using: services.makeDictationSessionDependencies())
+        controller.toggle(using: services.admittedDictationDependencies())
         let nextListening = await eventually { !controller.partialText.isEmpty }
         XCTAssertTrue(nextListening)
         await microphone.releaseStop()
@@ -118,7 +118,7 @@ final class DictationResourceOwnershipTests: XCTestCase {
         defer { controller.cancel(); Task { await microphone.releaseStop() } }
         var now = Date(timeIntervalSince1970: 0)
         var retired = false
-        var dependencies = services.makeDictationSessionDependencies()
+        var dependencies = services.admittedDictationDependencies()
         dependencies.now = { now }
         dependencies.makeMicrophone = { .init(source: microphone, warmUp: {}) }
         var deliveries = 0
@@ -161,7 +161,7 @@ final class DictationResourceOwnershipTests: XCTestCase {
         let gate = OwnershipPreparationGate()
         defer { controller.cancel(); Task { await gate.release() } }
         var preparing = false
-        var dependencies = services.makeDictationSessionDependencies()
+        var dependencies = services.admittedDictationDependencies()
         let acquire = dependencies.acquireRuntime
         dependencies.acquireRuntime = {
             preparing = true
@@ -186,7 +186,7 @@ final class DictationResourceOwnershipTests: XCTestCase {
             arguments: ["-use-temp-store", "-seed-dictation"], environment: [:])
         let controller = DictationController(presentsPanel: false)
         defer { controller.cancel() }
-        var dependencies = services.makeDictationSessionDependencies()
+        var dependencies = services.admittedDictationDependencies()
         dependencies.acquireRuntime = { throw OwnershipFailure.unavailable }
         controller.toggle(using: dependencies)
         let failed = await eventually {

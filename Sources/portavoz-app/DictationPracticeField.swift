@@ -43,6 +43,7 @@ final class DictationPracticeField {
     ) -> DictationSessionDependencies {
         guard isArmed, appIsActive else { return dependencies }
         var routed = dependencies
+        routed.admissionKind = .practice
         routed.canInsert = { true }
         routed.beginHistory = { nil }
         routed.recordStats = { _ in }

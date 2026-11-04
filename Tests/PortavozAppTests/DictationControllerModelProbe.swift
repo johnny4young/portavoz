@@ -59,6 +59,7 @@ enum DictationControllerModelProbe {
             },
             copyText: { _ in false },
             defaults: defaults,
+            admission: DictationUITestFixture.openAdmission,
             beginCapture: { {} },
             measurementSink: { measured.yield($0); measured.finish() })
         controller.toggle(using: dependencies)

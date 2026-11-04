@@ -30,6 +30,8 @@ struct DictationSessionDependencies {
     var waitForFeedbackDismissal: @MainActor (Duration) async throws -> Void = {
         try await Task.sleep(for: $0)
     }
+    var admission: DictationAdmission
+    var admissionKind = DictationAdmissionKind.global
     /// Capture admission is independent of the model's active-use lease.
     /// Its completion belongs to this session, never the controller's next one.
     var beginCapture: () -> () -> Void
@@ -110,6 +112,7 @@ struct DictationSessionDependencies {
             captureDestination: { TextInserter.captureDestination(caretCase: .live()) },
             copyText: { TextInserter.copy($0) },
             defaults: services.defaults,
+            admission: services.dictationAdmission,
             beginCapture: beginCapture,
             locatePanelAnchor: { DictationPanelAnchor.current() },
             registerCancelKey: { GlobalHotkey(keyCode: UInt32(kVK_Escape), modifiers: 0, onPress: $0) },

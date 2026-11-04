@@ -108,7 +108,7 @@ final class PortavozAppDelegate:
         else { return }
         let outcome = Self.dictationIntentOutcome(
             for: request,
-            dictationEnabled: UserDefaults.standard.bool(forKey: DictationController.defaultsKey),
+            dictationEnabled: services.dictationAdmission.isEligible(),
             phase: services.dictation.phase,
             hasPastableText: services.dictation.hasPastableText)
         PortavozAppIntentBridge.answerDictationRequest(outcome)

@@ -28,7 +28,7 @@ enum DictationPrewarmPolicy {
 extension AppServices {
     var dictationPrewarmConditions: DictationPrewarmPolicy.Conditions {
         DictationPrewarmPolicy.Conditions(
-            dictationEnabled: defaults.bool(forKey: DictationController.defaultsKey),
+            dictationEnabled: dictationAdmission.isEligible(),
             prewarmEnabled: defaults.bool(forKey: DictationPrewarmPolicy.defaultsKey),
             profile: modelMemoryPreferences.profile,
             engine: LiveSpeechPurpose.dictation.selectedEngine(in: defaults),

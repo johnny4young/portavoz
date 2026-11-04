@@ -83,7 +83,7 @@ final class DictationReadinessTests: XCTestCase {
             let services = try AppServices(
                 arguments: ["-use-temp-store", "-seed-dictation", scenario],
                 environment: [:], dictation: controller)
-            var first = services.makeDictationSessionDependencies()
+            var first = services.admittedDictationDependencies()
             first.waitForFirstBufferDeadline = {}
             controller.toggle(using: first)
             let failed = await eventually {
@@ -94,7 +94,7 @@ final class DictationReadinessTests: XCTestCase {
             controller.cancel()
             // AppServices builds new dependencies on every menu/hotkey call.
             // Recovery state belongs to its one fixture, not that short-lived value.
-            controller.toggle(using: services.makeDictationSessionDependencies())
+            controller.toggle(using: services.admittedDictationDependencies())
             let recovered = await eventually { controller.partialText == "No borres estas notas." }
             XCTAssertTrue(recovered, scenario)
             XCTAssertEqual(controller.phase, .listening)
@@ -425,6 +425,7 @@ private final class ReadinessHarness {
             defaults: defaults, now: { [weak self] in
                 Date(timeIntervalSince1970: self?.now ?? 0)
             },
+            admission: DictationUITestFixture.openAdmission,
             beginCapture: { {} })
     }
 }
