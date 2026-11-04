@@ -29,7 +29,7 @@ from ui_test_runtime import percentile, write_receipt  # noqa: E402
 REPOSITORY = "johnny4young/portavoz"
 WORKFLOWS = ("ci.yml", "ui-tests.yml")
 WORKFLOW_FILES = (ROOT / ".github/workflows/ci.yml",)
-# The API still reads the retired workflow, so its runs keep a limit to be judged against.
+# Jobs that no longer exist still have recorded runs, which keep a limit to be judged against.
 RETIRED_TIMEOUTS = {"swift-scope": 5, "interruption-controls": 30, "build-ui-products": 30, "scoped-ui-tests": 22,
                     "ui-test-gate": 5}
 EVENTS = ("pull_request", "push")

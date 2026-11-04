@@ -504,17 +504,3 @@ jobs:
             fi
           fi
           echo "Gate passed (ui=$UI_REQUIRED, result=$UI_RESULT, verified=${UI_VERIFIED:-not-required})."
-
-  ui-test-gate:
-    # Old required name, until main's protection requires gate instead. A skip under this
-    # name would count as passing, so a manual run keeps another one here too.
-    name: ${{ github.event_name == 'pull_request' && 'ui-test-gate' || 'ui-test-gate-manual' }}
-    needs: gate
-    if: always() && github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Follow the gate
-        env:
-          GATE_RESULT: ${{ needs.gate.result }}
-        run: test "$GATE_RESULT" = "success"

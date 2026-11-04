@@ -656,9 +656,9 @@ the classifier's `passed`, and a lane receipt of this head and of the attempt th
 none missing, and the same cases as the runtime receipt. The known automation-mode timeout therefore leaves the PR red instead of green with no
 evidence, and rerunning the failed jobs is allowed on a PR. The UI lane fails as its last step when its evidence
 is not complete, so that rerun runs it again; a rerun keeps a passed lane, so the gate reads that lane's own
-attempt. A manual run reports `gate-manual` and `ui-test-gate-manual`, skipped or not, so it cannot answer for a PR's required check. Receipts last seven days; past that, rerun all jobs. On `main` a manual run
-disqualifies the commit from a release, so `full_ui` belongs on a branch. `main` still takes only a first attempt for a release (`rejectReruns`). `ui-test-gate`
-follows `gate` only until the protection of `main` requires `gate`. Because a prebuilt-products run does not hand the XCTest
+attempt. A manual run reports `gate-manual`, skipped or not, so it cannot answer for a PR's required check. Receipts last seven days; past that, rerun all jobs. On `main` a manual run
+disqualifies the commit from a release, so `full_ui` belongs on a branch. `main` still takes only a first attempt for a release (`rejectReruns`). The protection
+of `main` requires `gate` alone, without `strict`. Because a prebuilt-products run does not hand the XCTest
 process the app's language, bilingual expectations read
 `UITestLocale.environmentLocale` — the locale the run declared — rather than
 the ambient `Locale.current`; `scripts/check-repository-hygiene.sh` rejects the

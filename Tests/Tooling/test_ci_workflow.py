@@ -151,9 +151,7 @@ class CIWorkflowTests(unittest.TestCase):
         scoped_job = workflow.split("  ui-tests:\n", 1)[1].split(
             "\n  gate:\n", 1
         )[0]
-        gate_job = workflow.split("  gate:\n", 1)[1].split(
-            "\n  ui-test-gate:\n", 1
-        )[0]
+        gate_job = workflow.split("  gate:\n", 1)[1]
 
         self.assertNotIn("build-ui-products", workflow)
         self.assertNotIn("run: make test-ui-build", workflow)
@@ -272,15 +270,13 @@ class CIWorkflowTests(unittest.TestCase):
             body = workflow.split(f"\n  {job}:\n", 1)[1]
             self.assertIn("github.event_name != 'push'", body.split("    steps:\n", 1)[0], job)
 
-    def test_only_a_pull_request_reports_the_required_check_names(self):
+    def test_only_a_pull_request_reports_the_required_check_name(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         gate = workflow.split("\n  gate:\n", 1)[1].split("    steps:\n", 1)[0]
-        follower = workflow.split("\n  ui-test-gate:\n", 1)[1].split("    steps:\n", 1)[0]
 
-        self.assertIn("name: ${{ github.event_name == 'pull_request' && 'gate' || 'gate-manual' }}", gate)
         # GitHub counts a skipped required check as passing, so skipping is not enough here.
-        self.assertIn("name: ${{ github.event_name == 'pull_request' && 'ui-test-gate' || 'ui-test-gate-manual' }}", follower)
-        self.assertIn("if: always() && github.event_name == 'pull_request'", follower)
+        self.assertIn("name: ${{ github.event_name == 'pull_request' && 'gate' || 'gate-manual' }}", gate)
+        self.assertNotIn("ui-test-gate", workflow)
 
     def test_a_rerun_of_failed_jobs_runs_again_a_lane_without_complete_evidence(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
@@ -308,10 +304,10 @@ class CIWorkflowTests(unittest.TestCase):
     def test_the_gate_needs_every_lane(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         jobs = re.findall(r"^  ([a-z][a-z-]+):\n", workflow.split("\njobs:\n", 1)[1], re.MULTILINE)
-        gate = workflow.split("\n  gate:\n", 1)[1].split("\n  ui-test-gate:\n", 1)[0]
+        gate = workflow.split("\n  gate:\n", 1)[1]
         needed = re.search(r"needs: \[(.*)\]", gate).group(1).split(", ")
 
-        self.assertEqual(set(needed), set(jobs) - {"gate", "ui-test-gate"})
+        self.assertEqual(set(needed), set(jobs) - {"gate"})
         self.assertIn("if: always() && github.event_name != 'push'", gate)
 
 
@@ -380,8 +376,6 @@ class UIPrerequisiteTests(unittest.TestCase):
         gate = self.jobs["gate"]
         self.assertIn("CONTROLS_REQUIRED: ${{ needs.scope.outputs.interruption_controls }}", gate)
         self.assertIn("CONTROLS_RESULT: ${{ needs.interruption.result }}", gate)
-        self.assertIn("test \"$GATE_RESULT\" = \"success\"", self.jobs["ui-test-gate"])
-        self.assertIn("    needs: gate\n", self.jobs["ui-test-gate"])
 
     def test_actual_gate_rejects_every_invalid_native_outcome_even_with_green_ui(self):
         states = ("success", "failure", "cancelled", "skipped", "", "neutral")
@@ -492,8 +486,7 @@ class UIArtifactTransportTests(unittest.TestCase):
 
     def test_classifier_fetches_only_receipts_without_removing_raw_evidence(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
-        gate = workflow.split("\n  gate:\n", 1)[1].split(
-            "\n  ui-test-gate:\n", 1)[0]
+        gate = workflow.split("\n  gate:\n", 1)[1]
         self.assertIn("name: ui-receipts-${{ github.run_id }}-${{ needs.ui-tests.outputs.attempt }}", gate)
         self.assertNotIn("ui-evidence-", gate)
         raw = workflow.split("      - name: Preserve UI evidence\n", 1)[1]

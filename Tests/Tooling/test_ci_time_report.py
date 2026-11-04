@@ -28,7 +28,7 @@ PRODUCT_STEPS = {
     "Build the UI host and runner once",
     "Fit the selection to what remains of the job", "Run functional UI evidence",
     "Classify functional evidence and hosted runtime drift",
-    "Require every lane the selection asked for", "Follow the gate", "Fail the lane when its evidence is not complete",
+    "Require every lane the selection asked for", "Fail the lane when its evidence is not complete",
 }
 NOT_BLOCKING_JOBS = {"ios-portability"}
 
@@ -175,6 +175,14 @@ class OutcomeTests(unittest.TestCase):
     def test_a_failed_job_without_a_failed_step_is_infrastructure(self):
         self.assertEqual(self.outcome([job("build-and-test", "10:00:00", "10:00:00", "10:05:00",
                                            conclusion="failure")]), "infrastructure")
+
+    def test_a_passing_attempt_ends_at_the_gate(self):
+        result = row([job("scope", "10:00:00", "10:00:00", "10:01:00", runner="ubuntu-latest"),
+                      job("build-and-test", "10:01:00", "10:01:00", "10:05:00"),
+                      job("gate", "10:05:00", "10:05:00", "10:05:10", runner="ubuntu-latest")])
+
+        self.assertEqual(result["outcome"], "passed")
+        self.assertEqual(result["critical_path"][-1], "gate")
 
     def test_a_refused_rerun_is_named_apart_from_product_failures(self):
         steps = [(report.RERUN_REFUSED_STEP, "failure")]
