@@ -5,7 +5,6 @@ extension AppServices {
     /// Another app can remove what this one verified earlier, so old evidence goes
     /// when the store changes. Checking again is cheap for files that did not change.
     func startWatchingSharedModels() {
-        seedSharedModelFixtureIfRequested()
         Task(priority: .utility) { [modelStore, modelLifecycle] in
             for await _ in modelStore.changes() {
                 for descriptor in ModelCatalog.all {
@@ -24,7 +23,7 @@ extension AppServices {
     }
 
     /// One small model that a second app also claims, in the disposable store only.
-    private func seedSharedModelFixtureIfRequested() {
+    func seedSharedModelFixtureIfRequested() {
         guard usesTemporaryMeetingStore,
               ProcessInfo.processInfo.arguments.contains("-seed-shared-model") else { return }
         Task { [modelStore] in

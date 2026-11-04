@@ -19257,6 +19257,16 @@
         }
       }
     },
+    "No models on this Mac yet": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay modelos en esta Mac"
+          }
+        }
+      }
+    },
     "Models on this Mac": {
       "localizations": {
         "es": {
@@ -19272,7 +19282,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "También lo usa %@"
+            "value": "También usado por %@"
           }
         }
       }
@@ -19282,7 +19292,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lo usa %@"
+            "value": "Usado por %@"
           }
         }
       }

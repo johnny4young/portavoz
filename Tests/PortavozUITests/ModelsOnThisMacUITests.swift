@@ -14,7 +14,7 @@ final class ModelsOnThisMacUITests: PortavozUITestCase {
         let row = app.descendants(matching: .any).matching(predicate).firstMatch
 
         XCTAssertTrue(row.waitForExistenceFast(timeout: 10), "the seeded model is listed")
-        let expected = UITestLocale.environmentLocale == "es" ? "También lo usa Secreteo" : "Also used by Secreteo"
+        let expected = UITestLocale.environmentLocale == "es" ? "También usado por Secreteo" : "Also used by Secreteo"
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: row).contains(expected) })
         attachScreenshot(of: app, named: "pr-models-on-this-mac")
     }

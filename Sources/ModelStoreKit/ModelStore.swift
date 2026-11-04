@@ -113,6 +113,14 @@ public actor ModelStore {
         public let bytes: Int?
         public let isUsedHere: Bool
         public let otherApps: [String]
+
+        public init(id: String, name: String, bytes: Int?, isUsedHere: Bool, otherApps: [String]) {
+            self.id = id
+            self.name = name
+            self.bytes = bytes
+            self.isUsedHere = isUsedHere
+            self.otherApps = otherApps
+        }
     }
 
     private let backing: Result<LocalModelStore, Error>

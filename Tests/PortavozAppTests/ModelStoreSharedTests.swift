@@ -169,17 +169,21 @@ struct ModelStoreSharedTests {
         #expect(current == nil)
     }
 
-    @Test func aChangeNoticeArrivesWhenAnotherStoreInstalls() async throws {
+    @Test(.timeLimit(.minutes(1)))
+    func aChangeNoticeBringsAnotherAppsClaimIntoTheList() async throws {
         let fixture = try Fixture()
         defer { fixture.remove() }
         let store = fixture.store(Self.portavoz)
-        // The watcher needs the store's folders to exist before it starts.
         _ = try await store.ensureAvailable(fixture.descriptor)
         var notices = store.changes().makeAsyncIterator()
 
         _ = try await fixture.store(Self.other).ensureAvailable(fixture.descriptor)
 
-        #expect(await notices.next() != nil)
+        var seen: [String] = []
+        while seen.isEmpty, await notices.next() != nil {
+            seen = await store.installedModels().flatMap(\.otherApps)
+        }
+        #expect(seen == [Self.other.displayName])
     }
 
     @Test func aForcedCheckFindsDamageThatKeepsItsFingerprint() async throws {
