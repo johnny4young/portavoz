@@ -144,6 +144,7 @@ struct SettingsView: View {
                     SupportDiagnosticsSection()
                     BackupSection()
                     recordingsSection
+                    ModelsOnThisMacSection(services: services)
                     ModelCreditsSection()
                 }
             }

@@ -586,11 +586,12 @@ extension AppServices {
             identifier: identifier,
             displayName: identifier.hasSuffix(".dev") ? "Portavoz Dev" : "Portavoz")
         guard usesTemporaryStore else { return .userLibrary(consumer: consumer) }
-        let rootDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(
-            "portavoz-uitest-models-\(UUID().uuidString)",
-            isDirectory: true)
-        return ModelStore(rootDirectory: rootDirectory, consumer: consumer)
+        return ModelStore(rootDirectory: temporaryModelRoot, consumer: consumer)
     }
+
+    static let temporaryModelRoot = FileManager.default.temporaryDirectory.appendingPathComponent(
+        "portavoz-uitest-models-\(UUID().uuidString)",
+        isDirectory: true)
 }
 
 private extension AppServices {

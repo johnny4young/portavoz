@@ -147,6 +147,7 @@
     "SettingsUITests/testAudioPaneOffersCaptureSourceControls()": 15.1,
     "SettingsUITests/testCategoryNavigationRevealsEachPane()": 25.5,
     "SettingsUITests/testDataPaneExportsARedactedSupportFileAndAReadableBackup()": 23.9,
+    "ModelsOnThisMacUITests/testTheDataPaneListsAModelAnotherAppAlsoUses()": 20.0,
     "SettingsUITests/testDamagedDictationStateOffersAReset()": 16.0,
     "SettingsUITests/testMenuBarSaysWhoHandlesDictationInsteadOfOfferingIt()": 16.0,
     "SettingsUITests/testDictationOffersTriggersLanguageAndDictionary()": 19.3,

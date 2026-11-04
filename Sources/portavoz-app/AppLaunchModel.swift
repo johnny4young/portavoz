@@ -183,6 +183,7 @@ final class AppLaunchModel {
         Task(priority: .utility) { [modelStore = services.modelStore] in
             try? await modelStore.collectUnused(keeping: ModelCatalog.all)
         }
+        services.startWatchingSharedModels()
         Task { await services.standingPreMeetingBriefs.start() }
         services.requestSearchReconciliation()
         Task { await services.loadDictationHistory() }

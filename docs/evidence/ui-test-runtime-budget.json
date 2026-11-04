@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 174
+    "expectedCaseCount": 175
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -145,6 +145,7 @@
     "SettingsUITests/testAppleSpeechInspectionFailureOffersExplicitRetry()": 20.0,
     "SettingsUITests/testCategoryNavigationRevealsEachPane()": 24.352,
     "SettingsUITests/testDataPaneExportsARedactedSupportFileAndAReadableBackup()": 40.0,
+    "ModelsOnThisMacUITests/testTheDataPaneListsAModelAnotherAppAlsoUses()": 30.0,
     "SettingsUITests/testDamagedDictationStateOffersAReset()": 25.0,
     "SettingsUITests/testMenuBarSaysWhoHandlesDictationInsteadOfOfferingIt()": 25.0,
     "SettingsUITests/testDictationOffersTriggersLanguageAndDictionary()": 20.0,

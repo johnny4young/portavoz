@@ -8,7 +8,8 @@ import Foundation
 /// evidence.
 public actor VerifiedModelLifecycle {
     typealias VerificationOperation = @Sendable (
-        ModelDescriptor
+        ModelDescriptor,
+        _ forceHash: Bool
     ) async -> ModelStore.VerifiedInstallation?
     typealias InstallationOperation = @Sendable (
         ModelDescriptor,
@@ -34,8 +35,8 @@ public actor VerifiedModelLifecycle {
     private var mutations: [String: Mutation] = [:]
 
     public init(store: ModelStore) {
-        verifyInstallation = { descriptor in
-            await store.verifiedInstallation(descriptor)
+        verifyInstallation = { descriptor, forceHash in
+            await store.verifiedInstallation(descriptor, forceHash: forceHash)
         }
         installModel = { descriptor, progress in
             let directory = try await store.ensureAvailable(
@@ -53,11 +54,11 @@ public actor VerifiedModelLifecycle {
     }
 
     init(
-        verifyInstallation: @escaping VerificationOperation,
+        verifyInstallation: @escaping @Sendable (ModelDescriptor) async -> ModelStore.VerifiedInstallation?,
         installModel: @escaping InstallationOperation,
         removeModel: @escaping RemovalOperation
     ) {
-        self.verifyInstallation = verifyInstallation
+        self.verifyInstallation = { descriptor, _ in await verifyInstallation(descriptor) }
         self.installModel = installModel
         self.removeModel = removeModel
     }
@@ -88,7 +89,7 @@ public actor VerifiedModelLifecycle {
                 let generation = UUID()
                 let verifyInstallation = verifyInstallation
                 let task = Task {
-                    await verifyInstallation(descriptor)
+                    await verifyInstallation(descriptor, forceVerification)
                 }
                 verification = Verification(generation: generation, task: task)
                 verifications[key] = verification
