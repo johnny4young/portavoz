@@ -18,7 +18,7 @@ extension AppServices {
     func syncPasteLastShortcut() {
         pasteLastHotkey?.unregister()
         pasteLastHotkey = nil
-        let wanted = defaults.bool(forKey: DictationController.defaultsKey)
+        let wanted = dictationTriggersMayArm && defaults.bool(forKey: DictationController.defaultsKey)
             && defaults.bool(forKey: PasteLastShortcut.defaultsKey)
         // Disposable launches never register Carbon hotkeys.
         guard wanted, !usesTemporaryMeetingStore else {

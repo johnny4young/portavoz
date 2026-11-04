@@ -254,7 +254,7 @@ extension AppServices {
     }
 
     @discardableResult
-    private func releaseIdleModel(
+    func releaseIdleModel(
         _ family: ResourceModelFamily
     ) async -> Bool {
         switch family {

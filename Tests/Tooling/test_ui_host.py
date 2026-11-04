@@ -160,12 +160,21 @@ class WiringTests(unittest.TestCase):
         project = (ROOT / "project.yml").read_text(encoding="utf-8")
         app = re.search(r'name: "portavoz-app",\s*dependencies: \[(.*?)\n\s*\]', package, re.DOTALL).group(1)
         linked = set(re.findall(r'^\s*"(\w+)"|[\s,]"(\w+)"(?=,|\s*$)', app, re.MULTILINE))
-        swiftpm = {name for pair in linked for name in pair if name} - {"Sparkle"}
+        swiftpm = {name for pair in linked for name in pair if name} - {"Sparkle", "DictationOwnership"}
         section = project.split("    dependencies:\n      - package: Portavoz\n        products:\n", 1)[1]
-        section = section.split("      - package: Sparkle", 1)[0]
+        section, others = section.split("      - package: Sparkle", 1)
 
         self.assertEqual(set(re.findall(r"- (\w+)", section)), swiftpm)
         self.assertIn('.product(name: "Sparkle", package: "Sparkle")', app)
+        self.assertIn('.product(name: "DictationOwnership", package: "secreteo")', app)
+        self.assertIn("- package: secreteo\n        product: DictationOwnership", others)
+
+    def test_every_build_declares_the_ownership_protocol(self):
+        release = (ROOT / "scripts/make-app.sh").read_text(encoding="utf-8")
+        project = (ROOT / "project.yml").read_text(encoding="utf-8")
+
+        self.assertIn("<key>DictationOwnershipProtocol</key>\n    <integer>1</integer>", release)
+        self.assertIn("DictationOwnershipProtocol: 1", project)
 
 
 @unittest.skipUnless(shutil.which("xcodegen"), "XcodeGen is required to parse the UI projects")

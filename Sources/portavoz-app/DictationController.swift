@@ -140,7 +140,7 @@ final class DictationController {
         services: AppServices,
         promptIfNeeded: Bool = false
     ) {
-        let enabled = UserDefaults.standard.bool(forKey: Self.defaultsKey)
+        let enabled = services.dictationTriggersMayArm && UserDefaults.standard.bool(forKey: Self.defaultsKey)
         let storedButton = MouseButtonSetting.load()
         let desiredButton = enabled
             && MouseButtonSetting.isEligible(storedButton) ? storedButton : nil
@@ -148,8 +148,8 @@ final class DictationController {
 
         // Rebinding or disabling while the mouse owns capture would otherwise
         // discard the matching release event and strand a listening session.
-        if mouseOwnsSession, isActive {
-            cancel()
+        if mouseOwnsSession {
+            retireTriggerOwnedSession()
         }
         mousePTT?.invalidate()
         mousePTT = nil
@@ -165,13 +165,18 @@ final class DictationController {
         }
         guard let ptt = MouseButtonPTT(
             button: desiredButton,
+            // Admission does file I/O, so it leaves the event tap callback.
             onPress: { [weak self, weak services] in
-                guard let self, let services else { return }
-                self.handleMouse(.press, services: services)
+                DispatchQueue.main.async {
+                    guard let self, let services else { return }
+                    self.handleMouse(.press, services: services)
+                }
             },
             onRelease: { [weak self, weak services] in
-                guard let self, let services else { return }
-                self.handleMouse(.release, services: services)
+                DispatchQueue.main.async {
+                    guard let self, let services else { return }
+                    self.handleMouse(.release, services: services)
+                }
             })
         else { return }
         mousePTT = ptt
@@ -188,6 +193,9 @@ final class DictationController {
     /// mid-phoneme.
     private static let stopTail: Duration = .milliseconds(250)
     private var microphoneReadiness: DictationMicrophoneReadiness?
+    var sessionLease: DictationLease?
+    var yieldsToHandoff = false
+    var handoffGrace: Task<Void, Never>?
 
     /// Hotkey press: start listening, or finish-and-insert if already on.
     func toggle(services: AppServices) {
@@ -222,6 +230,7 @@ final class DictationController {
               case .success(let lease) = dependencies.admission.acquire(dependencies.admissionKind)
         else { return }
         discardPreviousDelivery()
+        adopt(lease)
         self.dependencies = dependencies
         sessionFeedbackWait = dependencies.waitForFeedbackDismissal
         measurement = dependencies.measurementSink.map {
@@ -282,16 +291,6 @@ final class DictationController {
             capture.end()
             await lease.releaseAfterDelivery()
         }
-    }
-
-    private func discardPreviousDelivery() {
-        retryDeliveryTask?.cancel()
-        retryDeliveryTask = nil
-        isRetryingDelivery = false
-        deliveryID = nil
-        destination = nil
-        recoveryText = ""
-        copyStatus = .idle
     }
 
     private func runSession(
@@ -456,6 +455,11 @@ final class DictationController {
         releaseCancelKey()
         phase = .delivering
         showPanel()
+        // Nothing optional runs for words that cannot be delivered: the other app is waiting for the lease.
+        guard !yieldsToHandoff, sessionLease?.revalidate() != false else {
+            refuseDelivery(text, sessionID: sessionID)
+            return
+        }
         if let gate = analysis.gate, await gate.verdict() == .noSpeech {
             guard activeSessionID == sessionID else { return }
             presentNoSpeech(text, id: sessionID)
@@ -467,7 +471,9 @@ final class DictationController {
         else { return }
         let delivered = delivery.text
         measurement?.record(.deliveryStarted)
-        let result = await destination.insert(delivered)
+        // Read again here: polish may have taken a while since the check above.
+        let stillOwner = !yieldsToHandoff && sessionLease?.revalidate() != false
+        let result = stillOwner ? await destination.insert(delivered) : .refused(.ownershipChanged)
         measurement?.finishDelivery(result)
         guard activeSessionID == sessionID else { return }
         completeSession(id: sessionID)
@@ -717,7 +723,7 @@ extension DictationController {
         self.destination = destination
         isRetryingDelivery = true
         retryDeliveryTask = Task { [weak self] in
-            let result = await destination.insert(text)
+            let result = lease.revalidate() ? await destination.insert(text) : .refused(.ownershipChanged)
             if let self, self.deliveryID == id, !Task.isCancelled {
                 self.isRetryingDelivery = false
                 self.presentDelivery(result, text: text, id: id)
@@ -730,7 +736,9 @@ extension DictationController {
     private func presentDelivery(
         _ result: DictationDeliveryOutcome, text: String, alternate: DictationDeliveryText? = nil, id: UUID
     ) {
-        guard deliveryID == id, let dependencies, !closesInternalDelivery() else { return }
+        // Words kept from a handoff stay on screen even for a session that delivers internally.
+        guard deliveryID == id, let dependencies,
+              result == .refused(.ownershipChanged) || !closesInternalDelivery() else { return }
         lastInsertion = result == .verified ? destination?.lastInsertion() : nil
         cancelFeedbackDismissal()
         copyStatus = .idle
@@ -1252,5 +1260,33 @@ extension DictationController {
             in: learnable.defaults, temporary: learnable.temporary)
         correctionSummary = L10n.format("From now on, “%@” is written “%@”.", rule.trigger, rule.replacement)
         scheduleFeedbackDismiss(after: .milliseconds(1600), wait: learnable.wait)
+    }
+}
+
+// The session's side of the ownership protocol.
+extension DictationController {
+    var sessionIsPractice: Bool { dependencies?.admissionKind == .practice }
+    var sessionHandoffGrace: Duration? { dependencies?.handoffGrace }
+    /// Stays listening until transcription ends, so the phase alone cannot say the microphone is open.
+    var microphoneIsOpen: Bool {
+        phase == .listening && stopTask == nil && stopIssuedSessionID != activeSessionID
+    }
+
+    fileprivate func discardPreviousDelivery() {
+        retryDeliveryTask?.cancel()
+        retryDeliveryTask = nil
+        isRetryingDelivery = false
+        deliveryID = nil
+        destination = nil
+        recoveryText = ""
+        copyStatus = .idle
+    }
+
+    fileprivate func refuseDelivery(_ text: String, sessionID: UUID) {
+        let refused = DictationDeliveryOutcome.refused(.ownershipChanged)
+        measurement?.finishDelivery(refused)
+        completeSession(id: sessionID)
+        deliveryID = sessionID
+        presentDelivery(refused, text: text, id: sessionID)
     }
 }

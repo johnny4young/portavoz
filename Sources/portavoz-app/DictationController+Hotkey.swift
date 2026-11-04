@@ -7,6 +7,7 @@ extension DictationController {
             cancel()
         }
         shortcut.sync(
+            mayArm: services.dictationTriggersMayArm,
             registrar: services.dictationShortcutRegistrar,
             onPress: { [weak self, weak services] in
                 guard let self, let services else { return }

@@ -201,12 +201,9 @@ final class AppLaunchModel {
                 arguments: arguments)
             await services.configureInitialSummaryProviderIfNeeded()
         }
-        services.dictation.syncHotkey(services: services)
-        services.syncPasteLastShortcut()
-        services.syncRewriteSelectionShortcut()
-        services.dictation.syncMousePTT(services: services)
-        services.dictation.syncModifierPTT(services: services)
-        services.prewarmDictationIfConfigured()
+        services.connectDictationOwnership()
+        services.dictationOwnership.start()
+        services.syncDictationTriggers()
 
         // The AppKit delegate may already have observed application launch
         // while the database was unavailable. Re-publish, without consuming,

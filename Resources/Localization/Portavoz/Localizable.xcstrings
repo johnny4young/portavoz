@@ -601,6 +601,16 @@
         }
       }
     },
+    "Another app took over dictation, so nothing was inserted. Copy your text to keep it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otra app se encargó del dictado, así que no se insertó nada. Copia tu texto para conservarlo."
+          }
+        }
+      }
+    },
     "API key": {
       "localizations": {
         "es": {

@@ -56,6 +56,8 @@ final class SelectionRewriteController {
     /// What the user said for this rewrite; it acts as a one-time recipe.
     private(set) var spokenInstruction: String?
     @ObservationIgnored private var selection: CapturedSelection?
+    @ObservationIgnored private var selectionGeneration: Int?
+    @ObservationIgnored private var replaceIsRevoked = false
     @ObservationIgnored private var dependencies: Dependencies?
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private var keys: [any GlobalHotkeyRegistration] = []
@@ -71,6 +73,8 @@ final class SelectionRewriteController {
     func start(using dependencies: Dependencies) {
         guard case .success(let lease) = dependencies.admission.acquire(.global) else { return }
         cancel()
+        selectionGeneration = lease.generation
+        replaceIsRevoked = false
         self.dependencies = dependencies
         let id = generation
         phase = .capturing
@@ -207,6 +211,12 @@ final class SelectionRewriteController {
             fail(L10n.text("Nothing was replaced. Copy the rewrite instead."))
             return
         }
+        // The same owner after a handoff there and back is still a different session.
+        guard !replaceIsRevoked, lease.generation == selectionGeneration, lease.revalidate() else {
+            lease.release()
+            fail(L10n.text("Nothing was replaced. Copy the rewrite instead."))
+            return
+        }
         releaseKeys()
         phase = .replacing
         show()
@@ -228,6 +238,16 @@ final class SelectionRewriteController {
         case .refused:
             fail(L10n.text("Nothing was replaced. Copy the rewrite instead."))
         }
+    }
+
+    /// A non-owner gives up exclusive shortcuts. The panel's own buttons stay, and Copy with them.
+    func releaseGlobalKeys() {
+        releaseKeys()
+    }
+
+    /// A reset restarts generations, so a preview from before one could match again later.
+    func revokeReplace() {
+        replaceIsRevoked = true
     }
 
     func copyResult() {

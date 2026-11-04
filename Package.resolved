@@ -1,5 +1,5 @@
 {
-  "originHash" : "09d31b19b2a222d83e9766f276cd71d64572c70a44bb03dba5f172935bca4416",
+  "originHash" : "5b87f923b97aec61d6e02c9d958ec184a4a934d604fc3523d664cd921ed18316",
   "pins" : [
     {
       "identity" : "eventsource",
@@ -43,6 +43,14 @@
       "state" : {
         "revision" : "3b339ad6e3b3f44c8121ecff5131c7fd55e075e6",
         "version" : "3.32.3"
+      }
+    },
+    {
+      "identity" : "secreteo",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/johnny4young/secreteo.git",
+      "state" : {
+        "revision" : "9f1015452ae92eeb023793c37d95d60ae7a33ef6"
       }
     },
     {

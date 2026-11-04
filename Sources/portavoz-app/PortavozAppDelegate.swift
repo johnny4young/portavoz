@@ -75,6 +75,7 @@ final class PortavozAppDelegate:
         _ = notification
         MainActor.assumeIsolated {
             guard let services = Self.services else { return }
+            services.dictationOwnership.reevaluate()
             services.dictation.syncMousePTT(services: services)
             services.dictation.syncModifierPTT(services: services)
         }
@@ -108,7 +109,7 @@ final class PortavozAppDelegate:
         else { return }
         let outcome = Self.dictationIntentOutcome(
             for: request,
-            dictationEnabled: services.dictationAdmission.isEligible(),
+            refusal: services.dictation.isActive ? nil : services.dictationAdmission.refusalNow(),
             phase: services.dictation.phase,
             hasPastableText: services.dictation.hasPastableText)
         PortavozAppIntentBridge.answerDictationRequest(outcome)
@@ -121,11 +122,15 @@ final class PortavozAppDelegate:
 
     static func dictationIntentOutcome(
         for request: PortavozAppIntentBridge.DictationRequest,
-        dictationEnabled: Bool,
+        refusal: DictationAdmissionRefusal?,
         phase: DictationController.Phase,
         hasPastableText: Bool
     ) -> PortavozAppIntentBridge.DictationRequestOutcome {
-        guard dictationEnabled else { return .dictationOff }
+        switch refusal {
+        case .dictationOff, .notOwner, .unavailable: return .dictationOff
+        case .busy, .transferring: return .busy
+        case nil: break
+        }
         switch (request, phase) {
         case (_, .delivering), (_, .recovery):
             return .busy

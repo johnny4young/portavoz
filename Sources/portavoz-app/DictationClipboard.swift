@@ -72,7 +72,8 @@ final class DictationClipboard {
     func copySelection(
         on pasteboard: NSPasteboard, timeout: Duration = .milliseconds(500), post: () -> Bool
     ) async -> String? {
-        guard !isMutating, states[pasteboard.name] == nil,
+        // A session sharing the lease may arrive while the last paste is still on loan.
+        guard await waitForRestoration(on: pasteboard), !isMutating, states[pasteboard.name] == nil,
               let original = PasteboardSnapshot(of: pasteboard) else { return nil }
         let before = pasteboard.changeCount
         guard post() else { return nil }

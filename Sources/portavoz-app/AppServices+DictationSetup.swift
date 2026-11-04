@@ -6,13 +6,21 @@ extension AppServices {
     /// Registers or retires every dictation trigger after the enable switch
     /// changes, from Settings or onboarding.
     func applyDictationEnabled(_ enabled: Bool) {
-        dictation.syncHotkey(services: self)
-        syncPasteLastShortcut()
-        syncRewriteSelectionShortcut()
-        dictation.syncMousePTT(services: self, promptIfNeeded: enabled)
-        dictation.syncModifierPTT(services: self, promptIfNeeded: enabled)
+        syncDictationTriggers(promptIfNeeded: enabled)
         prewarmDictationIfConfigured()
         if enabled { Task { await prepareSpeechGateIfEnabled() } }
+        Task { [weak self] in
+            guard let self else { return }
+            await dictationOwnership.preferenceChanged(
+                isOn: enabled,
+                arm: {
+                    self.syncDictationTriggers()
+                    return self.dictation.shortcut.availability != .unavailable
+                },
+                disarm: { self.syncDictationTriggers() })
+            // The first sync above ran before this app owned anything, so it could not prompt.
+            syncDictationTriggers(promptIfNeeded: enabled)
+        }
     }
 
     /// Disposable launches can start with history on, optionally with two saved rows.

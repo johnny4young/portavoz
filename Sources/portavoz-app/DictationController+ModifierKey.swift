@@ -13,11 +13,11 @@ extension DictationController {
     /// Arms the held-modifier trigger to match Settings. It shares the mouse
     /// trigger's Accessibility trust and its retry when the app reactivates.
     func syncModifierPTT(services: AppServices, promptIfNeeded: Bool = false) {
-        let enabled = UserDefaults.standard.bool(forKey: Self.defaultsKey)
+        let enabled = services.dictationTriggersMayArm && UserDefaults.standard.bool(forKey: Self.defaultsKey)
         let desired = enabled ? ModifierKeySetting.load() : .off
         if modifierTrigger.ptt != nil, modifierTrigger.setting == desired { return }
         // Rebinding while the modifier owns capture would strand its release.
-        if modifierTrigger.ownsSession, isActive { cancel() }
+        if modifierTrigger.ownsSession { retireTriggerOwnedSession() }
         modifierTrigger.ptt?.invalidate()
         modifierTrigger.ptt = nil
         modifierTrigger.setting = .off
@@ -26,18 +26,25 @@ extension DictationController {
         if promptIfNeeded { _ = TextInserter.canInsert(promptIfNeeded: true) }
         guard let ptt = ModifierKeyPTT(
             setting: desired,
+            // Admission does file I/O, so it leaves the event tap callback.
             onPress: { [weak self, weak services] in
-                guard let self, let services else { return }
-                handleModifier(.press) { self.start(services: services) }
+                DispatchQueue.main.async {
+                    guard let self, let services else { return }
+                    self.handleModifier(.press) { self.start(services: services) }
+                }
             },
             onRelease: { [weak self, weak services] in
-                guard let self, let services else { return }
-                handleModifier(.release) { self.start(services: services) }
+                DispatchQueue.main.async {
+                    guard let self, let services else { return }
+                    self.handleModifier(.release) { self.start(services: services) }
+                }
             },
             onChord: { [weak self] in
-                // A shortcut typed while holding the key was never dictation.
-                guard let self, modifierTrigger.ownsSession, isActive else { return }
-                cancel()
+                DispatchQueue.main.async {
+                    // A shortcut typed while holding the key was never dictation.
+                    guard let self, self.modifierTrigger.ownsSession, self.isActive else { return }
+                    self.cancel()
+                }
             })
         else {
             modifierTrigger.unavailable = true

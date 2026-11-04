@@ -32,6 +32,8 @@ struct DictationSessionDependencies {
     }
     var admission: DictationAdmission
     var admissionKind = DictationAdmissionKind.global
+    /// How long a listening session may run once another app asks for ownership.
+    var handoffGrace: Duration = .seconds(5)
     /// A refused start must not reach this, so nothing downstream moves on a refusal.
     var sessionAdmitted: () -> Void = {}
     /// Capture admission is independent of the model's active-use lease.

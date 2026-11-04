@@ -203,6 +203,8 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
     <string>public.app-category.productivity</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>DictationOwnershipProtocol</key>
+    <integer>1</integer>
     <key>NSMicrophoneUsageDescription</key>
     <string>Portavoz records your microphone to transcribe your side of the meeting. Audio never leaves your Mac.</string>
     <key>NSAudioCaptureUsageDescription</key>

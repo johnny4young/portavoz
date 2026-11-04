@@ -39,6 +39,9 @@ packages:
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
     from: 2.0.0
+  secreteo:
+    url: https://github.com/johnny4young/secreteo.git
+    revision: 9f1015452ae92eeb023793c37d95d60ae7a33ef6
 
 targets:
   Portavoz:
@@ -61,6 +64,7 @@ targets:
     info:
       path: dist/PortavozUITest-Info.plist
       properties:
+        DictationOwnershipProtocol: 1
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations:
           - en
@@ -98,6 +102,8 @@ targets:
           - AudioPlaybackKit
           - PortavozCLIKit
       - package: Sparkle
+      - package: secreteo
+        product: DictationOwnership
 
   PortavozDictationReceiver:
     type: application

@@ -40,7 +40,7 @@ final class DictationIntentTests: XCTestCase {
             phase: DictationController.Phase = .idle, pastable: Bool = true
         ) -> PortavozAppIntentBridge.DictationRequestOutcome {
             PortavozAppDelegate.dictationIntentOutcome(
-                for: request, dictationEnabled: enabled, phase: phase, hasPastableText: pastable)
+                for: request, refusal: enabled ? nil : .dictationOff, phase: phase, hasPastableText: pastable)
         }
         XCTAssertEqual(outcome(.toggle, enabled: false), .dictationOff)
         XCTAssertEqual(outcome(.pasteLast, enabled: false), .dictationOff)
