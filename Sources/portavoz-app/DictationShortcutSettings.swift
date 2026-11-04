@@ -26,7 +26,7 @@ struct DictationShortcutSettings: View {
                 .foregroundStyle(.secondary)
             Button("Retry shortcut", action: retry)
                 .accessibilityIdentifier("settings-dictation-shortcut-retry")
-        } else {
+        } else if shortcut.availability != .disabled {
             Text(L10n.format("Use %@ to start dictation; press it again to finish.", shortcut.setting.label))
                 .font(.caption)
                 .foregroundStyle(.secondary)

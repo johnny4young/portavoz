@@ -470,11 +470,14 @@ final class SettingsUITests: PortavozUITestCase {
         let status = app.staticTexts["settings-dictation-owner-status"]
         XCTAssertTrue(status.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(renderedText(of: status).contains("Secreteo"))
+        let shortcutHelp = app.staticTexts["settings-dictation-shortcut-help"]
+        XCTAssertFalse(shortcutHelp.exists, "The shortcut does nothing while another app owns dictation")
         attachScreenshot(of: app, named: "pr-dictation-owner-row")
 
         app.buttons["settings-dictation-owner-use-portavoz"].click()
 
         XCTAssertTrue(status.waitForDisappearance(timeout: 10))
+        XCTAssertTrue(shortcutHelp.waitForExistenceFast(timeout: 10))
     }
 
     @MainActor
