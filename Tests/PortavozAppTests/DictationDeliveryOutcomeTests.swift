@@ -190,12 +190,12 @@ final class DictationDeliveryOutcomeTests: XCTestCase {
         let arguments = ["-seed-dictation", "-seed-dictation-delivery", "-seed-dictation-verified"]
         XCTAssertNil(DictationUITestFixture(arguments: arguments, usesTemporaryStore: false))
         XCTAssertNil(DictationUITestFixture(arguments: Array(arguments.dropFirst()), usesTemporaryStore: true))
-        let unavailable = DictationUITestFixture.dependencies(fixture: nil, beginCapture: { {} })
+        let unavailable = DictationUITestFixture.dependencies(fixture: nil, admission: .open, beginCapture: { {} })
         XCTAssertFalse(unavailable.canInsert())
         for verified in [false, true] {
             let flags = verified ? arguments : Array(arguments.dropLast())
             let fixture = DictationUITestFixture(arguments: flags, usesTemporaryStore: true)
-            let dependencies = DictationUITestFixture.dependencies(fixture: fixture, beginCapture: { {} })
+            let dependencies = DictationUITestFixture.dependencies(fixture: fixture, admission: .open, beginCapture: { {} })
             let destination = dependencies.captureDestination()
             let result = await destination.insert("Synthetic output")
             XCTAssertEqual(result, verified ? .verified : .dispatched)

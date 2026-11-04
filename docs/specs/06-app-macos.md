@@ -5205,10 +5205,13 @@ directory.
 `DictationLease` from `acquire(_:)` before anything else happens, so a refusal opens no microphone, keeps
 recovery text and does not consume Paste last. A hotkey or modifier release after a refused press finds no
 session and does nothing. `DictationPracticeField.route` asks as `.practice`, which the preference does not
-gate. Prewarm and `dictationIntentOutcome` read `isEligible`. A session releases its lease after its task ends,
-which is after delivery and the microphone's Stop. A replay releases it when its insert returns. Rewrite releases
-it after reading the selection and takes another to replace, so a refused replace fails with the rewrite still
-available to copy.
+gate, and whose session skips spoken corrections, which edit another app's text. Prewarm and
+`dictationIntentOutcome` read `isEligible`. `sessionAdmitted` runs only for an admitted session, so a refused
+"Say how" stays on the rewrite's choices. `releaseAfterDelivery()` waits for `DictationClipboard`'s pending
+restore, which a cancelled caller cannot cut short, after the session's delivery and the microphone's Stop or a
+replay's insert. The result is already on screen by then. Rewrite releases after reading the selection, takes
+another lease to replace, and asks for admission before cancelling the one in progress, so a refusal leaves it
+open. A posted Copy puts the clipboard back even if its caller was cancelled.
 
 ### Dictation actions in Shortcuts (D583)
 

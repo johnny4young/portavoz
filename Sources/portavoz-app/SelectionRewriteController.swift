@@ -69,8 +69,8 @@ final class SelectionRewriteController {
     var isActive: Bool { phase != .idle }
 
     func start(using dependencies: Dependencies) {
-        cancel()
         guard case .success(let lease) = dependencies.admission.acquire(.global) else { return }
+        cancel()
         self.dependencies = dependencies
         let id = generation
         phase = .capturing
@@ -129,7 +129,7 @@ final class SelectionRewriteController {
         result.recordStats = { _ in }
         result.textModeOverride = .clean
         result.deliversInternally = true
-        beginListening()
+        result.sessionAdmitted = { [weak self] in self?.beginListening() }
         return result
     }
 
@@ -213,16 +213,20 @@ final class SelectionRewriteController {
         let id = generation
         task = Task { [weak self] in
             let outcome = await selection.destination.insert(text)
-            lease.release()
-            guard let self, self.generation == id else { return }
-            switch outcome {
-            case .verified, .dispatched:
-                self.phase = .replaced
-                self.show()
-                self.scheduleClose(after: .milliseconds(1600))
-            case .refused:
-                self.fail(L10n.text("Nothing was replaced. Copy the rewrite instead."))
-            }
+            self?.finishReplacing(outcome, id: id)
+            await lease.releaseAfterDelivery()
+        }
+    }
+
+    private func finishReplacing(_ outcome: DictationDeliveryOutcome, id: UUID) {
+        guard generation == id else { return }
+        switch outcome {
+        case .verified, .dispatched:
+            phase = .replaced
+            show()
+            scheduleClose(after: .milliseconds(1600))
+        case .refused:
+            fail(L10n.text("Nothing was replaced. Copy the rewrite instead."))
         }
     }
 

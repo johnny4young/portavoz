@@ -13,8 +13,8 @@ extension DictationControllerTests {
                 usesTemporaryStore: true))
             let controller = DictationController(presentsPanel: false)
             defer { controller.cancel() }
-            _ = DictationUITestFixture.dependencies(fixture: fixture, beginCapture: { {} })
-            controller.toggle(using: DictationUITestFixture.dependencies(fixture: fixture, beginCapture: { {} }))
+            _ = DictationUITestFixture.dependencies(fixture: fixture, admission: .open, beginCapture: { {} })
+            controller.toggle(using: DictationUITestFixture.dependencies(fixture: fixture, admission: .open, beginCapture: { {} }))
             let failed = await awaitEventually {
                 if case .failed = controller.phase { return true }
                 return false
@@ -23,7 +23,7 @@ extension DictationControllerTests {
             XCTAssertEqual(controller.phase, .failed(DictationMicrophoneReadiness.Failure.interrupted.message))
             XCTAssertEqual(controller.confirmedText, fixture.text)
             controller.cancel()
-            controller.toggle(using: DictationUITestFixture.dependencies(fixture: fixture, beginCapture: { {} }))
+            controller.toggle(using: DictationUITestFixture.dependencies(fixture: fixture, admission: .open, beginCapture: { {} }))
             let restarted = await awaitEventually { controller.partialText == fixture.text }
             XCTAssertTrue(restarted)
             XCTAssertEqual(controller.phase, .listening)

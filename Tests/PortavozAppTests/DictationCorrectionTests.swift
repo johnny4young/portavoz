@@ -88,6 +88,22 @@ struct DictationCorrectionDeliveryTests {
     }
 
     @Test
+    func aPracticeSessionNeverEditsAnotherAppsInsertion() async throws {
+        let receiver = DictationFixtureReceiver()
+        let first = DictationControllerHarness(text: "ship it on friday")
+        defer { first.controller.cancel() }
+        try await dictate(first, dependencies(first, receiver: receiver))
+        let practice = DictationPracticeField()
+        practice.show(UUID(), isKey: true)
+        let command = DictationControllerHarness(text: "change friday to monday", controller: first.controller)
+
+        try await dictate(command, practice.route(dependencies(command, receiver: receiver), appIsActive: true))
+
+        #expect(receiver.text == "ship it on friday")
+        #expect(practice.text == "change friday to monday")
+    }
+
+    @Test
     func aCorrectionIsLearnedOnlyWhenChosenAndAppliesToTheNextDictation() async throws {
         let receiver = DictationFixtureReceiver()
         let first = DictationControllerHarness(text: "ship it on friday")

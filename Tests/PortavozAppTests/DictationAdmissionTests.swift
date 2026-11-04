@@ -1,3 +1,4 @@
+import AppKit
 import ApplicationKit
 import Foundation
 import PortavozCore
@@ -6,11 +7,17 @@ import Testing
 @testable import portavoz_app
 @testable import PortavozTestSupport
 
+extension DictationAdmission {
+    /// For tests of what happens after admission, which those suites do not vary.
+    static var open: Self {
+        Self(acquire: { _ in .success(DictationLease()) }, isEligible: { true })
+    }
+}
+
 extension AppServices {
-    /// For tests of what happens after admission, which these suites do not vary.
     func admittedDictationDependencies(capturesInstruction: Bool = true) -> DictationSessionDependencies {
         var dependencies = makeDictationSessionDependencies(capturesInstruction: capturesInstruction)
-        dependencies.admission = DictationUITestFixture.openAdmission
+        dependencies.admission = .open
         return dependencies
     }
 }
@@ -24,6 +31,7 @@ struct DictationAdmissionTests {
         var refuses = false
         var kinds: [DictationAdmissionKind] = []
         var released = 0
+        var settle: () async -> Void = {}
         var held: Int { kinds.count - released }
 
         var admission: DictationAdmission {
@@ -31,7 +39,7 @@ struct DictationAdmissionTests {
                 acquire: { kind in
                     guard !self.refuses else { return .failure(.dictationOff) }
                     self.kinds.append(kind)
-                    return .success(DictationLease { self.released += 1 })
+                    return .success(DictationLease(settle: { await self.settle() }, end: { self.released += 1 }))
                 },
                 isEligible: { !self.refuses })
         }
@@ -124,6 +132,77 @@ struct DictationAdmissionTests {
     }
 
     @Test
+    func aRefusedModifierPressOwnsNothing() {
+        let harness = DictationControllerHarness(text: "No borres estas notas.")
+        let port = Port()
+        port.refuses = true
+        let dependencies = dependencies(harness, port)
+
+        harness.controller.handleModifier(.press) { harness.controller.toggle(using: dependencies) }
+
+        #expect(!harness.controller.modifierTrigger.ownsSession)
+        #expect(harness.controller.phase == .idle)
+    }
+
+    @Test
+    func theLeaseOutlastsTheClipboardRestoreWithoutDelayingTheResult() async throws {
+        let harness = DictationControllerHarness(text: "So we ship it tomorrow.")
+        defer { harness.controller.cancel() }
+        let port = Port()
+        let restore = PreparationGate()
+        port.settle = { await restore.wait() }
+
+        try await dictate(harness, dependencies(harness, port))
+
+        try await eventually { restore.started && harness.insertions.count == 1 }
+        #expect(!harness.controller.isActive)
+        #expect(port.held == 1)
+        restore.release()
+        try await eventually { port.held == 0 }
+    }
+
+    @Test
+    func aCancelledCallerCannotCutTheRestoreShort() async throws {
+        let restore = PreparationGate()
+        var settleWasCancelled = false
+        var released = false
+        let lease = DictationLease(
+            settle: {
+                await restore.wait()
+                settleWasCancelled = Task.isCancelled
+            },
+            end: { released = true })
+        let release = Task { await lease.releaseAfterDelivery() }
+        try await eventually { restore.started }
+
+        release.cancel()
+        restore.release()
+        await release.value
+
+        #expect(!settleWasCancelled)
+        #expect(released)
+    }
+
+    @Test
+    func theLeaseEndsOnlyAfterTheRealClipboardIsBack() async throws {
+        let board = NSPasteboard(name: .init("app.portavoz.admission.\(UUID().uuidString)"))
+        defer { board.releaseGlobally() }
+        board.clearContents()
+        board.setString("mine", forType: .string)
+        let clipboard = DictationClipboard.shared
+        let loan = try #require(clipboard.borrow("dictated", on: board))
+        clipboard.restoreLater(loan, on: board, after: .milliseconds(50))
+        var contentsAtRelease: String?
+        let lease = DictationLease(
+            settle: { _ = await clipboard.waitForRestoration(on: board) },
+            end: { contentsAtRelease = board.string(forType: .string) })
+
+        await lease.releaseAfterDelivery()
+
+        #expect(contentsAtRelease == "mine")
+    }
+
+    @Test
     func aCancelledSessionReleasesItsLease() async throws {
         let harness = DictationControllerHarness(text: "No borres estas notas.")
         let port = Port()
@@ -209,6 +288,25 @@ struct DictationAdmissionTests {
     }
 
     @Test
+    func aReplayHoldsItsLeaseThroughTheClipboardRestore() async throws {
+        let harness = DictationControllerHarness(text: "So we ship it tomorrow.")
+        defer { harness.controller.cancel() }
+        let port = Port()
+        let dependencies = dependencies(harness, port)
+        try await dictate(harness, dependencies)
+        try await eventually { harness.insertions.count == 1 && !harness.controller.isActive && port.held == 0 }
+        let restore = PreparationGate()
+        port.settle = { await restore.wait() }
+
+        harness.controller.pasteLastDictation(using: dependencies)
+
+        try await eventually { harness.insertions.count == 2 && restore.started }
+        #expect(port.held == 1)
+        restore.release()
+        try await eventually { port.held == 0 }
+    }
+
+    @Test
     func thePracticeFieldAsksForPracticeOnlyWhileItIsTheTarget() {
         let harness = DictationControllerHarness(text: "Hola")
         let practice = DictationPracticeField()
@@ -232,6 +330,22 @@ struct DictationAdmissionTests {
         try await dictate(harness, dependencies)
 
         try await eventually { practice.text == "Hola" }
+    }
+
+    @Test
+    func pasteLastIntoThePracticeFieldRunsWithTheGlobalPreferenceOff() async throws {
+        let harness = DictationControllerHarness(text: "Hola")
+        defer { harness.controller.cancel() }
+        let practice = DictationPracticeField()
+        practice.show(UUID(), isKey: true)
+        var dependencies = practice.route(harness.dependencies, appIsActive: true)
+        dependencies.admission = .preference(in: harness.defaults)
+        try await dictate(harness, dependencies)
+        try await eventually { practice.text == "Hola" && !harness.controller.isActive }
+
+        harness.controller.pasteLastDictation(using: dependencies)
+
+        try await eventually { practice.text == "Hola Hola" }
     }
 
     @Test
@@ -321,6 +435,86 @@ struct DictationAdmissionTests {
         try await eventually { controller.phase == .replaced }
         #expect(recorder.heldWhileReplacing == [1])
         #expect(port.held == 0)
+    }
+
+    @Test
+    func aRefusedRewriteLeavesTheOneInProgressAlone() async throws {
+        let port = Port()
+        let recorder = RewriteRecorder()
+        let controller = SelectionRewriteController(presentsPanel: false)
+        defer { controller.cancel() }
+        let dependencies = rewriteDependencies(port, recorder)
+        controller.start(using: dependencies)
+        try await eventually { controller.phase == .choosing }
+        controller.choose(nil)
+        try await eventually { controller.phase == .preview("SO WE SHIP IT TOMORROW") }
+        port.refuses = true
+
+        controller.start(using: dependencies)
+
+        #expect(controller.phase == .preview("SO WE SHIP IT TOMORROW"))
+        #expect(controller.result == "SO WE SHIP IT TOMORROW")
+        #expect(recorder.captures == 1)
+    }
+
+    @Test
+    func aRefusedSpokenInstructionLeavesTheChoicesOpen() async throws {
+        let port = Port()
+        let controller = SelectionRewriteController(presentsPanel: false)
+        defer { controller.cancel() }
+        controller.start(using: rewriteDependencies(port, RewriteRecorder()))
+        try await eventually { controller.phase == .choosing }
+        let harness = DictationControllerHarness(text: "make it formal")
+        port.refuses = true
+        var base = harness.dependencies
+        base.admission = port.admission
+
+        harness.controller.toggle(using: controller.instructionDependencies(base))
+
+        #expect(controller.phase == .choosing)
+        #expect(harness.controller.phase == .idle)
+    }
+
+    @Test
+    func aCancelledRewriteKeepsItsLeaseUntilTheReadEnds() async throws {
+        let port = Port()
+        let read = PreparationGate()
+        var dependencies = rewriteDependencies(port, RewriteRecorder())
+        let capture = dependencies.capture
+        dependencies.capture = {
+            await read.wait()
+            return await capture()
+        }
+        let controller = SelectionRewriteController(presentsPanel: false)
+        controller.start(using: dependencies)
+        try await eventually { read.started }
+
+        controller.cancel()
+
+        #expect(port.held == 1)
+        read.release()
+        try await eventually { port.held == 0 }
+    }
+
+    @Test
+    func aReplaceHoldsItsLeaseThroughTheClipboardRestore() async throws {
+        let port = Port()
+        let recorder = RewriteRecorder()
+        let controller = SelectionRewriteController(presentsPanel: false)
+        defer { controller.cancel() }
+        controller.start(using: rewriteDependencies(port, recorder))
+        try await eventually { controller.phase == .choosing }
+        controller.choose(nil)
+        try await eventually { controller.phase == .preview("SO WE SHIP IT TOMORROW") }
+        let restore = PreparationGate()
+        port.settle = { await restore.wait() }
+
+        controller.replace()
+
+        try await eventually { controller.phase == .replaced && restore.started }
+        #expect(port.held == 1)
+        restore.release()
+        try await eventually { port.held == 0 }
     }
 
     @Test

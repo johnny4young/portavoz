@@ -31,7 +31,7 @@ struct SelectionRewriteControllerTests {
         polish: @escaping (String, String?) async -> DictationPolishOutcome
     ) -> SelectionRewriteController.Dependencies {
         SelectionRewriteController.Dependencies(
-            admission: DictationUITestFixture.openAdmission,
+            admission: DictationAdmission.open,
             capture: {
                 capture.map { text in
                     CapturedSelection(
@@ -190,7 +190,7 @@ struct SelectionRewriteSayHowTests {
 
     private func dependencies(_ recorder: Recorder) -> SelectionRewriteController.Dependencies {
         var dependencies = SelectionRewriteController.Dependencies(
-            admission: DictationUITestFixture.openAdmission,
+            admission: DictationAdmission.open,
             capture: {
                 .success(CapturedSelection(
                     text: "so we ship it tomorrow", source: .accessibility, applicationName: "Receiver",
@@ -239,12 +239,12 @@ struct SelectionRewriteSayHowTests {
             return .translated("hazlo formal")
         }
         let session = rewrite.instructionDependencies(base)
-        #expect(rewrite.phase == .listening)
         #expect(session.textModeOverride == .clean)
         #expect(session.deliversInternally)
 
         recorder.dictating = true
         harness.controller.toggle(using: session)
+        #expect(rewrite.phase == .listening)
         try await eventually { harness.controller.partialText == harness.text }
         harness.now = harness.now.addingTimeInterval(1)
         harness.controller.toggle(using: session)
@@ -331,7 +331,7 @@ struct SelectionRewriteSayHowTests {
         rewrite.start(using: dependencies(recorder))
         try await eventually { rewrite.phase == .choosing }
         let harness = DictationControllerHarness(text: "")
-        _ = rewrite.instructionDependencies(harness.dependencies)
+        rewrite.instructionDependencies(harness.dependencies).sessionAdmitted()
         #expect(rewrite.phase == .listening)
         try await eventually { rewrite.phase == .choosing }
         #expect(recorder.recipes.isEmpty)

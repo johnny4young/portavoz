@@ -460,6 +460,11 @@ extension ArchitectureDependencyTests {
             appDelegate.components(separatedBy: "private func dictationIntentRequested").last?
                 .components(separatedBy: "static func dictationIntentOutcome").first)
         XCTAssertFalse(dictationHandler.contains("NSApp.activate"))
+        XCTAssertTrue(dictationHandler.contains("services.dictationAdmission.isEligible()"))
+        XCTAssertTrue(
+            try Self.contents(of: "Sources/portavoz-app/DictationAdmission.swift")
+                .contains("waitForRestoration(on: .general)"),
+            "A lease covers the clipboard restore that a delivery schedules")
         XCTAssertFalse(
             intents.contains("AppShortcutsProvider"),
             "macOS publishes the action only; an App Shortcut duplicates it in the picker")

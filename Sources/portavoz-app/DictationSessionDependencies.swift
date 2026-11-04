@@ -32,6 +32,8 @@ struct DictationSessionDependencies {
     }
     var admission: DictationAdmission
     var admissionKind = DictationAdmissionKind.global
+    /// A refused start must not reach this, so nothing downstream moves on a refusal.
+    var sessionAdmitted: () -> Void = {}
     /// Capture admission is independent of the model's active-use lease.
     /// Its completion belongs to this session, never the controller's next one.
     var beginCapture: () -> () -> Void

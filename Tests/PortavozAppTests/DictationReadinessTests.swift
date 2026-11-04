@@ -146,7 +146,7 @@ final class DictationReadinessTests: XCTestCase {
         let review = try PortableSettingsTransfer.review(
             PortableSettingsTransfer.export([:]), current: before)
         let permission = ReadinessSignal()
-        var dependencies = DictationUITestFixture.dependencies(fixture: nil, beginCapture: { {} })
+        var dependencies = DictationUITestFixture.dependencies(fixture: nil, admission: .open, beginCapture: { {} })
         dependencies.canInsert = { true }
         dependencies.authorizeMicrophone = { await permission.wait(); return true }
         services.dictation.toggle(using: dependencies)
@@ -425,7 +425,7 @@ private final class ReadinessHarness {
             defaults: defaults, now: { [weak self] in
                 Date(timeIntervalSince1970: self?.now ?? 0)
             },
-            admission: DictationUITestFixture.openAdmission,
+            admission: DictationAdmission.open,
             beginCapture: { {} })
     }
 }
