@@ -450,6 +450,55 @@ class UIPrerequisiteTests(unittest.TestCase):
                 run = self.run_gate(EVENT_NAME=event, IOS_RESULT=result)
                 self.assertEqual(run.returncode == 0, accepted, run.stderr)
 
+    def select_ios_lane(self, repository, base, head):
+        import tempfile
+        import textwrap
+
+        step = self.jobs["scope"].split("- name: Select the iOS lane\n", 1)[1].split("        run: |\n", 1)[1]
+        with tempfile.NamedTemporaryFile("r") as output:
+            environment = dict(os.environ, BASE_SHA=base, HEAD_SHA=head, GITHUB_OUTPUT=output.name)
+            run = subprocess.run(["bash", "-e", "-c", textwrap.dedent(step.split("\n\n", 1)[0])], cwd=repository,
+                                 env=environment, text=True, capture_output=True, timeout=10)
+            return run.returncode, output.read()
+
+    def commit_change(self, repository, path):
+        def git(*arguments):
+            return subprocess.run(["git", "-c", "user.name=test", "-c", "user.email=test@example.com", *arguments],
+                                  cwd=repository, check=True, text=True, capture_output=True).stdout.strip()
+
+        if not (repository / ".git").exists():
+            git("init", "-q")
+        (repository / path).write_text(f"{git('rev-list', '--all', '--count')}\n", encoding="utf-8")
+        git("add", "-A")
+        git("commit", "-q", "-m", path)
+        return git("rev-parse", "HEAD")
+
+    def test_only_the_package_manifest_and_lock_select_the_ios_lane(self):
+        import tempfile
+
+        for path, required in (("Package.swift", "true"), ("Package.resolved", "true"),
+                               ("Sources.swift", "false"), ("Package.swift.md", "false")):
+            with self.subTest(path=path), tempfile.TemporaryDirectory() as directory:
+                repository = Path(directory)
+                base = self.commit_change(repository, "README.md")
+                head = self.commit_change(repository, path)
+
+                status, output = self.select_ios_lane(repository, base, head)
+
+                self.assertEqual((status, output), (0, f"required={required}\n"))
+
+    def test_an_unreadable_diff_fails_instead_of_skipping_the_ios_lane(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as directory:
+            repository = Path(directory)
+            head = self.commit_change(repository, "README.md")
+
+            status, output = self.select_ios_lane(repository, "0" * 40, head)
+
+            self.assertNotEqual(status, 0)
+            self.assertEqual(output, "")
+
     def test_a_dependency_pull_request_needs_the_ios_compile_to_pass(self):
         for result, accepted in (("success", True), ("skipped", False), ("failure", False), ("cancelled", False)):
             with self.subTest(result=result):

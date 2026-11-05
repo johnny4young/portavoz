@@ -31,7 +31,6 @@ PRODUCT_STEPS = {
     "Classify functional evidence and hosted runtime drift",
     "Require every lane the selection asked for", "Fail the lane when its evidence is not complete",
 }
-NOT_BLOCKING_JOBS = set()
 
 
 def job(name, created, started, completed, conclusion="success", job_id=None, runner="macos-26", steps=()):
@@ -626,7 +625,7 @@ class ArgumentTests(unittest.TestCase):
 
 class WorkflowContractTests(unittest.TestCase):
     def test_every_workflow_job_is_declared_blocking_or_not(self):
-        self.assertLessEqual(set(report.declared_timeouts()), report.BLOCKING["pull_request"] | NOT_BLOCKING_JOBS)
+        self.assertLessEqual(set(report.declared_timeouts()), report.BLOCKING["pull_request"])
 
     def test_the_release_contract_jobs_exist_in_ci(self):
         self.assertLessEqual(report.BLOCKING["push"], set(report.declared_timeouts()))
