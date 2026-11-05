@@ -1,3 +1,4 @@
+import CryptoKit
 import FluidAudio
 import Foundation
 import PortavozCore
@@ -161,7 +162,7 @@ final class ModelCatalogTests: XCTestCase {
             throw XCTSkip("set PORTAVOZ_TEST_WAV to a speech file")
         }
         let engine = try await WhisperEngine.loadRecommended(
-            store: ModelStore(), descriptor: ModelCatalog.whisperLargeV3_626MB)
+            store: ModelStore.gatedTests(), descriptor: ModelCatalog.whisperLargeV3_626MB)
         let result = try await engine.transcribeFile(at: URL(fileURLWithPath: wav))
         XCTAssertFalse(
             result.text.trimmingCharacters(in: .whitespaces).isEmpty,
@@ -224,30 +225,34 @@ final class ModelStoreTests: XCTestCase {
         try? FileManager.default.removeItem(at: workspace)
     }
 
-    func testDefaultRootSurvivesApplicationBundleReplacement() {
+    func testLegacyRootSurvivesApplicationBundleReplacement() {
         let suffix = ["Library", "Application Support", "Portavoz", "Models"]
         XCTAssertEqual(
-            Array(ModelStore.defaultRootDirectory.standardizedFileURL.pathComponents.suffix(4)),
+            Array(ModelStore.legacyRootDirectory.standardizedFileURL.pathComponents.suffix(4)),
             suffix,
             "production models must remain in stable user data, never inside the app bundle")
         XCTAssertFalse(
-            ModelStore.defaultRootDirectory.standardizedFileURL.path
+            ModelStore.legacyRootDirectory.standardizedFileURL.path
                 .hasPrefix(Bundle.main.bundleURL.standardizedFileURL.path + "/"),
             "replacing Portavoz.app must not remove downloaded models")
     }
 
-    func testSHA256MatchesKnownVector() throws {
-        let file = workspace.appendingPathComponent("abc.txt")
-        try Data("abc".utf8).write(to: file)
-        XCTAssertEqual(
-            try ModelStore.sha256(of: file),
-            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+    func testSharedRootSurvivesApplicationBundleReplacement() async throws {
+        let store = ModelStore.userLibrary(consumer: .tests)
+        let directory = try await store.directory(for: ModelCatalog.parakeetTdtV3).standardizedFileURL
+        let root = URL.applicationSupportDirectory.standardizedFileURL
+            .appendingPathComponent("com.johnny4young.local-models").path + "/"
+
+        XCTAssertTrue(directory.path.hasPrefix(root), "models live where every app expects them, not in a cache")
+        XCTAssertFalse(
+            directory.path.hasPrefix(Bundle.main.bundleURL.standardizedFileURL.path + "/"),
+            "replacing Portavoz.app must not remove downloaded models")
     }
 
     /// End-to-end offline: "downloads" from file:// URLs, verifies, installs.
     func testEnsureAvailableDownloadsAndVerifies() async throws {
         let (descriptor, _) = try makeFixtureModel()
-        let store = ModelStore(rootDirectory: workspace.appendingPathComponent("store"))
+        let store = ModelStore(rootDirectory: workspace.appendingPathComponent("store"), consumer: .tests)
 
         let directory = try await store.ensureAvailable(descriptor)
         XCTAssertTrue(FileManager.default.fileExists(
@@ -263,12 +268,11 @@ final class ModelStoreTests: XCTestCase {
 
     func testVerifyDetectsMissingAndCorrupted() async throws {
         let (descriptor, _) = try makeFixtureModel()
-        let store = ModelStore(rootDirectory: workspace.appendingPathComponent("store"))
+        let store = ModelStore(rootDirectory: workspace.appendingPathComponent("store"), consumer: .tests)
         let directory = try await store.ensureAvailable(descriptor)
 
         // Corrupt one file, delete another.
-        try Data("tampered".utf8).write(
-            to: directory.appendingPathComponent("bundle.mlmodelc/weights/weight.bin"))
+        try tamper(with: directory.appendingPathComponent("bundle.mlmodelc/weights/weight.bin"))
         try FileManager.default.removeItem(at: directory.appendingPathComponent("vocab.json"))
 
         let report = await store.verify(descriptor)
@@ -284,17 +288,14 @@ final class ModelStoreTests: XCTestCase {
         XCTAssertTrue(healed.isComplete)
         let healedInstallation = await store.verifiedInstallation(descriptor)
         XCTAssertNotNil(healedInstallation)
-        let weightDirectory = directory
-            .appendingPathComponent("bundle.mlmodelc/weights")
-        let leftovers = try FileManager.default.contentsOfDirectory(
-            atPath: weightDirectory.path)
-            .filter { $0.contains(".download-") }
-        XCTAssertTrue(leftovers.isEmpty, "atomic repair must remove sibling staging files")
+        let staging = workspace.appendingPathComponent("store/v1.noindex/staging")
+        let leftovers = try FileManager.default.contentsOfDirectory(atPath: staging.path)
+        XCTAssertTrue(leftovers.isEmpty, "atomic repair must remove its staging work")
     }
 
     func testVerifiedLifecycleCachesOnlySuccessAndSupportsExplicitReverification() async throws {
         let (descriptor, _) = try makeFixtureModel()
-        let store = ModelStore(rootDirectory: workspace.appendingPathComponent("store"))
+        let store = ModelStore(rootDirectory: workspace.appendingPathComponent("store"), consumer: .tests)
         let lifecycle = VerifiedModelLifecycle(store: store)
 
         let missing = await lifecycle.installation(for: descriptor)
@@ -302,9 +303,7 @@ final class ModelStoreTests: XCTestCase {
         let installed = try await lifecycle.install(descriptor)
         XCTAssertEqual(installed.descriptorRevision, descriptor.revision)
 
-        try Data("tampered".utf8).write(
-            to: installed.directory
-                .appendingPathComponent("bundle.mlmodelc/weights/weight.bin"))
+        try tamper(with: installed.directory.appendingPathComponent("bundle.mlmodelc/weights/weight.bin"))
         let cached = await lifecycle.installation(for: descriptor)
         XCTAssertEqual(
             cached,
@@ -320,6 +319,12 @@ final class ModelStoreTests: XCTestCase {
         try await lifecycle.remove(descriptor)
         let removed = await lifecycle.installation(for: descriptor)
         XCTAssertNil(removed)
+    }
+
+    /// Read-only files do not stop the same user, so this is what verification is for.
+    private func tamper(with file: URL) throws {
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: file.path)
+        try Data("tampered".utf8).write(to: file)
     }
 
     func testVerifiedLifecycleDiscardsEvidenceSupersededByInvalidation() async throws {
@@ -494,7 +499,7 @@ final class ModelStoreTests: XCTestCase {
         try Data(repeating: UInt8(ascii: "x"), count: original.count).write(
             to: source.appendingPathComponent("vocab.json"))
 
-        let store = ModelStore(rootDirectory: workspace.appendingPathComponent("store"))
+        let store = ModelStore(rootDirectory: workspace.appendingPathComponent("store"), consumer: .tests)
         do {
             _ = try await store.ensureAvailable(descriptor)
             XCTFail("expected checksumMismatch")
@@ -506,7 +511,7 @@ final class ModelStoreTests: XCTestCase {
         }
 
         // The rejected file must not be installed.
-        let installed = await store.directory(for: descriptor)
+        let installed = try await store.directory(for: descriptor)
             .appendingPathComponent("vocab.json")
         XCTAssertFalse(FileManager.default.fileExists(atPath: installed.path))
     }
@@ -533,18 +538,21 @@ final class ModelStoreTests: XCTestCase {
             artifacts: [
                 ModelArtifact(
                     path: "bundle.mlmodelc/weights/weight.bin",
-                    sha256: try ModelStore.sha256(
-                        of: source.appendingPathComponent("bundle.mlmodelc/weights/weight.bin")),
+                    sha256: Self.sha256(weight),
                     sizeBytes: weight.count),
                 ModelArtifact(
                     path: "vocab.json",
-                    sha256: try ModelStore.sha256(of: source.appendingPathComponent("vocab.json")),
+                    sha256: Self.sha256(vocab),
                     sizeBytes: vocab.count),
             ],
             minimumRAMGB: 1,
             license: "MIT"
         )
         return (descriptor, source)
+    }
+
+    private static func sha256(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 }
 

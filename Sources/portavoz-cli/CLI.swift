@@ -19,6 +19,7 @@ public enum PortavozCLI {
             return
         }
         arguments.removeFirst()
+        await CLISupport.collectUnusedModels(arguments: arguments)
 
         switch command {
         case "devices":
@@ -163,7 +164,7 @@ public enum PortavozCLI {
               --out <dir>        Output directory (default: current directory)
               --transcribe       Live-transcribe every captured channel while recording
               --language <tag>   Language hint, e.g. "es" or "en" (default: auto-detect)
-              --models-dir <dir> Model store root (default: ~/Library/Application Support/Portavoz/Models)
+              --models-dir <dir> Model store root (default: ~/Library/Application Support/com.johnny4young.local-models)
             """
 
     static func listDevices() {

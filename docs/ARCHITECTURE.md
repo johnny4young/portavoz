@@ -1653,10 +1653,12 @@ operations that cannot use a remote provider. Every SF Symbol the app draws is a
 
 `ModelStoreKit` is the only source of local-model installation truth. Every
 catalog descriptor fixes its revision and enumerates every artifact with an
-expected byte count and SHA-256 digest. `ModelStore` streams each digest,
-downloads only missing or corrupt artifacts into a same-directory sibling,
-verifies the staged bytes, publishes them with one atomic rename or replacement,
-and performs a complete verification pass before returning a loadable directory.
+expected byte count and SHA-256 digest. `ModelStore` adapts the MIT
+`LocalModelStore` package: it places files already on this Mac, downloads the
+rest into staging, verifies the staged bytes, publishes the model with one atomic
+rename, and performs a complete verification pass before returning a loadable
+directory. Every store names its consumer and location, and a model this consumer
+has not claimed reads as missing, because bytes from another app are not consent.
 
 `VerifiedModelLifecycle` wraps the process's shared `ModelStore`. It emits an
 installation value only after the complete descriptor passes verification,
@@ -1675,10 +1677,12 @@ The macOS composition root owns one store and lifecycle for Settings, summary
 provider resolution, import, durable post-capture work, support diagnostics,
 live transcription, diarization, refinement, and voice-memory extraction.
 Production model artifacts live in the stable user-domain
-`~/Library/Application Support/Portavoz/Models` root, outside both
-`Portavoz.app` and `Portavoz Dev.app`. Replacing either application bundle
-therefore does not remove a verified model; only the explicit model-delete
-workflow mutates that installation. Refine, Import, Settings, and CLI describe
+`~/Library/Application Support/com.johnny4young.local-models` root, outside both
+`Portavoz.app` and `Portavoz Dev.app`, and shared with other apps on the Mac. The
+legacy `Portavoz/Models` folder is read only as a seed. Replacing either application bundle
+therefore does not remove a verified model. Only the explicit model-delete
+workflow and, at launch, the collection of claims an update re-pinned change an
+installation. Refine, Import, Settings, and CLI describe
 the operation as local verification until `ModelStore` reports missing or
 corrupt artifacts; only that latter activity is labeled as a download. Download
 percentage is never synthesized for a checksum-only pass.

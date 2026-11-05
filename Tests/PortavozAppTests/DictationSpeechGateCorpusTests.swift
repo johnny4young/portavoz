@@ -47,7 +47,7 @@ final class DictationSpeechGateCorpusTests: XCTestCase {
             XCTFail("speech-gate run requires an absolute scratch model root and a new absolute output")
             return
         }
-        let store = ModelStore(rootDirectory: URL(fileURLWithPath: models, isDirectory: true))
+        let store = ModelStore(rootDirectory: URL(fileURLWithPath: models, isDirectory: true), consumer: .tests)
         if environment["PORTAVOZ_SPEECH_GATE_INSTALL"] == "1" {
             _ = try await store.ensureAvailable(ModelCatalog.sileroVAD)
         }

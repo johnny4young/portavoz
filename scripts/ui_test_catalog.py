@@ -340,6 +340,7 @@ _SUMMARY_MODEL_FEATURES = frozenset({"meeting-summary", "settings-intelligence"}
 DEPENDENCY_FEATURES: dict[str, frozenset[str]] = {
     "fluidaudio": frozenset({"recording-recovery", "settings-audio", "settings-voice"}),
     "grdb.swift": frozenset({"launch-recovery", "library", "settings-data"}),
+    "local-model-store": frozenset({"meeting-processing", "settings-audio"}),
     "mlx-swift": _SUMMARY_MODEL_FEATURES,
     "secreteo": frozenset({"dictation"}),
     "mlx-swift-lm": _SUMMARY_MODEL_FEATURES,

@@ -103,7 +103,7 @@ test-model-gated:
 		if grep -Eq '\[DEBUG\] \[FluidAudio\.' "$$log"; then \
 			echo "FAIL $$class: FluidAudio DEBUG output reached the private release gate"; status=1; \
 		fi; \
-		summary=$$(grep -E "Executed [0-9]+ tests?," "$$log" | tail -1); \
+		summary=$$(grep -E "Executed [0-9]+ tests?," "$$log" | awk '{ for (i = 1; i < NF; i++) if ($$i == "Executed" && $$(i + 1) + 0 >= most) { most = $$(i + 1) + 0; line = $$0 } } END { print line }'); \
 		executed=$$(printf '%s' "$$summary" | grep -Eo "Executed [0-9]+" | grep -Eo "[0-9]+" || echo 0); \
 		skipped=$$(printf '%s' "$$summary" | grep -Eo "[0-9]+ tests? skipped" | grep -Eo "[0-9]+" || echo 0); \
 		echo "$$class: executed=$$executed skipped=$$skipped"; \

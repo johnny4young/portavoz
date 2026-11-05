@@ -1,4 +1,5 @@
 import Foundation
+import LocalModelStore
 import PortavozCore
 
 /// What a downloadable model is for. One model never serves every task:
@@ -41,8 +42,7 @@ public struct ModelDescriptor: Codable, Sendable, Identifiable {
     /// final transcription until WhisperKit lands).
     public let tasks: Set<ModelTask>
     public let displayName: String
-    /// Directory name on disk. Must match what the inference runtime
-    /// expects (FluidAudio derives the model version from the folder name).
+    /// The folder this model used in Portavoz's own legacy store, read as a seed.
     public let folderName: String
     /// Base URL each artifact path is resolved against. For Hugging Face
     /// this is `…/resolve/<commit-sha>` so the download can never drift.
@@ -85,6 +85,16 @@ public struct ModelDescriptor: Codable, Sendable, Identifiable {
     }
 }
 
+extension ModelDescriptor {
+    /// The shared store's form of this pin. Two apps with the same pin install one copy.
+    var manifest: ModelManifest {
+        ModelManifest(
+            id: id, displayName: displayName, resolveBase: resolveBase, revision: revision,
+            artifacts: artifacts.map { .init(path: $0.path, sha256: $0.sha256, sizeBytes: $0.sizeBytes) },
+            minimumRAMGB: minimumRAMGB, license: license)
+    }
+}
+
 // swiftlint:disable line_length
 // Pinned sha256 data for the model catalog: wrapping each artifact hex
 // across several lines does not improve readability and makes re-pin diffs
@@ -92,6 +102,15 @@ public struct ModelDescriptor: Codable, Sendable, Identifiable {
 /// The curated registry. Descriptors are code: adding or re-pinning a model
 /// is a reviewed change, never a runtime fetch of "latest".
 public enum ModelCatalog {
+    /// Every pin this build can use. Claims outside this list count as re-pinned.
+    public static var all: [ModelDescriptor] {
+        [
+            parakeetTdtV3, parakeetUltra, nemotronLatin1120, speakerDiarization, sileroVAD,
+            whisperLargeV3Turbo, whisperLargeV3_626MB, whisperTokenizer,
+            mlxQwen3, mlxQwen35, mlxQwen35Point8BChallenger, mlxQwen35TwoBChallenger
+        ]
+    }
+
     /// Default engine per task (D7: route by task, never one model
     /// global): live STT = Parakeet v3; final quality pass = Whisper
     /// large-v3-turbo; diarization = pyannote community-1 + WeSpeaker.

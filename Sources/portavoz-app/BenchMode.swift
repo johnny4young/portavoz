@@ -122,7 +122,7 @@ extension BenchMode {
         Task.detached {
             do {
                 print("model: \(descriptor.displayName)")
-                let directory = try await ModelStore()
+                let directory = try await AppServices.makeModelStore(usesTemporaryStore: false)
                     .ensureAvailable(descriptor)
                 let request =
                     useRealMeeting ? try await realMeetingRequest() : syntheticRequest()

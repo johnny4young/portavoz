@@ -90,7 +90,7 @@ final class DictationModelBaselineTests: XCTestCase {
                 audioRoot: URL(fileURLWithPath: audio), selectedIDs: ids.components(separatedBy: ","))
             // Verify selected PCM before model compilation/loading, not after it.
             for id in fixture.selectedIDs { _ = try fixture.sequence(id, repetitions: repetitions) }
-            let store = ModelStore()
+            let store = ModelStore.gatedTests()
             let descriptor = ModelCatalog.parakeetTdtV3
             let verificationStarted = ContinuousClock.now
             guard let installation = await store.verifiedInstallation(descriptor) else {

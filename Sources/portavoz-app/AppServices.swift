@@ -579,15 +579,21 @@ final class AppServices {
     }
 }
 
-private extension AppServices {
+extension AppServices {
     static func makeModelStore(usesTemporaryStore: Bool) -> ModelStore {
-        guard usesTemporaryStore else { return ModelStore() }
+        let identifier = Bundle.main.bundleIdentifier ?? "app.portavoz.mac.unbundled"
+        let consumer = ModelStore.Consumer(
+            identifier: identifier,
+            displayName: identifier.hasSuffix(".dev") ? "Portavoz Dev" : "Portavoz")
+        guard usesTemporaryStore else { return .userLibrary(consumer: consumer) }
         let rootDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(
             "portavoz-uitest-models-\(UUID().uuidString)",
             isDirectory: true)
-        return ModelStore(rootDirectory: rootDirectory)
+        return ModelStore(rootDirectory: rootDirectory, consumer: consumer)
     }
+}
 
+private extension AppServices {
     static func makeModelServices(
         usesTemporaryStore: Bool
     ) -> (ModelStore, VerifiedModelLifecycle) {

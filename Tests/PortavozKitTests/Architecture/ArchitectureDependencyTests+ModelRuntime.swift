@@ -649,7 +649,7 @@ extension ArchitectureDependencyTests {
             of: "Sources/portavoz-app/AppServices+Application.swift")
 
         XCTAssertTrue(store.contains("func verifiedInstallation("))
-        XCTAssertTrue(store.contains("guard verify(descriptor).isComplete"))
+        XCTAssertTrue(store.contains("guard await verify(descriptor).isComplete"))
         XCTAssertTrue(lifecycle.contains("store.verifiedInstallation(descriptor)"))
         XCTAssertFalse(lifecycle.contains("FileManager"))
         XCTAssertTrue(services.contains("let modelStore: ModelStore"))
@@ -658,13 +658,18 @@ extension ArchitectureDependencyTests {
         XCTAssertFalse(whisper.contains("modelArtifactsAreComplete"))
         XCTAssertFalse(whisper.contains("attributesOfItem"))
         XCTAssertTrue(summary.contains("await mlxModelDirectory()"))
+        // Nothing else retires a consumer's claims after a re-pin.
+        XCTAssertTrue(try Self.contents(of: "Sources/portavoz-app/AppLaunchModel.swift")
+            .contains("modelStore.collectUnused(keeping: ModelCatalog.all)"))
+        XCTAssertTrue(try Self.contents(of: "Sources/portavoz-cli/CLI.swift")
+            .contains("await CLISupport.collectUnusedModels(arguments: arguments)"))
 
         let directStores = try Self.sourceMatches(
             under: "Sources/portavoz-app",
-            pattern: #"\bModelStore\s*\(\s*\)"#)
+            pattern: #"\bModelStore\.userLibrary\s*\(|return \.userLibrary\s*\("#)
         XCTAssertEqual(
             directStores.sorted(),
-            ["AppServices.swift", "BenchMode.swift"],
+            ["AppServices.swift"],
             "production model consumers must share app-scoped verified readiness")
     }
 }

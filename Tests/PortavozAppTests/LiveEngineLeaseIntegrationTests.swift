@@ -42,11 +42,11 @@ final class LiveEngineLeaseIntegrationTests: XCTestCase {
         try XCTSkipUnless(
             ProcessInfo.processInfo.environment["PORTAVOZ_LIVE_LEASE_TESTS"] == "1",
             "set PORTAVOZ_LIVE_LEASE_TESTS=1 with verified Parakeet assets installed")
-        let modelStore = ModelStore()
+        let modelStore = ModelStore.gatedTests()
         let descriptor = ModelCatalog.parakeetTdtV3
         let report = await modelStore.verify(descriptor)
         try XCTSkipUnless(report.isComplete, "the pinned model must already be installed; never download in this test")
-        let directory = await modelStore.directory(for: descriptor)
+        let directory = try await modelStore.directory(for: descriptor)
         let engine = try await ParakeetEngine.load(fromVerifiedDirectory: directory)
 
         let suite = "live-engine-lease-\(UUID().uuidString)"

@@ -1,5 +1,5 @@
-import CryptoKit
 import Foundation
+import LocalModelStore
 
 /// Downloads and verifies model artifacts against the pinned registry.
 /// Nothing is ever loaded from a directory this store hasn't verified:
@@ -12,6 +12,8 @@ public actor ModelStore {
         /// The disk or quota was full while downloading, staging or publishing.
         case outOfSpace(path: String)
         case notInstalled(missing: [String], corrupted: [String])
+        /// The shared store cannot be used, or another process is deleting this model.
+        case unavailable(String)
 
         public var errorDescription: String? {
             switch self {
@@ -25,6 +27,25 @@ public actor ModelStore {
                 return "not enough disk space to save \(path)"
             case .notInstalled(let missing, let corrupted):
                 return "model not installed (missing: \(missing.count), corrupted: \(corrupted.count))"
+            case .unavailable(let reason):
+                return reason
+            }
+        }
+
+        init(_ error: LocalModelStore.LocalModelStoreError) {
+            switch error {
+            case .checksumMismatch(let path, let expected, let actual):
+                self = .checksumMismatch(path: path, expected: expected, actual: actual)
+            case .sizeMismatch(let path, let expected, let actual):
+                self = .sizeMismatch(path: path, expected: expected, actual: actual)
+            case .downloadFailed(let path, let underlying):
+                self = .downloadFailed(path: path, underlying: underlying)
+            case .outOfSpace(let path):
+                self = .outOfSpace(path: path)
+            case .notInstalled(let missing, let corrupted):
+                self = .notInstalled(missing: missing, corrupted: corrupted)
+            case .invalidManifest, .sandboxed, .invalidConsumer, .busy:
+                self = .unavailable(error.localizedDescription)
             }
         }
     }
@@ -66,170 +87,186 @@ public actor ModelStore {
         }
     }
 
-    private let rootDirectory: URL
-    private let session: URLSession
+    /// Who is using the store. Every process names itself: a claim keeps a model on
+    /// disk for that consumer, and Settings shows the name to people.
+    public struct Consumer: Sendable, Equatable {
+        public let identifier: String
+        public let displayName: String
 
-    /// The platform Application Support container under `Portavoz/Models`.
-    public static var defaultRootDirectory: URL {
+        public init(identifier: String, displayName: String) {
+            self.identifier = identifier
+            self.displayName = displayName
+        }
+    }
+
+    /// What a removal did. A model another app still needs stays for that app.
+    public enum RemovalOutcome: Equatable, Sendable {
+        case removed
+        case keptForOthers([String])
+        case deferred
+    }
+
+    private let backing: Result<LocalModelStore, Error>
+    /// The same store with no network, so adopting a legacy install can only place files.
+    private let adopter: LocalModelStore?
+    private let legacyRoot: URL?
+
+    /// Where Portavoz kept models before the shared store. Read as a seed, so an
+    /// existing install moves without a download.
+    public static var legacyRootDirectory: URL {
         URL.applicationSupportDirectory
             .appendingPathComponent("Portavoz/Models", isDirectory: true)
     }
 
-    public init(rootDirectory: URL = ModelStore.defaultRootDirectory, session: URLSession = .shared) {
-        self.rootDirectory = rootDirectory
-        self.session = session
+    /// The store shared with other apps on this Mac.
+    public static func userLibrary(consumer: Consumer, session: URLSession = .shared) -> ModelStore {
+        ModelStore(location: .userLibrary, consumer: consumer, legacyRoot: legacyRootDirectory, session: session)
     }
 
-    public func directory(for descriptor: ModelDescriptor) -> URL {
-        rootDirectory.appendingPathComponent(descriptor.folderName, isDirectory: true)
+    /// A store in an explicit folder, for tests and tools. `legacyRoot` is read as a seed.
+    public init(rootDirectory: URL, consumer: Consumer, legacyRoot: URL? = nil, session: URLSession = .shared) {
+        self.init(location: .directory(rootDirectory), consumer: consumer, legacyRoot: legacyRoot, session: session)
     }
 
-    /// Re-hashes every artifact on disk against the descriptor.
-    public func verify(_ descriptor: ModelDescriptor) -> VerificationReport {
-        let base = directory(for: descriptor)
-        var missing: [String] = []
-        var corrupted: [String] = []
+    private init(location: StoreLocation, consumer: Consumer, legacyRoot: URL?, session: URLSession) {
+        let storeConsumer = StoreConsumer(bundleID: consumer.identifier, displayName: consumer.displayName)
+        backing = Result { try LocalModelStore(location: location, consumer: storeConsumer, session: session) }
+        adopter = legacyRoot == nil ? nil : try? LocalModelStore(
+            location: location, consumer: storeConsumer, session: Self.offlineSession)
+        self.legacyRoot = legacyRoot
+    }
 
-        for artifact in descriptor.artifacts {
-            let url = base.appendingPathComponent(artifact.path)
-            guard FileManager.default.fileExists(atPath: url.path) else {
-                missing.append(artifact.path)
-                continue
-            }
-            do {
-                let digest = try Self.sha256(of: url)
-                if digest != artifact.sha256 {
-                    corrupted.append(artifact.path)
-                }
-            } catch {
-                corrupted.append(artifact.path)
-            }
+    public func directory(for descriptor: ModelDescriptor) async throws -> URL {
+        try await translatingErrors { try await store().directory(for: descriptor.manifest) }
+    }
+
+    /// Re-hashes the installation against the descriptor. A model this app never asked
+    /// for reads as missing even when another app installed it, because presence is
+    /// not consent. A complete legacy install is adopted first, without a download.
+    public func verify(_ descriptor: ModelDescriptor) async -> VerificationReport {
+        let manifest = descriptor.manifest
+        guard let store = try? store() else {
+            return VerificationReport(missing: manifest.artifacts.map(\.path), corrupted: [])
         }
-        return VerificationReport(missing: missing, corrupted: corrupted)
+        await adoptLegacyInstall(descriptor)
+        guard await isClaimed(manifest, in: store) else {
+            return VerificationReport(missing: manifest.artifacts.map(\.path), corrupted: [])
+        }
+        let report = await store.verify(manifest)
+        return VerificationReport(missing: report.missing, corrupted: report.corrupted)
     }
 
     /// Returns loadable installation evidence only after every pinned artifact
-    /// has been re-hashed. Callers must not infer readiness from directory,
+    /// has been hashed. Callers must not infer readiness from directory,
     /// filename, or byte-count checks of their own.
     public func verifiedInstallation(
         _ descriptor: ModelDescriptor
-    ) -> VerifiedInstallation? {
-        guard verify(descriptor).isComplete else { return nil }
+    ) async -> VerifiedInstallation? {
+        guard await verify(descriptor).isComplete, let directory = try? await directory(for: descriptor) else {
+            return nil
+        }
         return VerifiedInstallation(
             descriptorID: descriptor.id,
             descriptorRevision: descriptor.revision,
-            directory: directory(for: descriptor),
+            directory: directory,
             artifactBytes: Int64(descriptor.totalSizeBytes))
     }
 
-    /// Ensures the model is installed and verified, downloading whatever is
-    /// missing or corrupted. Returns the model directory, ready to load.
-    /// Every downloaded file is hashed before it replaces anything on disk.
+    /// Ensures the model is installed and verified, placing what this Mac already has
+    /// and downloading the rest. Returns the directory to load. Every file is hashed
+    /// before it is published.
     @discardableResult
     public func ensureAvailable(
         _ descriptor: ModelDescriptor,
         progress: (@Sendable (DownloadProgress) -> Void)? = nil
     ) async throws -> URL {
-        let base = directory(for: descriptor)
-        let report = verify(descriptor)
-        if report.isComplete { return base }
-
-        let pending = Set(report.missing + report.corrupted)
-        let toFetch = descriptor.artifacts.filter { pending.contains($0.path) }
-        let totalBytes = toFetch.reduce(0) { $0 + $1.sizeBytes }
-        var completedBytes = 0
-
-        for artifact in toFetch {
-            progress?(
-                DownloadProgress(
-                    completedBytes: completedBytes, totalBytes: totalBytes,
-                    currentPath: artifact.path))
-            try await fetch(artifact, of: descriptor, into: base)
-            completedBytes += artifact.sizeBytes
+        let seeds = legacyDirectory(for: descriptor).map { [$0] } ?? []
+        return try await translatingErrors {
+            try await store().ensureAvailable(descriptor.manifest, seeds: seeds) { event in
+                guard case .downloading(let state) = event else { return }
+                progress?(DownloadProgress(
+                    completedBytes: state.completedBytes, totalBytes: state.totalBytes,
+                    currentPath: state.currentPath))
+            }
         }
-        progress?(DownloadProgress(completedBytes: totalBytes, totalBytes: totalBytes, currentPath: ""))
-
-        // Paranoia pass: everything the descriptor lists must now hash clean.
-        let final = verify(descriptor)
-        guard final.isComplete else {
-            throw ModelStoreError.notInstalled(missing: final.missing, corrupted: final.corrupted)
-        }
-        return base
     }
 
-    public func remove(_ descriptor: ModelDescriptor) throws {
-        let base = directory(for: descriptor)
-        if FileManager.default.fileExists(atPath: base.path) {
-            try FileManager.default.removeItem(at: base)
+    /// Whether getting this model would fetch bytes. False when another app installed it.
+    public func needsDownload(_ descriptor: ModelDescriptor) async -> Bool {
+        guard await !verify(descriptor).isComplete, let store = try? store() else { return false }
+        return await store.verifiedInstallation(descriptor.manifest) == nil
+    }
+
+    /// Removes this app's copy, including its legacy one so it is not adopted again.
+    /// The bytes stay while another app claims or uses them.
+    @discardableResult
+    public func remove(_ descriptor: ModelDescriptor) async throws -> RemovalOutcome {
+        if let legacy = legacyDirectory(for: descriptor), FileManager.default.fileExists(atPath: legacy.path) {
+            try FileManager.default.removeItem(at: legacy)
+        }
+        let outcome = try await translatingErrors { try await store().remove(descriptor.manifest) }
+        switch outcome {
+        case .removed: return .removed
+        case .keptForOthers(let names): return .keptForOthers(names)
+        case .deferred: return .deferred
+        }
+    }
+
+    /// Retires claims an update re-pinned and collects what no app claims any more.
+    public func collectUnused(keeping descriptors: [ModelDescriptor]) async throws {
+        try await translatingErrors {
+            let store = try store()
+            try await store.reconcileClaims(keeping: descriptors.map(\.manifest))
+            _ = try await store.collectGarbage()
         }
     }
 
     // MARK: - Internals
 
-    private func fetch(_ artifact: ModelArtifact, of descriptor: ModelDescriptor, into base: URL) async throws {
-        let source = descriptor.downloadURL(for: artifact)
-        let destination = base.appendingPathComponent(artifact.path)
-
-        let temporary: URL
-        do {
-            (temporary, _) = try await session.download(from: source)
-        } catch {
-            // URLSession also writes its temporary download to disk.
-            if Self.isOutOfSpace(error as NSError) { throw ModelStoreError.outOfSpace(path: artifact.path) }
-            throw ModelStoreError.downloadFailed(
-                path: artifact.path, underlying: String(describing: error))
-        }
-        defer { try? FileManager.default.removeItem(at: temporary) }
-
-        try Task.checkCancellation()
-        let parent = destination.deletingLastPathComponent()
-        let staged = parent.appendingPathComponent(
-            ".\(destination.lastPathComponent).download-\(UUID().uuidString)")
-        defer { try? FileManager.default.removeItem(at: staged) }
-        try Self.storing(artifact.path) {
-            try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
-            do {
-                try FileManager.default.moveItem(at: temporary, to: staged)
-            } catch {
-                try? FileManager.default.removeItem(at: staged)
-                try FileManager.default.copyItem(at: temporary, to: staged)
-            }
-        }
-
-        let size = (try? FileManager.default.attributesOfItem(atPath: staged.path)[.size] as? Int) ?? -1
-        guard size == artifact.sizeBytes else {
-            throw ModelStoreError.sizeMismatch(
-                path: artifact.path, expected: artifact.sizeBytes, actual: size)
-        }
-
-        let digest = try Self.sha256(of: staged)
-        guard digest == artifact.sha256 else {
-            throw ModelStoreError.checksumMismatch(
-                path: artifact.path, expected: artifact.sha256, actual: digest)
-        }
-
-        // The verified sibling is on the destination volume, so publication is
-        // one atomic rename/replace and a failed repair preserves the old file.
-        try Task.checkCancellation()
-        try Self.storing(artifact.path) { try Self.publish(staged, at: destination) }
+    private func store() throws -> LocalModelStore {
+        try backing.get()
     }
 
-    private static func publish(_ staged: URL, at destination: URL) throws {
-        if FileManager.default.fileExists(atPath: destination.path) {
-            _ = try FileManager.default.replaceItemAt(
-                destination,
-                withItemAt: staged)
-        } else {
-            try FileManager.default.moveItem(at: staged, to: destination)
+    private func legacyDirectory(for descriptor: ModelDescriptor) -> URL? {
+        legacyRoot?.appendingPathComponent(descriptor.folderName, isDirectory: true)
+    }
+
+    private func isClaimed(_ manifest: ModelManifest, in store: LocalModelStore) async -> Bool {
+        guard let key = try? await store.directory(for: manifest).deletingLastPathComponent().lastPathComponent else {
+            return false
+        }
+        return await store.inventory().contains { $0.key == key && $0.isClaimedByThisConsumer }
+    }
+
+    /// Sizes rule out a partial install without reading it. A file that still fails its
+    /// hash ends the attempt, because this store cannot download.
+    private func adoptLegacyInstall(_ descriptor: ModelDescriptor) async {
+        let manifest = descriptor.manifest
+        guard let adopter, let legacy = legacyDirectory(for: descriptor),
+              Self.holdsExpectedSizes(descriptor, in: legacy),
+              await !isClaimed(manifest, in: adopter) else { return }
+        _ = try? await adopter.ensureAvailable(manifest, seeds: [legacy])
+    }
+
+    private static func holdsExpectedSizes(_ descriptor: ModelDescriptor, in directory: URL) -> Bool {
+        descriptor.artifacts.allSatisfy { artifact in
+            let file = directory.appendingPathComponent(artifact.path)
+            let size = try? FileManager.default.attributesOfItem(atPath: file.path)[.size] as? Int
+            return size == artifact.sizeBytes
         }
     }
 
-    /// Local writes report a full disk as `outOfSpace`; every other error passes through.
-    static func storing(_ path: String, _ write: () throws -> Void) throws {
+    private static let offlineSession: URLSession = {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [OfflineURLProtocol.self]
+        return URLSession(configuration: configuration)
+    }()
+
+    private func translatingErrors<T: Sendable>(_ operation: () async throws -> T) async throws -> T {
         do {
-            try write()
-        } catch where isOutOfSpace(error as NSError) {
-            throw ModelStoreError.outOfSpace(path: path)
+            return try await operation()
+        } catch let error as LocalModelStore.LocalModelStoreError {
+            throw ModelStoreError(error)
         }
     }
 
@@ -247,18 +284,12 @@ public actor ModelStore {
         if let underlying = error.userInfo[NSUnderlyingErrorKey] as? NSError { causes.append(underlying) }
         return causes.contains { isOutOfSpace($0) }
     }
+}
 
-    /// Streaming SHA-256 (1 MiB reads) so a 445 MB weight file never has to
-    /// fit in memory.
-    static func sha256(of url: URL) throws -> String {
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { try? handle.close() }
-
-        var hasher = SHA256()
-        while true {
-            guard let data = try handle.read(upToCount: 1 << 20), !data.isEmpty else { break }
-            hasher.update(data: data)
-        }
-        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
-    }
+/// Refuses every request before it reaches the network.
+private final class OfflineURLProtocol: URLProtocol, @unchecked Sendable {
+    override static func canInit(with request: URLRequest) -> Bool { true }
+    override static func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() { client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet)) }
+    override func stopLoading() {}
 }

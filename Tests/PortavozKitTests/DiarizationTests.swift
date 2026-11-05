@@ -264,13 +264,13 @@ final class DiarizationIntegrationTests: XCTestCase {
             throw XCTSkip("set PORTAVOZ_TEST_CONVERSATION_WAV to a two-voice wav")
         }
 
-        let store = ModelStore()
+        let store = ModelStore.gatedTests()
         let descriptor = ModelCatalog.speakerDiarization
         let report = await store.verify(descriptor)
         try XCTSkipUnless(
             report.isComplete,
             "diarization model is not installed and verified")
-        let directory = await store.directory(for: descriptor)
+        let directory = try await store.directory(for: descriptor)
         let runtime = try PyannoteDiarizationRuntime.load(
             fromVerifiedDirectory: directory)
         let diarizer = runtime.makeDiarizer()
@@ -299,13 +299,13 @@ final class DiarizationIntegrationTests: XCTestCase {
             throw XCTSkip("set PORTAVOZ_TEST_CONVERSATION_WAV to a two-voice recording")
         }
 
-        let store = ModelStore()
+        let store = ModelStore.gatedTests()
         let descriptor = ModelCatalog.speakerDiarization
         let report = await store.verify(descriptor)
         try XCTSkipUnless(
             report.isComplete,
             "diarization model is not installed and verified")
-        let directory = await store.directory(for: descriptor)
+        let directory = try await store.directory(for: descriptor)
         let runtime = try PyannoteDiarizationRuntime.load(
             fromVerifiedDirectory: directory)
         let diarizer = runtime.makeDiarizer()

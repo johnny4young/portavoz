@@ -1,5 +1,5 @@
 {
-  "originHash" : "5b87f923b97aec61d6e02c9d958ec184a4a934d604fc3523d664cd921ed18316",
+  "originHash" : "9bc7640c34ea9510db45648ad6c67f4da4fe2998b7d5a01533204eb5840fc081",
   "pins" : [
     {
       "identity" : "eventsource",
@@ -25,6 +25,15 @@
       "state" : {
         "revision" : "b83108d10f42680d78f23fe4d4d80fc88dab3212",
         "version" : "7.11.1"
+      }
+    },
+    {
+      "identity" : "local-model-store",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/johnny4young/local-model-store.git",
+      "state" : {
+        "revision" : "c7be14c0153cc95fa7b63d6562e7c610e73b809b",
+        "version" : "0.1.1"
       }
     },
     {

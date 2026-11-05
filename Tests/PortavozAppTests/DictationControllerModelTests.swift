@@ -74,7 +74,7 @@ final class DictationControllerModelTests: XCTestCase {
             let fixture = try DictationModelFixture(
                 audioRoot: URL(fileURLWithPath: audio), selectedIDs: ids.components(separatedBy: ","))
             for id in fixture.selectedIDs { _ = try fixture.sequence(id, repetitions: repetitions) }
-            let store = ModelStore()
+            let store = ModelStore.gatedTests()
             let start = ContinuousClock.now
             guard let installation = await store.verifiedInstallation(ModelCatalog.parakeetTdtV3) else {
                 throw DictationModelProbe.Failure.invalidInput

@@ -165,6 +165,23 @@ test reserved: both apps launching at login, holding Fn and the mouse trigger wi
 both apps running, real sleep and wake during a session, removing the other app from
 disk, Portavoz Dev beside Portavoz Release, and a real Portavoz 1.3 with dictation on.
 
+### Shared model store on a real library
+
+Fixtures prove adoption, consent and removal (D631), and `make test-model-gated` loads
+Parakeet, diarization, Whisper and Silero from read-only files in a scratch store
+seeded from `Portavoz/Models`. Still unproved: an installed build moving a real library
+at first launch, the first Core ML specialization after the path change, and the MLX
+summary model loading from read-only files. The gated tests read only the legacy
+folder, so a Mac whose models exist only in the shared store fails them as absent, and
+they need a shared-store seed before that folder retires.
+
+Portavoz takes no `LocalModelStore` lease on a model it has loaded, so only claims
+protect it, and removal by another app for all consumers can delete it while it is
+resident or between preparing and loading it. A Whisper tokenizer missing at that
+moment makes WhisperKit reach for its own download. Leases need wiring to the
+model-memory residency, not to a check. Two processes with the same consumer, such as
+two copies of one build, can also let an adoption already staging undo a removal.
+
 ### Release notes in the real update window
 
 The real `generate_appcast` embeds and signs the notes (D630), but they have not been

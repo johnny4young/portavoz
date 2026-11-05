@@ -80,8 +80,7 @@ private enum CLIModelLoader {
         progress: @escaping AudioAnalysisProgressHandler
     ) async throws -> ParakeetEngine {
         let descriptor = ModelCatalog.parakeetTdtV3
-        let report = await store.verify(descriptor)
-        if !report.isComplete {
+        if await store.needsDownload(descriptor) {
             await progress(.downloadingModel(
                 name: descriptor.displayName,
                 megabytes: descriptor.totalSizeBytes / 1_000_000))
@@ -109,8 +108,7 @@ private enum CLIModelLoader {
         progress: @escaping AudioAnalysisProgressHandler
     ) async throws -> WhisperEngine {
         let descriptor = ModelCatalog.whisperLargeV3Turbo
-        let report = await store.verify(descriptor)
-        if !report.isComplete {
+        if await store.needsDownload(descriptor) {
             await progress(.downloadingModel(
                 name: descriptor.displayName,
                 megabytes: descriptor.totalSizeBytes / 1_000_000))
@@ -138,8 +136,7 @@ private enum CLIModelLoader {
         progress: @escaping AudioAnalysisProgressHandler
     ) async throws -> PyannoteDiarizer {
         let descriptor = ModelCatalog.speakerDiarization
-        let report = await store.verify(descriptor)
-        if !report.isComplete {
+        if await store.needsDownload(descriptor) {
             await progress(.downloadingModel(
                 name: descriptor.displayName,
                 megabytes: descriptor.totalSizeBytes / 1_000_000))
@@ -477,16 +474,21 @@ struct CLILocalModelLifecycleManager: LocalModelLifecycleManaging {
         guard let concrete = concrete(descriptor) else {
             return LocalModelVerification(
                 descriptor: descriptor,
-                directory: await store.directory(for: ModelCatalog.parakeetTdtV3),
+                directory: await installDirectory(of: ModelCatalog.parakeetTdtV3, in: store),
                 missing: [descriptor.id],
                 corrupted: [])
         }
         let report = await store.verify(concrete)
         return LocalModelVerification(
             descriptor: descriptor,
-            directory: await store.directory(for: concrete),
+            directory: await installDirectory(of: concrete, in: store),
             missing: report.missing,
             corrupted: report.corrupted)
+    }
+
+    /// Only for display: an unusable store reports its models as missing anyway.
+    private func installDirectory(of descriptor: ModelDescriptor, in store: ModelStore) async -> URL {
+        (try? await store.directory(for: descriptor)) ?? ModelStore.legacyRootDirectory
     }
 
     func installAndProveLoadable(

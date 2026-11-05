@@ -6,10 +6,24 @@ import TranscriptionKit
 /// swift-argument-parser while the CLI is still a dev harness.
 enum CLISupport {
     static func modelStore(fromModelsDir path: String?) -> ModelStore {
-        if let path {
-            return ModelStore(rootDirectory: URL(fileURLWithPath: path, isDirectory: true))
-        }
-        return ModelStore()
+        guard let path else { return .userLibrary(consumer: consumer) }
+        // A folder from before the shared store keeps its models: they seed the new layout.
+        let root = URL(fileURLWithPath: path, isDirectory: true)
+        return ModelStore(rootDirectory: root, consumer: consumer, legacyRoot: root)
+    }
+
+    private static let consumer = ModelStore.Consumer(identifier: "app.portavoz.cli", displayName: "Portavoz CLI")
+
+    /// The app does this for its own claims; nothing else would for the CLI's.
+    static func collectUnusedModels(arguments: [String]) async {
+        try? await collectionStore(arguments: arguments).collectUnused(keeping: ModelCatalog.all)
+    }
+
+    /// A run pointed at its own folder must leave the shared store alone.
+    static func collectionStore(arguments: [String]) -> ModelStore {
+        let flag = arguments.firstIndex(of: "--models-dir")
+        let path = flag.flatMap { arguments.indices.contains($0 + 1) ? arguments[$0 + 1] : nil }
+        return modelStore(fromModelsDir: path)
     }
 
     /// Downloads/verifies the recommended model (printing progress) and
@@ -37,8 +51,7 @@ enum CLISupport {
         _ descriptor: ModelDescriptor,
         store: ModelStore
     ) async throws -> URL {
-        let report = await store.verify(descriptor)
-        if !report.isComplete {
+        if await store.needsDownload(descriptor) {
             let megabytes = descriptor.totalSizeBytes / 1_000_000
             print("Downloading \(descriptor.displayName) (\(megabytes) MB, sha256-verified)…")
         }

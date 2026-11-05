@@ -18,13 +18,13 @@ final class NemotronLatin1120IntegrationTests: XCTestCase {
             ProcessInfo.processInfo.environment["PORTAVOZ_TEST_WAV"],
             "set PORTAVOZ_TEST_WAV to a spoken English or Spanish file")
 
-        let store = ModelStore()
+        let store = ModelStore.gatedTests()
         let descriptor = ModelCatalog.nemotronLatin1120
         let report = await store.verify(descriptor)
         try XCTSkipUnless(
             report.isComplete,
             "install the candidate with bench-live before running this gate")
-        let directory = await store.directory(for: descriptor)
+        let directory = try await store.directory(for: descriptor)
         let engine = try await NemotronLatin1120Engine.load(
             fromVerifiedDirectory: directory)
 

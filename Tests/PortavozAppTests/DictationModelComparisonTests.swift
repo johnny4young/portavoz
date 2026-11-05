@@ -67,7 +67,7 @@ final class DictationModelComparisonTests: XCTestCase {
                 ?? DictationModelFixture.caseIDs(audioRoot: audioRoot)
             let fixture = try DictationModelFixture(audioRoot: audioRoot, selectedIDs: ids)
             for id in ids { _ = try fixture.cell(id) }
-            let store = ModelStore(rootDirectory: URL(fileURLWithPath: models, isDirectory: true))
+            let store = ModelStore(rootDirectory: URL(fileURLWithPath: models, isDirectory: true), consumer: .tests)
             var loaded: [ModelReceipt] = []
             var cells: [CellReceipt] = []
             var compared: [(ModelDescriptor, ParakeetCheckpoint)] = [

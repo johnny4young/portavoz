@@ -14,11 +14,11 @@ final class ModelMemoryResidencyIntegrationTests: XCTestCase {
         try XCTSkipUnless(
             ProcessInfo.processInfo.environment["PORTAVOZ_MODEL_RESIDENCY_TESTS"] == "1",
             "set PORTAVOZ_MODEL_RESIDENCY_TESTS=1 with verified Parakeet assets installed")
-        let store = ModelStore()
+        let store = ModelStore.gatedTests()
         let descriptor = ModelCatalog.parakeetTdtV3
         let report = await store.verify(descriptor)
         try XCTSkipUnless(report.isComplete, "complete pinned Parakeet assets are required; this test never downloads")
-        let directory = await store.directory(for: descriptor)
+        let directory = try await store.directory(for: descriptor)
         var engine: ParakeetEngine? = try await ParakeetEngine.load(fromVerifiedDirectory: directory)
         weak let observedEngine = engine
         let suite = "model-memory-real-\(UUID().uuidString)"
