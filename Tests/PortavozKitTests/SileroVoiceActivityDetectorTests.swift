@@ -175,7 +175,7 @@ final class SileroVoiceActivityDetectorTests: XCTestCase {
         guard let root = ProcessInfo.processInfo.environment["PORTAVOZ_TEST_SILERO_MODEL_ROOT"] else {
             throw XCTSkip("Install the pinned Silero fixture for this real-model lane")
         }
-        let store = ModelStore(rootDirectory: URL(fileURLWithPath: root), consumer: .tests)
+        let store = ModelStore.gatedTests(modelsFolder: URL(fileURLWithPath: root))
         let detector = try await SileroVoiceActivityDetector.load(
             from: store, channel: .microphone)
         let result = try await detector.process(AudioChunk(
@@ -210,7 +210,7 @@ final class SileroVoiceActivityDetectorTests: XCTestCase {
         let samples = try AudioConverter().resampleAudioFile(URL(fileURLWithPath: audioPath))
         XCTAssertGreaterThan(samples.count, 16_000)
         let detector = try await SileroVoiceActivityDetector.load(
-            from: ModelStore(rootDirectory: URL(fileURLWithPath: root), consumer: .tests),
+            from: ModelStore.gatedTests(modelsFolder: URL(fileURLWithPath: root)),
             channel: .microphone)
         var observations: [VoiceActivityObservation] = []
         for start in stride(from: 0, to: samples.count, by: 4_096) {
