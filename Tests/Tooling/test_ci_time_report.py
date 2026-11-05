@@ -625,7 +625,18 @@ class ArgumentTests(unittest.TestCase):
 
 class WorkflowContractTests(unittest.TestCase):
     def test_every_workflow_job_is_declared_blocking_or_not(self):
-        self.assertLessEqual(set(report.declared_timeouts()), report.BLOCKING["pull_request"])
+        self.assertLessEqual(set(report.declared_timeouts()), report.BLOCKING["pull_request"] | report.NOT_BLOCKING)
+        self.assertEqual(report.NOT_BLOCKING & report.BLOCKING["pull_request"], frozenset())
+
+    def test_the_alert_is_never_measured_and_never_decides_an_outcome(self):
+        lanes = [job("build-and-test", "10:00:00", "10:00:05", "10:08:00")]
+        alert = job("alert", "10:08:01", "10:08:05", "10:08:20", conclusion="failure", runner="ubuntu-latest")
+
+        self.assertNotIn("alert", report.BLOCKING["push"])
+        measured = row([*lanes, alert], event="push")
+        self.assertEqual(measured["outcome"], "passed")
+        self.assertEqual(measured["t_total_s"], row(lanes, event="push")["t_total_s"])
+        self.assertEqual(measured["critical_path"], ["build-and-test"])
 
     def test_the_release_contract_jobs_exist_in_ci(self):
         self.assertLessEqual(report.BLOCKING["push"], set(report.declared_timeouts()))

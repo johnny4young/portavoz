@@ -521,3 +521,28 @@ jobs:
             fi
           fi
           echo "Gate passed (ui=$UI_REQUIRED, result=$UI_RESULT, verified=${UI_VERIFIED:-not-required})."
+
+  alert:
+    # Not a gate: a failed push run blocks nothing, so this is what makes it visible.
+    needs: [repository-hygiene, lint, build-and-test, ios-portability]
+    if: always() && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Record whether main is red in its issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          NEEDS: ${{ toJSON(needs) }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_NUMBER: ${{ github.run_number }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python3 scripts/ui_nightly_health.py push-alert --needs "$NEEDS" --repository "$REPOSITORY" \
+            --run-number "$RUN_NUMBER" --sha "$SHA" --run-url "$RUN_URL"

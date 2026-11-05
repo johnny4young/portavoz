@@ -5832,7 +5832,9 @@ cases it defers. The complete English catalogue runs every night on
 input. A nightly shard succeeds only with
 verified evidence; a hosted-automation advisory fails the run. An unverified or
 cancelled night opens or updates one issue, and `ui-nightly-watch.yml` keeps
-another open while verified evidence on `main` is older than 48 hours.
+another open while verified evidence on `main` is older than 48 hours. A push run
+on `main` ends with an `alert` job that keeps one issue open while the newest push
+run is red, and the watch repairs that issue when the job could not.
 Pull requests run the interruption controls only when one of their behavior
 files changes. Repository hygiene runs beside the macOS lanes instead of before
 them. Each UI lane keeps a small receipt of what it selected and ran on every run,
