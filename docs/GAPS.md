@@ -187,15 +187,15 @@ percent, although the store reports the other app's progress.
 
 ### Main-thread stalls in hosted UI journeys
 
-`DictationPracticeUITests` fails intermittently at its 5 s wait for the delivered text.
+`DictationPracticeUITests` failed intermittently at a 5 s wait for the delivered text,
+now 90 s because the journey proves delivery rather than latency.
 Five hosted probes of 12 to 30 iterations measured the second click to the field: timers
 off the main thread fire on time at 0.26 s, while the main queue waits a median of about
 1.5 s, about 20 s at the 90th percentile and up to 60 s. Samples show the main thread
 blocked in `CAContext waitForCommitId` under `RBLayer display`, waiting on the
 WindowServer, or running XCTest's in-process accessibility snapshots, with no Portavoz
 frame holding it. A process activity, a frozen waveform and a display kept awake do not
-remove it. The root cause is open, it has not been measured on a physical Mac, and
-whether the wait should change is an owner decision.
+remove it. The root cause is open, and it has not been measured on a physical Mac.
 
 ### Release notes in the real update window
 
