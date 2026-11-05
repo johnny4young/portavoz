@@ -182,6 +182,21 @@ moment makes WhisperKit reach for its own download. Leases need wiring to the
 model-memory residency, not to a check. Two processes with the same consumer, such as
 two copies of one build, can also let an adoption already staging undo a removal.
 
+A second app waiting on another app's install reads as checking local files, with no
+percent, although the store reports the other app's progress.
+
+### Main-thread stalls in hosted UI journeys
+
+`DictationPracticeUITests` fails intermittently at its 5 s wait for the delivered text.
+Five hosted probes of 12 to 30 iterations measured the second click to the field: timers
+off the main thread fire on time at 0.26 s, while the main queue waits a median of about
+1.5 s, about 20 s at the 90th percentile and up to 60 s. Samples show the main thread
+blocked in `CAContext waitForCommitId` under `RBLayer display`, waiting on the
+WindowServer, or running XCTest's in-process accessibility snapshots, with no Portavoz
+frame holding it. A process activity, a frozen waveform and a display kept awake do not
+remove it. The root cause is open, it has not been measured on a physical Mac, and
+whether the wait should change is an owner decision.
+
 ### Release notes in the real update window
 
 The real `generate_appcast` embeds and signs the notes (D630), but they have not been
