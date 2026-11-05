@@ -182,7 +182,7 @@ class CIWorkflowTests(unittest.TestCase):
         ui = ci.split("\n  scope:\n", 1)[1]
 
         self.assertEqual(ci.count("run: scripts/check-repository-hygiene.sh"), 1)
-        self.assertEqual(ci.count("needs: repository-hygiene\n"), 1)
+        self.assertEqual(ci.count("needs: [repository-hygiene, scope]\n"), 1)
         self.assertEqual(ci.count("    needs: scope\n"), 2)
         # scope is skipped on a main push, and the release contract requires this job there.
         self.assertIn("if: ${{ !cancelled() && needs.scope.result != 'failure' }}\n", ci)
@@ -192,11 +192,14 @@ class CIWorkflowTests(unittest.TestCase):
             1,
         )
 
-    def test_ios_portability_leaves_pull_requests_and_stays_on_main(self):
+    def test_ios_portability_runs_on_main_and_on_dependency_pull_requests_only(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         lane = ci.split("  ios-portability:\n", 1)[1].split("\n  interruption:\n", 1)[0]
+        select = ci.split("- name: Select the iOS lane\n", 1)[1].split("# Every attempt selects", 1)[0]
 
-        self.assertIn("if: github.event_name != 'pull_request'\n", lane)
+        self.assertIn("!cancelled() && needs.repository-hygiene.result == 'success'", lane)
+        self.assertIn("(github.event_name != 'pull_request' || needs.scope.outputs.ios_required == 'true')", lane)
+        self.assertIn('"$BASE_SHA...$HEAD_SHA" -- Package.swift Package.resolved', select)
         self.assertNotIn("ios-scope", ci)
         self.assertFalse((ROOT / "scripts/ios_portability_scope.py").exists())
 
@@ -332,7 +335,7 @@ class UIPrerequisiteTests(unittest.TestCase):
         import subprocess
 
         environment = dict(os.environ, EVENT_NAME="pull_request", HYGIENE_RESULT="success", LINT_RESULT="success",
-                           BUILD_RESULT="success", IOS_RESULT="skipped", SCOPE_SUMMARY="reason",
+                           BUILD_RESULT="success", IOS_REQUIRED="false", IOS_RESULT="skipped", SCOPE_SUMMARY="reason",
                            SCOPE_RESULT="success", UI_REQUIRED="true",
                            CONTROLS_REQUIRED="true",
                            CONTROLS_RESULT="success", UI_RESULT="success",
@@ -445,6 +448,12 @@ class UIPrerequisiteTests(unittest.TestCase):
                                         ("workflow_dispatch", "failure", False), ("pull_request", "cancelled", False)):
             with self.subTest(event=event, result=result):
                 run = self.run_gate(EVENT_NAME=event, IOS_RESULT=result)
+                self.assertEqual(run.returncode == 0, accepted, run.stderr)
+
+    def test_a_dependency_pull_request_needs_the_ios_compile_to_pass(self):
+        for result, accepted in (("success", True), ("skipped", False), ("failure", False), ("cancelled", False)):
+            with self.subTest(result=result):
+                run = self.run_gate(IOS_REQUIRED="true", IOS_RESULT=result)
                 self.assertEqual(run.returncode == 0, accepted, run.stderr)
 
     def test_a_failed_receipt_download_still_reaches_the_classifier_and_the_final_step(self):

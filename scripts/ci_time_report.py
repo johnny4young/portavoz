@@ -37,7 +37,7 @@ EVENTS = ("pull_request", "push")
 # to these names, so the same report compares before and after.
 BLOCKING = {
     "pull_request": frozenset({
-        "repository-hygiene", "lint", "scope", "swift-scope", "build-and-test", "build-ui-products",
+        "repository-hygiene", "lint", "scope", "swift-scope", "build-and-test", "ios-portability", "build-ui-products",
         "scoped-ui-tests", "interruption-controls", "ui-test-gate", "ui-tests", "interruption", "gate",
     }),
     "push": frozenset({"repository-hygiene", "lint", "build-and-test", "ios-portability"}),
