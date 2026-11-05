@@ -310,7 +310,8 @@ class CIWorkflowTests(unittest.TestCase):
         gate = workflow.split("\n  gate:\n", 1)[1]
         needed = re.search(r"needs: \[(.*)\]", gate).group(1).split(", ")
 
-        self.assertEqual(set(needed), set(jobs) - {"gate"})
+        # The alert runs after these lanes on a push, and the gate never waits for it.
+        self.assertEqual(set(needed), set(jobs) - {"gate", "alert"})
         self.assertIn("if: always() && github.event_name != 'push'", gate)
 
 
@@ -721,6 +722,36 @@ class NightlyUIWorkflowTests(unittest.TestCase):
         self.assertIn("  actions: read\n", watch)
         self.assertIn("  issues: write\n", watch)
         self.assertIn("scripts/ui_nightly_health.py freshness", watch)
+
+    def test_a_red_push_run_reaches_its_alert(self):
+        ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        alert = ci.split("\n  alert:\n", 1)[1]
+        contract = json.loads((ROOT / "docs/evidence/source-integration-qualification.json").read_text(encoding="utf-8"))
+
+        self.assertIn("needs: [repository-hygiene, lint, build-and-test, ios-portability]\n", alert)
+        self.assertEqual(sorted(re.search(r"needs: \[(.*)\]", alert).group(1).split(", ")),
+                         contract["hostedCI"]["requiredJobs"])
+        self.assertIn("if: always() && github.event_name == 'push'\n", alert)
+        self.assertIn("NEEDS: ${{ toJSON(needs) }}\n", alert)
+        self.assertIn("RUN_NUMBER: ${{ github.run_number }}\n", alert)
+        self.assertIn("scripts/ui_nightly_health.py push-alert", alert)
+        self.assertIn("OWNER: ${{ github.repository_owner }}\n", alert)
+        self.assertIn('--assignee "$OWNER"', alert)
+        # Only the alert may write.
+        self.assertEqual(ci.count("issues: write"), 1)
+        self.assertIn("issues: write\n", alert)
+        self.assertIn("actions: read\n", alert)
+        self.assertIn("\npermissions:\n  contents: read\n", ci)
+        self.assertNotIn("continue-on-error", alert)
+
+    def test_the_watch_repairs_a_push_alert_that_could_not_report(self):
+        watch = (ROOT / ".github/workflows/ui-nightly-watch.yml").read_text(encoding="utf-8")
+
+        job = watch.split("\n  ci-push:\n", 1)[1]
+        self.assertIn("scripts/ui_nightly_health.py push-watch", job)
+        self.assertIn("OWNER: ${{ github.repository_owner }}\n", job)
+        self.assertIn('--assignee "$OWNER"', job)
+        self.assertNotIn("continue-on-error", watch)
 
     def test_pull_requests_select_within_the_budget_and_report_what_was_cut(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")

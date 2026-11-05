@@ -22761,9 +22761,13 @@ its host admission, stays open: its harnesses share one Release CLI binary, and 
 
 ## D633 — A pull request that changes dependencies compiles for iOS
 
+> **Reporting superseded by D634 (5 Nov 2026).** A red push run on `main` now opens
+> an issue, so "nothing in this repository reports it" is historical. Everything else
+> in this decision stands.
+
 **Context:** D615 took iOS portability off pull requests and accepted that a compile break could reach `main` until the next
 push saw it. Moving to `LocalModelStore` 0.1.1 did that: the package declared only macOS, every iOS compile failed its
-availability checks, and `main` stayed red for four merges because a failed push run blocks nothing and nothing in
+availability checks, and `main` stayed red for five merges because a failed push run blocks nothing and nothing in
 this repository reports it.
 
 **Decision:** `LocalModelStore` 0.1.2 declares iOS 17, the match for its macOS 14 floor, and compiles for the iOS Simulator
@@ -22771,5 +22775,31 @@ in its own CI. Portavoz pins that version in place of the 0.1.1 named in D631. A
 `ios-portability`, and `gate` then requires it. Every other pull request still skips it, which narrows D615 only for these.
 
 **Consequences:** a dependency pull request takes a fourth macOS runner for about eight minutes. A source change that breaks
-the iOS compile can still reach `main` as D615 accepted, and this repository still does not report a red push run. Both packages prove that
+the iOS compile can still reach `main` as D615 accepted, and D634 now reports the red push run that follows. Both packages prove that
 iOS compiles, not that the store runs there.
+
+## D634 — A red push run on `main` reports itself
+
+**Context:** a failed push run blocks nothing. `ios-portability` failed on five consecutive merges while every pull request
+gate was green, and nobody noticed for about 16 hours. D633 narrows that path for dependency changes only, so a source change, or a
+`build-and-test` failure on `main`, still went unreported.
+
+**Decision:** `ci.yml` ends every push run with an `alert` job, the pattern D615 gave the nightly. When `repository-hygiene`,
+`lint`, `build-and-test` or `ios-portability` ended as anything but success, cancelled and skipped included, it opens the one
+issue titled `CI on main is red`, assigned to the repository owner because a bot's unassigned issue may notify nobody, or comments
+on it if open. A green run closes it. Only the newest push run speaks for `main`:
+each commit has its own concurrency group (D620), so an older run can finish last, and it writes nothing once a higher run
+number exists. The run number survives a rerun, so rerunning an older run stays quiet, while rerunning the newest one runs the
+alert again and can close the issue.
+
+`ui-nightly-watch.yml` repairs what the alert cannot report: its own failure, or a run that started no job. It reads those four
+jobs' conclusions rather than the run's, so a failed alert alone never reads as a red `main`. It opens a missing issue, closes
+one once the newest run passed, leaves an open one alone so a push does not notify again, and waits while the newest run is in
+flight. A push usually finds its own new run in flight, and that run's alert then speaks for `main`, so the repair of a missed
+alert can come up to a day late, from the 15:53 UTC schedule or a dispatch. An unreadable API fails either job instead of reading
+as healthy.
+
+**Consequences:** no required check or GitHub setting changes: `gate` does not need `alert`, which skips on pull requests, and
+the time report does not measure it. A failed alert does turn its push run red, and release qualification refuses that run until
+the job is rerun. A dispatched run on `main` changes nothing, so a red issue closes through a later push or a rerun of the
+newest one. D615's accepted risk stands: a compile break can still reach `main`, and this bounds only how long it goes unnoticed.

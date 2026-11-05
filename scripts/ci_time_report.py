@@ -42,6 +42,8 @@ BLOCKING = {
     }),
     "push": frozenset({"repository-hygiene", "lint", "build-and-test", "ios-portability"}),
 }
+# Runs after the blocking jobs and waits for no merge, so it stays out of every measurement.
+NOT_BLOCKING = frozenset({"alert"})
 SLO_EXECUTION_SECONDS = 600
 SLO_TOTAL_SECONDS = 1200
 ACCEPTANCE_HEADS = 30

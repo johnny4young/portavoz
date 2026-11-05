@@ -30,3 +30,17 @@ jobs:
           GH_REPO: ${{ github.repository }}
           REPOSITORY: ${{ github.repository }}
         run: python3 scripts/ui_nightly_health.py freshness --repository "$REPOSITORY"
+
+  # The push run's own alert cannot report that it failed, or a run that started no job.
+  ci-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Match the issue to main's newest push run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          REPOSITORY: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+        run: python3 scripts/ui_nightly_health.py push-watch --repository "$REPOSITORY" --assignee "$OWNER"
