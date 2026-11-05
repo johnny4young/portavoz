@@ -16,6 +16,9 @@ final class ModelsOnThisMacUITests: PortavozUITestCase {
         XCTAssertTrue(row.waitForExistenceFast(timeout: 10), "the seeded model is listed")
         let expected = UITestLocale.environmentLocale == "es" ? "También usado por Secreteo" : "Also used by Secreteo"
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: row).contains(expected) })
+        let form = app.windows.containing(.any, identifier: "settings-export-preferences").firstMatch
+            .scrollViews.element(boundBy: 1)
+        XCTAssertTrue(row.revealVertically(in: form, maxScrolls: 24, maximumStep: 240))
         attachScreenshot(of: app, named: "pr-models-on-this-mac")
     }
 }
