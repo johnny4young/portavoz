@@ -23,6 +23,7 @@ JOB_IDS = itertools.count(1_000)
 # Failing here means the repository or its code is wrong, never the hosted machine.
 PRODUCT_STEPS = {
     "Repository, evidence, and CI policy contracts", "Release performance ledger rules", "Select the Swift test scope",
+    "Select the iOS lane",
     "Current-SDK build and selected test suite", "Compile transport-neutral iOS 26 surface", "Strict SwiftLint 0.65.0 from checksum-pinned official archive",
     "Validate the selector catalog", "Select UI evidence", "Verify interruption safety at the shared callback",
     "Build the UI host and runner once",
@@ -30,7 +31,6 @@ PRODUCT_STEPS = {
     "Classify functional evidence and hosted runtime drift",
     "Require every lane the selection asked for", "Fail the lane when its evidence is not complete",
 }
-NOT_BLOCKING_JOBS = {"ios-portability"}
 
 
 def job(name, created, started, completed, conclusion="success", job_id=None, runner="macos-26", steps=()):
@@ -98,10 +98,17 @@ class AttemptMetricTests(unittest.TestCase):
     def test_a_longer_job_outside_the_required_set_is_not_execution_time(self):
         result = row([
             job("build-and-test", "10:00:00", "10:00:00", "10:05:00"),
-            job("ios-portability", "10:00:00", "10:00:00", "10:20:00"),
+            job("verification-anchor", "10:00:00", "10:00:00", "10:20:00"),
         ])
         self.assertEqual(result["t_execution_s"], 300)
         self.assertEqual(result["t_total_s"], 300)
+
+    def test_a_pull_request_that_ran_the_ios_lane_waits_for_it(self):
+        result = row([
+            job("build-and-test", "10:00:00", "10:00:00", "10:05:00"),
+            job("ios-portability", "10:00:00", "10:00:00", "10:08:00"),
+        ])
+        self.assertEqual(result["t_execution_s"], 480)
 
     def test_push_blocks_on_the_release_contract_jobs(self):
         result = row([
@@ -618,7 +625,7 @@ class ArgumentTests(unittest.TestCase):
 
 class WorkflowContractTests(unittest.TestCase):
     def test_every_workflow_job_is_declared_blocking_or_not(self):
-        self.assertLessEqual(set(report.declared_timeouts()), report.BLOCKING["pull_request"] | NOT_BLOCKING_JOBS)
+        self.assertLessEqual(set(report.declared_timeouts()), report.BLOCKING["pull_request"])
 
     def test_the_release_contract_jobs_exist_in_ci(self):
         self.assertLessEqual(report.BLOCKING["push"], set(report.declared_timeouts()))

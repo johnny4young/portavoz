@@ -5806,7 +5806,7 @@ inventory or follows source symlinks. Pull requests restore but never save. A
 hit whose fingerprints fail validation is discarded and the job builds cold. UI
 products, iOS portability, release/performance evidence and private model
 or library state are outside this cache. The iOS portability lane runs on every
-`main` push and manual run, and never on a pull request. The quality spec owns measurement and
+`main` push and manual run, and on a pull request only when it changes `Package.swift` or `Package.resolved`. The quality spec owns measurement and
 invalidation checks; a hit alone is not evidence of a faster or passing build.
 
 Pull-request UI evidence is selected deterministically from changed paths, and

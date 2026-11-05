@@ -22758,3 +22758,18 @@ catches added per-row work on every push but not a lost index or a scan, so one 
 benchmark runs. The release gate gains about a minute and no extra build. Moving the harness into `perf-ledger`, with
 its host admission, stays open: its harnesses share one Release CLI binary, and this one is an XCTest. Why
 `decisionConflicts` fired rather than `changeSince`, which costs the same, was not explained.
+
+## D633 — A pull request that changes dependencies compiles for iOS
+
+**Context:** D615 took iOS portability off pull requests and accepted that a compile break could reach `main` until the next
+push saw it. Moving to `LocalModelStore` 0.1.1 did that: the package declared only macOS, every iOS compile failed its
+availability checks, and `main` stayed red for four merges because a failed push run blocks nothing and nothing in
+this repository reports it.
+
+**Decision:** `LocalModelStore` 0.1.2 declares iOS 17, the match for its macOS 14 floor, and compiles for the iOS Simulator
+in its own CI. Portavoz pins that version in place of the 0.1.1 named in D631. A pull request that changes `Package.swift` or `Package.resolved` runs
+`ios-portability`, and `gate` then requires it. Every other pull request still skips it, which narrows D615 only for these.
+
+**Consequences:** a dependency pull request takes a fourth macOS runner for about eight minutes. A source change that breaks
+the iOS compile can still reach `main` as D615 accepted, and this repository still does not report a red push run. Both packages prove that
+iOS compiles, not that the store runs there.

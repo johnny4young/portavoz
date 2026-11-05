@@ -410,7 +410,8 @@ gate that runs beside the macOS lanes (D617)). Each behavioral Swift lane owns o
 test invocation, so compilation and tests use the same flags instead of a
 build/test pair that can compile twice. The iOS portability lane owns only its
 sequential destination compiles and cannot claim runtime/device behavior. It
-runs on every `main` push and manual run and never on a pull request (D615).
+runs on every `main` push and manual run, and on a pull request only when it changes
+`Package.swift` or `Package.resolved` (D633).
 
 ### Hosted UI evidence
 
@@ -650,7 +651,7 @@ the complete English catalog.
 
 `gate` is the one check a merge needs. It runs with `if: always()`, needs every lane and refuses
 whatever it cannot prove: hygiene, lint, scope and `build-and-test` must succeed; `ios-portability` must
-skip on a PR and succeed on a manual run; a skipped UI lane needs scope's explicit `required=false` and
+succeed on a PR that changes the package manifest or lock and on a manual run, and skip on any other PR; a skipped UI lane needs scope's explicit `required=false` and
 reason; the interruption controls must match the selection. A required UI lane needs its job's success,
 the classifier's `passed`, and a lane receipt of this head and of the attempt that ran, with tests executed,
 none missing, and the same cases as the runtime receipt. The known automation-mode timeout therefore leaves the PR red instead of green with no
