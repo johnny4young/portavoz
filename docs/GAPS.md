@@ -167,10 +167,13 @@ disk, Portavoz Dev beside Portavoz Release, and a real Portavoz 1.3 with dictati
 
 ### Shared model store on a real library
 
-Fixtures prove adoption, consent and removal (D631). Moving a real `Portavoz/Models`
-folder, loading every engine from read-only files, and the first Core ML
-specialization after the path change still need a real install and the gated model
-tests.
+Fixtures prove adoption, consent and removal (D631), and `make test-model-gated` loads
+Parakeet, diarization, Whisper and Silero from read-only files in a scratch store
+seeded from `Portavoz/Models`. Still unproved: an installed build moving a real library
+at first launch, the first Core ML specialization after the path change, and the MLX
+summary model loading from read-only files. The gated tests read only the legacy
+folder, so a Mac whose models exist only in the shared store fails them as absent, and
+they need a shared-store seed before that folder retires.
 
 Portavoz takes no `LocalModelStore` lease on a model it has loaded, so only claims
 protect it, and removal by another app for all consumers can delete it while it is
