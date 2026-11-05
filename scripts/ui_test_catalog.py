@@ -154,6 +154,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     "settings-data": (
         test_id("SettingsUITests", "testSyncPaneKeepsOptInAndExistingLibrarySeparate"),
         test_id("SettingsUITests", "testDataPaneExportsARedactedSupportFileAndAReadableBackup"),
+        test_id("ModelsOnThisMacUITests", "testTheDataPaneListsAModelAnotherAppAlsoUses"),
     ),
     "production-sync": (
         test_id("SettingsUITests", "testSyncPaneKeepsOptInAndExistingLibrarySeparate"),

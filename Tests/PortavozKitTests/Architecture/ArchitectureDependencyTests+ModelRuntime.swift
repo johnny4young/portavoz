@@ -649,8 +649,8 @@ extension ArchitectureDependencyTests {
             of: "Sources/portavoz-app/AppServices+Application.swift")
 
         XCTAssertTrue(store.contains("func verifiedInstallation("))
-        XCTAssertTrue(store.contains("guard await verify(descriptor).isComplete"))
-        XCTAssertTrue(lifecycle.contains("store.verifiedInstallation(descriptor)"))
+        XCTAssertTrue(store.contains("await store.verifiedInstallation(manifest, forceHash: forceHash)"))
+        XCTAssertTrue(lifecycle.contains("store.verifiedInstallation(descriptor, forceHash: forceHash)"))
         XCTAssertFalse(lifecycle.contains("FileManager"))
         XCTAssertTrue(services.contains("let modelStore: ModelStore"))
         XCTAssertTrue(services.contains("let modelLifecycle: VerifiedModelLifecycle"))

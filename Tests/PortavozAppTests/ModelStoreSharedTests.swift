@@ -157,6 +157,80 @@ struct ModelStoreSharedTests {
         #expect(await store.verifiedInstallation(fixture.descriptor) == nil)
     }
 
+    @Test func theListNamesTheOtherAppsThatUseAModel() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let other = fixture.store(Self.other)
+        let store = fixture.store(Self.portavoz)
+        _ = try await other.ensureAvailable(fixture.descriptor)
+
+        let onlyOther = await store.installedModels()
+        _ = try await store.ensureAvailable(fixture.descriptor)
+        let shared = await store.installedModels()
+        _ = try await other.remove(fixture.descriptor)
+        let onlyHere = await store.installedModels()
+
+        #expect(onlyOther.map(\.isUsedHere) == [false])
+        #expect(onlyOther.map(\.otherApps) == [[Self.other.displayName]])
+        #expect(shared.map(\.isUsedHere) == [true])
+        #expect(shared.map(\.otherApps) == [[Self.other.displayName]])
+        #expect(shared.map(\.name) == [fixture.descriptor.displayName])
+        #expect(shared.map(\.bytes) == [fixture.descriptor.totalSizeBytes])
+        #expect(onlyHere.map(\.otherApps) == [[]])
+    }
+
+    @Test func evidenceFollowsARemovalFromAnotherProcessOnceInvalidated() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let store = fixture.store(Self.portavoz)
+        let lifecycle = VerifiedModelLifecycle(store: store)
+        _ = try await lifecycle.install(fixture.descriptor)
+        let sameConsumerElsewhere = fixture.store(Self.portavoz)
+
+        _ = try await sameConsumerElsewhere.remove(fixture.descriptor)
+        let cached = await lifecycle.installation(for: fixture.descriptor)
+        await lifecycle.invalidate(fixture.descriptor)
+        let current = await lifecycle.installation(for: fixture.descriptor)
+
+        #expect(cached != nil, "only a change notice tells this process")
+        #expect(current == nil)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func aChangeNoticeBringsAnotherAppsClaimIntoTheList() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let store = fixture.store(Self.portavoz)
+        _ = try await store.ensureAvailable(fixture.descriptor)
+        var notices = store.changes().makeAsyncIterator()
+
+        _ = try await fixture.store(Self.other).ensureAvailable(fixture.descriptor)
+
+        var seen: [String] = []
+        while seen.isEmpty, await notices.next() != nil {
+            seen = await store.installedModels().flatMap(\.otherApps)
+        }
+        #expect(seen == [Self.other.displayName])
+    }
+
+    @Test func aForcedCheckFindsDamageThatKeepsItsFingerprint() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let store = fixture.store(Self.portavoz)
+        let directory = try await store.ensureAvailable(fixture.descriptor)
+        let file = directory.appendingPathComponent("weights.bin")
+        let attributes = try FileManager.default.attributesOfItem(atPath: file.path)
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: file.path)
+        try Data(repeating: 0, count: fixture.descriptor.totalSizeBytes).write(to: file)
+        try FileManager.default.setAttributes(
+            [.modificationDate: attributes[.modificationDate] as Any, .posixPermissions: attributes[.posixPermissions] as Any],
+            ofItemAtPath: file.path)
+
+        let forced = await store.verifiedInstallation(fixture.descriptor, forceHash: true)
+
+        #expect(forced == nil)
+    }
+
     @Test func collectingUnusedKeepsTheCurrentPinAndWhatOtherAppsClaim() async throws {
         let fixture = try Fixture()
         defer { fixture.remove() }

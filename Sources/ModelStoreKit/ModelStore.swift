@@ -106,10 +106,28 @@ public actor ModelStore {
         case deferred
     }
 
+    /// One model on this Mac, whichever app asked for it.
+    public struct InstalledModel: Identifiable, Equatable, Sendable {
+        public let id: String
+        public let name: String
+        public let bytes: Int?
+        public let isUsedHere: Bool
+        public let otherApps: [String]
+
+        public init(id: String, name: String, bytes: Int?, isUsedHere: Bool, otherApps: [String]) {
+            self.id = id
+            self.name = name
+            self.bytes = bytes
+            self.isUsedHere = isUsedHere
+            self.otherApps = otherApps
+        }
+    }
+
     private let backing: Result<LocalModelStore, Error>
     /// The same store with no network, so adopting a legacy install can only place files.
     private let adopter: LocalModelStore?
     private let legacyRoot: URL?
+    private let consumerName: String
 
     /// Where Portavoz kept models before the shared store. Read as a seed, so an
     /// existing install moves without a download.
@@ -134,6 +152,7 @@ public actor ModelStore {
         adopter = legacyRoot == nil ? nil : try? LocalModelStore(
             location: location, consumer: storeConsumer, session: Self.offlineSession)
         self.legacyRoot = legacyRoot
+        consumerName = consumer.displayName
     }
 
     public func directory(for descriptor: ModelDescriptor) async throws -> URL {
@@ -156,20 +175,24 @@ public actor ModelStore {
         return VerificationReport(missing: report.missing, corrupted: report.corrupted)
     }
 
-    /// Returns loadable installation evidence only after every pinned artifact
-    /// has been hashed. Callers must not infer readiness from directory,
-    /// filename, or byte-count checks of their own.
+    /// Returns loadable installation evidence only after every pinned artifact has
+    /// been hashed in this process and is unchanged since. `forceHash` reads them
+    /// again. Callers must not infer readiness from directory, filename, or byte-count
+    /// checks of their own.
     public func verifiedInstallation(
-        _ descriptor: ModelDescriptor
+        _ descriptor: ModelDescriptor,
+        forceHash: Bool = false
     ) async -> VerifiedInstallation? {
-        guard await verify(descriptor).isComplete, let directory = try? await directory(for: descriptor) else {
-            return nil
-        }
+        let manifest = descriptor.manifest
+        guard let store = try? store() else { return nil }
+        await adoptLegacyInstall(descriptor)
+        guard await isClaimed(manifest, in: store),
+              let installed = await store.verifiedInstallation(manifest, forceHash: forceHash) else { return nil }
         return VerifiedInstallation(
             descriptorID: descriptor.id,
             descriptorRevision: descriptor.revision,
-            directory: directory,
-            artifactBytes: Int64(descriptor.totalSizeBytes))
+            directory: installed.directory,
+            artifactBytes: installed.artifactBytes)
     }
 
     /// Ensures the model is installed and verified, placing what this Mac already has
@@ -210,6 +233,25 @@ public actor ModelStore {
         case .keptForOthers(let names): return .keptForOthers(names)
         case .deferred: return .deferred
         }
+    }
+
+    /// Every model in the store, including those only other apps use.
+    public func installedModels() async -> [InstalledModel] {
+        guard let store = try? store() else { return [] }
+        return await store.inventory().map { entry in
+            InstalledModel(
+                id: entry.key,
+                name: entry.displayName ?? entry.id ?? entry.key,
+                bytes: entry.logicalBytes,
+                isUsedHere: entry.isClaimedByThisConsumer,
+                otherApps: entry.claimants.filter { $0 != consumerName })
+        }
+    }
+
+    /// Fires when models or claims change in any process, with no polling.
+    nonisolated public func changes() -> AsyncStream<Void> {
+        guard case .success(let store) = backing else { return AsyncStream { $0.finish() } }
+        return store.changes()
     }
 
     /// Retires claims an update re-pinned and collects what no app claims any more.

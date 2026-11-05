@@ -19257,6 +19257,46 @@
         }
       }
     },
+    "No models on this Mac yet": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay modelos en esta Mac"
+          }
+        }
+      }
+    },
+    "Models on this Mac": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modelos en esta Mac"
+          }
+        }
+      }
+    },
+    "Also used by %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "También usado por %@"
+          }
+        }
+      }
+    },
+    "Used by %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usado por %@"
+          }
+        }
+      }
+    },
     "Portavoz downloads these models only when a feature needs them, and they run on this Mac. Each keeps its own license.": {
       "localizations": {
         "es": {
