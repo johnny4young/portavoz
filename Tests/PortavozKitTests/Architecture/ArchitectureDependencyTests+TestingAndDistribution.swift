@@ -988,6 +988,13 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(runner.contains(
             "PORTAVOZ_CORRECTION_COMPOSITION_RUNS=20"))
         XCTAssertTrue(runner.contains("make correction-composition-benchmark"))
+        XCTAssertTrue(runner.contains("make graph-scale-benchmark"))
+        let graphScaleRoutine = try XCTUnwrap(
+            Self.contents(of: "Tests/PortavozKitTests/MeetingMemoryGraphScaleTests.swift")
+                .components(separatedBy: "func testCanonicalGraphScaleFromEnvironment")
+                .first)
+        XCTAssertFalse(graphScaleRoutine.contains("p95Milliseconds, "))
+        XCTAssertTrue(graphScaleRoutine.contains("assertQueryWork(report, queryRuns: 5)"))
         XCTAssertTrue(failureSummary.contains("MAXIMUM_LOG_BYTES"))
         XCTAssertTrue(failureSummary.contains("failed_test="))
         XCTAssertFalse(failureSummary.contains("print(text"))

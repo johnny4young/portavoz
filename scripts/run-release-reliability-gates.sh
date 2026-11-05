@@ -76,6 +76,7 @@ fi
 cleanup_swift_test_diagnostics
 PORTAVOZ_CORRECTION_COMPOSITION_RUNS=20 \
   make correction-composition-benchmark
+make graph-scale-benchmark
 swiftlint lint --strict --no-cache
 PORTAVOZ_STRESS_MINIMUM_TESTS=108 make test-recording-stress
 swift test --filter "$LANGUAGE_FILTER"

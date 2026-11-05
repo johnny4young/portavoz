@@ -89,8 +89,8 @@ make release-reliability-deterministic
 ```
 
 This command runs hygiene, warnings-as-errors build, the complete package
-suite, the isolated twenty-sample Release correction-composition budget,
-strict SwiftLint, 25 recording/recovery stress iterations, the exact mixed-language
+suite, the isolated twenty-sample Release correction-composition budget, the
+isolated 1,000/10,000-meeting Release graph query budget, strict SwiftLint, 25 recording/recovery stress iterations, the exact mixed-language
 policy corpus, and seven focused XCUITest journeys in English. It
 writes `dist/release-readiness/deterministic.json` only after every command
 passes. Do not reuse a receipt after the commit, version, or build changes.
@@ -113,6 +113,10 @@ p95 must remain at or below 250 ms. This isolated command is the only
 correction-composition timing authority in deterministic admission. Do not run
 it concurrently with another performance gate, lower its sample count, convert
 its red result into a retry, or infer combined UI/search performance from it.
+
+The Debug package suite pins each graph query's statement count and never fails
+on elapsed time. `make graph-scale-benchmark` runs next and is the only owner of
+the graph queries' 250 ms p95 budget (D632), under the same rules.
 
 D391 keeps this original deterministic receipt as one input rather than
 pretending it covers all of 1.0. The final schema-2 scorecard also requires four

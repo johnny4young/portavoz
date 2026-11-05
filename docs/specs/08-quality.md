@@ -4201,6 +4201,15 @@ after the package suite, before later gates, and still writes no receipt if it
 fails. No budget, fixture size, semantic assertion, privacy boundary, or final
 bilingual UI gate was removed.
 
+**Isolated graph query admission (D632).** The package suite keeps the graph's
+provenance, correction-awareness and rebuild invariants, requires every query to
+answer, and pins each query's exact SELECT count, without using elapsed time. The
+count catches added per-row work at any scale, but not a lost index or a scan:
+`firstDiscussion` keeps one count while its cost grows with the corpus. Those
+regressions reach the 250 ms budget only in `make graph-scale-benchmark`, which
+the deterministic release owner runs right after correction composition, and an
+architecture ratchet keeps it in that runner.
+
 D395's focused class passed 5/5 in 0.790 seconds. Its isolated current-host
 Release execution passed all twenty samples at 55.281 ms p50, 56.485 ms p95,
 and 56.786 ms maximum against the unchanged 250 ms budget. The complete
@@ -4774,6 +4783,12 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   The 2 Aug 2026 five-run arm64 reference measured 4.06/4.25 ms p50/p95 at
   1,000 and 25.10/25.27 ms at 10,000. This is Store-read authority only; UI
   rendering, candidate extraction, and cross-meeting linking remain separate.
+- `make graph-scale-benchmark`: run the six meeting memory graph queries in
+  Release mode over fresh synthetic 1,000- and 10,000-meeting stores, thirty
+  samples per query, and fail when a nearest-rank p95 reaches 250 ms (D632). Every
+  sample must answer, and every call must use the exact SELECT count the Debug
+  suite pins. Stdout holds one content-free report per scale. This is Store-read
+  authority over an in-memory database; disk, UI and field latency remain separate.
 - `make long-capture-baseline`: clean-commit Release proof that accelerates
   three hours of bounded synthetic microphone/system PCM through the production
   session and requires exact frames, healthy publication, zero drift, and no
