@@ -178,7 +178,7 @@ def push_run(number, **overrides):
 
 
 def push_alert(results, fake, number=5):
-    return health.push_alert(results, repository="o/r", run_number=number, sha="abc",
+    return health.push_alert(results, repository="o/r", assignee="owner", run_number=number, sha="abc",
                              run_url=f"https://example.test/{number}", run=fake)
 
 
@@ -209,6 +209,14 @@ class PushAlertTests(unittest.TestCase):
                     for passed in set(health.PUSH_JOBS) - {job}:
                         self.assertNotIn(passed, body)
                     self.assertTrue(message.startswith("::error::"))
+
+    def test_the_opened_issue_is_assigned_so_someone_is_notified(self):
+        fake = FakeGitHub(runs=[push_run(5)])
+
+        push_alert({**green_push_needs(), "lint": {"result": "failure"}}, fake)
+
+        create = fake.calls[-1]
+        self.assertEqual(create[create.index("--assignee") + 1], "owner")
 
     def test_a_green_run_with_no_issue_writes_nothing(self):
         fake = FakeGitHub(runs=[push_run(5)])
@@ -270,7 +278,7 @@ class PushAlertTests(unittest.TestCase):
         self.assertIn("event=push", path)
 
     def test_no_needed_jobs_or_no_readable_run_is_unknown_never_green(self):
-        with self.assertRaises(health.HealthError):
+        with self.assertRaisesRegex(health.HealthError, "^the run reported no needed jobs$"):
             push_alert({}, FakeGitHub(runs=[push_run(5)]))
         with self.assertRaises(health.HealthError):
             push_alert(green_push_needs(), FakeGitHub())
@@ -285,7 +293,7 @@ class PushWatchTests(unittest.TestCase):
     def test_a_run_in_flight_is_left_to_report_itself(self):
         fake = FakeGitHub(runs=[push_run(5, status="in_progress")], jobs=self.jobs(lint="failure"))
 
-        health.push_watch("o/r", fake)
+        health.push_watch("o/r", assignee="owner", run=fake)
 
         self.assertEqual(fake.writes(), [])
         self.assertEqual([call for call in fake.calls if "/jobs" in call[1]], [])
@@ -293,25 +301,26 @@ class PushWatchTests(unittest.TestCase):
     def test_a_red_run_its_alert_missed_opens_the_issue(self):
         fake = FakeGitHub(runs=[push_run(5)], jobs=self.jobs(lint="failure"))
 
-        message = health.push_watch("o/r", fake)
+        message = health.push_watch("o/r", assignee="owner", run=fake)
 
         self.assertEqual(fake.writes(), [("issue", "create")])
         body = fake.calls[-1][fake.calls[-1].index("--body") + 1]
         self.assertIn("lint: failure", body)
         self.assertIn("https://example.test/5", body)
         self.assertTrue(message.startswith("::warning::"))
+        self.assertEqual(fake.calls[-1][fake.calls[-1].index("--assignee") + 1], "owner")
 
     def test_an_open_issue_is_not_notified_again_on_every_push(self):
         fake = FakeGitHub(issues=[RED_ISSUE], runs=[push_run(5)], jobs=self.jobs(lint="failure"))
 
-        health.push_watch("o/r", fake)
+        health.push_watch("o/r", assignee="owner", run=fake)
 
         self.assertEqual(fake.writes(), [])
 
     def test_a_run_that_started_no_job_is_red(self):
         fake = FakeGitHub(runs=[push_run(5)], jobs=[])
 
-        health.push_watch("o/r", fake)
+        health.push_watch("o/r", assignee="owner", run=fake)
 
         body = fake.calls[-1][fake.calls[-1].index("--body") + 1]
         for job in health.PUSH_JOBS:
@@ -320,31 +329,33 @@ class PushWatchTests(unittest.TestCase):
     def test_a_failed_alert_alone_does_not_make_main_red(self):
         fake = FakeGitHub(runs=[push_run(5)], jobs=self.jobs())
 
-        health.push_watch("o/r", fake)
+        health.push_watch("o/r", assignee="owner", run=fake)
 
         self.assertEqual(fake.writes(), [])
 
     def test_a_green_run_closes_an_issue_its_alert_could_not(self):
         fake = FakeGitHub(issues=[RED_ISSUE], runs=[push_run(5)], jobs=self.jobs())
 
-        health.push_watch("o/r", fake)
+        health.push_watch("o/r", assignee="owner", run=fake)
 
         self.assertEqual(fake.writes(), [("issue", "close")])
 
 
 class CommandLineTests(unittest.TestCase):
-    PUSH_ALERT = ["push-alert", "--repository", "o/r", "--run-number", "5", "--sha", "s", "--run-url", "u"]
+    PUSH_ALERT = ["push-alert", "--repository", "o/r", "--assignee", "o", "--run-number", "5", "--sha", "s",
+                  "--run-url", "u"]
+    PUSH_WATCH = ["push-watch", "--repository", "o/r", "--assignee", "o"]
 
     def test_an_unreadable_api_fails_every_push_command(self):
         failure = subprocess.CompletedProcess([], 1, stdout="", stderr="HTTP 403")
         with patch.object(health.subprocess, "run", return_value=failure):
-            self.assertEqual(health.main(["push-watch", "--repository", "o/r"]), 1)
+            self.assertEqual(health.main(self.PUSH_WATCH), 1)
             self.assertEqual(health.main([*self.PUSH_ALERT, "--needs", json.dumps(green_push_needs())]), 1)
 
     def test_an_unexpected_api_shape_fails_every_push_command(self):
         reply = subprocess.CompletedProcess([], 0, stdout="{}", stderr="")
         with patch.object(health.subprocess, "run", return_value=reply):
-            self.assertEqual(health.main(["push-watch", "--repository", "o/r"]), 1)
+            self.assertEqual(health.main(self.PUSH_WATCH), 1)
             self.assertEqual(health.main([*self.PUSH_ALERT, "--needs", json.dumps(green_push_needs())]), 1)
 
     def test_malformed_push_needs_fail(self):

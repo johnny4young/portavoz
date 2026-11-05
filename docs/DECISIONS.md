@@ -22786,7 +22786,8 @@ gate was green, and nobody noticed for about 16 hours. D633 narrows that path fo
 
 **Decision:** `ci.yml` ends every push run with an `alert` job, the pattern D615 gave the nightly. When `repository-hygiene`,
 `lint`, `build-and-test` or `ios-portability` ended as anything but success, cancelled and skipped included, it opens the one
-issue titled `CI on main is red` or comments on it if open. A green run closes it. Only the newest push run speaks for `main`:
+issue titled `CI on main is red`, assigned to the repository owner because a bot's unassigned issue may notify nobody, or comments
+on it if open. A green run closes it. Only the newest push run speaks for `main`:
 each commit has its own concurrency group (D620), so an older run can finish last, and it writes nothing once a higher run
 number exists. The run number survives a rerun, so rerunning an older run stays quiet, while rerunning the newest one runs the
 alert again and can close the issue.
@@ -22794,7 +22795,9 @@ alert again and can close the issue.
 `ui-nightly-watch.yml` repairs what the alert cannot report: its own failure, or a run that started no job. It reads those four
 jobs' conclusions rather than the run's, so a failed alert alone never reads as a red `main`. It opens a missing issue, closes
 one once the newest run passed, leaves an open one alone so a push does not notify again, and waits while the newest run is in
-flight. An unreadable API fails either job instead of reading as healthy.
+flight. A push usually finds its own new run in flight, and that run's alert then speaks for `main`, so the repair of a missed
+alert can come up to a day late, from the 15:53 UTC schedule or a dispatch. An unreadable API fails either job instead of reading
+as healthy.
 
 **Consequences:** no required check or GitHub setting changes: `gate` does not need `alert`, which skips on pull requests, and
 the time report does not measure it. A failed alert does turn its push run red, and release qualification refuses that run until

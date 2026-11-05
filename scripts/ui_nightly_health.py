@@ -42,7 +42,7 @@ def gh(*arguments: str) -> str:
 
 def unverified_jobs(needs: dict[str, Any]) -> dict[str, str]:
     if not needs:
-        raise HealthError("the nightly run reported no needed jobs")
+        raise HealthError("the run reported no needed jobs")
     return {job: str((data or {}).get("result")) for job, data in sorted(needs.items())
             if (data or {}).get("result") != "success"}
 
@@ -120,7 +120,12 @@ def red_push_body(bad: dict[str, str], sha: str, run_url: str) -> str:
     return f"{details}\n\n`main` at `{sha}`: {run_url}"
 
 
-def push_alert(needs: dict[str, Any], *, repository: str, run_number: int, sha: str, run_url: str,
+def open_red_issue(body: str, assignee: str, run: Callable[..., str]) -> None:
+    # An issue a bot opens with no assignee may notify nobody.
+    run("issue", "create", "--title", RED_PUSH_TITLE, "--body", body, "--assignee", assignee)
+
+
+def push_alert(needs: dict[str, Any], *, repository: str, assignee: str, run_number: int, sha: str, run_url: str,
                run: Callable[..., str] = gh) -> str:
     bad = unverified_jobs(needs)
     # Each main commit runs on its own, so an older run can finish last and must not overwrite a newer verdict.
@@ -135,13 +140,13 @@ def push_alert(needs: dict[str, Any], *, repository: str, run_number: int, sha: 
         return f"Closed issue #{number}."
     body = red_push_body(bad, sha, run_url)
     if number is None:
-        run("issue", "create", "--title", RED_PUSH_TITLE, "--body", body)
+        open_red_issue(body, assignee, run)
         return f"::error::{RED_PUSH_TITLE}: {body.splitlines()[0]}"
     run("issue", "comment", str(number), "--body", body)
     return f"::error::{RED_PUSH_TITLE}, updated issue #{number}: {body.splitlines()[0]}"
 
 
-def push_watch(repository: str, run: Callable[..., str] = gh) -> str:
+def push_watch(repository: str, *, assignee: str, run: Callable[..., str] = gh) -> str:
     """Repair the issue when push-alert could not: its own failure, or a run that started no job."""
     newest = newest_push_run(repository, run)
     if newest.get("status") != "completed":
@@ -157,8 +162,7 @@ def push_watch(repository: str, run: Callable[..., str] = gh) -> str:
         return f"Closed issue #{number}."
     # An open issue already says so; repeating it on every push would only notify again.
     if number is None:
-        run("issue", "create", "--title", RED_PUSH_TITLE, "--body",
-            red_push_body(bad, newest["head_sha"], newest["html_url"]))
+        open_red_issue(red_push_body(bad, newest["head_sha"], newest["html_url"]), assignee, run)
     return f"::warning::{RED_PUSH_TITLE}: {newest['html_url']}"
 
 
@@ -176,20 +180,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     pushing = commands.add_parser("push-alert")
     pushing.add_argument("--needs", required=True, help="the workflow's toJSON(needs)")
     pushing.add_argument("--repository", required=True)
+    pushing.add_argument("--assignee", required=True)
     pushing.add_argument("--run-number", required=True, type=int)
     pushing.add_argument("--sha", required=True)
     pushing.add_argument("--run-url", required=True)
     watching = commands.add_parser("push-watch")
     watching.add_argument("--repository", required=True)
+    watching.add_argument("--assignee", required=True)
     arguments = parser.parse_args(argv)
     try:
         if arguments.command == "alert":
             print(alert(json.loads(arguments.needs), ref=arguments.ref, sha=arguments.sha, run_url=arguments.run_url))
         elif arguments.command == "push-alert":
-            print(push_alert(json.loads(arguments.needs), repository=arguments.repository,
+            print(push_alert(json.loads(arguments.needs), repository=arguments.repository, assignee=arguments.assignee,
                              run_number=arguments.run_number, sha=arguments.sha, run_url=arguments.run_url))
         elif arguments.command == "push-watch":
-            print(push_watch(arguments.repository))
+            print(push_watch(arguments.repository, assignee=arguments.assignee))
         else:
             print(freshness(arguments.repository, now=datetime.now(timezone.utc),
                             max_age_hours=arguments.max_age_hours))

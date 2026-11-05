@@ -523,7 +523,8 @@ jobs:
           echo "Gate passed (ui=$UI_REQUIRED, result=$UI_RESULT, verified=${UI_VERIFIED:-not-required})."
 
   alert:
-    # Not a gate: a failed push run blocks nothing, so this is what makes it visible.
+    # Blocks no merge: this is what makes a red push run visible. Release qualification
+    # reads every job, so a failed alert needs a rerun before a release.
     needs: [repository-hygiene, lint, build-and-test, ios-portability]
     if: always() && github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -540,9 +541,10 @@ jobs:
           GH_REPO: ${{ github.repository }}
           NEEDS: ${{ toJSON(needs) }}
           REPOSITORY: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
           RUN_NUMBER: ${{ github.run_number }}
           SHA: ${{ github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          python3 scripts/ui_nightly_health.py push-alert --needs "$NEEDS" --repository "$REPOSITORY" \
+          python3 scripts/ui_nightly_health.py push-alert --needs "$NEEDS" --repository "$REPOSITORY" --assignee "$OWNER" \
             --run-number "$RUN_NUMBER" --sha "$SHA" --run-url "$RUN_URL"

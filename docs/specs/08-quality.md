@@ -416,13 +416,15 @@ runs on every `main` push and manual run, and on a pull request only when it cha
 A push run on `main` ends with an `alert` job (`scripts/ui_nightly_health.py push-alert`). It
 needs `repository-hygiene`, `lint`, `build-and-test` and `ios-portability`, the same four jobs as
 the release contract, and treats anything but success in one of them as red. Red opens the one
-issue titled `CI on main is red` or comments on it; green closes it. A run writes nothing once a
+issue titled `CI on main is red`, assigned to the repository owner, or comments on it; green closes it. A run writes nothing once a
 higher run number exists, because each `main` commit runs on its own and an older one can finish
 last. A rerun keeps its number, so a rerun of the newest run can close the issue and a rerun of an
 older one stays quiet. The `ci-push` job in `ui-nightly-watch.yml` (`push-watch`) runs on every
 `main` push, on its schedule and by dispatch: it waits while the newest run is in flight, and
 otherwise opens a missing issue or closes one from those four jobs' conclusions, so a failed alert
 or a run that started no job still reaches the issue and a failed alert alone is not a red `main`.
+A push usually finds its own new run in flight, so that repair can come up to a day late, from the
+15:53 UTC schedule or a dispatch.
 Either job fails on an unreadable API instead of reading as healthy. `alert` skips on pull requests
 and `gate` does not need it, so it adds no required check (D634).
 

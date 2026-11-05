@@ -735,6 +735,8 @@ class NightlyUIWorkflowTests(unittest.TestCase):
         self.assertIn("NEEDS: ${{ toJSON(needs) }}\n", alert)
         self.assertIn("RUN_NUMBER: ${{ github.run_number }}\n", alert)
         self.assertIn("scripts/ui_nightly_health.py push-alert", alert)
+        self.assertIn("OWNER: ${{ github.repository_owner }}\n", alert)
+        self.assertIn('--assignee "$OWNER"', alert)
         # Only the alert may write.
         self.assertEqual(ci.count("issues: write"), 1)
         self.assertIn("issues: write\n", alert)
@@ -745,7 +747,10 @@ class NightlyUIWorkflowTests(unittest.TestCase):
     def test_the_watch_repairs_a_push_alert_that_could_not_report(self):
         watch = (ROOT / ".github/workflows/ui-nightly-watch.yml").read_text(encoding="utf-8")
 
-        self.assertIn("scripts/ui_nightly_health.py push-watch", watch.split("\n  ci-push:\n", 1)[1])
+        job = watch.split("\n  ci-push:\n", 1)[1]
+        self.assertIn("scripts/ui_nightly_health.py push-watch", job)
+        self.assertIn("OWNER: ${{ github.repository_owner }}\n", job)
+        self.assertIn('--assignee "$OWNER"', job)
         self.assertNotIn("continue-on-error", watch)
 
     def test_pull_requests_select_within_the_budget_and_report_what_was_cut(self):
