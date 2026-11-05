@@ -30,6 +30,7 @@ PORTAVOZ_LSREGISTER := /System/Library/Frameworks/CoreServices.framework/Framewo
 	commitment-link-policy-review \
 	test-correction-composition correction-composition-benchmark \
 	test-commitment-radar-scale commitment-radar-benchmark \
+	graph-scale-benchmark \
 	test-exact-path-matrix exact-path-matrix \
 	exact-path-mutation-matrix test-exact-path-mutation-host exact-path-mutation-host \
 	test-exact-path-mutation-cross-host exact-path-mutation-cross-host \
@@ -143,6 +144,11 @@ PORTAVOZ_COMMITMENT_RADAR_RUNS ?= 5
 commitment-radar-benchmark:
 	scripts/run-commitment-radar-benchmark.sh \
 		--runs "$(PORTAVOZ_COMMITMENT_RADAR_RUNS)"
+
+## Enforce the 250 ms interactive budget on the meeting memory graph queries in
+## Release, over 1,000 and 10,000 synthetic meetings. One content-free report per scale.
+graph-scale-benchmark:
+	scripts/run-graph-scale-benchmark.sh
 
 ## Validate the adapter-neutral Ask quality contract and its canonical public
 ## 240-query multilingual fixture without loading models or user data.

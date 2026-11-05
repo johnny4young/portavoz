@@ -564,16 +564,6 @@ callers' behavior; their different stop-word lists and minimum-token rules
 must remain separate policies. This review did not consolidate those policies
 or claim a tokenization benchmark improvement.
 
-### Routine graph tests still mix correctness and wall-clock qualification
-
-The always-on small-corpus graph test enforces a 250 ms wall-clock p95 over five
-queries inside the ordinary debug suite. It can fail under host contention with
-unchanged product code. The budget remains in force; a later green retry does
-not establish that timing instability is resolved. A follow-up should separate
-deterministic query-work/plan regressions from dedicated latency qualification,
-retaining the canonical 1,000/10,000-meeting measurements and their 250 ms limit.
-Do not stop unrelated tasks or relabel a failed measurement as qualified.
-
 ### Shared-desktop UI qualification remains conditional
 
 Disposable main and Settings windows request zero-screen placement when their

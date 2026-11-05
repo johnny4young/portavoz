@@ -22736,3 +22736,25 @@ not adopted again.
 ML specializing each model again because its path changed. Adoption runs with no network, so a check can never download. A failed download keeps the files it finished for the next attempt. Older Portavoz builds keep using the legacy folder. Published files are
 read-only, and verification, not their mode, is what detects tampering. A pin missing from `ModelCatalog.all` loses its
 claim 14 days after launch, so a test holds that list against the catalog sources.
+
+## D632 — Graph query time is measured in Release, apart from the package suite
+
+**Context:** the always-on small-corpus graph test asserted a 250 ms p95 over five Debug samples, inside the package
+suite's three concurrent test processes. Five samples make that p95 the maximum, so one stall failed it. In 1,000
+completed `ci.yml` runs it failed three times, at 287 to 478 ms and always on `decisionConflicts`. A sibling run started
+the same minute took about as long and passed. No local sample crossed 250 ms: under load near 60 on a 14-core Mac the same
+query peaked at 186 ms in Debug. That assert was also the budget's only enforcement, because no script, Makefile target
+or workflow ran the canonical harness and `perf-thresholds.json` has no graph metric. This repeats the misplaced timing
+owner of D395.
+
+**Decision:** the package suite keeps every structural invariant, requires every query to answer, and pins each query's
+exact SELECT count. It never fails on elapsed time. `make graph-scale-benchmark` owns the unchanged 250 ms budget, in
+Release at 1,000 and 10,000 meetings with thirty samples per query, and the deterministic release runner executes it
+serially with no retry. Each report also carries the SELECT count, and each scale must match the pinned count.
+Hosted CI does not run it, because `docs/specs/08-quality.md` already treats hosted timing as informational.
+
+**Consequences:** a latency regression now surfaces at the release candidate rather than on the pull request. The count
+catches added per-row work on every push but not a lost index or a scan, so one of those can stay on `main` until the
+benchmark runs. The release gate gains about a minute and no extra build. Moving the harness into `perf-ledger`, with
+its host admission, stays open: its harnesses share one Release CLI binary, and this one is an XCTest. Why
+`decisionConflicts` fired rather than `changeSince`, which costs the same, was not explained.

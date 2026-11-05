@@ -11,8 +11,9 @@ import XCTest
 /// topics, same-name people, long supersession chains — is seeded through the
 /// real confirmation paths, projected through the real maintenance path, and
 /// measured against the interactive budget. The always-on test pins the
-/// correctness invariants; the canonical 1k/10k runs are environment-gated
-/// like every other release measurement.
+/// correctness invariants and each query's statement count; the canonical
+/// 1k/10k runs own elapsed time, serially in Release, through
+/// `make graph-scale-benchmark`.
 final class MeetingMemoryGraphScaleTests: XCTestCase {
     func testEnvironmentRequiresCanonicalScale() throws {
         XCTAssertNil(try MeetingMemoryGraphScaleOptions.environmentOptions([:]))
@@ -26,9 +27,31 @@ final class MeetingMemoryGraphScaleTests: XCTestCase {
         XCTAssertEqual(options.p95BudgetMilliseconds, 250)
     }
 
+    func testBudgetVerdictFailsAtTheBoundary() {
+        func lane(p95: Double) -> MeetingMemoryGraphScaleReport.QueryLane {
+            MeetingMemoryGraphScaleReport.QueryLane(
+                job: "lane",
+                answeredRuns: 1,
+                selectStatementsPerCall: 1,
+                p50Milliseconds: 1,
+                p95Milliseconds: p95)
+        }
+        XCTAssertEqual(
+            MeetingMemoryGraphScaleReport.overBudgetJobs(
+                [lane(p95: 249.9)],
+                budgetMilliseconds: 250),
+            [])
+        XCTAssertEqual(
+            MeetingMemoryGraphScaleReport.overBudgetJobs(
+                [lane(p95: 250)],
+                budgetMilliseconds: 250),
+            ["lane"])
+    }
+
     /// Correctness invariants at a small scale that runs on every push:
-    /// provenance, rebuild determinism, and correction-awareness are structural
-    /// claims, not performance claims, so they never hide behind the env gate.
+    /// provenance, rebuild determinism, correction-awareness and query work are
+    /// structural claims, not performance claims, so they never hide behind the
+    /// env gate. Elapsed time cannot fail here: this suite shares its host.
     func testSmallCorpusHoldsEveryStructuralInvariant() async throws {
         let harness = try await MeetingMemoryGraphScaleHarness.seed(
             options: MeetingMemoryGraphScaleOptions(meetingCount: 120))
@@ -57,18 +80,10 @@ final class MeetingMemoryGraphScaleTests: XCTestCase {
             DecisionHistoryQuery(topicID: harness.coldTopicID))
         else { return XCTFail("an untouched subject keeps answering") }
 
-        // 3. Every longitudinal job answers source-backed at this scale.
-        let report = try await harness.measure(
-            queryRuns: 5,
-            budgetMilliseconds: 250)
-        for lane in report.queries {
-            XCTAssertGreaterThan(
-                lane.answeredRuns, 0,
-                "\(lane.job) never answered")
-            XCTAssertLessThan(
-                lane.p95Milliseconds, 250,
-                "\(lane.job) blew the interactive budget at small scale")
-        }
+        // 3. Every longitudinal job answers source-backed at this scale, with
+        //    the statement count every scale must share.
+        let report = try await harness.measure(queryRuns: 5)
+        assertQueryWork(report, queryRuns: 5)
 
         // 4. The projection is disposable: a full reset under another profile
         //    rebuilds the identical edge sets from authority alone. Edge rows
@@ -89,9 +104,9 @@ final class MeetingMemoryGraphScaleTests: XCTestCase {
             "returning to the canonical profile must rebuild the same edges")
     }
 
-    /// The canonical measurement. Prints one content-free JSON report per run:
-    ///   PORTAVOZ_GRAPH_SCALE_BENCHMARK=1 PORTAVOZ_GRAPH_SCALE_MEETINGS=10000 \
-    ///     swift test --filter testCanonicalGraphScaleFromEnvironment
+    /// The canonical measurement and the only owner of the 250 ms budget.
+    /// Prints one content-free JSON report per run:
+    ///   make graph-scale-benchmark
     func testCanonicalGraphScaleFromEnvironment() async throws {
         guard let options = try MeetingMemoryGraphScaleOptions.environmentOptions(
             ProcessInfo.processInfo.environment)
@@ -101,18 +116,38 @@ final class MeetingMemoryGraphScaleTests: XCTestCase {
         let harness = try await MeetingMemoryGraphScaleHarness.seed(options: options)
         let orphans = try await harness.orphanEdgeCounts()
         XCTAssertEqual(orphans.values.reduce(0, +), 0, "\(orphans)")
-        let report = try await harness.measure(
-            queryRuns: options.queryRuns,
-            budgetMilliseconds: options.p95BudgetMilliseconds)
+        let report = try await harness.measure(queryRuns: options.queryRuns)
 
         let payload = try JSONEncoder.graphScale.encode(report)
         print("PORTAVOZ_GRAPH_SCALE_REPORT \(String(decoding: payload, as: UTF8.self))")
+        assertQueryWork(report, queryRuns: options.queryRuns)
+        XCTAssertEqual(
+            MeetingMemoryGraphScaleReport.overBudgetJobs(
+                report.queries,
+                budgetMilliseconds: Double(options.p95BudgetMilliseconds)),
+            [],
+            "these jobs exceed the interactive budget — the ADR gate opens")
+    }
+
+    private func assertQueryWork(
+        _ report: MeetingMemoryGraphScaleReport,
+        queryRuns: Int,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
         for lane in report.queries {
-            XCTAssertLessThan(
-                lane.p95Milliseconds,
-                Double(options.p95BudgetMilliseconds),
-                "\(lane.job) exceeds the interactive budget — the ADR gate opens")
+            XCTAssertEqual(
+                lane.answeredRuns, queryRuns,
+                "\(lane.job) did not always answer",
+                file: file, line: line)
         }
+        XCTAssertEqual(
+            Dictionary(uniqueKeysWithValues: report.queries.map {
+                ($0.job, $0.selectStatementsPerCall)
+            }),
+            MeetingMemoryGraphScaleHarness.expectedSelectStatements,
+            "a query changed its work per call",
+            file: file, line: line)
     }
 }
 
@@ -137,6 +172,7 @@ struct MeetingMemoryGraphScaleReport: Encodable {
     struct QueryLane: Encodable {
         let job: String
         let answeredRuns: Int
+        let selectStatementsPerCall: Int
         let p50Milliseconds: Double
         let p95Milliseconds: Double
     }
@@ -162,6 +198,13 @@ struct MeetingMemoryGraphScaleReport: Encodable {
     let physicalFootprintDeltaBytes: Int
     let queries: [QueryLane]
     let recursiveProbes: [RecursiveProbe]
+
+    static func overBudgetJobs(
+        _ lanes: [QueryLane],
+        budgetMilliseconds: Double
+    ) -> [String] {
+        lanes.filter { $0.p95Milliseconds >= budgetMilliseconds }.map(\.job)
+    }
 }
 
 extension JSONEncoder {
@@ -175,6 +218,16 @@ extension JSONEncoder {
 /// Seeds the corpus through the same public confirmation paths the product
 /// uses, so the measured cost includes every authority rule underneath.
 struct MeetingMemoryGraphScaleHarness {
+    /// Bounded by each query's item limit, so every corpus size must match.
+    static let expectedSelectStatements = [
+        "decisionHistory": 78,
+        "decisionConflicts": 160,
+        "changeSince": 161,
+        "firstDiscussion": 12,
+        "personCommitments": 146,
+        "commitmentBlockers": 22,
+    ]
+
     let store: MeetingStore
     let options: MeetingMemoryGraphScaleOptions
     let hotTopicID: TopicID
@@ -515,8 +568,7 @@ struct MeetingMemoryGraphScaleHarness {
 
     // swiftlint:disable:next function_body_length
     func measure(
-        queryRuns: Int,
-        budgetMilliseconds: Int
+        queryRuns: Int
     ) async throws -> MeetingMemoryGraphScaleReport {
         let footprintBefore = Self.physicalFootprint()
         var lanes: [MeetingMemoryGraphScaleReport.QueryLane] = []
@@ -561,6 +613,7 @@ struct MeetingMemoryGraphScaleHarness {
             lanes.append(MeetingMemoryGraphScaleReport.QueryLane(
                 job: job,
                 answeredRuns: answered,
+                selectStatementsPerCall: try await selectStatements(of: run),
                 p50Milliseconds: Self.percentile(samples, 0.50),
                 p95Milliseconds: Self.percentile(samples, 0.95)))
         }
@@ -634,7 +687,7 @@ struct MeetingMemoryGraphScaleHarness {
         }
         let footprintAfter = Self.physicalFootprint()
         return MeetingMemoryGraphScaleReport(
-            schemaVersion: 1,
+            schemaVersion: 2,
             fixtureVersion: "synthetic-graph-scale-v1",
             meetingCount: seededCounts["meetings"] ?? 0,
             segmentCount: seededCounts["segments"] ?? 0,
@@ -651,6 +704,21 @@ struct MeetingMemoryGraphScaleHarness {
             physicalFootprintDeltaBytes: max(0, footprintAfter - footprintBefore),
             queries: lanes,
             recursiveProbes: probes)
+    }
+
+    /// Traces one extra call, so tracing never touches a timed sample.
+    private func selectStatements(
+        of run: () async throws -> MeetingMemoryGraphQueryResult
+    ) async throws -> Int {
+        let counter = GraphScaleSelectCounter()
+        try await store.database.write { database in
+            database.trace(options: .statement) { counter.record($0) }
+        }
+        _ = try await run()
+        try await store.database.write { database in
+            database.trace(options: [])
+        }
+        return counter.count
     }
 
     private func oldestDecisionKey() async throws -> String {
@@ -708,5 +776,21 @@ struct MeetingMemoryGraphScaleHarness {
         }
         guard result == KERN_SUCCESS else { return 0 }
         return Int(info.phys_footprint)
+    }
+}
+
+private final class GraphScaleSelectCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var statements = 0
+
+    var count: Int {
+        lock.withLock { statements }
+    }
+
+    func record(_ event: Database.TraceEvent) {
+        guard case .statement(let statement) = event else { return }
+        let sql = statement.sql.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard sql.hasPrefix("SELECT") || sql.hasPrefix("WITH") else { return }
+        lock.withLock { statements += 1 }
     }
 }
