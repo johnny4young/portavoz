@@ -36,6 +36,9 @@ class DeploymentFloorTests(unittest.TestCase):
         )
         self.assertIn("depends_on macos: :tahoe", read("packaging/Casks/portavoz.rb"))
 
+    def test_readme_badge_names_the_floor(self):
+        self.assertIn("badge/platform-macOS%2026%2B-", read("README.md"))
+
     def test_rendered_cask_has_no_template_header_or_placeholders(self):
         rendered = subprocess.run(
             [REPOSITORY / "scripts" / "render-cask.sh", "1.2.3", "0" * 64],
