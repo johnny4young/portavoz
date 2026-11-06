@@ -20,8 +20,15 @@ translation service.
 
 `ProcessingWakeScheduleTests` checks the shared drain-failure retry against
 explicit timestamps: five seconds, doubling per consecutive failure up to one
-minute. `AudioImportQueueModelTests` proves a failed drain retries without
-reading the persisted deadline and clears its storage error after recovery.
+minute. `AudioImportQueueModelTests` fails exactly one real claim through a
+test-installed trigger on the store's own connection; another connection's read
+lock is not used, because Apple's SQLite turns it into a lock-order dependent
+`IOERR_LOCK`. The case proves the backoff wake retries without reading the
+persisted deadline, completes the import and clears the storage error. It reads
+the failed drain's state in the finish callback and waits on expectations rather
+than throwing: XCTest reports a thrown test error with the description and
+location of the last error thrown anywhere in the test's task tree, so a thrown
+timeout would appear as the cancelled backoff wake's `CancellationError`.
 
 `test_site_interactions` executes the shipped website inline JavaScript with
 Node.js built-ins and explicit DOM, storage, clipboard and timer doubles. It
