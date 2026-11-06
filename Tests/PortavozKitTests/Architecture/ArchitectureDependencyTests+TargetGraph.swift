@@ -188,7 +188,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(translation.contains("status = await availability.status("))
         XCTAssertFalse(translation.contains("try? await availability.status("))
         XCTAssertTrue(ci.contains(
-            "run: scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors"))
+            "run: scripts/run-swift-tests.sh --disable-default-traits --only-use-versions-from-resolved-file -Xswiftc -warnings-as-errors"))
         XCTAssertFalse(ci.contains("run: swift build"))
         XCTAssertTrue(ios.contains("destination supports"))
         XCTAssertTrue(decisions.contains("## D118"))

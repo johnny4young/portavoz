@@ -193,6 +193,18 @@ extension ArchitectureDependencyTests {
             ["portavoz-app/AppServices.swift", "portavoz-cli/CLIComposition.swift"])
     }
 
+    func testFileDigestLoopsDrainTheirAutoreleasePool() throws {
+        let readers = Set(try Self.sourceMatches(
+            under: "Sources", pattern: #"\.read\(upToCount:"#, codeOnly: true))
+        let hashers = Set(try Self.sourceMatches(
+            under: "Sources", pattern: #"\bSHA256\(\)"#, codeOnly: true))
+        let pooled = Set(try Self.sourceMatches(
+            under: "Sources", pattern: #"\bautoreleasepool\b"#, codeOnly: true))
+
+        XCTAssertTrue(readers.intersection(hashers).contains("PlatformKit/FileContentDigest.swift"))
+        XCTAssertEqual(readers.intersection(hashers).subtracting(pooled), [])
+    }
+
     func testOnboardingPermissionsUsePlatformAdapters() throws {
         let onboarding = try Self.contents(
             of: "Sources/portavoz-app/OnboardingView.swift")
@@ -1321,7 +1333,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(adapter.contains("O_NOFOLLOW"))
         XCTAssertTrue(adapter.contains("O_NONBLOCK"))
         XCTAssertTrue(adapter.contains("Darwin.fstat("))
-        XCTAssertTrue(adapter.contains("var hasher = SHA256()"))
+        XCTAssertTrue(adapter.contains("FileContentDigest.sha256(of: handle)"))
         XCTAssertFalse(adapter.contains("[.atomic, .withoutOverwriting]"))
         XCTAssertTrue(bookmark.contains(".withoutImplicitSecurityScope"))
         XCTAssertFalse(bookmark.contains("startAccessingSecurityScopedResource"))

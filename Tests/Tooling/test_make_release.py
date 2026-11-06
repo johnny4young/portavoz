@@ -190,6 +190,18 @@ class MakeReleaseTests(unittest.TestCase):
             self.assertTrue(cask.is_file())
             self.assertTrue(cask.read_text(encoding="utf-8").startswith('cask "portavoz" do\n  version "1.0.0"'))
 
+    def test_the_dsym_is_kept_outside_the_folder_the_signer_scans(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = self.make_repository(Path(directory))
+
+            result = self.run_release(repository, self.make_signer(repository))
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            kept = repository / "dist" / "dsym" / f"Portavoz-{self.version}-{self.build}.app.dSYM"
+            self.assertEqual((kept / "Contents" / "Info.plist").read_text(encoding="utf-8"), "symbols")
+            self.assertIn(f"Crash symbols: dist/dsym/{kept.name}", result.stdout)
+            self.assertEqual(list((repository / "dist" / "release").rglob("*.dSYM")), [])
+
     def make_repository(self, root: Path) -> Path:
         repository = root / "repository"
         scripts = repository / "scripts"
@@ -226,6 +238,8 @@ esac
             """#!/bin/bash
 set -euo pipefail
 touch build-called
+mkdir -p dist/Portavoz.app.dSYM/Contents
+printf 'symbols' > dist/Portavoz.app.dSYM/Contents/Info.plist
 """,
         )
         self.write_executable(

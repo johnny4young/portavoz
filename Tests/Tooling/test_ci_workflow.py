@@ -29,6 +29,23 @@ class CIWorkflowTests(unittest.TestCase):
         for job in expected:
             self.assertEqual(workflow.count(f"  {job}:\n"), 1, job)
 
+    def test_mlx_still_compiles_in_the_nightly_and_every_shipping_build(self):
+        self.assertIn('.default(enabledTraits: ["EmbeddedMLX"])', (ROOT / "Package.swift").read_text(encoding="utf-8"))
+        for path in ("scripts/make-app.sh", "scripts/run-ui-tests.sh", "project.yml", "Makefile"):
+            self.assertNotIn("--disable-default-traits", (ROOT / path).read_text(encoding="utf-8"), path)
+        nightly = (ROOT / ".github/workflows/ui-nightly.yml").read_text(encoding="utf-8")
+        products = nightly.split("  build-ui-products:\n", 1)[1].split("\n  interruption-controls:", 1)[0]
+        self.assertIn("run: make test-ui-build\n", products)
+
+    def test_a_build_without_default_traits_never_rewrites_the_lock_file(self):
+        # SwiftPM otherwise drops the pins of every package the traits leave out.
+        for path in (".github/workflows/ci.yml", ".github/workflows/ui-nightly.yml",
+                     "scripts/build-ui-host-products.sh", "scripts/check-ios-portability.sh"):
+            text = (ROOT / path).read_text(encoding="utf-8")
+            self.assertIn("--disable-default-traits", text, path)
+            self.assertEqual(
+                text.count("--disable-default-traits"), text.count("--only-use-versions-from-resolved-file"), path)
+
     def test_main_ci_can_be_dispatched_when_a_push_run_is_missing(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         triggers = workflow.split("\npermissions:", 1)[0]
@@ -71,7 +88,7 @@ class CIWorkflowTests(unittest.TestCase):
         )
         self.assertEqual(
             workflow.count(
-                "scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors"
+                "scripts/run-swift-tests.sh --disable-default-traits --only-use-versions-from-resolved-file -Xswiftc -warnings-as-errors"
             ),
             1,
         )
@@ -774,7 +791,7 @@ class NightlyUIWorkflowTests(unittest.TestCase):
         clean = self.workflow.split("  clean-build-and-test:\n", 1)[1].split("\n  # After the jobs above", 1)[0]
 
         self.assertNotIn("actions/cache/restore@", clean)
-        self.assertIn("run: scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors\n", clean)
+        self.assertIn("run: scripts/run-swift-tests.sh --disable-default-traits --only-use-versions-from-resolved-file -Xswiftc -warnings-as-errors\n", clean)
         self.assertIn("PORTAVOZ_XCTEST_BATCH_SEED: ${{ github.run_id }}\n", clean)
         self.assertIn('PORTAVOZ_SWIFT_INCLUDE_NIGHTLY_ONLY: "1"\n', clean)
         self.assertLess(clean.index("run-swift-tests.sh"), clean.index("ci_swift_source_stamps.py snapshot"))

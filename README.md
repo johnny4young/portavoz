@@ -8,7 +8,7 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 
 [![CI](https://github.com/johnny4young/portavoz/actions/workflows/ci.yml/badge.svg)](https://github.com/johnny4young/portavoz/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![Platform](https://img.shields.io/badge/platform-macOS%2015%2B-lightgrey)
+![Platform](https://img.shields.io/badge/platform-macOS%2026%2B-lightgrey)
 ![Swift](https://img.shields.io/badge/Swift-6-orange)
 
 ![Today: the next meeting with its countdown, brief and linked recording, an Ask field with three ready questions, open to-dos beside the meetings to pick back up](assets/screenshots/today.png)

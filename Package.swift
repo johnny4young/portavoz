@@ -24,6 +24,12 @@ let package = Package(
         .executable(name: "portavoz-cli", targets: ["portavoz-cli"]),
         .executable(name: "portavoz-app", targets: ["portavoz-app"]),
     ],
+    traits: [
+        // The embedded summarizer (D32). Lanes that never generate pass
+        // --disable-default-traits and skip compiling MLX and its C++.
+        .trait(name: "EmbeddedMLX", description: "The embedded MLX summarizer."),
+        .default(enabledTraits: ["EmbeddedMLX"]),
+    ],
     dependencies: [
         // Parakeet ASR + pyannote diarization on CoreML/ANE (Apache-2.0).
         // Exact on purpose (D516): patch releases also change decoder and
@@ -41,7 +47,7 @@ let package = Package(
             url: "https://github.com/johnny4young/secreteo.git",
             revision: "9f1015452ae92eeb023793c37d95d60ae7a33ef6"),
         // The on-disk model store shared with Secreteo (MIT).
-        .package(url: "https://github.com/johnny4young/local-model-store.git", exact: "0.1.2"),
+        .package(url: "https://github.com/johnny4young/local-model-store.git", exact: "0.1.3"),
         // SQLite toolkit (MIT) — D4: GRDB + FTS5, never SwiftData.
         .package(url: "https://github.com/groue/GRDB.swift.git", .upToNextMajor(from: "7.11.1")),
         // Whisper on CoreML (MIT) for the quality re-pass (D7). Pinned
@@ -108,10 +114,10 @@ let package = Package(
             name: "IntelligenceKit",
             dependencies: [
                 "PortavozCore",
-                .product(name: "MLXLLM", package: "mlx-swift-lm"),
-                .product(name: "MLXLMCommon", package: "mlx-swift-lm"),
-                .product(name: "MLXHuggingFace", package: "mlx-swift-lm"),
-                .product(name: "Transformers", package: "swift-transformers"),
+                .product(name: "MLXLLM", package: "mlx-swift-lm", condition: .when(traits: ["EmbeddedMLX"])),
+                .product(name: "MLXLMCommon", package: "mlx-swift-lm", condition: .when(traits: ["EmbeddedMLX"])),
+                .product(name: "MLXHuggingFace", package: "mlx-swift-lm", condition: .when(traits: ["EmbeddedMLX"])),
+                .product(name: "Transformers", package: "swift-transformers", condition: .when(traits: ["EmbeddedMLX"])),
             ],
             resources: [
                 .copy("Resources/PortavozLiveQuestionClassifier.mlmodelc"),

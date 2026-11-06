@@ -1,10 +1,10 @@
 import ApplicationKit
-import CryptoKit
 import DiarizationKit
 import Foundation
 import IntegrationsKit
 import IntelligenceKit
 import ModelStoreKit
+import PlatformKit
 import PortavozCore
 import StorageKit
 import TranscriptionKit
@@ -562,17 +562,7 @@ struct CLIRefineAudioFiles: RefineMeetingAudioFiles {
         return RefineMeetingAudioChannel(
             fileURL: fileURL,
             isSilent: false,
-            contentFingerprint: try sha256(of: fileURL))
-    }
-
-    private static func sha256(of fileURL: URL) throws -> String {
-        let handle = try FileHandle(forReadingFrom: fileURL)
-        defer { try? handle.close() }
-        var hasher = SHA256()
-        while let data = try handle.read(upToCount: 1 << 20), !data.isEmpty {
-            hasher.update(data: data)
-        }
-        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+            contentFingerprint: try FileContentDigest.sha256(of: fileURL))
     }
 }
 

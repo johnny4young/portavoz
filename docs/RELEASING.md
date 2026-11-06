@@ -275,7 +275,7 @@ scripts/make-release.sh "$PORTAVOZ_RELEASE_VERSION"
 1. Requires the configured `generate_appcast` executable and a
    `## <version> — <date>` section in `CHANGELOG.md` before starting the expensive
    build. A warning or manually omitted feed is not a release mode.
-2. `make-app.sh --release --version <v> --build <YYYYMMDDHHMM>` — requires the exported release commit to match a clean `HEAD` before and after the app build, stamps it as `PortavozSourceCommit`, version-stamps, embeds the supplied Developer ID profile, signs the `.app` with the exact production CloudKit/APNs entitlements, and rejects a missing, expired, or mismatched profile.
+2. `make-app.sh --release --version <v> --build <YYYYMMDDHHMM>` — requires the exported release commit to match a clean `HEAD` before and after the app build, stamps it as `PortavozSourceCommit`, version-stamps, embeds the supplied Developer ID profile, signs the `.app` with the exact production CloudKit/APNs entitlements, and rejects a missing, expired, or mismatched profile. Before signing it writes `dist/Portavoz.app.dSYM`, stops if that dSYM has no debug info, and strips local and debug symbols from the executable (about half its size).
 3. `make-dmg.sh --skip-build` — archives and notarizes the signed app, staples
    and verifies it, packages that app into the DMG, then independently
    notarizes/staples the DMG. It mounts the result and verifies a copied-out
@@ -288,6 +288,10 @@ scripts/make-release.sh "$PORTAVOZ_RELEASE_VERSION"
 5. Renders the Homebrew **cask** with the real version + sha256.
 
 Output lands in **`dist/release/`**: `Portavoz-<version>.dmg`, `appcast.xml`, `portavoz.rb`, and `Portavoz-<version>.html`, the notes `appcast.xml` already embeds, which is not attached to the release.
+
+The dSYM goes to **`dist/dsym/Portavoz-<version>-<build>.app.dSYM`**, outside
+`dist/release/`: `generate_appcast` scans that folder, and the next release
+replaces it. Keep the dSYM: crash reports from that build symbolicate only with it.
 
 It takes several minutes (the Swift release build + Apple notarization). Run it
 in the background and wait for `Release <version> ready in dist/release/`.
