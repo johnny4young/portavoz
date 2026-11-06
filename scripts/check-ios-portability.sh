@@ -37,6 +37,8 @@ printf 'iOS portability contract: sdk=%s triple=%s targets=%s\n' \
 for target in "${targets[@]}"; do
   echo "==> iOS compile: $target"
   "$swift_bin" build \
+    --disable-default-traits \
+    --only-use-versions-from-resolved-file \
     --scratch-path "$scratch" \
     --triple "$triple" \
     --sdk "$sdk_path" \

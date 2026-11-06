@@ -96,7 +96,7 @@ jobs:
         env:
           PORTAVOZ_XCTEST_BATCH_SEED: ${{ github.run_id }}
           PORTAVOZ_SWIFT_INCLUDE_NIGHTLY_ONLY: "1"
-        run: scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors
+        run: scripts/run-swift-tests.sh --disable-default-traits --only-use-versions-from-resolved-file -Xswiftc -warnings-as-errors
 
       - name: Record successful source fingerprints
         if: github.ref == 'refs/heads/main'

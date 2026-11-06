@@ -313,7 +313,7 @@ extension ArchitectureDependencyTests {
             "has_executed_cases = runtime_cases is not None and runtime_cases > 0"))
         XCTAssertTrue(workflow.contains("runs-on: macos-26"))
         XCTAssertTrue(workflow.contains(
-            "scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors"))
+            "scripts/run-swift-tests.sh --disable-default-traits --only-use-versions-from-resolved-file -Xswiftc -warnings-as-errors"))
         XCTAssertFalse(workflow.contains("run: swift build"))
         XCTAssertFalse(workflow.contains("Select newest Xcode"))
         XCTAssertTrue(swiftLint.contains("version=\"0.65.0\""))
