@@ -62,6 +62,12 @@ PORTAVOZ_RELEASE_COMMIT="$SOURCE_COMMIT" PORTAVOZ_REQUIRE_CLOUDKIT_PROFILE=1 \
 # Refuse notarization if the long app build observed or ended beside a changed
 # tracked checkout. Otherwise the stamped commit could name adjacent source.
 require_exact_source_checkout "post-build verification"
+# The stripped app symbolicates only with this build's dSYM. It stays out of
+# dist/release, which generate_appcast scans and the next release replaces.
+DSYM_ARCHIVE="dist/dsym/Portavoz-$VERSION-$BUILD.app.dSYM"
+mkdir -p dist/dsym
+rm -rf "$DSYM_ARCHIVE"
+cp -R dist/Portavoz.app.dSYM "$DSYM_ARCHIVE"
 scripts/make-dmg.sh --skip-build
 
 RELEASE_DIR=dist/release
@@ -89,3 +95,4 @@ scripts/render-cask.sh "$VERSION" "$SHA256" > "$RELEASE_DIR/portavoz.rb"
 echo ""
 echo "Release $VERSION ready in $RELEASE_DIR/:"
 ls -la "$RELEASE_DIR"
+echo "Crash symbols: $DSYM_ARCHIVE"

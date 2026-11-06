@@ -59,6 +59,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 ## November 5, 2026
 
 - **🪶 Refine stays light on long recordings** — checking a long audio file before Refine no longer holds the whole file in memory.
+- **📦 A lighter download** — Portavoz now ships without its debug symbols, so downloads and updates are smaller.
 
 ## November 4, 2026
 
