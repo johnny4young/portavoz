@@ -1,10 +1,12 @@
 import ApplicationKit
 import Foundation
 import GRDB
+import os
 import PortavozCore
 import XCTest
 @testable import portavoz_app
 @testable import PortavozTestSupport
+@testable import StorageKit
 
 @MainActor
 final class AudioImportQueueModelTests: XCTestCase {
@@ -199,7 +201,7 @@ final class AudioImportQueueModelTests: XCTestCase {
         let fixture = try ImportQueueFixture()
         defer { fixture.remove() }
         _ = try await fixture.admit()
-        let reader = try await heldReader(fixture)
+        try await failNextClaim(fixture)
         let finished = expectation(description: "failed drain finished")
         finished.assertForOverFulfill = false
         let client = ImportQueueModelClient(fixture: fixture, onFinish: { finished.fulfill() })
@@ -213,30 +215,37 @@ final class AudioImportQueueModelTests: XCTestCase {
         XCTAssertNotNil(model.error)
         XCTAssertEqual(client.workerStarts, 1, "A busy claim must not re-kick an overdue wake at once")
         await model.suspend()
-        try await reader.unsafeRead { try $0.execute(sql: "ROLLBACK") }
     }
 
     func testFailedClaimOnUnscheduledImportRetriesAfterBackoff() async throws {
         let fixture = try ImportQueueFixture()
         defer { fixture.remove() }
         _ = try await fixture.admit()
-        let reader = try await heldReader(fixture)
+        try await failNextClaim(fixture)
         let failed = expectation(description: "failed drain finished")
-        failed.assertForOverFulfill = false
-        let client = ImportQueueModelClient(fixture: fixture, onFinish: { failed.fulfill() })
+        let retried = expectation(description: "backoff retry finished")
+        let client = ImportQueueModelClient(fixture: fixture)
         var wakeReads = 0
         client.nextWake = { wakeReads += 1; return nil }
         let model = AudioImportQueueModel(client: client, failureBackoff: 0.2)
+        // Read at the failed finish itself: the retry may already run before the test resumes.
+        var atFailure: (error: String?, wakeReads: Int, workerStarts: Int)?
+        client.onFinish = { [unowned client, unowned model] in
+            guard atFailure == nil else { retried.fulfill(); return }
+            atFailure = (model.error, wakeReads, client.workerStarts)
+            failed.fulfill()
+        }
         model.start()
-        await fulfillment(of: [failed], timeout: 10)
-        client.onFinish = {}
-        XCTAssertNotNil(model.error)
-        XCTAssertEqual(wakeReads, 0, "A failed drain retries without consulting the persisted deadline")
-        try await reader.unsafeRead { try $0.execute(sql: "ROLLBACK") }
+        await fulfillment(of: [failed, retried], timeout: 10, enforceOrder: true)
 
-        try await waitForState { model.page.entries.first?.job.state == .succeeded && model.error == nil }
-        XCTAssertGreaterThanOrEqual(
-            client.workerStarts, 2, "Admitted work without a retry date must not wait for another signal")
+        XCTAssertNotNil(atFailure?.error)
+        XCTAssertEqual(atFailure?.wakeReads, 0, "A failed drain retries without consulting the persisted deadline")
+        XCTAssertEqual(atFailure?.workerStarts, 1)
+        let page = try await fixture.store.audioImportQueuePage()
+        XCTAssertEqual(page.entries.map(\.job.state), [.succeeded])
+        XCTAssertNil(model.error)
+        XCTAssertEqual(client.workerStarts, 2, "Admitted work without a retry date must not wait for another signal")
+        client.onFinish = {}
         await model.suspend()
     }
 
@@ -257,16 +266,26 @@ final class AudioImportQueueModelTests: XCTestCase {
         await model.suspend()
     }
 
-    private func heldReader(_ fixture: ImportQueueFixture) async throws -> DatabaseQueue {
-        var configuration = Configuration()
-        configuration.readonly = true
-        configuration.allowsUnsafeTransactions = true
-        let reader = try DatabaseQueue(path: fixture.databaseURL.path, configuration: configuration)
-        try await reader.unsafeRead { database in
-            try database.execute(sql: "BEGIN")
-            _ = try Int.fetchOne(database, sql: "SELECT count(*) FROM processingJob")
+    /// Fails exactly one claim on the store's own connection, so the fault ends
+    /// deterministically rather than when another connection releases a lock.
+    private func failNextClaim(_ fixture: ImportQueueFixture) async throws {
+        let remaining = OSAllocatedUnfairLock(initialState: 1)
+        // The count lives outside SQLite, so the claim's rollback cannot restore it.
+        let fault = DatabaseFunction("failNextClaim", argumentCount: 0, pure: false) { _ in
+            let fails: Bool = remaining.withLock { count in
+                defer { count = max(0, count - 1) }
+                return count > 0
+            }
+            return fails
         }
-        return reader
+        try await fixture.store.database.writeWithoutTransaction { database in
+            database.add(function: fault)
+            try database.execute(sql: """
+                CREATE TEMP TRIGGER failNextClaim BEFORE UPDATE OF state ON main.processingJob
+                WHEN OLD.state = 'pending' AND NEW.state = 'running' AND failNextClaim()
+                BEGIN SELECT RAISE(ABORT, 'claim failed by the test'); END
+                """)
+        }
     }
 
     private func waitForState(_ condition: () -> Bool) async throws {
