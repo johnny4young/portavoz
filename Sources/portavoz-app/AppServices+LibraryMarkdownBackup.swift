@@ -1,5 +1,4 @@
 import ApplicationKit
-import CryptoKit
 import Darwin
 import Foundation
 import IntegrationsKit
@@ -191,15 +190,7 @@ struct AppLibraryMarkdownBackupFiles: LibraryMarkdownBackupFiles {
                   information.st_size == Int64(publication.byteCount)
             else { return .conflicting }
 
-            var hasher = SHA256()
-            while let data = try handle.read(upToCount: 1 << 20),
-                  !data.isEmpty {
-                try Task.checkCancellation()
-                hasher.update(data: data)
-            }
-            let digest = hasher.finalize()
-                .map { String(format: "%02x", $0) }
-                .joined()
+            let digest = try FileContentDigest.sha256(of: handle)
             return digest == publication.sha256 ? .matching : .conflicting
         }
         return try await withTaskCancellationHandler {

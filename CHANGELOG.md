@@ -56,6 +56,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## November 5, 2026
+
+- **🪶 Refine stays light on long recordings** — checking a long audio file before Refine no longer holds the whole file in memory.
+
 ## November 4, 2026
 
 - **📦 Download a model once** — models now live in one folder every build and app on your Mac can share, and yours move there without downloading again
