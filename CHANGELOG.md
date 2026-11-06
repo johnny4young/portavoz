@@ -4,6 +4,13 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## 1.5.0 — November 5, 2026
+
+**Download a model once.**
+
+- **📦 Download a model once** — models now live in one folder every build and app on your Mac can share, and yours move there without downloading again.
+- **🧩 See who shares your models** — Settings lists the models on this Mac, how much room each takes and which other apps use them.
+
 ## 1.4.0 — November 5, 2026
 
 **One dictation app at a time.**
