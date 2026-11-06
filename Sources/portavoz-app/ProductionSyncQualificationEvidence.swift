@@ -1,6 +1,7 @@
 import CryptoKit
 import Foundation
 import IntegrationsKit
+import PlatformKit
 
 enum ProductionSyncQualificationError: Error, Equatable {
     case invalidAdmission
@@ -527,15 +528,7 @@ enum ProductionSyncQualificationDigest {
             throw ProductionSyncQualificationError.invalidBundle
         }
         defer { try? handle.close() }
-        var hasher = SHA256()
-        while true {
-            let data = try handle.read(upToCount: 1024 * 1024) ?? Data()
-            guard !data.isEmpty else { break }
-            hasher.update(data: data)
-        }
-        return hasher.finalize().map {
-            String(format: "%02x", $0)
-        }.joined()
+        return try FileContentDigest.sha256(of: handle)
     }
 
     static func scoped(

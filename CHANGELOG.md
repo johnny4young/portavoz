@@ -4,6 +4,17 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## 1.4.0 — November 5, 2026
+
+**One dictation app at a time.**
+
+- **🤝 One dictation app at a time** — if another app handles dictation on your Mac, Portavoz says so in Settings and the menu bar, never pastes twice, and lets you switch back with one click.
+- **📝 What changed, before you update** — the update window now shows the notes for the new version.
+- **💬 Short answers stay in** — a quiet “Sí”, “OK” or “De acuerdo” into your microphone stays in the transcript instead of being dropped as noise.
+- **🧠 Thinking models answer cleanly** — Ollama and cloud models that reason before answering no longer break your summary or leak their reasoning, and say so plainly when they run out of room.
+- **🔒 Recording notifications stay with their call** — a withdrawn call-ended question stays dismissed, and an old notification cannot stop a newer recording.
+- **🍺 Clean Homebrew installs** — installing or upgrading Portavoz with Homebrew no longer prints a deprecation warning.
+
 ## 1.3.0 — October 31, 2026
 
 **Dictation that writes it the way you mean it.**
@@ -47,6 +58,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 5, 2026
 
+- **🪶 Refine stays light on long recordings** — checking a long audio file before Refine no longer holds the whole file in memory.
 - **📦 A lighter download** — Portavoz now ships without its debug symbols, so downloads and updates are smaller.
 
 ## November 4, 2026

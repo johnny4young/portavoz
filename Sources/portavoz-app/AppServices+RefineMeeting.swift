@@ -1,10 +1,10 @@
 import ApplicationKit
 import AudioCaptureKit
-import CryptoKit
 import DiarizationKit
 import Foundation
 import IntelligenceKit
 import ModelStoreKit
+import PlatformKit
 import PortavozCore
 import StorageKit
 import TranscriptionKit
@@ -63,7 +63,7 @@ private struct AppRefineMeetingAudioFiles: RefineMeetingAudioFiles {
                 system: RefineMeetingAudioChannel(
                     fileURL: fileURL,
                     isSilent: AudioSilence.fileIsSilent(at: fileURL),
-                    contentFingerprint: try Self.sha256(of: fileURL)),
+                    contentFingerprint: try FileContentDigest.sha256(of: fileURL)),
                 microphone: nil)
         }.value
     }
@@ -83,7 +83,7 @@ private struct AppRefineMeetingAudioFiles: RefineMeetingAudioFiles {
                 && $0.relativePath == relativePath
         }
         let contentFingerprint = try trustedChecksum(asset, fileURL: fileURL)
-            ?? sha256(of: fileURL)
+            ?? FileContentDigest.sha256(of: fileURL)
         return RefineMeetingAudioChannel(
             fileURL: fileURL,
             isSilent: AudioSilence.fileIsSilent(at: fileURL),
@@ -102,16 +102,6 @@ private struct AppRefineMeetingAudioFiles: RefineMeetingAudioFiles {
         let values = try fileURL.resourceValues(forKeys: [.fileSizeKey])
         guard values.fileSize.map(Int64.init) == expectedBytes else { return nil }
         return sha256
-    }
-
-    private static func sha256(of fileURL: URL) throws -> String {
-        let handle = try FileHandle(forReadingFrom: fileURL)
-        defer { try? handle.close() }
-        var hasher = SHA256()
-        while let data = try handle.read(upToCount: 1 << 20), !data.isEmpty {
-            hasher.update(data: data)
-        }
-        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 }
 
