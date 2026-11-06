@@ -75,7 +75,7 @@ if [[ -n "${PORTAVOZ_NOTARY_PROFILE:-}" ]]; then
 fi
 
 APP=dist/Portavoz.app
-rm -rf "$APP"
+rm -rf "$APP" "$APP.dSYM"
 rm -f dist/.portavoz-sign-entitlements
 rm -f dist/.portavoz-production.entitlements
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
@@ -297,6 +297,19 @@ fi
 
 cp "$BIN" "$APP/Contents/MacOS/portavoz-app"
 install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/portavoz-app" 2>/dev/null || true
+
+# A release ships without local and debug symbols, about half the executable;
+# the dSYM beside the app keeps them for symbolicating crash reports.
+if [[ "$CONFIG" == release ]]; then
+  dsymutil "$APP/Contents/MacOS/portavoz-app" -o "$APP.dSYM"
+  debug_info="$(size -m "$APP.dSYM/Contents/Resources/DWARF/portavoz-app" \
+    | awk '/Section __debug_info:/ { print $3 }')"
+  if [[ -z "$debug_info" || "$debug_info" -eq 0 ]]; then
+    echo "the release dSYM has no debug info, so crash reports could not be symbolicated." >&2
+    exit 70
+  fi
+  strip -x -S "$APP/Contents/MacOS/portavoz-app"
+fi
 
 # The command-line tool and MCP server are the same executable started under
 # another name (D582); a relative link keeps the bundle movable and sealed.
