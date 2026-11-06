@@ -17,7 +17,10 @@ ROOT = Path(__file__).resolve().parents[1]
 LANES = ("build-and-test",)
 # Compiled state depends on these, not on how a workflow is written. Tooling tests
 # tie the flags to the workflows; bump the version when what a seed holds changes.
-BUILD_CONTRACT = {"version": 1, "flags": ("-Xswiftc", "-warnings-as-errors")}
+BUILD_CONTRACT = {
+    "version": 2,
+    "flags": ("--disable-default-traits", "--only-use-versions-from-resolved-file", "-Xswiftc", "-warnings-as-errors"),
+}
 # A moved dependency restores within the same toolchain and recompiles what moved.
 GRAPH_INPUTS = ("Package.swift", "Package.resolved")
 COMMANDS = (

@@ -1,10 +1,12 @@
 import Foundation
+#if EmbeddedMLX
 import MLX
 import MLXHuggingFace
 import MLXLLM
 import MLXLMCommon
-import PortavozCore
 import Tokenizers
+#endif
+import PortavozCore
 
 /// Embedded local summarizer (D25's last mile, D32): a 4-bit Qwen3.5-4B
 /// running IN-PROCESS on the GPU via MLX — summaries on Macs with neither
@@ -72,6 +74,43 @@ public enum MLXSummaryRuntimeError: Error, Equatable, Sendable {
     case notPrepared
 }
 
+#if !EmbeddedMLX
+/// Same surface without MLX, for lanes that never generate: nothing loads,
+/// and every generation reports `notPrepared`.
+public actor MLXSummaryRuntime: MLXSummaryRuntimeClient {
+    public init() {}
+
+    public static let maximumResponseTokens = 16_384
+
+    public func respond(system: String, user: String, directory: URL) async throws -> String {
+        throw MLXSummaryRuntimeError.notPrepared
+    }
+
+    public func respond(
+        system: String,
+        user: String,
+        directory: URL,
+        maximumResponseTokens: Int
+    ) async throws -> String {
+        throw MLXSummaryRuntimeError.notPrepared
+    }
+
+    public func prepare(_ newDirectory: URL) async throws {
+        throw MLXSummaryRuntimeError.notPrepared
+    }
+
+    public func respondPrepared(
+        system: String,
+        user: String,
+        directory expectedDirectory: URL,
+        maximumResponseTokens: Int = MLXSummaryRuntime.maximumResponseTokens
+    ) async throws -> String {
+        throw MLXSummaryRuntimeError.notPrepared
+    }
+
+    public func release() {}
+}
+#else
 /// Owns one loaded MLX container. The app composes one process instance and
 /// surrounds `prepare`/`respondPrepared`/`release` with its residency ledger.
 /// Isolated benchmark products can use the `MLXSummaryRuntimeClient`
@@ -193,3 +232,4 @@ public actor MLXSummaryRuntime: MLXSummaryRuntimeClient {
         }
     }
 }
+#endif

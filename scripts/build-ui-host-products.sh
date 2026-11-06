@@ -7,7 +7,7 @@ umask 077
 
 products="${UI_TEST_PRODUCTS_PATH:?UI_TEST_PRODUCTS_PATH must name the xctestproducts bundle}"
 receipt="${UI_TEST_BUILD_RECEIPT:?UI_TEST_BUILD_RECEIPT must name the build receipt}"
-flags=(-Xswiftc -warnings-as-errors)
+flags=(--disable-default-traits --only-use-versions-from-resolved-file -Xswiftc -warnings-as-errors)
 started=$SECONDS
 
 python3 scripts/ui_host.py verify

@@ -24,6 +24,12 @@ let package = Package(
         .executable(name: "portavoz-cli", targets: ["portavoz-cli"]),
         .executable(name: "portavoz-app", targets: ["portavoz-app"]),
     ],
+    traits: [
+        // The embedded summarizer (D32). Lanes that never generate pass
+        // --disable-default-traits and skip compiling MLX and its C++.
+        .trait(name: "EmbeddedMLX", description: "The embedded MLX summarizer."),
+        .default(enabledTraits: ["EmbeddedMLX"]),
+    ],
     dependencies: [
         // Parakeet ASR + pyannote diarization on CoreML/ANE (Apache-2.0).
         // Exact on purpose (D516): patch releases also change decoder and
@@ -108,10 +114,10 @@ let package = Package(
             name: "IntelligenceKit",
             dependencies: [
                 "PortavozCore",
-                .product(name: "MLXLLM", package: "mlx-swift-lm"),
-                .product(name: "MLXLMCommon", package: "mlx-swift-lm"),
-                .product(name: "MLXHuggingFace", package: "mlx-swift-lm"),
-                .product(name: "Transformers", package: "swift-transformers"),
+                .product(name: "MLXLLM", package: "mlx-swift-lm", condition: .when(traits: ["EmbeddedMLX"])),
+                .product(name: "MLXLMCommon", package: "mlx-swift-lm", condition: .when(traits: ["EmbeddedMLX"])),
+                .product(name: "MLXHuggingFace", package: "mlx-swift-lm", condition: .when(traits: ["EmbeddedMLX"])),
+                .product(name: "Transformers", package: "swift-transformers", condition: .when(traits: ["EmbeddedMLX"])),
             ],
             resources: [
                 .copy("Resources/PortavozLiveQuestionClassifier.mlmodelc"),

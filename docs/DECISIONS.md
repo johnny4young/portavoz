@@ -22803,3 +22803,22 @@ as healthy.
 the time report does not measure it. A failed alert does turn its push run red, and release qualification refuses that run until
 the job is rerun. A dispatched run on `main` changes nothing, so a red issue closes through a later push or a rerun of the
 newest one. D615's accepted risk stands: a compile break can still reach `main`, and this bounds only how long it goes unnoticed.
+
+## D635 — Lanes that never generate build without MLX
+
+**Context:** MLX and its C++ (`Cmlx`) are about a third of a clean debug build's task time and two thirds of a clean
+Release build's, yet only `MLXSummaryProvider.swift` imports them, and D32 already records that `swift test` cannot
+exercise generation. Every cold CI build still compiled them.
+
+**Decision:** an `EmbeddedMLX` package trait, enabled by default, gates IntelligenceKit's four MLX products and that
+file's imports. Without it, `MLXSummaryRuntime` keeps its surface and reports `notPrepared`. `build-and-test`, the nightly
+clean build and the pull request's UI host share one cache seed, so all three pass `--disable-default-traits` and the
+seed contract moves to version 2; `ios-portability` passes it too. Each also passes
+`--only-use-versions-from-resolved-file`: without it, SwiftPM rewrites `Package.resolved` and drops the pins of every
+package the traits leave out. A plain `swift build`, `make install`, `make-app.sh` and Xcode keep the default, so the
+nightly `build-ui-products` lane, local builds and every release compile MLX.
+
+**Consequences:** cold builds in those lanes skip MLX (a local clean debug build took 44% less CPU, indicative). A change
+that breaks only the MLX branch can reach `main` and surfaces in the next nightly or local build. The pull request's UI
+host has no embedded summarizer, which no UI journey generates with. The local gate keeps compiling MLX, so it checks
+the other branch of the condition from CI.

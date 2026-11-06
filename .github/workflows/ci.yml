@@ -163,10 +163,11 @@ jobs:
       # One invocation owns compilation and tests with identical flags. The
       # former build-then-test pair changed compiler arguments and could pay a
       # second package build while producing two different diagnostic modes.
+      # Tests never generate (D32), so MLX stays out; the lock file stays as pinned (D635).
       - name: Current-SDK build and selected test suite
         env:
           PORTAVOZ_SWIFT_TEST_SCOPE: ${{ needs.scope.outputs.swift_filter }}
-        run: scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors
+        run: scripts/run-swift-tests.sh --disable-default-traits --only-use-versions-from-resolved-file -Xswiftc -warnings-as-errors
       # Bound storage and save only after the complete suite succeeds; do not
       # increase the repository's paid cache allowance.
       - name: Record successful source fingerprints
