@@ -78,6 +78,20 @@ public actor ModelStore {
         }
     }
 
+    /// Keeps verified shared-store files on disk until the last runtime or job
+    /// using them unloads. Installation evidence alone does not hold this lock.
+    public final class ModelLease: Sendable {
+        public let directory: URL
+        /// Claims remain the fallback on volumes that do not support file locks.
+        public var isProtected: Bool { backing.isProtected }
+        private let backing: LocalModelStore.ModelLease
+
+        fileprivate init(_ backing: LocalModelStore.ModelLease) {
+            self.backing = backing
+            directory = backing.directory
+        }
+    }
+
     public struct DownloadProgress: Sendable {
         public let completedBytes: Int
         public let totalBytes: Int
@@ -193,6 +207,23 @@ public actor ModelStore {
             descriptorRevision: descriptor.revision,
             directory: installed.directory,
             artifactBytes: installed.artifactBytes)
+    }
+
+    /// Protects this consumer's installation before rechecking its bytes. This
+    /// never downloads or claims a model merely because another app installed it.
+    public func lease(_ descriptor: ModelDescriptor) async throws -> ModelLease {
+        try Task.checkCancellation()
+        let manifest = descriptor.manifest
+        await adoptLegacyInstall(descriptor)
+        return try await translatingErrors {
+            let store = try store()
+            guard await isClaimed(manifest, in: store) else {
+                throw ModelStoreError.notInstalled(missing: manifest.artifacts.map(\.path), corrupted: [])
+            }
+            let lease = try await store.lease(manifest)
+            try Task.checkCancellation()
+            return ModelLease(lease)
+        }
     }
 
     /// Ensures the model is installed and verified, placing what this Mac already has

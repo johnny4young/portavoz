@@ -175,11 +175,13 @@ summary model loading from read-only files. The gated tests read only the legacy
 folder, so a Mac whose models exist only in the shared store fails them as absent, and
 they need a shared-store seed before that folder retires.
 
-Portavoz takes no `LocalModelStore` lease on a model it has loaded, so only claims
-protect it, and removal by another app for all consumers can delete it while it is
-resident or between preparing and loading it. A Whisper tokenizer missing at that
+Parakeet v3/Ultra now retain shared-store leases through loading, residency,
+observer copies and live/batch jobs in the app and CLI. Whisper, Pyannote, Silero,
+MLX and the research-only Nemotron loader still rely only on claims: removal by
+another app for all consumers can delete their files while resident or between
+preparing and loading them. A Whisper tokenizer missing at that
 moment makes WhisperKit reach for its own download. Leases need wiring to the
-model-memory residency, not to a check. Two processes with the same consumer, such as
+remaining model-memory residency, not to a check. Two processes with the same consumer, such as
 two copies of one build, can also let an adoption already staging undo a removal.
 
 A second app waiting on another app's install reads as checking local files, with no

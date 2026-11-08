@@ -34,8 +34,9 @@ enum CLISupport {
                 missing: ["no recommended live-transcription model"],
                 corrupted: [])
         }
-        let directory = try await ensureModel(descriptor, store: store)
-        return try await ParakeetEngine.load(fromVerifiedDirectory: directory)
+        _ = try await ensureModel(descriptor, store: store)
+        let installation = try await store.lease(descriptor)
+        return try await ParakeetEngine.load(fromLeasedInstallation: installation)
     }
 
     static func loadNemotronResearchEngine(
