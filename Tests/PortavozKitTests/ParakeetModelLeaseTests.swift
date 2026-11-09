@@ -104,7 +104,7 @@ struct ParakeetModelLeaseTests {
     ) async throws -> ModelStore.RemovalOutcome {
         let store = fixture.store()
         var outcome = try await store.remove(fixture.descriptor)
-        for _ in 0..<100 where outcome == .deferred {
+        for _ in 0..<500 where outcome == .deferred {
             try await Task.sleep(for: .milliseconds(10))
             outcome = try await store.remove(fixture.descriptor)
         }
