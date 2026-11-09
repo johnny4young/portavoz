@@ -1660,6 +1660,17 @@ rename, and performs a complete verification pass before returning a loadable
 directory. Every store names its consumer and location, and a model this consumer
 has not claimed reads as missing, because bytes from another app are not consent.
 
+Shared-store Parakeet loading takes an opaque `ModelStore.ModelLease` before
+the final verification and native load. The engine, its observer copies, and
+each live or batch job retain that same lease through cleanup, so removing a
+claim in another process cannot delete resident speech weights. Releasing a
+readiness check is not runtime unload. Live failure cancels output and joins
+the native recognizer through its `finish()` barrier before cleanup; cancelling
+the pinned vendor task alone does not prove an in-flight prediction ended.
+The raw-directory loader remains for
+externally owned fixtures; app v3/Ultra and CLI product loading use the leased
+entry point. Other model families still have the lease gap recorded in `GAPS.md`.
+
 `VerifiedModelLifecycle` wraps the process's shared `ModelStore`. It emits an
 installation value only after the complete descriptor passes verification,
 keys successful evidence by descriptor identity and revision, coalesces

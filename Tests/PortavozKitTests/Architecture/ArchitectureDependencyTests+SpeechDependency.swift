@@ -146,6 +146,7 @@ extension ArchitectureDependencyTests {
             "PortavozAppTests/TranscriptionTests.swift",
             "PortavozKitTests/NemotronLatin1120Tests.swift",
             "PortavozKitTests/ParakeetLanguageConfigurationTests.swift",
+            "PortavozKitTests/ParakeetModelLeaseTests.swift",
             "PortavozKitTests/SileroVoiceActivityDetectorTests.swift",
         ])
     }

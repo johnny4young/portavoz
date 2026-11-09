@@ -87,11 +87,12 @@ extension AppServices {
             ) {
                 if checkpoint == .ultra {
                     // Only an explicit Settings choice installs Ultra; never download it here.
-                    guard let installed = await lifecycle.installation(for: ModelCatalog.parakeetUltra) else {
+                    guard await lifecycle.installation(for: ModelCatalog.parakeetUltra) != nil else {
                         throw LiveSpeechRuntimeError.checkpointNotInstalled
                     }
+                    let installation = try await store.lease(ModelCatalog.parakeetUltra)
                     return try await ParakeetEngine.load(
-                        fromVerifiedDirectory: installed.directory, checkpoint: .ultra)
+                        fromLeasedInstallation: installation, checkpoint: .ultra)
                 }
                 return try await ParakeetEngine.loadRecommended(store: store) { progress in
                     let percent = Int(progress.fraction * 100)

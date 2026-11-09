@@ -138,6 +138,21 @@ extension ArchitectureDependencyTests {
             ["AppServices+LiveSpeechModels.swift"])
         XCTAssertEqual(
             try Self.sourceMatches(
+                under: "Sources",
+                pattern: #"ParakeetEngine\.load\(\s*fromVerifiedDirectory"#,
+                codeOnly: true),
+            [],
+            "Shared-store Parakeet loading must hold a model lease")
+        XCTAssertEqual(
+            try Self.sourceMatches(under: "Sources", pattern: #"load\(\s*fromLeasedInstallation:"#, codeOnly: true),
+            [
+                "TranscriptionKit/ParakeetEngine.swift",
+                "portavoz-app/AppServices+LiveSpeechModels.swift",
+                "portavoz-cli/CLIProductAdapters.swift",
+                "portavoz-cli/CLISupport.swift",
+            ])
+        XCTAssertEqual(
+            try Self.sourceMatches(
                 under: "Sources/portavoz-app",
                 pattern: #"WhisperEngine\.loadPrepared"#),
             ["AppServices+WhisperModels.swift"])

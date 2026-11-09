@@ -86,21 +86,22 @@ private enum CLIModelLoader {
                 megabytes: descriptor.totalSizeBytes / 1_000_000))
         }
         let relay = CLIOrderedProgressRelay(handler: progress)
-        let directory: URL
+        let installation: ModelStore.ModelLease
         do {
-            directory = try await store.ensureAvailable(descriptor) { download in
+            _ = try await store.ensureAvailable(descriptor) { download in
                 guard download.totalBytes > 0 else { return }
                 relay.send(.downloadProgress(
                     percent: Int(download.fraction * 100),
                     path: download.currentPath))
             }
+            installation = try await store.lease(descriptor)
         } catch {
             await relay.finish()
             throw error
         }
         await relay.finish()
         await progress(.loadingTranscriptionModel)
-        return try await ParakeetEngine.load(fromVerifiedDirectory: directory)
+        return try await ParakeetEngine.load(fromLeasedInstallation: installation)
     }
 
     static func whisper(

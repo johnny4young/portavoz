@@ -10,6 +10,20 @@ public enum ParakeetCheckpoint: String, Sendable {
     case ultra
 }
 
+/// The live job's native lifecycle, including a join after cancellation. The
+/// pinned vendor's cancel() closes output but does not await recognition;
+/// finish() is its public recognition-task barrier.
+protocol ParakeetLiveManaging: Actor {
+    var tokenUpdates: AsyncThrowingStream<SlidingWindowTokenUpdate, Error> { get }
+    func startStreaming(source: AudioSource) async throws
+    func streamAudio(_ buffer: AVAudioPCMBuffer) async
+    func finish() async throws -> String
+    func cancel() async
+    func cleanup() async
+}
+
+extension SlidingWindowAsrManager: ParakeetLiveManaging {}
+
 /// Parakeet TDT 0.6B v3 (FluidAudio, CoreML/ANE): the default engine for
 /// both live and final transcription in M2.
 ///
@@ -26,19 +40,39 @@ public enum ParakeetCheckpoint: String, Sendable {
 public final class ParakeetEngine: TranscriptionEngine, Sendable {
     public let descriptor: EngineDescriptor
     public let checkpoint: ParakeetCheckpoint
-    typealias LiveManagerPreparation = @Sendable (SlidingWindowAsrConfig) async throws -> SlidingWindowAsrManager
+    typealias LiveManagerPreparation = @Sendable (SlidingWindowAsrConfig) async throws -> any ParakeetLiveManaging
     typealias BatchManagerPreparation = @Sendable (ASRConfig) async throws -> AsrManager
 
     private let prepareLiveManager: LiveManagerPreparation
     private let prepareBatchManager: BatchManagerPreparation
     private let liveWorkObserver: (@Sendable (ParakeetLiveWorkSample) -> Void)?
+    private let installationLease: ModelStore.ModelLease?
 
-    /// Loads the engine from a directory the `ModelStore` has verified.
+    /// Loads an externally owned, verified directory. Shared-store production
+    /// callers use `fromLeasedInstallation` so deletion cannot race native use.
     /// Never point this at an unverified download — model files are code.
     @concurrent
     public static func load(
         fromVerifiedDirectory directory: URL, checkpoint: ParakeetCheckpoint = .v3
     ) async throws -> ParakeetEngine {
+        try load(directory: directory, checkpoint: checkpoint, installationLease: nil)
+    }
+
+    /// Shared-store callers retain the deletion lock through native loading,
+    /// runtime residency, observer copies and every live or batch job.
+    @concurrent
+    public static func load(
+        fromLeasedInstallation installation: ModelStore.ModelLease,
+        checkpoint: ParakeetCheckpoint = .v3
+    ) async throws -> ParakeetEngine {
+        try load(directory: installation.directory, checkpoint: checkpoint, installationLease: installation)
+    }
+
+    private static func load(
+        directory: URL,
+        checkpoint: ParakeetCheckpoint,
+        installationLease: ModelStore.ModelLease?
+    ) throws -> ParakeetEngine {
         try Task.checkCancellation()
         // The curated v3 graph has no optional CTC head. Do not let vendor
         // discovery expand the verified artifact set or trigger ModelHub.
@@ -49,7 +83,7 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
         let models = try AsrModels.loadLocal(
             from: directory, version: checkpoint == .ultra ? .ultra : .v3, encoderPrecision: .int8)
         try Task.checkCancellation()
-        return ParakeetEngine(models: models, checkpoint: checkpoint)
+        return ParakeetEngine(models: models, checkpoint: checkpoint, installationLease: installationLease)
     }
 
     enum VerifiedLoadFailure: Error {
@@ -64,8 +98,9 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
         guard let descriptor = ModelCatalog.recommended(for: .liveTranscription) else {
             throw ModelStore.ModelStoreError.notInstalled(missing: ["no recommended model"], corrupted: [])
         }
-        let directory = try await store.ensureAvailable(descriptor, progress: progress)
-        return try await load(fromVerifiedDirectory: directory)
+        _ = try await store.ensureAvailable(descriptor, progress: progress)
+        let installation = try await store.lease(descriptor)
+        return try await load(fromLeasedInstallation: installation)
     }
 
     /// Shares verified immutable model weights while observing only public
@@ -77,13 +112,15 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
             prepareLiveManager: prepareLiveManager,
             prepareBatchManager: prepareBatchManager,
             liveWorkObserver: observer,
-            checkpoint: checkpoint)
+            checkpoint: checkpoint,
+            installationLease: installationLease)
     }
 
     convenience init(
         models: AsrModels,
         liveWorkObserver: (@Sendable (ParakeetLiveWorkSample) -> Void)? = nil,
-        checkpoint: ParakeetCheckpoint = .v3
+        checkpoint: ParakeetCheckpoint = .v3,
+        installationLease: ModelStore.ModelLease? = nil
     ) {
         self.init(
             prepareLiveManager: { config in
@@ -107,7 +144,8 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
                 }
             },
             liveWorkObserver: liveWorkObserver,
-            checkpoint: checkpoint)
+            checkpoint: checkpoint,
+            installationLease: installationLease)
     }
 
     /// Each preparation owns a fresh manager until its verified models are
@@ -117,7 +155,8 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
         prepareLiveManager: @escaping LiveManagerPreparation,
         prepareBatchManager: @escaping BatchManagerPreparation,
         liveWorkObserver: (@Sendable (ParakeetLiveWorkSample) -> Void)? = nil,
-        checkpoint: ParakeetCheckpoint = .v3
+        checkpoint: ParakeetCheckpoint = .v3,
+        installationLease: ModelStore.ModelLease? = nil
     ) {
         // Vendor debug messages contain hypotheses. Keep them out of stderr;
         // warnings/errors remain in the system log with default private text.
@@ -127,6 +166,7 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
         self.prepareBatchManager = prepareBatchManager
         self.liveWorkObserver = liveWorkObserver
         self.checkpoint = checkpoint
+        self.installationLease = installationLease
         self.descriptor = EngineDescriptor(
             id: checkpoint == .ultra ? "parakeet-ultra" : "parakeet-tdt-0.6b-v3",
             displayName: checkpoint == .ultra ? "Parakeet Ultra" : "Parakeet TDT 0.6B v3",
@@ -161,10 +201,12 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
     ) -> AsyncThrowingStream<TranscriptSegment, Error> {
         let prepareLiveManager = self.prepareLiveManager
         let observer = liveWorkObserver
+        let installationLease = self.installationLease
         return AsyncThrowingStream { continuation in
             let job = Task {
+                defer { withExtendedLifetime(installationLease) {} }
                 let probe = observer.map { _ in ParakeetLiveWorkProbe() }
-                var preparedManager: SlidingWindowAsrManager?
+                var preparedManager: (any ParakeetLiveManaging)?
                 var consumer: Task<Void, Error>?
                 let channelHolder = ParakeetStreamChannel()
                 do {
@@ -218,6 +260,9 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
                     await preparedManager?.cancel()
                     consumer?.cancel()
                     _ = try? await consumer?.value
+                    // Vendor cancel() does not join a suspended prediction.
+                    // Retain the disk lease until recognition has actually ended.
+                    _ = try? await preparedManager?.finish()
                     await preparedManager?.cleanup()
                     let outcome = await channelHolder.outcome(for: error, cancelled: Task.isCancelled)
                     if let sample = probe?.finish(outcome: outcome) { observer?(sample) }
@@ -277,7 +322,7 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
 
     static func feed(
         _ audio: AsyncStream<AudioChunk>,
-        manager: SlidingWindowAsrManager,
+        manager: any ParakeetLiveManaging,
         channelHolder: ParakeetStreamChannel,
         probe: ParakeetLiveWorkProbe?
     ) async throws {
