@@ -6934,3 +6934,10 @@ validator as a required CI step in the same job. Release reliability invokes
 both scripts. Swift and legacy tooling gates remain authoritative until
 equivalent replacements are validated; local hygiene alone is not full tooling
 or p95 qualification.
+
+The synthetic dictation launcher tests materialize their shared 480-cell audio
+input once per test process and cache immutable file bytes. Each case writes a
+fresh private directory with independent files and original modes; corruption
+and deletion tests cannot affect later cases. Producer tests retain real
+materialization. This test-only reuse does not cache test outcomes or model
+evidence, and never reads recorded user audio.
