@@ -15,7 +15,7 @@ const run = {id: 7, head_sha: head, workflow_id: 8, path: '.github/workflows/ci.
   created_at: '2026-11-01T00:00:00Z', updated_at: '2026-11-01T00:02:00Z', pull_requests: []};
 const job = (id, name) => ({id, name, run_id: 7, run_attempt: 1, head_sha: head, runner_id: 10, status: 'completed'});
 const evidence = () => ({repository, run: structuredClone(run), attempts: [{metadata: {run_attempt: 1},
-  ownershipVerified: true, jobsComplete: true, jobs: [job(11, 'scope'), job(12, 'gate')]}]});
+  ownershipVerified: true, jobsComplete: true, jobs: [job(11, 'scope'), job(12, 'build-and-test')]}]});
 function api(intercept = () => undefined) {
   const calls = [];
   const get = async path => {
@@ -107,13 +107,22 @@ test('collects agreeing current jobs but never claims executed workflow or scope
   assert.deepEqual(paths, [`repos/${repository}/actions/jobs/11/logs`, `repos/${repository}/actions/jobs/12/logs`]);
   assert.equal(JSON.stringify(r).includes('token:'), false);
 });
+test('a gate without checkout does not hide matching scope and build sources', async () => {
+  const e = evidence(); e.attempts[0].jobs.push(job(13, 'gate'));
+  const logs = [];
+  const r = await collectHistoricalSources(api().get, async path => {logs.push(path); return log();}, e);
+  assert.equal(r.observedAttempts, 1);
+  assert.deepEqual(r.attempts[0].logs.map(l => l.jobName), ['scope', 'build-and-test']);
+  assert.equal(logs.some(path => path.includes('/13/')), false);
+  assert.equal(r.attempts[0].verified, false);
+});
 test('missing, carried, runnerless, duplicate or foreign jobs do not fetch logs', async () => {
-  for (const mutate of [e => e.attempts[0].jobs.pop(), e => e.attempts[0].jobs.push(job(13, 'gate')),
+  for (const mutate of [e => e.attempts[0].jobs.pop(), e => e.attempts[0].jobs.push(job(13, 'build-and-test')),
     e => {e.attempts[0].jobs[0].runner_id = 0;}, e => {e.attempts[0].jobs[0].run_attempt = 0;},
     e => {e.attempts[0].jobs[0].run_id = 9;}, e => {e.attempts[0].jobs[0].id = 12;}]) {
     const e = evidence(); mutate(e);
     const r = await collectHistoricalSources(api().get, async () => {throw Error('Must not fetch');}, e);
-    assert.equal(r.attempts[0].status, 'missing-current-scope-or-gate');
+    assert.equal(r.attempts[0].status, 'missing-current-scope-or-build');
   }
 });
 test('mismatched or unavailable checkout logs stay unknown without fetching Git objects', async () => {
@@ -147,7 +156,7 @@ test('unverified or incomplete attempt inventory is rejected before requests', a
 test('one unavailable attempt does not prevent independent later source observations', async () => {
   const e = evidence(); e.run.run_attempt = 2;
   e.attempts.push({metadata: {run_attempt: 2}, ownershipVerified: true, jobsComplete: true,
-    jobs: [job(21, 'scope'), job(22, 'gate')].map(j => ({...j, run_attempt: 2}))});
+    jobs: [job(21, 'scope'), job(22, 'build-and-test')].map(j => ({...j, run_attempt: 2}))});
   const {get} = api(path => path.endsWith('/actions/runs/7') ? e.run : undefined);
   const r = await collectHistoricalSources(get, async path => path.includes('/11/') ? '' : log(), e);
   assert.deepEqual(r.attempts.map(a => a.status), ['unavailable-or-inconsistent-source', 'observed']);
@@ -156,7 +165,7 @@ test('one unavailable attempt does not prevent independent later source observat
 test('immutable Git reads are reused across attempts but each job log is bound separately', async () => {
   const e = evidence(); e.run.run_attempt = 2;
   e.attempts.push({metadata: {run_attempt: 2}, ownershipVerified: true, jobsComplete: true,
-    jobs: [job(21, 'scope'), job(22, 'gate')].map(j => ({...j, run_attempt: 2}))});
+    jobs: [job(21, 'scope'), job(22, 'build-and-test')].map(j => ({...j, run_attempt: 2}))});
   const {get, calls} = api(path => path.endsWith('/actions/runs/7') ? e.run : undefined);
   const logs = [];
   const r = await collectHistoricalSources(get, async path => { logs.push(path); return log(); }, e);

@@ -6963,7 +6963,7 @@ Attempt creation timestamps are retained independently from workflow creation;
 the latter remains the total-time origin across retries. Runner ID zero is
 preserved as unassigned metadata and never establishes measured job execution.
 
-The historical-source diagnostic separately observes matching scope/gate
+The historical-source diagnostic separately observes matching scope/build
 checkouts for each exact attempt. It follows the observed merge's immutable
 Git trees, verifies the workflow blob bytes and retains the parent SHAs without
 guessing a current branch or PR base. Logs, actors and credential fields are

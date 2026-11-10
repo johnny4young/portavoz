@@ -9717,9 +9717,11 @@ does not establish runner execution or turn a missing gate into known timing.
 
 `node scripts/ci_time_source.mjs OWNER/REPO RUN_ID HEAD_SHA` first collects the
 exact completed run and all attempts. For each attempt, one current `scope`
-and one current `gate` job must each have an assigned runner and agree on one
+and one current `build-and-test` job must each have an assigned runner and agree on one
 unambiguous checkout observation. Missing, carried, duplicated, unavailable or
 conflicting jobs/logs remain explicit unknowns; other attempts continue.
+The build job is used because gate checkout is conditional on UI selection;
+requiring gate checkout would hide source observations for no-UI heads.
 The parser requires one SHA-pinned checkout action, one matching repository
 sync line and one exact Git log command/result pair in that order, before the
 next Run/Post step. The job-log transport captures ANSI without rendering raw
