@@ -6969,3 +6969,11 @@ Git trees, verifies the workflow blob bytes and retains the parent SHAs without
 guessing a current branch or PR base. Logs, actors and credential fields are
 not retained. This recovers source for review; it does not attest which workflow
 GitHub executed or promote scope/cohort evidence to verified.
+
+The pure Node UI-receipt diagnostic compares exact selected method identities
+with executed cases across the compact lane/runtime/execution/outcome records.
+It preserves partial execution, failed cases and reported runtime-budget drift.
+Artifact metadata is bound to the supplied repository, run, origin attempt,
+head and archive digest; the helper itself performs no network or archive reads.
+Optional supplied pre-fit and catalogue lists reconcile cuts and deferred names,
+without attesting their historical provenance or replacing the hosted gate.

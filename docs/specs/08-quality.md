@@ -9744,3 +9744,32 @@ GitHub evaluated. Required scope, selector semantics, continue-on-error policy,
 executed/deferred receipts, cache, ordinary cohort and p95 remain unverified.
 Historical source bytes are evidence for that next review, not permission to
 execute them or replace missing timings.
+
+### Compact UI receipt reconciliation
+
+`scripts/ci_time_receipts.mjs` exports pure `bindUIArtifact` and
+`reconcileUIReceipts` helpers. The former binds supplied artifact metadata to
+the base and head repository IDs, run ID, head SHA, UI origin attempt and computed archive
+SHA-256. Expired, oversized or mismatched artifacts are rejected. Callers own
+independent API retrieval, bounded archive reading and freshness checks. A UI
+artifact from a fork requires its independently supplied head repository ID;
+the helper does not assume that it equals the base repository. A UI
+job carried from an earlier attempt must retain that origin; the gate's later
+attempt does not relabel its receipt.
+
+The latter checks the four English compact records against one head/attempt,
+maps exact method selectors to runtime identifiers, rejects duplicates and
+requires lane/runtime agreement on case identities, results and durations.
+Equal counts with different selected methods cannot establish coverage.
+Missing selected cases must be named exactly in `notExecuted`; partial, empty,
+failed and evidence-failure execution never becomes a functional acceptance.
+Reported runtime-budget drift remains distinct from functional case results.
+
+An optional pre-fit list must equal selected plus budget-cut methods. An
+optional catalogue must contain every selected/cut method and its complement
+must match the declared deferred count. Budget cuts are only a subset of all
+deferrals. Without a catalogue, deferred names stay null. These comparisons
+validate supplied lists, not historical selector/catalogue provenance or
+nightly discharge. The helper does not validate the full runtime budget or
+adjustment contract and does not replace the hosted gate. Required jobs,
+ordinary cohort, controlled cold samples and p95 acceptance remain unknown.
