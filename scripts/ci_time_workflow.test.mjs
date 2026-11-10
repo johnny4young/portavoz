@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync, mkdtempSync, writeFileSync, existsSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {spawnSync} from 'node:child_process';
 import {blockingJobs, nonBlockingJobs, productSteps, classifyStep, declaredTimeouts, workflowJobNames} from './ci_time_workflow.mjs';
 
 const workflow = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
@@ -86,4 +90,30 @@ test('blocking and nonblocking policies match independent historical expectation
   assert.deepEqual([...blockingJobs.pull_request].sort(), expectedPR.sort());
   assert.deepEqual([...blockingJobs.push].sort(), expectedPush.sort());
   assert.deepEqual([...nonBlockingJobs].sort(), ['alert']);
+});
+
+test('diagnostic tests are mandatory in hygiene and run on the declared Node runtime', () => {
+  const hygiene = readFileSync(new URL('./check-repository-hygiene.sh', import.meta.url), 'utf8');
+  assert.match(hygiene, /^set -euo pipefail$/m);
+  assert.match(hygiene, /^node --test scripts\/ci_time_\*.test.mjs$/m);
+  const lane = workflow.split('  repository-hygiene:\n')[1].split('\n  lint:')[0];
+  assert.match(lane, /uses: actions\/setup-node@[a-f0-9]{40}/);
+  assert.match(lane, /node-version-file: .node-version/);
+  assert.match(lane, /package-manager-cache: false/);
+  assert.ok(lane.indexOf('uses: actions/setup-node@') < lane.indexOf('run: scripts/check-repository-hygiene.sh'));
+  assert.equal(readFileSync(new URL('../.node-version', import.meta.url), 'utf8').trim(), '26.13.0');
+});
+
+test('a diagnostic failure stops hygiene before any legacy tool executes', () => {
+  const scratch = mkdtempSync(join(tmpdir(), 'ci-time-gate-'));
+  try {
+    writeFileSync(join(scratch, 'node'), '#!/bin/sh\nexit 42\n', {mode: 0o700});
+    writeFileSync(join(scratch, 'python3'), '#!/bin/sh\ntouch "$CI_LEGACY_MARKER"\nexit 0\n', {mode: 0o700});
+    const marker = join(scratch, 'legacy-executed');
+    const result = spawnSync('/bin/bash', [fileURLToPath(new URL('./check-repository-hygiene.sh', import.meta.url))],
+      {encoding: 'utf8', env: {...process.env, PATH: scratch + ':' + process.env.PATH, CI_LEGACY_MARKER: marker}});
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 42, result.stderr);
+    assert.equal(existsSync(marker), false);
+  } finally { rmSync(scratch, {recursive: true, force: true}); }
 });
