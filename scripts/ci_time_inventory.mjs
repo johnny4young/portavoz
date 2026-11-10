@@ -10,7 +10,7 @@ const states = new Set(['completed', 'queued', 'in_progress', 'requested', 'wait
 const conclusions = new Set(['success', 'failure', 'neutral', 'cancelled', 'skipped', 'timed_out',
   'action_required', 'stale', 'startup_failure']);
 
-function normalize(run, repository, headSha, cutoff) {
+export function normalizeInventoryRun(run, repository, headSha, cutoff) {
   const created = utcTimestamp(run?.created_at), updated = utcTimestamp(run?.updated_at);
   if (!positive(run?.id) || run.head_sha !== headSha || run.event !== 'pull_request' ||
       run.repository?.full_name !== repository || run.path !== '.github/workflows/ci.yml' ||
@@ -42,7 +42,7 @@ async function headRuns(get, {repository, cutoff}, headSha) {
   };
   const rows = await allPages(boundedGet, root, 'workflow_runs');
   if (!rows.length) throw new Error('Selected head has no runs');
-  return rows.map(run => normalize(run, repository, headSha, cutoff))
+  return rows.map(run => normalizeInventoryRun(run, repository, headSha, cutoff))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.runId - b.runId);
 }
 
@@ -64,7 +64,7 @@ export async function collectRunInventory(get, {repository, cutoff, limit = 50})
     // The prefix used to select heads must also exist in the full head history.
     for (const observed of head.runs) {
       const selected = runs.find(run => run.runId === observed.id);
-      if (!selected || JSON.stringify(selected) !== JSON.stringify(normalize(observed, repository, head.headSha, cutoff))) {
+      if (!selected || JSON.stringify(selected) !== JSON.stringify(normalizeInventoryRun(observed, repository, head.headSha, cutoff))) {
         throw new Error('Discovery and head inventory disagree');
       }
     }

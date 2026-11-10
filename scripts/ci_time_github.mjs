@@ -45,27 +45,34 @@ export async function allPages(get, path, key, pageSize = 100) {
   throw new Error('Pagination exceeded safety limit');
 }
 
-export async function readExactRun(get, {repository, runId, headSha, prNumber}) {
-  if (!REPOSITORY.test(repository) || repository.includes('..') || !positive(runId) || !SHA.test(headSha) || !positive(prNumber)) {
+export async function readExactRun(get, {repository, runId, headSha, prNumber = null}) {
+  if (!REPOSITORY.test(repository) || repository.includes('..') || !positive(runId) || !SHA.test(headSha) || (prNumber !== null && !positive(prNumber))) {
     throw new TypeError('Invalid repository, run ID, or head SHA');
   }
+  const associationIdentity = value => JSON.stringify(value.pull_requests.map(pr =>
+    [pr.number, pr.head.sha]).sort((a, b) => a[0] - b[0]));
   const root = `repos/${repository}/actions/runs/${runId}`;
   const run = await get(root);
   const valid = value => value?.id === runId && value.head_sha === headSha &&
     value.path === '.github/workflows/ci.yml' && value.event === 'pull_request' &&
     value.status === 'completed' && value.repository?.full_name === repository &&
     positive(value.workflow_id) && Array.isArray(value.pull_requests) &&
-    (value.pull_requests.length === 0 || value.pull_requests.some(pr => pr.number === prNumber && pr.head?.sha === headSha)) &&
+    value.pull_requests.every(pr => positive(pr.number) && pr.head?.sha === headSha) &&
+    new Set(value.pull_requests.map(pr => pr.number)).size === value.pull_requests.length &&
+    (prNumber === null || value.pull_requests.length === 0 || value.pull_requests.some(pr => pr.number === prNumber)) &&
     positive(value.run_attempt) && typeof value.created_at === 'string' && typeof value.updated_at === 'string';
   if (!valid(run)) throw new Error('Run identity or state mismatch');
-  const association = value => value.pull_requests.length ? 'verified' : 'unknown';
-  const prAssociation = {status: association(run), prNumber: run.pull_requests.length ? prNumber : null, source: run.pull_requests.length ? 'run-api-pull-requests' : 'run-api-empty-pull-requests'};
+  const association = value => prNumber !== null && value.pull_requests.length ? 'verified' : 'unknown';
+  const prAssociation = {status: association(run), prNumber: association(run) === 'verified' ? prNumber : null, source: run.pull_requests.length ? (prNumber === null ? 'run-api-unattributed-pull-requests' : 'run-api-pull-requests') : 'run-api-empty-pull-requests'};
   const attempts = [];
   const earlierJobs = new Map();
   for (let number = 1; number <= run.run_attempt; number++) {
     const metadata = await get(`${root}/attempts/${number}`);
-    if (!valid(metadata) || association(metadata) !== association(run) || metadata.run_attempt !== number || metadata.workflow_id !== run.workflow_id || metadata.created_at !== run.created_at ||
+    if (!valid(metadata) || associationIdentity(metadata) !== associationIdentity(run) || metadata.run_attempt !== number || metadata.workflow_id !== run.workflow_id || metadata.created_at !== run.created_at ||
       typeof metadata.run_started_at !== 'string') throw new Error('Attempt identity mismatch');
+    if (number === run.run_attempt && metadata.conclusion !== run.conclusion) {
+      throw new Error('Latest attempt conclusion contradicts run');
+    }
     const jobs = await allPages(get, `${root}/attempts/${number}/jobs`, 'jobs');
     for (const job of jobs) {
       const optionalText = value => value === null || value === undefined || (typeof value === 'string' && value.length <= 128);
@@ -90,7 +97,7 @@ export async function readExactRun(get, {repository, runId, headSha, prNumber}) 
     attempts.push({metadata, jobs, ownershipVerified: true, jobsComplete: true});
   }
   const after = await get(root);
-  if (!valid(after) || association(after) !== association(run) || after.run_attempt !== run.run_attempt || after.workflow_id !== run.workflow_id || after.created_at !== run.created_at ||
+  if (!valid(after) || associationIdentity(after) !== associationIdentity(run) || after.run_attempt !== run.run_attempt || after.workflow_id !== run.workflow_id || after.created_at !== run.created_at ||
     after.updated_at !== run.updated_at) throw new Error('Run changed during collection');
   return {repository, run, attempts, prAssociation};
 }
