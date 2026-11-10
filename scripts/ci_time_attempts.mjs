@@ -63,7 +63,7 @@ const stepFields = ['number', 'name', 'status', 'conclusion', 'started_at', 'com
 const pick = (value, fields) => Object.fromEntries(fields.map(field => [field, value?.[field] ?? null]));
 function retainedAttempts(evidence) {
   return evidence.attempts.map(attempt => ({attempt: attempt.metadata.run_attempt,
-    startedAt: attempt.metadata.run_started_at, conclusion: attempt.metadata.conclusion,
+    createdAt: attempt.metadata.created_at, startedAt: attempt.metadata.run_started_at, conclusion: attempt.metadata.conclusion,
     ownershipVerified: attempt.ownershipVerified, jobsComplete: attempt.jobsComplete,
     jobs: attempt.jobs.map(job => ({...pick(job, jobFields),
       steps: Array.isArray(job.steps) ? job.steps.map(step => pick(step, stepFields)) : null}))}));

@@ -8,6 +8,9 @@ const execFileAsync = promisify(execFile);
 const REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const SHA = /^[0-9a-f]{40}$/;
 const positive = value => Number.isSafeInteger(value) && value > 0;
+const validTimestamp = value => typeof value === 'string' &&
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(value) &&
+  Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 19) === value.slice(0, 19);
 const STABLE_JOB_FIELDS = ['id', 'run_id', 'head_sha', 'run_attempt', 'name',
   'created_at', 'started_at', 'completed_at', 'conclusion', 'runner_id', 'status'];
 
@@ -60,7 +63,7 @@ export async function readExactRun(get, {repository, runId, headSha, prNumber = 
     value.pull_requests.every(pr => positive(pr.number) && pr.head?.sha === headSha) &&
     new Set(value.pull_requests.map(pr => pr.number)).size === value.pull_requests.length &&
     (prNumber === null || value.pull_requests.length === 0 || value.pull_requests.some(pr => pr.number === prNumber)) &&
-    positive(value.run_attempt) && typeof value.created_at === 'string' && typeof value.updated_at === 'string';
+    positive(value.run_attempt) && validTimestamp(value.created_at) && validTimestamp(value.updated_at);
   if (!valid(run)) throw new Error('Run identity or state mismatch');
   const association = value => prNumber !== null && value.pull_requests.length ? 'verified' : 'unknown';
   const prAssociation = {status: association(run), prNumber: association(run) === 'verified' ? prNumber : null, source: run.pull_requests.length ? (prNumber === null ? 'run-api-unattributed-pull-requests' : 'run-api-pull-requests') : 'run-api-empty-pull-requests'};
@@ -68,7 +71,12 @@ export async function readExactRun(get, {repository, runId, headSha, prNumber = 
   const earlierJobs = new Map();
   for (let number = 1; number <= run.run_attempt; number++) {
     const metadata = await get(`${root}/attempts/${number}`);
-    if (!valid(metadata) || associationIdentity(metadata) !== associationIdentity(run) || metadata.run_attempt !== number || metadata.workflow_id !== run.workflow_id || metadata.created_at !== run.created_at ||
+    // Attempt creation is independent of workflow creation, especially on reruns.
+    // Keep both timestamps; only the run root defines the total-time origin.
+    if (!valid(metadata) || associationIdentity(metadata) !== associationIdentity(run) || metadata.run_attempt !== number || metadata.workflow_id !== run.workflow_id ||
+      Date.parse(metadata.created_at) < Date.parse(run.created_at) ||
+      Date.parse(metadata.created_at) > Date.parse(metadata.updated_at) ||
+      Date.parse(metadata.created_at) > Date.parse(run.updated_at) ||
       typeof metadata.run_started_at !== 'string') throw new Error('Attempt identity mismatch');
     if (number === run.run_attempt && metadata.conclusion !== run.conclusion) {
       throw new Error('Latest attempt conclusion contradicts run');
@@ -80,7 +88,7 @@ export async function readExactRun(get, {repository, runId, headSha, prNumber = 
         job.run_attempt > number || job.status !== 'completed' || typeof job.name !== 'string' ||
         job.name.length === 0 || job.name.length > 1024 || !optionalText(job.conclusion) ||
         ![job.created_at, job.started_at, job.completed_at].every(optionalText) ||
-        !(job.runner_id === null || job.runner_id === undefined || positive(job.runner_id))) {
+        !(job.runner_id === null || job.runner_id === undefined || job.runner_id === 0 || positive(job.runner_id))) {
         throw new Error('Job identity or shape mismatch');
       }
       if (job.run_attempt < number) {

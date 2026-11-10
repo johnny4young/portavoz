@@ -66,6 +66,29 @@ test('preserves uniquely verified PR attribution and failure/cancellation metada
   assert.equal(result.results[0].report.prNumber, 9);
   assert.deepEqual(result.results.map(r => r.attempts[0].conclusion), ['failure', 'cancelled']);
 });
+test('retains distinct attempt timestamps and runnerless cancellation without shortening total time', async () => {
+  const runs = [run(1, {run_attempt: 2, conclusion: 'cancelled'})];
+  const {get} = api(runs, ({path, r, number}) => {
+    if (path.includes('/jobs?')) return {total_count: 2, jobs: [job(r, number),
+      job(r, number, {id: 900 + number, name: 'build-and-test', runner_id: 0, conclusion: 'cancelled',
+        started_at: at((number - 1) * 20), completed_at: at((number - 1) * 20 + 1)})]};
+    if (number) return {...r, run_attempt: number, created_at: at((number - 1) * 20 + 1),
+      run_started_at: at((number - 1) * 20)};
+  });
+  const result = await collectInventoryAttempts(get, inventory(runs));
+  assert.equal(result.attemptJobCoverageComplete, true);
+  assert.equal(result.collectedAttempts, 2);
+  const r = result.results[0];
+  assert.deepEqual(r.attempts.map(a => a.createdAt), [at(1), at(21)]);
+  assert.equal(r.report.workflowCreatedAt, at(0));
+  assert.equal(r.report.attempts[1].totalSeconds, 30);
+  for (const a of r.report.attempts) {
+    assert.equal(a.executionSeconds, null);
+    assert.equal(a.jobs[1].durationSeconds, null);
+    assert.equal(a.jobs[1].queueProxySeconds, null);
+  }
+  assert.equal(result.acceptance, null);
+});
 test('a pending run remains visible and does not prevent independent completed runs', async () => {
   const runs = [run(1, {status: 'queued', conclusion: null}), run(2)];
   const {get, calls} = api(runs);
