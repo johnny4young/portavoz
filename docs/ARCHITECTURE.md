@@ -6062,8 +6062,8 @@ letting a previous source's selected state satisfy a later assertion. All eight
 screenshots and all original product assertions remain.
 
 The review journey observes related rail controls together within their owning
-subtree, using fresh snapshots after each lens change. Notes title and exact raw
-text share one notes observation. Live foreground, stable-frame, playback and
+subtree, using fresh snapshots after each lens change. Notes retain their live
+title wait and exact static-text query. Live foreground, stable-frame, playback and
 mutation checks still own every interaction; snapshots never supply later click
 geometry. The original five/ten-second phase bounds and 20-second case budget
 remain, with no runtime improvement inferred from query count alone.

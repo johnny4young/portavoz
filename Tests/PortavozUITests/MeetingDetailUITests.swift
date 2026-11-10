@@ -896,16 +896,12 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             notesSection.waitForExistenceFast(timeout: 10),
             "notes must retain one explicit presentation boundary")
-        let notesObservation = try uiObservation(
-            of: notesSection,
-            requiring: ["detail-notes-title"],
-            timeout: 10,
-            message: "a meeting with notes must surface the My notes section")
         XCTAssertTrue(
-            !uiSnapshotMatches({
-                $0.elementType == .staticText
-                    && ($0.identifier == "revisar budget Q3" || $0.label == "revisar budget Q3")
-            }, in: notesObservation).isEmpty,
+            notesSection.descendants(matching: .any)["detail-notes-title"]
+                .waitForExistenceFast(timeout: 10),
+            "a meeting with notes must surface the My notes section")
+        XCTAssertTrue(
+            notesSection.staticTexts["revisar budget Q3"].exists,
             "the raw seeded note is shown verbatim before any enhancement")
         XCTAssertTrue(
             notesSection.descendants(matching: .any)["detail-enhance-notes"]

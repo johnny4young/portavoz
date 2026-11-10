@@ -7977,8 +7977,9 @@ child assertions and interactions to the owning accessibility subtree. Health,
 chapters and persisted Apuntador each use one bounded observation of their rail
 phase. The chapter's enabled state comes from that observation, then a freshly
 resolved live control retains the foreground/stable-frame activation guards.
-Notes title and exact static raw-note text share one notes observation; the
-enhance control retains its separate five-second wait. Snapshot identifiers must
+Notes retain the live title wait and exact static raw-note query; a rail snapshot
+does not replace their content contract. The enhance control retains its
+separate five-second wait. Snapshot identifiers must
 be unique, and no snapshot survives an action as evidence for its new state.
 These changes reduce independent AX reads without asserting a measured speedup.
 An
