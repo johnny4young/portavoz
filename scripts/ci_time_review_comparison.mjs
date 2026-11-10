@@ -140,6 +140,7 @@ function main() {
     for (const variant of ['before', 'after']) {
       fs.mkdirSync(path.join(temporary, variant));
       run('tar', ['-xf', path.join(temporary, `${variant}.tar`), '-C', path.join(temporary, variant)]);
+      validateBundleLinks(path.join(temporary, variant));
     }
     for (const [index, variant] of order.entries()) {
       const name = `${index + 1}-${variant}`, results = path.join(output, 'results', name);

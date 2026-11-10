@@ -104,6 +104,12 @@ test('portable bundle links reject mutable external, absolute and broken targets
     for (const target of ['../outside', path.join(bundle, 'inside'), 'missing']) {
       fs.symlinkSync(target, link); assert.throws(() => validateBundleLinks(bundle)); fs.unlinkSync(link);
     }
+    // A relative path may leave and reenter the build root before relocation.
+    fs.symlinkSync('../bundle/inside', link); validateBundleLinks(bundle);
+    const archive = path.join(root, 'bundle.tar'), extracted = path.join(root, 'extracted'); fs.mkdirSync(extracted);
+    execFileSync('tar', ['-cf', archive, '-C', bundle, '.']);
+    execFileSync('tar', ['-xf', archive, '-C', extracted]);
+    assert.throws(() => validateBundleLinks(extracted));
   } finally { fs.rmSync(root, {recursive: true, force: true}); }
 });
 test('rejects mutable refs, identical commits and unchanged bodies', () => {
