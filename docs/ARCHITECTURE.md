@@ -6065,7 +6065,7 @@ The review journey observes related rail controls together within their owning
 subtree, using fresh snapshots after each lens change. Notes retain their live
 title wait and exact static-text query. Live foreground, stable-frame, playback and
 mutation checks still own every interaction; snapshots never supply later click
-geometry. The original five/ten-second phase bounds and 20-second case budget
+geometry. The original five/ten-second wait bounds and 20-second case budget
 remain, with no runtime improvement inferred from query count alone.
 
 Scale-fixture replacement is also observation-driven. The 20,000-segment
