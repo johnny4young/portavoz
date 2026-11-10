@@ -9646,3 +9646,31 @@ the 480-entry manifest and distinct audio inodes, corrupts one copy and deletes
 its manifest, then verifies both another copy and a future copy stay intact.
 Materialization tests still call the actual producer independently. This reuse
 changes fixture setup only; launcher, admission and tamper assertions remain.
+
+### Reproducible CI head/run inventory
+
+Run `node scripts/ci_time_inventory.mjs --repository OWNER/REPO --cutoff YYYY-MM-DDTHH:MM:SSZ --limit 50`
+to inventory the latest distinct heads by CI run creation at a fixed cutoff.
+The cutoff is sent to GitHub before pagination; invalid calendar dates are
+rejected. The command then paginates all API-visible PR runs for each selected
+head, including earlier runs outside the discovery prefix. Empty PR linkage
+remains empty. In-flight status, failed conclusions and latest attempt counts
+are retained, with no success-only filtering.
+
+The collector follows the [GitHub workflow-run API](https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-workflow)
+and rejects truncated/duplicated pages, the 1,000-result filtered
+search ceiling when no head boundary is proven, tied head boundaries, mismatched repository/workflow/head
+identity, and observed changes between full-history reads or final discovery.
+Full histories must agree with discovery in both directions over the observed
+prefix, or over every run when discovery is exhausted. Additional older history
+is admitted only for a discovery that stopped before exhaustion.
+Its digest binds repository, cutoff and normalized rows; actor metadata and
+commit messages are not emitted. Synthetic tests exercise multi-page history,
+reruns, missing associations, state/identity failures and drift.
+
+`runInventoryVerified` means matching API-visible metadata observations, not an
+atomic snapshot or complete retained history. Deleted runs cannot be recovered;
+cutoff constrains creation rather than later reruns. Expected attempt counts
+are metadata only: job details, required scope, cache/cohort, selected/executed/
+deferred receipts and percentile acceptance remain unproven. A requested
+50-head inventory alone does not qualify the seven-day/cold-sample criteria.
