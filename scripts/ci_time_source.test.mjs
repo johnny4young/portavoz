@@ -125,6 +125,26 @@ test('missing, carried, runnerless, duplicate or foreign jobs do not fetch logs'
     assert.equal(r.attempts[0].status, 'missing-current-scope-or-build');
   }
 });
+test('historical swift-scope preserves its actual name and the same source checks', async () => {
+  const e = evidence(); e.attempts[0].jobs[0].name = 'swift-scope';
+  const r = await collectHistoricalSources(api().get, async () => log(), e);
+  assert.equal(r.observedAttempts, 1);
+  assert.deepEqual(r.attempts[0].logs.map(l => l.jobName), ['swift-scope', 'build-and-test']);
+  assert.equal(r.attempts[0].source.checkoutCommit, merge);
+  assert.equal(r.acceptance, null); assert.equal(r.attempts[0].verified, false);
+});
+test('ambiguous scope names and invalid legacy scope jobs never fetch logs', async () => {
+  for (const mutate of [e => e.attempts[0].jobs.push(job(13, 'scope')),
+    e => e.attempts[0].jobs.push(job(13, 'swift-scope')),
+    e => {e.attempts[0].jobs[0].run_attempt = 0;},
+    e => {e.attempts[0].jobs[0].runner_id = 0;}]) {
+    const e = evidence(); e.attempts[0].jobs[0].name = 'swift-scope'; mutate(e);
+    let reads = 0;
+    const r = await collectHistoricalSources(api().get, async () => {reads++; return log();}, e);
+    assert.equal(r.attempts[0].status, 'missing-current-scope-or-build');
+    assert.equal(reads, 0);
+  }
+});
 test('mismatched or unavailable checkout logs stay unknown without fetching Git objects', async () => {
   for (const getText of [async path => log(path.includes('/11/') ? merge : head),
     async () => {throw Error('sensitive API error');}, async () => 'unparseable']) {

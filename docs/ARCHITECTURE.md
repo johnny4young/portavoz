@@ -6968,7 +6968,9 @@ checkouts for each exact attempt. It follows the observed merge's immutable
 Git trees, verifies the workflow blob bytes and retains the parent SHAs without
 guessing a current branch or PR base. Logs, actors and credential fields are
 not retained. This recovers source for review; it does not attest which workflow
-GitHub executed or promote scope/cohort evidence to verified.
+GitHub executed or promote scope/cohort evidence to verified. Historical
+`swift-scope` is admitted as the scope observation's recorded job name; both
+names together, duplicate jobs or carried/unassigned jobs remain unknown.
 
 The pure Node UI-receipt diagnostic compares exact selected method identities
 with executed cases across the compact lane/runtime/execution/outcome records.
