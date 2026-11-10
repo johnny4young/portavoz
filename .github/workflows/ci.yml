@@ -564,7 +564,9 @@ jobs:
   # Wait for the normal gate so this never overlaps our two ordinary macOS jobs.
   meeting-review-comparison:
     needs: gate
-    if: github.event_name == 'workflow_dispatch' && inputs.review_comparison_base != ''
+    # Override implicit success(): an optional ancestor can be skipped even when
+    # the gate passed. Keep cancellation and the direct gate result authoritative.
+    if: ${{ !cancelled() && needs.gate.result == 'success' && github.event_name == 'workflow_dispatch' && inputs.review_comparison_base != '' }}
     runs-on: macos-26
     timeout-minutes: 45
     env:

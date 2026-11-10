@@ -28,11 +28,28 @@ test('manual measurement cannot join the PR gate or overlap its prerequisites', 
   const workflow = fs.readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
   const job = workflow.split('\n  meeting-review-comparison:\n')[1];
   assert.match(job, /^    needs: gate$/m);
-  assert.match(job, /^    if: github.event_name == 'workflow_dispatch' && inputs.review_comparison_base != ''$/m);
+  assert.match(job, /^    if: \$\{\{ !cancelled\(\) && needs.gate.result == 'success' && github.event_name == 'workflow_dispatch' && inputs.review_comparison_base != '' \}\}$/m);
   const gate = workflow.split('\n  gate:\n')[1].split('\n  alert:\n')[0];
   assert.doesNotMatch(gate, /meeting-review-comparison/);
   assert.match(job, /if: always\(\)\n        uses: actions\/upload-artifact@/);
   assert.doesNotMatch(job, /continue-on-error|permissions:/);
+});
+
+test('manual diagnostic guard rejects cancellation, failed gates, other events and empty input', () => {
+  const workflow = fs.readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  const job = workflow.split('\n  meeting-review-comparison:\n')[1];
+  const expression = /^    if: \$\{\{ (.+) \}\}$/m.exec(job)[1];
+  // This exact expression uses only shared JS/Actions boolean/string operators.
+  // The separate structural contract requires the status function that removes
+  // GitHub's implicit success() over skipped ancestors; hosted CI proves dispatch.
+  const evaluate = new Function('cancelled', 'needs', 'github', 'inputs', `return ${expression};`);
+  const run = (cancelled = false, result = 'success', event = 'workflow_dispatch', base = 'a'.repeat(40)) =>
+    evaluate(() => cancelled, {gate: {result}}, {event_name: event}, {review_comparison_base: base});
+  assert.equal(run(), true);
+  assert.equal(run(true), false);
+  for (const result of ['failure', 'cancelled', 'skipped', '']) assert.equal(run(false, result), false);
+  for (const event of ['pull_request', 'push', 'schedule']) assert.equal(run(false, 'success', event), false);
+  assert.equal(run(false, 'success', 'workflow_dispatch', ''), false);
 });
 
 // Exercise the orchestration without native tools: a synthetic builder exposes
