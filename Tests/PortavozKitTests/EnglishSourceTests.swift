@@ -2,6 +2,33 @@ import Foundation
 import XCTest
 
 final class EnglishSourceTests: XCTestCase {
+    // Immutable policy patterns are compiled once, not once per scanned line.
+    private static let accentedPattern = #"[¿¡áéíóúñÁÉÍÓÚÑ]"#
+    private static let documentationWordPattern = #"(?i)\b(el|la|los|las|una|para|con|sin|que|del|estado|actual|siguiente|fase|hecho|pendiente|implementado|captura|usuario|archivo|carpeta|modelo|prueba|objetivo|interfaz|calidad|versión|fecha)\b"#
+    private static let literalPatterns = [
+        #"`[^`]*`"#,
+        #"\"[^\"]*\""#,
+        #"“[^”]*”"#,
+        #"«[^»]*»"#,
+        #"\]\([^)]*\)"#,
+    ]
+    private static let spanishNeedles = [
+        " Ajustes", " grabación", " reunión", " hablante", " resumen", " transcripción",
+        " micrófono", " carpeta", " presupuesto", " Listo", " Elige", " modelo(s)",
+        " te preguntaron", " Texto de UI", " línea", "Pausar", "Reproducir"
+    ]
+    private static let accentedRegex = fixedRegex(accentedPattern)
+    private static let documentationWordRegex = fixedRegex(documentationWordPattern)
+    private static let literalRegexes = literalPatterns.map(fixedRegex)
+
+    private static func fixedRegex(_ pattern: String) -> NSRegularExpression {
+        do {
+            return try NSRegularExpression(pattern: pattern)
+        } catch {
+            preconditionFailure("Invalid fixed prose-policy expression: \(error)")
+        }
+    }
+
     private static let repoRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
         .deletingLastPathComponent()
@@ -53,6 +80,88 @@ final class EnglishSourceTests: XCTestCase {
                 + failures.joined(separator: "\n"))
     }
 
+    func testCachedProsePolicyPreservesUnicodeBoundariesAndLiteralRemoval() {
+        for (line, expected) in [
+            ("English source text", false), ("Ajustes", false), (" Ajustes", true),
+            ("Pausar", true), ("naïve", false), ("¡Stop!", true), ("NIÑO", true)
+        ] {
+            XCTAssertEqual(Self.looksSpanish(line), expected, line)
+        }
+        for (line, expected) in [
+            ("el la", false), ("el la los", true), ("EL LA LOS", true),
+            ("parallel control singleton", false), ("quality", false), ("versión", true)
+        ] {
+            XCTAssertEqual(Self.looksLikeSpanishDocumentation(line), expected, line)
+        }
+        XCTAssertEqual(
+            Self.documentationProse(in: #"Keep `una prueba` "otra prueba" “el modelo” «la carpeta» [link](ruta) here"#),
+            "Keep     [link here")
+    }
+
+    func testCachedProsePolicyMatchesLegacyOnSyntheticCorpus() throws {
+        let examples = [
+            "", "English source text", " Ajustes and Pausar", "niño", "NIÑO", "cafe\u{301}",
+            "naïve résumé", "🚀 English 𐐀 text", "el la", "el la los", "EL, LA; LOS!",
+            "parallel control singleton", "English `una prueba` remains", "Unclosed `code",
+            #"Keep "otra prueba" and “el modelo” and «la carpeta» [link](ruta)"#,
+            "English \u{0} text and e\u{301}",
+        ]
+        let corpus = Array(repeating: examples, count: 64).flatMap { $0 }
+        func scan(cached: Bool) -> [String] {
+            corpus.map { line in
+                let source = cached ? Self.looksSpanish(line) : Self.legacyLooksSpanish(line)
+                let prose = cached ? Self.documentationProse(in: line) : Self.legacyDocumentationProse(in: line)
+                let documentation = cached ? Self.looksLikeSpanishDocumentation(prose)
+                    : Self.legacyLooksLikeSpanishDocumentation(prose)
+                return "\(source)|\(prose)|\(documentation)"
+            }
+        }
+        let expected = scan(cached: false)
+        XCTAssertEqual(scan(cached: true), expected) // Warm both paths before timing.
+        var baseline: [Double] = []
+        var cached: [Double] = []
+        for useCache in [false, true, true, false, false, true] {
+            let start = ProcessInfo.processInfo.systemUptime
+            let result = scan(cached: useCache)
+            let seconds = ProcessInfo.processInfo.systemUptime - start
+            XCTAssertEqual(result, expected)
+            if useCache { cached.append(seconds) } else { baseline.append(seconds) }
+        }
+        // Diagnostic only: no timing assertion, corpus scan, or CI-SLO claim.
+        let measurements: [String: Any] = [
+            "baselineSeconds": baseline, "cachedSeconds": cached,
+            "syntheticLines": corpus.count, "samplesPerVariant": 3,
+        ]
+        let data = try JSONSerialization.data(withJSONObject: measurements, options: .sortedKeys)
+        print("ProseRegexBenchmark " + (try XCTUnwrap(String(data: data, encoding: .utf8))))
+    }
+
+    // Frozen legacy APIs for bounded synthetic parity and paired measurements.
+    // Real source/documentation scans use only the cached paths above.
+    private static func legacyLooksSpanish(_ line: String) -> Bool {
+        if line.range(of: accentedPattern, options: .regularExpression) != nil { return true }
+        let needles = [
+            " Ajustes", " grabación", " reunión", " hablante", " resumen", " transcripción",
+            " micrófono", " carpeta", " presupuesto", " Listo", " Elige", " modelo(s)",
+            " te preguntaron", " Texto de UI", " línea", "Pausar", "Reproducir"
+        ]
+        return needles.contains { line.contains($0) }
+    }
+
+    private static func legacyDocumentationProse(in line: String) -> String {
+        var result = line
+        for pattern in literalPatterns {
+            result = result.replacingOccurrences(of: pattern, with: "", options: .regularExpression)
+        }
+        return result
+    }
+
+    private static func legacyLooksLikeSpanishDocumentation(_ line: String) -> Bool {
+        if line.range(of: accentedPattern, options: .regularExpression) != nil { return true }
+        guard let regex = try? NSRegularExpression(pattern: documentationWordPattern) else { return false }
+        return regex.numberOfMatches(in: line, range: NSRange(line.startIndex..., in: line)) >= 3
+    }
+
     private static func filesToScan() throws -> [String] {
         var files = ["README.md", "CLAUDE.md", "Makefile", "Package.swift", "project.yml", ".swiftlint.yml"]
         let scannedSuffixes = [".swift", ".sh", ".py", ".yml", ".yaml", ".md", ".rb", ".entitlements"]
@@ -70,15 +179,10 @@ final class EnglishSourceTests: XCTestCase {
     }
 
     private static func looksSpanish(_ line: String) -> Bool {
-        if line.range(of: #"[¿¡áéíóúñÁÉÍÓÚÑ]"#, options: .regularExpression) != nil {
+        if accentedRegex.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)) != nil {
             return true
         }
-        let needles = [
-            " Ajustes", " grabación", " reunión", " hablante", " resumen", " transcripción",
-            " micrófono", " carpeta", " presupuesto", " Listo", " Elige", " modelo(s)",
-            " te preguntaron", " Texto de UI", " línea", "Pausar", "Reproducir"
-        ]
-        return needles.contains { line.contains($0) }
+        return spanishNeedles.contains { line.contains($0) }
     }
 
     /// Removes code and quoted literals before applying the docs-language
@@ -86,28 +190,19 @@ final class EnglishSourceTests: XCTestCase {
     /// when they are clearly represented as literals rather than prose.
     private static func documentationProse(in line: String) -> String {
         var result = line
-        let literalPatterns = [
-            #"`[^`]*`"#,
-            #"\"[^\"]*\""#,
-            #"“[^”]*”"#,
-            #"«[^»]*»"#,
-            #"\]\([^)]*\)"#,
-        ]
-        for pattern in literalPatterns {
-            result = result.replacingOccurrences(
-                of: pattern, with: "", options: .regularExpression)
+        for regex in literalRegexes {
+            result = regex.stringByReplacingMatches(
+                in: result, range: NSRange(result.startIndex..., in: result), withTemplate: "")
         }
         return result
     }
 
     private static func looksLikeSpanishDocumentation(_ line: String) -> Bool {
-        if line.range(of: #"[¿¡áéíóúñÁÉÍÓÚÑ]"#, options: .regularExpression) != nil {
+        if accentedRegex.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)) != nil {
             return true
         }
-        let pattern = #"(?i)\b(el|la|los|las|una|para|con|sin|que|del|estado|actual|siguiente|fase|hecho|pendiente|implementado|captura|usuario|archivo|carpeta|modelo|prueba|objetivo|interfaz|calidad|versión|fecha)\b"#
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return false }
         let range = NSRange(line.startIndex..., in: line)
-        return regex.numberOfMatches(in: line, range: range) >= 3
+        return documentationWordRegex.numberOfMatches(in: line, range: range) >= 3
     }
 
     private static func isAllowedSpanishFixture(_ relative: String, line: String) -> Bool {
