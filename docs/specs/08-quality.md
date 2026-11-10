@@ -487,6 +487,20 @@ configuration still need independent evidence. This pure module does not collect
 GitHub evidence or replace the Python report. Run its synthetic checks with
 `node --test scripts/ci_time_metrics.test.mjs`.
 
+The pure Node workflow/outcome modules retain current and historical blocking
+job names while excluding the downstream alert and carried jobs from an
+attempt's cause. An explicitly owned eligible API timeout can establish a
+timeout; other diagnoses require complete inventory and explicit evidence.
+Cancelled duration near a supplied historical timeout is a separate inference,
+not an API conclusion. Missing timing, unknown steps and independent ambiguous
+failures remain unknown. Only named gate dependency-aggregation steps may defer
+to a sibling failure; setup and receipt collection remain independent causes.
+Unverified capacity/advisory hints cannot manufacture infrastructure or green
+results. Passing evidence remains unknown in this policy slice. Workflow timeout
+parsing is deliberately limited to the repository's job syntax and cannot
+attest a historical workflow on its own. Run
+`node --test scripts/ci_time_workflow.test.mjs scripts/ci_time_outcome.test.mjs`.
+
 ### Compatible Swift build reuse, not test-result reuse (D557, D596, D618)
 
 The current-SDK job restores only `.build` with commit-pinned

@@ -6914,3 +6914,8 @@ creation-to-gate time from the longest required job of the current attempt, and
 keeps incomplete classifications and inventories unknown. The quality spec owns
 the percentile, retry-weighting and minimum-window contracts. This calculation
 module does not replace the historical collector or qualify CI acceptance.
+
+CI diagnostic outcome classification is a separate pure policy module. It
+uses explicit attempt ownership and job inventory from its caller, retains
+historical job names and reports unsupported or ambiguous causes as unknown.
+It cannot establish a passing gate, required selection or an accepted cohort.
