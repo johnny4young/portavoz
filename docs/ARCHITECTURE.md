@@ -6919,3 +6919,9 @@ CI diagnostic outcome classification is a separate pure policy module. It
 uses explicit attempt ownership and job inventory from its caller, retains
 historical job names and reports unsupported or ambiguous causes as unknown.
 It cannot establish a passing gate, required selection or an accepted cohort.
+
+The exact-run CLI composes the Node collector, timing and outcome modules.
+Collection validates repository/workflow/head/attempt identity and pagination.
+PR attribution is separate: an empty API association preserves exact diagnostics
+without attributing the run to a requested PR. Gate logs are unverified scope
+observations with their own identity and digest, never acceptance evidence.
