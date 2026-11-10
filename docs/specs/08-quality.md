@@ -9778,3 +9778,22 @@ validate supplied lists, not historical selector/catalogue provenance or
 nightly discharge. The helper does not validate the full runtime budget or
 adjustment contract and does not replace the hosted gate. Required jobs,
 ordinary cohort, controlled cold samples and p95 acceptance remain unknown.
+
+### Nightly compact evidence retention
+
+Every nightly shard writes its selected-method string and UI step outcome,
+then always uploads those text files with the English runtime and execution
+JSON records. The small artifact is named
+`nightly-ui-receipts-SHARD-RUN_ID-RUN_ATTEMPT` and retained for seven days;
+attempt-specific names preserve earlier results during reruns. The upload
+allowlist excludes screenshots, result bundles, compiled products and logs.
+The existing full evidence upload remains conditional on failed or unverified
+UI execution. Selection/outcome recording uses Bash only.
+
+An empty selection, missing runtime/execution file or failed/cancelled outcome
+is incomplete evidence, never a successful shard. Existing functional
+classification and verification remain authoritative; advisory runtime-budget
+failures remain visible in the retained record. A later collector must bind
+artifact metadata, compare exact selected/executed identities and the
+historical catalogue across all shards, and establish source and time
+compatibility before using a nightly to account for deferred PR tests.
