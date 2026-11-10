@@ -22,7 +22,7 @@ SHA = "a" * 40
 JOB_IDS = itertools.count(1_000)
 # Failing here means the repository or its code is wrong, never the hosted machine.
 PRODUCT_STEPS = {
-    "Repository, evidence, and CI policy contracts", "Release performance ledger rules", "Select the Swift test scope",
+    "Repository, evidence, and CI policy contracts", "Release performance ledger rules", 'Legacy tooling contracts', "Select the Swift test scope",
     "Select the iOS lane",
     "Current-SDK build and selected test suite", "Compile transport-neutral iOS 26 surface", "Strict SwiftLint 0.65.0 from checksum-pinned official archive",
     "Validate the selector catalog", "Select UI evidence", "Verify interruption safety at the shared callback",

@@ -151,7 +151,9 @@ class WiringTests(unittest.TestCase):
     def test_hygiene_owns_this_module_and_both_scripts(self):
         hygiene = (ROOT / "scripts/check-repository-hygiene.sh").read_text(encoding="utf-8")
 
-        for line in ("python3 -m unittest Tests.Tooling.test_ui_host", "bash -n scripts/make-ui-host.sh",
+        legacy = (ROOT / "scripts/check-legacy-tooling.sh").read_text(encoding="utf-8")
+        self.assertIn("python3 -m unittest Tests.Tooling.test_ui_host", legacy)
+        for line in ("bash -n scripts/make-ui-host.sh",
                      "bash -n scripts/build-ui-host-products.sh"):
             self.assertIn(line, hygiene)
 

@@ -21,7 +21,8 @@ All explanatory tracked documentation under `docs/` is written in **English**. L
 ## Commands
 
 ```sh
-node --test scripts/ci_time_*.test.mjs # CI diagnostics; Node version in .node-version
+scripts/check-repository-hygiene.sh # Bash/Node only; version in .node-version
+# CI additionally requires scripts/check-legacy-tooling.sh until migration completes.
 swift build
 swift build -Xswiftc -warnings-as-errors # production-target diagnostics only
 swift test    # if it fails with "no such module": DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test

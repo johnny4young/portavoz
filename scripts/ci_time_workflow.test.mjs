@@ -46,7 +46,7 @@ test('current suite step exists and the legacy refusal is absent', () => {
 });
 
 const expectedProductSteps = [
-  'Repository, evidence, and CI policy contracts', 'Release performance ledger rules',
+  'Repository, evidence, and CI policy contracts', 'Release performance ledger rules', 'Legacy tooling contracts',
   'Select the Swift test scope', 'Select the iOS lane',
   'Current-SDK build and selected test suite', 'Compile transport-neutral iOS 26 surface',
   'Strict SwiftLint 0.65.0 from checksum-pinned official archive', 'Validate the selector catalog',
@@ -95,7 +95,7 @@ test('blocking and nonblocking policies match independent historical expectation
 test('diagnostic tests are mandatory in hygiene and run on the declared Node runtime', () => {
   const hygiene = readFileSync(new URL('./check-repository-hygiene.sh', import.meta.url), 'utf8');
   assert.match(hygiene, /^set -euo pipefail$/m);
-  assert.match(hygiene, /^node --test scripts\/ci_time_\*.test.mjs$/m);
+  assert.match(hygiene, /^node --test scripts\/ci_time_\*.test.mjs scripts\/repository_hygiene.test.mjs$/m);
   const lane = workflow.split('  repository-hygiene:\n')[1].split('\n  lint:')[0];
   assert.match(lane, /uses: actions\/setup-node@[a-f0-9]{40}/);
   assert.match(lane, /node-version-file: .node-version/);

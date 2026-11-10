@@ -22841,3 +22841,21 @@ secret, timeout relaxation or replacement of an existing check is introduced.
 existing `gate`; local hygiene now also requires Node. The legacy Python
 collector and checks remain until their replacements demonstrate coverage.
 This adds regression enforcement, not p95 acceptance or completed migration.
+
+---
+
+## D637 — Separate repository hygiene from legacy tooling contracts
+
+**Context:** structural repository checks and Node diagnostics can run without
+Python, while the established tooling suites and synthetic fixture validators
+still depend on it.
+
+**Decision:** `check-repository-hygiene.sh` runs only Bash and Node checks. Move
+the unchanged Python invocations to `check-legacy-tooling.sh`, required directly
+by the same CI job and release reliability runner. Preserve all command
+arguments, public fixtures, failure propagation and gate dependencies.
+
+**Consequences:** local structural hygiene needs no Python. Full tooling
+qualification still requires the explicitly named legacy step; separating it
+is not a completed migration. Replace individual suites only with equivalent
+behavioral coverage. No check, threshold or release requirement is waived.

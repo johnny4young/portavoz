@@ -46,8 +46,12 @@ never-settling promise fails instead of passing silently. It
 reads exactly one bare inline `<script>` from `site/index.html`, resolved from
 its own location. These are deterministic capability/lifecycle checks, not
 a browser-rendering, native clipboard-permission or accessibility qualification.
-The repository hygiene runner requires Node.js in addition to Python; hosted
-Ubuntu runners provide it. No npm packages or network requests are needed.
+Repository hygiene uses Bash and the pinned Node.js runtime, without Python.
+The separate required `scripts/check-legacy-tooling.sh` retains the existing
+Python tooling suites and public-fixture validators during migration. Both run
+in the `repository-hygiene` CI job and in release reliability validation. No
+existing check is optional; a local hygiene pass alone is not full tooling
+qualification. No npm packages or network requests are needed.
 
 Confirmed Topic memory has one real-app journey for current decisions, first
 discussion, decision conflicts and changes since a selected meeting. It retains
@@ -524,7 +528,7 @@ execution, cache/cohort classification and acceptance remain unknown; one run
 cannot establish a p95. Synthetic validation runs with
 `node --test scripts/ci_time_*.test.mjs` and uses no third-party dependencies.
 The existing Python collector remains unchanged. Canonical hygiene additionally
-runs the Node diagnostic suite before its existing checks, using the exact
+runs the Node diagnostic and hygiene regression suites, using the exact
 `.node-version` runtime in hosted CI. A failing diagnostic test stops hygiene;
 no existing check or threshold is removed.
 

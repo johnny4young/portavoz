@@ -53,6 +53,7 @@ if [[ -z "${DEVELOPER_DIR:-}" \
   export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 fi
 scripts/check-repository-hygiene.sh
+scripts/check-legacy-tooling.sh
 swift build -Xswiftc -warnings-as-errors
 SWIFT_TEST_DIAGNOSTIC_DIR="$(
   mktemp -d "${TMPDIR:-/tmp}/portavoz-swift-test.XXXXXX"

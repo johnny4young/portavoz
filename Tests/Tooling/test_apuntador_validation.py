@@ -336,7 +336,7 @@ class ApuntadorValidationTests(unittest.TestCase):
 
     def test_repository_wires_canonical_validation_without_product_composition(self):
         makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
-        hygiene = (ROOT / "scripts" / "check-repository-hygiene.sh").read_text(
+        hygiene = (ROOT / "scripts" / "check-legacy-tooling.sh").read_text(
             encoding="utf-8"
         )
         package = (ROOT / "Package.swift").read_text(encoding="utf-8")
