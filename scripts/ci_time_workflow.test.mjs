@@ -89,7 +89,7 @@ test('blocking and nonblocking policies match independent historical expectation
   const expectedPush = ['repository-hygiene', 'lint', 'build-and-test', 'ios-portability'];
   assert.deepEqual([...blockingJobs.pull_request].sort(), expectedPR.sort());
   assert.deepEqual([...blockingJobs.push].sort(), expectedPush.sort());
-  assert.deepEqual([...nonBlockingJobs].sort(), ['alert']);
+  assert.deepEqual([...nonBlockingJobs].sort(), ['alert', 'meeting-review-comparison']);
 });
 
 test('diagnostic tests are mandatory in hygiene and run on the declared Node runtime', () => {

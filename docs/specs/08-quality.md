@@ -7958,6 +7958,19 @@ mutation. It retains every content assertion, owning subtree, interaction guard,
 wait limit and screenshot name. The 20-second case budget is unchanged; reducing
 pane switches alone does not establish a measured runtime improvement.
 
+Manual CI accepts an optional `review_comparison_base` ancestor SHA. After the
+normal gate, `ci_time_review_comparison.mjs` checks immutable sources and allows
+only this method's body plus comparison tooling/documentation to differ. It
+builds both variants with the PR UI builder, freezes self-contained bundles
+without dereferencing their internal framework links, then runs
+before/after, after/before, before/after on one runner with fresh disposable
+apps. Every produced single-case runtime/execution receipt and outcome is retained;
+a failed or partial case stops the diagnostic without retry. Runtime budgets
+remain advisory as in hosted PR UI and are reported unchanged. Build durations
+are not compared because the second build can be incremental. Three samples
+per variant can reduce cross-host uncertainty but do not establish CI p95,
+cross-host repeatability, controlled PR cold samples or nightly coverage.
+
 **Consolidated review-query ownership.** The Meeting Detail review journey
 resolves its notes, secondary rail, and generated document once, then limits
 child assertions and interactions to the owning accessibility subtree. An

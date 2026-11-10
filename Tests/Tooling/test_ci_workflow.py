@@ -327,8 +327,8 @@ class CIWorkflowTests(unittest.TestCase):
         gate = workflow.split("\n  gate:\n", 1)[1]
         needed = re.search(r"needs: \[(.*)\]", gate).group(1).split(", ")
 
-        # The alert runs after these lanes on a push, and the gate never waits for it.
-        self.assertEqual(set(needed), set(jobs) - {"gate", "alert"})
+        # The alert and manual measurement run after required lanes, outside the gate.
+        self.assertEqual(set(needed), set(jobs) - {"gate", "alert", "meeting-review-comparison"})
         self.assertIn("if: always() && github.event_name != 'push'", gate)
 
 
