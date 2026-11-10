@@ -18,7 +18,10 @@ export async function ghText(path) {
   if (typeof path !== 'string' || !path.startsWith('repos/') || path.includes('..')) {
     throw new TypeError('Invalid GitHub API path');
   }
-  const {stdout} = await execFileAsync('gh', ['api', path], {encoding: 'utf8', maxBuffer: 16 * 1024 * 1024,
+  // Logs contain ANSI from echoed steps. Capture them for parsing/hashing only;
+  // neither CLI emits raw logs, and JSON reads keep gh's default protection.
+  const log = /^repos\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/actions\/jobs\/[1-9]\d*\/logs$/.test(path);
+  const {stdout} = await execFileAsync('gh', ['api', ...(log ? ['--allow-escape-sequences'] : []), path], {encoding: 'utf8', maxBuffer: 16 * 1024 * 1024,
     timeout: 180_000});
   return stdout;
 }

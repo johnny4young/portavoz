@@ -6962,3 +6962,10 @@ coverage, not ordinary-cohort, workflow/scope, cache or p95 qualification.
 Attempt creation timestamps are retained independently from workflow creation;
 the latter remains the total-time origin across retries. Runner ID zero is
 preserved as unassigned metadata and never establishes measured job execution.
+
+The historical-source diagnostic separately observes matching scope/gate
+checkouts for each exact attempt. It follows the observed merge's immutable
+Git trees, verifies the workflow blob bytes and retains the parent SHAs without
+guessing a current branch or PR base. Logs, actors and credential fields are
+not retained. This recovers source for review; it does not attest which workflow
+GitHub executed or promote scope/cohort evidence to verified.

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {allPages, readExactRun, scopeFromGateLog, discoverHeads} from './ci_time_github.mjs';
+import {allPages, readExactRun, scopeFromGateLog, discoverHeads, ghText} from './ci_time_github.mjs';
 
 const sha = 'a'.repeat(40);
 const run = {id: 7, head_sha: sha, path: '.github/workflows/ci.yml', event: 'pull_request',
@@ -10,6 +10,25 @@ const run = {id: 7, head_sha: sha, path: '.github/workflows/ci.yml', event: 'pul
 const job = {id: 1, run_id: 7, run_attempt: 1, head_sha: sha, status: 'completed',
   name: 'gate', completed_at: '2026-11-01T00:02:00Z'};
 const identity = {repository: 'owner/repo', runId: 7, headSha: sha, prNumber: 238};
+
+test('captures escape sequences only for exact job-log reads without rendering them', async () => {
+  const fs = await import('node:fs/promises');
+  const {tmpdir} = await import('node:os');
+  const {join} = await import('node:path');
+  const dir = await fs.mkdtemp(join(tmpdir(), 'ci-log-transport-'));
+  const oldPath = process.env.PATH;
+  try {
+    await fs.writeFile(join(dir, 'gh'), '#!/usr/bin/env node\nprocess.stdout.write(JSON.stringify(process.argv.slice(2)));\n', {mode: 0o700});
+    process.env.PATH = `${dir}:${oldPath}`;
+    assert.deepEqual(JSON.parse(await ghText('repos/owner/repo/actions/jobs/7/logs')),
+      ['api', '--allow-escape-sequences', 'repos/owner/repo/actions/jobs/7/logs']);
+    assert.deepEqual(JSON.parse(await ghText('repos/owner/repo/actions/runs/7')),
+      ['api', 'repos/owner/repo/actions/runs/7']);
+  } finally {
+    process.env.PATH = oldPath;
+    await fs.rm(dir, {recursive: true, force: true});
+  }
+});
 const api = (attemptJobs = [job]) => async path => {
   if (path.endsWith('/actions/runs/7')) return {...run};
   if (path.endsWith('/attempts/1')) return {...run};
