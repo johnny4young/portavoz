@@ -7973,7 +7973,15 @@ cross-host repeatability, controlled PR cold samples or nightly coverage.
 
 **Consolidated review-query ownership.** The Meeting Detail review journey
 resolves its notes, secondary rail, and generated document once, then limits
-child assertions and interactions to the owning accessibility subtree. An
+child assertions and interactions to the owning accessibility subtree. Health,
+chapters and persisted Apuntador each use one bounded observation of their rail
+phase. The chapter's enabled state comes from that observation, then a freshly
+resolved live control retains the foreground/stable-frame activation guards.
+Notes title and exact static raw-note text share one notes observation; the
+enhance control retains its separate five-second wait. Snapshot identifiers must
+be unique, and no snapshot survives an action as evidence for its new state.
+These changes reduce independent AX reads without asserting a measured speedup.
+An
 action item is admitted by one stable-and-hittable proof rather than an
 existence query followed by the stronger proof. When two retained evidence
 names represent the same unchanged window state, the harness captures one

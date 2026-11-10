@@ -826,13 +826,11 @@ final class MeetingDetailUITests: PortavozUITestCase {
         // The notes, right rail, and generated document remain independently
         // asserted before the only durable mutation below.
         let secondaryRail = app.control(withIdentifier: "detail-secondary-rail")
-        XCTAssertTrue(
-            secondaryRail.waitForExistenceFast(timeout: 10),
-            "secondary review panels must retain one independently scrolling boundary")
-        XCTAssertTrue(
-            secondaryRail.descendants(matching: .any)["detail-meeting-health"]
-                .waitForExistenceFast(timeout: 10),
-            "the right rail must show meeting health")
+        _ = try uiObservation(
+            of: secondaryRail,
+            requiring: ["detail-secondary-rail", "detail-meeting-health"],
+            timeout: 10,
+            message: "the independent secondary review boundary must show meeting health")
         XCTAssertTrue(
             app.buttons["detail-privacy-receipt"].waitForExistenceFast(timeout: 10),
             "the header must show the local privacy chip")
@@ -856,17 +854,16 @@ final class MeetingDetailUITests: PortavozUITestCase {
             app.control(withIdentifier: "detail-transcript-section").exists,
             "the transcript must expose its correction-ready reading boundary")
         selectRailTab("chapters", in: app)
+        let chapterObservation = try uiObservation(
+            of: secondaryRail,
+            requiring: ["detail-chapters", "chapter-200"],
+            timeout: 5,
+            message: "the chapters lens must expose the seeded later turn at 200 s")
         XCTAssertTrue(
-            secondaryRail.descendants(matching: .any)["detail-chapters"]
-                .waitForExistenceFast(timeout: 5),
-            "the chapters lens must show the ✦ chapters (the seed has a second chapter)")
-        let laterChapter = secondaryRail.descendants(matching: .any)["chapter-200"]
-        XCTAssertTrue(
-            laterChapter.exists,
-            "a chapter must mark the later turn the seed placed at 200 s")
-        XCTAssertTrue(
-            laterChapter.isEnabled,
+            try uiSnapshotElement("chapter-200", in: chapterObservation).isEnabled,
             "a chapter backed by saved audio must be actionable")
+        // Resolve the live target again for interaction; never reuse snapshot geometry.
+        let laterChapter = secondaryRail.descendants(matching: .any)["chapter-200"]
         XCTAssertTrue(
             app.prepareForInteraction(),
             "Portavoz must be foreground before activating chapter navigation")
@@ -877,14 +874,11 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let currentTime = app.control(withIdentifier: "player-current-time")
         XCTAssertTrue(currentTime.waitForValueOtherThan("0:00", timeout: 5))
         selectRailTab("apuntador", in: app)
-        XCTAssertTrue(
-            secondaryRail.descendants(matching: .any)["detail-apuntador"]
-                .waitForExistenceFast(timeout: 5),
-            "the right rail must show the persisted Apuntador answers")
-        XCTAssertTrue(
-            secondaryRail.descendants(matching: .any)["apuntador-card-6"]
-                .waitForExistenceFast(timeout: 5),
-            "the answered Apuntador card must render for review")
+        _ = try uiObservation(
+            of: secondaryRail,
+            requiring: ["detail-apuntador", "apuntador-card-6"],
+            timeout: 5,
+            message: "the right rail must show the persisted Apuntador answer for review")
         attachScreenshot(
             of: app,
             names: [
@@ -902,12 +896,16 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             notesSection.waitForExistenceFast(timeout: 10),
             "notes must retain one explicit presentation boundary")
+        let notesObservation = try uiObservation(
+            of: notesSection,
+            requiring: ["detail-notes-title"],
+            timeout: 10,
+            message: "a meeting with notes must surface the My notes section")
         XCTAssertTrue(
-            notesSection.descendants(matching: .any)["detail-notes-title"]
-                .waitForExistenceFast(timeout: 10),
-            "a meeting with notes must surface the My notes section")
-        XCTAssertTrue(
-            notesSection.staticTexts["revisar budget Q3"].exists,
+            !uiSnapshotMatches({
+                $0.elementType == .staticText
+                    && ($0.identifier == "revisar budget Q3" || $0.label == "revisar budget Q3")
+            }, in: notesObservation).isEmpty,
             "the raw seeded note is shown verbatim before any enhancement")
         XCTAssertTrue(
             notesSection.descendants(matching: .any)["detail-enhance-notes"]
