@@ -820,28 +820,11 @@ final class MeetingDetailUITests: PortavozUITestCase {
     func testMeetingReviewSurfacesRemainCompleteAndActionable() throws {
         let app = try launchOnSeededMeeting()
         defer { finishUITestApplication(app) }
-        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
+        XCTAssertTrue(app.openMeetingDetailReadingPane("transcript"))
 
-        // One launch owns the static review surfaces for this exact seeded
-        // meeting. The notes, right rail, and generated document remain
-        // independently asserted before the only durable mutation below.
-        let notesSection = app.control(withIdentifier: "detail-notes-section")
-        XCTAssertTrue(
-            notesSection.waitForExistenceFast(timeout: 10),
-            "notes must retain one explicit presentation boundary")
-        XCTAssertTrue(
-            notesSection.descendants(matching: .any)["detail-notes-title"]
-                .waitForExistenceFast(timeout: 10),
-            "a meeting with notes must surface the My notes section")
-        XCTAssertTrue(
-            notesSection.staticTexts["revisar budget Q3"].exists,
-            "the raw seeded note is shown verbatim before any enhancement")
-        XCTAssertTrue(
-            notesSection.descendants(matching: .any)["detail-enhance-notes"]
-                .waitForExistenceFast(timeout: 5),
-            "a meeting with transcript and notes must offer the enhance menu")
-        attachScreenshot(of: app, named: "meeting-detail-my-notes")
-
+        // Start in the default transcript pane, then visit the summary once.
+        // The notes, right rail, and generated document remain independently
+        // asserted before the only durable mutation below.
         let secondaryRail = app.control(withIdentifier: "detail-secondary-rail")
         XCTAssertTrue(
             secondaryRail.waitForExistenceFast(timeout: 10),
@@ -869,10 +852,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             syncDisclosure.waitForValue(expectedSyncDescription, timeout: 5))
         closeActivity(in: app)
-        XCTAssertTrue(
-            app.control(withIdentifier: "detail-refine").exists,
-            "the action row must offer the refine control")
-        XCTAssertTrue(app.openMeetingDetailReadingPane("transcript"))
         XCTAssertTrue(
             app.control(withIdentifier: "detail-transcript-section").exists,
             "the transcript must expose its correction-ready reading boundary")
@@ -919,6 +898,26 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 10),
             "the detail view must render the seeded transcript")
         XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
+        let notesSection = app.control(withIdentifier: "detail-notes-section")
+        XCTAssertTrue(
+            notesSection.waitForExistenceFast(timeout: 10),
+            "notes must retain one explicit presentation boundary")
+        XCTAssertTrue(
+            notesSection.descendants(matching: .any)["detail-notes-title"]
+                .waitForExistenceFast(timeout: 10),
+            "a meeting with notes must surface the My notes section")
+        XCTAssertTrue(
+            notesSection.staticTexts["revisar budget Q3"].exists,
+            "the raw seeded note is shown verbatim before any enhancement")
+        XCTAssertTrue(
+            notesSection.descendants(matching: .any)["detail-enhance-notes"]
+                .waitForExistenceFast(timeout: 5),
+            "a meeting with transcript and notes must offer the enhance menu")
+        attachScreenshot(of: app, named: "meeting-detail-my-notes")
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-refine").exists,
+            "the action row must offer the refine control")
         let generatedDocument = app.control(withIdentifier: "detail-generated-document")
         XCTAssertTrue(
             generatedDocument.waitForExistenceFast(timeout: 10),
