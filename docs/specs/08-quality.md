@@ -7951,6 +7951,13 @@ ratcheted so future test refactors cannot replace it with an unordered raw
 directory count. The complete bilingual gate passed this owner in 3.791 seconds
 English and 3.960 seconds Spanish.
 
+The consolidated Meeting Detail review journey starts in its default transcript
+pane for privacy, chapters and persisted Apuntador checks, then visits the
+summary once for raw notes, generated claims, decisions and the final to-do
+mutation. It retains every content assertion, owning subtree, interaction guard,
+wait limit and screenshot name. The 20-second case budget is unchanged; reducing
+pane switches alone does not establish a measured runtime improvement.
+
 **Consolidated review-query ownership.** The Meeting Detail review journey
 resolves its notes, secondary rail, and generated document once, then limits
 child assertions and interactions to the owning accessibility subtree. An
