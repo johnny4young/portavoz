@@ -35,7 +35,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version-file: .node-version
+          node-version-file: .nvmrc
+          check-latest: true
           package-manager-cache: false
       - name: Repository, evidence, and CI policy contracts
         run: scripts/check-repository-hygiene.sh
@@ -578,7 +579,8 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version-file: .node-version
+          node-version-file: .nvmrc
+          check-latest: true
           package-manager-cache: false
       - name: Verify fixed Tahoe toolchain
         run: scripts/verify-ci-toolchain.sh 26 26.6

@@ -98,10 +98,10 @@ test('diagnostic tests are mandatory in hygiene and run on the declared Node run
   assert.match(hygiene, /^node --test scripts\/ci_time_\*.test.mjs scripts\/repository_hygiene.test.mjs$/m);
   const lane = workflow.split('  repository-hygiene:\n')[1].split('\n  lint:')[0];
   assert.match(lane, /uses: actions\/setup-node@[a-f0-9]{40}/);
-  assert.match(lane, /node-version-file: .node-version/);
+  assert.match(lane, /node-version-file: .nvmrc\n\s+check-latest: true/);
   assert.match(lane, /package-manager-cache: false/);
   assert.ok(lane.indexOf('uses: actions/setup-node@') < lane.indexOf('run: scripts/check-repository-hygiene.sh'));
-  assert.equal(readFileSync(new URL('../.node-version', import.meta.url), 'utf8').trim(), '26.13.0');
+  assert.equal(readFileSync(new URL('../.nvmrc', import.meta.url), 'utf8').trim(), '26');
 });
 
 test('a diagnostic failure stops hygiene before any legacy tool executes', () => {

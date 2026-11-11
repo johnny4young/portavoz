@@ -528,8 +528,8 @@ execution, cache/cohort classification and acceptance remain unknown; one run
 cannot establish a p95. Synthetic validation runs with
 `node --test scripts/ci_time_*.test.mjs` and uses no third-party dependencies.
 The existing Python collector remains unchanged. Canonical hygiene additionally
-runs the Node diagnostic and hygiene regression suites, using the exact
-`.node-version` runtime in hosted CI. A failing diagnostic test stops hygiene;
+runs the Node diagnostic and hygiene regression suites, using the newest
+patch of the `.nvmrc` LTS line in hosted CI. A failing diagnostic test stops hygiene;
 no existing check or threshold is removed.
 
 ### Compatible Swift build reuse, not test-result reuse (D557, D596, D618)

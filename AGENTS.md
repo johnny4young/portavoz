@@ -21,7 +21,7 @@ All explanatory tracked documentation under `docs/` is written in **English**. L
 ## Commands
 
 ```sh
-scripts/check-repository-hygiene.sh # Bash/Node only; version in .node-version
+scripts/check-repository-hygiene.sh # Bash/Node only; Node LTS line in .nvmrc
 # CI additionally requires scripts/check-legacy-tooling.sh until migration completes.
 swift build
 swift build -Xswiftc -warnings-as-errors # production-target diagnostics only

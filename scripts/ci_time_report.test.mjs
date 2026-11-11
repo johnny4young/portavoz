@@ -18,6 +18,13 @@ test('reports an exact gate and job queue proxies but never infers scope or exec
   assert.equal(r.attempts[0].scope, 'unknown');
   assert.equal(r.attempts[0].jobs[1].queueProxySeconds, 2);
 });
+test('jobs that resolve after the gate never hide its total', () => {
+  const e = evidence();
+  for (const [id, name] of [[4, 'alert'], [5, 'meeting-review-comparison']]) {
+    e.attempts[0].jobs.push(job(id, name, 23, 23, {conclusion: 'skipped', runner_id: 0}));
+  }
+  assert.equal(exactRunReport(e, 9).attempts[0].totalSeconds, 22);
+});
 test('a missing or skipped gate stays unknown', () => {
   const a = evidence(); a.attempts[0].jobs.pop();
   assert.equal(exactRunReport(a, 9).attempts[0].totalSeconds, null);
