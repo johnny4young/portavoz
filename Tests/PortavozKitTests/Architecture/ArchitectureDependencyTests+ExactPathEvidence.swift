@@ -303,6 +303,7 @@ extension ArchitectureDependencyTests {
         let makefile = try Self.contents(of: "Makefile")
         let hygiene = try Self.contents(
             of: "scripts/check-repository-hygiene.sh")
+            + Self.contents(of: "scripts/check-legacy-tooling.sh")
 
         XCTAssertTrue(decisions.contains("## D219"))
         XCTAssertTrue(architecture.contains(
@@ -367,6 +368,7 @@ extension ArchitectureDependencyTests {
         let makefile = try Self.contents(of: "Makefile")
         let hygiene = try Self.contents(
             of: "scripts/check-repository-hygiene.sh")
+            + Self.contents(of: "scripts/check-legacy-tooling.sh")
 
         XCTAssertTrue(decisions.contains("## D220"))
         XCTAssertTrue(architecture.contains(
@@ -420,6 +422,7 @@ extension ArchitectureDependencyTests {
             of: "scripts/exact_path_mutation_baseline.py")
         let makefile = try Self.contents(of: "Makefile")
         let hygiene = try Self.contents(of: "scripts/check-repository-hygiene.sh")
+            + Self.contents(of: "scripts/check-legacy-tooling.sh")
 
         XCTAssertTrue(decisions.contains("## D221"))
         XCTAssertTrue(architecture.contains(
@@ -691,6 +694,7 @@ extension ArchitectureDependencyTests {
         let evaluator = try Self.contents(of: "scripts/resource_baseline.py")
         let hygiene = try Self.contents(
             of: "scripts/check-repository-hygiene.sh")
+            + Self.contents(of: "scripts/check-legacy-tooling.sh")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
         XCTAssertTrue(evaluator.contains(
             #"if all(row["state"] == "pass" for row in measurements)"#))

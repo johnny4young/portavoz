@@ -525,7 +525,7 @@ class UITestHostPreflightTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(
             encoding="utf-8"
         )
-        hygiene = (ROOT / "scripts/check-repository-hygiene.sh").read_text(
+        hygiene = (ROOT / "scripts/check-legacy-tooling.sh").read_text(
             encoding="utf-8"
         )
 

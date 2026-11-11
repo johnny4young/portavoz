@@ -40,7 +40,9 @@ the process in [SECURITY.md](SECURITY.md), never through a public issue.
 3. Run `swift build -Xswiftc -warnings-as-errors` and
    `scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors` before pushing.
 4. Run `swiftlint lint --strict --no-cache` and
-   `scripts/check-repository-hygiene.sh`.
+   `scripts/check-repository-hygiene.sh` (Bash/Node). The separate
+   `scripts/check-legacy-tooling.sh` remains required in CI and release validation
+   until its Python contracts have equivalent replacements.
 5. For presentation changes, run the selected evidence:
 
    ```sh

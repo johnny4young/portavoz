@@ -6926,7 +6926,11 @@ PR attribution is separate: an empty API association preserves exact diagnostics
 without attributing the run to a requested PR. Gate logs are unverified scope
 observations with their own identity and digest, never acceptance evidence.
 
-Repository hygiene runs the synthetic Node CI diagnostic suite before its
-existing checks. Hosted hygiene installs the exact `.node-version` runtime with
-commit-pinned setup-node and no package-manager cache. Existing Python and Swift
-gates remain authoritative; adding Node diagnostics does not replace them.
+Repository hygiene runs Bash structural checks and synthetic Node diagnostics
+without invoking Python. Hosted hygiene installs the exact `.node-version`
+runtime with commit-pinned setup-node and no package-manager cache. The separate
+`check-legacy-tooling.sh` retains every previous Python suite and fixture
+validator as a required CI step in the same job. Release reliability invokes
+both scripts. Swift and legacy tooling gates remain authoritative until
+equivalent replacements are validated; local hygiene alone is not full tooling
+or p95 qualification.

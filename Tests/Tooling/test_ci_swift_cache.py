@@ -344,7 +344,7 @@ class SwiftCacheWorkflowTests(unittest.TestCase):
                 self.assertIn("::warning::", result.stdout)
 
     def test_cache_policy_runs_in_repository_hygiene(self):
-        hygiene = (ROOT / "scripts/check-repository-hygiene.sh").read_text()
+        hygiene = (ROOT / "scripts/check-legacy-tooling.sh").read_text()
         self.assertIn("python3 -m unittest Tests.Tooling.test_ci_swift_cache\n", hygiene)
         self.assertIn("python3 -m unittest Tests.Tooling.test_ci_swift_source_stamps\n", hygiene)
 

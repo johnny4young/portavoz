@@ -937,6 +937,7 @@ extension ArchitectureDependencyTests {
             of: "scripts/verify_release_appcast.py")
         let hygiene = try Self.contents(
             of: "scripts/check-repository-hygiene.sh")
+            + Self.contents(of: "scripts/check-legacy-tooling.sh")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(evaluator.contains(
@@ -1200,6 +1201,7 @@ extension ArchitectureDependencyTests {
         let makefile = try Self.contents(of: "Makefile")
         let hygiene = try Self.contents(
             of: "scripts/check-repository-hygiene.sh")
+            + Self.contents(of: "scripts/check-legacy-tooling.sh")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
         let diarizationTests = try Self.contents(
             of: "Tests/PortavozKitTests/DiarizationTests.swift")
@@ -1538,6 +1540,7 @@ extension ArchitectureDependencyTests {
             of: "scripts/make-production-sync-qualification-app.sh")
         let hygiene = try Self.contents(
             of: "scripts/check-repository-hygiene.sh")
+            + Self.contents(of: "scripts/check-legacy-tooling.sh")
         let makefile = try Self.contents(of: "Makefile")
 
         XCTAssertTrue(owner.contains("def validate_stage_prerequisites("))
@@ -1615,6 +1618,7 @@ extension ArchitectureDependencyTests {
             of: "scripts/release_reliability.py")
         let hygiene = try Self.contents(
             of: "scripts/check-repository-hygiene.sh")
+            + Self.contents(of: "scripts/check-legacy-tooling.sh")
         let makefile = try Self.contents(of: "Makefile")
 
         XCTAssertEqual(contract["schemaVersion"] as? Int, 1)
