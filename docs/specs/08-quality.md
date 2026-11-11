@@ -9674,3 +9674,31 @@ cutoff constrains creation rather than later reruns. Expected attempt counts
 are metadata only: job details, required scope, cache/cohort, selected/executed/
 deferred receipts and percentile acceptance remain unproven. A requested
 50-head inventory alone does not qualify the seven-day/cold-sample criteria.
+
+### CI attempt/job evidence bound to an inventory
+
+Run `node scripts/ci_time_attempts.mjs --inventory FILE` with the JSON emitted
+by the inventory command. It validates shape, digest, exact counts and a bound
+of 1,000 runs/expected attempts before any request. The file is limited to
+16 MiB. Its digest detects changes; it is not independent proof of selection.
+The collector copies the source snapshot, checks each run-root response before
+traversal, collects every declared attempt and paginated job list, verifies
+carried-job identity, and rejects job IDs claimed by different runs. The latest
+attempt conclusion must match the run; an earlier failed attempt is retained
+when a later attempt succeeds. Missing PR links do not require invented IDs.
+
+A pending or unavailable/inconsistent run remains in the result and does not
+prevent independent runs from being collected. Every collected run is rechecked
+after the full pass; drift or a failed final read removes its jobs and timing
+report. Output omits arbitrary API/error fields. Job rows include repeated
+carried jobs, so they are not distinct executions.
+
+Exit 0 means complete attempt/job metadata for this declared nonempty
+inventory; exit 2 preserves an explicit partial JSON report; exit 1 is an
+input/fatal error. None establishes acceptance. Head selection is not repeated,
+and historical workflow, required scope, ordinary cohorts, cache, selected/
+executed/deferred receipts and controlled cold samples remain unverified.
+Total durations from known gates are diagnostics only, never a filtered p95
+reported as complete. Synthetic regressions cover partial/stale/error paths,
+nullable attribution, carried jobs, identity conflicts, bounds and source
+mutation, with no Python, app data, logs, artifacts or native test execution.

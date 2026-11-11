@@ -194,3 +194,16 @@ test('discovery rejects normalized invalid calendar dates before accessing GitHu
     {repository: 'owner/repo', cutoff: '2026-02-30T00:00:00Z'}), /Invalid discovery input/);
   assert.equal(calls, 0);
 });
+
+test('collects an exact run without inventing a requested PR', async () => {
+  const result = await readExactRun(api(), {...identity, prNumber: null});
+  assert.equal(result.attempts.length, 1);
+  assert.equal(result.prAssociation.status, 'unknown');
+  assert.equal(result.prAssociation.prNumber, null);
+});
+test('unattributed collection rejects association changes even when still nonempty', async () => {
+  let reads = 0;
+  const get = async path => path.endsWith('/actions/runs/7') && ++reads === 2
+    ? {...run, pull_requests: [{number: 239, head: {sha}}]} : api()(path);
+  await assert.rejects(readExactRun(get, {...identity, prNumber: null}), /Run changed/);
+});

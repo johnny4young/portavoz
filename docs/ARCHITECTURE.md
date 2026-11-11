@@ -6949,3 +6949,12 @@ In-flight, failed and rerun metadata remain in the inventory. This is separate
 from collecting attempt/job details and attesting required scope or cohorts;
 its acceptance field stays unknown. It does not replace the historical
 collector or qualify CI latency.
+
+The Node attempt collector binds a saved CI inventory to every declared
+completed run, attempt and paginated job list. Every run-root read is checked
+against the immutable source metadata before attempt traversal. The last
+attempt must agree with its run; earlier attempts retain their own outcomes.
+Missing PR linkage remains unknown. A final metadata pass removes stale
+reports and marks partial coverage explicitly. Retained fields omit actors,
+commit messages, runner names, logs and artifacts. This is declared-inventory
+coverage, not ordinary-cohort, workflow/scope, cache or p95 qualification.
