@@ -523,7 +523,10 @@ This diagnostic CLI does not replace the historical collector. Required scope,
 execution, cache/cohort classification and acceptance remain unknown; one run
 cannot establish a p95. Synthetic validation runs with
 `node --test scripts/ci_time_*.test.mjs` and uses no third-party dependencies.
-The existing Python collector and canonical hygiene gate remain unchanged.
+The existing Python collector remains unchanged. Canonical hygiene additionally
+runs the Node diagnostic suite before its existing checks, using the exact
+`.node-version` runtime in hosted CI. A failing diagnostic test stops hygiene;
+no existing check or threshold is removed.
 
 ### Compatible Swift build reuse, not test-result reuse (D557, D596, D618)
 

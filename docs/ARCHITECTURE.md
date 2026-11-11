@@ -6925,3 +6925,8 @@ Collection validates repository/workflow/head/attempt identity and pagination.
 PR attribution is separate: an empty API association preserves exact diagnostics
 without attributing the run to a requested PR. Gate logs are unverified scope
 observations with their own identity and digest, never acceptance evidence.
+
+Repository hygiene runs the synthetic Node CI diagnostic suite before its
+existing checks. Hosted hygiene installs the exact `.node-version` runtime with
+commit-pinned setup-node and no package-manager cache. Existing Python and Swift
+gates remain authoritative; adding Node diagnostics does not replace them.

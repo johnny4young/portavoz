@@ -22822,3 +22822,22 @@ nightly `build-ui-products` lane, local builds and every release compile MLX.
 that breaks only the MLX branch can reach `main` and surfaces in the next nightly or local build. The pull request's UI
 host has no embedded summarizer, which no UI journey generates with. The local gate keeps compiling MLX, so it checks
 the other branch of the condition from CI.
+
+---
+
+## D636 — Node CI diagnostics participate in repository hygiene
+
+**Context:** the additive Node timing, outcome and exact-run diagnostic modules
+have synthetic regression coverage, but standalone local invocation does not
+make that coverage part of the required pull-request gate.
+
+**Decision:** repository hygiene runs `node --test scripts/ci_time_*.test.mjs`
+before its existing checks, under its existing fail-fast shell contract. Hosted
+hygiene installs the exact `.node-version` runtime with commit-pinned
+`actions/setup-node` and package-manager caching disabled. No new job, permission,
+secret, timeout relaxation or replacement of an existing check is introduced.
+
+**Consequences:** a diagnostic regression blocks hygiene and therefore the
+existing `gate`; local hygiene now also requires Node. The legacy Python
+collector and checks remain until their replacements demonstrate coverage.
+This adds regression enforcement, not p95 acceptance or completed migration.
