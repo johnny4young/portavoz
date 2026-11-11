@@ -179,3 +179,18 @@ test('attempt PR association must agree with run association', async () => {
     return path.endsWith('/attempts/1') ? {...body, pull_requests: []} : body; };
   await assert.rejects(readExactRun(get, identity), /Attempt identity/);
 });
+
+test('discovery applies the fixed cutoff in the API query, before pagination', async () => {
+  const get = async path => {
+    const query = new URLSearchParams(path.split('?')[1]);
+    assert.equal(query.get('created'), '<=2026-11-02T00:00:00Z');
+    return {total_count: 1, workflow_runs: [discoveryRun(1, 'a', 1)]};
+  };
+  await discoverHeads(get, {repository: 'owner/repo', cutoff: '2026-11-02T00:00:00Z'});
+});
+test('discovery rejects normalized invalid calendar dates before accessing GitHub', async () => {
+  let calls = 0;
+  await assert.rejects(discoverHeads(async () => { calls++; return {total_count: 0, workflow_runs: []}; },
+    {repository: 'owner/repo', cutoff: '2026-02-30T00:00:00Z'}), /Invalid discovery input/);
+  assert.equal(calls, 0);
+});

@@ -131,12 +131,18 @@ export function scopeFromGateLog(log) {
   return {verified: false, source: 'unattested-gate-log', iosRequired, uiRequired, interruptionRequired};
 }
 
+export function utcTimestamp(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(value)) return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) && new Date(parsed).toISOString() === value.replace('Z', '.000Z') ? parsed : null;
+}
+
 // Discover the newest distinct head SHAs without silently dropping in-flight
 // runs. Selection is separate from collecting all runs/attempts for each head.
 export async function discoverHeads(get, {repository, limit = 50, cutoff, pageSize = 100}) {
   if (!REPOSITORY.test(repository) || repository.includes('..') || !positive(limit) ||
-      !positive(pageSize) || pageSize > 100 || !Number.isFinite(Date.parse(cutoff))) throw new TypeError('Invalid discovery input');
-  const root = `repos/${repository}/actions/workflows/ci.yml/runs?event=pull_request`;
+      !positive(pageSize) || pageSize > 100 || utcTimestamp(cutoff) === null) throw new TypeError('Invalid discovery input');
+  const root = `repos/${repository}/actions/workflows/ci.yml/runs?event=pull_request&created=${encodeURIComponent("<=" + cutoff)}`;
   const seenIds = new Set(), heads = new Map(), pages = [];
   let expected = null, previous = Infinity, boundary = null, olderSeen = false, boundaryTie = false;
   for (let page = 1; page <= 100; page++) {
@@ -148,8 +154,8 @@ export async function discoverHeads(get, {repository, limit = 50, cutoff, pageSi
     if (body.total_count !== expected) throw new Error('Run total changed during discovery');
     pages.push({path, snapshot: JSON.stringify(body)});
     for (const run of body.workflow_runs) {
-      const time = Date.parse(run.created_at);
-      if (!positive(run.id) || seenIds.has(run.id) || !SHA.test(run.head_sha) || !Number.isFinite(time) ||
+      const time = utcTimestamp(run.created_at);
+      if (!positive(run.id) || seenIds.has(run.id) || !SHA.test(run.head_sha) || time === null ||
         time > previous || run.event !== 'pull_request') throw new Error('Invalid or unstable run order');
       seenIds.add(run.id); previous = time;
       if (time > Date.parse(cutoff)) continue;
@@ -162,13 +168,17 @@ export async function discoverHeads(get, {repository, limit = 50, cutoff, pageSi
     }
     if (seenIds.size > expected) throw new Error('More runs than reported');
     const exhausted = seenIds.size === expected;
+    if (exhausted && expected >= 1000 && !olderSeen) {
+      throw new Error("Run discovery reached the 1000-result ceiling without a proven head boundary");
+    }
     if (body.workflow_runs.length < pageSize && !exhausted) throw new Error('Incomplete run page');
     if (exhausted || (boundary !== null && olderSeen)) {
       for (const saved of pages) {
         if (JSON.stringify(await get(saved.path)) !== saved.snapshot) throw new Error('Run page changed during discovery');
       }
       return {heads: [...heads.values()], cutoff, selectionComplete: !boundaryTie,
-        boundaryTie, fetchedRuns: seenIds.size, exhausted};
+        boundaryTie, fetchedRuns: seenIds.size, exhausted,
+        oldestFetchedAt: seenIds.size ? new Date(previous).toISOString().replace(".000Z", "Z") : null};
     }
   }
   throw new Error('Run pagination exceeded safety limit');

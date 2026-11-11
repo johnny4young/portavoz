@@ -6941,3 +6941,11 @@ fresh private directory with independent files and original modes; corruption
 and deletion tests cannot affect later cases. Producer tests retain real
 materialization. This test-only reuse does not cache test outcomes or model
 evidence, and never reads recorded user audio.
+
+The read-only Node CI inventory command selects heads at a fixed run-creation
+cutoff, then retrieves every API-visible CI run for each selected SHA. Two
+matching history reads and a repeated head selection reject observed drift.
+In-flight, failed and rerun metadata remain in the inventory. This is separate
+from collecting attempt/job details and attesting required scope or cohorts;
+its acceptance field stays unknown. It does not replace the historical
+collector or qualify CI latency.
