@@ -94,7 +94,9 @@ export async function collectHistoricalSources(get, getText, evidence) {
   for (const attempt of attempts) {
     const number = attempt.metadata.run_attempt;
     if (!stable) { results.push(unknown(number, 'stale-or-unavailable-run')); continue; }
-    const jobs = ['scope', 'build-and-test'].map(name => attempt.jobs.filter(job => job.name === name));
+    // Keep the historical name as evidence; never choose between two scope jobs.
+    const jobs = [attempt.jobs.filter(job => ['scope', 'swift-scope'].includes(job.name)),
+      attempt.jobs.filter(job => job.name === 'build-and-test')];
     if (jobs.some(rows => rows.length !== 1 || !positive(rows[0].id) || !positive(rows[0].runner_id) ||
       rows[0].run_id !== run.id || rows[0].head_sha !== run.head_sha || rows[0].run_attempt !== number ||
       rows[0].status !== 'completed') || jobs[0][0].id === jobs[1][0].id) {
