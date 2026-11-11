@@ -6958,3 +6958,7 @@ Missing PR linkage remains unknown. A final metadata pass removes stale
 reports and marks partial coverage explicitly. Retained fields omit actors,
 commit messages, runner names, logs and artifacts. This is declared-inventory
 coverage, not ordinary-cohort, workflow/scope, cache or p95 qualification.
+
+Attempt creation timestamps are retained independently from workflow creation;
+the latter remains the total-time origin across retries. Runner ID zero is
+preserved as unassigned metadata and never establishes measured job execution.

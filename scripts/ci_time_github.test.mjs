@@ -17,6 +17,44 @@ const api = (attemptJobs = [job]) => async path => {
   throw Error(`Unexpected path ${path}`);
 };
 
+test('attempt creation may differ from workflow creation without changing identity', async () => {
+  for (const created_at of ['2026-11-01T00:00:01Z', '2026-11-01T00:03:01Z']) {
+    const get = async path => {
+      const body = await api()(path);
+      return body.id === run.id ? {...body, updated_at: '2026-11-01T00:04:00Z',
+        ...(path.endsWith('/attempts/1') ? {created_at} : {})} : body;
+    };
+    const result = await readExactRun(get, identity);
+    assert.equal(result.run.created_at, run.created_at);
+    assert.equal(result.attempts[0].metadata.created_at, created_at);
+  }
+});
+test('rejects attempt creation outside its workflow and update bounds', async () => {
+  for (const patch of [{created_at: '2025-01-01T00:00:00Z'},
+    {created_at: '2030-01-01T00:00:00Z'},
+    {created_at: '2026-11-01T00:01:00Z', updated_at: '2026-11-01T00:00:30Z'},
+    {created_at: '2026-11-01T00:03:00Z', updated_at: '2026-11-01T00:04:00Z'}]) {
+    const get = async path => path.endsWith('/attempts/1') ? {...run, ...patch} : api()(path);
+    await assert.rejects(readExactRun(get, identity), /Attempt identity/);
+  }
+});
+test('attempt creation still requires a valid timestamp', async () => {
+  for (const created_at of [null, '', '2026-02-30T00:00:00Z', 'not-a-date']) {
+    const get = async path => path.endsWith('/attempts/1') ? {...run, created_at} : api()(path);
+    await assert.rejects(readExactRun(get, identity), /Attempt identity/);
+  }
+});
+test('retains a completed cancelled job with no assigned runner', async () => {
+  const result = await readExactRun(api([{...job, runner_id: 0, conclusion: 'cancelled'}]), identity);
+  assert.equal(result.attempts[0].jobs[0].runner_id, 0);
+  assert.equal(result.attempts[0].jobs[0].conclusion, 'cancelled');
+});
+test('still rejects malformed runner IDs', async () => {
+  for (const runner_id of [-1, 0.5, '0', Number.MAX_SAFE_INTEGER + 1]) {
+    await assert.rejects(readExactRun(api([{...job, runner_id}]), identity), /Job identity/);
+  }
+});
+
 test('reads exact completed run and all attempts without claiming scope', async () => {
   const result = await readExactRun(api(), identity);
   assert.equal(result.attempts.length, 1);

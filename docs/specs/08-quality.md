@@ -9702,3 +9702,13 @@ Total durations from known gates are diagnostics only, never a filtered p95
 reported as complete. Synthetic regressions cover partial/stale/error paths,
 nullable attribution, carried jobs, identity conflicts, bounds and source
 mutation, with no Python, app data, logs, artifacts or native test execution.
+
+Run and attempt `created_at` timestamps need not be equal. Live metadata can
+differ by a second on the first attempt and by the retry interval on later
+attempts. Both are retained, with valid UTC timestamps required. Attempt creation
+must fall between workflow creation and both the attempt and workflow updates;
+it need not precede the attempt's start. The run's creation remains the origin
+of total time, including the wait before a rerun.
+A completed cancelled job can carry `runner_id: 0`. It remains in the inventory
+as unassigned metadata, with null execution duration and queue proxy. Zero
+does not establish runner execution or turn a missing gate into known timing.
