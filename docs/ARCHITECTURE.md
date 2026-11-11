@@ -6061,6 +6061,13 @@ the exact persisted row and audio time. This removes five launches without
 letting a previous source's selected state satisfy a later assertion. All eight
 screenshots and all original product assertions remain.
 
+The review journey observes related rail controls together within their owning
+subtree, using fresh snapshots after each lens change. Notes retain their live
+title wait and exact static-text query. Live foreground, stable-frame, playback and
+mutation checks still own every interaction; snapshots never supply later click
+geometry. The original five/ten-second wait bounds and 20-second case budget
+remain, with no runtime improvement inferred from query count alone.
+
 Scale-fixture replacement is also observation-driven. The 20,000-segment
 journey sees summary revision 1, releases one UUID-scoped ready/continue
 handshake, and then requires revision 2 while the same detail route completes
