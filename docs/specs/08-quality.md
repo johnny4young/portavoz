@@ -1087,17 +1087,6 @@ word loss and replay protection as a joint unresolved contract (D518).
 
 ## Test suite — `Tests/PortavozKitTests/` and `Tests/PortavozAppTests/`
 
-`EnglishSourceTests` compiles its fixed accent, documentation-word and literal
-expressions once. File enumeration, fixture exceptions, code-fence handling,
-case sensitivity, exact needle strings and the three-word threshold are
-unchanged. Synthetic characterization includes composed/decomposed Unicode,
-non-BMP characters, embedded NUL, word boundaries and incomplete literals.
-The legacy APIs and cached path must return identical observations for all
-1,024 synthetic lines. After warming both paths, three samples each run in
-alternating order and emit `ProseRegexBenchmark` timing JSON. This small parity
-diagnostic has no timing assertion and does not establish whole-repository or
-CI p95 improvement; full source/documentation scans remain required.
-
 `PortavozAppTests` holds the tests that need the app module, so `PortavozKitTests`
 never recompiles for an app change and a ratchet keeps it free of that import. Both
 import `Tests/PortavozTestSupport`, a target outside every product for the doubles and

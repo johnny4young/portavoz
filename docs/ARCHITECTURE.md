@@ -6695,12 +6695,6 @@ silently.
 
 ## Quality evidence
 
-The native English-prose contracts reuse immutable compiled expressions while
-still scanning the same source and documentation files. Synthetic Unicode,
-word-boundary and quoted-literal cases compare the cached path with the legacy
-APIs. A bounded paired diagnostic reports both paths on the same synthetic
-corpus without making runtime a pass/fail gate or qualifying CI p95.
-
 The current 29 Aug 2026 local acceptance inventory, with longer-running
 reliability evidence retained from 9 Aug, is:
 
