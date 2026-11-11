@@ -11,6 +11,10 @@ on:
         description: Run the complete English catalog instead of the selection against main
         type: boolean
         default: false
+      review_comparison_base:
+        description: Optional ancestor SHA for a same-runner Meeting Detail test comparison after normal CI
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -555,3 +559,47 @@ jobs:
         run: |
           python3 scripts/ui_nightly_health.py push-alert --needs "$NEEDS" --repository "$REPOSITORY" --assignee "$OWNER" \
             --run-number "$RUN_NUMBER" --sha "$SHA" --run-url "$RUN_URL"
+
+  # Manual diagnostic only; normal PR CI and the complete nightly are unchanged.
+  # Wait for the normal gate so this never overlaps our two ordinary macOS jobs.
+  meeting-review-comparison:
+    needs: gate
+    # Override implicit success(): an optional ancestor can be skipped even when
+    # the gate passed. Keep cancellation and the direct gate result authoritative.
+    if: ${{ !cancelled() && needs.gate.result == 'success' && github.event_name == 'workflow_dispatch' && inputs.review_comparison_base != '' }}
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      COMPARISON_BASE: ${{ inputs.review_comparison_base }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - name: Verify fixed Tahoe toolchain
+        run: scripts/verify-ci-toolchain.sh 26 26.6
+      - name: Install checksum-pinned XcodeGen 2.46.0
+        run: scripts/install-ci-xcodegen.sh "$RUNNER_TEMP/portavoz-xcodegen"
+      - name: Collect six fresh-app review measurements
+        id: comparison
+        run: node scripts/ci_time_review_comparison.mjs
+      - name: Preserve every compact comparison receipt
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: meeting-review-comparison-${{ github.run_id }}-${{ github.run_attempt }}
+          path: dist/review-comparison/receipts
+          if-no-files-found: error
+          retention-days: 7
+      - name: Preserve failed comparison evidence
+        if: failure() && steps.comparison.outcome == 'failure'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: meeting-review-comparison-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: dist/review-comparison/results
+          if-no-files-found: warn
+          retention-days: 3

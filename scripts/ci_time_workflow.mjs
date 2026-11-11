@@ -6,7 +6,7 @@ export const blockingJobs = Object.freeze({
     'ui-test-gate', 'ui-tests', 'interruption', 'gate']),
   push: new Set(['repository-hygiene', 'lint', 'build-and-test', 'ios-portability']),
 });
-export const nonBlockingJobs = new Set(['alert']);
+export const nonBlockingJobs = new Set(['alert', 'meeting-review-comparison']);
 
 export const productSteps = new Set([
   'Repository, evidence, and CI policy contracts', 'Release performance ledger rules', 'Legacy tooling contracts',

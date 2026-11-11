@@ -6915,6 +6915,12 @@ keeps incomplete classifications and inventories unknown. The quality spec owns
 the percentile, retry-weighting and minimum-window contracts. This calculation
 module does not replace the historical collector or qualify CI acceptance.
 
+A manual CI diagnostic compares two versions of the Meeting Detail review test
+on one hosted runner after the ordinary gate passes. It admits only one-method
+source changes with identical product, helper, dependency and budget inputs,
+freezes both UI product bundles, and retains six fresh-app executions and their
+receipts. It neither replaces nightly coverage nor qualifies the CI p95 cohort.
+
 CI diagnostic outcome classification is a separate pure policy module. It
 uses explicit attempt ownership and job inventory from its caller, retains
 historical job names and reports unsupported or ambiguous causes as unknown.
