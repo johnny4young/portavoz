@@ -2,6 +2,10 @@ import Foundation
 import XCTest
 
 final class EnglishSourceTests: XCTestCase {
+    // Compiled once: the documentation scan applies it to every prose line.
+    private static let documentationWordRegex = try! NSRegularExpression(
+        pattern: #"(?i)\b(el|la|los|las|una|para|con|sin|que|del|estado|actual|siguiente|fase|hecho|pendiente|implementado|captura|usuario|archivo|carpeta|modelo|prueba|objetivo|interfaz|calidad|versión|fecha)\b"#)
+
     private static let repoRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
         .deletingLastPathComponent()
@@ -104,10 +108,8 @@ final class EnglishSourceTests: XCTestCase {
         if line.range(of: #"[¿¡áéíóúñÁÉÍÓÚÑ]"#, options: .regularExpression) != nil {
             return true
         }
-        let pattern = #"(?i)\b(el|la|los|las|una|para|con|sin|que|del|estado|actual|siguiente|fase|hecho|pendiente|implementado|captura|usuario|archivo|carpeta|modelo|prueba|objetivo|interfaz|calidad|versión|fecha)\b"#
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return false }
         let range = NSRange(line.startIndex..., in: line)
-        return regex.numberOfMatches(in: line, range: range) >= 3
+        return documentationWordRegex.numberOfMatches(in: line, range: range) >= 3
     }
 
     private static func isAllowedSpanishFixture(_ relative: String, line: String) -> Bool {
