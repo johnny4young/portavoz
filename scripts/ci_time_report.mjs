@@ -4,7 +4,7 @@ import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {ghJSON, ghText, readExactRun, collectGateScopeObservations} from './ci_time_github.mjs';
 import {classifyOutcome} from './ci_time_outcome.mjs';
-import {blockingJobs} from './ci_time_workflow.mjs';
+import {blockingJobs, nonBlockingJobs} from './ci_time_workflow.mjs';
 import {measureAttempt} from './ci_time_metrics.mjs';
 
 function timestamp(value) {
@@ -75,7 +75,7 @@ export function exactRunReport(evidence, prNumber) {
       const adapted = jobs.map(job => ({id: job.id, name: job.name, workflow: 'ci.yml', runId: job.run_id,
         attemptNumber: job.run_attempt, carried: job.run_attempt < metadata.run_attempt,
         // This set is only used to reject impossible ordering before gate, never to claim execution.
-        required: job.name !== 'alert', runnerAssigned: hasRunner(job.runner_id),
+        required: !nonBlockingJobs.has(job.name.split(' (', 1)[0]), runnerAssigned: hasRunner(job.runner_id),
         conclusion: job.conclusion, startedAt: job.started_at, completedAt: job.completed_at}));
       const timing = measureAttempt({runId: run.id, attemptNumber: metadata.run_attempt,
         createdAt: run.created_at, attemptStartedAt: metadata.run_started_at,

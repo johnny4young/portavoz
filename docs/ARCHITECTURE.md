@@ -6940,8 +6940,8 @@ without attributing the run to a requested PR. Gate logs are unverified scope
 observations with their own identity and digest, never acceptance evidence.
 
 Repository hygiene runs Bash structural checks and synthetic Node diagnostics
-without invoking Python. Hosted hygiene installs the exact `.node-version`
-runtime with commit-pinned setup-node and no package-manager cache. The separate
+without invoking Python. Hosted hygiene installs the newest patch of the `.nvmrc`
+LTS line with commit-pinned setup-node and no package-manager cache. The separate
 `check-legacy-tooling.sh` retains every previous Python suite and fixture
 validator as a required CI step in the same job. Release reliability invokes
 both scripts. Swift and legacy tooling gates remain authoritative until

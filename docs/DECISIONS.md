@@ -22833,8 +22833,8 @@ make that coverage part of the required pull-request gate.
 
 **Decision:** repository hygiene runs `node --test scripts/ci_time_*.test.mjs`
 before its existing checks, under its existing fail-fast shell contract. Hosted
-hygiene installs the exact `.node-version` runtime with commit-pinned
-`actions/setup-node` and package-manager caching disabled. No new job, permission,
+hygiene installs the newest patch of the `.nvmrc` LTS line with commit-pinned
+`actions/setup-node` (`check-latest`) and package-manager caching disabled. No new job, permission,
 secret, timeout relaxation or replacement of an existing check is introduced.
 
 **Consequences:** a diagnostic regression blocks hygiene and therefore the
