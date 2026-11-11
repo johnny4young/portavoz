@@ -6979,3 +6979,9 @@ Artifact metadata is bound to the supplied repository, run, origin attempt,
 head and archive digest; the helper itself performs no network or archive reads.
 Optional supplied pre-fit and catalogue lists reconcile cuts and deferred names,
 without attesting their historical provenance or replacing the hosted gate.
+
+Nightly UI shards retain compact selection, outcome, runtime and execution
+records on success as well as failure. Artifact names bind shard, run and
+origin attempt, so reruns do not replace earlier compact evidence. Full result
+bundles remain conditional on failed or unverified execution. Retention does
+not itself prove catalogue completeness or discharge a different PR head.

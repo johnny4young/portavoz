@@ -183,6 +183,31 @@ jobs:
             exit 1
           fi
 
+      - name: Record shard ${{ matrix.shard }} selection and outcome
+        if: always()
+        env:
+          SELECTED: ${{ steps.select.outputs.tests }}
+          OUTCOME: ${{ steps.ui.outcome }}
+        run: |
+          mkdir -p dist/ui-test-results
+          printf '%s\n' "$SELECTED" > dist/ui-test-results/en-selected-tests.txt
+          printf '%s\n' "$OUTCOME" > dist/ui-test-results/en-outcome.txt
+
+      # Successful nights must retain exact selected/executed identities too.
+      # Keep attempts distinct; a rerun must not overwrite an earlier shard.
+      - name: Preserve compact shard ${{ matrix.shard }} UI receipts
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: nightly-ui-receipts-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            dist/ui-test-results/en-selected-tests.txt
+            dist/ui-test-results/en-outcome.txt
+            dist/ui-test-results/en-runtime.json
+            dist/ui-test-results/en-execution.json
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Preserve shard ${{ matrix.shard }} UI evidence
         if: always() && (steps.ui.outcome != 'success' || steps.classify.outputs.verified != 'true')
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
