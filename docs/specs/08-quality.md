@@ -9712,3 +9712,35 @@ of total time, including the wait before a rerun.
 A completed cancelled job can carry `runner_id: 0`. It remains in the inventory
 as unassigned metadata, with null execution duration and queue proxy. Zero
 does not establish runner execution or turn a missing gate into known timing.
+
+### Historical checkout source observations
+
+`node scripts/ci_time_source.mjs OWNER/REPO RUN_ID HEAD_SHA` first collects the
+exact completed run and all attempts. For each attempt, one current `scope`
+and one current `build-and-test` job must each have an assigned runner and agree on one
+unambiguous checkout observation. Missing, carried, duplicated, unavailable or
+conflicting jobs/logs remain explicit unknowns; other attempts continue.
+The build job is used because gate checkout is conditional on UI selection;
+requiring gate checkout would hide source observations for no-UI heads.
+The parser requires one SHA-pinned checkout action, one matching repository
+sync line and one exact Git log command/result pair in that order, before the
+next Run/Post step. The job-log transport captures ANSI without rendering raw
+logs; other GitHub reads retain the CLI's default escape protection. It retains log digests
+and source job IDs, never raw logs or arbitrary API errors.
+
+The observed commit must have exactly two distinct parents, with the requested
+head second. Its base parent is retained as observed history, not an inferred
+PR base. The collector follows nonrecursive Git trees to `.github/workflows/ci.yml`,
+rejecting truncated/duplicate trees, symlinks and unsupported modes. The workflow
+is limited to 1 MiB, must be valid UTF-8 without NUL and must match its Git blob
+SHA and byte count. Output retains exact text and a SHA-256 digest. Immutable
+Git reads may be reused within one collection; job logs remain attempt-specific.
+Run metadata is checked before and after these reads; drift removes observations.
+
+Exit 0 means every declared attempt has a matching checkout/source observation;
+exit 2 means partial observations; exit 1 means invalid/unavailable exact-run
+input. None is execution attestation: a checkout can differ from the workflow
+GitHub evaluated. Required scope, selector semantics, continue-on-error policy,
+executed/deferred receipts, cache, ordinary cohort and p95 remain unverified.
+Historical source bytes are evidence for that next review, not permission to
+execute them or replace missing timings.
