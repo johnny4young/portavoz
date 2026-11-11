@@ -501,6 +501,30 @@ parsing is deliberately limited to the repository's job syntax and cannot
 attest a historical workflow on its own. Run
 `node --test scripts/ci_time_workflow.test.mjs scripts/ci_time_outcome.test.mjs`.
 
+The additive command `node scripts/ci_time_report.mjs --repository OWNER/REPO
+--pr NUMBER --run NUMBER --head SHA` reports one completed PR-event run and
+its exact attempts as JSON. It validates repository, head, workflow, pagination
+and carried-job identity; it rereads the run to reject concurrent changes.
+Absent API PR linkage produces `prNumber: null` and an explicit requested PR;
+contradictory linkage is rejected. A report cannot publish a total from an
+incomplete or unverified collection, even when a plausible gate is present.
+
+Only the exact current gate log is read for scope observations. Its identity and
+SHA-256 are retained; absent logs remain explicit and do not erase valid job
+timing. Parsed flags cannot attest the historical workflow, test receipts or
+`continue-on-error`. Completed uniquely numbered step rows may classify a failed
+attempt. Eligible API timeouts use `origin: api-conclusion`; other supported
+causes use `job-steps`. Green/unknown attempts remain unknown despite failed
+individual jobs, and current timeout declarations are never substituted for
+historical limits. Queue values are job-created-to-start proxies, not proven
+needs-eligibility times.
+
+This diagnostic CLI does not replace the historical collector. Required scope,
+execution, cache/cohort classification and acceptance remain unknown; one run
+cannot establish a p95. Synthetic validation runs with
+`node --test scripts/ci_time_*.test.mjs` and uses no third-party dependencies.
+The existing Python collector and canonical hygiene gate remain unchanged.
+
 ### Compatible Swift build reuse, not test-result reuse (D557, D596, D618)
 
 The current-SDK job restores only `.build` with commit-pinned
