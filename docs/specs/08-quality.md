@@ -9635,3 +9635,14 @@ seeks through the identified waveform to an interior End, and verifies the
 cursor remains fixed while opening the menu. It requires that ordered range
 before asserting Export. Playback and rewind remain covered by the separate
 player journey; this paused case does not qualify marking during playback.
+
+### Synthetic dictation fixture setup
+
+`test_dictation_model_runner` caches immutable bytes from one real synthetic
+480-cell materialization per test process, shared by its controller and matrix
+fixtures. Every case receives newly created private files; existing destinations
+are refused. The isolation regression compares all bytes across copies, checks
+the 480-entry manifest and distinct audio inodes, corrupts one copy and deletes
+its manifest, then verifies both another copy and a future copy stay intact.
+Materialization tests still call the actual producer independently. This reuse
+changes fixture setup only; launcher, admission and tamper assertions remain.

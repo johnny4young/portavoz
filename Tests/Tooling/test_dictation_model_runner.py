@@ -1,6 +1,7 @@
 """Native-launch ownership tests with explicit process doubles, never ASR evidence."""
 
 import hashlib
+from functools import lru_cache
 import json
 import os
 from pathlib import Path
@@ -21,13 +22,34 @@ from Tests.Tooling.test_dictation_materialization import NAMES, SpeechDouble
 from materialize_dictation_corpus import materialize
 
 
+@lru_cache(maxsize=1)
+def synthetic_audio_files():
+    # Cache immutable bytes only. Each consumer gets newly created files, so
+    # mutation tests never share inodes or invalidate another test's input.
+    # Materialization's own tests still execute the real producer every time.
+    with tempfile.TemporaryDirectory() as temporary:
+        output = Path(temporary) / 'audio'
+        materialize(output, NAMES, SpeechDouble())
+        return tuple((path.name, path.read_bytes(), path.stat().st_mode & 0o777)
+                     for path in sorted(output.iterdir()))
+
+
+def copy_synthetic_audio(output):
+    output.mkdir(mode=0o700)
+    for name, data, mode in synthetic_audio_files():
+        destination = output / name
+        with destination.open('xb') as stream:
+            stream.write(data)
+        destination.chmod(mode)
+
+
 class DictationModelRunnerTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
         self.audio = self.root / 'audio'
-        materialize(self.audio, NAMES, SpeechDouble())
+        copy_synthetic_audio(self.audio)
         self.bundle = self.root / 'tests.xctest'
         executable = self.bundle / 'Contents/MacOS/PortavozPackageTests'
         executable.parent.mkdir(parents=True)
@@ -38,6 +60,27 @@ class DictationModelRunnerTests(unittest.TestCase):
         self.launcher.touch()
         self.cases = ['en-payment-negation.clean', 'es-payment-negation.clean']
         self.calls = []
+
+    def test_synthetic_audio_copies_are_complete_and_mutation_isolated(self):
+        second = self.root / 'second-audio'
+        # A second consumer must not repeat synthesis or inherit mutations.
+        with mock.patch(__name__ + '.materialize', side_effect=AssertionError('repeated synthesis')):
+            copy_synthetic_audio(second)
+        original = {path.name: path.read_bytes() for path in self.audio.iterdir()}
+        self.assertEqual({path.name: path.read_bytes() for path in second.iterdir()}, original)
+        manifest = json.loads(original['manifest.json'])
+        self.assertEqual(len(manifest['entries']), 480)
+        selected = self.cases[0] + '.wav'
+        self.assertNotEqual((self.audio / selected).stat().st_ino, (second / selected).stat().st_ino)
+        (self.audio / selected).write_bytes(b'injected corruption')
+        (self.audio / 'manifest.json').unlink()
+        self.assertEqual((second / selected).read_bytes(), original[selected])
+        self.assertEqual((second / 'manifest.json').read_bytes(), original['manifest.json'])
+        third = self.root / 'third-audio'
+        copy_synthetic_audio(third)
+        self.assertEqual({path.name: path.read_bytes() for path in third.iterdir()}, original)
+        with self.assertRaises(FileExistsError):
+            copy_synthetic_audio(second)
 
     def test_every_runbook_selector_is_in_the_one_bundle_the_runbook_names(self):
         import run_dictation_model_comparison as comparison
