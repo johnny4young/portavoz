@@ -467,6 +467,26 @@ window, so the recorded baseline `docs/evidence/ci-time-baseline-20261102.json`
 reproduces with one command at the commit that recorded it while GitHub retains
 the job logs; later commits may change which jobs block and their timeouts.
 
+The additive Node module `scripts/ci_time_metrics.mjs` computes total time from
+workflow creation to the exact current gate, including time before a rerun.
+Execution is the longest required job started in that attempt; carried jobs
+must belong to an earlier attempt. Complete job inventory, exact ownership,
+verified conditional scope and causal timestamp ordering are prerequisites for
+execution. The exact gate can retain a total when a lane never starts, but a
+skipped, duplicate, foreign or contradictory gate cannot supply a duration.
+
+Summaries use nearest-rank percentiles and keep ordinary failures, timeouts and
+superseded attempts visible. Missing measurements are counted and cannot produce
+a within-limit result. Complete head/attempt inventory, classification and
+chronological ordering are required; first-attempt, last-attempt and all-attempt
+views stay separate. Mixed ordinary/exempt attempts on one head have no first
+or last view. The minimum window uses at least 30 distinct ordinary heads over
+seven days; a later retry cannot extend it. Meeting that minimum is not full
+acceptance: cache/Core/UI coverage, controlled cold samples and stable build
+configuration still need independent evidence. This pure module does not collect
+GitHub evidence or replace the Python report. Run its synthetic checks with
+`node --test scripts/ci_time_metrics.test.mjs`.
+
 ### Compatible Swift build reuse, not test-result reuse (D557, D596, D618)
 
 The current-SDK job restores only `.build` with commit-pinned

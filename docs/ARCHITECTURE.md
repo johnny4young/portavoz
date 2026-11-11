@@ -6905,3 +6905,12 @@ through commit or rollback; recording start checks it before publishing
 `preparing`, with no suspension between those steps. If capture wins admission
 first, the existing migration activity gate rejects its preparing/recording/
 processing state. This is a process-local fence, not an interprocess file lock.
+
+### CI timing calculations
+
+The additive `scripts/ci_time_metrics.mjs` module computes timing from supplied
+run and job evidence without network or filesystem access. It separates workflow
+creation-to-gate time from the longest required job of the current attempt, and
+keeps incomplete classifications and inventories unknown. The quality spec owns
+the percentile, retry-weighting and minimum-window contracts. This calculation
+module does not replace the historical collector or qualify CI acceptance.
