@@ -69,9 +69,9 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 5, 2026
 
-- **🪶 Lighter model checks** — verifying a downloaded model no longer loads the whole file into memory.
+- **🪶 Lighter model checks** — verifying a downloaded model no longer loads the whole file into memory: checking Parakeet now peaks at about 67 MB instead of 557 MB.
 - **🪶 Refine stays light on long recordings** — checking a long audio file before Refine no longer holds the whole file in memory.
-- **📦 A lighter download** — Portavoz now ships without its debug symbols, so downloads and updates are smaller.
+- **📦 A lighter download** — Portavoz now ships without its debug symbols: its main program is half the size (69 MB instead of 134 MB), so downloads and updates are smaller.
 
 ## November 4, 2026
 
