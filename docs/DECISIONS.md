@@ -22859,3 +22859,25 @@ arguments, public fixtures, failure propagation and gate dependencies.
 qualification still requires the explicitly named legacy step; separating it
 is not a completed migration. Replace individual suites only with equivalent
 behavioral coverage. No check, threshold or release requirement is waived.
+
+## D638 — The CI time SLO reports itself every day
+
+**Context:** the CI condition (execution p95 ≤ 10 min, total p95 ≤ 20 min on
+ordinary pull request heads) was only checked by hand with
+`scripts/ci_time_report.py`, so a regression could go unnoticed for days.
+
+**Decision:** `ci-time-slo.yml` runs daily at 06:17 UTC and by dispatch.
+`scripts/ci_time_slo.mjs` reads the newest 20 finished pull request heads through
+the Node collectors, measures each attempt the way the Python report does
+(longest fresh blocking job; attempt start to the last blocking job's end;
+interruption and Xcode-pin heads exempt; superseded attempts left out), and keeps
+one issue, `CI time is over its SLO`, open while either p95 is over its limit,
+with queue, cache and coverage diagnostics. It closes the issue once both are
+back within. The job reads run metadata, compare file lists and build-and-test
+logs; it never checks out a head or downloads an artifact. A dispatch can lower
+the limits to prove the alarm. An unreadable history, or fewer measured attempts
+than half the window, fails the job instead of reading as healthy.
+
+**Consequences:** a missed SLO becomes a visible issue within a day. The issue is
+a signal, not acceptance: the acceptance window, cohorts and controlled cold
+samples still come from the full report. No limit, cohort or exemption changes.
