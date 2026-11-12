@@ -7,7 +7,7 @@ import TranscriptionKit
 import XCTest
 
 final class TranscriptTranslationWorkerTests: XCTestCase {
-    private struct Translator: DictationTextTranslating {
+    private struct Translator: TextTranslating {
         let reply: @Sendable (String, String, String) async throws -> String
 
         func translate(_ text: String, from source: String, to target: String) async throws -> String {
@@ -114,7 +114,7 @@ final class TranscriptTranslationWorkerTests: XCTestCase {
     func testMissingLanguagesEndTheJobForGoodWithItsReason() async throws {
         let (store, meeting, _) = try await seeded([("Bienvenidos a la reunión de hoy", "es")])
         try await request(store, meeting.id)
-        await drain(store) { _, _, _ in throw DictationTranslationUnavailable(.notInstalled) }
+        await drain(store) { _, _, _ in throw TranslationUnavailable(.notInstalled) }
         let jobs = try await store.processingJobs(for: meeting.id)
         let job = try XCTUnwrap(jobs.first)
         XCTAssertEqual(job.state, .cancelled)

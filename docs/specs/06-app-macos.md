@@ -2974,9 +2974,9 @@ and records no history or statistics. Disposable launches use
 changes it for one session. After the mode's text (and Polish), the controller
 picks the source from `dictationLanguage` when it is `es` or `en`, else
 `SpokenLanguageDetector.dictationLanguage` (at least eight letters, confidence
-0.6), and runs `TranslateDictation` through the same bounded transform as Polish:
+0.6), and runs `TranslateText` through the same bounded transform as Polish:
 "Translating…", `dictation-panel-skip-translation`, Escape, five seconds.
-`AppleDictationTranslator` uses `TranslationSession(installedSource:target:)` only
+`AppleTextTranslator` uses `TranslationSession(installedSource:target:)` only
 when `LanguageAvailability` reports the pair installed; `.supported` is reported
 as not downloaded. A kept outcome pastes the untranslated text and appends its
 reason to the strip notice. A translation is pasted, saved to the history and held
@@ -3022,7 +3022,7 @@ revision and kicks post-capture processing. `ProcessPostCaptureJobs` claims
 `transcript-translation` only when composed with a `TranscriptTranslationWorker`,
 which recomputes the fingerprint for each language against the current reading
 (no match cancels it as superseded), translates each row whose recognized or
-detected language is the other one through `TranslateDictation`, and publishes.
+detected language is the other one through `TranslateText`, and publishes.
 The worker validates its persisted lease before each translator call; rows kept as
 spoken need no read. Cancellation, lease reclamation or a purged meeting stops it at
 the next call and lets the serial drain claim the next job. The current call must
