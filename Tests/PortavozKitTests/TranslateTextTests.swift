@@ -72,7 +72,7 @@ struct TranslateTextTests {
     }
 
     @Test
-    func dictationLanguageTellsEnglishFromSpanishAndGivesUpOnShortText() {
+    func shortTextLanguageTellsEnglishFromSpanishAndGivesUpOnShortText() {
         #expect(SpokenLanguageDetector.shortTextLanguage(in: "No borres estas notas, por favor.") == "es")
         #expect(SpokenLanguageDetector.shortTextLanguage(in: "Please don't delete these notes.") == "en")
         #expect(SpokenLanguageDetector.shortTextLanguage(in: "ok sí") == nil)
