@@ -204,8 +204,9 @@ public enum LiveTranscriptionBench {
         } catch is CancellationError {
             throw BenchError.engineEndedBeforeInput
         }
-        result.dictationRecognizedText = DictationAssembler.text(
-            confirmed: captions.map(\.text).joined(separator: " "), partial: "")
+        // The confirmed captions joined and trimmed: what dictation inserts before its text rules.
+        result.dictationRecognizedText = captions.map(\.text).joined(separator: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         result.lags.sort()
         return result
     }
