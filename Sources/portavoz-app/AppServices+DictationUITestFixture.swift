@@ -210,20 +210,20 @@ final class DictationUITestFixture {
 
     static func translating(
         _ fixture: DictationUITestFixture?
-    ) -> (String, String?, String) async -> DictationTranslationOutcome {
+    ) -> (String, String?, String) async -> TranslationOutcome {
         let translator = FixtureTranslator(
             isMissing: fixture?.translationIsMissing ?? false, holds: fixture?.translationHolds ?? false)
-        let translate = TranslateDictation(translator: translator)
+        let translate = TranslateText(translator: translator)
         return { text, source, target in await translate(text, source: source, target: target) }
     }
 
     /// No Apple languages: the two seed sentences translate into each other.
-    private struct FixtureTranslator: DictationTextTranslating {
+    private struct FixtureTranslator: TextTranslating {
         let isMissing: Bool
         let holds: Bool
 
         func translate(_ text: String, from source: String, to target: String) async throws -> String {
-            guard !isMissing else { throw DictationTranslationUnavailable(.notInstalled) }
+            guard !isMissing else { throw TranslationUnavailable(.notInstalled) }
             if holds { try await Task.sleep(for: .seconds(3_600)) }
             let pairs = ["No borres estas notas.": "Don't delete these notes."]
             return pairs[text] ?? pairs.first { $0.value == text }?.key ?? "[\(target)] \(text)"

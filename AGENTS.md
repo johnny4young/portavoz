@@ -75,6 +75,8 @@ library) and asserts against `accessibilityIdentifier`s.
 ## Rules for every change
 
 - Respect the engineering rules in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): local-first privacy, MIT/no-GPL, strict Swift 6, live scheduler != batch scheduler, sha256-pinned models.
+- **Licenses ([D3](docs/DECISIONS.md)):** never copy code from GPL or AGPL projects, FluidVoice and TypeWhisper (GPL-3.0) included; read them for mechanisms only. Check the license before bringing in any third-party code or dependency. If a Rust UI ever uses GPUI (Apache-2.0), never depend on or copy Zed's GPL-3.0 crates `ui`, `theme`, `editor`, `component`, `terminal` or `terminal_view`.
+- **Probes share five macOS runners with every repository on the account.** A temporary or diagnostic workflow, or a dispatch used as one, always sets `timeout-minutes`; one that fans out (a matrix, repeated runs) also sets `strategy.max-parallel: 2`. Run it between 07:00 and 11:00 UTC when it can wait. Nightly, release and full-suite runs are not probes.
 - Preserve every released feature through refactor work. Use incremental Strangler slices with characterization tests; a commit that introduces a feature-parity gap is not complete.
 - Keep `scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors` green before closing any code change. A strict `swift build` does not compile the test targets and cannot replace this gate.
 - **After any UI change, reinstall the dev app with `make install`** — it installs to `/Applications/Portavoz Dev.app`. **NEVER touch `/Applications/Portavoz.app`**: that is the user's notarized release copy (it updates only via Sparkle/Homebrew). Need real recordings or the real DB for a test? COPY them to a scratch location — never operate on the release app's live data.

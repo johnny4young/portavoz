@@ -2119,7 +2119,7 @@ processing phase. This is a process-local fence, not an interprocess file lock.
 
 The dictation migrations (v54 to v59) live in `Sources/StorageKit/Schema/Legacy` and are
 frozen: their text and label limits are literals (20,000 and 256), not the app's current
-constants, so the schema they create can never drift (D639). v59 also rebuilds the shared
+constants, so the schema they create can never drift (D640). v59 also rebuilds the shared
 egress journal through `admitDictationPolishEgress`, which stays in
 `Schema+GlobalDataEgress.swift` and already uses only literals.
 

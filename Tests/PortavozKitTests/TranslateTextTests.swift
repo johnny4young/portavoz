@@ -2,8 +2,8 @@ import ApplicationKit
 import Testing
 import TranscriptionKit
 
-struct TranslateDictationTests {
-    private struct Translator: DictationTextTranslating {
+struct TranslateTextTests {
+    private struct Translator: TextTranslating {
         let reply: @Sendable (String, String, String) async throws -> String
 
         func translate(_ text: String, from source: String, to target: String) async throws -> String {
@@ -16,8 +16,8 @@ struct TranslateDictationTests {
     private func translate(
         _ text: String, source: String?, target: String = "en", timeout: Duration = .seconds(5),
         reply: @escaping @Sendable (String, String, String) async throws -> String
-    ) async -> DictationTranslationOutcome {
-        await TranslateDictation(translator: Translator(reply: reply), timeout: timeout)(
+    ) async -> TranslationOutcome {
+        await TranslateText(translator: Translator(reply: reply), timeout: timeout)(
             text, source: source, target: target)
     }
 
@@ -44,11 +44,11 @@ struct TranslateDictationTests {
     @Test
     func missingAndUnsupportedLanguagesKeepTheirReason() async {
         let missing = await translate("No borres estas notas.", source: "es") { _, _, _ in
-            throw DictationTranslationUnavailable(.notInstalled)
+            throw TranslationUnavailable(.notInstalled)
         }
         #expect(missing == .kept(.notInstalled))
         let unsupported = await translate("No borres estas notas.", source: "es") { _, _, _ in
-            throw DictationTranslationUnavailable(.unsupported)
+            throw TranslationUnavailable(.unsupported)
         }
         #expect(unsupported == .kept(.unsupported))
     }
@@ -72,9 +72,9 @@ struct TranslateDictationTests {
     }
 
     @Test
-    func dictationLanguageTellsEnglishFromSpanishAndGivesUpOnShortText() {
-        #expect(SpokenLanguageDetector.dictationLanguage(in: "No borres estas notas, por favor.") == "es")
-        #expect(SpokenLanguageDetector.dictationLanguage(in: "Please don't delete these notes.") == "en")
-        #expect(SpokenLanguageDetector.dictationLanguage(in: "ok sí") == nil)
+    func shortTextLanguageTellsEnglishFromSpanishAndGivesUpOnShortText() {
+        #expect(SpokenLanguageDetector.shortTextLanguage(in: "No borres estas notas, por favor.") == "es")
+        #expect(SpokenLanguageDetector.shortTextLanguage(in: "Please don't delete these notes.") == "en")
+        #expect(SpokenLanguageDetector.shortTextLanguage(in: "ok sí") == nil)
     }
 }

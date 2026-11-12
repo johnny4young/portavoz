@@ -74,7 +74,7 @@ struct CommandLineToolSection: View {
                 Text(title)
                 Spacer()
                 Button(copied == identifier ? L10n.text("Copied") : L10n.text("Copy")) {
-                    if TextInserter.copy(value) { copied = identifier }
+                    if PasteboardCopy.copy(value) { copied = identifier }
                 }
                 .accessibilityIdentifier(identifier)
             }
