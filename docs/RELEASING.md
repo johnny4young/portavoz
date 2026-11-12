@@ -609,8 +609,11 @@ brew install --cask --appdir="$APPDIR" johnny4young/tap/portavoz
 codesign --verify --deep --strict --verbose=2 "$APPDIR/Portavoz.app"
 xcrun stapler validate "$APPDIR/Portavoz.app"
 spctl -a -vvv -t exec "$APPDIR/Portavoz.app"
-brew uninstall --cask --force portavoz
+HOMEBREW_NO_AUTOREMOVE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew uninstall --cask --force portavoz
 ```
+
+The two variables keep Homebrew from removing unrelated orphaned formulae on the
+release host when the throwaway cask is uninstalled.
 
 The release criterion is one additional clean-machine launch on macOS 26
 Tahoe with no previous Portavoz app or Homebrew receipt. If it fails, preserve
