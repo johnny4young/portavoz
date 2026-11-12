@@ -22860,42 +22860,6 @@ qualification still requires the explicitly named legacy step; separating it
 is not a completed migration. Replace individual suites only with equivalent
 behavioral coverage. No check, threshold or release requirement is waived.
 
-## D639 — Dictation moves to Secreteo; Portavoz 2.0 retires it
-
-**Context:** global dictation now ships as its own app, Secreteo, which ported
-Portavoz's dictation engine, delivery, history, Polish and agent access.
-Portavoz 1.4 lets only one app own dictation on a Mac and 1.5 shares its models
-with Secreteo. Keeping two dictation implementations doubles the CI and review
-cost and the Accessibility surface for one feature.
-
-**Decision:** once Secreteo 1.0 is public, Portavoz 2.0 removes dictation:
-capture and delivery, its settings, menu and onboarding surfaces, App Intents,
-Ask over dictations and the three dictation MCP tools. Portavoz keeps what an
-existing library needs: migrations v54 to v59 stay registered and frozen, with
-their limits written as literals (20,000 characters of text, 256 of a label) so
-no later change to an app type can alter them; their files live in
-`Sources/StorageKit/Schema/Legacy`, except the shared egress-journal rebuild v59
-calls, which stays with that journal and already uses only literals. Raw egress values for dictation receipts
-stay readable. Meeting notes copied from dictations are ordinary notes and stay.
-Today history is purged by the dictation code and stats by their recording; 2.0
-replaces both with a legacy retention that keeps the current horizons, plus a
-Settings action that deletes the rows at once. No table is dropped. The upgrade criterion is the synthetic library
-at every dictation schema in `StorageUpgradeTests`.
-
-Defects Secreteo found that Portavoz's dictation shares are not fixed in
-Portavoz, because the code leaves in 2.0 and the fixes live in Secreteo: a late
-copy loses the clipboard in selection capture; sentence-start casing rewrites
-`macOS`; an edited range outside the insertion can crash; a correction spoken
-after cancel is applied; an old transformation takes Esc from a new session; a
-capture failure loses the words; practice text replaces the last dictation; the
-waveform keeps drawing at 30 fps after Stop; and the controller-lane validator
-rejects every audio-first observation.
-
-**Consequences:** until 2.0 ships, 1.x keeps dictation as released and
-hotfixes come from `release/1.5`. Between the first removal change and 2.0,
-`main` is not releasable. Users who stay on 1.x keep their dictation;
-Shortcuts and MCP clients must be set up again in Secreteo.
-
 ## D638 — The CI time SLO reports itself every day
 
 **Context:** the CI condition (execution p95 ≤ 10 min, total p95 ≤ 20 min on
@@ -22933,3 +22897,39 @@ D1: they are no longer ruled out by design, they wait for demand.
 **Consequences:** no port or cross-platform layer starts before that demand.
 The measurements are in the maintainer's private research report, not in this
 repository.
+
+## D640 — Dictation moves to Secreteo; Portavoz 2.0 retires it
+
+**Context:** global dictation now ships as its own app, Secreteo, which ported
+Portavoz's dictation engine, delivery, history, Polish and agent access.
+Portavoz 1.4 lets only one app own dictation on a Mac and 1.5 shares its models
+with Secreteo. Keeping two dictation implementations doubles the CI and review
+cost and the Accessibility surface for one feature.
+
+**Decision:** once Secreteo 1.0 is public, Portavoz 2.0 removes dictation:
+capture and delivery, its settings, menu and onboarding surfaces, App Intents,
+Ask over dictations and the three dictation MCP tools. Portavoz keeps what an
+existing library needs: migrations v54 to v59 stay registered and frozen, with
+their limits written as literals (20,000 characters of text, 256 of a label) so
+no later change to an app type can alter them; their files live in
+`Sources/StorageKit/Schema/Legacy`, except the shared egress-journal rebuild v59
+calls, which stays with that journal and already uses only literals. Raw egress values for dictation receipts
+stay readable. Meeting notes copied from dictations are ordinary notes and stay.
+Today history is purged by the dictation code and stats by their recording; 2.0
+replaces both with a legacy retention that keeps the current horizons, plus a
+Settings action that deletes the rows at once. No table is dropped. The upgrade criterion is the synthetic library
+at every dictation schema in `StorageUpgradeTests`.
+
+Defects Secreteo found that Portavoz's dictation shares are not fixed in
+Portavoz, because the code leaves in 2.0 and the fixes live in Secreteo: a late
+copy loses the clipboard in selection capture; sentence-start casing rewrites
+`macOS`; an edited range outside the insertion can crash; a correction spoken
+after cancel is applied; an old transformation takes Esc from a new session; a
+capture failure loses the words; practice text replaces the last dictation; the
+waveform keeps drawing at 30 fps after Stop; and the controller-lane validator
+rejects every audio-first observation.
+
+**Consequences:** until 2.0 ships, 1.x keeps dictation as released and
+hotfixes come from `release/1.5`. Between the first removal change and 2.0,
+`main` is not releasable. Users who stay on 1.x keep their dictation;
+Shortcuts and MCP clients must be set up again in Secreteo.
