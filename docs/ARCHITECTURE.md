@@ -5848,7 +5848,7 @@ verified evidence; a hosted-automation advisory fails the run. An unverified or
 cancelled night opens or updates one issue, and `ui-nightly-watch.yml` keeps
 another open while verified evidence on `main` is older than 48 hours. `ci-time-slo.yml`
 keeps one issue open each day while the newest 20 pull request heads miss the
-execution or total p95 (D638). A push run
+execution or total p95. A push run
 on `main` ends with an `alert` job that keeps one issue open while the newest push
 run is red, and the watch repairs that issue when the job could not.
 Pull requests run the interruption controls only when one of their behavior
