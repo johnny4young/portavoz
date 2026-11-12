@@ -49,6 +49,7 @@ def cache_prefix(root: Path, lane: str) -> str:
         raise ValueError("DEVELOPER_DIR must identify an installed Xcode")
     identity = {
         "schema": 2,
+        "coldProbe": "20261111",
         "lane": lane,
         "contract": BUILD_CONTRACT,
         # SwiftPM and module caches contain absolute paths. Do not transplant
