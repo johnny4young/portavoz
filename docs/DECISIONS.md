@@ -22881,3 +22881,19 @@ than half the window, fails the job instead of reading as healthy.
 **Consequences:** a missed SLO becomes a visible issue within a day. The issue is
 a signal, not acceptance: the acceptance window, cohorts and controlled cold
 samples still come from the full report. No limit, cohort or exemption changes.
+
+## D639 — Swift on the Mac; Windows and Linux only on demand
+
+**Context:** in November 2026 the maintainer reviewed every app's stack against
+Go and Rust UI stacks, with a six-stack bake-off on Apple Silicon. A Linux
+arm64 build of the Swift core found that, with small shims, `PortavozCore` and
+`StorageKit` compile and 443 of their 445 tests pass. Capture, the ML kits and
+the model store do not port without real adapters. Windows was not tried.
+
+**Decision (2026-11-05):** Portavoz stays Swift and SwiftUI on the Mac.
+Windows and Linux clients are built only when users ask for them. This narrows
+D1: they are no longer ruled out by design, they wait for demand.
+
+**Consequences:** no port or cross-platform layer starts before that demand.
+The measurements are in the maintainer's private research report, not in this
+repository.
