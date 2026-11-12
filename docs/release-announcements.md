@@ -4,6 +4,22 @@ Ready-to-paste announcement texts per release, newest first. English only;
 lead with the concrete thing, name the limits, numbers over adjectives.
 Short posts are verified at or under 280 characters.
 
+## v1.5.1 — 2026-11-12
+
+A lighter patch: a 29% smaller download, and model and audio checks that no longer load whole files into memory.
+
+### X / Bluesky — 255 characters
+
+Portavoz 1.5.1: the download drops from 36.8 to 26.1 MB (no debug symbols), model and pre-Refine audio checks stop loading whole files into memory, and shared Parakeet models stay on disk while something still uses them. macOS 26+. https://portavoz.app
+
+### Links
+
+- Release: https://github.com/johnny4young/portavoz/releases/tag/v1.5.1
+- Site: https://portavoz.app
+- Source: https://github.com/johnny4young/portavoz
+- `brew install --cask johnny4young/tap/portavoz`
+- Notarized DMG: https://github.com/johnny4young/portavoz/releases/download/v1.5.1/Portavoz-1.5.1.dmg
+
 ## v1.0.0 — 2026-09-12
 
 First major release: the day ahead on Today, the meetings behind answered with cited evidence, and Skills that propose while you confirm.
