@@ -22875,8 +22875,8 @@ one issue, `CI time is over its SLO`, open while either p95 is over its limit,
 with queue, cache and coverage diagnostics. It closes the issue once both are
 back within. The job reads run metadata, compare file lists and build-and-test
 logs; it never checks out a head or downloads an artifact. A dispatch can lower
-the limits to prove the alarm; an unreadable history fails the job instead of
-reading as healthy.
+the limits to prove the alarm. An unreadable history, or fewer measured attempts
+than half the window, fails the job instead of reading as healthy.
 
 **Consequences:** a missed SLO becomes a visible issue within a day. The issue is
 a signal, not acceptance: the acceptance window, cohorts and controlled cold
