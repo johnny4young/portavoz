@@ -204,7 +204,7 @@ hidden stage. A main-file or WAL size/modification change across the private
 copy also fails closed rather than publishing a mixed point in time. The source is never opened through `MeetingStore`, so no
 migration/configuration write can occur, and it is never renamed or deleted.
 
-### Schema (`v1`–`v57` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v60` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
@@ -2116,6 +2116,12 @@ first, the existing migration activity gate rejects its preparing/recording/
 processing phase. This is a process-local fence, not an interprocess file lock.
 
 ## Dictation history (schema v54, D576)
+
+The dictation migrations (v54 to v59) live in `Sources/StorageKit/Schema/Legacy` and are
+frozen: their text and label limits are literals (20,000 and 256), not the app's current
+constants, so the schema they create can never drift (D640). v59 also rebuilds the shared
+egress journal through `admitDictationPolishEgress`, which stays in
+`Schema+GlobalDataEgress.swift` and already uses only literals.
 
 Dictation is a second domain on the same `DatabaseQueue`, written only through
 `MeetingStore+DictationHistory`. `dictationHistoryPolicy` holds a single row that

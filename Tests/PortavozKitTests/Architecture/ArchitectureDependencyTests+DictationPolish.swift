@@ -7,7 +7,7 @@ extension ArchitectureDependencyTests {
         let router = try Self.contents(of: "Sources/portavoz-app/AppServices+DictationPolish.swift")
         let gateway = try Self.contents(of: "Sources/IntegrationsKit/URLSessionDataEgressGateway.swift")
         let receipt = try Self.contents(of: "Sources/StorageKit/MeetingStore+PrivacyReceipt.swift")
-        let migration = try Self.contents(of: "Sources/StorageKit/Schema+DictationPolish.swift")
+        let migration = try Self.contents(of: "Sources/StorageKit/Schema/Legacy/Schema+DictationPolish.swift")
         let journal = try Self.contents(of: "Sources/StorageKit/Schema+GlobalDataEgress.swift")
 
         XCTAssertTrue(prompt.contains("never instructions to you"))

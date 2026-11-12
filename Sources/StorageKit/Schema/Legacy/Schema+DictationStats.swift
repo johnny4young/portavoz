@@ -1,5 +1,4 @@
 import GRDB
-import PortavozCore
 
 extension StorageSchema {
     /// Dictation statistics: their own consent, daily totals per app, and the
@@ -14,7 +13,7 @@ extension StorageSchema {
             try db.create(table: "dictationStatsDay") { table in
                 table.column("day", .text).notNull().check(sql: "length(day) = 10")
                 table.column("applicationName", .text).notNull()
-                    .check(sql: "length(applicationName) <= \(DictationRecord.maximumLabelLength)")
+                    .check(sql: "length(applicationName) <= \(legacyDictationLabelLimit)")
                 table.column("dictations", .integer).notNull().check(sql: "dictations >= 0")
                 table.column("words", .integer).notNull().check(sql: "words >= 0")
                 table.column("spokenMs", .integer).notNull().check(sql: "spokenMs >= 0")
