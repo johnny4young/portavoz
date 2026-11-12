@@ -2,8 +2,6 @@ name: CI time SLO
 
 # Reads metadata and logs of past runs only: no head is checked out and no artifact is downloaded.
 on:
-  push:
-    branches: [ci/10-slo-alert]
   schedule:
     # After the nightly UI run, outside pull request hours.
     - cron: "17 6 * * *"
@@ -48,6 +46,6 @@ jobs:
           GH_REPO: ${{ github.repository }}
           REPOSITORY: ${{ github.repository }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          SLO_EXECUTION_SECONDS: ${{ inputs.execution_limit_seconds || '1' }}
+          SLO_EXECUTION_SECONDS: ${{ inputs.execution_limit_seconds }}
           SLO_TOTAL_SECONDS: ${{ inputs.total_limit_seconds }}
         run: node scripts/ci_time_slo.mjs --repository "$REPOSITORY" --run-url "$RUN_URL" --heads 20
