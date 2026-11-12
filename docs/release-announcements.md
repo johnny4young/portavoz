@@ -20,6 +20,257 @@ Portavoz 1.5.1: the download drops from 36.8 to 26.1 MB (no debug symbols), mode
 - `brew install --cask johnny4young/tap/portavoz`
 - Notarized DMG: https://github.com/johnny4young/portavoz/releases/download/v1.5.1/Portavoz-1.5.1.dmg
 
+## v1.5.0 — 2026-11-06
+
+Speech models live in one shared folder on your Mac, so each one downloads once for every build and app that uses it.
+
+### X / Bluesky — 279 characters
+
+Portavoz 1.5.0: speech models now live in one shared folder on your Mac, so every build and app that uses them downloads each model once. Your existing models move there without a new download, and Settings shows each model's size and which apps share it. https://portavoz.app
+
+### Hacker News
+
+**Title:** `Portavoz 1.5 – download each on-device speech model once per Mac`
+
+**Text:**
+
+Portavoz runs transcription, speaker separation and summaries on the Mac, which means hundreds of megabytes of models. Until 1.5 each copy of the app kept its own: the release build, a development build and any other app using the same models each downloaded and stored them again.
+
+1.5.0 moves them into one shared folder per Mac. The models already on disk move there on the first launch, without a new download, and every model is still checked against a pinned SHA-256 before it is used. Settings lists the models on this Mac, how much room each one takes and which other apps use it, so removing one is an informed choice.
+
+Limits: the folder is shared per Mac, not synced anywhere, and a model you never downloaded still downloads on first use. Like 1.3 and 1.4, this release requires macOS 26 Tahoe.
+
+Site: https://portavoz.app. Source: https://github.com/johnny4young/portavoz.
+
+### Reddit (r/macapps, r/LocalLLaMA)
+
+**Title:** `Portavoz 1.5.0: on-device speech models shared across apps on your Mac, downloaded once`
+
+**Text:**
+
+Portavoz (MIT, on-device meeting assistant and dictation for macOS) 1.5.0 is out.
+
+- Models live in one shared folder, so the release build, a dev build and other apps using the same models download each one once.
+- Existing models move there without a new download.
+- Settings lists each model's size and which apps share it.
+
+Requires macOS 26 Tahoe. `brew install --cask johnny4young/tap/portavoz` or the notarized DMG. https://portavoz.app
+
+### Links
+
+- Release: https://github.com/johnny4young/portavoz/releases/tag/v1.5.0
+- Site: https://portavoz.app
+- Source: https://github.com/johnny4young/portavoz
+- `brew install --cask johnny4young/tap/portavoz`
+- Notarized DMG: https://github.com/johnny4young/portavoz/releases/download/v1.5.0/Portavoz-1.5.0.dmg
+
+## v1.4.0 — 2026-11-05
+
+When another app already handles dictation, Portavoz steps aside instead of pasting twice.
+
+### X / Bluesky — 276 characters
+
+Portavoz 1.4.0: if another app already handles dictation on your Mac, Portavoz says so, never pastes twice, and switches back with one click. Also: a quiet "Sí" or "OK" stays in the transcript, and thinking models stop leaking reasoning into summaries. https://portavoz.app
+
+### Hacker News
+
+**Title:** `Portavoz 1.4 – a macOS dictation app that steps aside when another one is active`
+
+**Text:**
+
+Two dictation apps answering the same shortcut paste the same sentence twice. In 1.4.0, when another app handles dictation on the Mac, Portavoz says so in Settings and the menu bar and does not paste. One click switches dictation back to Portavoz. It never takes the role on its own.
+
+Two fixes came from real transcripts. A quiet "Sí", "OK" or "De acuerdo" was being dropped as noise; short answers now stay in. And local or cloud models that reason before answering, through Ollama or a provider, could break the summary format or leak their reasoning into it. Portavoz now keeps only the answer and says plainly when the model ran out of room instead of returning a truncated summary.
+
+Smaller: the update window shows the release notes before you update, an old recording notification can no longer stop a newer recording, and the Homebrew install no longer prints a deprecation warning.
+
+Requires macOS 26 Tahoe. Site: https://portavoz.app. Source: https://github.com/johnny4young/portavoz.
+
+### Reddit (r/macapps, r/LocalLLaMA)
+
+**Title:** `Portavoz 1.4.0: on-device dictation that steps aside when another dictation app is active`
+
+**Text:**
+
+- If another app handles dictation, Portavoz says so, never pastes twice, and lets you switch back with one click.
+- Short answers ("Sí", "OK") stay in the transcript instead of being dropped as noise.
+- Ollama and cloud models that think before answering no longer break summaries or leak their reasoning.
+- The update window shows the notes for the new version.
+
+MIT, macOS 26 Tahoe. https://portavoz.app
+
+### Links
+
+- Release: https://github.com/johnny4young/portavoz/releases/tag/v1.4.0
+- Site: https://portavoz.app
+- Source: https://github.com/johnny4young/portavoz
+- `brew install --cask johnny4young/tap/portavoz`
+- Notarized DMG: https://github.com/johnny4young/portavoz/releases/download/v1.4.0/Portavoz-1.4.0.dmg
+
+## v1.3.0 — 2026-11-02
+
+Dictation that polishes, rewrites and translates with the model already on your Mac.
+
+### X / Bluesky — 256 characters
+
+Portavoz 1.3.0: Polish fixes grammar and false starts with the model on your Mac, recipes rewrite any text you select (⌃⌥⌘R), "change Friday to Monday" fixes the last paste by voice, and English ↔ Spanish translation runs on-device. https://portavoz.app
+
+### Hacker News
+
+**Title:** `Portavoz 1.3 – on-device dictation that polishes, rewrites and translates (macOS)`
+
+**Text:**
+
+Portavoz started as a meeting assistant; 1.3.0 is mostly about dictation. The design rule is the same: nothing leaves the Mac unless you point a feature at an external provider.
+
+Polish is a text mode that fixes grammar, punctuation and false starts with the summary engine you already use for meetings (the bundled local model, Apple Intelligence or Ollama). Recipes shape it: Formal, Friendly, Bullet list, Concise, or your own. The same recipes work on any text you select in any app: press ⌃⌥⌘R or say how to rewrite it, check the preview, press Return. Nothing replaces your text without that preview.
+
+Corrections are scoped on purpose. Start a dictation with "change Friday to Monday" and it edits only what Portavoz just pasted, not the document. "Always write" makes it spell a word your way from then on. Dictation history exists but is opt-in; once on, you can search it, ask about it, and add entries to a meeting's notes.
+
+Honest limits. 1.3.0 requires macOS 26 Tahoe; Sequoia stays on 1.2.0. Polish is only as good as the local model you have, and translation is English ↔ Spanish only. Parakeet Ultra becomes the dictation default only after you download it; nothing downloads on its own.
+
+Site: https://portavoz.app. Source: https://github.com/johnny4young/portavoz.
+
+### Reddit (r/macapps, r/LocalLLaMA, r/opensource)
+
+**Title:** `Portavoz 1.3.0: open-source macOS dictation that polishes, rewrites and translates on-device`
+
+**Text:**
+
+- **Polish** fixes grammar, punctuation and false starts with your local model; recipes: Formal, Friendly, Bullet list, Concise or your own.
+- **Rewrite anything you select** in any app with ⌃⌥⌘R, with a preview before it replaces.
+- **Fix by voice**: "change Friday to Monday" edits only the last paste.
+- **English ↔ Spanish** translation of dictations and meeting transcripts, on your Mac.
+- **Opt-in dictation history**: searchable, shareable with local agents, scriptable from Shortcuts.
+- Meetings: a remembered voice names the speaker (one Undo clears it), Refine skips silence and stops inventing words.
+
+Requires macOS 26 Tahoe (Sequoia keeps 1.2.0). MIT. https://portavoz.app
+
+### Platform notes
+
+> 1.3.0 requires macOS 26 Tahoe. Macs on macOS 15 Sequoia or earlier stay on 1.2.0.
+
+### Links
+
+- Release: https://github.com/johnny4young/portavoz/releases/tag/v1.3.0
+- Site: https://portavoz.app
+- Source: https://github.com/johnny4young/portavoz
+- `brew install --cask johnny4young/tap/portavoz`
+- Notarized DMG: https://github.com/johnny4young/portavoz/releases/download/v1.3.0/Portavoz-1.3.0.dmg
+
+## v1.2.0 — 2026-10-20
+
+Dictation that keeps up: an optional, more accurate model, hold Fn to talk, and no lost first word.
+
+### X / Bluesky — 256 characters
+
+Portavoz 1.2.0: an optional Parakeet Ultra dictation model (613 MB) with a third fewer word errors, hold Fn to dictate, the mic opens the moment you press the shortcut, and an on-device voice detector keeps silence out of your text. https://portavoz.app
+
+### Hacker News
+
+**Title:** `Portavoz 1.2 – on-device macOS dictation that doesn't lose your first word`
+
+**Text:**
+
+1.2.0 is the release where Portavoz's dictation got serious. The most visible problem was the first word: if the model was still loading when you pressed the shortcut, the start of the sentence was gone. Now the microphone opens immediately and buffers while the model loads, and an hourglass tells you to keep talking.
+
+The optional Parakeet Ultra model is a 613 MB download you can cancel. It makes about a third fewer word errors than the default and handles mixed English and Spanish much better. Meetings keep using the regular Parakeet model; Ultra is for dictation only.
+
+Two small decisions I would defend. "Paste last" keeps the last dictation for 15 minutes so you can paste it again if it landed in the wrong place, but only in memory; it is gone when the Mac sleeps or locks. And a tiny on-device voice detector decides whether there was speech at all, so silence and background noise never paste as text.
+
+Limits: 1.2.0 is qualified on macOS 26 Tahoe; 1.1.0 is the last release officially supported on Sequoia. Ultra needs the download and the disk space.
+
+Site: https://portavoz.app. Source: https://github.com/johnny4young/portavoz.
+
+### Reddit (r/macapps, r/LocalLLaMA)
+
+**Title:** `Portavoz 1.2.0: on-device dictation for macOS with an optional larger model and hold-Fn-to-talk`
+
+**Text:**
+
+- **Parakeet Ultra** (optional, 613 MB): about a third fewer word errors, much better mixed EN/ES.
+- **Hold Fn**, Right Option or Right Command to dictate; let go to paste.
+- The mic opens instantly, even while the model loads.
+- "Stop after a pause" for hands-free, with an on-device voice detector that keeps silence out.
+- **Paste last** within 15 minutes, memory only.
+- An audio import queue for several files at once.
+
+MIT, qualified on macOS 26 Tahoe. https://portavoz.app
+
+### Platform notes
+
+> 1.2.0 is qualified on macOS 26 Tahoe. 1.1.0 is the last release officially supported on macOS 15 Sequoia.
+
+### Links
+
+- Release: https://github.com/johnny4young/portavoz/releases/tag/v1.2.0
+- Site: https://portavoz.app
+- Source: https://github.com/johnny4young/portavoz
+- `brew install --cask johnny4young/tap/portavoz`
+- Notarized DMG: https://github.com/johnny4young/portavoz/releases/download/v1.2.0/Portavoz-1.2.0.dmg
+
+## v1.1.0 — 2026-09-18
+
+Less noise: one line of status while you record, a meeting page where the transcript gets the room, and Settings in seven panes.
+
+![Meeting detail](https://portavoz.app/assets/screenshots/meeting-detail.png)
+
+### X / Bluesky — 273 characters
+
+Portavoz 1.1.0 is about less noise: one line of status while you record instead of a stack of banners, a meeting page where the transcript gets the room, Today led by your next call, and Settings cut to seven panes. Plainer words, one icon per idea. https://portavoz.app
+
+### Hacker News
+
+**Title:** `Portavoz 1.1 – removing UI from a macOS meeting assistant`
+
+**Text:**
+
+After 1.0 I went through every screen asking what could go. The recording bar had grown a stack of banners; it now keeps Translate, Apuntador (the in-meeting assistant) and Catch me up in view, tucks the rest into a More menu, and shows only the one notice that matters now.
+
+The meeting page gives summary, commitments and notes only the space they need, so the transcript gets the rest. People, Apuntador and Chapters share one side column with a lens picker. Privacy and action history moved into a small chip under the title instead of repeating on every panel.
+
+Words changed too: "sources" instead of "evidence", "activity" instead of "receipts". Warnings now look different from errors (orange circle versus red triangle), and each idea has one icon across the app.
+
+It is a reorganization, not new capability: if you knew where something was in 1.0, it may have moved. Site: https://portavoz.app. Source: https://github.com/johnny4young/portavoz.
+
+### Reddit (r/macapps)
+
+**Title:** `Portavoz 1.1.0: a quieter macOS meeting assistant, fewer banners and a meeting page that fits your screen`
+
+**Text:**
+
+- One line of status while you record instead of stacked banners.
+- The meeting page gives the transcript the room; side panels share one column.
+- Today leads with your next meeting: countdown, brief, record button.
+- Settings in seven panes, in a window you can resize.
+- Plainer words and one icon per idea; warnings look different from errors.
+
+MIT, on-device. https://portavoz.app
+
+### Links
+
+- Release: https://github.com/johnny4young/portavoz/releases/tag/v1.1.0
+- Site: https://portavoz.app
+- Source: https://github.com/johnny4young/portavoz
+- `brew install --cask johnny4young/tap/portavoz`
+- Notarized DMG: https://github.com/johnny4young/portavoz/releases/download/v1.1.0/Portavoz-1.1.0.dmg
+
+## v1.0.1 — 2026-09-16
+
+Fixes the crash that ended a fresh 1.0.0 install at its first recording.
+
+### X / Bluesky — 251 characters
+
+Portavoz 1.0.1 fixes a crash that ended a fresh 1.0.0 install at its first recording: the app looked for its bundled question model where it was built instead of inside the app. If Portavoz quit when you pressed record, update. https://portavoz.app
+
+### Links
+
+- Release: https://github.com/johnny4young/portavoz/releases/tag/v1.0.1
+- Site: https://portavoz.app
+- Source: https://github.com/johnny4young/portavoz
+- `brew install --cask johnny4young/tap/portavoz`
+- Notarized DMG: https://github.com/johnny4young/portavoz/releases/download/v1.0.1/Portavoz-1.0.1.dmg
+
 ## v1.0.0 — 2026-09-12
 
 First major release: the day ahead on Today, the meetings behind answered with cited evidence, and Skills that propose while you confirm.
