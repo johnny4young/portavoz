@@ -1364,8 +1364,8 @@ deleting everything wins over a dictation still finishing. Saving runs after
 delivery and never delays the paste. Sync, exports, Spotlight and MCP do not
 read these tables.
 Its migrations live in `Sources/StorageKit/Schema/Legacy` and are frozen with
-their limits as literals, because dictation is moving to Secreteo and those
-tables must keep opening after the dictation code leaves.
+their limits as literals, so the tables they create never change with the app's
+dictation types.
 The one in-process destination is the practice field shown in onboarding and
 Settings: composition swaps in its destination only while that field's window
 is key and the app is active, so practice never borrows the clipboard, posts a

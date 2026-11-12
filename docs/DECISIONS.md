@@ -22874,10 +22874,12 @@ Ask over dictations and the three dictation MCP tools. Portavoz keeps what an
 existing library needs: migrations v54 to v59 stay registered and frozen, with
 their limits written as literals (20,000 characters of text, 256 of a label) so
 no later change to an app type can alter them; their files live in
-`Sources/StorageKit/Schema/Legacy`. Raw egress values for dictation receipts
+`Sources/StorageKit/Schema/Legacy`, except the shared egress-journal rebuild v59
+calls, which stays with that journal and already uses only literals. Raw egress values for dictation receipts
 stay readable. Meeting notes copied from dictations are ordinary notes and stay.
-Legacy dictation history and stats are purged by retention and can be deleted
-at once; no table is dropped. The upgrade criterion is the synthetic library
+Today history is purged by the dictation code and stats by their recording; 2.0
+replaces both with a legacy retention that keeps the current horizons, plus a
+Settings action that deletes the rows at once. No table is dropped. The upgrade criterion is the synthetic library
 at every dictation schema in `StorageUpgradeTests`.
 
 Defects Secreteo found that Portavoz's dictation shares are not fixed in
