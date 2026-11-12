@@ -2123,6 +2123,20 @@ constants, so the schema they create can never drift (D640). v59 also rebuilds t
 egress journal through `admitDictationPolishEgress`, which stays in
 `Schema+GlobalDataEgress.swift` and already uses only literals.
 
+`LegacyDictationRetention.swift`, next to them, is the facade for that data once the
+dictation code is gone; nothing calls it yet. `purgeExpiredLegacyDictationData(now:calendar:)`
+removes, in one transaction, history older than the stored 7, 30 or 90 days, stats days
+older than 365 local days and retry-dedupe rows older than two days, whatever the consent
+rows say (today stats with counting turned off are never pruned, but nothing will show them
+once the dictation code is gone); a second call removes
+nothing, and any failure, a missing policy row included, reaches the caller and removes
+nothing; a stats horizon the calendar cannot compute fails instead of falling back to
+today. `legacyDictationRows()` counts what is left. `deleteAllLegacyDictationData()`
+deletes every history and stats row, keeps the content-free egress receipts, and advances
+the history generation (stats have none); it is a logical delete, not a forensic wipe of
+WAL pages or backups. Copied meeting notes stay: a deleted dictation
+cascades only its note link. Everything is SQL, with no dictation type.
+
 Dictation is a second domain on the same `DatabaseQueue`, written only through
 `MeetingStore+DictationHistory`. `dictationHistoryPolicy` holds a single row that
 starts off (`isEnabled = 0`, `keepsOriginal = 0`, 30 days, generation 0).

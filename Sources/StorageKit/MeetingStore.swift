@@ -20,6 +20,8 @@ public enum StorageError: Error, LocalizedError {
     case invalidStandingSkillRule(String)
     case invalidStandingSkillExecution(String)
     case invalidDictationRecord(String)
+    case missingLegacyDictationPolicy
+    case legacyDictationHorizonUnavailable
     case staleRefineDraft(meetingID: MeetingID, expected: Int, actual: Int)
     case invalidRecordingReservation(String)
     case invalidProcessingJob(String)
@@ -74,6 +76,10 @@ public enum StorageError: Error, LocalizedError {
             return "invalid standing Skill execution: \(reason)"
         case .invalidDictationRecord(let reason):
             return "invalid dictation record: \(reason)"
+        case .missingLegacyDictationPolicy:
+            return "the legacy dictation history policy row is missing"
+        case .legacyDictationHorizonUnavailable:
+            return "the legacy dictation stats horizon could not be computed"
         case .staleRefineDraft(let meetingID, let expected, let actual):
             return "refine draft for \(meetingID.rawValue.uuidString) expected transcript revision "
                 + "\(expected), current revision is \(actual)"
