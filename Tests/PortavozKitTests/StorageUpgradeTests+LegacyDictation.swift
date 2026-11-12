@@ -22,6 +22,23 @@ extension StorageUpgradeTests {
         }
     }
 
+    func testFrozenDictationMigrationsKeepTheirLimits() throws {
+        let database = try DatabaseQueue()
+        try StorageSchema.migrator().migrate(database)
+        try database.read { db in
+            let sql = { (table: String) in
+                try String.fetchOne(db, sql: "SELECT sql FROM sqlite_master WHERE name = ?", arguments: [table]) ?? ""
+            }
+            let record = try sql("dictationRecord")
+            for limit in ["length(text) <= 20000", "length(originalText) <= 20000",
+                          "length(engine) BETWEEN 1 AND 256", "length(applicationName) <= 256",
+                          "length(applicationBundleID) <= 256"] {
+                XCTAssertTrue(record.contains(limit), limit)
+            }
+            XCTAssertTrue(try sql("dictationStatsDay").contains("length(applicationName) <= 256"))
+        }
+    }
+
     private func assertLegacyDictationPurgeKeepsNotes(from base: Int) async throws {
         let url = try legacyDictationDatabaseURL(named: "dictation-purge-v\(base)")
         defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }

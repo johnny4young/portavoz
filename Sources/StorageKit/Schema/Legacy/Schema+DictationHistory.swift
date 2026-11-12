@@ -1,5 +1,4 @@
 import GRDB
-import PortavozCore
 
 extension StorageSchema {
     /// Private dictation history: one consent row and the saved dictations.
@@ -46,16 +45,20 @@ extension StorageSchema {
         try createDictationSearchIndex(in: db)
     }
 
+    // Frozen with the migrations: a later change to the app's limits must not change v54 or v59.
+    static let legacyDictationTextLimit = 20_000
+    static let legacyDictationLabelLimit = 256
+
     private static func createDictationRecordTable(_ name: String, modes: String, in db: Database) throws {
-        let label = DictationRecord.maximumLabelLength
+        let label = legacyDictationLabelLimit
         try db.create(table: name) { table in
             table.primaryKey("id", .text).check(sql: "length(id) = 36")
             table.column("createdAt", .datetime).notNull()
             table.column("durationMs", .integer).notNull().check(sql: "durationMs >= 0")
             table.column("text", .text).notNull().check(
-                sql: "length(trim(text)) > 0 AND length(text) <= \(DictationRecord.maximumTextLength)")
+                sql: "length(trim(text)) > 0 AND length(text) <= \(legacyDictationTextLimit)")
             table.column("originalText", .text).check(
-                sql: "originalText IS NULL OR length(originalText) <= \(DictationRecord.maximumTextLength)")
+                sql: "originalText IS NULL OR length(originalText) <= \(legacyDictationTextLimit)")
             table.column("mode", .text).notNull().check(sql: "mode IN (\(modes))")
             table.column("language", .text).check(sql: "language IS NULL OR language IN ('es', 'en')")
             table.column("engine", .text).notNull().check(sql: "length(engine) BETWEEN 1 AND \(label)")
