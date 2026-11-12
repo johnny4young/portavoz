@@ -2220,6 +2220,12 @@ tidied (enhanced) notes, which hide raw notes until the user tidies again.
 whose recording contains the dictation first, then newest; `dictationMeetingLinks`
 returns only links whose note and meeting are still live.
 
+Upgrade coverage: a synthetic library at each dictation starting schema, from
+v54 to the latest, opens and reopens with every dictation row, policy, link,
+stats row and egress receipt intact, every FTS5 index healthy and no foreign-key
+violation; deleting the dictation rows afterwards leaves the copied note in
+place (`StorageUpgradeTests+LegacyDictation.swift`).
+
 ### Dictations in Ask (D580)
 
 `dictationRecordsForAsk(matchingAny:period:applicationName:limit:)` reads
