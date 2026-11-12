@@ -247,8 +247,8 @@ extension AppServices {
     }
 
     /// Disposable launches never reach Apple's translator.
-    private var meetingTranslator: any DictationTextTranslating {
-        guard usesTemporaryMeetingStore else { return AppleDictationTranslator() }
+    private var meetingTranslator: any TextTranslating {
+        guard usesTemporaryMeetingStore else { return AppleTextTranslator() }
         return MeetingTranslationFixture(
             isMissing: ProcessInfo.processInfo.arguments.contains("-seed-meeting-translation-missing"))
     }

@@ -64,15 +64,15 @@ public struct RequestTranscriptTranslation: Sendable {
 /// language is unclear, are left out and read as the original.
 public struct TranscriptTranslationWorker: Sendable {
     private let store: any TranscriptTranslationStore
-    private let translate: TranslateDictation
+    private let translate: TranslateText
 
     public init(
         store: any TranscriptTranslationStore,
-        translator: any DictationTextTranslating,
-        lineTimeout: Duration = TranslateDictation.timeout
+        translator: any TextTranslating,
+        lineTimeout: Duration = TranslateText.timeout
     ) {
         self.store = store
-        translate = TranslateDictation(translator: translator, timeout: lineTimeout)
+        translate = TranslateText(translator: translator, timeout: lineTimeout)
     }
 
     func process(_ job: ProcessingJob, owner: String, now: () -> Date) async throws {
@@ -127,7 +127,7 @@ public struct TranscriptTranslationWorker: Sendable {
         if let recognized = LanguageCode(row.language)?.identifier {
             return TranscriptTranslation.languages.contains(recognized) ? recognized : nil
         }
-        return SpokenLanguageDetector.dictationLanguage(in: text)
+        return SpokenLanguageDetector.shortTextLanguage(in: text)
     }
 }
 

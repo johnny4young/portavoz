@@ -19,7 +19,7 @@ struct DictationTranslationDeliveryTests {
 
     private func dependencies(
         _ harness: DictationControllerHarness, recorder: Recorder,
-        translate: @escaping (String) async -> DictationTranslationOutcome
+        translate: @escaping (String) async -> TranslationOutcome
     ) -> DictationSessionDependencies {
         var dependencies = harness.dependencies
         dependencies.beginHistory = { { record in recorder.records.append(record); return true } }

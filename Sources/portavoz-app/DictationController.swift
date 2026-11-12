@@ -815,7 +815,7 @@ enum DictationTransformKind: Equatable { case polish, translate }
 
 enum DictationTransformResult: Equatable {
     case polish(DictationPolishOutcome)
-    case translation(DictationTranslationOutcome)
+    case translation(TranslationOutcome)
 }
 
 /// One pending transform: the delivery waiting for it, the task, its token and kind.
@@ -973,7 +973,7 @@ private extension DictationController {
     ) async -> String? {
         guard let target = textPolicy.translationTarget.languageCode else { return text }
         let configured = dependencies.defaults.string(forKey: Self.languageKey)
-        let source = ["es", "en"].contains(configured) ? configured : SpokenLanguageDetector.dictationLanguage(in: text)
+        let source = ["es", "en"].contains(configured) ? configured : SpokenLanguageDetector.shortTextLanguage(in: text)
         let end = await runTransform(.translate, sessionID: sessionID, dependencies: dependencies) {
             .translation(await dependencies.translateDictation(text, source, target))
         }
@@ -1033,7 +1033,7 @@ private extension DictationController {
         polishNotice = nil
     }
 
-    static func translationNotice(for skip: DictationTranslationSkip) -> String? {
+    static func translationNotice(for skip: TranslationSkip) -> String? {
         switch skip {
         case .sameLanguage:
             nil
