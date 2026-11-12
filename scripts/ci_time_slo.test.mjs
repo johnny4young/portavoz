@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {attemptRow, buildLogDigest, exemptFromChanges, ghCompare, issueAction, issueBody, parseLimit,
+import {attemptRow, buildLogDigest, collectRows, collectRowsWithRetry, DEFAULT_LIMITS, exemptFromChanges, ghCompare, issueAction, issueBody, parseLimit,
   sloArguments, summarize} from './ci_time_slo.mjs';
 
 const sha = 'b'.repeat(40);
@@ -46,6 +46,16 @@ test('only a cancelled attempt with a newer run on its pull request is supersede
   assert.equal(row(jobs, {metadata: {conclusion: 'cancelled'}, prRunStarts: [at(0), at(5)]}).superseded, true);
   assert.equal(row(jobs, {metadata: {conclusion: 'cancelled'}, prRunStarts: [at(0), at(8)]}).superseded, false);
   assert.equal(row(jobs, {metadata: {conclusion: 'failure'}, prRunStarts: [at(5)]}).superseded, false);
+  // A failure or timeout is the cause even when a newer run cancelled the rest.
+  for (const conclusion of ['failure', 'timed_out']) {
+    const broken = [job('lint', 0, 1, {conclusion}), job('build-and-test', 0, 25, {conclusion: 'cancelled'})];
+    assert.equal(row(broken, {metadata: {conclusion: 'cancelled'}, prRunStarts: [at(20)]}).superseded, false, conclusion);
+  }
+  // A failed gate only follows the cancellation.
+  assert.equal(row([job('build-and-test', 0, 6, {conclusion: 'cancelled'}), job('gate', 6, 7, {conclusion: 'failure'})],
+    {metadata: {conclusion: 'cancelled'}, prRunStarts: [at(5)]}).superseded, true);
+  // Cancelled before any job started: its own update time ends it.
+  assert.equal(row([], {metadata: {conclusion: 'cancelled', updated_at: at(3)}, prRunStarts: [at(2)]}).superseded, true);
 });
 
 test('the build log names the cache state and the Swift coverage', () => {
@@ -78,9 +88,13 @@ test('exempt and superseded attempts stay out of the p95', () => {
 });
 
 test('no measured ordinary attempt is unknown, never healthy', () => {
-  assert.throws(() => summarize([]), /No ordinary attempt/);
-  assert.throws(() => summarize([measured(null, null)]), /No ordinary attempt/);
-  assert.throws(() => summarize([measured(100, 200, {ordinary: false})]), /No ordinary attempt/);
+  assert.throws(() => summarize([]), /Only 0 measured/);
+  assert.throws(() => summarize([measured(null, null)]), /Only 0 measured/);
+  assert.throws(() => summarize([measured(100, 200, {ordinary: false})]), /Only 0 measured/);
+  // One fast attempt among an unmeasured window must not close a real alarm.
+  const window = [measured(100, 200), ...Array.from({length: 19}, (_, i) => measured(null, null, {head: `x${i}`}))];
+  assert.throws(() => summarize(window, DEFAULT_LIMITS, {minimumHeads: 20}), /Only 1 measured ordinary attempts; 10 needed/);
+  assert.equal(summarize(window.slice(0, 1), DEFAULT_LIMITS, {minimumHeads: 2}).attempts, 1);
 });
 
 test('missing measurements are counted, not erased', () => {
@@ -132,4 +146,65 @@ test('the workflow reads metadata only, with the least permission and no injecte
   assert.equal(run.length, 1);
   assert.doesNotMatch(run[0], /\$\{\{/);
   assert.match(workflow, /SLO_EXECUTION_SECONDS: \$\{\{ inputs\.execution_limit_seconds \}\}/);
+});
+
+const inventoryRun = (runId, status = 'completed', prNumbers = [5]) => ({runId, status, prNumbers, createdAt: at(runId)});
+const exactRun = (runId, conclusion = 'success') => ({run: {...run, id: runId, pull_requests: []},
+  attempts: [attempt([job('build-and-test', runId, runId + 4), job('gate', runId + 4, runId + 5)], {conclusion})]});
+const collector = (heads, calls = []) => ({get: async () => ({}), getText: async () => 'log', compare: async () => ({files: []}),
+  inventoryOf: async (get, options) => { calls.push(options.limit); return {heads}; },
+  readRun: async (get, identity) => exactRun(identity.runId)});
+
+test('in-flight heads are skipped and the window still needs enough finished heads', async () => {
+  const calls = [];
+  const heads = [{headSha: 'c'.repeat(40), runs: [inventoryRun(1, 'in_progress')]},
+    {headSha: 'd'.repeat(40), runs: [inventoryRun(2)]}, {headSha: 'e'.repeat(40), runs: [inventoryRun(3)]}];
+  const rows = await collectRows(collector(heads, calls), {repository: 'o/r', heads: 2, cutoff: at(9)});
+  assert.deepEqual(rows.map(row => row.runId), [2, 3]);
+  assert.deepEqual(calls, [12]);
+  await assert.rejects(collectRows(collector(heads), {repository: 'o/r', heads: 3, cutoff: at(9)}), /Only 2 finished heads of 3/);
+});
+
+test('a collection that keeps changing fails after three tries instead of reporting', async () => {
+  let reads = 0;
+  const failing = {...collector([]), inventoryOf: async () => { reads++; throw new Error('Head selection changed during collection'); }};
+  await assert.rejects(collectRowsWithRetry(failing, {repository: 'o/r', heads: 1, cutoff: at(9)}, {wait: async () => {}}), /changed/);
+  assert.equal(reads, 3);
+  let flaky = 0;
+  const recovering = {...collector([{headSha: 'f'.repeat(40), runs: [inventoryRun(4)]}]),
+    inventoryOf: async () => { if (flaky++ === 0) throw new Error('drift'); return {heads: [{headSha: 'f'.repeat(40), runs: [inventoryRun(4)]}]}; }};
+  assert.equal((await collectRowsWithRetry(recovering, {repository: 'o/r', heads: 1, cutoff: at(9)}, {wait: async () => {}})).length, 1);
+});
+
+test('only a missing base falls back to main; any other compare failure is unknown', async () => {
+  const heads = [{headSha: 'a'.repeat(40), runs: [inventoryRun(6)]}];
+  const stacked = {...collector(heads), readRun: async (get, identity) => {
+    const evidence = exactRun(identity.runId);
+    evidence.run.pull_requests = [{base: {ref: 'split/30'}}];
+    return evidence;
+  }};
+  const seen = [];
+  const missing = {...stacked, compare: async (repository, ref) => {
+    seen.push(ref);
+    if (ref === 'split/30') throw new Error('gh: Not Found (HTTP 404)');
+    return {files: [{filename: 'scripts/verify-ci-toolchain.sh'}]};
+  }};
+  const rows = await collectRows(missing, {repository: 'o/r', heads: 1, cutoff: at(9)});
+  assert.deepEqual(seen, ['split/30', 'main']);
+  assert.equal(rows[0].ordinary, false);
+  const limited = {...stacked, compare: async () => { throw new Error('gh: API rate limit exceeded (HTTP 403)'); }};
+  await assert.rejects(collectRows(limited, {repository: 'o/r', heads: 1, cutoff: at(9)}), /rate limit/);
+});
+
+test('a newer run of the same pull request supersedes; another pull request does not', async () => {
+  const heads = [{headSha: 'a'.repeat(40), runs: [{...inventoryRun(1), prNumbers: [5]}]},
+    {headSha: 'b'.repeat(40), runs: [{...inventoryRun(3), prNumbers: [6]}]},
+    {headSha: 'c'.repeat(40), runs: [{...inventoryRun(4), prNumbers: [5]}]}];
+  const cancelled = {...collector(heads), readRun: async (get, identity) => {
+    const evidence = exactRun(identity.runId, identity.runId === 1 ? 'cancelled' : 'success');
+    if (identity.runId === 1) evidence.attempts[0].jobs = [job('build-and-test', 1, 6, {conclusion: 'cancelled'})];
+    return evidence;
+  }};
+  const rows = await collectRows(cancelled, {repository: 'o/r', heads: 3, cutoff: at(9)});
+  assert.deepEqual(rows.map(entry => [entry.runId, entry.superseded]), [[1, true], [3, false], [4, false]]);
 });

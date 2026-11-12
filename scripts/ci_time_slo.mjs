@@ -63,9 +63,13 @@ export function attemptRow({run, attempt, changes, buildLog, prRunStarts}) {
   const longest = timed.reduce((best, entry) => (!best || entry.duration > best.duration ? entry : best), null);
   const start = attempt.metadata.run_started_at;
   const end = timed.map(entry => entry.job.completed_at).sort().at(-1);
-  const ends = fresh.map(job => job.completed_at).filter(Boolean).sort();
-  const superseded = attempt.metadata.conclusion === 'cancelled' && ends.length > 0 &&
-    prRunStarts.some(created => time(created) > time(start) && time(created) <= time(ends.at(-1)));
+  // As in the Python report: a failure or timeout names the cause, so only a cancel-only attempt is superseded.
+  const failed = fresh.some(job => job.conclusion === 'timed_out' ||
+    (job.conclusion === 'failure' && base(job.name) !== 'gate'));
+  // A run cancelled before any job started ends at its own update time.
+  const lastEnd = fresh.map(job => job.completed_at).filter(Boolean).sort().at(-1) ?? attempt.metadata.updated_at;
+  const superseded = !failed && attempt.metadata.conclusion === 'cancelled' && Boolean(lastEnd) &&
+    prRunStarts.some(created => time(created) > time(start) && time(created) <= time(lastEnd));
   const exempt = exemptFromChanges(changes) ||
     timed.some(entry => EXEMPT_JOBS.has(base(entry.job.name)));
   const queues = fresh.filter(job => MACOS_JOBS.has(base(job.name)) && job.runner_id > 0)
@@ -88,11 +92,15 @@ const distribution = values => {
 const counts = values => Object.fromEntries([...values.reduce((map, value) =>
   map.set(value, (map.get(value) ?? 0) + 1), new Map())].sort(([a], [b]) => a.localeCompare(b)));
 
-export function summarize(rows, limits = DEFAULT_LIMITS) {
+export function summarize(rows, limits = DEFAULT_LIMITS, {minimumHeads = 1} = {}) {
   const included = rows.filter(row => row.ordinary && !row.superseded);
   const execution = distribution(included.map(row => row.execution));
   const total = distribution(included.map(row => row.total));
-  if (!execution || !total) throw new Error('No ordinary attempt has a measured execution and total');
+  // Fewer measured attempts than half the window cannot open or close the issue.
+  const needed = Math.max(1, Math.ceil(minimumHeads / 2));
+  if (!execution || !total || execution.n < needed || total.n < needed) {
+    throw new Error(`Only ${execution?.n ?? 0} measured ordinary attempts; ${needed} needed`);
+  }
   return {limits, attempts: included.length, heads: new Set(included.map(row => row.head)).size,
     missing: included.filter(row => row.execution === null || row.total === null).length,
     filesUnknown: included.filter(row => !row.filesKnown).length,
@@ -146,14 +154,18 @@ async function changesFor(compare, repository, run) {
       const files = result.files ?? [];
       return {files: files.map(entry => entry.filename), workflowPatches: files
         .filter(entry => entry.filename.startsWith('.github/workflows/')).map(entry => entry.patch ?? '').join('')};
-    } catch { /* try the next base */ }
+    } catch (error) {
+      // Only a missing base falls through; any other failure is unknown evidence.
+      if (!/HTTP 404|Not Found/.test(error?.message ?? '')) throw error;
+    }
   }
   return null;
 }
 
-export async function collectRows({get, getText, compare}, {repository, heads, cutoff}) {
+export async function collectRows({get, getText, compare, inventoryOf = collectRunInventory, readRun = readExactRun},
+  {repository, heads, cutoff}) {
   // Over-select so in-flight heads can be left out and still fill the window.
-  const inventory = await collectRunInventory(get, {repository, cutoff, limit: Math.min(100, heads + 10)});
+  const inventory = await inventoryOf(get, {repository, cutoff, limit: Math.min(100, heads + 10)});
   const finished = inventory.heads.filter(head => head.runs.every(run => run.status === 'completed')).slice(0, heads);
   if (finished.length < heads) throw new Error(`Only ${finished.length} finished heads of ${heads}`);
   const prRunStarts = new Map();
@@ -164,7 +176,7 @@ export async function collectRows({get, getText, compare}, {repository, heads, c
   for (const head of finished) {
     for (const entry of head.runs) {
       const prNumber = entry.prNumbers.length === 1 ? entry.prNumbers[0] : null;
-      const evidence = await readExactRun(get, {repository, runId: entry.runId, headSha: head.headSha, prNumber});
+      const evidence = await readRun(get, {repository, runId: entry.runId, headSha: head.headSha, prNumber});
       const changes = await changesFor(compare, repository, evidence.run);
       const starts = entry.prNumbers.flatMap(number => prRunStarts.get(number) ?? []);
       for (const attempt of evidence.attempts) {
@@ -181,9 +193,21 @@ export async function collectRows({get, getText, compare}, {repository, heads, c
   return rows;
 }
 
+// The collectors reject a run that changes while they read it, which a busy queue makes likely.
+export async function collectRowsWithRetry(dependencies, options, {tries = 3, wait = ms => new Promise(done => setTimeout(done, ms))} = {}) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await collectRows(dependencies, options);
+    } catch (error) {
+      if (attempt >= tries) throw error;
+      await wait(30_000);
+    }
+  }
+}
+
 const execFileAsync = promisify(execFile);
 async function gh(args) {
-  const {stdout} = await execFileAsync('gh', args, {encoding: 'utf8', timeout: 60_000, maxBuffer: 4 * 1024 * 1024});
+  const {stdout} = await execFileAsync('gh', args, {encoding: 'utf8', timeout: 60_000, maxBuffer: 16 * 1024 * 1024});
   return stdout;
 }
 
@@ -218,9 +242,11 @@ export function sloArguments(args, env = {}) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const options = sloArguments(process.argv.slice(2), process.env);
-    const cutoff = new Date(Date.now() - 1000).toISOString().replace(/\.\d{3}Z$/, 'Z');
-    const rows = await collectRows({get: ghJSON, getText: ghText, compare: ghCompare}, {repository: options.repository, heads: options.heads, cutoff});
-    const summary = summarize(rows, options.limits);
+    // An hour back, most runs have finished and stop changing between the collectors' two reads.
+    const cutoff = new Date(Date.now() - 3_600_000).toISOString().replace(/\.\d{3}Z$/, 'Z');
+    const rows = await collectRowsWithRetry({get: ghJSON, getText: ghText, compare: ghCompare},
+      {repository: options.repository, heads: options.heads, cutoff});
+    const summary = summarize(rows, options.limits, {minimumHeads: options.heads});
     const body = issueBody(summary, {headsRequested: options.heads, runUrl: options.runUrl});
     process.stdout.write(`${body}\n`);
     if (!options.dryRun) {

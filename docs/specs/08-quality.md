@@ -3399,7 +3399,10 @@ interruption and Xcode-pin heads exempt, superseded attempts out) and keeps one 
 with macOS queue, cache and coverage diagnostics; it closes the issue once both are within.
 It reads run metadata, compare file lists and build-and-test logs only. Dispatch inputs
 lower the limits to prove the alarm; anything but a plain positive integer is refused, and
-an unreadable history fails the job (D638). Run `node --test scripts/ci_time_slo.test.mjs`.
+a history that is unreadable, still changing after three tries, or has fewer measured
+ordinary attempts than half the window fails the job instead of opening or closing the
+issue. Heads count from an hour back, so finished runs stop changing between reads, and a
+failed or timed-out attempt stays in the p95 even when a newer run cancelled it (D638). Run `node --test scripts/ci_time_slo.test.mjs`.
 Pull requests run the interruption controls
 only when one of their behavior files changes: `INTERRUPTION_CONTROL_FILES` no
 longer lists the workflow, the Makefile or the selector, and the nightly run still
