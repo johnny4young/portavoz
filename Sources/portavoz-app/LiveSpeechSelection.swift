@@ -11,16 +11,10 @@ enum LiveSpeechSelection: String, CaseIterable {
     case appleSpeech
 
     static let meetingKey = "meetingLiveSpeechEngine"
-    static let dictationKey = "dictationLiveSpeechEngine"
-    static let dictationDefault = Self.parakeetUltra
 
     static func meeting(defaults: UserDefaults = .standard) -> Self {
         let selection = Self(rawValue: defaults.string(forKey: meetingKey) ?? "") ?? .parakeet
         return selection == .parakeetUltra ? .parakeet : selection
-    }
-
-    static func dictation(defaults: UserDefaults = .standard) -> Self {
-        Self(rawValue: defaults.string(forKey: dictationKey) ?? "") ?? dictationDefault
     }
 
     init(checkpoint: ParakeetCheckpoint) {
@@ -47,26 +41,6 @@ enum LiveSpeechPurpose {
         case .dictation:
             let value = defaults.string(forKey: DictationController.languageKey)
             return ["en", "es"].contains(value) ? value : nil
-        }
-    }
-}
-
-enum LiveSpeechFailureMessage {
-    static func dictation(_ error: Error) -> String {
-        guard let readiness = error as? SpeechAnalyzerLiveReadiness else {
-            return L10n.format("Dictation failed: %@", error.localizedDescription)
-        }
-        switch readiness {
-        case .languageRequired:
-            return L10n.text("Choose English or Spanish for Apple Speech in Dictation settings.")
-        case .unavailable:
-            return L10n.text("Apple Speech is unavailable. Choose Parakeet in Dictation settings.")
-        case .unsupported:
-            return L10n.text("Apple Speech does not support this language. Choose Parakeet in Dictation settings.")
-        case .needsDownload:
-            return L10n.text("Prepare the Apple Speech language asset in Dictation settings first.")
-        case .ready:
-            return L10n.text("Apple Speech could not start. Try Parakeet in Dictation settings.")
         }
     }
 }
