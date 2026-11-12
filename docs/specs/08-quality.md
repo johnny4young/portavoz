@@ -3391,7 +3391,16 @@ keeps one issue open while the newest verified run on `main` is older than 48
 hours and closes it once fresh evidence returns. Only a scheduled or dispatched
 run from this repository counts as verified, aged from its latest attempt, and
 only issues the workflow opened are reused. An unreadable API fails that job
-instead of reading as healthy (D615). Pull requests run the interruption controls
+instead of reading as healthy (D615). `ci-time-slo.yml` runs daily at 06:17 UTC and by
+dispatch: `scripts/ci_time_slo.mjs` measures the newest 20 finished pull request heads like
+`ci_time_report.py` (longest fresh blocking job, attempt start to the last blocking end,
+interruption and Xcode-pin heads exempt, superseded attempts out) and keeps one issue,
+`CI time is over its SLO`, open while execution p95 is over 600 s or total p95 over 1200 s,
+with macOS queue, cache and coverage diagnostics; it closes the issue once both are within.
+It reads run metadata, compare file lists and build-and-test logs only. Dispatch inputs
+lower the limits to prove the alarm; anything but a plain positive integer is refused, and
+an unreadable history fails the job (D638). Run `node --test scripts/ci_time_slo.test.mjs`.
+Pull requests run the interruption controls
 only when one of their behavior files changes: `INTERRUPTION_CONTROL_FILES` no
 longer lists the workflow, the Makefile or the selector, and the nightly run still
 covers those owners. The

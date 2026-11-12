@@ -1,0 +1,51 @@
+name: CI time SLO
+
+# Reads metadata and logs of past runs only: no head is checked out and no artifact is downloaded.
+on:
+  schedule:
+    # After the nightly UI run, outside pull request hours.
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+    inputs:
+      execution_limit_seconds:
+        description: Execution p95 limit in seconds (forces the alarm when lowered)
+        type: string
+        default: "600"
+      total_limit_seconds:
+        description: Total p95 limit in seconds
+        type: string
+        default: "1200"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-time-slo
+  cancel-in-progress: false
+
+jobs:
+  slo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+          check-latest: true
+          package-manager-cache: false
+      - name: Report the newest pull request heads against the SLO
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SLO_EXECUTION_SECONDS: ${{ inputs.execution_limit_seconds }}
+          SLO_TOTAL_SECONDS: ${{ inputs.total_limit_seconds }}
+        run: node scripts/ci_time_slo.mjs --repository "$REPOSITORY" --run-url "$RUN_URL" --heads 20
