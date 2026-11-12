@@ -46,9 +46,7 @@ enum TextInserter {
         _ text: String, to pasteboard: NSPasteboard = .general,
         writeString: (NSPasteboard, String) -> Bool = { $0.setString($1, forType: .string) }
     ) -> Bool {
-        guard !text.isEmpty else { return false }
-        pasteboard.declareTypes([.string], owner: nil)
-        return writeString(pasteboard, text)
+        PasteboardCopy.copy(text, to: pasteboard, writeString: writeString)
     }
 
     @MainActor

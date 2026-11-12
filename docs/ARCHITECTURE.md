@@ -1324,7 +1324,7 @@ corrections on, a dictation that parses as a bilingual command naming text in th
 span edits it in place through Accessibility instead of pasting, after confirming
 the same field still holds it.
 An optional translation target (English or Spanish) runs after the text mode through
-`TranslateDictation` and the on-device Translation framework with installed languages
+`TranslateText` and the on-device Translation framework with installed languages
 only; any failure pastes the untranslated text with a notice.
 A verified "change X to Y" can add X → Y to the text replacements, only from the
 strip's explicit "Always write" button; Settings groups replacements that share a
@@ -5849,7 +5849,9 @@ cases it defers. The complete English catalogue runs every night on
 input. A nightly shard succeeds only with
 verified evidence; a hosted-automation advisory fails the run. An unverified or
 cancelled night opens or updates one issue, and `ui-nightly-watch.yml` keeps
-another open while verified evidence on `main` is older than 48 hours. A push run
+another open while verified evidence on `main` is older than 48 hours. `ci-time-slo.yml`
+keeps one issue open each day while the newest 20 pull request heads miss the
+execution or total p95. A push run
 on `main` ends with an `alert` job that keeps one issue open while the newest push
 run is red, and the watch repairs that issue when the job could not.
 Pull requests run the interruption controls only when one of their behavior

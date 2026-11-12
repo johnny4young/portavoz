@@ -38,8 +38,8 @@ public enum SpokenLanguageDetector {
             ?? canonicalLanguageCode(fallback)
     }
 
-    /// English or Spanish for one short dictation; nil when it is too short or too mixed to tell.
-    public static func dictationLanguage(in text: String) -> String? {
+    /// English or Spanish for one short text; nil when it is too short or too mixed to tell.
+    public static func shortTextLanguage(in text: String) -> String? {
         guard text.unicodeScalars.filter({ letters.contains($0) }).count >= 8 else { return nil }
         let recognizer = NLLanguageRecognizer()
         recognizer.languageConstraints = [.english, .spanish]
