@@ -4,6 +4,15 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## 1.5.1 — November 12, 2026
+
+**Lighter on your Mac.**
+
+- **🔒 Keep speech models ready** — shared Parakeet models stay on disk while a meeting, dictation or command-line transcription still uses them.
+- **🪶 Lighter model checks** — verifying a downloaded model no longer loads the whole file into memory.
+- **🪶 Refine stays light on long recordings** — checking a long audio file before Refine no longer holds the whole file in memory.
+- **📦 A lighter download** — Portavoz now ships without its debug symbols, so downloads and updates are smaller.
+
 ## 1.5.0 — November 5, 2026
 
 **Download a model once.**
