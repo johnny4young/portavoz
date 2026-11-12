@@ -1366,8 +1366,9 @@ read these tables.
 Its migrations live in `Sources/StorageKit/Schema/Legacy` and are frozen with
 their limits as literals, so the tables they create never change with the app's
 dictation types.
-Beside them, a SQL-only legacy facade can expire or delete that data on today's
-horizons without touching meeting notes; nothing calls it yet.
+Beside them, a SQL-only legacy facade can expire that data on today's horizons,
+whatever the consent rows say, or delete it, without touching meeting notes or
+egress receipts; nothing calls it yet.
 The one in-process destination is the practice field shown in onboarding and
 Settings: composition swaps in its destination only while that field's window
 is key and the app is active, so practice never borrows the clipboard, posts a

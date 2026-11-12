@@ -13,8 +13,8 @@ public struct LegacyDictationRows: Equatable, Sendable {
 }
 
 /// Dictation data an existing library keeps after the dictation code is gone. It is read and
-/// written with SQL only, keeps today's horizons, and never touches meeting notes: deleting a
-/// dictation cascades only its note link.
+/// written with SQL only, keeps today's horizons whatever the consent rows say, and never
+/// touches meeting notes: deleting a dictation cascades only its note link.
 extension MeetingStore {
     // Today's horizons, frozen: history follows the stored 7/30/90-day choice, daily stats keep
     // a year, and the retry dedupe keeps two days. A shorter horizon is a policy change.
@@ -26,7 +26,10 @@ extension MeetingStore {
     public func purgeExpiredLegacyDictationData(
         now: Date, calendar: Calendar = .current
     ) async throws -> LegacyDictationRows {
-        let oldestDate = calendar.date(byAdding: .day, value: -Self.legacyStatsRetentionDays, to: now) ?? now
+        // Falling back to today would delete a year of stats, so an unknown horizon fails instead.
+        guard let oldestDate = calendar.date(byAdding: .day, value: -Self.legacyStatsRetentionDays, to: now) else {
+            throw StorageError.legacyDictationHorizonUnavailable
+        }
         let oldestDay = Self.legacyStatsDay(of: oldestDate, calendar: calendar)
         let countedCutoff = now.addingTimeInterval(-Self.legacyCountedRetention)
         return try await database.write { database in
@@ -55,9 +58,10 @@ extension MeetingStore {
         }
     }
 
-    /// Deletes every legacy dictation row at once. A logical delete: WAL pages and backups keep
-    /// their copies until SQLite or the user replaces them. Advances the history generation, so
-    /// a dictation still finishing in an older build cannot repopulate it.
+    /// Deletes every legacy history and stats row at once; content-free egress receipts stay. A
+    /// logical delete: WAL pages and backups keep their copies until SQLite or the user replaces
+    /// them. Advances the history generation, so an older build still running cannot save into
+    /// history again; stats have no generation, and such a build with counting on can count again.
     @discardableResult
     public func deleteAllLegacyDictationData() async throws -> LegacyDictationRows {
         try await database.write { database in

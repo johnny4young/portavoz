@@ -21,11 +21,12 @@ final class LegacyDictationRetentionTests: XCTestCase {
             try await store.database.write { db in
                 try db.execute(sql: "UPDATE dictationHistoryPolicy SET retentionDays = ?", arguments: [days])
             }
-            let kept = try await insertDictation(store, at: now.addingTimeInterval(-Double(days) * 86_400 + 60))
+            // Exactly at the cutoff stays: only older rows go, as today.
+            let kept = try await insertDictation(store, at: now.addingTimeInterval(-Double(days) * 86_400))
             _ = try await insertDictation(store, at: now.addingTimeInterval(-Double(days) * 86_400 - 60))
             try await insertStatsDay(store, LegacyDictationRetentionTests.day(daysBefore: 365, from: now, calendar))
             try await insertStatsDay(store, LegacyDictationRetentionTests.day(daysBefore: 366, from: now, calendar))
-            try await insertCounted(store, at: now.addingTimeInterval(-2 * 86_400 + 60))
+            try await insertCounted(store, at: now.addingTimeInterval(-2 * 86_400))
             try await insertCounted(store, at: now.addingTimeInterval(-2 * 86_400 - 60))
 
             let removed = try await store.purgeExpiredLegacyDictationData(now: now, calendar: calendar)
@@ -36,6 +37,32 @@ final class LegacyDictationRetentionTests: XCTestCase {
             let ids = try await store.database.read { try String.fetchAll($0, sql: "SELECT id FROM dictationRecord") }
             XCTAssertEqual(ids, [kept], "\(days)")
         }
+    }
+
+    func testTheStatsYearCountsLocalDaysAcrossDaylightSaving() async throws {
+        // 00:30 EDT on 13 Mar 2028; 365 local days back is 14 Mar 2027, still EST. Counting
+        // 365 x 24 h instead would land on the 13th and keep a day that has expired.
+        var newYork = Calendar(identifier: .gregorian)
+        newYork.timeZone = try XCTUnwrap(TimeZone(identifier: "America/New_York"))
+        let now = try XCTUnwrap(ISO8601DateFormatter().date(from: "2028-03-13T04:30:00Z"))
+        let store = try MeetingStore.inMemory()
+        try await insertStatsDay(store, "2027-03-14")
+        try await insertStatsDay(store, "2027-03-13")
+
+        try await store.purgeExpiredLegacyDictationData(now: now, calendar: newYork)
+
+        let days = try await store.database.read { try String.fetchAll($0, sql: "SELECT day FROM dictationStatsDay") }
+        XCTAssertEqual(days, ["2027-03-14"])
+    }
+
+    func testPurgeExpiresStatsEvenWithCountingTurnedOff() async throws {
+        let store = try MeetingStore.inMemory()
+        try await store.database.write { db in try db.execute(sql: "UPDATE dictationStatsPolicy SET isEnabled = 0") }
+        try await insertStatsDay(store, LegacyDictationRetentionTests.day(daysBefore: 366, from: now, calendar))
+
+        let removed = try await store.purgeExpiredLegacyDictationData(now: now, calendar: calendar)
+
+        XCTAssertEqual(removed.statsDays, 1, "nothing shows these totals once the dictation code is gone")
     }
 
     func testPurgeIsIdempotentAndKeepsCopiedNotes() async throws {
