@@ -2,8 +2,8 @@ import Foundation
 import TranscriptionKit
 
 /// This is a live-lane choice, not a replacement for the durable batch model.
-/// Meetings default to Parakeet v3. Dictation defaults to Ultra (D613), which
-/// falls back to v3 until the person downloads it.
+/// Meetings default to Parakeet v3; dictation's choice and its Ultra default (D613)
+/// live in LiveSpeechSelection+Dictation.swift.
 enum LiveSpeechSelection: String, CaseIterable {
     case parakeet
     /// Dictation only; meetings keep v3.

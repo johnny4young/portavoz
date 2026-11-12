@@ -21,6 +21,20 @@ final class PasteboardCopyTests: XCTestCase {
         XCTAssertEqual(board.string(forType: .string), "/usr/local/bin/portavoz")
     }
 
+    func testCopyReplacesRichContentsOfOneItem() async {
+        let board = NSPasteboard(name: .init("app.portavoz.pasteboard-copy-test.\(UUID().uuidString)"))
+        defer { board.releaseGlobally() }
+        let item = NSPasteboardItem()
+        item.setString("Original café", forType: .string)
+        item.setData(Data("{\\rtf1 Original café}".utf8), forType: .rtf)
+        XCTAssertTrue(board.writeObjects([item]))
+
+        XCTAssertTrue(PasteboardCopy.copy("claude mcp add portavoz", to: board))
+
+        XCTAssertEqual(board.string(forType: .string), "claude mcp add portavoz")
+        XCTAssertNil(board.data(forType: .rtf))
+    }
+
     func testEmptyTextAndAFailedWriteReportFailure() async {
         let board = NSPasteboard(name: .init("app.portavoz.pasteboard-copy-test.\(UUID().uuidString)"))
         defer { board.releaseGlobally() }
