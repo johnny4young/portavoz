@@ -6754,10 +6754,10 @@ both scripts. Swift and legacy tooling gates remain authoritative until
 equivalent replacements are validated; local hygiene alone is not full tooling
 or p95 qualification.
 
-Hygiene runs a Node dictation ratchet: a checked-in baseline pins every file
-that mentions dictation with an exact count that may only go down, `Sources/`
-may not use Carbon, Accessibility trust, event taps, global hotkeys or HID
-access, and the `DictationOwnership` importer and Info.plist key that let
+Hygiene runs a Node dictation ratchet: a checked-in baseline pins every tracked
+file that mentions dictation, in English or Spanish, with an exact occurrence
+count that may only go down, `Sources/` may not use Carbon, Accessibility, event
+taps or posting, global hotkeys or HID access, and the `DictationOwnership` importer and Info.plist key that let
 Secreteo take ownership from a 1.x install are pinned exactly.
 
 The read-only Node CI inventory command selects heads at a fixed run-creation

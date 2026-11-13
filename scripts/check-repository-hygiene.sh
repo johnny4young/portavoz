@@ -5,9 +5,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 node --test scripts/ci_time_*.test.mjs scripts/repository_hygiene.test.mjs scripts/dictation_ratchet.test.mjs
-node scripts/dictation_ratchet.mjs
 
 failures=0
+
+node scripts/dictation_ratchet.mjs || failures=1
 
 forbidden_tracked='^(\.agents|\.claude|\.codex|\.design-sync|\.planning|\.tickets|plans|tickets|docs/plans|docs/tickets|artifacts|screenshots|test-results)/|^docs/(ROADMAP\.md|refactor-20260714\.md|STRATEGY-20260716\.md)$|(^|/)(DerivedData|xcuserdata)/|\.xcodeproj/|\.xcresult/|\.profraw$|\.profdata$|\.xcactivitylog$'
 tracked_forbidden="$(git ls-files | grep -E "$forbidden_tracked" || true)"

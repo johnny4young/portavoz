@@ -567,6 +567,9 @@ gh workflow run update-cask.yml -f tag=v<version>      # bumps johnny4young/home
 - **Site kicker**: point both language spans of `release-kicker` in
   `site/index.html` at the new version and title. Hygiene fails while it names
   a version other than the top release heading in `CHANGELOG.md`.
+- **Dictation ratchet**: the 2.0 README and site edits remove dictation copy, so
+  hygiene fails until `fnm exec -- node scripts/dictation_ratchet.mjs --write`
+  lowers `scripts/dictation_ratchet_baseline.json` in the same commit.
 
 ### Title format — keep it consistent
 
