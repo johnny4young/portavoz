@@ -72,3 +72,7 @@ for (const failure of [false, true]) test(`legacy runner ${failure ? 'propagates
     if (!failure) assert.equal(calls.at(-1), '-m unittest Tests.Tooling.test_meeting_detail_performance');
   } finally { rmSync(dir, {recursive: true, force: true}); }
 });
+test('hygiene runs the dictation ratchet and its tests', () => {
+  assert.match(hygiene, /^node --test .*scripts\/dictation_ratchet\.test\.mjs$/m);
+  assert.match(hygiene, /^node scripts\/dictation_ratchet\.mjs$/m);
+});

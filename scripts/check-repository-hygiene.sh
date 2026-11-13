@@ -4,7 +4,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-node --test scripts/ci_time_*.test.mjs scripts/repository_hygiene.test.mjs
+node --test scripts/ci_time_*.test.mjs scripts/repository_hygiene.test.mjs scripts/dictation_ratchet.test.mjs
+node scripts/dictation_ratchet.mjs
 
 failures=0
 

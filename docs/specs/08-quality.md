@@ -53,6 +53,23 @@ in the `repository-hygiene` CI job and in release reliability validation. No
 existing check is optional; a local hygiene pass alone is not full tooling
 qualification. No npm packages or network requests are needed.
 
+Hygiene also runs `scripts/dictation_ratchet.mjs`, which keeps dictation from
+returning. `scripts/dictation_ratchet_baseline.json` pins every tracked or
+untracked, non-ignored file whose path or lines match `dictat` (case-insensitive)
+with its exact count: matching lines plus one for a matching path. A new file or
+a higher count fails; a lower count or a vanished file also fails until the author
+lowers the baseline with `--write`. `CHANGELOG.md`, `docs/DECISIONS.md`,
+`docs/release-announcements.md` and the ratchet's own files are excluded. In
+`Sources/` it rejects `import Carbon`, `AXIsProcessTrusted`,
+`CGEvent.tapCreate`, `RegisterEventHotKey`, `addGlobalMonitorForEvents` and
+`IOHIDRequestAccess`. It pins the leftovers that let Secreteo take ownership from
+a 1.x install: `LegacyDictationOwnershipRelease.swift` is the only `Sources/`
+importer of `DictationOwnership`, `Package.swift` keeps that `secreteo`
+product, and `project.yml` and `scripts/make-app.sh` keep the
+`DictationOwnershipProtocol` Info.plist key. It fails on an empty file list or a
+missing or empty baseline. `scripts/dictation_ratchet.test.mjs` covers each case
+on temporary fixture trees.
+
 Confirmed Topic memory has one real-app journey for current decisions, first
 discussion, decision conflicts and changes since a selected meeting. It retains
 each exact result, source label, screenshot and playback seek assertion, but
