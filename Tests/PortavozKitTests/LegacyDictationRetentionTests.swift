@@ -154,16 +154,108 @@ final class LegacyDictationRetentionTests: XCTestCase {
         XCTAssertEqual(generation, 1)
     }
 
-    private func insertDictation(_ store: MeetingStore, at createdAt: Date) async throws -> String {
+    func testDeleteAllKeepsCopiedNotesAndRemovesOnlyTheirLinks() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Weekly", startedAt: now, endedAt: now.addingTimeInterval(1_800))
+        try await store.save(meeting)
+        let note = ContextItem(meetingID: meeting.id, kind: .note, content: "Se queda.", timestamp: 60)
+        let dictation = try await insertDictation(store, at: now)
+        try await store.database.write { [now] db in
+            try db.execute(
+                sql: """
+                    INSERT INTO contextItem (id, meetingID, kind, content, timestamp, createdAt, updatedAt)
+                    VALUES (?, ?, 'note', ?, 60, ?, ?)
+                    """,
+                arguments: [note.id.uuidString, meeting.id.rawValue.uuidString, note.content, now, now])
+            try db.execute(
+                sql: "INSERT INTO dictationMeetingNote (dictationID, meetingID, contextItemID, createdAt) VALUES (?, ?, ?, ?)",
+                arguments: [dictation, meeting.id.rawValue.uuidString, note.id.uuidString, now])
+        }
+
+        try await store.deleteAllLegacyDictationData()
+        let notes = try await store.contextItems(for: meeting.id).filter { $0.kind == .note }
+
+        XCTAssertEqual(notes.map(\.content), ["Se queda."], "the note belongs to the meeting")
+        try await store.database.read { db in
+            XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM dictationMeetingNote"), 0)
+            XCTAssertTrue(try Row.fetchAll(db, sql: "PRAGMA foreign_key_check").isEmpty)
+        }
+    }
+
+    // The frozen migrations seed every consent off; the purge horizon starts at 30 days.
+    func testFrozenMigrationsSeedEveryDictationConsentOff() throws {
+        let database = try DatabaseQueue()
+        try StorageSchema.migrator().migrate(database, upTo: "v54")
+        try database.read { db in
+            let policy = try XCTUnwrap(try Row.fetchOne(db, sql: "SELECT * FROM dictationHistoryPolicy"))
+            XCTAssertEqual(policy["isEnabled"], false)
+            XCTAssertEqual(policy["keepsOriginal"], false)
+            XCTAssertEqual(policy["retentionDays"], 30)
+            XCTAssertEqual(policy["generation"], 0)
+            XCTAssertEqual(try Set(db.columns(in: "dictationRecord").map(\.name)), [
+                "id", "createdAt", "durationMs", "text", "originalText", "mode", "language",
+                "engine", "applicationName", "applicationBundleID", "delivery"
+            ])
+        }
+        try database.write { try $0.execute(sql: "UPDATE dictationHistoryPolicy SET isEnabled = 1 WHERE id = 1") }
+        try StorageSchema.migrator().migrate(database, upTo: "v58")
+        try database.read { db in
+            let policy = try XCTUnwrap(try Row.fetchOne(db, sql: "SELECT * FROM dictationHistoryPolicy"))
+            XCTAssertEqual(policy["isEnabled"], true, "v56 keeps the history consent")
+            XCTAssertEqual(policy["exposesToAgents"], false)
+            XCTAssertEqual(try Bool.fetchOne(db, sql: "SELECT isEnabled FROM dictationStatsPolicy WHERE id = 1"), false)
+        }
+    }
+
+    func testDeletedDictationTextLeavesTheSearchIndex() async throws {
+        let store = try MeetingStore.inMemory()
+        _ = try await insertDictation(store, at: now, text: "Zanahoriaxq secreta.")
+
+        try await store.deleteAllLegacyDictationData()
+
+        let indexed = try await indexHolds("zanahoriaxq", in: store)
+        XCTAssertFalse(indexed, "delete-all must not leave dictated words in the FTS5 segments")
+    }
+
+    func testPurgedDictationTextLeavesTheSearchIndexAndKeptRowsStaySearchable() async throws {
+        let store = try MeetingStore.inMemory()
+        _ = try await insertDictation(store, at: now.addingTimeInterval(-60 * 86_400), text: "Zanahoriaxq secreta.")
+        let kept = try await insertDictation(store, at: now, text: "Berenjenaqz reciente.")
+
+        try await store.purgeExpiredLegacyDictationData(now: now, calendar: calendar)
+
+        let purgedIndexed = try await indexHolds("zanahoriaxq", in: store)
+        let found = try await store.database.read { db in
+            try String.fetchAll(db, sql: """
+                SELECT dictationRecord.id FROM dictationRecordSearch
+                JOIN dictationRecord ON dictationRecord.rowid = dictationRecordSearch.rowid
+                WHERE dictationRecordSearch MATCH '"berenjenaqz"'
+                """)
+        }
+        XCTAssertFalse(purgedIndexed, "a purge must not leave expired words in the FTS5 segments")
+        XCTAssertEqual(found, [kept])
+    }
+
+    private func indexHolds(_ word: String, in store: MeetingStore) async throws -> Bool {
+        try await store.database.read { db in
+            try Bool.fetchOne(
+                db, sql: "SELECT EXISTS(SELECT 1 FROM dictationRecordSearch_data WHERE instr(block, CAST(? AS BLOB)) > 0)",
+                arguments: [word]) ?? true
+        }
+    }
+
+    private func insertDictation(
+        _ store: MeetingStore, at createdAt: Date, text: String = "Hola."
+    ) async throws -> String {
         let id = UUID().uuidString
         try await store.database.write { db in
             try db.execute(
                 sql: """
                     INSERT INTO dictationRecord (
                         id, createdAt, durationMs, text, mode, engine, delivery)
-                    VALUES (?, ?, 1200, 'Hola.', 'literal', 'parakeet-v3', 'verified')
+                    VALUES (?, ?, 1200, ?, 'literal', 'parakeet-v3', 'verified')
                     """,
-                arguments: [id, createdAt])
+                arguments: [id, createdAt, text])
         }
         return id
     }

@@ -21,6 +21,9 @@ extension ArchitectureDependencyTests {
         let writes = try NSRegularExpression(pattern: #"(?i)\b(?:DELETE\s+FROM|UPDATE|INSERT\s+INTO)\s+(\w+)"#)
         let targets = Set(writes.matches(in: retention, range: NSRange(retention.startIndex..., in: retention))
             .compactMap { Range($0.range(at: 1), in: retention).map { String(retention[$0]) } })
-        XCTAssertEqual(targets, ["dictationRecord", "dictationStatsDay", "dictationStatsCounted", "dictationHistoryPolicy"])
+        XCTAssertEqual(targets, [
+            "dictationRecord", "dictationRecordSearch", "dictationStatsDay", "dictationStatsCounted",
+            "dictationHistoryPolicy"
+        ])
     }
 }

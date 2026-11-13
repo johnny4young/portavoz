@@ -113,13 +113,23 @@ final class DictationPolishEgressTests: XCTestCase {
         try legacy.close()
 
         let store = try MeetingStore(databaseURL: url)
-        let found = try await store.dictationRecords(matching: DictationRecordFilter(query: "presupuesto"), limit: 10)
-        let links = try await store.dictationMeetingLinks(for: [dictationID])
+        let (found, links) = try await store.database.read { db in
+            let found = try String.fetchAll(db, sql: """
+                SELECT dictationRecord.id FROM dictationRecordSearch
+                JOIN dictationRecord ON dictationRecord.rowid = dictationRecordSearch.rowid
+                WHERE dictationRecordSearch MATCH '"presupuesto"'
+                """)
+            let links = try String.fetchAll(db, sql: """
+                SELECT meeting.title FROM dictationMeetingNote AS link
+                JOIN meeting ON meeting.id = link.meetingID WHERE link.dictationID = ?
+                """, arguments: [dictationID.rawValue.uuidString])
+            return (found, links)
+        }
         try await store.recordDataEgressEvent(polishEvent())
         let journal = try await store.globalDataEgressEvents()
 
-        XCTAssertEqual(found.map(\.id), [dictationID])
-        XCTAssertEqual(links[dictationID]?.map(\.title), ["Weekly"])
+        XCTAssertEqual(found, [dictationID.rawValue.uuidString])
+        XCTAssertEqual(links, ["Weekly"])
         XCTAssertEqual(journal.map(\.operation), [.askAnswerGeneration, .dictationPolish])
         try await store.database.write { db in
             XCTAssertNoThrow(try Self.insertDictation(id: DictationRecordID(), mode: "polish", at: now, in: db))
@@ -140,22 +150,6 @@ final class DictationPolishEgressTests: XCTestCase {
                 """, arguments: [UUID().uuidString, now]))
             XCTAssertTrue(try Row.fetchAll(db, sql: "PRAGMA foreign_key_check").isEmpty)
         }
-    }
-
-    func testHistoryRoundTripsAPolishedDictation() async throws {
-        let store = try MeetingStore.inMemory()
-        let policy = try await store.setDictationHistoryPolicy(
-            isEnabled: true, keepsOriginal: true, retentionDays: 30, at: now)
-        let record = DictationRecord(
-            id: DictationRecordID(), createdAt: now, duration: 3, text: "Mañana enviamos el informe.",
-            originalText: "eh mañana enviamos el informe", mode: .polish, language: "es", engine: "parakeet",
-            applicationName: "Slack", applicationBundleID: "com.tinyspeck.slackmacgap", delivery: .verified)
-
-        let outcome = try await store.recordDictation(record, admittedGeneration: policy.generation, at: now)
-        let saved = try await store.dictationRecords(limit: 10)
-
-        XCTAssertEqual(outcome, .saved)
-        XCTAssertEqual(saved, [record])
     }
 
     private func polishRequest(endpoint: URL) throws -> (URLRequest, DataEgressRequest) {
