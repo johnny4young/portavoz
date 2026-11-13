@@ -202,8 +202,8 @@ public-cell score objects, including the adapter damage. These adverse results
 remain evidence, not accepted quality.
 
 The current explicit producer contract (D559) exposes retained/stable token
-positions and terminal/error authority. Consumers commit only stable
-positions and replace/clear the mutable preview. Deterministic tests cover
+positions and terminal/error authority. The meeting consumer commits only
+stable positions and replaces/clears the mutable preview. Deterministic tests cover
 retirement, equal-time subwords/repetition, empty clears, EOF/failure, cancellation
 and job/meeting/channel isolation. They do not establish model quality,
 population accuracy or backend quiescence. Local matched

@@ -74,7 +74,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 13, 2026
 
-- **🎙️ Dictation moved to Secreteo** — global dictation is now its own app; your old dictation history stays on this Mac under its old horizons until you delete it in Settings › Your data.
+- **🎙️ Dictation moved to Secreteo** — global dictation is now its own app; your old dictation history stays on this Mac until its retention period ends, or until you delete it in Settings › Your data.
 
 ## November 8, 2026
 

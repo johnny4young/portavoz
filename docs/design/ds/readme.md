@@ -50,7 +50,7 @@ Brand personality: **serious but warm, technical without being cold, honest**. B
 
 No font binaries in the repo; the site loads **Fraunces, Instrument Sans, IBM Plex Mono from Google Fonts** — `tokens/fonts.css` keeps that CDN import (flagged: replace with self-hosted `@font-face` if files are provided). The app font is the system font (SF Pro on Macs); no file needed or shipped.
 
-- **Approved product directions** (from `explorations/UI Refresh Proposals.html`, all rounds approved): Aurora shell for the app (1a/4a) · lyrics-Spotify transcript as the central pattern (live + playback are the same component) · Spotify-style player (waveform = progress, voice-colored) · Settings with sidebar categories + privacy ledger (2a) · rich menu-bar panel (2b) · Insights with clear indicators + heatmap + ✦ findings (3a) · the four 6a features (⌘K, mirror mode, language bridge, first-listen onboarding — implementation spec in `explorations/6a-implementation-spec.md`).
+- **Approved product directions** (from `explorations/UI Refresh Proposals.html`; every round is approved except 4b, the dictation strip, which was withdrawn): Aurora shell for the app (1a/4a) · lyrics-Spotify transcript as the central pattern (live + playback are the same component) · Spotify-style player (waveform = progress, voice-colored) · Settings with sidebar categories + privacy ledger (2a) · rich menu-bar panel (2b) · Insights with clear indicators + heatmap + ✦ findings (3a) · the four 6a features (⌘K, mirror mode, language bridge, first-listen onboarding — implementation spec in `explorations/6a-implementation-spec.md`).
 
 ---
 

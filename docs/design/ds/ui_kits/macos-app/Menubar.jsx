@@ -83,7 +83,7 @@ function PVMenubar() {
         </div>
       </div>
 
-      <span style={{ marginTop: 18, font: "400 11px/1.6 var(--font-app)", color: "rgba(255,255,255,0.45)", maxWidth: 420, textAlign: "center" }}>El icono de la barra ES un mini-waveform vivo — reposo estático, rojo al grabar. El «in 1d 18h» de la próxima reunión vive al lado, clicable.</span>
+      <span style={{ marginTop: 18, font: "400 11px/1.6 var(--font-app)", color: "rgba(255,255,255,0.45)", maxWidth: 420, textAlign: "center" }}>The bar icon IS a live mini-waveform — static at rest, red while recording. The next meeting's "in 1d 18h" sits beside it and is clickable.</span>
     </div>
   );
 }
