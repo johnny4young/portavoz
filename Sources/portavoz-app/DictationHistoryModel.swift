@@ -63,12 +63,6 @@ final class DictationHistoryModel {
         filter = DictationRecordFilter(query: words)
     }
 
-    /// Shows only this dictation the next time the history loads.
-    func focus(on id: DictationRecordID) {
-        filter = DictationRecordFilter(recordID: id)
-        records = records.filter { $0.id == id }
-    }
-
     func loadMore() async {
         guard hasMore, let last = records.last else { return }
         let request = pageRequest

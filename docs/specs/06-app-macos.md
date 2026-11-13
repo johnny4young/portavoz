@@ -110,9 +110,7 @@ uses the production v45 FTS adapter and a delayed deterministic answerer;
 production samples the same Foundation Models/Ollama/MLX resolver as other
 manual Ask lanes without provider fallback.
 Ask has no Dictations source (D640): its picker offers Library, Meeting,
-Notes and Web. `DictationHistoryModel.focus(on:)` and the history's focus notice
-(`dictation-history-focus`, `dictation-history-focus-clear`) remain, but no app
-route opens them.
+Notes and Web.
 D390 adds an independent per-recording **Proactive** toggle and pause/resume
 control on every supported macOS version. `RecordingProactiveAssistModel` owns
 only ephemeral enablement, deduplication, throttle, and inert cards produced by

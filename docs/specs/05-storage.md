@@ -2188,9 +2188,6 @@ doubled inner quotes, requires every word and lets only the last one match as a
 prefix. FTS5 operators, column filters and `NEAR` typed by the user are matched
 as text; a query with no usable word returns nothing. `dictationApplications()`
 lists distinct application names for the filter menu.
-`DictationRecordFilter.recordID` narrows the list to one dictation
-(`DictationHistoryModel.focus(on:)`); no app route sets it since Ask stopped
-reading dictations.
 
 Measured once with 10,000 dictations (release build, M-series Mac): newest page
 p95 0.2 ms, single-word, prefix and application-plus-word searches p95 about
