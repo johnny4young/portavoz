@@ -14,7 +14,6 @@ enum Route: Hashable {
     case ask
     case insights
     case commitments(CommitmentRadarRouteFocus?)
-    case dictations
 }
 
 extension Route {
@@ -109,8 +108,6 @@ struct ContentView: View {
                         })
                 case .insights:
                     InsightsView(model: insightsModel, route: $route)
-                case .dictations:
-                    DictationHistoryView(model: services.dictationHistory, stats: services.dictationStats)
                 case .commitments(let focus):
                     CommitmentRadarView(
                         model: commitmentRadarModel,
@@ -212,6 +209,19 @@ struct ContentView: View {
             OnboardingView(onFinish: services.firstRun.finish)
                 .portavozLocalized()
                 .environment(services)
+                .tint(PVDesign.accent)
+        }
+        .task { await services.legacyDictation.claimNotice(in: firstRunHostID) }
+        .sheet(isPresented: Binding(
+            get: {
+                services.legacyDictation.presentsNotice(in: firstRunHostID)
+                    && !services.firstRun.isPresented(in: firstRunHostID)
+            },
+            set: { if !$0 { services.legacyDictation.dismissNotice() } }
+        )) {
+            DictationMovedNoticeSheet(
+                model: services.legacyDictation, dismiss: services.legacyDictation.dismissNotice)
+                .portavozLocalized()
                 .tint(PVDesign.accent)
         }
         .onChange(of: services.pendingRoute) { _, pending in

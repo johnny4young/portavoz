@@ -7,7 +7,7 @@ import XCTest
 @MainActor
 final class PortableSettingsObservationTests: XCTestCase {
     func testAudioCategoryKeepsShortcutNeutralLocalizationKey() async {
-        XCTAssertEqual(SettingsCategory.audio.subtitleKey, "Call-safe capture · global dictation")
+        XCTAssertEqual(SettingsCategory.audio.subtitleKey, "Microphone · call-safe capture")
     }
 
     func testTemporaryImportNotifiesMountedPreferenceObservers() async throws {
@@ -22,22 +22,22 @@ final class PortableSettingsObservationTests: XCTestCase {
         let suite = "settings-observation-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
-        defaults.setVolatileDomain(["dictationLanguage": "es"], forName: UserDefaults.argumentDomain)
+        defaults.setVolatileDomain(["titleTemplate": "{date}"], forName: UserDefaults.argumentDomain)
         let observed = expectation(description: "observer receives the approved effective value")
         observed.assertForOverFulfill = false
-        let observation = defaults.observe(\.dictationLanguage, options: [.new]) { _, change in
-            if let value = change.newValue, value == "en" { observed.fulfill() }
+        let observation = defaults.observe(\.titleTemplate, options: [.new]) { _, change in
+            if let value = change.newValue, value == "{title}" { observed.fulfill() }
         }
         defer { observation.invalidate() }
         let store = AppPortableSettingsStore(defaults: defaults, temporary: temporary)
-        let file = try PortableSettingsTransfer.export([.dictationLanguage: .text("en")])
+        let file = try PortableSettingsTransfer.export([.titleTemplate: .text("{title}")])
         let review = try PortableSettingsTransfer.review(file, current: store.snapshot())
         try store.apply(review, captureActive: false)
-        XCTAssertEqual(try store.snapshot()[.dictationLanguage], .text("en"))
+        XCTAssertEqual(try store.snapshot()[.titleTemplate], .text("{title}"))
         await fulfillment(of: [observed], timeout: 1)
     }
 }
 
 private extension UserDefaults {
-    @objc dynamic var dictationLanguage: String? { string(forKey: "dictationLanguage") }
+    @objc dynamic var titleTemplate: String? { string(forKey: "titleTemplate") }
 }

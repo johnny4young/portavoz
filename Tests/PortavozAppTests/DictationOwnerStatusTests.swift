@@ -269,20 +269,6 @@ struct DictationOwnerStatusTests {
         #expect(coordinator.state == .owned)
     }
 
-    @Test(arguments: [
-        (DictationAdmissionRefusal.dictationOff, PortavozAppIntentBridge.DictationRequestOutcome.dictationOff),
-        (.notOwner, .notDictationOwner),
-        (.unavailable(.ioError), .dictationUnavailable),
-        (.busy, .busy),
-        (.transferring, .busy),
-    ])
-    func anIntentSaysWhyItWasRefused(
-        _ example: (DictationAdmissionRefusal, PortavozAppIntentBridge.DictationRequestOutcome)
-    ) {
-        #expect(PortavozAppDelegate.dictationIntentOutcome(
-            for: .toggle, refusal: example.0, phase: .idle, hasPastableText: true) == example.1)
-    }
-
     @Test
     func aRefusedReinsertSaysWhyAndCanStillRunLater() async throws {
         let harness = DictationControllerHarness(text: "No borres estas notas.")

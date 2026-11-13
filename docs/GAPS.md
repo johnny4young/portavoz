@@ -91,6 +91,11 @@ does not establish UI latency or explain a full-suite duration limit.
 
 ### Global dictation capture and delivery qualification
 
+Portavoz 2.0 starts no dictation (D640): no action, menu, setting, onboarding step
+or trigger reaches the dictation code, which stays in the tree without callers
+until it is deleted. The dictation gaps in this list no longer gate Portavoz and
+leave it with that code; their field validation belongs to Secreteo.
+
 Microphone preparation now checks authorization before graph/model work, shares
 preferred-input resolution, distinguishes first-buffer readiness from an open
 stream and preserves native cleanup ownership (D543). Its deterministic
@@ -141,11 +146,9 @@ session-stream delivery and checks, not field pinning, and remain unverified.
 Model quality, Bluetooth transitions and the external-editor
 matrix require separate evidence; a synthetic caption fixture cannot establish
 those results. Missing Accessibility permission makes the separately selected
-native delivery gate unqualified, not proof that insertion works. Hosted
-unattended EN/ES UI qualification excludes the two TCC-owned receiver cases
-(D540); run `make test-ui-native-dictation` on an explicitly authorized
-disposable app and retain its actual receipt before claiming cross-process
-delivery.
+native delivery gate unqualified, not proof that insertion works. The
+permission-gated receiver lane (D540) left with the dictation UI tests in 2.0,
+so Portavoz makes no cross-process delivery claim.
 
 The shared native harness still has an open expected-modal positive-control
 counterexample. An attached synthetic alert accepted the exact Unicode text,
@@ -159,6 +162,9 @@ complete local UI qualification from separate native dictation journeys.
 
 ### Dictation coexistence with a real second app
 
+Portavoz 2.0 no longer starts the ownership coordinator, so it never claims
+dictation and Secreteo owns it alone; a Mac whose last owner was Portavoz 1.x still
+records it as owner until the user moves dictation in Secreteo.
 `DictationCoexistenceTests` proves the ownership rows with a second process, not a
 second app (D629). Still needing an installed Secreteo Dev build, with the physical
 test reserved: both apps launching at login, holding Fn and the mouse trigger with
@@ -189,8 +195,9 @@ percent, although the store reports the other app's progress.
 
 ### Main-thread stalls in hosted UI journeys
 
-`DictationPracticeUITests` failed intermittently at a 5 s wait for the delivered text,
-now 90 s because the journey proves delivery rather than latency.
+`DictationPracticeUITests`, deleted with the dictation entry points in 2.0, failed
+intermittently at a 5 s wait for the delivered text, later 90 s because the journey
+proved delivery rather than latency.
 Five hosted probes of 12 to 30 iterations measured the second click to the field: timers
 off the main thread fire on time at 0.26 s, while the main queue waits a median of about
 1.5 s, about 20 s at the 90th percentile and up to 60 s. Samples show the main thread
@@ -244,14 +251,6 @@ existing cancel-during-delivery contract: the posted paste may still land, but
 the verified or unverified notice and its Copy are discarded and the receipt
 records `cancelled`. Fencing input during readback would change that released
 contract and needs an explicit product decision plus native evidence.
-
-### Dictation text mode and settings transfer
-
-D558 keeps the dictation text mode and application profiles out of the
-portable-settings allowlist. A fresh installation initializes Literal at
-launch, so importing settings with filler removal and replacements from another
-Mac leaves them inactive until the user chooses Clean. Carrying the mode in
-settings transfer would widen the allowlist and needs an explicit decision.
 
 ### Rewrite selection in real applications
 
@@ -375,7 +374,9 @@ sounds or the launch pre-warm on by default.
 
 ### Dictation setup needs a clean-install walk-through
 
-D575 adds the setup dictation step and the practice field. UI journeys run them
+Onboarding no longer shows the dictation step in 2.0, so this walk-through no
+longer applies to Portavoz and leaves with the step's code. D575 added the setup
+dictation step and the practice field. UI journeys run them
 with the deterministic dictation fixture and a fixed Accessibility state, so
 they do not show the real system prompt, the once-a-second refresh after the
 user grants Accessibility in System Settings, the real shortcut delivering into

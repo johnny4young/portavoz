@@ -347,18 +347,10 @@ privacy receipt as the only in-product network-egress truth.
   The SPM shipping path compiles the SDK-only intents source under the shipping
   module name and runs `appintentsmetadataprocessor` out of band;
   `make-app.sh` fails unless the resulting `Metadata.appintents` declares exactly
-  nine actions, three App Entities, and their three string queries.
-  Dictation actions (D583): `DictateIntent` and `PasteLastDictationIntent` run in
-  the background (`[.background]` on macOS 26, no foreground compatibility
-  property), post `PortavozAppIntentBridge.requestDictation`, and are answered
-  synchronously by the delegate (`accepted`, `notReady`, `dictationOff`, `busy`,
-  `nothingToPaste`); a request is never replayed after launch. Success returns no
-  dialog; failures throw `PortavozDictationIntentError`. `SearchDictationsIntent`
-  (`Words`, `Limit` 1–50, default 10) returns `[String]` dictation texts newest
-  first through the `AppDependency` `PortavozDictationReader`, whose app
-  implementation calls `ReadDictationsForAgents`; without the agents and
-  Shortcuts consent it throws `notShared`. `OpenDictationsIntent` foregrounds the
-  app and routes `.dictations(words)`, which sets the history search.
+  five actions, three App Entities, and their three string queries. Portavoz
+  publishes no dictation action: Dictate, Paste last dictation, Search
+  dictations and Open dictations moved to Secreteo (D640), so a Shortcut built
+  on them must be set up again there.
   `PortavozMeetingEntity`, `PortavozPersonEntity`, and
   `PortavozCommitmentEntity` expose only a display title/name plus meeting date
   or optional commitment due date. Their standard `AppDependency` catalog is

@@ -1,6 +1,5 @@
 import Foundation
 import PortavozCore
-import TranscriptionKit
 
 /// A closed portable vocabulary, deliberately unrelated to a defaults-domain dump.
 /// Adding a case requires reviewing its activation, privacy and migration effects.
@@ -11,9 +10,9 @@ public enum PortableSettingsKey: String, CaseIterable, Codable, Sendable {
     case menuBarVisible
     case titleTemplate
     case vocabulary
-    case dictationLanguage
-    case removeFillers
-    case replacements
+
+    /// Keys a 1.x export wrote for dictation, which has left the app; import skips them.
+    public static let retiredRawValues: Set<String> = ["dictationLanguage", "removeFillers", "replacements"]
 }
 
 public enum PortableSettingsValue: Codable, Equatable, Sendable {
@@ -55,8 +54,8 @@ public enum PortableSettingsValidation {
     public static func validate(_ values: [PortableSettingsKey: PortableSettingsValue]) throws {
         for (key, value) in values {
             switch (key, value) {
-            case (.menuBarVisible, .flag), (.removeFillers, .flag): break
-            case (.menuBarVisible, _), (.removeFillers, _): throw PortableSettingsFailure.invalidValue
+            case (.menuBarVisible, .flag): break
+            case (.menuBarVisible, _): throw PortableSettingsFailure.invalidValue
             case (_, .flag): throw PortableSettingsFailure.invalidValue
             case (_, .text(let text)):
                 guard text.utf8.count <= maximumTextBytes, !text.contains("\0") else {
@@ -71,16 +70,12 @@ public enum PortableSettingsValidation {
         switch key {
         case .interfaceLanguage:
             guard ["system", "en", "es"].contains(text) else { throw PortableSettingsFailure.invalidValue }
-        case .dictationLanguage:
-            guard ["auto", "en", "es"].contains(text) else { throw PortableSettingsFailure.invalidValue }
         case .recognitionLanguage:
             try validateLanguage(text, following: "auto")
         case .summaryLanguage:
             try validateLanguage(text, following: "spoken")
-        case .replacements:
-            _ = try replacements(text)
         case .titleTemplate, .vocabulary: break
-        case .menuBarVisible, .removeFillers: throw PortableSettingsFailure.invalidValue
+        case .menuBarVisible: throw PortableSettingsFailure.invalidValue
         }
     }
 
@@ -89,16 +84,5 @@ public enum PortableSettingsValidation {
         guard let language = LanguageCode(value), language.identifier == value,
               (2...3).contains(value.utf8.count), value.utf8.allSatisfy({ (97...122).contains($0) })
         else { throw PortableSettingsFailure.invalidValue }
-    }
-
-    static func replacements(_ text: String) throws -> [DictationReplacement] {
-        // The normal settings codec deliberately salvages legacy malformed data.
-        // An imported file must instead disclose failure, never silently erase rules.
-        guard let data = text.data(using: .utf8),
-              let values = try? JSONDecoder().decode([DictationReplacement].self, from: data),
-              values.count <= 1_000 else { throw PortableSettingsFailure.invalidValue }
-        let canonical = DictationTextRules.canonical(values)
-        guard canonical.count == values.count else { throw PortableSettingsFailure.invalidValue }
-        return canonical
     }
 }

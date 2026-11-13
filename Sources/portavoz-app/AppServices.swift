@@ -90,6 +90,8 @@ final class AppServices {
     let firstRun: FirstRunModel
     /// One process-wide truthful receipt is shared by every Settings window.
     let localDataLedger: LocalDataLedgerModel
+    /// One process-wide owner for the dictation rows a 1.x library kept.
+    let legacyDictation: LegacyDictationModel
     /// One content-free projection receives typed events from the five
     /// existing background owners. It never polls or schedules work itself.
     let backgroundWork: BackgroundWorkCenterModel
@@ -318,6 +320,8 @@ final class AppServices {
         // global telemetry. A failed retry therefore leaves no half-composed
         // service graph, model task, sensitive store, or background owner.
         store = try Self.makeMeetingStore(storagePolicy: storagePolicy)
+        legacyDictation = Self.makeLegacyDictationModel(
+            store: store, defaults: defaults, arguments: arguments, usesTemporaryStore: usesTemporaryStore)
         dictationTextSettings = DictationTextSettingsModel(
             defaults: defaults, temporary: storagePolicy.usesTemporaryMeetingStore)
         let backgroundWork = BackgroundWorkCenterModel()

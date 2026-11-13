@@ -459,20 +459,17 @@ extension ArchitectureDependencyTests {
             intents.components(separatedBy:
                 "static let supportedModes: IntentModes = [.foreground(.immediate)]")
                 .count - 1,
-            3,
-            "Start, Stop and Open dictations must use Tahoe's immediate foreground mode")
+            2,
+            "Start and Stop must use Tahoe's immediate foreground mode")
         XCTAssertFalse(
             intents.contains("openAppWhenRun"),
             "supportedModes is the only foreground contract on the macOS 26 floor")
-        // Dictation actions run in the background so the app in front keeps the text.
-        XCTAssertEqual(
-            intents.components(separatedBy: "static let supportedModes: IntentModes = [.background]").count - 1,
-            3)
-        let dictationHandler = try XCTUnwrap(
-            appDelegate.components(separatedBy: "private func dictationIntentRequested").last?
-                .components(separatedBy: "static func dictationIntentOutcome").first)
-        XCTAssertFalse(dictationHandler.contains("NSApp.activate"))
-        XCTAssertTrue(dictationHandler.contains("services.dictationAdmission.refusalNow()"))
+        // Dictation moved to Secreteo: no action starts it, and launch arms no trigger or ownership claim.
+        XCTAssertFalse(intents.contains("Dictat"))
+        XCTAssertFalse(appDelegate.contains("dictation"))
+        for entry in ["dictationOwnership", "syncDictationTriggers", "installDictationIntentReader"] {
+            XCTAssertFalse(appLaunch.contains(entry), entry)
+        }
         let admission = try Self.contents(of: "Sources/portavoz-app/DictationAdmission.swift")
         XCTAssertTrue(admission.contains("selectionRewrite.releaseGlobalKeys()"))
         XCTAssertTrue(admission.contains("selectionRewrite.revokeReplace()"))

@@ -83,8 +83,6 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("OnboardingUITests", "testAdvancesFromFirstListenToLocalVoiceEnrollment"),
     ),
     "onboarding": (
-        test_id("DictationPracticeUITests", "testOnboardingDictationStepPracticesInItsOwnFieldWithoutTheClipboard"),
-        test_id("DictationPracticeUITests", "testOnboardingDictationStepOffersShortcutAndAccessibilityOnceTurnedOn"),
         test_id("OnboardingUITests", "testAdvancesFromFirstListenToLocalVoiceEnrollment"),
         test_id("OnboardingUITests", "testModelFailureCanContinueBackAndRetryWithoutDownloading"),
     ),
@@ -160,67 +158,12 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "settings-intelligence": (
         test_id("SettingsUITests", "testIntelligencePaneExplicitlyPreparesSemanticSearch"),
-    ),
-    "dictation": (
-        test_id("DictationPolishUITests", "testPolishIsOfferedAsTheDefaultTextMode"),
-        test_id("DictationCorrectionUITests", "testASpokenCorrectionChangesTheLastDictationInsteadOfPasting"),
-        test_id("DictationCorrectionUITests", "testTheDictionaryGroupsEveryHeardFormUnderItsSpelling"),
-        test_id("DictationPolishUITests", "testAPolishedDictationCanStillBePastedWithoutPolish"),
-        test_id("DictationPolishUITests", "testPolishingCanBeSkippedToPasteTheCleanText"),
-        test_id("DictationPolishUITests", "testARewriteThatChangesTheMeaningPastesCleanAndSaysWhy"),
-        test_id("DictationPolishUITests", "testARecipeCanBeCreatedAndChosenAsTheDefault"),
-        test_id("DictationPolishUITests", "testARecipeShapesTheDictationAndKeepsItsFacts"),
-        test_id("DictationTranslationUITests", "testATranslatedDictationCanStillBePastedInTheOriginal"),
-        test_id("DictationTranslationUITests", "testMissingLanguagesPasteTheOriginalAndSaySo"),
-        test_id("DictationTranslationUITests", "testTranslatingCanBeSkippedToPasteTheOriginal"),
-        test_id("DictationTranslationUITests", "testTranslationIsChosenInSettingsWithTheLanguageStatus"),
-        test_id("DictationTextModeUITests", "testApplicationProfileUsesNativePickerAndKeepsTheOriginal"),
-        test_id("DictationTextModeUITests", "testCorruptProfilesShowAnExplicitResetWithoutChangingTheDefault"),
-        test_id("DictationTextModeUITests", "testSessionModeOverrideCancelsAndRestartsWithoutChangingDefaults"),
-        test_id("DictationUITests", "testDeliveredDictationDistinguishesDispatchFromVerification"),
-        test_id("DictationUITests", "testSilentDictationIsOfferedToCopyInsteadOfPasted"),
-        test_id("DictationUITests", "testStreamingDictationKeepsClosedRowsThroughCancellationAndRestart"),
-        test_id("DictationUITests", "testClipboardBorrowRestoresRichPrivateContentAndKeepsTextInRecovery"),
-        test_id("DictationUITests", "testDictationSourceEOFBeforeStopIsVisibleAndCanRestart"),
-        test_id("DictationUITests", "testDictationCaptureFailureIsVisibleAndCanBeDismissed"),
-        test_id("DictationUITests", "testDictationPanelCancelsAndRestartsWithoutGlobalInput"),
-        test_id("DictationUITests", "testMicrophoneDenialRemainsRecoverableWithoutOpeningAudio"),
-        test_id("DictationUITests", "testMissingMicrophoneAudioShowsFallbackAndAllowsRestart"),
-        test_id("DictationUITests", "testPreparingDictationCanCancelWithoutAListeningClaim"),
-        test_id("DictationUITests", "testLoadingModelLooksDifferentFromDictating"),
-        test_id("DictationUITests", "testCompactIndicatorShowsOnlyTheLevelAndTime"),
-        test_id("DictationUITests", "testCompactIndicatorOpensTheFullPanelForAFailure"),
-        test_id("DictationUITests", "testUnverifiedNoticeClosesWithItsCloseButton"),
-        test_id("DictationUITests", "testCompactIndicatorCanBeDraggedWhileDictating"),
-        test_id("DictationUITests", "testUndeliveredTextCanBeCopiedAndExplicitlyRetried"),
-        test_id("DictationUITests", "testUndeliveredTextSurvivesAnotherTriggerUntilDiscarded"),
-        test_id("DictationPracticeUITests", "testOnboardingDictationStepPracticesInItsOwnFieldWithoutTheClipboard"),
-        test_id("DictationPracticeUITests", "testOnboardingDictationStepOffersShortcutAndAccessibilityOnceTurnedOn"),
-        test_id("DictationPracticeUITests", "testSettingsPracticeFieldReceivesDictationWithoutTheClipboard"),
-        test_id("DictationHistoryUITests", "testHistoryStartsOffAndTurnsOnFromTheDictationsPage"),
-        test_id("DictationHistoryUITests", "testSavedDictationsCanBeDeletedOneByOneOrAll"),
-        test_id("DictationHistoryUITests", "testADictationSavedToHistorySaysSoInsteadOfNothingWasSaved"),
-        test_id("DictationHistoryUITests", "testSettingsAskForHistoryConsentWithEverySwitchOff"),
-        test_id("DictationHistoryUITests", "testSearchAndFiltersNarrowTheHistory"),
-        test_id("DictationHistoryUITests", "testADictationCanBeAddedToAMeetingsNotes"),
-        test_id("DictationHistoryUITests", "testStatisticsSummarizeTheWeekWithoutTheHistory"),
-        test_id("DictationHistoryUITests", "testStatisticsStartOffAndTurnOnFromSettings"),
-        test_id("AutomationUITests", "testOpenDictationsShortcutShowsItsSearch"),
-        test_id("SelectionRewriteUITests", "testRewriteSelectionPreviewsBeforeReplacing"),
-        test_id("SelectionRewriteUITests", "testARecipeRewriteIsNeverPastedOverAChangedSelection"),
-        test_id("SelectionRewriteUITests", "testRewritingWithoutASelectionExplainsWhatToDo"),
-        test_id("SelectionRewriteUITests", "testSayingHowRewritesTheSelectionWithTheSpokenInstruction"),
         test_id("SettingsUITests", "testAppleSpeechInspectionFailureOffersExplicitRetry"),
         test_id("SettingsUITests", "testAppleSpeechNeedsExplicitAssetsForEachLiveWorkflow"),
-        test_id("SettingsUITests", "testParakeetUltraIsAnExplicitDictationOnlyDownload"),
-        test_id("SettingsUITests", "testAnUltraDownloadInFlightCanBeCancelled"),
-        test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
-        test_id("SettingsUITests", "testDictationOwnedElsewhereOffersToComeBack"),
-        test_id("SettingsUITests", "testDamagedDictationStateOffersAReset"),
-        test_id("SettingsUITests", "testMenuBarSaysWhoHandlesDictationInsteadOfOfferingIt"),
-        test_id("SettingsUITests", "testHeldFnTriggerExplainsTheGlobeKeySetting"),
-        test_id("SettingsUITests", "testDictationRecoversShortcutConflictAndRefreshesHelp"),
-        test_id("SettingsUITests", "testDictationRepairsCorruptShortcutWithoutLeavingSettings"),
+    ),
+    "dictation": (
+        test_id("LegacyDictationUITests", "testAnUpgradedLibraryLearnsDictationMovedAndCanDeleteItsHistory"),
+        test_id("LegacyDictationUITests", "testTheDataPaneDeletesLegacyDictationHistory"),
     ),
     "settings-audio": (
         test_id("SettingsUITests", "testAudioPaneOffersCaptureSourceControls"),
@@ -296,11 +239,6 @@ ON_DEMAND_TESTS = (
 # Tests in a pull request's reach: edited nightly-only methods join these.
 PR_TESTS = tuple(dict.fromkeys(test for tests in FEATURE_TESTS.values() for test in tests))
 ALL_TESTS = tuple(dict.fromkeys((*PR_TESTS, *NIGHTLY_ONLY_TESTS)))
-# Needs a user-granted Accessibility decision; run only via test-ui-native-dictation.
-PERMISSION_GATED_TESTS = frozenset({
-    test_id("DictationUITests", "testNativeInserterUsesDisposableReceiverAndClipboard"),
-    test_id("DictationUITests", "testNativeControllerModeChoicePreservesReceiverAndClipboard"),
-})
 ALL_FEATURES = frozenset(FEATURE_TESTS)
 MEETING_FEATURES = frozenset(
     feature
@@ -353,9 +291,7 @@ DEPENDENCY_FEATURES: dict[str, frozenset[str]] = {
 # Journeys outside the meeting features that also open Meeting Detail.
 MEETING_DETAIL_EXTRA_JOURNEYS = (
     test_id("AudioImportUITests", "testSingleMeetingBundleReachesDetailWithoutChangingTheOriginal"),
-    test_id("AutomationUITests", "testOpenDictationsShortcutShowsItsSearch"),
     test_id("CommitmentRadarUITests", "testReviewThenConfirmedWorkKeepTheirFiltersAndOpenExactSources"),
-    test_id("DictationHistoryUITests", "testADictationCanBeAddedToAMeetingsNotes"),
     test_id("LibraryUITests", "testActiveRecordingRemainsReachableAfterBrowsingTheLibrary"),
     test_id("LibraryUITests", "testAskConfirmedMemoryLoadsPersonCommitmentsBlockersAndBothCitations"),
     test_id("LibraryUITests", "testLaunchRecoversInterruptedStagingAudio"),
@@ -496,7 +432,7 @@ FEATURE_SOURCE_SENTINELS: dict[str, str] = {
     "settings-transfer": "Sources/portavoz-app/SettingsTransferSection.swift",
     "production-sync": "Sources/portavoz-app/ProductionSyncQualificationRunner.swift",
     "settings-intelligence": "Sources/portavoz-app/SemanticSearchPreparationModel.swift",
-    "dictation": "Sources/portavoz-app/DictationController.swift",
+    "dictation": "Sources/portavoz-app/LegacyDictationModel.swift",
     "settings-audio": "Sources/portavoz-app/AudioSection.swift",
     "settings-voice": "Sources/portavoz-app/SettingsVoiceSection.swift",
 }

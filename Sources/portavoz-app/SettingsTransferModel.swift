@@ -33,7 +33,7 @@ final class SettingsTransferModel {
             let data = try PortableSettingsTransfer.export(client.portableSettingsSnapshot())
             guard let destination = client.selectSettingsFile(.exportFile) else { return }
             try await client.writeSettingsFile(data, to: destination)
-            status = L10n.text("Settings file saved. Keep it private: it includes your vocabulary and replacements.")
+            status = L10n.text("Settings file saved. Keep it private: it includes your vocabulary.")
         } catch {
             status = L10n.text(
                 "Could not export settings. Check your saved preferences and destination, then try again.")
@@ -74,7 +74,7 @@ final class SettingsTransferModel {
             self.review = nil
             status = L10n.format("Imported %lld settings. Permissions and feature activation are unchanged.", count)
         } catch PortableSettingsFailure.captureActive {
-            status = L10n.text("Finish recording or dictation before applying settings. Your review is still open.")
+            status = L10n.text("Finish recording before applying settings. Your review is still open.")
         } catch PortableSettingsFailure.staleReview {
             status = L10n.text(
                 "Preferences changed during review. Cancel and import again to review the current values.")

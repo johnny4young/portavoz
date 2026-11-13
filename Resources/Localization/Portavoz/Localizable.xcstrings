@@ -631,6 +631,86 @@
         }
       }
     },
+    "call safe capture echo aec microphone mic level system audio": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "llamada segura captura eco aec micrófono mic nivel audio del sistema"
+          }
+        }
+      }
+    },
+    "Could not delete them. Try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron eliminar. Inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Delete dictation history and statistics": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar historial y estadísticas de dictado"
+          }
+        }
+      }
+    },
+    "Delete dictation history and statistics?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Eliminar el historial y las estadísticas de dictado?"
+          }
+        }
+      }
+    },
+    "Dictation moved to Secreteo": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El dictado se mudó a Secreteo"
+          }
+        }
+      }
+    },
+    "Finish recording before applying settings. Your review is still open.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finaliza la grabación antes de aplicar los ajustes. La revisión sigue abierta."
+          }
+        }
+      }
+    },
+    "Microphone · call-safe capture": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Micrófono · captura segura"
+          }
+        }
+      }
+    },
+    "Move language and vocabulary preferences. Review every change before applying it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transfiere preferencias de idioma y vocabulario. Revisa cada cambio antes de aplicarlo."
+          }
+        }
+      }
+    },
     "Portavoz isn't handling dictation right now.": {
       "localizations": {
         "es": {
@@ -1771,16 +1851,6 @@
         }
       }
     },
-    "Audio & dictation": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Audio y dictado"
-          }
-        }
-      }
-    },
     "Audio capture could not start and Portavoz could not verify its local recovery state. Open support diagnostics before quitting.": {
       "localizations": {
         "es": {
@@ -2507,16 +2577,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Captura segura para llamadas"
-          }
-        }
-      }
-    },
-    "Call-safe capture · global dictation": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Captura segura · dictado global"
           }
         }
       }
@@ -4863,16 +4923,6 @@
         }
       }
     },
-    "Dictation replacements": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reemplazos del dictado"
-          }
-        }
-      }
-    },
     "Discard": {
       "localizations": {
         "es": {
@@ -6025,16 +6075,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hallazgos ✦ de tus reuniones"
-          }
-        }
-      }
-    },
-    "Finish recording or dictation before applying settings. Your review is still open.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Finaliza la grabación o el dictado antes de aplicar los ajustes. La revisión sigue abierta."
           }
         }
       }
@@ -8245,16 +8285,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hay más temas coincidentes. Refina el nombre para elegir el correcto."
-          }
-        }
-      }
-    },
-    "Move language, vocabulary and text preferences. Review every change before applying it.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Transfiere preferencias de idioma, vocabulario y texto. Revisa cada cambio antes de aplicarlo."
           }
         }
       }
@@ -10629,6 +10659,16 @@
         }
       }
     },
+    "Portavoz no longer dictates; global dictation is now its own app, Secreteo.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz ya no dicta; el dictado global ahora es su propia app, Secreteo."
+          }
+        }
+      }
+    },
     "Portavoz preserved the meeting, but automatic recovery could not finish.": {
       "localizations": {
         "es": {
@@ -11669,12 +11709,12 @@
         }
       }
     },
-    "Recording state at a glance, one-click start/stop and dictation — Portavoz keeps working with the window closed.": {
+    "Recording state at a glance and one-click start/stop — Portavoz keeps working with the window closed.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El estado de grabación de un vistazo, iniciar/detener con un click y dictado — Portavoz sigue funcionando con la ventana cerrada."
+            "value": "El estado de grabación de un vistazo e iniciar/detener con un click — Portavoz sigue funcionando con la ventana cerrada."
           }
         }
       }
@@ -12295,16 +12335,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Quitar tarjeta"
-          }
-        }
-      }
-    },
-    "Remove hesitation fillers": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Eliminar muletillas de vacilación"
           }
         }
       }
@@ -13781,12 +13811,12 @@
         }
       }
     },
-    "Settings file saved. Keep it private: it includes your vocabulary and replacements.": {
+    "Settings file saved. Keep it private: it includes your vocabulary.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Archivo de ajustes guardado. Mantenlo privado: incluye tu vocabulario y reemplazos."
+            "value": "Archivo de ajustes guardado. Mantenlo privado: incluye tu vocabulario."
           }
         }
       }
@@ -16111,12 +16141,32 @@
         }
       }
     },
+    "This can't be undone.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se puede deshacer."
+          }
+        }
+      }
+    },
     "This field did not accept the correction. Nothing changed.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Este campo no aceptó la corrección. No cambió nada."
+          }
+        }
+      }
+    },
+    "This file includes your vocabulary. Share it only with people you trust.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este archivo incluye tu vocabulario. Compártelo solo con personas de confianza."
           }
         }
       }
@@ -16297,16 +16347,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Este issue exacto ya estaba registrado como completado."
-          }
-        }
-      }
-    },
-    "This file includes vocabulary and replacements. Share it only with people you trust.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Este archivo incluye vocabulario y reemplazos. Compártelo solo con personas de confianza."
           }
         }
       }
@@ -17321,12 +17361,12 @@
         }
       }
     },
-    "Vocabulary and replacements are merged. Other listed values replace your current preferences.": {
+    "Vocabulary is merged. Other listed values replace your current preferences.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El vocabulario y los reemplazos se combinan. Los demás valores reemplazan tus preferencias actuales."
+            "value": "El vocabulario se combina. Los demás valores reemplazan tus preferencias actuales."
           }
         }
       }
@@ -18173,16 +18213,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "evento del calendario"
-          }
-        }
-      }
-    },
-    "call safe capture echo aec dictation hotkey microphone mic level": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "llamada segura captura eco aec dictado atajo micrófono mic nivel"
           }
         }
       }

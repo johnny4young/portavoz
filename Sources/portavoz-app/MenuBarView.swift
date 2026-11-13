@@ -17,26 +17,11 @@ struct MenuBarContent: View {
     }
 
     private var recording: Bool { services.recording.phase == .recording }
-    private var dictationIsOn: Bool { UserDefaults.standard.bool(forKey: DictationController.defaultsKey) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             statusHeader
             quickActions
-            if dictationIsOn, !services.dictationOwnership.offersDictationActions {
-                DictationOwnerRow(identifierPrefix: "menu-bar-dictation")
-                    .font(.caption)
-                    .padding(.top, 8)
-            }
-            if let fixture = services.dictationNativeUITestFixture {
-                Button("Dictate") {
-                    fixture.start(controller: services.dictation,
-                                  dependencies: services.makeDictationSessionDependencies())
-                }
-                    .accessibilityIdentifier("dictation-native-start")
-                Text(verbatim: fixture.status)
-                    .accessibilityIdentifier("dictation-native-status")
-            }
             if let nextEvent = model.state.nextEvent {
                 nextMeetingCard(nextEvent)
             }
@@ -112,35 +97,6 @@ struct MenuBarContent: View {
                 quickAction("Record", PVSymbol.record, tint: .red) {
                     openMainWindow()
                     services.pendingRoute = .recording(nil)
-                }
-            }
-            if dictationIsOn, services.dictationOwnership.offersDictationActions {
-                quickAction("Dictate", "waveform", tint: PVDesign.accent) {
-                    services.dictation.toggle(services: services)
-                }
-                .accessibilityIdentifier("menu-bar-dictate")
-                if services.dictation.hasPastableText {
-                    quickAction("Paste last", "arrow.uturn.down.square", tint: PVDesign.accent) {
-                        services.pasteLastDictation()
-                    }
-                    .accessibilityIdentifier("menu-bar-paste-last")
-                }
-                quickAction("Rewrite selection", PVSymbol.generate, tint: .secondary) {
-                    services.rewriteSelection()
-                }
-                .accessibilityIdentifier("menu-bar-rewrite-selection")
-                if services.dictation.hasAlternateText {
-                    if services.dictation.lastText.alternateIsOriginal {
-                        quickAction("Paste original", "text.badge.minus", tint: .secondary) {
-                            services.pasteLastDictation(alternate: true)
-                        }
-                        .accessibilityIdentifier("menu-bar-paste-original")
-                    } else {
-                        quickAction("Paste without polish", "text.badge.minus", tint: .secondary) {
-                            services.pasteLastDictation(alternate: true)
-                        }
-                        .accessibilityIdentifier("menu-bar-paste-unpolished")
-                    }
                 }
             }
             quickAction("Ask", "bubble.left.and.text.bubble.right", tint: .secondary) {

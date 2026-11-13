@@ -31,7 +31,7 @@ struct SettingsTransferSection: View {
                     .font(.caption)
                     .accessibilityIdentifier("settings-preferences-status")
             }
-            Text("Move language, vocabulary and text preferences. Review every change before applying it.")
+            Text("Move language and vocabulary preferences. Review every change before applying it.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Text(
@@ -64,7 +64,7 @@ private struct SettingsTransferReviewSheet: View {
             Text("Review preferences")
                 .font(.title2.bold())
                 .accessibilityIdentifier("settings-preferences-review")
-            Text("Vocabulary and replacements are merged. Other listed values replace your current preferences.")
+            Text("Vocabulary is merged. Other listed values replace your current preferences.")
                 .foregroundStyle(.secondary)
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
@@ -124,9 +124,6 @@ private extension PortableSettingsKey {
         case .menuBarVisible: L10n.text("Menu bar visibility")
         case .titleTemplate: L10n.text("Meeting title template")
         case .vocabulary: L10n.text("Custom vocabulary")
-        case .dictationLanguage: L10n.text("Dictation language")
-        case .removeFillers: L10n.text("Remove hesitation fillers")
-        case .replacements: L10n.text("Dictation replacements")
         }
     }
 }

@@ -152,7 +152,7 @@ final class AppLaunchModel {
 
     /// Starts every process owner exactly once and only after the authoritative
     /// database opened. Failed launch attempts therefore have no worker,
-    /// scheduler, model, sync, or global-hotkey side effects.
+    /// scheduler, model, or sync side effects.
     func activateReadyServicesIfNeeded() {
         guard !activatedServices, let services else { return }
         activatedServices = true
@@ -161,7 +161,6 @@ final class AppLaunchModel {
             BenchMode.runsIsolatedBenchmark(arguments: arguments)
         if !runsIsolatedBenchmark {
             services.installAutomationEntityCatalog()
-            services.installDictationIntentReader()
             PortavozAppDelegate.services = services
         }
 
@@ -175,8 +174,8 @@ final class AppLaunchModel {
         BenchMode.runIndexingResourceBenchIfRequested(services: services)
         BenchMode.runMemoryGraphQueryBenchIfRequested(services: services)
         // Resource evidence owns this process. Do not start sync, recovery,
-        // provider discovery, or dictation registrations beside a measured
-        // window; temporary storage alone would not isolate their resource use.
+        // provider discovery, or retention beside a measured window; temporary
+        // storage alone would not isolate their resource use.
         guard !runsIsolatedBenchmark else { return }
 
         services.startResourcePressureMonitoring()
@@ -187,8 +186,7 @@ final class AppLaunchModel {
         services.seedSharedModelFixtureIfRequested()
         Task { await services.standingPreMeetingBriefs.start() }
         services.requestSearchReconciliation()
-        Task { await services.loadDictationHistory() }
-        Task { await services.loadDictationStats() }
+        services.legacyDictation.open()
         Task { @MainActor in
             await services.commitmentReminders.send(.start)
         }
@@ -207,11 +205,6 @@ final class AppLaunchModel {
                 arguments: arguments)
             await services.configureInitialSummaryProviderIfNeeded()
         }
-        services.connectDictationOwnership()
-        services.dictationOwnership.seedForUITests(arguments: ProcessInfo.processInfo.arguments)
-        services.dictationOwnership.start()
-        // Becoming the owner already synced them, and a second registration would hide a conflict.
-        if !services.dictationOwnership.state.armsTriggers { services.syncDictationTriggers() }
 
         // The AppKit delegate may already have observed application launch
         // while the database was unavailable. Re-publish, without consuming,

@@ -1,6 +1,5 @@
 import ApplicationKit
 import Foundation
-import TranscriptionKit
 import XCTest
 
 @testable import portavoz_app
@@ -26,37 +25,50 @@ final class PortableSettingsTests: XCTestCase {
         XCTAssertEqual(values["menuBarVisible"] as? Bool, false)
         let text = try XCTUnwrap(String(data: data, encoding: .utf8))
         for excluded in ["never-export-this", "private.invalid", "Private name", "/private/recordings",
-                         "globalDictationEnabled", "dictationHotkeyKeyCode", "dictationMouseButton"] {
+                         "dictation", "Dictation"] {
             XCTAssertFalse(text.contains(excluded), excluded)
         }
     }
 
-    func testActualImportMergesCollectionsAndPreservesUnrelatedPreferences() async throws {
+    func testActualImportMergesVocabularyAndPreservesUnrelatedPreferences() async throws {
         let defaults = preferences()
         defaults.setVolatileDomain([
             "customVocabulary": "Existing, Cóndor", "globalDictationEnabled": false,
-            "dictationReplacements": DictationTextRules.encode([
-                .init(trigger: "old", replacement: "Old"), .init(trigger: "c++", replacement: "old spelling"),
-            ]),
         ], forName: UserDefaults.argumentDomain)
         let store = AppPortableSettingsStore(defaults: defaults, temporary: true)
         let before = try store.snapshot()
         let data = try PortableSettingsTransfer.export([
-            .vocabulary: .text("cóndor, New"), .dictationLanguage: .text("es"), .removeFillers: .flag(false),
-            .replacements: .text(DictationTextRules.encode([.init(trigger: "C++", replacement: "C++ $1 \\" )])),
+            .vocabulary: .text("cóndor, New"), .titleTemplate: .text("{title}"),
         ])
         let review = try PortableSettingsTransfer.review(data, current: before)
         XCTAssertEqual(try store.snapshot(), before, "preview must never write")
-        XCTAssertEqual(try store.apply(review, captureActive: false), 4)
+        XCTAssertEqual(try store.apply(review, captureActive: false), 2)
         XCTAssertFalse(defaults.bool(forKey: "globalDictationEnabled"))
         XCTAssertEqual(defaults.string(forKey: "customVocabulary"), "Existing, Cóndor, New")
-        let rules = DictationTextRules.decode(replacements: defaults.string(forKey: "dictationReplacements") ?? "")
-        XCTAssertEqual(rules.count, 2)
-        XCTAssertEqual(rules.first?.trigger, "old")
-        XCTAssertEqual(rules.last?.replacement, "C++ $1 \\")
-        XCTAssertEqual(try store.snapshot()[.dictationLanguage], .text("es"))
+        XCTAssertEqual(defaults.string(forKey: "titleTemplate"), "{title}")
         XCTAssertThrowsError(try store.apply(review, captureActive: false)) {
             XCTAssertEqual($0 as? PortableSettingsFailure, .staleReview)
+        }
+    }
+
+    func testAOneXExportStillImportsAndItsDictationKeysChangeNothing() async throws {
+        let defaults = preferences()
+        let store = AppPortableSettingsStore(defaults: defaults, temporary: true)
+        let before = try store.snapshot()
+        // Retired values are skipped before validation, so a value 2.0 would reject cannot fail the file.
+        let raw = #"""
+        {"format":"portavoz-settings","version":1,"settings":{"dictationLanguage":"fr","removeFillers":false,
+        "replacements":"broken","vocabulary":"Cóndor"}}
+        """#
+        let review = try PortableSettingsTransfer.review(Data(raw.utf8), current: before)
+        XCTAssertEqual(review.changes, [.vocabulary: .text("Cóndor")])
+        XCTAssertEqual(try store.apply(review, captureActive: false), 1)
+        for key in ["dictationLanguage", "dictationFillerFilter", "dictationReplacements"] {
+            XCTAssertNil(defaults.object(forKey: key), key)
+        }
+        let unknown = #"{"format":"portavoz-settings","version":1,"settings":{"replacements":"[]","futureKey":true}}"#
+        XCTAssertThrowsError(try PortableSettingsTransfer.review(Data(unknown.utf8), current: before)) {
+            XCTAssertEqual($0 as? PortableSettingsFailure, .unsupportedSetting)
         }
     }
 
@@ -64,7 +76,7 @@ final class PortableSettingsTests: XCTestCase {
         let defaults = preferences()
         let store = AppPortableSettingsStore(defaults: defaults, temporary: true)
         let before = try store.snapshot()
-        let file = try PortableSettingsTransfer.export([.dictationLanguage: .text("en")])
+        let file = try PortableSettingsTransfer.export([.titleTemplate: .text("{title}")])
         let review = try PortableSettingsTransfer.review(file, current: before)
         XCTAssertThrowsError(try store.apply(review, captureActive: true)) {
             XCTAssertEqual($0 as? PortableSettingsFailure, .captureActive)
@@ -74,7 +86,7 @@ final class PortableSettingsTests: XCTestCase {
         XCTAssertThrowsError(try store.apply(review, captureActive: false)) {
             XCTAssertEqual($0 as? PortableSettingsFailure, .staleReview)
         }
-        XCTAssertNil(defaults.object(forKey: "dictationLanguage"))
+        XCTAssertNil(defaults.object(forKey: "titleTemplate"))
     }
 
     func testProductionWriteBranchPersistsOnlyReviewedKeysAndRemovesOnlyTheirOverrides() async throws {
@@ -84,15 +96,15 @@ final class PortableSettingsTests: XCTestCase {
         defaults.set(true, forKey: "globalDictationEnabled")
         defaults.set("private-existing-model", forKey: "byokModel")
         defaults.setVolatileDomain([
-            "dictationLanguage": "es", "unrelatedOverride": "retained",
+            "titleTemplate": "{date}", "unrelatedOverride": "retained",
         ], forName: UserDefaults.argumentDomain)
         let store = AppPortableSettingsStore(defaults: defaults, temporary: false)
         let before = try store.snapshot()
-        let file = try PortableSettingsTransfer.export([.dictationLanguage: .text("en")])
+        let file = try PortableSettingsTransfer.export([.titleTemplate: .text("{title}")])
         let review = try PortableSettingsTransfer.review(file, current: before)
         XCTAssertEqual(try store.apply(review, captureActive: false), 1)
-        XCTAssertEqual(defaults.persistentDomain(forName: suite)?["dictationLanguage"] as? String, "en")
-        XCTAssertEqual(try store.snapshot()[.dictationLanguage], .text("en"))
+        XCTAssertEqual(defaults.persistentDomain(forName: suite)?["titleTemplate"] as? String, "{title}")
+        XCTAssertEqual(try store.snapshot()[.titleTemplate], .text("{title}"))
         XCTAssertTrue(defaults.bool(forKey: "globalDictationEnabled"), "existing consent is not revoked or imported")
         XCTAssertEqual(defaults.string(forKey: "byokModel"), "private-existing-model")
         XCTAssertEqual(defaults.volatileDomain(forName: UserDefaults.argumentDomain).count, 1)
@@ -105,13 +117,12 @@ final class PortableSettingsTests: XCTestCase {
         let before = try store.snapshot()
         for raw in [
             #"{"format":"portavoz-settings","version":1,"settings":{"globalDictationEnabled":true}}"#,
-            #"{"format":"portavoz-settings","version":1,"settings":{"removeFillers":1}}"#,
-            #"{"format":"portavoz-settings","version":1,"settings":{"removeFillers":"false"}}"#,
+            #"{"format":"portavoz-settings","version":1,"settings":{"menuBarVisible":1}}"#,
+            #"{"format":"portavoz-settings","version":1,"settings":{"menuBarVisible":"false"}}"#,
             #"{"format":"portavoz-settings","version":1,"settings":{"vocabulary":null}}"#,
             #"{"format":"portavoz-settings","version":2,"settings":{}}"#,
             #"{"format":"portavoz-settings","version":1,"settings":{},"consent":true}"#,
-            #"{"format":"portavoz-settings","version":1,"settings":{"replacements":"broken"}}"#,
-            #"{"format":"portavoz-settings","version":1,"settings":{"dictationLanguage":"fr"}}"#,
+            #"{"format":"portavoz-settings","version":1,"settings":{"interfaceLanguage":"fr"}}"#,
         ] {
             XCTAssertThrowsError(try PortableSettingsTransfer.review(Data(raw.utf8), current: before))
             XCTAssertEqual(try store.snapshot(), before)
@@ -135,51 +146,18 @@ final class PortableSettingsTests: XCTestCase {
         ]))
     }
 
-    func testRuleLimitAppliesAfterMergeAndEmptyCollectionsDoNotEraseRules() async throws {
-        let store = AppPortableSettingsStore(defaults: preferences(), temporary: true)
-        let rules = (0..<1_000).map { DictationReplacement(trigger: "a\($0)", replacement: "b\($0)") }
-        let file = try PortableSettingsTransfer.export([.replacements: .text(DictationTextRules.encode(rules))])
-        try store.apply(PortableSettingsTransfer.review(file, current: store.snapshot()), captureActive: false)
-        let replacement = try PortableSettingsTransfer.export([.replacements: .text(
-            DictationTextRules.encode([.init(trigger: "a500", replacement: "new value")]))])
-        let replacementReview = try PortableSettingsTransfer.review(replacement, current: store.snapshot())
-        XCTAssertEqual(try store.apply(replacementReview, captureActive: false), 1)
-        let before = try store.snapshot()
-        let extra = try PortableSettingsTransfer.export([.replacements: .text(
-            DictationTextRules.encode([.init(trigger: "one more", replacement: "rejected")]))])
-        XCTAssertThrowsError(try PortableSettingsTransfer.review(extra, current: before))
-        XCTAssertEqual(try store.snapshot(), before)
-        let empty = try PortableSettingsTransfer.export([.replacements: .text("[]"), .vocabulary: .text("")])
-        let emptyReview = try PortableSettingsTransfer.review(empty, current: before)
-        XCTAssertEqual(try store.apply(emptyReview, captureActive: false), 0)
-        XCTAssertEqual(try store.snapshot(), before)
-    }
-
-    func testEquivalentCollectionsPreserveLegacyBytesAtTheActualWriteSeam() async throws {
+    func testEquivalentVocabularyPreservesStoredBytesAtTheActualWriteSeam() async throws {
         let defaults = preferences()
-        let legacy = #"[ { "replacement" : "Don't", "trigger" : "Don\u2019t" }, { "trigger" : "cóndor", "replacement" : "Cóndor" } ]"#
-        defaults.setVolatileDomain([
-            "dictationReplacements": legacy, "customVocabulary": "  Cóndor , Don’t,, C++  ",
-        ], forName: UserDefaults.argumentDomain)
+        defaults.setVolatileDomain(["customVocabulary": "  Cóndor , Don’t,, C++  "], forName: UserDefaults.argumentDomain)
         let store = AppPortableSettingsStore(defaults: defaults, temporary: true)
         let before = try store.snapshot()
-        let equivalent = #"[{"trigger":"Don’t","replacement":"Don't"},{"replacement":"Cóndor","trigger":"cóndor"}]"#
-        for incoming in [
-            [PortableSettingsKey.replacements: .text("[]"), .vocabulary: .text("")],
-            [.replacements: .text(equivalent), .vocabulary: .text("cóndor, Don’t, c++")],
-        ] as [[PortableSettingsKey: PortableSettingsValue]] {
-            let review = try PortableSettingsTransfer.review(PortableSettingsTransfer.export(incoming), current: before)
+        for incoming in ["", "cóndor, Don’t, c++"] {
+            let file = try PortableSettingsTransfer.export([.vocabulary: .text(incoming)])
+            let review = try PortableSettingsTransfer.review(file, current: before)
             XCTAssertTrue(review.changes.isEmpty, "serialization is not a preference change")
             XCTAssertEqual(try store.apply(review, captureActive: false), 0)
-            XCTAssertEqual(try store.snapshot(), before, "no-op import must not rewrite legacy bytes")
+            XCTAssertEqual(try store.snapshot(), before, "no-op import must not rewrite stored bytes")
         }
-        let changed = try PortableSettingsTransfer.export([.replacements: .text(
-            DictationTextRules.encode([.init(trigger: "cóndor", replacement: "Cóndor $1 \\" )]))])
-        let review = try PortableSettingsTransfer.review(changed, current: before)
-        XCTAssertEqual(try store.apply(review, captureActive: false), 1)
-        let rules = DictationTextRules.decode(replacements: defaults.string(forKey: "dictationReplacements") ?? "")
-        XCTAssertEqual(rules, [.init(trigger: "Don’t", replacement: "Don't"),
-                               .init(trigger: "cóndor", replacement: "Cóndor $1 \\")])
     }
 
     private func preferences() -> UserDefaults {

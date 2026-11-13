@@ -17,8 +17,7 @@ extension AppServices: SettingsTransferClient {
         case .preparing, .recording, .processing: true
         case .idle, .done, .failed: false
         }
-        return try portableSettingsStore.apply(
-            review, captureActive: recordingBusy || dictation.isActive)
+        return try portableSettingsStore.apply(review, captureActive: recordingBusy)
     }
 
     func selectSettingsFile(_ operation: SettingsTransferFileOperation) -> URL? {
@@ -34,7 +33,7 @@ extension AppServices: SettingsTransferClient {
             panel.canCreateDirectories = true
             panel.nameFieldStringValue = "portavoz-settings.json"
             panel.message = L10n.text(
-                "This file includes vocabulary and replacements. Share it only with people you trust.")
+                "This file includes your vocabulary. Share it only with people you trust.")
             return panel.runModal() == .OK ? panel.url : nil
         case .importFile:
             let panel = NSOpenPanel()
