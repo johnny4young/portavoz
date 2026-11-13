@@ -200,7 +200,7 @@ class InterruptionSafetyTests(unittest.TestCase):
             self.assertIn("interruption_controls=true", render(selection, "github"))
             self.assertIn("UI_TEST_INTERRUPTION_REQUIRED=true", render(selection, "shell"))
         self.assertFalse(select_paths([]).interruption_controls_required)
-        self.assertFalse(select_paths(["Sources/portavoz-app/DictationPanel.swift"]).interruption_controls_required)
+        self.assertFalse(select_paths(["Sources/portavoz-app/UnrelatedPanel.swift"]).interruption_controls_required)
 
     def test_every_hashed_control_source_selects_the_controls(self):
         for relative in safety.source_hashes():
