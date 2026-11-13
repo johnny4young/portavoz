@@ -6349,10 +6349,12 @@ CTC head outside the curated graph is rejected before loading. Synchronous CoreM
 loading explicitly runs off the caller's actor. Models and compute units are unchanged.
 
 The Swift package requires the reviewed FluidAudio fork revision
-`16ff239818ddb6787629dab38ae43e8bdd0e7546`, based on upstream
-`224de0fb3c304b41bbae24e85e1801900865ff3e`. Swift 6.2 dependency traits
-retain ASR/VAD and Diarizer while excluding unused TTS resources and NeMo linkage;
-the macOS 26/iOS 26 deployment floors and curated model artifacts are unchanged.
+`3648473d150307bde5d604a90137c839d1e0d2f1`, based on upstream
+`224de0fb3c304b41bbae24e85e1801900865ff3e`. Its `AudioConverter` reuses one
+reset converter while the formats match, matching a fresh converter bit for bit.
+Swift 6.2 dependency traits retain ASR/VAD and Diarizer while excluding unused
+TTS resources and NeMo linkage; the macOS 26/iOS 26 deployment floors and
+curated model artifacts are unchanged.
 The decision ledger owns every immutable dependency admission; `docs/GAPS.md`
 tracks temporary-fork maintenance and unqualified upstream behavior. No floating
 branch or unrelated package refresh can admit another SDK. Vendor types enter

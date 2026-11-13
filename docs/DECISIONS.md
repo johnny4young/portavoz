@@ -22972,3 +22972,20 @@ since GitHub cancels such a job after 15 minutes or more.
 failure and counts against the SLO; it is not dropped as a sample. The post-split evidence is
 thin (fewer than 30 heads in each cohort), so the values are re-derived with the same report
 once the window holds 30 ordinary heads and a cold pull request sample.
+
+---
+
+## D642 — The speech fork reuses its resampling converter
+
+During a live recording, FluidAudio's `AudioConverter` built and configured a new
+mastering-quality `AVAudioConverter` for every capture buffer, on both Parakeet
+channels and the live diarizer. On short buffers that setup cost about as much
+as the conversion itself.
+
+The fork, at `3648473d150307bde5d604a90137c839d1e0d2f1` on top of D569's
+revision, keeps the last converter while the formats match and resets it before
+each call. A reset converter produces the same samples as a fresh one, bit for
+bit, so ASR, diarization and their calibration are unchanged; the fork's tests
+compare both on uneven buffer sizes and a mid-stream format change, and
+concurrent callers never share an instance. Algorithm, quality and every other
+term of D559 and D569 are unchanged.

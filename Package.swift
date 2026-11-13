@@ -40,7 +40,7 @@ let package = Package(
         // Evaluation candidate: no new models, unused TTS/NeMo are not linked.
         .package(
             url: "https://github.com/johnny4young/FluidAudio.git",
-            revision: "16ff239818ddb6787629dab38ae43e8bdd0e7546",
+            revision: "3648473d150307bde5d604a90137c839d1e0d2f1",
             traits: ["Diarizer"]),
         // Dictation ownership (MIT), shared with Secreteo: 2.0 only releases a claim 1.x left behind.
         .package(
