@@ -75,9 +75,8 @@ class XctestrunInjectionTests(unittest.TestCase):
 def specs():
     target = {"sources": [{"path": "Tests"}], "type": "bundle", "platform": "macOS",
               "deploymentTarget": "26.0", "settings": {"base": {"A": "1"}}}
-    receiver = {**target, "type": "application"}
     runner = {"settings": {"base": {"SWIFT_VERSION": "6.0"}},
-              "targets": {"PortavozUITests": copy.deepcopy(target), "PortavozDictationReceiver": copy.deepcopy(receiver)}}
+              "targets": {"PortavozUITests": copy.deepcopy(target)}}
     project = {**copy.deepcopy(runner), "packages": {"Portavoz": {"path": "."}}}
     project["targets"]["Portavoz"] = {
         "deploymentTarget": "26.0", "settings": {"base": {ui_host.HOST_IDENTIFIER_KEY: IDENTIFIER}},

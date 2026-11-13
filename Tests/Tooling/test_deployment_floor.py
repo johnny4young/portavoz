@@ -19,7 +19,7 @@ class DeploymentFloorTests(unittest.TestCase):
         self.assertIn(".iOS(.v26)", read("Package.swift"))
         project = read("project.yml")
         self.assertNotRegex(project, r'deploymentTarget: "(?!26\.0")')
-        self.assertEqual(len(re.findall(r'deploymentTarget: "26\.0"', project)), 3)
+        self.assertEqual(len(re.findall(r'deploymentTarget: "26\.0"', project)), 2)
         self.assertIn('macOS: "26.0"', project)
 
     def test_bundle_tools_and_distribution_share_the_floor(self):

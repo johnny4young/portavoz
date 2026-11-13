@@ -142,7 +142,6 @@ NO_UI_PREFIXES = (
     "Tests/Tooling/",
     "Tests/PortavozKitTests/",
     "Tests/PortavozAppTests/",
-    "Tests/DictationPeer/",
     "Tests/PortavozTestSupport/",
     "Sources/portavoz-cli/",
     "Sources/portavoz-cli-main/",
@@ -154,8 +153,6 @@ NO_UI_PREFIXES = (
     "packaging/",
 )
 NO_UI_FILES = {
-    "Fixtures/DictationValidation/README.md",
-    "Fixtures/DictationValidation/public-synthetic-v1.json",
     "Sources/TranscriptionKit/LiveTranscriptionBench.swift",
     ".gitignore",
     ".swiftlint.yml",
@@ -376,9 +373,9 @@ def app_features(filename: str) -> set[str]:
     if lowered == "appservices+meetingsync.swift":
         return {"settings-data"}
     if lowered == "microphoneinputselection.swift":
-        return {"dictation", "recording-recovery", "settings-audio"}
+        return {"recording-recovery", "settings-audio"}
     if lowered == "appservices+settingstransfer.swift":
-        return {"settings-transfer", "dictation"}
+        return {"settings-transfer"}
     if lowered in {
         "appportablesettingsstore.swift",
         "portablesettings.swift", "portablesettingstransfer.swift", "portablesettingsfile.swift",
@@ -401,21 +398,15 @@ def app_features(filename: str) -> set[str]:
         # LocalizationTests own the strings; the canaries include the live language switch.
         return set()
     if any(token in lowered for token in ("applespeech", "livespeechselection")):
-        return {"dictation", "settings-intelligence", "recording-recovery"}
+        return {"settings-intelligence", "recording-recovery"}
     if "livetranscriptionattacher" in lowered:
         return {"recording-recovery"}
     if "showcase" in lowered:
         # Screenshot fixtures: their generators run on demand, the canaries cover the launch.
         return set()
-    # Dictation owns controller/panel and native delivery journeys, not just
-    # the Settings controls. Keep this ahead of generic presentation buckets.
-    if any(
-        token in lowered
-        for token in (
-            "dictation", "mousebutton", "mouseptt", "hotkey", "textinserter", "pasteboardsnapshot",
-            "selectionrewrite", "selectioncapture",
-        )
-    ):
+    # Legacy dictation retention owns the moved notice and Your data deletion.
+    # Keep this ahead of generic presentation buckets.
+    if "dictation" in lowered:
         return {"dictation"}
     if "semanticsearchpreparation" in lowered:
         return {"settings-intelligence"}
@@ -448,7 +439,7 @@ def app_features(filename: str) -> set[str]:
     if any(token in lowered for token in ("library", "trash", "voicemix")):
         return {"library"}
     if "menubar" in lowered:
-        return {"menu-bar-brief", "dictation"}
+        return {"menu-bar-brief"}
     if any(token in lowered for token in (
         "standingskill", "standingpremeetingbriefsupervisor"
     )):
@@ -745,7 +736,7 @@ def lower_layer_features(path: str) -> set[str]:
         return {"recording-recovery", "meeting-processing"}
     if "stoprecording" in lowered or "startrecording" in lowered:
         return {"library", "recording-recovery"}
-    if any(token in lowered for token in ("dictation", "mouseptt")):
+    if "dictation" in lowered:
         return {"dictation"}
     if "subtitle" in lowered:
         return {"meeting-export"}
@@ -946,11 +937,6 @@ def select_paths(
         if path == "Tests/Support/MeetingBundleFixture.swift":
             selected.update(feature_tests({"audio-imports"}))
             reasons.append(f"{path}: audio-imports")
-            continue
-
-        if path.startswith("Tests/PortavozDictationReceiver/"):
-            selected.update(feature_tests({"dictation"}))
-            reasons.append(f"{path}: native dictation receiver contract")
             continue
 
         if path == "Tests/PortavozUITests/FeatureUITestHandshakeSupport.swift":

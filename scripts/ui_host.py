@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RUNNER_TARGET = "PortavozUITests"
 HOST_IDENTIFIER_KEY = "PRODUCT_BUNDLE_IDENTIFIER"
-RUNNER_TARGETS = frozenset({RUNNER_TARGET, "PortavozDictationReceiver"})
+RUNNER_TARGETS = frozenset({RUNNER_TARGET})
 RUNNER_TARGET_KEYS = ("sources", "type", "platform", "deploymentTarget", "settings")
 FORBIDDEN_HOST_KEYS = ("CFBundleDocumentTypes", "SUFeedURL", "SUEnableAutomaticChecks", "SUPublicEDKey")
 HOST_IN_TEST_ROOT = "__TESTROOT__/Debug/Portavoz.app"

@@ -220,24 +220,21 @@ class UITestScopeTests(unittest.TestCase):
     def test_empty_change_set_requires_no_ui_runner(self):
         self.assertFalse(select_paths([]).required)
 
-    def test_cli_and_public_dictation_corpus_do_not_run_unrelated_ui(self):
+    def test_cli_does_not_run_unrelated_ui(self):
         for path in (
             "Sources/portavoz-cli/CLI.swift",
             "Sources/portavoz-cli/CLIBenchLive.swift",
-            "Fixtures/DictationValidation/public-synthetic-v1.json",
-            "Fixtures/DictationValidation/README.md",
         ):
             self.assertFalse(select_paths([path]).required, path)
         selection = select_paths([
             "Sources/portavoz-cli/CLI.swift",
-            "Fixtures/DictationValidation/public-synthetic-v1.json",
-            "Sources/portavoz-app/DictationController.swift",
+            "Sources/portavoz-app/LegacyDictationModel.swift",
         ])
         self.assertEqual(set(selection.tests), set(FEATURE_TESTS["dictation"]))
         self.assertEqual(selection.locales, ("en",))
 
         unknown_fixture = select_paths([
-            "Fixtures/DictationValidation/future-app-resource.json",
+            "Fixtures/FutureCorpus/future-app-resource.json",
         ])
         self.assertEqual(set(unknown_fixture.tests), set(CONSERVATIVE_TESTS))
         self.assertTrue(unknown_fixture.scope_unknown)
@@ -1136,51 +1133,31 @@ class UITestScopeTests(unittest.TestCase):
         )
         self.assertEqual(selection.locales, ("en",))
 
-    def test_dictation_surfaces_select_unattended_controller_coverage(self):
+    def test_legacy_dictation_sources_select_the_retention_journeys(self):
         for path in [
-            "Sources/portavoz-app/DictationSection.swift",
-            "Sources/portavoz-app/DictationShortcut.swift",
-            "Sources/portavoz-app/DictationShortcutSettings.swift",
-            "Sources/portavoz-app/HotkeySetting+Labels.swift",
-            "Sources/portavoz-app/MouseButtonPTT.swift",
-            "Sources/portavoz-app/MousePTTGesture.swift",
-            "Sources/portavoz-app/DictationController.swift",
-            "Sources/portavoz-app/DictationSessionDependencies.swift",
-            "Sources/portavoz-app/AppServices+DictationUITestFixture.swift",
-            "Sources/portavoz-app/TextInserter.swift",
-            "Sources/portavoz-app/DictationClipboard.swift",
-            "Sources/portavoz-app/PasteboardSnapshot.swift",
-            "Sources/TranscriptionKit/DictationTextRules.swift",
+            "Sources/portavoz-app/LegacyDictationModel.swift",
+            "Sources/portavoz-app/LegacyDictationViews.swift",
+            "Sources/portavoz-app/LegacyDictationOwnershipRelease.swift",
+            "Sources/StorageKit/Schema/Legacy/LegacyDictationRetention.swift",
         ]:
             selection = select_paths([path])
             expected = tuple(test for test in ALL_TESTS if test in FEATURE_TESTS["dictation"])
             self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en",), path)
 
-    def test_shared_microphone_preference_reaches_dictation_recording_and_settings(self):
+    def test_shared_microphone_preference_reaches_recording_and_settings(self):
         selection = select_paths(["Sources/portavoz-app/MicrophoneInputSelection.swift"])
         expected = set().union(*(FEATURE_TESTS[feature] for feature in (
-            "dictation", "recording-recovery", "settings-audio")))
+            "recording-recovery", "settings-audio")))
         self.assertEqual(set(selection.tests), expected)
 
-    def test_settings_application_keeps_preparing_dictation_in_scope(self):
+    def test_settings_application_selects_the_transfer_journeys(self):
         selection = select_paths(["Sources/portavoz-app/AppServices+SettingsTransfer.swift"])
-        self.assertEqual(set(selection.tests), set(FEATURE_TESTS["settings-transfer"] + FEATURE_TESTS["dictation"]))
+        self.assertEqual(set(selection.tests), set(FEATURE_TESTS["settings-transfer"]))
 
-    def test_dictation_receiver_changes_keep_the_panel_journey_in_scope(self):
-        selection = select_paths(["Tests/PortavozDictationReceiver/DictationReceiver.swift"])
-        self.assertEqual(set(selection.tests), set(FEATURE_TESTS["dictation"]))
-        self.assertEqual(selection.locales, ("en",))
-
-    def test_the_coexistence_peer_is_a_headless_test_process(self):
-        selection = select_paths(["Tests/DictationPeer/DictationPeer.swift"])
-        self.assertEqual(selection.tests, ())
-        self.assertFalse(selection.scope_unknown)
-
-    def test_menu_bar_changes_cover_the_dictation_entrypoint(self):
+    def test_menu_bar_changes_cover_the_brief(self):
         selection = select_paths(["Sources/portavoz-app/MenuBarView.swift"])
-        expected = set(FEATURE_TESTS["menu-bar-brief"] + FEATURE_TESTS["dictation"])
-        self.assertEqual(set(selection.tests), expected)
+        self.assertEqual(set(selection.tests), set(FEATURE_TESTS["menu-bar-brief"]))
 
     def test_skill_sources_select_the_control_and_proposal_journeys(self):
         expected_set = set(
@@ -1915,12 +1892,12 @@ class UITestScopeTests(unittest.TestCase):
     def test_catalog_policy_rejects_a_no_ui_fixture_loaded_by_the_app(self):
         scoped = ui_scope.test_id("InsightsUITests", "testScoped")
         temporary, root = self.minimal_catalog_root("testScoped")
-        loader = root / "Sources" / "portavoz-app" / "DictationFixtureLoader.swift"
+        loader = root / "Sources" / "portavoz-app" / "CorpusFixtureLoader.swift"
         loader.write_text(
-            'let corpus = "Fixtures/DictationValidation/public-synthetic-v1.json"\n',
+            'let corpus = "Fixtures/ReviewedCorpus/public-synthetic-v1.json"\n',
             encoding="utf-8",
         )
-        cli = root / "Sources" / "portavoz-cli" / "CLIDictationCorpus.swift"
+        cli = root / "Sources" / "portavoz-cli" / "CLICorpus.swift"
         cli.parent.mkdir(parents=True)
         cli.write_text(loader.read_text(encoding="utf-8"), encoding="utf-8")
         with temporary, mock.patch.multiple(
@@ -1932,11 +1909,12 @@ class UITestScopeTests(unittest.TestCase):
                 "insights": "Sources/portavoz-app/InsightsView.swift"
             },
             RETIRED_DUPLICATE_TESTS=frozenset(),
+            NO_UI_FILES={"Fixtures/ReviewedCorpus/public-synthetic-v1.json"},
         ):
             with self.assertRaisesRegex(
                 RuntimeError,
-                r"no-UI fixtures reachable from UI sources: Fixtures/DictationValidation "
-                r"\(Sources/portavoz-app/DictationFixtureLoader.swift\)(;|$)",
+                r"no-UI fixtures reachable from UI sources: Fixtures/ReviewedCorpus "
+                r"\(Sources/portavoz-app/CorpusFixtureLoader.swift\)(;|$)",
             ):
                 ui_scope.validate_catalog(root, runtime_budget_required=False)
 
@@ -2015,7 +1993,7 @@ class PullRequestBaseSelectionTests(unittest.TestCase):
         self.write_commit("README.md", "base\n")
         self.root = self.git("rev-parse", "HEAD").stdout.strip()
         self.git("update-ref", "refs/remotes/origin/main", self.root)
-        self.write_commit("Sources/portavoz-app/DictationSection.swift", "parent view\n")
+        self.write_commit("Sources/portavoz-app/LegacyDictationViews.swift", "parent view\n")
         self.parent = self.git("rev-parse", "HEAD").stdout.strip()
         self.write_commit("docs/GAPS.md", "child documentation\n")
         self.head = self.git("rev-parse", "HEAD").stdout.strip()
@@ -2053,7 +2031,7 @@ class PullRequestBaseSelectionTests(unittest.TestCase):
         run, outputs = self.select(newer_main)
 
         self.assertEqual(run.returncode, 0, run.stderr)
-        own = ui_scope.select_paths(["Sources/portavoz-app/DictationSection.swift", "docs/GAPS.md"])
+        own = ui_scope.select_paths(["Sources/portavoz-app/LegacyDictationViews.swift", "docs/GAPS.md"])
         self.assertEqual(outputs["tests"].split(), list(own.tests))
 
     def test_what_a_child_changed_ranks_before_what_its_parents_changed(self):
@@ -2062,7 +2040,7 @@ class PullRequestBaseSelectionTests(unittest.TestCase):
         self.head = self.git("rev-parse", "HEAD").stdout.strip()
 
         child = ui_scope.select_paths(["Sources/portavoz-app/HomeView.swift"])
-        parent = ui_scope.select_paths(["Sources/portavoz-app/DictationSection.swift"])
+        parent = ui_scope.select_paths(["Sources/portavoz-app/LegacyDictationViews.swift"])
         only_child = set(child.tests) - set(ui_scope.SMOKE_TESTS)
 
         run, outputs = self.select(self.parent, "--ranked")
@@ -2098,7 +2076,7 @@ class PullRequestBaseSelectionTests(unittest.TestCase):
         self.write_commit("docs/ROADMAP-public.md", "main side\n")
         main_side = self.git("rev-parse", "HEAD").stdout.strip()
         self.git("checkout", "-q", "-B", "child-line", self.root)
-        self.write_commit("Sources/portavoz-app/DictationSection.swift", "child view\n")
+        self.write_commit("Sources/portavoz-app/LegacyDictationViews.swift", "child view\n")
         child_side = self.git("rev-parse", "HEAD").stdout.strip()
         self.git("merge", "-q", "--no-edit", main_side)
         self.head = self.git("rev-parse", "HEAD").stdout.strip()
