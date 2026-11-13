@@ -12,6 +12,11 @@ extension ArchitectureDependencyTests {
             app.filter { !$0.hasPrefix("LegacyDictation") }, [],
             "only the legacy retention, notice and ownership release stay in the app")
 
+        // A 1.x library is read only through the legacy SQL facade.
+        let storage = try FileManager.default.contentsOfDirectory(
+            atPath: Self.repoRoot.appendingPathComponent("Sources/StorageKit").path)
+        XCTAssertEqual(storage.filter { $0.hasPrefix("MeetingStore+Dictation") }, [])
+
         let runtime = #"DictationController|DictationOwnershipCoordinator|DictationAdmission|TextInserter|"#
             + #"GlobalHotkey|SelectionRewrite|parakeetUltra|ParakeetCheckpoint|filtersLiveScript|"#
             + #"LiveSpeechPurpose|LiveSpeechCheckpointPlan|beginDictationCapture|dictationOwners"#

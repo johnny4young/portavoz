@@ -1217,9 +1217,9 @@ frozen with their limits as literals. `LegacyDictationRetention`, a SQL-only
 facade, expires that data on its frozen horizons whatever the consent rows say,
 or deletes it, without touching meeting notes or egress receipts;
 `LegacyDictationModel` is its only app caller. Sync, exports, Spotlight and MCP
-do not read these tables. Dictation's pure text rules, Polish prompt, fidelity
-check and polishers, and the store's dictation history, statistics and
-meeting-note reads still compile in the capability modules with no app caller.
+do not read these tables, and `MeetingStore` has no other dictation API.
+Dictation's pure text rules, Polish prompt, fidelity check and polishers still
+compile in the capability modules with no app caller.
 
 Live Apuntador keeps endpoint and semantic admission split across layers. The
 pure `TurnEndpointPolicy` in `IntelligenceKit` owns the remote-channel, noise,

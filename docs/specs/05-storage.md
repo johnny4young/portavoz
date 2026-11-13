@@ -211,9 +211,9 @@ Singular camelCase tables, 1:1 with Codable records:
 | Table | Key columns |
 |---|---|
 | `meeting` | id (UUID TEXT PK), title, startedAt, endedAt, language, audioDirectory (RELATIVE), retention, visibility (reserved), **lifecycleState**, **transcriptRevision**, **lastProcessingError** (v6), createdAt/updatedAt/deletedAt |
-| `dictationMeetingNote` (v57) | local link (dictationID → dictationRecord, meetingID → meeting, unique contextItemID → contextItem, all ON DELETE CASCADE; primary key dictation + meeting) recording which meeting note was copied from which dictation; see Dictation history |
-| `dictationRecordSearch` (v55) | FTS5 external content over `dictationRecord.text` and `originalText`, `unicode61` tokenizer, kept in sync by GRDB triggers; see Dictation history |
-| `dictationHistoryPolicy` / `dictationRecord` (v54, v56) | one consent row (isEnabled, keepsOriginal, retentionDays 7/30/90, generation, and since v56 exposesToAgents) and saved dictations keyed by session UUID with `(createdAt, id)` index; see Dictation history |
+| `dictationMeetingNote` (v57) | local link (dictationID → dictationRecord, meetingID → meeting, unique contextItemID → contextItem, all ON DELETE CASCADE; primary key dictation + meeting) recording which meeting note was copied from which dictation; see Legacy dictation data |
+| `dictationRecordSearch` (v55) | FTS5 external content over `dictationRecord.text` and `originalText`, `unicode61` tokenizer, kept in sync by GRDB triggers; see Legacy dictation data |
+| `dictationHistoryPolicy` / `dictationRecord` (v54, v56) | one consent row (isEnabled, keepsOriginal, retentionDays 7/30/90, generation, and since v56 exposesToAgents) and saved dictations keyed by session UUID with `(createdAt, id)` index; see Legacy dictation data |
 | `meeting_on_audioDirectory` (v53) | nonunique `(audioDirectory)` index for exact compression-directory ownership; duplicate rows remain valid evidence, and admission reads at most two matching owners before refusing ambiguity |
 | `speaker` | id, meetingID (FK CASCADE), label (S1/Me…), displayName, isMe, personID? (v8, FK SET NULL), tombstone |
 | `segment` | id, meetingID, speakerID?, channel, text, language?, startTime/endTime, confidence?, isFinal, **embedding BLOB** (v2), **embeddingFingerprint** (v17), generationRunID? (v6), tombstone |
@@ -2115,7 +2115,7 @@ through commit or rollback; recording start checks it before publishing
 first, the existing migration activity gate rejects its preparing/recording/
 processing phase. This is a process-local fence, not an interprocess file lock.
 
-## Dictation history (schema v54, D576)
+## Legacy dictation data (schemas v54 to v59, D576, D640)
 
 The dictation migrations (v54 to v59) live in `Sources/StorageKit/Schema/Legacy` and are
 frozen: their text and label limits are literals (20,000 and 256), not the app's current
@@ -2141,33 +2141,29 @@ cascades only its note link. Everything is SQL, with no dictation type.
 `LegacyDictationFixture.swift`, compiled only in debug builds, seeds one stats day so a
 disposable UI-test library looks upgraded.
 
-Since 2.0 no app path and no ApplicationKit use case calls the `MeetingStore`
-dictation APIs below; they still compile, with their store tests, until they are
-removed. Dictation is a second domain on the same `DatabaseQueue`, written only through
-`MeetingStore+DictationHistory`. `dictationHistoryPolicy` holds a single row that
-starts off (`isEnabled = 0`, `keepsOriginal = 0`, 30 days, generation 0).
-`setDictationHistoryPolicy` accepts only 7, 30 or 90 days, advances `generation`
-when saving turns off, and purges rows older than the new retention in the same
-transaction. `deleteAllDictationRecords` deletes every row and advances the
-generation too.
+`MeetingStore` has no other dictation API: only the facade and that debug fixture write
+these tables. What the frozen migrations left in a 1.x library:
 
-`recordDictation(_:admittedGeneration:at:)` revalidates consent inside its write
-transaction: it returns `refused` unless history is on and the generation still
-equals the one read when the dictation started, so turning history off or
-deleting everything while a dictation finishes keeps it out. The row ID is the
-session UUID; a second write for the same session (a recovery retry) updates only
-`delivery`. `originalText` is stored only when `keepsOriginal` is on and it
-differs from the final text. Every write also purges expired rows, and the app
-purges once at launch. CHECK constraints bound text to 20,000 and labels to 256
-Unicode scalars and close `mode`, `language` and `delivery` to their known values.
-
-`dictationRecords(before:limit:)` pages newest first with a `(createdAt, id)`
-keyset cursor and a 1–100 limit. No audio, window title, URL or surrounding text
-is stored; the destination is the application name and bundle ID. `engine` names
-the lane that transcribed the session (`parakeet`, `parakeetUltra` or
-`appleSpeech`), carried on the live runtime by the services layer that acquired
-it, so a session that fell back to v3 or reused a resident v3 says `parakeet`.
-The Settings choice fills it only for runtimes without a lane (fixtures).
+- `dictationHistoryPolicy` (v54, v56): one row that starts off (`isEnabled = 0`,
+  `keepsOriginal = 0`, 30 days, generation 0, and since v56 `exposesToAgents = 0`).
+  `retentionDays` is 7, 30 or 90; the facade reads it as the history horizon.
+- `dictationRecord` (v54, rebuilt by v59 to admit `polish`): one row per dictation
+  session, keyed by its UUID, with the final text, the original only when it was kept,
+  mode, language, engine, application name and bundle ID, and delivery. CHECK
+  constraints bound text to 20,000 and labels to 256 Unicode scalars and close
+  `mode`, `language` and `delivery` to their known values. No audio, window title,
+  URL or surrounding text was ever stored.
+- `dictationRecordSearch` (v55): an FTS5 external-content index over the final and
+  kept original text (`unicode61`), kept in step by triggers, so a deleted or purged
+  dictation leaves the index in the same transaction.
+- `dictationStatsPolicy`, `dictationStatsDay` and `dictationStatsCounted` (v58):
+  counting consent (off by default), per-day totals by application (`''` when
+  unknown) and the per-dictation retry dedupe.
+- `dictationMeetingNote` (v57): which meeting note was copied from which dictation.
+  The copy is an ordinary `contextItem` note that follows every note path (FTS,
+  meeting sync, export, Ask); the link has no sync triggers and stays on this Mac.
+  Deleting the dictation cascades only the link; deleting the meeting or purging the
+  note cascades the link too.
 
 Isolation: sync aggregates, per-meeting export/import, Spotlight, MCP/CLI,
 support diagnostics and settings transfer name their tables, so none reads
@@ -2177,79 +2173,13 @@ renders only meetings) and the launch recovery copy the user requests when the
 database cannot open. Like meetings, the main database is part of Time Machine
 backups; deletion is a SQLite `DELETE`, not forensic erasure.
 
-### Dictation search (schema v55, D577)
-
-`dictationRecordSearch` is an FTS5 external-content index over the final and the
-kept original text, built with `unicode61` (diacritics and case removed, so
-"accion" finds "acción") and backfilled with `rebuild` for rows saved under v54.
-GRDB's insert, update and delete triggers keep it in step, so a deleted, purged
-or cleared dictation leaves the index in the same transaction.
-
-`dictationRecords(matching:before:limit:)` takes a `DictationRecordFilter`:
-query, application name and "only not delivered". Every condition sits in the
-`WHERE` clause before `LIMIT`, and paging keeps the `(createdAt, id)` keyset, so a
-filtered list pages without gaps or repeats. `dictationSearchQuery` keeps at most
-200 characters and 16 words that contain a letter or digit, quotes each word with
-doubled inner quotes, requires every word and lets only the last one match as a
-prefix. FTS5 operators, column filters and `NEAR` typed by the user are matched
-as text; a query with no usable word returns nothing. `dictationApplications()`
-lists distinct application names for the filter menu.
-
-Measured once with 10,000 dictations (release build, M-series Mac): newest page
-p95 0.2 ms, single-word, prefix and application-plus-word searches p95 about
-1.2 ms, database 6.6 MB. No timing assertion guards it.
-
-### Agent access to dictations (schema v56, D578)
-
-v56 adds `exposesToAgents` (default 0) to `dictationHistoryPolicy`. The setter
-stores it only together with `isEnabled`, so turning history off withdraws
-agent access and turning it back on does not restore it. `agentsCanRead`
-requires both. `dictationRecordsForAgents(matching:offset:limit:)` reads the policy and the rows in one read transaction
-and returns `.notAllowed` without touching any row when access is off. Agent
-pages reuse the history filter (`dictationFilterConditions`), count the
-filtered total, and use newest-first offset paging with the offset clamped
-at 0 and the limit to 1–100.
-
-### Dictation statistics (schema v58, D584)
-
-v58 adds `dictationStatsPolicy` (one row, `isEnabled` 0 by default),
-`dictationStatsDay` (primary key `day` `yyyy-MM-dd` plus `applicationName`,
-`''` when unknown; `dictations`, `words`, `spokenMs`, `notDelivered`, all
-non-negative) and `dictationStatsCounted` (`dictationID` primary key, its `day`,
-`applicationName`, `delivered`, `countedAt`). `recordDictationStats(_:at:calendar:)`
-validates the sample, then in one write transaction returns false while the
-consent is off, purges days older than 365 days and counted identities older
-than two days, and either flips `notDelivered` for an already counted identity
-whose delivery changed or inserts the identity and upserts the day row.
-`dictationStatsSummary(days:)` sums each requested day across apps (empty days
-included) and ranks at most five named apps by dictations, then words, then
-name. `deleteDictationStats()` clears both data tables and keeps the consent.
-`setDictationStatsEnabled(_:)` only changes the consent.
-
-### Dictations added to meeting notes (schema v57, D579)
-
-`addDictationToMeeting(_:meetingID:at:)` is the only path that writes a raw
-note to a meeting outside a live recording. In one write transaction it
-requires the dictation, a live meeting with `endedAt` set and a lifecycle other
-than `recording`, and no live note already copied from that dictation into that
-meeting (a tombstoned copy is cleared so it can be added again). It inserts an
-ordinary `contextItem` of kind `note` with the dictation's text, at the
-dictation's offset into the meeting when it falls inside it, otherwise clamped
-to 0 or to the meeting's duration, plus one `dictationMeetingNote` row. The note
-therefore follows every existing note path: FTS, meeting sync triggers, export
-and Ask. The link table has no sync triggers and stays on this Mac. Deleting the
-dictation cascades only the link; deleting the meeting or purging the note
-cascades the link too. The outcome reports whether the meeting already shows
-tidied (enhanced) notes, which hide raw notes until the user tidies again.
-`meetingsForDictation(createdAt:limit:)` lists live finished meetings, the one
-whose recording contains the dictation first, then newest; `dictationMeetingLinks`
-returns only links whose note and meeting are still live.
-
 Upgrade coverage: a synthetic library at each dictation starting schema, from
 v54 to the latest, opens and reopens with every dictation row, policy, link,
 stats row and egress receipt intact, every FTS5 index healthy and no foreign-key
 violation; deleting the dictation rows afterwards leaves the copied note in
-place (`StorageUpgradeTests+LegacyDictation.swift`).
+place (`StorageUpgradeTests+LegacyDictation.swift`). `LegacyDictationRetentionTests`
+seeds rows with SQL only and covers the facade, the copied-note cascade and the
+consent defaults the frozen migrations seed.
 
 ### Transcript translation (schema v60, D595)
 
