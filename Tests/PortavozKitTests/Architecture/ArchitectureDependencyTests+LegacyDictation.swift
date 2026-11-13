@@ -1,14 +1,19 @@
 import XCTest
 
 extension ArchitectureDependencyTests {
-    // The legacy retention is prepared before the dictation code leaves; the change that removes
-    // the dictation UI is the one that wires it, so no window opens without a purge.
-    func testLegacyDictationRetentionHasNoProductionCallerYet() throws {
+    // One app owner calls the legacy facade, and launch opens it, so no window opens without a purge.
+    func testLegacyDictationRetentionHasOneAppOwnerOpenedAtLaunch() throws {
         let callers = try Self.sourceMatches(
             under: "Sources",
             pattern: #"\b(purgeExpiredLegacyDictationData|deleteAllLegacyDictationData|legacyDictationRows)\("#,
             codeOnly: true)
-        XCTAssertEqual(callers, ["StorageKit/Schema/Legacy/LegacyDictationRetention.swift"])
+        XCTAssertEqual(
+            Set(callers),
+            ["StorageKit/Schema/Legacy/LegacyDictationRetention.swift", "portavoz-app/LegacyDictationModel.swift"])
+        XCTAssertTrue(try Self.contents(of: "Sources/portavoz-app/AppLaunchModel.swift")
+            .contains("services.legacyDictation.open()"))
+        XCTAssertTrue(try Self.contents(of: "Sources/portavoz-app/AppServices+ResourceGovernor.swift")
+            .contains("legacyDictation.purgeExpiredInBackground()"))
 
         let retention = try Self.contents(of: "Sources/StorageKit/Schema/Legacy/LegacyDictationRetention.swift")
         XCTAssertFalse(retention.contains("import PortavozCore"), "the legacy facade must outlive the dictation types")

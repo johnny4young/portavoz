@@ -1602,7 +1602,7 @@ use OS-managed assets and keep the disposable model root. Regular
 `-use-temp-store` automation still receives an empty model root.
 The resource
 dispatcher also returns from app initialization before normal sync,
-recovery, provider discovery, or dictation registration can start; it detaches
+recovery, provider discovery, or legacy-dictation retention can start; it detaches
 the AppKit delegate from product services. The runner refuses a dirty worktree,
 never targets the notarized installed app, removes the private
 fragments/fixture on failure, and publishes the receipt only after all
@@ -2619,10 +2619,12 @@ verb, and the Today ask chips carry the Ask symbol.
 Apuntador (with the real opt-in switch, `onboarding-apuntador-toggle`, bound
 to the recording controller), Radar and Automations in one line each plus one
 example card (`onboarding-example-card`) drawn like a live Apuntador card;
-permissions; on-device models; dictation; and the optional voice enrollment.
+permissions; on-device models; and the optional voice enrollment.
 Skip stays available on every step (`onboarding-skip`).
 
-**Dictation step (Oct 2026, D575).** `OnboardingDictationStep`
+**Dictation step (Oct 2026, D575; removed from onboarding in 2.0, D640).** Onboarding no longer
+shows it; the step's file remains without a caller until the dictation code is deleted.
+`OnboardingDictationStep`
 (`onboarding-dictation`) explains the shortcut and shows the same enable switch
 as Settings (`onboarding-dictation-toggle`), off until the user turns it on, so
 Continue registers nothing. Turning it on runs `applyDictationEnabled` (the
@@ -2652,11 +2654,12 @@ source stays visible on the card.
 
 ## Settings layout (Sep 2026, D537)
 
-Settings has seven categories: General & language, Audio & dictation,
+Settings has seven categories: General & language, Audio (microphone, capture
+source, call-safe capture; dictation's sections left in 2.0, D640),
 Intelligence (summary engine, languages, Apuntador, your voice, remembered
 voices, semantic search, structures, vocabulary), Agenda & automation,
 Automations, Integrations, and Your data (ledger, iCloud sync, background
-activity, diagnostics, backup, recordings folder). The former "My voice &
+activity, legacy dictation deletion, diagnostics, backup, recordings folder). The former "My voice &
 Apuntador", "Sync" and "Background activity" categories merged into
 Intelligence and Your data; their controls and accessibility identifiers are
 unchanged, and every deep link (`pendingSettingsCategory`) resolves to one of
@@ -2674,6 +2677,53 @@ attention read per action outside the history lens, so filters, pagination
 and waiting approvals cannot change it; an unavailable read says so instead of
 "Never run"), followed by the suggestions
 to review, the standing rules and the action history.
+
+## Dictation leaves Portavoz (2.0, D640)
+
+Nothing in the app starts dictation any more. The menu bar has no Dictate, Paste
+last, Rewrite selection or owner row; Settings has no dictation sections (the
+category is Audio); onboarding has no dictation step (its footer counts five
+steps); the Library has no Dictations destination and `Route` has no
+`.dictations`; App Intents publish no dictation action. Launch installs no
+dictation intent reader, loads no history or statistics, never connects or
+starts `DictationOwnershipCoordinator`, and registers no hotkey, push-to-talk,
+paste-last or rewrite trigger; the delegate no longer re-arms triggers on
+activation. The dictation code described below remains in the tree with no
+caller until it is deleted. Portable settings drop `dictationLanguage`,
+`removeFillers` and `replacements`: export no longer writes them, and import
+skips them in a 1.x file while any other unknown key still fails the file as
+`unsupportedSetting`. Applying settings waits only for a recording.
+
+`LegacyDictationModel` (on `AppServices`) owns the rows a 1.x library kept,
+through `MeetingStore`'s legacy retention facade. `open()` runs once from
+`AppLaunchModel` (never in an isolated benchmark): it purges, reads whether rows
+remain, and decides the notice; it also observes `NSWorkspace.didWakeNotification`.
+The resource governor's return to no capture, where sync and backup maintenance
+resume, purges again. A failure is logged under `legacy-dictation` and nothing
+is shown. Settings › Your data shows Dictation history
+(`settings-legacy-dictation-delete`) while rows remain, with a destructive
+confirmation (`settings-legacy-dictation-delete-confirm`) and an inline failure
+line (`settings-legacy-dictation-delete-failed`).
+
+`LegacyDictationNotice` decides the one sheet, `DictationMovedNoticeSheet`
+(`dictation-moved-title`, `dictation-moved-delete` and its
+`dictation-moved-delete-confirm` while rows remain, `dictation-moved-dismiss`):
+it is due only when rows remain after the purge or the 1.x switch
+`globalDictationEnabled` exists in defaults, and only until
+`dictationMovedNoticeShown` is set, which happens when the sheet appears or is
+dismissed, not when a window claims it. A fresh install never sees it. Main windows register and unregister as
+hosts; one that closes before the sheet appears hands it to the next, and a cancelled
+claim takes nothing. Row reads are generation-ordered, so a purge's late read cannot
+undo a delete. A failed delete shows `dictation-moved-delete-failed` and keeps the
+sheet open. Disposable libraries see it only with
+`-show-dictation-moved-notice` and never record it; `-seed-legacy-dictation`
+adds one stats day through a debug-only StorageKit fixture. The notice has no
+download link: the repository names no public Secreteo page yet.
+
+At launch the shipping build (`app.portavoz.mac`, never Dev or a disposable library)
+calls `relinquishForRemoval()` once, off the main actor, through
+`LegacyDictationOwnershipRelease`, so an ownership 1.x left behind is freed for
+Secreteo; busy or failed is logged and nothing ever claims.
 
 ## Design system in app (Jul 2026) — tokens + voices B + accent
 
@@ -2807,7 +2857,7 @@ answer, app-panel-only screenshot, and exact three-second citation seek (D100).
 
 ## Resident menu bar (Jul 2026)
 
-`MenuBarExtra(isInserted:)` bound to `@AppStorage("menuBarEnabled")` (toggle in Settings → Menu bar, on by default): template icon `waveform.and.mic` that changes to `record.circle.fill` while recording — the "¿estoy grabando?" at a glance. Menu: Start/Stop (Start fronts the value-scoped primary window via `openWindow(id: "main", value: .primary)` + `pendingRoute = .recording(nil)`; Stop calls shared controller), Dictate (only with dictation enabled), Open Portavoz, Launch at login (`SMAppService.mainApp` — requires /Applications, which is the installation story), Quit. **Architectural precondition**: `RecordingController` moved from `@State` of RecordingView to `AppServices.recording` (shared) — view, HUD and menu bar observe THE SAME session and navigation never can orphan a recording (same fix as RefineService).
+`MenuBarExtra(isInserted:)` bound to `@AppStorage("menuBarEnabled")` (toggle in Settings → Menu bar, on by default): template icon `waveform.and.mic` that changes to `record.circle.fill` while recording — the "¿estoy grabando?" at a glance. Menu: Start/Stop (Start fronts the value-scoped primary window via `openWindow(id: "main", value: .primary)` + `pendingRoute = .recording(nil)`; Stop calls shared controller), Open Portavoz, Launch at login (`SMAppService.mainApp` — requires /Applications, which is the installation story), Quit. **Architectural precondition**: `RecordingController` moved from `@State` of RecordingView to `AppServices.recording` (shared) — view, HUD and menu bar observe THE SAME session and navigation never can orphan a recording (same fix as RefineService).
 
 ## Host support snapshot (D520)
 
@@ -3182,8 +3232,9 @@ placement that UI journeys rely on.
 
 **Practice field (D575).** `DictationPracticeView` shows an in-app field with
 Dictate here / Finish (`<prefix>-practice-start`, a toggle of the shared
-controller), Clear and the result (`<prefix>-practice-field`), in onboarding and
-under the shortcut in Settings › Audio & dictation (`settings-dictation-`). Each
+controller), Clear and the result (`<prefix>-practice-field`). It was shown in
+onboarding and under the shortcut in Settings › Audio & dictation
+(`settings-dictation-`) until 2.0 removed both; it has no caller now. Each
 visible field reports whether its window is key (`controlActiveState`) to
 `AppServices.dictationPractice`. While one is key and Portavoz is active,
 `makeDictationSessionDependencies` replaces only `canInsert`,
@@ -3209,8 +3260,8 @@ silence never reaches delivery). A recovery retry updates the same row; Paste
 last replays are not new dictations. The delivered and unverified notices state
 what happened (`dictation-panel-delivery-detail`): "Nothing was saved in
 Portavoz." when history is off, otherwise saving, saved, or not saved.
-The sidebar destination **Dictations** (`library-dictations-button`, route
-`.dictations`) shows `DictationHistoryView` (`dictation-history`): an off state
+`DictationHistoryView` (`dictation-history`), which nothing shows since 2.0
+removed its sidebar destination and route, has an off state
 with Turn on history (`dictation-history-enable`), the retention line
 (`dictation-history-status`), rows with text, original, details, Copy and
 Delete (`dictation-history-text-N`, `-original-N`, `-details-N`, `-copy-N`,
@@ -3226,7 +3277,8 @@ through `DictationMeetingPicker` (`dictation-meeting-picker-title`, `-note`,
 will follow the meeting's notes into sync, exports and Ask; the row then shows
 `Added to <meeting>` (`dictation-history-linked-N`) and, when that meeting shows
 tidied notes, a hint to tidy again (`dictation-history-tidy-hint-N`). Settings ›
-Audio & dictation adds a Dictation history section with every switch off
+Audio & dictation added a Dictation history section, with no caller since 2.0,
+with every switch off
 (`settings-dictation-history`, `-retention`, `-original`, `-note`). Disposable
 launches can turn history on in the temporary database with
 `-seed-dictation-history` and add two rows with `-seed-dictation-history-records`.
@@ -4034,7 +4086,7 @@ Temporary composition changes only volatile preferences. Settings → Your data
 offers explicit Export/Import preferences actions. Native panels choose one JSON
 document; cancelling file selection performs no write. The review shows full
 current and resulting values, including merged collections. Apply rechecks the
-portable snapshot and recording/dictation activity synchronously at mutation.
+portable snapshot and recording activity synchronously at mutation.
 The sidebar observes the app-language preference directly and passes its value
 to shared localization for row titles, hints and category filtering. Prelocalized
 strings do not inherit SwiftUI locale invalidation by themselves. Updating the
@@ -5255,18 +5307,12 @@ Portavoz itself reports no missing readiness (D627), so a revoked permission her
 reports the permission through its normal path. A non-owner whose own state is `off` or `unavailable` is refused with
 that state rather than `notOwner`, because the library asks about the owner first.
 
-### Dictation actions in Shortcuts (D583)
+### Dictation actions in Shortcuts (D583, removed in 2.0)
 
-The delegate answers `PortavozAppIntentBridge.dictationRequested` without
-activating the app: it consults `dictationIntentOutcome(for:dictationEnabled:
-phase:hasPastableText:)` and then calls `DictationController.toggle(services:)`
-or `pasteLastDictation()`. `AppDictationIntentReader` is installed with the entity
-catalog once services are ready. `.dictations(words)` calls
-`DictationHistoryModel.show(search:)`, which replaces the filter, and
-`DictationHistoryView` mirrors `model.filter.query` into its search field. The
-history consent switch reads "Let agents and Shortcuts read the history"
-(`settings-dictation-history-agents`). `-simulate-open-dictations-intent <words>`
-requests the same navigation after the disposable history is seeded.
+The four dictation actions, their bridge requests, the delegate's answer,
+`AppDictationIntentReader` and the `.dictations` route are gone (D640).
+`DictationHistoryModel.show(search:)` remains without a caller until the history
+UI is deleted.
 
 ### Dictation statistics (D584)
 
@@ -5282,7 +5328,7 @@ for dictations, words, speaking time, time saved and, when any, not delivered
 (`dictation-stats-dictations`, `-words`, `-speaking`, `-saved`,
 `-not-delivered`), words per day as bars, the busiest apps
 (`dictation-stats-app-N`) and an empty state (`dictation-stats-empty`).
-Settings › Audio & dictation adds Dictation statistics: Keep dictation
+Settings › Audio & dictation added Dictation statistics, with no caller since 2.0: Keep dictation
 statistics (`settings-dictation-stats`, off by default), its note
 (`settings-dictation-stats-note`) and Delete statistics with a confirmation
 (`settings-dictation-stats-delete`, `-delete-confirm`). `-seed-dictation-stats`

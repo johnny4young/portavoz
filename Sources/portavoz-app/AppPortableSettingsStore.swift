@@ -20,18 +20,12 @@ struct AppPortableSettingsStore {
                 values[key] = .text(MeetingLanguagePreferences.transcript(defaults: defaults).persistedValue)
             case .summaryLanguage:
                 values[key] = .text(MeetingLanguagePreferences.summary(defaults: defaults).persistedValue)
-            case .menuBarVisible, .removeFillers:
+            case .menuBarVisible:
                 values[key] = .flag((defaults.object(forKey: key.defaultsKey) as? Bool) ?? true)
             case .titleTemplate:
                 values[key] = .text(defaults.string(forKey: key.defaultsKey) ?? TitleTemplate.defaultTemplate)
             case .vocabulary:
                 values[key] = .text(defaults.string(forKey: key.defaultsKey) ?? "")
-            case .dictationLanguage:
-                let value = defaults.string(forKey: key.defaultsKey) ?? "auto"
-                values[key] = .text(["en", "es"].contains(value) ? value : "auto")
-            case .replacements:
-                let value = defaults.string(forKey: key.defaultsKey) ?? ""
-                values[key] = .text(value.isEmpty ? "[]" : value)
             }
         }
         try PortableSettingsValidation.validate(values)
@@ -73,9 +67,6 @@ extension PortableSettingsKey {
         case .menuBarVisible: "menuBarEnabled"
         case .titleTemplate: "titleTemplate"
         case .vocabulary: "customVocabulary"
-        case .dictationLanguage: DictationController.languageKey
-        case .removeFillers: DictationController.fillerFilterKey
-        case .replacements: DictationController.replacementsKey
         }
     }
 }

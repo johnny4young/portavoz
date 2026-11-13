@@ -2123,8 +2123,11 @@ constants, so the schema they create can never drift (D640). v59 also rebuilds t
 egress journal through `admitDictationPolishEgress`, which stays in
 `Schema+GlobalDataEgress.swift` and already uses only literals.
 
-`LegacyDictationRetention.swift`, next to them, is the facade for that data once the
-dictation code is gone; nothing calls it yet. `purgeExpiredLegacyDictationData(now:calendar:)`
+`LegacyDictationRetention.swift`, next to them, is the facade for that data now that
+Portavoz no longer dictates. The app's `LegacyDictationModel` is its only caller: it purges
+when the app opens, after the Mac wakes and whenever capture ends, logs a failure without
+showing it, and deletes on request from Settings › Your data or the one-time notice that
+dictation moved to Secreteo. `purgeExpiredLegacyDictationData(now:calendar:)`
 removes, in one transaction, history older than the stored 7, 30 or 90 days, stats days
 older than 365 local days and retry-dedupe rows older than two days, whatever the consent
 rows say (today stats with counting turned off are never pruned, but nothing will show them
@@ -2136,6 +2139,8 @@ deletes every history and stats row, keeps the content-free egress receipts, and
 the history generation (stats have none); it is a logical delete, not a forensic wipe of
 WAL pages or backups. Copied meeting notes stay: a deleted dictation
 cascades only its note link. Everything is SQL, with no dictation type.
+`LegacyDictationFixture.swift`, compiled only in debug builds, seeds one stats day so a
+disposable UI-test library looks upgraded.
 
 Dictation is a second domain on the same `DatabaseQueue`, written only through
 `MeetingStore+DictationHistory`. `dictationHistoryPolicy` holds a single row that

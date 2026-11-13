@@ -25,7 +25,6 @@ from ui_test_scope import (  # noqa: E402
     HARNESS_SELF_TESTS,
     MEETING_FEATURES,
     PR_TESTS,
-    PERMISSION_GATED_TESTS,
     SMOKE_TESTS,
     select_paths,
     validate_catalog,
@@ -1178,38 +1177,6 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(selection.tests, ())
         self.assertFalse(selection.scope_unknown)
 
-    def test_native_delivery_journeys_are_discoverable_explicit_gates_not_hosted_passes(self):
-        native = ui_scope.test_id(
-            "DictationUITests", "testNativeInserterUsesDisposableReceiverAndClipboard"
-        )
-        controller = ui_scope.test_id(
-            "DictationUITests", "testNativeControllerModeChoicePreservesReceiverAndClipboard"
-        )
-        self.assertEqual(PERMISSION_GATED_TESTS, frozenset({native, controller}))
-        for selector in (native, controller):
-            self.assertNotIn(selector, ALL_TESTS)
-            self.assertNotIn(selector, FEATURE_TESTS["dictation"])
-            self.assertIn(selector, ui_scope.discovered_test_catalog(ROOT))
-        budget = json.loads((
-            ROOT / "docs/evidence/ui-test-native-dictation-runtime-budget.json"
-        ).read_text(encoding="utf-8"))
-        self.assertEqual(budget["catalog"]["expectedCaseCount"], 2)
-        self.assertEqual(
-            budget["testBudgetsSeconds"],
-            {"DictationUITests/testNativeInserterUsesDisposableReceiverAndClipboard()": 20.0,
-             "DictationUITests/testNativeControllerModeChoicePreservesReceiverAndClipboard()": 20.0},
-        )
-        self.assertEqual(budget["fullSuite"], {
-            "maximumP95Seconds": 20.0,
-            "maximumTestDurationSecondsPerLocale": 40.0,
-        })
-        makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
-        native_target = makefile.split("test-ui-native-dictation:", 1)[1].split("\n\n", 1)[0]
-        self.assertIn(native, native_target)
-        self.assertIn(controller, native_target)
-        self.assertIn("ui-test-native-dictation-runtime-budget.json", native_target)
-        validate_catalog(ROOT)
-
     def test_menu_bar_changes_cover_the_dictation_entrypoint(self):
         selection = select_paths(["Sources/portavoz-app/MenuBarView.swift"])
         expected = set(FEATURE_TESTS["menu-bar-brief"] + FEATURE_TESTS["dictation"])
@@ -1732,7 +1699,6 @@ class UITestScopeTests(unittest.TestCase):
         self.assertTrue(SMOKE_TESTS)
         self.assertEqual(len(SMOKE_TESTS), len(set(SMOKE_TESTS)))
         self.assertLessEqual(set(SMOKE_TESTS), set(ALL_TESTS))
-        self.assertTrue(set(SMOKE_TESTS).isdisjoint(PERMISSION_GATED_TESTS))
         self.assertLess(len(SMOKE_TESTS), len(ALL_TESTS))
 
     def test_shards_partition_the_catalog_with_balanced_budgets(self):
@@ -1895,7 +1861,7 @@ class UITestScopeTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "unscoped tests"):
                 ui_scope.validate_catalog(root, runtime_budget_required=False)
 
-    def test_catalog_policy_rejects_permission_gate_in_unattended_scope(self):
+    def test_catalog_policy_rejects_an_on_demand_case_in_unattended_scope(self):
         native = ui_scope.test_id("InsightsUITests", "testNativeGate")
         temporary, root = self.minimal_catalog_root("testNativeGate")
         with temporary, mock.patch.multiple(
@@ -1903,16 +1869,16 @@ class UITestScopeTests(unittest.TestCase):
             FEATURE_TESTS={"insights": (native,)},
             ALL_TESTS=(native,),
             ALL_FEATURES=frozenset({"insights"}),
-            PERMISSION_GATED_TESTS=frozenset({native}),
+            ON_DEMAND_TESTS=(native,),
             FEATURE_SOURCE_SENTINELS={
                 "insights": "Sources/portavoz-app/InsightsView.swift"
             },
             RETIRED_DUPLICATE_TESTS=frozenset(),
         ):
-            with self.assertRaisesRegex(RuntimeError, "permission-gated tests in hosted catalog"):
+            with self.assertRaisesRegex(RuntimeError, "on-demand tests in hosted catalog"):
                 ui_scope.validate_catalog(root, runtime_budget_required=False)
 
-    def test_catalog_policy_rejects_missing_permission_gate(self):
+    def test_catalog_policy_rejects_a_missing_on_demand_case(self):
         scoped = ui_scope.test_id("InsightsUITests", "testScoped")
         native = ui_scope.test_id("InsightsUITests", "testNativeGate")
         temporary, root = self.minimal_catalog_root("testScoped")
@@ -1921,7 +1887,7 @@ class UITestScopeTests(unittest.TestCase):
             FEATURE_TESTS={"insights": (scoped,)},
             ALL_TESTS=(scoped,),
             ALL_FEATURES=frozenset({"insights"}),
-            PERMISSION_GATED_TESTS=frozenset({native}),
+            ON_DEMAND_TESTS=(native,),
             FEATURE_SOURCE_SENTINELS={
                 "insights": "Sources/portavoz-app/InsightsView.swift"
             },
@@ -2076,7 +2042,7 @@ class PullRequestBaseSelectionTests(unittest.TestCase):
 
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(outputs["required"], "true")
-        self.assertIn("testDictationOffersTriggersLanguageAndDictionary", outputs["tests"])
+        self.assertIn("testTheDataPaneDeletesLegacyDictationHistory", outputs["tests"])
 
     def test_a_direct_pull_request_diffs_from_its_merge_base_when_main_moved_on(self):
         self.git("checkout", "-q", "-b", "newer-main", self.root)
@@ -2145,7 +2111,7 @@ class PullRequestBaseSelectionTests(unittest.TestCase):
         run, outputs = self.select(self.root)
 
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertIn("testDictationOffersTriggersLanguageAndDictionary", outputs["tests"])
+        self.assertIn("testTheDataPaneDeletesLegacyDictationHistory", outputs["tests"])
 
 
 if __name__ == "__main__":

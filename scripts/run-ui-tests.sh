@@ -231,15 +231,8 @@ for locale in $locales; do
   selector_label="$selector_count scoped selectors"
   if [[ -z "$tests" ]]; then
     selector_label="all tests"
-    # The real cross-process dictation delivery test requires a user-granted
-    # Accessibility decision for this exact disposable app. It is a separate
-    # explicit gate, not part of the unattended functional catalog. The public
-    # screenshot generators run only through `make public-screenshots`.
-    test_args+=(
-      -skip-testing:PortavozUITests/DictationUITests/testNativeInserterUsesDisposableReceiverAndClipboard
-      -skip-testing:PortavozUITests/DictationUITests/testNativeControllerModeChoicePreservesReceiverAndClipboard
-      -skip-testing:PortavozUITests/PublicShowcaseUITests
-    )
+    # The public screenshot generators run only through `make public-screenshots`.
+    test_args+=(-skip-testing:PortavozUITests/PublicShowcaseUITests)
   else
     test_args+=("${only_testing[@]}")
   fi

@@ -39,7 +39,6 @@ from ui_test_catalog import (  # noqa: E402
     MEETING_FEATURES,
     NIGHTLY_ONLY_TESTS,
     ON_DEMAND_TESTS,
-    PERMISSION_GATED_TESTS,
     PR_TESTS,
     RETIRED_DUPLICATE_TESTS,
     SMOKE_TESTS,
@@ -1232,7 +1231,7 @@ def discovered_test_catalog(root: Path) -> set[str]:
 
 
 def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> None:
-    expected = set(ALL_TESTS) | PERMISSION_GATED_TESTS | set(ON_DEMAND_TESTS)
+    expected = set(ALL_TESTS) | set(ON_DEMAND_TESTS)
     discovered = discovered_test_catalog(root)
     missing = sorted(discovered - expected)
     stale = sorted(expected - discovered)
@@ -1245,7 +1244,7 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         feature for feature, tests in FEATURE_TESTS.items() if not tests
     )
     retired = sorted(discovered & RETIRED_DUPLICATE_TESTS)
-    permission_overlap = sorted(set(ALL_TESTS) & (PERMISSION_GATED_TESTS | set(ON_DEMAND_TESTS)))
+    on_demand_overlap = sorted(set(ALL_TESTS) & set(ON_DEMAND_TESTS))
     smoke_errors = sorted((set(SMOKE_TESTS) | set(HARNESS_SELF_TESTS)) - set(ALL_TESTS))
     smoke_errors += sorted(set(SMOKE_TESTS) & set(NIGHTLY_ONLY_TESTS))
     tier_errors = sorted(FEATURE_TIERS.keys() - ALL_FEATURES)
@@ -1314,26 +1313,6 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
             if on_demand_path.is_file() else set())
         if on_demand_ids != {runtime_budget_key(selector) for selector in ON_DEMAND_TESTS}:
             runtime_budget_errors.append("on-demand runtime budgets do not match their catalog")
-        native_budget_path = root / "docs/evidence/ui-test-native-dictation-runtime-budget.json"
-        if not native_budget_path.is_file():
-            runtime_budget_errors.append(
-                f"missing {native_budget_path.relative_to(root)}"
-            )
-        else:
-            native_budget = json.loads(native_budget_path.read_text(encoding="utf-8"))
-            native_ids = set(native_budget.get("testBudgetsSeconds", {}))
-            expected_native_ids = {
-                "/".join(selector.split("/")[1:]) + "()"
-                for selector in PERMISSION_GATED_TESTS
-            }
-            if native_ids != expected_native_ids:
-                runtime_budget_errors.append(
-                    "permission-gated runtime budgets do not match their catalog"
-                )
-            if native_budget.get("catalog", {}).get("expectedCaseCount") != len(PERMISSION_GATED_TESTS):
-                runtime_budget_errors.append(
-                    "permission-gated runtime budget count is stale"
-                )
 
     if (
         missing
@@ -1341,7 +1320,7 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         or duplicates
         or empty_scopes
         or retired
-        or permission_overlap
+        or on_demand_overlap
         or sentinel_mismatch
         or orphan_scopes
         or reachable_fixtures
@@ -1361,8 +1340,8 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
             details.append("empty feature scopes: " + ", ".join(empty_scopes))
         if retired:
             details.append("known duplicate tests returned: " + ", ".join(retired))
-        if permission_overlap:
-            details.append("permission-gated tests in hosted catalog: " + ", ".join(permission_overlap))
+        if on_demand_overlap:
+            details.append("on-demand tests in hosted catalog: " + ", ".join(on_demand_overlap))
         if sentinel_mismatch:
             details.append("feature/source sentinel mismatch: " + ", ".join(sentinel_mismatch))
         if orphan_scopes:

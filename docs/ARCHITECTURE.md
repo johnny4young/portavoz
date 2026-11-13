@@ -167,6 +167,26 @@ preference. The port is a cooperative per-user lock shared with Secreteo through
 the pinned `DictationOwnership` package: only the owner arms global triggers or
 prewarms a model, and it is not a security boundary.
 
+Portavoz no longer starts dictation. No App Intent, menu bar action, Settings
+section, onboarding step, Library route or global trigger reaches
+`DictationController`, and launch neither starts the ownership coordinator nor
+arms a trigger. The shipping build instead gives up, once per launch and off the
+main actor, an ownership 1.x left behind, so Secreteo can own dictation alone; it
+never claims, and Dev builds and disposable libraries leave the shared state alone.
+The controller, its panels and
+the coordinator remain in the tree without callers until they are deleted.
+
+A library from 1.x keeps its dictation rows. `LegacyDictationModel`, one per
+process, purges them on their frozen horizons when the app opens, after the Mac
+wakes and whenever capture ends, beside the other maintenance that resumes then;
+a failure is logged, never shown, and never blocks launch. While rows remain,
+Settings › Your data offers deleting the history and statistics at once. The
+first main window shows one sheet saying dictation moved to Secreteo, recorded as
+seen only once it is on screen and handed to another window if its own closes first,
+and only to a user who dictated: legacy rows exist or the 1.x dictation switch was
+ever written. Disposable UI-test libraries see it only with
+`-show-dictation-moved-notice`.
+
 The macOS dictation controller supports an explicitly injected, content-free
 session observation sink. Its bounded recorder lives in the app beside the
 platform/controller seam, not in a capability module or global telemetry bus.
@@ -4024,7 +4044,7 @@ be overwritten; a timeout marker or unexpected timer failure rejects even a
 zero-exit launcher. The shell remains responsible for disposable-app cleanup;
 no other application or workload becomes a target.
 Once a resource benchmark dispatcher is armed, app initialization returns
-before sync, recovery, provider discovery, or dictation registration can start;
+before sync, recovery, provider discovery, or legacy-dictation retention can start;
 the AppKit delegate remains detached from product services. It also suppresses
 the production-only opportunistic MLX readiness refresh, whose complete pinned-
 artifact verification is not an owned resource workload. A Summary benchmark
@@ -6393,11 +6413,9 @@ only after that contract passes; signer exit status or a merely present XML
 file is not release evidence.
 The script-built app also carries native App Intents metadata extracted
 separately from one SDK-only source under the shipping module name. Packaging
-fails unless metadata declares exactly nine actions — Start/Stop recording,
-open meeting/person commitments/confirmed commitment, and Dictate, Paste last
-dictation, Search dictations and Open dictations — plus the three entity types
-and their three string queries. The dictation actions that act on the app in
-front run in the background and are answered synchronously, never replayed. On macOS 26+, Start and Stop declare
+fails unless metadata declares exactly five actions — Start/Stop recording and
+open meeting/person commitments/confirmed commitment — plus the three entity
+types and their three string queries; no dictation action is published. On macOS 26+, Start and Stop declare
 `supportedModes = [.foreground(.immediate)]`; the SDK-documented deprecated
 compatibility property preserves the same foreground behavior on the macOS
 14.4/15 deployment range. `perform()` uses a buffered process-local handoff
@@ -6769,16 +6787,16 @@ make install
 
 `PortableSettingsTransfer` in ApplicationKit owns a versioned, bounded JSON
 allowlist, collection merge, immutable import review and stale-review/capture
-admission. Its nine portable keys describe language policies, menu-bar visibility,
-title formatting, vocabulary and deterministic dictation text preferences. They
-are not raw UserDefaults keys. Secrets, consent, capability activation, provider
+admission. Its six portable keys describe language policies, menu-bar visibility,
+title formatting and vocabulary. They are not raw UserDefaults keys. A file from
+1.x may still carry the three retired dictation keys; import skips exactly those,
+and any other unknown key fails the file. Secrets, consent, capability activation, provider
 configuration, input triggers, devices and storage paths cannot enter this format.
 `AppPortableSettingsStore` maps these keys to existing app preferences on MainActor;
 only approved keys are written, and temporary composition uses a volatile domain.
-Vocabulary and replacement rules preserve non-conflicting local entries. Import
-uses the existing ordered `DictationTextRules.canonical` value; equivalent rules
-and vocabulary retain their original serialized preferences rather than creating
-false changes from JSON encoder order or formatting.
+Vocabulary preserves non-conflicting local entries; equivalent vocabulary retains
+its original serialized preference rather than creating a false change from
+formatting.
 `SettingsSidebar` explicitly observes the app-language preference for its
 prelocalized navigation/search values; a pane locale update alone cannot refresh
 those strings. It does not reset window or navigation identity.

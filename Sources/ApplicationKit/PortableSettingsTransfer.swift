@@ -37,13 +37,13 @@ public enum PortableSettingsTransfer {
         else { throw PortableSettingsFailure.invalidFile }
         guard file.version == 1 else { throw PortableSettingsFailure.unsupportedVersion }
         var incoming: [PortableSettingsKey: PortableSettingsValue] = [:]
-        for (key, value) in file.settings {
+        for (key, value) in file.settings where !PortableSettingsKey.retiredRawValues.contains(key) {
             guard let key = PortableSettingsKey(rawValue: key) else { throw PortableSettingsFailure.unsupportedSetting }
             incoming[key] = value
         }
         try PortableSettingsValidation.validate(current)
         try PortableSettingsValidation.validate(incoming)
-        try mergeTextCollections(&incoming, current: current)
+        mergeVocabulary(&incoming, current: current)
         try PortableSettingsValidation.validate(incoming)
         return PortableSettingsReview(before: current, changes: incoming.filter { current[$0.key] != $0.value })
     }
@@ -58,16 +58,10 @@ public enum PortableSettingsTransfer {
         return review.changes
     }
 
-    private static func mergeTextCollections(
+    private static func mergeVocabulary(
         _ incoming: inout [PortableSettingsKey: PortableSettingsValue],
         current: [PortableSettingsKey: PortableSettingsValue]
-    ) throws {
-        if case .text(let new)? = incoming[.replacements], case .text(let old)? = current[.replacements] {
-            let existing = try PortableSettingsValidation.replacements(old)
-            let combined = try DictationTextRules.canonical(existing + PortableSettingsValidation.replacements(new))
-            // Encoder key order, whitespace and Unicode escapes are not user changes.
-            incoming[.replacements] = .text(combined == existing ? old : DictationTextRules.encode(combined))
-        }
+    ) {
         if case .text(let new)? = incoming[.vocabulary], case .text(let old)? = current[.vocabulary] {
             var seen = Set<String>()
             let existing = VocabularyPrompt.parse(old).filter {

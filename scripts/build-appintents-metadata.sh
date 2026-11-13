@@ -84,12 +84,8 @@ import json, sys
 metadata = json.load(open(sys.argv[1]))
 actions = metadata.get("actions") or {}
 expected_actions = {
-    "DictateIntent",
     "OpenCommitmentIntent",
-    "OpenDictationsIntent",
     "OpenMeetingIntent",
-    "PasteLastDictationIntent",
-    "SearchDictationsIntent",
     "ShowPersonCommitmentsIntent",
     "StartRecordingIntent",
     "StopRecordingIntent",

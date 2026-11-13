@@ -112,18 +112,17 @@ any default-engine or comparative product claim.
 
 `PortableSettingsTests` exercises the real defaults adapter using private suites,
 including its persistent-write branch and startup-override precedence. Coverage
-includes exclusion of secrets/consents/host bindings, non-destructive vocabulary
-and replacement merge, Unicode and literal replacement syntax, capture beginning
-after preview, concurrent preference edits, replayed approval, future/unknown
-fields, scalar coercion, malformed collections, byte limits and empty imports.
-Legacy whitespace/reordered-key/Unicode-escaped JSON is tested at the actual
-write seam: equivalent collections retain exact bytes, while changed literal
-replacement text still applies.
+includes exclusion of secrets/consents/host bindings and every dictation key,
+non-destructive vocabulary merge, a 1.x file whose retired dictation keys are
+skipped while another unknown key still fails, capture beginning after preview,
+concurrent preference edits, replayed approval, scalar coercion, byte limits and
+empty imports. Equivalent vocabulary retains its exact stored bytes at the
+actual write seam.
 `PortableSettingsFileTests` reaches actual selected-file IO, including symlinks,
 FIFOs, empty/exact-limit/oversized files, private permissions, replacement and
 cancelled/failed-publication cleanup. `PortableSettingsObservationTests` checks
 real effective-value notifications in temporary and persistent-override branches,
-and preserves the shortcut-neutral Audio subtitle localization key.
+and preserves the Audio subtitle localization key.
 `SettingsTransferModelTests` reaches the real defaults
 adapter through injected IO for explicit approval, capture/stale rejection,
 cancelled late reads, duplicate actions, empty review and IO errors. The dedicated
@@ -387,7 +386,7 @@ are unchanged. Functional and timing qualification still require actual runs.
 
 The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
-The unattended catalog contains 140 UI cases after consolidating one pair of
+The unattended catalog contained 140 UI cases after consolidating one pair of
 confirmed-person journeys and four Topic job journeys, including portable-settings,
 shortcut-recovery, the three audio-import, real dictation-panel and clipboard-borrow,
 three microphone-preparation/recovery, capture-failure recovery, two Apple Speech
@@ -395,12 +394,16 @@ Settings, and the compact Meeting Detail correction journeys. The compact journe
 checks the actual post-restoration AppKit frame at two short heights,
 opens both reading panes, retains the player, and reaches the existing
 correction editor. Its per-case budget is 30 seconds. A citation journey proves
-that an action returns from Summary to Transcript. The native dictation-receiver
-test remains outside this catalog because its app process needs a user-granted Accessibility
-TCC decision. Its explicit `make test-ui-native-dictation` lane runs the real
-XCUITest and fails closed without that grant. The unattended suite neither
-skips a failure into success nor qualifies cross-process insertion; its
-existing time budgets remain unchanged.
+that an action returns from Summary to Transcript. Portavoz 2.0 removed every
+way to start dictation (D640), so the dictation, history, Polish, text-mode,
+practice, translation, correction and selection-rewrite UI tests, the
+dictation-only Settings, onboarding and Open dictations cases, and the
+permission-gated native-delivery lane (`make test-ui-native-dictation` and its
+runtime budget) were deleted with them; the catalog holds 119 cases.
+`LegacyDictationUITests` owns the `dictation` selector now: the one-time notice
+that dictation moved, forced with `-show-dictation-moved-notice`, and deleting
+the kept history from Settings › Your data, both over a library seeded with
+`-seed-legacy-dictation`.
 `LiveEngineLeaseIntegrationTests` enters the real dictation dependency factory
 with a pre-cancelled task and requires zero model-load or residency side effects.
 Its opt-in installed-model case (`PORTAVOZ_LIVE_LEASE_TESTS=1`) verifies that
@@ -905,69 +908,6 @@ duplicate completion. Explicit gates hold asynchronous work; no model
 availability or physical-device behavior is inferred from these tests.
 The existing background-work XCUITest checks the shared waiting-for-capture
 status in both locales through its stable row identifiers.
-
-`DictationUITests` owns a dedicated unattended `dictation` selector alongside
-the existing Settings assertions. Its panel journey uses the production
-menu-bar action in the disposable main-window host and cancels/restarts the
-actual controller.
-It requires distinct identifiers for the rendered transcript, state, target,
-meter and cancel button. The structural SwiftUI `Group` does not assign an
-inherited identifier that would replace those child identifiers in the AX tree.
-The separate native journey explicitly arms a temporary-app fixture, launches
-`PortavozDictationReceiver`, and checks exact bilingual Unicode text plus
-restoration of a UUID-named scratch pasteboard. The receiver disables automatic
-quote, dash, text-replacement and spelling substitutions: it is a literal delivery
-oracle, independent of the host's smart-editing preferences. The production inserter runs in
-the actual app process: XCTest's sandboxed runner cannot supply native AX-client
-capability merely because brokered UI automation works. The fixture admits only
-temporary composition, an explicit launch flag and its UUID clipboard namespace;
-it waits for the fixed receiver bundle and invokes insertion at most once. Real
-keyboard events address that receiver's process, never a global fallback: a
-named pasteboard alone cannot contain a global Paste shortcut if focus changes.
-The receiver establishes its own first responder instead of requiring a click
-through possible desktop overlays. Both app processes register with the existing
-journey owner before launch so interruption cleanup cannot orphan the receiver.
-Process IDs that do not name a running application fail in the actual inserter
-before borrowing even the scratch clipboard; liveness is checked again before
-dispatch. A passing native journey qualifies that inserter/receiver path, not
-every native destination change, application termination, external editor or
-post-event focus race. The presence of this test is not evidence that the native
-gate passed. No general clipboard, real meeting, model download or microphone
-participates.
-Missing Accessibility permission for the disposable app is an explicit failing
-native gate, not a skipped success, a trust prompt or a simulated delivery.
-`make test-ui-release` and scoped hosted runs select the unattended cases;
-`make test-ui-native-dictation` selects two real receiver cases in English.
-The second enters the production controller with scripted audio/recognition,
-chooses Clean from the actual nonactivating panel, explicitly acknowledges Stop
-after the pointer gesture returns on a distinct UUID control board, and reads back the replacement
-from the original receiver. XCTest must not reactivate or click the receiver
-after choosing the mode: doing so would conceal a broken destination fence.
-Background element clicks activate their application before synthesizing input,
-so this journey instead anchors XCTest's public coordinate API in the already
-foreground owned receiver window, using each actual panel control's stable
-screen frame. Both frames require finite coordinates: macOS can give an
-application root an infinite synthetic frame, which is not a pointer anchor.
-Admission rejects a missing control or a receiver that lost foreground;
-it never repairs focus or disables the interruption monitor. This preserves
-the user's pointer gesture on the nonactivating panel instead of silently
-substituting application activation.
-Both cases check scratch-clipboard restoration; the controller case also checks
-that its owned session retires. These are delivery proofs, not acoustic quality.
-The catalog policy requires both cases to remain discoverable but disjoint from
-unattended selectors. The runner excludes them only when no explicit selectors
-were supplied, while an explicit native selector is never silently skipped.
-The separate runtime budget preserves each case's 20-second ceiling and p95;
-the new two-case aggregate is 40 seconds, fixed before the new case's first run.
-An explicit native run cannot fail solely because its cases were removed from
-the unattended manifest.
-Neither a green hosted catalog nor a failed permissionless native run is
-positive native-delivery evidence.
-The fixture's public event-synthesis preflight is quiet: denial fails before
-arming either native path, with a fixed content-free status and no permission
-request. Deterministic tests exercise that actual start call site, including
-repeated denial, rather than interpreting an empty receiver as proof of a
-particular TCC failure. Successful authorization does not establish delivery.
 
 The receiver is an Xcode-only application target. SwiftPM's shared `Tests`
 root excludes that directory explicitly, alongside the UI and interruption
@@ -4980,7 +4920,7 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   retains the Keychain-backed secret adapter and durable identity root. It
   reuses the verified installed Portavoz model cache only where required and
   never targets the notarized installed app. Resource-mode app initialization
-  returns before sync, recovery, provider discovery, or dictation registration
+  returns before sync, recovery, provider discovery, or legacy-dictation retention
   can contaminate a measured operation; the AppKit delegate remains detached
   from product services. It also suppresses the production-only opportunistic
   MLX readiness refresh so its full pinned-artifact hash cannot enter idle or
@@ -5999,9 +5939,9 @@ literal `%`/`_` handling, exact identifier order, canonical-person and
 confirmed-commitment exclusion rules, app-value mapping, navigation buffering,
 typed malformed-ID recovery, exact Radar filter precedence, and model focus
 restore behavior. The architecture ratchet pins the SDK-only import boundary,
-standard dependency injection, three entities/queries/open actions, nine-action
+standard dependency injection, three entities/queries/open actions, five-action
 metadata contract, availability-gated `IndexedEntity`, and explicit absence of
-entity publication. Metadata extraction must report exactly nine actions,
+entity publication. Metadata extraction must report exactly five actions,
 three entities, and three queries. One real-app case per locale performs three
 isolated disposable launches through the same production SDK-only open-action
 logic used by each `OpenIntent`: meeting
@@ -6019,7 +5959,7 @@ the existing coalescing, unchanged-state, retry-exhaustion, recovery, cleanup-
 relaunch, and content-free telemetry cases. App Entity attributes separately
 prove meeting title/date/capped body, canonical-person name, and commitment
 title/due date. The source compiles under strict Swift 6; the backend keeps the non-Sendable
-AppIntents index receiver task-local. Metadata must remain exactly nine actions,
+AppIntents index receiver task-local. Metadata must remain exactly five actions,
 three entities, and three queries. Bilingual XCUITest reuses the exact entity
 open-route journey because temporary stores deliberately suppress host Spotlight
 publication. Feature-owner tests also require successful commitment confirmation

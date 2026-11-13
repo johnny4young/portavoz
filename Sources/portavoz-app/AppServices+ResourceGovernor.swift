@@ -142,6 +142,7 @@ extension AppServices {
             Task { await standingPreMeetingBriefs.kick() }
             meetingSync.maintenanceMayResume()
             libraryMarkdownBackup.maintenanceMayResume()
+            legacyDictation.purgeExpiredInBackground()
             return
         }
         Task { await standingPreMeetingBriefs.suspendForCapture() }

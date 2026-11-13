@@ -106,7 +106,6 @@ struct SettingsView: View {
                     MenuBarSection()
                 case .audio:
                     AudioSection()
-                    DictationSection()
                 case .intelligence:
                     summaryEngineSection
                     ModelMemorySettingsSection(services: services)
@@ -136,6 +135,7 @@ struct SettingsView: View {
                     CommandLineToolSection()
                 case .data:
                     LedgerSection(model: services.localDataLedger)
+                    LegacyDictationDataSection(model: services.legacyDictation)
                     MeetingSyncSettingsSection()
                     BackgroundWorkCenterSection(
                         model: services.backgroundWork,

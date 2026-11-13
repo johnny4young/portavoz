@@ -22,7 +22,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     var titleKey: String {
         switch self {
         case .general: "General & language"
-        case .audio: "Audio & dictation"
+        case .audio: "Audio"
         case .intelligence: "Intelligence"
         case .agenda: "Agenda & automation"
         case .skills: "Automations"
@@ -50,7 +50,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     var subtitleKey: String {
         switch self {
         case .general: "System language · English/Spanish · menu bar"
-        case .audio: "Call-safe capture · global dictation"
+        case .audio: "Microphone · call-safe capture"
         case .intelligence: "Summary engine · Apuntador · your voice"
         case .agenda: "Reminder · end-of-meeting Shortcut · title template"
         case .skills: "Review · enable · history"
@@ -68,7 +68,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .general:
             ["language english spanish menu bar launch login"]
         case .audio:
-            ["call safe capture echo aec dictation hotkey microphone mic level"]
+            ["call safe capture echo aec microphone mic level system audio"]
         case .intelligence:
             [
                 "summary engine apple ollama mlx whisper refine vocabulary model memory ram lightweight",

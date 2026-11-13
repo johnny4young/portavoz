@@ -137,32 +137,6 @@ final class DictationReadinessTests: XCTestCase {
         harness.controller.cancel()
     }
 
-    func testAppSettingsWriteRejectsPreparationAndAllowsApplyAfterCancel() async throws {
-        let services = try AppServices(
-            arguments: ["-use-temp-store"], environment: [:],
-            dictation: DictationController(presentsPanel: false))
-        let before = try services.portableSettingsSnapshot()
-        // An empty review cannot mutate defaults even if the capture guard regresses.
-        let review = try PortableSettingsTransfer.review(
-            PortableSettingsTransfer.export([:]), current: before)
-        let permission = ReadinessSignal()
-        var dependencies = DictationUITestFixture.dependencies(fixture: nil, admission: .open, beginCapture: { {} })
-        dependencies.canInsert = { true }
-        dependencies.authorizeMicrophone = { await permission.wait(); return true }
-        services.dictation.toggle(using: dependencies)
-        let requested = await eventuallyAsync { await permission.started }
-        XCTAssertTrue(requested)
-        XCTAssertEqual(services.dictation.phase, .preparing)
-        XCTAssertThrowsError(try services.applyPortableSettings(review)) {
-            XCTAssertEqual($0 as? PortableSettingsFailure, .captureActive)
-        }
-        XCTAssertEqual(try services.portableSettingsSnapshot(), before)
-        services.dictation.cancel()
-        await permission.release()
-        XCTAssertEqual(try services.applyPortableSettings(review), 0)
-        XCTAssertEqual(try services.portableSettingsSnapshot(), before)
-    }
-
     func testLatePermissionAfterCancellationNeverConstructsMicrophone() async {
         let harness = ReadinessHarness(text: "No delayed side effects")
         let permission = ReadinessSignal()

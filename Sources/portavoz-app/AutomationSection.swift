@@ -29,8 +29,7 @@ struct MenuBarSection: View {
             Toggle("Show Portavoz in the menu bar", isOn: $menuBarEnabled)
             Text(
                 // One-line UI help text.
-                // swiftlint:disable:next line_length
-                "Recording state at a glance, one-click start/stop and dictation — Portavoz keeps working with the window closed."
+                "Recording state at a glance and one-click start/stop — Portavoz keeps working with the window closed."
             )
             .font(.caption)
             .foregroundStyle(.secondary)

@@ -9,17 +9,17 @@ final class SettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-seed-apple-speech-retry-settings")
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
-            #"{"globalDictationEnabled":true,"dictationLanguage":"en","dictationLiveSpeechEngine":"appleSpeech"}"#
+            #"{"transcriptionLanguage":"es","meetingLiveSpeechEngine":"appleSpeech"}"#
         app.launchPortavoz()
         defer { finishUITestApplication(app) }
-        openCategory("settings-category-audio",
-                     revealing: "settings-dictation-live-engine", in: app)
-        let retry = app.buttons["settings-dictation-live-apple-retry"]
+        openCategory("settings-category-intelligence",
+                     revealing: "settings-meeting-live-engine", in: app)
+        let retry = app.buttons["settings-meeting-live-apple-retry"]
         XCTAssertTrue(retry.waitForExistenceFast(timeout: 5))
-        XCTAssertFalse(app.buttons["settings-dictation-live-apple-prepare"].exists,
+        XCTAssertFalse(app.buttons["settings-meeting-live-apple-prepare"].exists,
                        "a failed read must not assume that an asset download is needed")
         retry.click()
-        XCTAssertTrue(app.buttons["settings-dictation-live-apple-prepare"]
+        XCTAssertTrue(app.buttons["settings-meeting-live-apple-prepare"]
             .waitForExistenceFast(timeout: 5))
         XCTAssertFalse(retry.exists)
     }
@@ -29,69 +29,25 @@ final class SettingsUITests: PortavozUITestCase {
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-seed-apple-speech-settings")
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
-            #"{"globalDictationEnabled":true,"dictationLanguage":"en","dictationLiveSpeechEngine":"appleSpeech","transcriptionLanguage":"es","meetingLiveSpeechEngine":"appleSpeech"}"#
+            #"{"transcriptionLanguage":"es","meetingLiveSpeechEngine":"appleSpeech"}"#
         app.launchPortavoz()
         defer { finishUITestApplication(app) }
-
-        openCategory("settings-category-audio",
-                     revealing: "settings-dictation-live-engine", in: app)
-        XCTAssertTrue(app.staticTexts["settings-dictation-live-apple-status"]
-            .waitForExistenceFast(timeout: 5))
-        let dictationPrepare = app.buttons["settings-dictation-live-apple-prepare"]
-        XCTAssertTrue(dictationPrepare.waitForExistenceFast(timeout: 5))
-        dictationPrepare.click()
-        XCTAssertTrue(dictationPrepare.waitForDisappearance(timeout: 5))
-        let readyText = UITestLocale.environmentLocale == "es"
-            ? "Apple Speech está listo para este idioma en este Mac."
-            : "Apple Speech is ready for this language on this Mac."
-        let dictationStatus = app.staticTexts["settings-dictation-live-apple-status"]
-        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
-            renderedText(of: dictationStatus) == readyText
-        }, "the real Settings row must announce the localized ready status")
 
         openCategory("settings-category-intelligence",
                      revealing: "settings-meeting-live-engine", in: app)
+        let meetingStatus = app.staticTexts["settings-meeting-live-apple-status"]
+        XCTAssertTrue(meetingStatus.waitForExistenceFast(timeout: 5))
         let meetingPrepare = app.buttons["settings-meeting-live-apple-prepare"]
         XCTAssertTrue(meetingPrepare.waitForExistenceFast(timeout: 5),
-                      "preparing English must not silently install Spanish")
-        XCTAssertTrue(app.staticTexts["settings-meeting-live-apple-status"].exists)
-    }
-
-    @MainActor
-    func testParakeetUltraIsAnExplicitDictationOnlyDownload() throws {
-        let app = try XCUIApplication.portavoz(openSettings: true)
-        // No engine preference: Ultra is the dictation default (D613).
-        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
-        app.launchPortavoz()
-        defer { finishUITestApplication(app) }
-
-        openCategory("settings-category-audio", revealing: "settings-dictation-live-ultra-status", in: app)
-        // The disposable model store never downloads, so Ultra stays missing.
-        let status = app.staticTexts["settings-dictation-live-ultra-status"]
-        let missing = UITestLocale.environmentLocale == "es"
-            ? "todavía no está descargado" : "isn't downloaded yet"
-        XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: status).contains(missing) },
-                      "a selected but missing Ultra must say dictation keeps using Parakeet")
-        XCTAssertTrue(app.buttons["settings-dictation-live-ultra-install"].waitForExistenceFast(timeout: 5))
-
-        openCategory("settings-category-intelligence", revealing: "settings-meeting-live-engine", in: app)
-        XCTAssertFalse(app.staticTexts["settings-meeting-live-ultra-status"].exists,
-                       "meetings never offer the dictation-only checkpoint")
-    }
-
-    @MainActor
-    func testAnUltraDownloadInFlightCanBeCancelled() throws {
-        let app = try XCUIApplication.portavoz(openSettings: true)
-        app.launchArguments.append("-seed-parakeet-ultra-downloading")
-        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
-            #"{"globalDictationEnabled":true,"dictationLiveSpeechEngine":"parakeetUltra"}"#
-        app.launchPortavoz()
-        defer { finishUITestApplication(app) }
-
-        openCategory("settings-category-audio", revealing: "settings-dictation-live-ultra-cancel", in: app)
-        app.buttons["settings-dictation-live-ultra-cancel"].click()
-        XCTAssertTrue(app.buttons["settings-dictation-live-ultra-install"].waitForExistenceFast(timeout: 5),
-                      "a cancelled download offers Download again")
+                      "a missing language asset is never installed without asking")
+        meetingPrepare.click()
+        XCTAssertTrue(meetingPrepare.waitForDisappearance(timeout: 5))
+        let readyText = UITestLocale.environmentLocale == "es"
+            ? "Apple Speech está listo para este idioma en este Mac."
+            : "Apple Speech is ready for this language on this Mac."
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            renderedText(of: meetingStatus) == readyText
+        }, "the real Settings row must announce the localized ready status")
     }
 
     @MainActor
@@ -420,7 +376,6 @@ final class SettingsUITests: PortavozUITestCase {
         // Capture control (field feedback): pick your mic and what to record
         // for the other side, independent of AirPods.
         let app = try XCUIApplication.portavoz(openSettings: true)
-        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":false}"#
         app.launchPortavoz()
         defer { finishUITestApplication(app) }
 
@@ -453,244 +408,6 @@ final class SettingsUITests: PortavozUITestCase {
             in: app)
         XCTAssertTrue(callSafePolicy.waitForStableFrame())
         attachScreenshot(of: app, named: "call-safe-audio-settings")
-    }
-
-    /// Enabling dictation must reveal both physical triggers (hotkey +
-    /// push-to-talk mouse button), the {es,en} language preference picker,
-    /// the filler filter, and the deterministic dictionary quick-add.
-    @MainActor
-    func testDictationOwnedElsewhereOffersToComeBack() throws {
-        let app = try XCUIApplication.portavoz(openSettings: true)
-        app.launchArguments.append("-seed-dictation-owner-secreteo")
-        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
-        app.launchPortavoz()
-        defer { finishUITestApplication(app) }
-
-        openCategory("settings-category-audio", revealing: "settings-dictation-toggle", in: app)
-        let status = app.staticTexts["settings-dictation-owner-status"]
-        XCTAssertTrue(status.waitForExistenceFast(timeout: 10))
-        XCTAssertTrue(renderedText(of: status).contains("Secreteo"))
-        let shortcutHelp = app.staticTexts["settings-dictation-shortcut-help"]
-        XCTAssertFalse(shortcutHelp.exists, "The shortcut does nothing while another app owns dictation")
-        attachScreenshot(of: app, named: "pr-dictation-owner-row")
-
-        app.buttons["settings-dictation-owner-use-portavoz"].click()
-
-        XCTAssertTrue(status.waitForDisappearance(timeout: 10))
-        XCTAssertTrue(shortcutHelp.waitForExistenceFast(timeout: 10))
-    }
-
-    @MainActor
-    func testDamagedDictationStateOffersAReset() throws {
-        let app = try XCUIApplication.portavoz(openSettings: true)
-        app.launchArguments.append("-seed-dictation-ownership-damaged")
-        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
-        app.launchPortavoz()
-        defer { finishUITestApplication(app) }
-
-        openCategory("settings-category-audio", revealing: "settings-dictation-toggle", in: app)
-        let reset = app.buttons["settings-dictation-owner-reset"]
-        XCTAssertTrue(reset.waitForExistenceFast(timeout: 10))
-        attachScreenshot(of: app, named: "pr-dictation-owner-damaged")
-
-        reset.click()
-
-        XCTAssertTrue(app.buttons["settings-dictation-owner-use-portavoz"].waitForExistenceFast(timeout: 10))
-        XCTAssertTrue(reset.waitForDisappearance(timeout: 10))
-    }
-
-    @MainActor
-    func testMenuBarSaysWhoHandlesDictationInsteadOfOfferingIt() throws {
-        let app = try XCUIApplication.portavoz(showMenuBarContent: true)
-        app.launchArguments.append("-seed-dictation-owner-secreteo")
-        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = #"{"globalDictationEnabled":true}"#
-        app.launchPortavoz()
-        defer { finishUITestApplication(app) }
-
-        let status = app.staticTexts["menu-bar-dictation-owner-status"]
-        XCTAssertTrue(status.waitForExistenceFast(timeout: 10))
-        XCTAssertFalse(app.buttons["menu-bar-dictate"].exists)
-        attachScreenshot(of: app, named: "pr-dictation-owner-menu")
-
-        app.buttons["menu-bar-dictation-owner-use-portavoz"].click()
-
-        XCTAssertTrue(app.buttons["menu-bar-dictate"].waitForExistenceFast(timeout: 10))
-    }
-
-    @MainActor
-    func testDictationOffersTriggersLanguageAndDictionary() throws {
-        let app = try XCUIApplication.portavoz(openSettings: true)
-        // AppServices merges these values into the process's volatile
-        // NSArgumentDomain under -use-temp-store. The real preference domain
-        // is neither read for these keys nor mutated by the test.
-        let dictationDefaults =
-            #"{"globalDictationEnabled":true,"dictationMouseButton":0,"#
-            + #""dictationReplacements":"[{\"trigger\":\"codex fixture\","#
-            + #"\"replacement\":\"Codex Fixture\"}]"}"#
-        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = dictationDefaults
-        app.launchPortavoz()
-        defer { finishUITestApplication(app) }
-
-        openCategory(
-            "settings-category-audio",
-            revealing: "settings-dictation-toggle",
-            in: app)
-
-        let toggle = app.control(withIdentifier: "settings-dictation-toggle")
-        XCTAssertTrue(
-            toggle.waitForExistenceFast(timeout: 5),
-            "the Audio pane must offer the dictation enable toggle")
-        XCTAssertTrue(Self.isOn(toggle), "the isolated launch must enable dictation")
-
-        let expectedSupport = UITestLocale.environmentLocale == "es"
-            ? "El español y el inglés pueden seguir mezclándose. Este ajuste sobre todo evita otros sistemas de escritura."
-            : "Spanish and English can still mix. This setting mainly keeps out other writing systems."
-        let controls = try uiObservation(
-            of: app,
-            requiring: [
-                "settings-dictation-hotkey-recorder",
-                "settings-dictation-mouse-recorder",
-                "settings-dictation-modifier-key",
-                "settings-dictation-paste-last-hotkey",
-                "settings-dictation-sounds",
-                "settings-dictation-compact",
-                "settings-dictation-prewarm",
-                "settings-dictation-speech-gate",
-                "settings-dictation-auto-stop",
-                "settings-dictation-language",
-                "settings-dictation-filler",
-                "settings-dictation-dict-add",
-                "settings-dictation-dict-remove",
-                "settings-dictation-caret-case"
-            ],
-            types: [
-                "settings-dictation-language-support": .staticText,
-                "settings-dictation-prewarm-note": .staticText,
-                "settings-dictation-speech-gate-status": .staticText,
-                "settings-dictation-spoken-commands": .staticText,
-                "settings-dictation-paste-last-note": .staticText,
-                "settings-dictation-caret-case-note": .staticText,
-                "settings-dictation-compact-note": .staticText
-            ],
-            expectedText: ["settings-dictation-language-support": expectedSupport],
-            timeout: 5,
-            message: "Enabled dictation must expose both triggers, sounds, pre-warm, language support, filler filter and dictionary add/remove")
-        let support = try uiSnapshotElement("settings-dictation-language-support", type: .staticText, in: controls)
-        XCTAssertTrue(support.label == expectedSupport || support.value as? String == expectedSupport,
-                      "the actual Audio pane must render the exact localized capability boundary")
-        let prewarmNote = try uiSnapshotElement("settings-dictation-prewarm-note", type: .staticText, in: controls)
-        XCTAssertTrue(renderedText(of: prewarmNote).contains(UITestLocale.environmentLocale == "es"
-            ? "El primer dictado" : "The first dictation"))
-        XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-auto-stop")),
-                       "stopping after a pause is opt-in")
-        XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-paste-last-hotkey")),
-                       "the paste-last shortcut is opt-in")
-        XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-caret-case")),
-                       "reading text before the cursor is opt-in")
-        let pasteLast = try uiSnapshotElement("settings-dictation-paste-last-note", type: .staticText, in: controls)
-        XCTAssertTrue(renderedText(of: pasteLast).contains(UITestLocale.environmentLocale == "es"
-            ? "15 minutos" : "15 minutes"))
-        XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-sounds")),
-                       "start and stop sounds are opt-in")
-        XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-compact")),
-                       "the compact indicator is opt-in")
-        XCTAssertFalse(Self.isOn(app.control(withIdentifier: "settings-dictation-prewarm")),
-                       "loading the model at launch is opt-in")
-        XCTAssertTrue(Self.isOn(app.control(withIdentifier: "settings-dictation-speech-gate")),
-                      "skipping dictations without speech is on by default")
-        // The disposable model store never downloads, so the detector stays missing.
-        let gateNote = try uiSnapshotElement("settings-dictation-speech-gate-status", type: .staticText, in: controls)
-        XCTAssertTrue(renderedText(of: gateNote).contains(UITestLocale.environmentLocale == "es"
-            ? "todavía no está instalado" : "isn't installed yet"))
-        XCTAssertTrue(app.buttons["settings-dictation-speech-gate-install"].waitForExistenceFast(timeout: 5),
-                      "a missing detector is offered as a one-click download")
-        let commands = try uiSnapshotElement("settings-dictation-spoken-commands", type: .staticText, in: controls)
-        XCTAssertTrue(renderedText(of: commands).contains(UITestLocale.environmentLocale == "es"
-            ? "«nueva línea»" : "“new line”"))
-        attachScreenshot(of: app, named: "dictation-triggers-language-dictionary")
-    }
-
-    @MainActor
-    func testHeldFnTriggerExplainsTheGlobeKeySetting() throws {
-        let app = try XCUIApplication.portavoz(openSettings: true)
-        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
-            #"{"globalDictationEnabled":true,"dictationModifierKey":"function"}"#
-        app.launchPortavoz()
-        defer { finishUITestApplication(app) }
-
-        openCategory("settings-category-audio", revealing: "settings-dictation-modifier-key", in: app)
-        XCTAssertTrue(app.staticTexts["settings-dictation-modifier-note"].waitForExistenceFast(timeout: 5))
-        let globe = app.staticTexts["settings-dictation-modifier-fn-note"]
-        XCTAssertTrue(globe.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(renderedText(of: globe).contains(UITestLocale.environmentLocale == "es"
-            ? "«No hacer nada»" : "“Do Nothing”"), "the Globe-key guidance names the System Settings choice")
-    }
-
-    @MainActor
-    func testDictationRecoversShortcutConflictAndRefreshesHelp() throws {
-        let app = try XCUIApplication.portavoz(openSettings: true)
-        app.launchArguments.append("-seed-dictation-shortcut-conflict")
-        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
-            #"{"globalDictationEnabled":true,"dictationMouseButton":0,"dictationHotkeyKeyCode":46,"#
-            + #""dictationHotkeyModifiers":2304,"dictationHotkeyLabel":"⌥⌘M"}"#
-        app.launchPortavoz()
-        defer { finishUITestApplication(app) }
-        openCategory("settings-category-audio", revealing: "settings-dictation-shortcut-retry", in: app)
-
-        let unavailable = app.control(withIdentifier: "settings-dictation-shortcut-unavailable")
-        XCTAssertTrue(unavailable.exists)
-        let retry = app.buttons["settings-dictation-shortcut-retry"]
-        XCTAssertTrue(retry.exists)
-        retry.click()
-        let help = app.staticTexts["settings-dictation-shortcut-help"]
-        XCTAssertTrue(help.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(renderedText(of: help).contains("⌥⌘M"))
-        XCTAssertFalse(unavailable.exists)
-        XCTAssertFalse(retry.exists, "retry must not leave a stale failure surface")
-
-        let recorder = app.buttons["settings-dictation-hotkey-recorder"]
-        XCTAssertTrue(recorder.waitForStableFrame())
-        recorder.click()
-        typeKey("n", modifierFlags: [.control, .option, .command], in: app)
-        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
-            renderedText(of: help).contains("⌃⌥⌘N") && recorder.label.contains("⌃⌥⌘N")
-        }, "the recorder and help must observe the new registration rather than their initial label")
-        let useDefault = app.buttons["settings-dictation-shortcut-default"]
-        XCTAssertTrue(useDefault.exists)
-        useDefault.click()
-        XCTAssertTrue(waitForUITestCondition(timeout: 5) { renderedText(of: help).contains("⌥⌘D") })
-        XCTAssertFalse(useDefault.exists)
-        XCTAssertFalse(app.control(withIdentifier: "settings-dictation-shortcut-recovered").exists)
-        attachScreenshot(of: app, named: "dictation-shortcut-recovery")
-    }
-
-    @MainActor
-    func testDictationRepairsCorruptShortcutWithoutLeavingSettings() throws {
-        let app = try XCUIApplication.portavoz(openSettings: true)
-        app.launchArguments.append("-seed-dictation-shortcut-conflict")
-        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
-            #"{"globalDictationEnabled":true,"dictationMouseButton":0,"dictationHotkeyKeyCode":-1,"#
-            + #""dictationHotkeyModifiers":-1,"dictationHotkeyLabel":"invalid"}"#
-        app.launchPortavoz()
-        defer { finishUITestApplication(app) }
-        openCategory("settings-category-audio", revealing: "settings-dictation-shortcut-default", in: app)
-
-        let recovered = app.staticTexts["settings-dictation-shortcut-recovered"]
-        XCTAssertTrue(recovered.exists, "malformed startup settings must reach a recoverable app, not a trap")
-        XCTAssertTrue(renderedText(of: recovered).contains("⌥⌘D"))
-        let useDefault = app.buttons["settings-dictation-shortcut-default"]
-        XCTAssertTrue(useDefault.exists)
-        useDefault.click()
-        XCTAssertTrue(recovered.waitForDisappearance(timeout: 5), "explicit repair must supersede the corrupt override")
-        XCTAssertFalse(useDefault.exists)
-        XCTAssertFalse(app.control(withIdentifier: "settings-dictation-shortcut-unavailable").exists)
-        let help = app.staticTexts["settings-dictation-shortcut-help"]
-        XCTAssertTrue(help.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(renderedText(of: help).contains("⌥⌘D"))
-        openCategory("settings-category-general", revealing: "settings-language-system-toggle", in: app)
-        openCategory("settings-category-audio", revealing: "settings-dictation-shortcut-help", in: app)
-        XCTAssertFalse(recovered.exists, "pane reconstruction must not restore stale corrupt settings")
-        XCTAssertTrue(renderedText(of: help).contains("⌥⌘D"))
     }
 
     @MainActor
