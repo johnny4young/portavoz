@@ -99,53 +99,33 @@ final class LiveTranscriptionBenchTests: XCTestCase {
         XCTAssertEqual(result.finals, 1)
     }
 
-    func testSpanishPartialAndFinalUseTheDictationCallSiteRatherThanFinalsAlone() async throws {
+    func testFinalOnlyHypothesisIgnoresVolatileUpdates() async throws {
         let meeting = MeetingID()
-        let updates = [
+        let result = try await runSyntheticUpdates([
             segment("No autorices el pago", meeting: meeting, start: 0, end: 0.4),
             segment("pago hasta el viernes.", meeting: meeting, start: 0.4, end: 0.8),
             segment("Gracias.", meeting: meeting, start: 0.8, end: 1, isFinal: true),
-        ]
-        let result = try await runSyntheticUpdates(updates)
-
+        ])
         XCTAssertEqual(result.hypothesis, "Gracias.")
-        XCTAssertEqual(result.dictationRecognizedText, "No autorices el pago hasta el viernes. Gracias.")
         XCTAssertEqual(result.finals, 1)
-        let reference = "No autorices el pago hasta el viernes. Gracias."
+        XCTAssertEqual(result.volatiles, 2)
         XCTAssertGreaterThan(
-            TranscriptionAccuracy.report(reference: reference, hypothesis: result.hypothesis).wordErrorRate,
-            0)
-        XCTAssertEqual(
             TranscriptionAccuracy.report(
-                reference: reference, hypothesis: result.dictationRecognizedText).wordErrorRate,
+                reference: "No autorices el pago hasta el viernes. Gracias.",
+                hypothesis: result.hypothesis).wordErrorRate,
             0)
-    }
 
-    func testEnglishVolatileOnlyStillContributesToDictationAccuracy() async throws {
-        let meeting = MeetingID()
-        let result = try await runSyntheticUpdates([
+        let volatileOnly = try await runSyntheticUpdates([
             segment("I said don’t", meeting: meeting, start: 0, end: 0.4),
             segment("don’t erase it", meeting: meeting, start: 0.4, end: 0.9),
         ])
-
-        XCTAssertTrue(result.finalTexts.isEmpty)
-        XCTAssertEqual(result.hypothesis, "")
-        XCTAssertEqual(result.dictationRecognizedText, "I said don’t erase it")
-        XCTAssertEqual(
-            TranscriptionAccuracy.report(
-                reference: "I said don’t erase it", hypothesis: result.dictationRecognizedText).wordErrorRate,
-            0)
-    }
-
-    func testEmptyAndPunctuationOnlyOutputsCannotBecomeDictationSpeech() async throws {
-        let empty = try await runSyntheticUpdates([])
-        XCTAssertEqual(empty.dictationRecognizedText, "")
+        XCTAssertTrue(volatileOnly.finalTexts.isEmpty)
+        XCTAssertEqual(volatileOnly.hypothesis, "")
 
         let noise = try await runSyntheticUpdates([
             segment("...", meeting: MeetingID(), start: 0, end: 0.5, isFinal: true),
         ])
         XCTAssertEqual(noise.hypothesis, "...")
-        XCTAssertEqual(noise.dictationRecognizedText, "")
     }
 
     private func runSyntheticUpdates(

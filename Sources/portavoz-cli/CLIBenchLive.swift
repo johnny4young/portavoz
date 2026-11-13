@@ -137,24 +137,16 @@ enum BenchLiveCommand {
             print(result.report)
 
             var accuracy: TranscriptionAccuracy.Report?
-            var dictationAccuracy: TranscriptionAccuracy.Report?
             if let referencePath {
                 let reference = try String(
                     contentsOfFile: referencePath, encoding: .utf8)
                 let report = TranscriptionAccuracy.report(
                     reference: reference, hypothesis: result.hypothesis)
-                let dictationReport = TranscriptionAccuracy.report(
-                    reference: reference, hypothesis: result.dictationRecognizedText)
                 accuracy = report
-                dictationAccuracy = dictationReport
                 print(String(
                     format: "Final-only WER %.1f%% · CER %.1f%% · ref %d words · hyp %d words",
                     report.wordErrorRate * 100, report.characterErrorRate * 100,
                     report.referenceWords, report.hypothesisWords))
-                print(String(
-                    format: "Dictation ASR WER %.1f%% · CER %.1f%% · ref %d words · hyp %d words",
-                    dictationReport.wordErrorRate * 100, dictationReport.characterErrorRate * 100,
-                    dictationReport.referenceWords, dictationReport.hypothesisWords))
             }
             if let outputPath {
                 try writeJSON(
@@ -163,8 +155,7 @@ enum BenchLiveCommand {
                         engine: engineName, file: file,
                         seconds: seconds, language: language),
                     result: result,
-                    accuracy: accuracy,
-                    dictationAccuracy: dictationAccuracy)
+                    accuracy: accuracy)
                 print("json: \(outputPath)")
             }
             return true
@@ -187,8 +178,7 @@ enum BenchLiveCommand {
         to path: String,
         run: RunContext,
         result: LiveTranscriptionBench.Result,
-        accuracy: TranscriptionAccuracy.Report?,
-        dictationAccuracy: TranscriptionAccuracy.Report?
+        accuracy: TranscriptionAccuracy.Report?
     ) throws {
         var payload: [String: Any] = [
             "bench": "bench-live",
@@ -212,13 +202,6 @@ enum BenchLiveCommand {
             payload["cer"] = accuracy.characterErrorRate
             payload["reference_words"] = accuracy.referenceWords
             payload["hypothesis_words"] = accuracy.hypothesisWords
-        }
-        if let dictationAccuracy {
-            payload["dictation_wer_source"] = "caption-coalesced-pre-rules"
-            payload["dictation_wer"] = dictationAccuracy.wordErrorRate
-            payload["dictation_cer"] = dictationAccuracy.characterErrorRate
-            payload["dictation_reference_words"] = dictationAccuracy.referenceWords
-            payload["dictation_hypothesis_words"] = dictationAccuracy.hypothesisWords
         }
         let data = try JSONSerialization.data(
             withJSONObject: payload, options: [.prettyPrinted, .sortedKeys])

@@ -36,13 +36,8 @@ public enum LiveTranscriptionBench {
         public var characters = 0
         public var firstResultAt: Double?
         public var lags: [Double] = []
-        /// Every final row in emission order. This is useful for measuring
-        /// confirmation, but is not necessarily what Dictation would insert.
+        /// Every final row in emission order. Short speech can have none.
         public var finalTexts: [String] = []
-        /// The successful stream's recognized Dictation text before user text
-        /// rules, composed through the same caption admission path as the
-        /// controller. Short speech can have no final row at all.
-        public internal(set) var dictationRecognizedText = ""
 
         public var hypothesis: String {
             finalTexts.joined(separator: " ")
@@ -184,11 +179,8 @@ public enum LiveTranscriptionBench {
         }
 
         var result = Result()
-        var captions: [TranscriptSegment] = []
-        let coalescer = CaptionCoalescer()
         do {
             for try await segment in segments {
-                coalescer.apply(segment, to: &captions)
                 let elapsed = Date().timeIntervalSince(feedStart)
                 result.observe(segment, elapsed: elapsed, log: log)
             }
@@ -204,9 +196,6 @@ public enum LiveTranscriptionBench {
         } catch is CancellationError {
             throw BenchError.engineEndedBeforeInput
         }
-        // The confirmed captions joined and trimmed: what dictation inserts before its text rules.
-        result.dictationRecognizedText = captions.map(\.text).joined(separator: " ")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
         result.lags.sort()
         return result
     }
