@@ -29,10 +29,30 @@ extension ArchitectureDependencyTests {
             + #"LiveSpeechPurpose|LiveSpeechCheckpointPlan|beginDictationCapture|dictationOwners"#
         XCTAssertEqual(try Self.sourceMatches(under: "Sources", pattern: runtime, codeOnly: true), [])
 
+        let polish = #"\b(PolishDictation|DictationPolish(Prompt|PromptError|Unavailable|Outcome|Skip)|"#
+            + #"DictationTextPolishing|\w*DictationPolisher|dictationPolisher)\b"#
+        XCTAssertEqual(try Self.sourceMatches(under: "Sources", pattern: polish, codeOnly: true), [])
+
         let tool = try Self.contents(of: "Sources/portavoz-app/CommandLineToolSection.swift")
         XCTAssertTrue(tool.contains("PasteboardCopy.copy("))
         let bench = try Self.contents(of: "Sources/TranscriptionKit/LiveTranscriptionBench.swift")
         XCTAssertFalse(bench.contains("DictationAssembler"))
+    }
+
+    // 1.x dictation polish receipts stay readable, and no path can create a new one.
+    func testDictationPolishEgressIsReadOnly() throws {
+        let gateway = try Self.contents(of: "Sources/IntegrationsKit/URLSessionDataEgressGateway.swift")
+        let receipt = try Self.contents(of: "Sources/StorageKit/MeetingStore+PrivacyReceipt.swift")
+        let migration = try Self.contents(of: "Sources/StorageKit/Schema/Legacy/Schema+DictationPolish.swift")
+        let journal = try Self.contents(of: "Sources/StorageKit/Schema+GlobalDataEgress.swift")
+
+        XCTAssertTrue(gateway.contains(#"throw DataEgressGatewayError.invalidMetadata("Dictation polish is retired")"#))
+        XCTAssertTrue(receipt.contains("guard event.operation != .dictationPolish else"))
+        XCTAssertTrue(receipt.contains("global receipts require bounded local dictation metadata"))
+        XCTAssertTrue(migration.contains("registerMigration(\"v59\")"))
+        XCTAssertTrue(journal.contains("operation = 'dictation-polish'"))
+        XCTAssertEqual(
+            try Self.sourceMatches(under: "Sources", pattern: #"operation:\s*\.dictationPolish"#, codeOnly: true), [])
     }
 
     // String literals stay, since SQL names its tables there; whole-line and block comments go.

@@ -48,6 +48,7 @@ public enum DataEgressOperation: String, Codable, Sendable {
     case publishGitHubGist = "publish-github-gist"
     case createGitHubIssue = "create-github-issue"
     case createLinearIssue = "create-linear-issue"
+    /// Retired with dictation (D640): decodes 1.x receipts; the gateway and store refuse new ones.
     case dictationPolish = "dictation-polish"
 }
 
@@ -70,7 +71,7 @@ public enum DataEgressClassification: String, Codable, Sendable {
     case meetingExportDocument = "meeting-export-document"
     /// One meeting-derived action item plus its attribution context.
     case meetingActionItem = "meeting-action-item"
-    /// One clean dictated text, with no meeting, app, or history identity.
+    /// Retired with dictation (D640): one dictated text on a 1.x receipt.
     case dictationText = "dictation-text"
 }
 
@@ -91,7 +92,7 @@ public enum DataEgressConsentSource: String, Codable, Sendable {
     case explicitGitHubIssuePublish = "explicit-github-issue-publish"
     /// The user explicitly invoked Linear Issue publication.
     case explicitLinearIssuePublish = "explicit-linear-issue-publish"
-    /// The user chose the Polish dictation mode, which names the summary engine.
+    /// Retired with dictation (D640): the 1.x Polish dictation mode.
     case dictationPolishMode = "dictation-polish-mode"
 }
 

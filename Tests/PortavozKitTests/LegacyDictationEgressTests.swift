@@ -6,79 +6,34 @@ import PortavozCore
 @testable import StorageKit
 import XCTest
 
-final class DictationPolishEgressTests: XCTestCase {
+/// A 1.x library keeps its dictation polish receipts; nothing can send or record a new one.
+final class LegacyDictationEgressTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
 
-    func testGatewayAcceptsDictationPolishOnlyOnLoopback() throws {
-        let (request, metadata) = try polishRequest(endpoint: OllamaService.openAIEndpoint)
-        XCTAssertNoThrow(try URLSessionDataEgressGateway.validate(request, metadata: metadata))
-
-        for host in ["http://127.0.0.1:11434/v1", "http://[::1]:11434/v1"] {
-            let (loopback, loopbackMetadata) = try polishRequest(endpoint: try XCTUnwrap(URL(string: host)))
-            XCTAssertNoThrow(try URLSessionDataEgressGateway.validate(loopback, metadata: loopbackMetadata), host)
-        }
-        for host in ["http://192.168.1.20:11434/v1", "https://api.example.com/v1", "http://ollama.local:11434/v1"] {
-            let (remote, remoteMetadata) = try polishRequest(endpoint: try XCTUnwrap(URL(string: host)))
-            XCTAssertThrowsError(try URLSessionDataEgressGateway.validate(remote, metadata: remoteMetadata)) { error in
-                XCTAssertEqual(
-                    error as? DataEgressGatewayError,
-                    .invalidMetadata("Dictation polish requires a loopback destination"),
-                    host)
-            }
-        }
-    }
-
-    func testGatewayRejectsForgedDictationPolishMetadata() throws {
-        let (request, valid) = try polishRequest(endpoint: OllamaService.openAIEndpoint)
-        let forged: [(DataEgressRequest, String)] = [
-            (valid.with(meetingID: MeetingID()), "Dictation polish never carries a meeting identity"),
-            (valid.with(consent: .summaryEngineSettings), "Dictation polish requires Polish-mode consent"),
-            (valid.with(classification: .meetingAnswerMaterial),
-             "Dictation polish egress requires a classified non-empty model POST"),
-            (valid.with(operation: .askAnswerGeneration, classification: .dictationText),
-             "Ask answer generation requires answer-only material"),
-            (valid.with(operation: .summaryGeneration, classification: .dictationText),
-             "Summary egress requires a classified non-empty model POST"),
-        ]
-        for (metadata, message) in forged {
+    func testGatewayRefusesDictationPolishOnEveryDestination() throws {
+        for host in ["http://localhost:11434/v1", "http://127.0.0.1:11434/v1", "https://api.example.com/v1"] {
+            let (request, metadata) = try polishRequest(endpoint: try XCTUnwrap(URL(string: host)))
             XCTAssertThrowsError(try URLSessionDataEgressGateway.validate(request, metadata: metadata)) { error in
-                XCTAssertEqual(error as? DataEgressGatewayError, .invalidMetadata(message))
+                XCTAssertEqual(
+                    error as? DataEgressGatewayError, .invalidMetadata("Dictation polish is retired"), host)
             }
         }
     }
 
-    func testGlobalJournalKeepsAContentFreePolishReceipt() async throws {
-        let store = try MeetingStore.inMemory()
-        let event = polishEvent()
-
-        try await store.recordDataEgressEvent(event)
-        let events = try await store.globalDataEgressEvents()
-
-        XCTAssertEqual(events, [event])
-        XCTAssertNil(events.first?.meetingID)
-    }
-
-    func testGlobalJournalRejectsPolishReceiptsOutsideTheLocalContract() async throws {
+    func testStoreRefusesNewPolishReceipts() async throws {
         let store = try MeetingStore.inMemory()
         let meeting = Meeting(title: "Weekly", startedAt: now)
         try await store.save(meeting)
-        let invalid = [
-            polishEvent(classification: .meetingAnswerMaterial),
-            polishEvent(consent: .summaryEngineSettings),
-            polishEvent(modelID: " "),
-            polishEvent(modelID: nil),
-            polishEvent(host: "192.168.1.20"),
-        ]
-        for event in invalid {
+        for event in [polishEvent(), polishEvent(meetingID: meeting.id)] {
             do {
                 try await store.recordDataEgressEvent(event)
-                XCTFail("an out-of-contract polish receipt must fail: \(event)")
-            } catch {}
+                XCTFail("a new polish receipt must fail: \(event)")
+            } catch StorageError.invalidDataEgressEvent(let reason) {
+                XCTAssertEqual(reason, "dictation polish is retired")
+            } catch {
+                XCTFail("unexpected error: \(error)")
+            }
         }
-        do {
-            try await store.recordDataEgressEvent(polishEvent(meetingID: meeting.id))
-            XCTFail("a polish receipt never belongs to a meeting")
-        } catch {}
 
         let global = try await store.globalDataEgressEvents()
         let owned = try await store.dataEgressEvents(for: meeting.id)
@@ -86,11 +41,24 @@ final class DictationPolishEgressTests: XCTestCase {
         XCTAssertTrue(owned.isEmpty)
     }
 
+    func testGlobalJournalStillReadsAContentFreePolishReceipt() async throws {
+        let store = try MeetingStore.inMemory()
+        let event = polishEvent()
+        try await store.database.write { db in
+            try GlobalDataEgressEventRecord(event, modelID: event.modelID).insert(db)
+        }
+
+        let events = try await store.globalDataEgressEvents()
+
+        XCTAssertEqual(events, [event])
+        XCTAssertNil(events.first?.meetingID)
+    }
+
     func testV59AdmitsPolishInHistoryAndJournalWithoutLosingSearchOrMeetingLinks() async throws {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("dictation-polish-\(UUID()).sqlite")
         defer { try? FileManager.default.removeItem(at: url) }
         let now = self.now
-        let dictationID = DictationRecordID()
+        let dictationID = UUID()
         let meeting = Meeting(title: "Weekly", startedAt: now, endedAt: now.addingTimeInterval(1_800))
         let note = ContextItem(meetingID: meeting.id, kind: .note, content: "Revisar el presupuesto.", timestamp: 60)
         let askReceipt = DataEgressEvent(
@@ -106,9 +74,9 @@ final class DictationPolishEgressTests: XCTestCase {
             try ContextItemRecord(note, createdAt: now, updatedAt: now).insert(db)
             try db.execute(
                 sql: "INSERT INTO dictationMeetingNote (dictationID, meetingID, contextItemID, createdAt) VALUES (?, ?, ?, ?)",
-                arguments: [dictationID.rawValue.uuidString, meeting.id.rawValue.uuidString, note.id.uuidString, now])
+                arguments: [dictationID.uuidString, meeting.id.rawValue.uuidString, note.id.uuidString, now])
             try GlobalDataEgressEventRecord(askReceipt, modelID: "qwen-local").insert(db)
-            XCTAssertThrowsError(try Self.insertDictation(id: DictationRecordID(), mode: "polish", at: now, in: db))
+            XCTAssertThrowsError(try Self.insertDictation(id: UUID(), mode: "polish", at: now, in: db))
         }
         try legacy.close()
 
@@ -122,18 +90,21 @@ final class DictationPolishEgressTests: XCTestCase {
             let links = try String.fetchAll(db, sql: """
                 SELECT meeting.title FROM dictationMeetingNote AS link
                 JOIN meeting ON meeting.id = link.meetingID WHERE link.dictationID = ?
-                """, arguments: [dictationID.rawValue.uuidString])
+                """, arguments: [dictationID.uuidString])
             return (found, links)
         }
-        try await store.recordDataEgressEvent(polishEvent())
+        let polish = polishEvent()
+        try await store.database.write { db in
+            try GlobalDataEgressEventRecord(polish, modelID: polish.modelID).insert(db)
+        }
         let journal = try await store.globalDataEgressEvents()
 
-        XCTAssertEqual(found, [dictationID.rawValue.uuidString])
+        XCTAssertEqual(found, [dictationID.uuidString])
         XCTAssertEqual(links, ["Weekly"])
         XCTAssertEqual(journal.map(\.operation), [.askAnswerGeneration, .dictationPolish])
         try await store.database.write { db in
-            XCTAssertNoThrow(try Self.insertDictation(id: DictationRecordID(), mode: "polish", at: now, in: db))
-            XCTAssertThrowsError(try Self.insertDictation(id: DictationRecordID(), mode: "fancy", at: now, in: db))
+            XCTAssertNoThrow(try Self.insertDictation(id: UUID(), mode: "polish", at: now, in: db))
+            XCTAssertThrowsError(try Self.insertDictation(id: UUID(), mode: "fancy", at: now, in: db))
             XCTAssertThrowsError(try db.execute(sql: """
                 INSERT INTO globalDataEgressEvent (
                     id, operation, destinationScope, destinationHost, dataClassification,
@@ -155,8 +126,7 @@ final class DictationPolishEgressTests: XCTestCase {
     private func polishRequest(endpoint: URL) throws -> (URLRequest, DataEgressRequest) {
         let request = try OpenAICompatibleChatCodec.urlRequest(
             endpoint: endpoint, model: "qwen-local", apiKey: "ollama",
-            system: DictationPolishPrompt.instructions, user: "<dictation>\nhola\n</dictation>",
-            temperature: 0, maxTokens: 64)
+            system: "Clean up the text.", user: "hola", temperature: 0, maxTokens: 64)
         let url = try XCTUnwrap(request.url)
         let metadata = DataEgressRequest(
             operation: .dictationPolish,
@@ -168,27 +138,21 @@ final class DictationPolishEgressTests: XCTestCase {
         return (request, metadata)
     }
 
-    private func polishEvent(
-        meetingID: MeetingID? = nil,
-        host: String = "localhost",
-        classification: DataEgressClassification = .dictationText,
-        consent: DataEgressConsentSource = .dictationPolishMode,
-        modelID: String? = "qwen-local"
-    ) -> DataEgressEvent {
+    private func polishEvent(meetingID: MeetingID? = nil) -> DataEgressEvent {
         DataEgressEvent(
             meetingID: meetingID,
             operation: .dictationPolish,
-            destinationScope: DataEgressDestination.scope(forHost: host),
-            destinationHost: host,
-            dataClassification: classification,
-            consentSource: consent,
-            providerID: host,
-            modelID: modelID,
+            destinationScope: .localDevice,
+            destinationHost: "localhost",
+            dataClassification: .dictationText,
+            consentSource: .dictationPolishMode,
+            providerID: "localhost",
+            modelID: "qwen-local",
             attemptedAt: now)
     }
 
     private static func insertDictation(
-        id: DictationRecordID, mode: String, text: String = "Hola.", at date: Date, in db: Database
+        id: UUID, mode: String, text: String = "Hola.", at date: Date, in db: Database
     ) throws {
         try db.execute(
             sql: """
@@ -197,23 +161,6 @@ final class DictationPolishEgressTests: XCTestCase {
                     engine, applicationName, applicationBundleID, delivery)
                 VALUES (?, ?, 1000, ?, NULL, ?, 'es', 'parakeet', 'Notes', NULL, 'verified')
                 """,
-            arguments: [id.rawValue.uuidString, date, text, mode])
-    }
-}
-
-private extension DataEgressRequest {
-    func with(
-        operation: DataEgressOperation? = nil,
-        classification: DataEgressClassification? = nil,
-        meetingID: MeetingID? = nil,
-        consent: DataEgressConsentSource? = nil
-    ) -> DataEgressRequest {
-        DataEgressRequest(
-            operation: operation ?? self.operation,
-            destination: destination,
-            dataClassification: classification ?? dataClassification,
-            meetingID: meetingID ?? self.meetingID,
-            consentSource: consent ?? consentSource,
-            providerDisclosure: providerDisclosure)
+            arguments: [id.uuidString, date, text, mode])
     }
 }

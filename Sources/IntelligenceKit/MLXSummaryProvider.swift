@@ -60,14 +60,6 @@ public protocol MLXSummaryRuntimeClient: Sendable {
         user: String,
         directory: URL
     ) async throws -> String
-
-    /// The same generation under a tighter runaway cap, for short rewrites.
-    func respond(
-        system: String,
-        user: String,
-        directory: URL,
-        maximumResponseTokens: Int
-    ) async throws -> String
 }
 
 public enum MLXSummaryRuntimeError: Error, Equatable, Sendable {
@@ -86,15 +78,6 @@ public actor MLXSummaryRuntime: MLXSummaryRuntimeClient {
         throw MLXSummaryRuntimeError.notPrepared
     }
 
-    public func respond(
-        system: String,
-        user: String,
-        directory: URL,
-        maximumResponseTokens: Int
-    ) async throws -> String {
-        throw MLXSummaryRuntimeError.notPrepared
-    }
-
     public func prepare(_ newDirectory: URL) async throws {
         throw MLXSummaryRuntimeError.notPrepared
     }
@@ -102,8 +85,7 @@ public actor MLXSummaryRuntime: MLXSummaryRuntimeClient {
     public func respondPrepared(
         system: String,
         user: String,
-        directory expectedDirectory: URL,
-        maximumResponseTokens: Int = MLXSummaryRuntime.maximumResponseTokens
+        directory expectedDirectory: URL
     ) async throws -> String {
         throw MLXSummaryRuntimeError.notPrepared
     }
@@ -134,19 +116,6 @@ public actor MLXSummaryRuntime: MLXSummaryRuntimeClient {
         user: String,
         directory newDirectory: URL
     ) async throws -> String {
-        try await respond(
-            system: system,
-            user: user,
-            directory: newDirectory,
-            maximumResponseTokens: Self.maximumResponseTokens)
-    }
-
-    public func respond(
-        system: String,
-        user: String,
-        directory newDirectory: URL,
-        maximumResponseTokens: Int
-    ) async throws -> String {
         standaloneIdleGeneration += 1
         let idleGeneration = standaloneIdleGeneration
         defer { scheduleStandaloneIdleRelease(after: idleGeneration) }
@@ -154,8 +123,7 @@ public actor MLXSummaryRuntime: MLXSummaryRuntimeClient {
         return try await respondPrepared(
             system: system,
             user: user,
-            directory: newDirectory,
-            maximumResponseTokens: maximumResponseTokens)
+            directory: newDirectory)
     }
 
     /// Loads or reuses the exact verified directory without beginning
@@ -178,10 +146,8 @@ public actor MLXSummaryRuntime: MLXSummaryRuntimeClient {
     public func respondPrepared(
         system: String,
         user: String,
-        directory expectedDirectory: URL,
-        maximumResponseTokens: Int = MLXSummaryRuntime.maximumResponseTokens
+        directory expectedDirectory: URL
     ) async throws -> String {
-        let maxTokens = min(max(1, maximumResponseTokens), Self.maximumResponseTokens)
         guard let container, directory == expectedDirectory else {
             throw MLXSummaryRuntimeError.notPrepared
         }
@@ -195,11 +161,11 @@ public actor MLXSummaryRuntime: MLXSummaryRuntimeClient {
                 input: UserInput(
                     chat: [.system(system), .user(user)],
                     additionalContext: ["enable_thinking": false]))
-            // maxTokens is pure runaway protection (a rambling model would
+            // The token cap is pure runaway protection (a rambling model would
             // hold the GPU indefinitely): a refined 56-min meeting produced
             // a legitimate 34k-character Spanish summary, so the cap leaves
             // real generations room and still bounds the worst case.
-            var parameters = GenerateParameters(maxTokens: maxTokens, temperature: 0)
+            var parameters = GenerateParameters(maxTokens: Self.maximumResponseTokens, temperature: 0)
             // Balanced chunking, the library default, returned more invalid JSON (D614).
             parameters.prefill.chunking = .remainder
             let stream = try MLXLMCommon.generate(
