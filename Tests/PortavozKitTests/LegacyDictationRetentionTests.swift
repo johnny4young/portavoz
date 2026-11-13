@@ -207,16 +207,55 @@ final class LegacyDictationRetentionTests: XCTestCase {
         }
     }
 
-    private func insertDictation(_ store: MeetingStore, at createdAt: Date) async throws -> String {
+    func testDeletedDictationTextLeavesTheSearchIndex() async throws {
+        let store = try MeetingStore.inMemory()
+        _ = try await insertDictation(store, at: now, text: "Zanahoriaxq secreta.")
+
+        try await store.deleteAllLegacyDictationData()
+
+        let indexed = try await indexHolds("zanahoriaxq", in: store)
+        XCTAssertFalse(indexed, "delete-all must not leave dictated words in the FTS5 segments")
+    }
+
+    func testPurgedDictationTextLeavesTheSearchIndexAndKeptRowsStaySearchable() async throws {
+        let store = try MeetingStore.inMemory()
+        _ = try await insertDictation(store, at: now.addingTimeInterval(-60 * 86_400), text: "Zanahoriaxq secreta.")
+        let kept = try await insertDictation(store, at: now, text: "Berenjenaqz reciente.")
+
+        try await store.purgeExpiredLegacyDictationData(now: now, calendar: calendar)
+
+        let purgedIndexed = try await indexHolds("zanahoriaxq", in: store)
+        let found = try await store.database.read { db in
+            try String.fetchAll(db, sql: """
+                SELECT dictationRecord.id FROM dictationRecordSearch
+                JOIN dictationRecord ON dictationRecord.rowid = dictationRecordSearch.rowid
+                WHERE dictationRecordSearch MATCH '"berenjenaqz"'
+                """)
+        }
+        XCTAssertFalse(purgedIndexed, "a purge must not leave expired words in the FTS5 segments")
+        XCTAssertEqual(found, [kept])
+    }
+
+    private func indexHolds(_ word: String, in store: MeetingStore) async throws -> Bool {
+        try await store.database.read { db in
+            try Bool.fetchOne(
+                db, sql: "SELECT EXISTS(SELECT 1 FROM dictationRecordSearch_data WHERE instr(block, CAST(? AS BLOB)) > 0)",
+                arguments: [word]) ?? true
+        }
+    }
+
+    private func insertDictation(
+        _ store: MeetingStore, at createdAt: Date, text: String = "Hola."
+    ) async throws -> String {
         let id = UUID().uuidString
         try await store.database.write { db in
             try db.execute(
                 sql: """
                     INSERT INTO dictationRecord (
                         id, createdAt, durationMs, text, mode, engine, delivery)
-                    VALUES (?, ?, 1200, 'Hola.', 'literal', 'parakeet-v3', 'verified')
+                    VALUES (?, ?, 1200, ?, 'literal', 'parakeet-v3', 'verified')
                     """,
-                arguments: [id, createdAt])
+                arguments: [id, createdAt, text])
         }
         return id
     }

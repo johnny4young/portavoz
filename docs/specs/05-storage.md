@@ -2135,8 +2135,11 @@ nothing, and any failure, a missing policy row included, reaches the caller and 
 nothing; a stats horizon the calendar cannot compute fails instead of falling back to
 today. `legacyDictationRows()` counts what is left. `deleteAllLegacyDictationData()`
 deletes every history and stats row, keeps the content-free egress receipts, and advances
-the history generation (stats have none); it is a logical delete, not a forensic wipe of
-WAL pages or backups. Copied meeting notes stay: a deleted dictation
+the history generation (stats have none), and runs FTS5 `delete-all` on
+`dictationRecordSearch` in the same transaction, so no dictated word stays in its segments. A
+purge that removed history runs FTS5 `optimize` in its transaction, which merges the
+segments and drops the expired words. Both are logical deletes, not a forensic wipe of
+free pages, WAL pages or backups. Copied meeting notes stay: a deleted dictation
 cascades only its note link. Everything is SQL, with no dictation type.
 `LegacyDictationFixture.swift`, compiled only in debug builds, seeds one stats day so a
 disposable UI-test library looks upgraded.
@@ -2154,8 +2157,8 @@ these tables. What the frozen migrations left in a 1.x library:
   `mode`, `language` and `delivery` to their known values. No audio, window title,
   URL or surrounding text was ever stored.
 - `dictationRecordSearch` (v55): an FTS5 external-content index over the final and
-  kept original text (`unicode61`), kept in step by triggers, so a deleted or purged
-  dictation leaves the index in the same transaction.
+  kept original text (`unicode61`), kept in step by triggers. A trigger delete only
+  appends a tombstone; the facade's `delete-all` and `optimize` remove the words themselves.
 - `dictationStatsPolicy`, `dictationStatsDay` and `dictationStatsCounted` (v58):
   counting consent (off by default), per-day totals by application (`''` when
   unknown) and the per-dictation retry dedupe.

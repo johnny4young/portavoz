@@ -1215,11 +1215,15 @@ A library from 1.x may hold dictation history and statistics in the same
 database. Their migrations live in `Sources/StorageKit/Schema/Legacy` and are
 frozen with their limits as literals. `LegacyDictationRetention`, a SQL-only
 facade, expires that data on its frozen horizons whatever the consent rows say,
-or deletes it, without touching meeting notes or egress receipts;
+or deletes it, clearing the dictated words from its search index too, without
+touching meeting notes or egress receipts;
 `LegacyDictationModel` is its only app caller. Sync, exports, Spotlight and MCP
-do not read these tables, and `MeetingStore` has no other dictation API.
-Dictation's pure text rules, Polish prompt, fidelity check and polishers still
-compile in the capability modules with no app caller.
+do not read these tables, and neither `MeetingStore` nor PortavozCore has another
+dictation history or statistics type or API. Still compiling with no app caller:
+PortavozCore's `DictationRecipe`, `DictationTextMode`, `DictationDeliveryOutcome` and
+`DictationRecordID`; TranscriptionKit's dictation text rules, assembler, correction
+command, dictionary terms and Polish fidelity check; IntelligenceKit's Polish prompt and
+polishers; and ApplicationKit's `PolishDictation`.
 
 Live Apuntador keeps endpoint and semantic admission split across layers. The
 pure `TurnEndpointPolicy` in `IntelligenceKit` owns the remote-channel, noise,

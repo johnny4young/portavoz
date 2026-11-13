@@ -40,6 +40,10 @@ extension MeetingStore {
             var removed = LegacyDictationRows.none
             try database.execute(sql: "DELETE FROM dictationRecord WHERE createdAt < ?", arguments: [cutoff])
             removed.history = database.changesCount
+            // The delete trigger only appends tombstones; a merge drops the expired words.
+            if removed.history > 0 {
+                try database.execute(sql: "INSERT INTO dictationRecordSearch(dictationRecordSearch) VALUES('optimize')")
+            }
             try database.execute(sql: "DELETE FROM dictationStatsDay WHERE day < ?", arguments: [oldestDay])
             removed.statsDays = database.changesCount
             try database.execute(
@@ -58,10 +62,11 @@ extension MeetingStore {
         }
     }
 
-    /// Deletes every legacy history and stats row at once; content-free egress receipts stay. A
-    /// logical delete: WAL pages and backups keep their copies until SQLite or the user replaces
-    /// them. Advances the history generation, so an older build still running cannot save into
-    /// history again; stats have no generation, and such a build with counting on can count again.
+    /// Deletes every legacy history and stats row at once, and empties the search index;
+    /// content-free egress receipts stay. A logical delete: WAL pages and backups keep their copies
+    /// until SQLite or the user replaces them. Advances the history generation, so an older build
+    /// still running cannot save into history again; stats have no generation, and such a build
+    /// with counting on can count again.
     @discardableResult
     public func deleteAllLegacyDictationData() async throws -> LegacyDictationRows {
         try await database.write { database in
@@ -74,6 +79,7 @@ extension MeetingStore {
             removed.countedDictations = database.changesCount
             try database.execute(sql: "UPDATE dictationHistoryPolicy SET generation = generation + 1 WHERE id = 1")
             guard database.changesCount == 1 else { throw StorageError.missingLegacyDictationPolicy }
+            try database.execute(sql: "INSERT INTO dictationRecordSearch(dictationRecordSearch) VALUES('delete-all')")
             return removed
         }
     }
