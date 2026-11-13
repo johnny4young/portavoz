@@ -42,8 +42,7 @@ enum McpCommand {
             instructions: MeetingToolbox.serverInstructions,
             tools: MeetingToolbox.tools(
                 library: application.library,
-                ask: application.ask)
-                + DictationToolbox.tools(reader: application.dictations))
+                ask: application.ask))
         while let line = readLine(strippingNewline: true) {
             if let response = await server.handleLine(line) {
                 print(response)
@@ -80,10 +79,7 @@ enum MeetingToolbox {
         serves the user-corrected transcript when it is safely composable, and \
         `get_summary_v2` / `get_action_items_v2` disclose whether a generated \
         artifact predates the current corrections. Each v2 response opens with \
-        one content-free header line stating what you are reading. \
-        `list_dictations`, `search_dictations`, and `get_dictation` read the \
-        user's saved dictations only while the user allows it in Portavoz; \
-        their responses open with a content-free `portavoz-dictations/1` header.
+        one content-free header line stating what you are reading.
         """
 
     // MCP tool catalog: one long literal array of definitions,

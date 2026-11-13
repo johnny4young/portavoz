@@ -2198,11 +2198,11 @@ p95 0.2 ms, single-word, prefix and application-plus-word searches p95 about
 v56 adds `exposesToAgents` (default 0) to `dictationHistoryPolicy`. The setter
 stores it only together with `isEnabled`, so turning history off withdraws
 agent access and turning it back on does not restore it. `agentsCanRead`
-requires both. `dictationRecordsForAgents(matching:offset:limit:)` and
-`dictationRecordForAgents(_:)` read the policy and the rows in one read
-transaction and return `.notAllowed` without touching any row when access is
-off. Agent pages reuse the history filter (`dictationFilterConditions`), count
-the filtered total, and use newest-first offset paging with the offset clamped
+requires both. `dictationRecordsForAgents(matching:offset:limit:)`, which the
+Shortcuts search uses, reads the policy and the rows in one read transaction
+and returns `.notAllowed` without touching any row when access is off. Agent
+pages reuse the history filter (`dictationFilterConditions`), count the
+filtered total, and use newest-first offset paging with the offset clamped
 at 0 and the limit to 1–100.
 
 ### Dictation statistics (schema v58, D584)
