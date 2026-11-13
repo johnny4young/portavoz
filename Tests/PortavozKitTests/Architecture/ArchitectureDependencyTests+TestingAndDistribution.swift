@@ -102,7 +102,7 @@ extension ArchitectureDependencyTests {
                 @Suite(.serialized, .exclusiveArgumentDomain, .timeLimit(.minutes(1)))
                 @MainActor
                 struct GuardedSuite {
-                    @Test func writes() { _ = DictationControllerHarness(text: "") }
+                    @Test func writes() { _ = UserDefaults.argumentDomain }
                 }
 
                 @Suite(.serialized)
@@ -116,12 +116,12 @@ extension ArchitectureDependencyTests {
                 """,
             "Guarded+More.swift": """
                 extension GuardedSuite {
-                    @Test func alsoWrites() { _ = DictationTextSettingsModel(defaults: .standard, temporary: true) }
+                    @Test func alsoWrites() { _ = AppPortableSettingsStore(defaults: .standard, temporary: true) }
                 }
 
                 extension QuietSuite {
-                    // DictationControllerHarness( in a comment does not count.
-                    @Test func writes() { _ = DictationControllerHarness(text: "") }
+                    // UserDefaults.argumentDomain in a comment does not count.
+                    @Test func writes() { _ = UserDefaults.argumentDomain }
                 }
                 """
         ]
@@ -137,7 +137,7 @@ extension ArchitectureDependencyTests {
         _ sources: [String: String]
     ) throws -> [String] {
         let shared = try NSRegularExpression(
-            pattern: #"argumentDomain|DictationControllerHarness\(|temporary: true|storesPreferencesTemporarily"#)
+            pattern: #"argumentDomain|temporary: true|storesPreferencesTemporarily"#)
         let declaration = try NSRegularExpression(
             pattern: #"^(?:\w+\s+)*(?:struct|class|enum|actor|extension)\s+(\w+)"#)
         var exclusiveTypes: Set<String> = []
@@ -1745,8 +1745,7 @@ extension ArchitectureDependencyTests {
         XCTAssertFalse(placement.contains("viewDidMoveToWindow"),
                        "attachment precedes native frame restoration")
         XCTAssertFalse(placement.contains("NSApp.windows"))
-        for file in ["CommandPalette.swift", "RecordingHUD.swift",
-                     "DictationPanel.swift", "MeetingReminder.swift"] {
+        for file in ["CommandPalette.swift", "RecordingHUD.swift", "MeetingReminder.swift"] {
             let panel = try Self.contents(of: "Sources/portavoz-app/\(file)")
             XCTAssertTrue(panel.contains(
                 "panel.level = UITestWindowPlacement.floatingPanelLevel()"), file)
