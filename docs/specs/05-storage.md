@@ -2130,8 +2130,7 @@ showing it, and deletes on request from Settings › Your data or the one-time n
 dictation moved to Secreteo. `purgeExpiredLegacyDictationData(now:calendar:)`
 removes, in one transaction, history older than the stored 7, 30 or 90 days, stats days
 older than 365 local days and retry-dedupe rows older than two days, whatever the consent
-rows say (today stats with counting turned off are never pruned, but nothing will show them
-once the dictation code is gone); a second call removes
+rows say (today stats with counting turned off are never pruned, but nothing shows them); a second call removes
 nothing, and any failure, a missing policy row included, reaches the caller and removes
 nothing; a stats horizon the calendar cannot compute fails instead of falling back to
 today. `legacyDictationRows()` counts what is left. `deleteAllLegacyDictationData()`
@@ -2142,7 +2141,9 @@ cascades only its note link. Everything is SQL, with no dictation type.
 `LegacyDictationFixture.swift`, compiled only in debug builds, seeds one stats day so a
 disposable UI-test library looks upgraded.
 
-Dictation is a second domain on the same `DatabaseQueue`, written only through
+Since 2.0 no app path and no ApplicationKit use case calls the `MeetingStore`
+dictation APIs below; they still compile, with their store tests, until they are
+removed. Dictation is a second domain on the same `DatabaseQueue`, written only through
 `MeetingStore+DictationHistory`. `dictationHistoryPolicy` holds a single row that
 starts off (`isEnabled = 0`, `keepsOriginal = 0`, 30 days, generation 0).
 `setDictationHistoryPolicy` accepts only 7, 30 or 90 days, advances `generation`
@@ -2203,8 +2204,7 @@ p95 0.2 ms, single-word, prefix and application-plus-word searches p95 about
 v56 adds `exposesToAgents` (default 0) to `dictationHistoryPolicy`. The setter
 stores it only together with `isEnabled`, so turning history off withdraws
 agent access and turning it back on does not restore it. `agentsCanRead`
-requires both. `dictationRecordsForAgents(matching:offset:limit:)`, which the
-Shortcuts search uses, reads the policy and the rows in one read transaction
+requires both. `dictationRecordsForAgents(matching:offset:limit:)` reads the policy and the rows in one read transaction
 and returns `.notAllowed` without touching any row when access is off. Agent
 pages reuse the history filter (`dictationFilterConditions`), count the
 filtered total, and use newest-first offset paging with the offset clamped

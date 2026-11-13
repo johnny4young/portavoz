@@ -177,7 +177,7 @@ subscriber keep the upstream behavior.
 - A full disk or quota (Cocoa out-of-space or POSIX `ENOSPC`/`EDQUOT`, including nested or multiple underlying errors) becomes `ModelStoreError.outOfSpace(path:)`, whether URLSession could not write its temporary download or staging, copying or publishing the verified file failed, so presentation can offer disk-space recovery. Other local write errors pass through unchanged. Other transfer failures retain `ModelStoreError.downloadFailed(path:underlying:)`; a failed transfer leaves any previous destination artifact intact.
 - `VerifiedModelLifecycle` (actor): coalesces complete descriptor checks, returns an opaque `VerifiedInstallation` only after every pinned digest passes, and caches only successful evidence by descriptor ID + revision. Missing/corrupt results are never cached. Same-descriptor install/remove operations execute in invocation order; invalidation and forced verification supersede stale checks, and waiting callers retry current evidence rather than returning an obsolete result. Cancellation is honored before publication but not reported as false failure after a verified install commits. No app readiness path infers installation from one filename or aggregate size.
 - **Exact local loading**: `ParakeetEngine` uses `AsrModels.loadLocal` on the verified directory with an explicit version, so the folder name does not matter, never the vendor download-capable loader. Missing files fail locally; an unexpected optional `CtcHead.mlmodelc` is rejected before compilation because it is outside the curated graph. `@concurrent` keeps synchronous CoreML loading off the caller's actor. ModelStore remains the only download authority.
-- **Resident Parakeet files**: `ModelStore.lease` requires this consumer's claim, acquires the shared store's deletion lock before verification, and never downloads. App v3/Ultra and CLI Parakeet loading pass that opaque lease to `load(fromLeasedInstallation:)`; the engine, observer copies and live/batch jobs retain it until native cleanup finishes. A failed live job cancels output, joins its native recognizer through `finish()` and only then cleans up: the pinned vendor's `cancel()` does not itself wait for a suspended prediction. Cancellation or a failed load drops its reference after that boundary. A same-consumer removal or an all-consumer removal therefore defers while speech weights remain in use. On filesystems without shared file locks, the underlying store explicitly reports `isProtected == false` and retains its claims fallback. The raw-directory loader is for externally owned files, not shared-store product composition.
+- **Resident Parakeet files**: `ModelStore.lease` requires this consumer's claim, acquires the shared store's deletion lock before verification, and never downloads. App and CLI Parakeet v3 loading pass that opaque lease to `load(fromLeasedInstallation:)`; the engine, observer copies and live/batch jobs retain it until native cleanup finishes. A failed live job cancels output, joins its native recognizer through `finish()` and only then cleans up: the pinned vendor's `cancel()` does not itself wait for a suspended prediction. Cancellation or a failed load drops its reference after that boundary. A same-consumer removal or an all-consumer removal therefore defers while speech weights remain in use. On filesystems without shared file locks, the underlying store explicitly reports `isProtected == false` and retains its claims fallback. The raw-directory loader is for externally owned files, not shared-store product composition.
 - The sha256 values come from the HF tree API (`/api/models/<repo>/tree/<rev>?recursive=true`): LFS provides `lfs.oid`; small files are hashed manually. Procedure in the doc comment for `ModelCatalog.parakeetTdtV3`.
 
 ### Optional Silero voice-activity capability (D548)
@@ -193,7 +193,7 @@ PCM and native rate changes reset model state and report a discontinuity, never
 manufactured silence. A failed or cancelled inference commits no partial
 model/resampler state; a concurrent producer is rejected rather than interleaved.
 
-The streaming adapter serves dictation only. Batch Whisper uses the separate
+No app path serves the streaming adapter since dictation left Portavoz. Batch Whisper uses the separate
 whole-file `SileroSpeechRegionDetector` (D603), which Refine and audio import
 install with the same on-demand consent as Whisper itself. Neither ends
 capture, alters a CAF, runs in the background, or claims improved meeting
@@ -208,15 +208,10 @@ concurrency without treating that one fixture as universal accuracy evidence.
 ## Live: ParakeetEngine + mapper
 
 - Custom sliding window **left 11 s / chunk 1.0 s / right 0.4 s** (≤ 15 s model limit). FluidAudio's `.streaming` preset does NOT work: its `hypothesisChunkSeconds` is dead code (it emits only on `chunkSeconds` = 11 s → 13+ s latency).
-- When `TranscriptionHints.filtersLiveScript` is true, a supported
-  `TranscriptionHints.language` is passed to the live manager's
-  `SlidingWindowAsrConfig.language`; absent, unsupported or non-opted-in hints
-  leave the configuration unhinted. Only dictation opts in: a fixed meeting
-  language still only labels live-caption segments, so a meeting fixed to a
-  non-Latin language never drops English words from its captions. The existing window sizes and confirmation policy do
-  not change. FluidAudio's v3 hint filters writing systems, not same-alphabet
-  languages: Spanish and English both allow Latin-script text. It is not
-  translation, a strict language lock, or a quality guarantee.
+- The live manager's `SlidingWindowAsrConfig.language` is always unset: a fixed
+  meeting language only labels live-caption segments, so a meeting fixed to a
+  non-Latin language never drops English words from its captions. Batch
+  recognition still passes a supported `TranscriptionHints.language`.
 - Engine-internal preparation closures construct a fresh live/batch manager and
   load the already verified immutable weights. Preparation cleans up on failure;
   the returned manager transfers cleanup ownership to that transcription job.
@@ -295,8 +290,8 @@ concurrency without treating that one fixture as universal accuracy evidence.
   and FIFO behavior are unchanged.
 - `TdtDecoderState()` is `throws` and is passed `inout` (local variable). `ASRResult.duration` = 0 on the disk-backed path → read actual duration with AVAudioFile.
 - First load compiles for ANE (~14 s for the encoder on M4 Max); CoreML caches it afterward (~1 s).
-- Licenses: Parakeet v3 and Parakeet Ultra models CC-BY-4.0, FluidAudio Apache-2.0, WhisperKit MIT — all MIT-compatible with attribution.
-- `ParakeetEngine.load(fromVerifiedDirectory:checkpoint:)` loads v3 or the opt-in Ultra checkpoint (`ModelCatalog.parakeetUltra`, FluidInference/parakeet-ultra-coreml at a pinned revision, ~613 MB). Ultra is a post-training of v3 with the same component contract: its int8 encoder, decoder and joint differ, and its preprocessor and vocabulary are the v3 ones. The engine descriptor names the checkpoint it loaded. Ultra is never `recommended(for:)`, so nothing downloads it implicitly; it is the app's dictation default (D613) but only runs once someone downloads it.
+- Licenses: Parakeet v3 model CC-BY-4.0, FluidAudio Apache-2.0, WhisperKit MIT — all MIT-compatible with attribution.
+- `ParakeetEngine` loads only the v3 graph. The catalog no longer pins 1.x's dictation-only Parakeet Ultra, so the launch-time `collectUnused(keeping: ModelCatalog.all)` retires Portavoz's claim on its files; the shared store keeps them only while another app, such as Secreteo, claims them.
 
 ### Opt-in public live-work observations (D484)
 
@@ -385,7 +380,7 @@ when it completes. The attacher retains that exact engine/use token until every
 live stream drains. Stop cancels only its waiter and returns immediately; if the
 process load later completes, the inactive attacher ends the new lease without
 publishing captions.
-Recording and Dictation acquire the same type-erased live-engine handle from
+Recording acquires a type-erased live-engine handle from
 AppServices; its completion retains and ends the underlying Parakeet use token.
 The resident-only acquisition remains synchronous and cannot trigger a model
 load. This changes the borrower boundary, not the default engine or batch
@@ -519,9 +514,9 @@ remains mandatory in both paths.
 Parakeet, pyannote, and Whisper are independent app-scoped capabilities, not a
 single readiness bundle. Separate retained tasks deduplicate each verified
 load across concurrent callers. Parakeet acquisition also returns one
-active-use lease per recording, Dictation session, durable first-pass file,
+active-use lease per recording, durable first-pass file,
 onboarding check, or measured benchmark operation. Durable first-pass recovery
-and Dictation ask only for Parakeet. Refine prepares only required Whisper before its composite
+asks only for Parakeet. Refine prepares only required Whisper before its composite
 transcription attempt and requests only pyannote when best-effort speaker
 attribution begins. External-audio Import also requests pyannote directly and
 never loads Parakeet as an incidental dependency. Explicit onboarding/model
@@ -704,8 +699,8 @@ Apple locale; the read-only probe never calls `AssetInventory`. A separate
 Settings action owns any download. The adapter marks range revisions, shows
 volatile text only in a bounded ephemeral preview, and passes only monotonic
 finals to the append-only caption coalescer. Invalid/overlapping final ranges
-or an unconfirmed tail fail the stream, so dictation cannot paste a provisional
-phrase and meeting capture requests durable recovery. The analyzer feeder
+or an unconfirmed tail fail the stream, so meeting capture requests durable
+recovery instead of keeping a provisional phrase. The analyzer feeder
 rejects a nonempty chunk it cannot convert, instead of silently skipping that
 sound. The meeting attacher maps results to the captured feed's hardware
 channel, not the OS engine's microphone-only label. Synthetic EN/ES call-site
@@ -724,9 +719,8 @@ microphone copy only while that mic row is still newest and open. Removing that
 tail may expose a preceding remote row which the incoming delta then extends;
 the list shrinks and a previously closed row changes. `apply` returns the earliest
 written row index, or `nil` when admission leaves the list unchanged (D545).
-Rows before the returned index are unchanged. Dictation uses this invalidation
-for its incremental text projection; existing meeting cursor consumers still
-need the focused revision audit recorded in GAPS. Older microphone rows are
+Rows before the returned index are unchanged. Existing meeting cursor consumers
+still need the focused revision audit recorded in GAPS. Older microphone rows are
 never removed by this rule. One-word acknowledgements always survive. An exact two-word copy is
 admitted as bleed only when the microphone and direct timelines truly overlap;
 three contiguous words at either rolling edge can reject a longer noisy copy.
@@ -816,9 +810,8 @@ order, whitespace and Unicode escaping must not create a preference change.
 ## Known limitations
 
 1. Live Parakeet degrades with non-native accents (verified: an accented EN contribution was garbled live; the same audio through Whisper was clean) — current response: refine.
-2. System-wide dictation is implemented in the macOS app (⌥⌘D by default,
-   configurable, with a non-activating panel and Accessibility paste/restore;
-   see spec 06). It reuses live Parakeet and does not change meeting capture.
+2. ~~System-wide dictation in the macOS app~~ — **MOVED**: Secreteo owns
+   dictation; Portavoz keeps only the 1.x legacy retention (spec 06).
 3. ~~Quantized Whisper models not yet in the catalog~~ — **DONE (M12)**:
    **626 MB** variant (`whisper-large-v3-626mb`, 17 artifacts sha256-pinned to
    the same argmax commit as turbo) for low disk space.

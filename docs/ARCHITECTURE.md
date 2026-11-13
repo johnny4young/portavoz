@@ -46,14 +46,11 @@ Feature parity is a permanent constraint: audio and user-owned data remain
 discoverable when transcription, diarization, generation, indexing, sync, or an
 external integration fails.
 
-At the macOS composition boundary, capture admission combines the meeting's
-capture status with session-owned dictation tokens. A dictation token survives cancelled
-preparation and native teardown, independently of another dictation or meeting.
-Existing background owners consume that aggregate capture mirror; model-use
-leases remain a separate generation-fenced responsibility. The dependency
-constructor requires the capture-admission callback in both live and disposable
-composition so a new caller cannot silently omit ownership. Neither SwiftUI nor
-the realtime audio callback coordinates this ownership.
+At the macOS composition boundary, capture admission mirrors the meeting's
+capture status, which only recording phases set. Existing background owners
+consume that capture mirror; model-use leases remain a separate
+generation-fenced responsibility. Neither SwiftUI nor the realtime audio
+callback coordinates this ownership.
 
 Recording-root migration is owned by `StorageKit.RecordingsLocation.migrateRoot`.
 Filesystem movement and root-marker publication share one compensation boundary;
@@ -149,32 +146,12 @@ Package tests live in two targets: `PortavozKitTests` never depends on the app
 module, and `PortavozAppTests` holds the tests that do. Both import
 `PortavozTestSupport`, a target in no product whose doubles and fixtures they share.
 
-The app composition shares microphone permission and preferred-input selection
-between meeting capture and global dictation. Dictation's session-scoped
-`DictationMicrophoneReadiness` owns first-frame admission and the bounded input
-startup wait, not model residency or native teardown. A session-owned
-`DictationRuntimeAcquisition` loads the model while the microphone is already
-open; the relay holds earlier speech, bounded by `DictationRelayPolicy`.
-The controller retains
-the runtime lease through cleanup and fences late callbacks by session identity;
-SwiftUI only renders preparation, fallback and failure states. Composition
-accepts the process-scoped controller as an initializer dependency so tests can
-exercise actual settings-write admission without opening a host window.
-
-Every global dictation capture and delivery takes a lease from one app-owned
-admission port first, whichever trigger asked. Refusing never writes the user's
-preference. The port is a cooperative per-user lock shared with Secreteo through
-the pinned `DictationOwnership` package: only the owner arms global triggers or
-prewarms a model, and it is not a security boundary.
-
-Portavoz no longer starts dictation. No App Intent, menu bar action, Settings
-section, onboarding step, Library route or global trigger reaches
-`DictationController`, and launch neither starts the ownership coordinator nor
-arms a trigger. The shipping build instead gives up, once per launch and off the
-main actor, an ownership 1.x left behind, so Secreteo can own dictation alone; it
-never claims, and Dev builds and disposable libraries leave the shared state alone.
-The controller, its panels and
-the coordinator remain in the tree without callers until they are deleted.
+Portavoz contains no dictation capture, delivery, trigger or runtime; Secreteo
+owns dictation. The shipping build gives up, once per launch and off the main
+actor, a dictation ownership 1.x left behind, through the pinned
+`DictationOwnership` package's `relinquishForRemoval`, so Secreteo can own
+dictation alone; it never claims, and Dev builds and disposable libraries leave
+the shared state alone. That release is the package's only app caller.
 
 A library from 1.x keeps its dictation rows. `LegacyDictationModel`, one per
 process, purges them on their frozen horizons when the app opens, after the Mac
@@ -186,13 +163,6 @@ seen only once it is on screen and handed to another window if its own closes fi
 and only to a user who dictated: legacy rows exist or the 1.x dictation switch was
 ever written. Disposable UI-test libraries see it only with
 `-show-dictation-moved-notice`.
-
-The macOS dictation controller supports an explicitly injected, content-free
-session observation sink. Its bounded recorder lives in the app beside the
-platform/controller seam, not in a capability module or global telemetry bus.
-Normal composition installs no observer or writer. Relative timing observations
-stop at the outcome boundary; event dispatch is never represented as verified
-text delivery, and no captured content or destination identity enters a receipt.
 
 ## Module responsibilities
 
@@ -208,7 +178,7 @@ remote replacement cannot silently undo a dismissal or deferral.
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access, microphone authorization, regular persistent file bookmarks, and the streaming file digest while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
 | `AudioCaptureKit` | Call-safe raw microphone capture, explicit nondefault voice processing for bounded nonmeeting tools, macOS process taps, checked PCM geometry and native buffer views, single-owner failed-source retirement, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
-| `TranscriptionKit` | Live Parakeet, quality Whisper, and an optional macOS 26 SpeechAnalyzer live adapter for fixed installed locales; a CLI-only non-serving Nemotron challenger; a verified Silero voice-activity adapter serving the default-on dictation speech gate, plus whole-file Silero speech regions that limit batch Whisper to speech windows with one supported language each and drop rows stretched over the channel's noise floor; transcript scheduling; language-aware operation fingerprints; model preparation tokens; segment mapping; structured SpeechAnalyzer input ownership; and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
+| `TranscriptionKit` | Live Parakeet, quality Whisper, and an optional macOS 26 SpeechAnalyzer live adapter for fixed installed locales; a CLI-only non-serving Nemotron challenger; a verified streaming Silero voice-activity adapter that no app path serves, plus whole-file Silero speech regions that limit batch Whisper to speech windows with one supported language each and drop rows stretched over the channel's noise floor; transcript scheduling; language-aware operation fingerprints; model preparation tokens; segment mapping; structured SpeechAnalyzer input ownership; and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, session-clock-anchored live windowing, and encrypted local voice-gallery support. |
 | `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers (MLX behind the default `EmbeddedMLX` trait); structured summaries with deterministic action/evidence admission; Apuntador plus pure bounded proactive meeting-assist admission; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
 | `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, immutable transcript-correction history with atomic multi-lane appends and sparse correction-search lineage, explicit topic and decision continuity with immutable evidence and append-only relationship history, explicitly confirmed decision-topic authority, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and correction-fenced Spotlight projections. |
@@ -348,8 +318,7 @@ PlatformKit owns `OwnProcessResourceUsage`: one read of the calling process,
 without process identities or paths. Normal support requests use the stable
 V0 resource prefix; the existing benchmark explicitly requests current extended
 counters through that same bridge and retains failure on unsupported counters.
-Those extended counters include the process's lifetime peak footprint, which the
-v3/Ultra comparison reads with one model per process.
+Those extended counters include the process's lifetime peak footprint.
 CPU time is cumulative process work in seconds, not gesture latency or elapsed
 meeting time. A failed read stays unavailable. Per-family memory remains an
 optional owner measurement; process memory is never apportioned among models.
@@ -360,54 +329,26 @@ publication rather than ignoring new fields. A producer-to-consumer test passes
 an actual AppServices export through both consumers without converting synthetic
 data into a field qualification.
 
-### Dictation session test boundary
+### Live speech test boundary
 
-`DictationController` owns the same session, coalescing, final text rules and
-cancellation path for production and disposable tests. Its session dependencies
-provide audio preparation, the existing `LiveTranscriptionRuntime` lease,
-permission, captured-destination and explicit-copy effects, preferences and the capture clock.
-Explicit combined speech/diarization readiness stays in the live-speech
-composition extension. Production composition acquires the shared live-speech
-token through a type-erased live-engine handle that ends it on completion.
-Recording and dictation share that boundary; batch callers retain the concrete
-Parakeet lease. App composition selects Parakeet by default or an explicitly
-chosen, installed Apple Speech locale on macOS 26. Dictation defaults to the
-Parakeet Ultra checkpoint (`ParakeetCheckpoint.ultra`) and runs it only
-once it is verified, falling back to v3 until then. One
-live-speech runtime stays resident and its checkpoint is part of its identity:
-`LiveSpeechCheckpointPlan` lets dictation borrow a v3 runtime a meeting is
-using, swaps an idle runtime, and makes every v3 caller wait for an Ultra
-dictation to finish. Meetings, batch passes and the synchronous recording
-attach never run Ultra. Core carries only transient
+`LiveTranscriptionRuntime` is the type-erased live-engine handle recording
+borrows: it carries the engine and ends the shared live-speech lease on
+completion. Explicit combined speech/diarization readiness stays in the
+live-speech composition extension. Batch callers retain the concrete Parakeet
+lease. App composition selects Parakeet v3 by default or an explicitly chosen,
+installed Apple Speech locale on macOS 26; a stored engine value it does not
+know, such as 1.x's dictation-only Ultra, reads as Parakeet. One live-speech
+runtime stays resident: a second live caller borrows it while a recording uses
+it, and it is released only once idle. Core carries only transient
 live-update semantics (range revision, token preview, owned delta or word
-continuation), not AppKit or speech-provider types. It also keeps the last dictated text in memory only (`DictationLastText`, 15 minutes, cleared on sleep or lock) for an explicit paste-again action.
+continuation), not AppKit or speech-provider types.
 
-Temporary meeting-store composition never registers Carbon hotkeys, mouse
-or held-modifier event taps. The explicit dictation fixture supplies synthetic PCM and a bounded
-caption producer; without that fixture it refuses dictation without requesting
-permissions, downloading models or opening a microphone. Fixture selection lives
-in `AppServices+DictationUITestFixture.swift`, not in the controller's pipeline.
-The Settings-only Apple asset fixture is likewise restricted to a disposable
+Temporary meeting-store composition registers no global hotkey or event tap.
+The Settings-only Apple asset fixture is restricted to a disposable
 temporary-store launch; it exercises the real view/model without installing an
-OS asset or claiming recognition quality.
-
-A separate Xcode-only receiver builds no shipping product. An explicitly armed
-`DictationNativeUITestFixture` calls the production `TextInserter` inside the
-temporary app, not XCTest's sandboxed runner. It requires a UUID-named clipboard
-and the fixed receiver bundle; the receiver's native Paste action reads that
-board. The real event pair is directed to the receiver process so a focus change
-cannot route fixture Paste into another application. Production and fixture
-insertion both require an explicit captured process target; only production
-uses the general pasteboard. Change-count ownership protection remains shared.
-A separately flagged native-controller journey reuses the existing scripted
-microphone/recognizer through the production controller, captures the fixed
-receiver at session admission, and stops only after a real panel mode choice plus
-an acknowledged Stop on a distinct UUID control board. It neither activates the
-receiver nor registers global input. The native journeys require real app
-Accessibility and event-synthesis authorization. Their public preflights are
-quiet and must not bypass or silently grant permission. Synthetic
-controller coverage and an event-dispatched result are not ASR or native-delivery
-qualification; the receiver's actual value is the oracle.
+OS asset or claiming recognition quality. The Xcode-only
+`PortavozDictationReceiver` target and the test-only `dictation-peer`
+executable remain in the project, and no test drives them.
 
 ### Database launch recovery
 
@@ -1066,7 +1007,6 @@ owners. Adopted read surfaces do not observe a global invalidation counter.
 | First-run welcome | `FirstRunModel` | application process |
 | Local-data receipt | `LocalDataLedgerModel` | application process |
 | Resident menu bar | `MenuBarModel` | menu-bar scene |
-| Global dictation | `DictationController` | application process |
 | Private sync | `MeetingSyncModel` | application process |
 | Whole-library backup | `LibraryMarkdownBackupModel` | application process |
 | Skills Settings | policy/activity snapshot + independent proposal snapshot + receipt inspection | one Settings window |
@@ -1262,164 +1202,24 @@ durable dismissal, exact-preview confirmation, local-draft handoff, and global
 Skills receipt without adding a second product workflow. Calendar and effect
 awaits are cancellation- and owner-fenced before the model publishes state.
 
-Global dictation has one process-scoped, main-actor owner and one UUID-fenced
-session task. Microphone duration starts only after the real stream opens;
-finish-before-readiness cancels, one owned tail task drains an accepted finish,
-and cancellation closes the transcription feed immediately while fencing every
-later state mutation and delivery side effect. Audio sample reduction and feed
-delivery stay off the main actor; only the observable meter update crosses back.
-Failure-dismiss tasks are single-owner and cancelled on restart so an older
-error cannot dismiss a newer session.
-`DictationTranscriptProjection` retains a session-local confirmed prefix and
-reads the mutable tail from admitted captions. `CaptionCoalescer.apply` reports
-the earliest written row index: ordinary partials do not reconstruct the prefix,
-newly closed rows append, and an earlier invalidation rebuilds the affected
-projection. Removing an open microphone echo can expose and extend the previous
-remote row; row-count growth is not a revision signal. Final publication checks
-cancellation and session identity before touching observable text, including
-streams that end normally on cancellation. Cancel clears both text projections
-before its asynchronous teardown.
 Apple Speech's range-based volatile replacements update only the ephemeral
-visible tail. They never enter the append-only coalescer or final text for
-paste; a stream ending with an unconfirmed range fails rather than inserting
-it. Meeting preview rows have the same isolation from canonical captions,
-translation, assistance, summaries and persistence.
-`TextInserter` delegates temporary clipboard ownership to the app-bound
-`DictationClipboard`: bounded, ordered, all-or-nothing opaque snapshots of every
-advertised type plus an exclusive per-board restoration window. A clipboard that
-cannot be captured is not borrowed; delivery is refused into recovery. Platform-call injection replaces only modifier,
-security and keyboard-event effects in tests, not clipboard admission or restore.
-SwiftUI does not own clipboard bytes or timers; no persistence module participates.
-Restoration authority is the loan plus the clipboard generation, never text equality.
-System-wide input adapters remain at the app boundary: Carbon owns the keyboard
-hotkey and a session `CGEventTap` owns one explicitly configured middle or
-additional mouse button. `DictationShortcut` is the process-owned observable
-registration owner: checked preference restoration, exclusive Carbon admission,
-explicit retry, and generation-fenced callbacks stay outside SwiftUI. Settings
-only renders that owner and invokes its existing controller rebind command.
-Temporary-store composition supplies no system-wide registrar or mouse tap;
-an explicitly selected fixture can replace registration, never actual capture. The pure `MousePTTGesture` table also remains in the app
-target because it decides presentation/input ownership, not speech recognition.
-The tap registration is idempotent, cancels a mouse-owned capture before
-rebinding can discard its release event, and retries after the app returns from
-the Accessibility permission flow. Invalid persisted button numbers normalize
-to disabled; CGEvent indices 0/1 (left/right) are never eligible.
-TranscriptionKit owns only the post-ASR text policy: optional bilingual filler
-removal followed by one non-cascading, longest-trigger-first replacement pass.
-Polish is the one generative mode. `PolishDictation` (ApplicationKit) sends the
-Clean text, from three words to 2,000 characters, to the `DictationTextPolishing`
-port for at most five seconds, and pastes the reply only when the deterministic
-`DictationPolishFidelity` (TranscriptionKit) finds no lost or changed number,
-identifier, dictionary spelling or negation, no length, language or preamble
-drift. The app router resolves the selected summary engine on every call (Apple
-on-device, Ollama on loopback through the egress gateway, or embedded MLX through
-its lease) and never falls through to another engine. The controller polishes
-inside `.delivering` after ending its capture claim; Escape or the strip pastes
-Clean at once, and every fallback carries a visible reason. A Polish recipe, a
-bounded user instruction chosen with the mode, travels fenced beside the text;
-it frees length and list structure from the fidelity check but nothing else.
-`SelectionRewriteController` applies the same rewrite to text already selected in
-another app: `TextInserter.captureSelection` reads it through Accessibility or a
-restored-clipboard copy, the panel previews the result, and the pinned delivery
-path replaces it only after revalidating the same application, field and selection.
-While it offers its choices, the next dictation session is redirected to it as a
-spoken one-time recipe: Clean mode, an internal destination, and no history,
-statistics, Paste last or delivery notice.
-A verified delivery also records its exact span (`DictationInsertion`). With spoken
-corrections on, a dictation that parses as a bilingual command naming text in that
-span edits it in place through Accessibility instead of pasting, after confirming
-the same field still holds it.
-An optional translation target (English or Spanish) runs after the text mode through
-`TranslateText` and the on-device Translation framework with installed languages
-only; any failure pastes the untranslated text with a notice.
-A verified "change X to Y" can add X → Y to the text replacements, only from the
-strip's explicit "Always write" button; Settings groups replacements that share a
-spelling as aliases of one term.
-With caret capitalization on, the inserter's readback reads up to 80 units before
-the caret and `DictationCaretCase` adapts only the first word's case before the
-caret spacing join.
+visible tail of a meeting preview row. Preview rows stay isolated from the
+append-only coalescer, canonical captions, translation, assistance, summaries
+and persistence.
 A meeting transcript can be translated on request: a durable
 `transcript-translation` job, claimed by the post-capture runner only when a
 translator is composed, stores a per-language overlay fenced to the transcript and
 correction revision, and never changes the meeting lifecycle. A document export
 can swap in the current translation; a stale or missing one is refused.
-The app resolves explicit Literal/Clean/Polish mode by session choice, captured bundle-ID
-profile, then global preference. The existing destination capture supplies identity;
-no profile recaptures focus or grants insertion authority. Missing preferences
-initialize before the first UI enable action: prior configured choices retain
-Clean, untouched preferences choose Literal. The app Settings model owns bounded
-profile persistence and explicit corruption recovery; Core owns only the mode and
-bundle-ID value. Native application selection saves no paths, titles or context.
-The controller admits one rule/filler snapshot at session start and freezes its
-session override at Stop request, before the capture tail drains. Literal bypasses
-optional cleaning while retaining recognition/assembly hygiene. Clean applies the
-snapshot only to final dictation, never a meeting transcript, and treats the first
-match against original dictation as the user's authoritative spelling. Completion
-or cancellation retires the snapshot; recovery does not transform or insert again.
-The app-local `CapturedDictationDestination` binds the display name and insertion
-capability once, before model preparation or panel presentation. The platform
-adapter retains the original `NSRunningApplication` and focused AX element:
-application equality, termination state and `CFEqual` on the focused element
-must still match. Names and bundle identifiers are never authority. Core and
-capability targets receive no AppKit or Accessibility dependency.
-Dictation history is a separate domain in the same database: a single consent
-row and saved dictations behind `MeetingStore`, reached through ApplicationKit
-use cases. A session reads the consent generation when it starts and the store
-revalidates it inside the write transaction, so turning history off or
-deleting everything wins over a dictation still finishing. Saving runs after
-delivery and never delays the paste. Sync, exports, Spotlight and MCP do not
-read these tables.
-Its migrations live in `Sources/StorageKit/Schema/Legacy` and are frozen with
-their limits as literals, so the tables they create never change with the app's
-dictation types.
-Beside them, a SQL-only legacy facade can expire that data on today's horizons,
-whatever the consent rows say, or delete it, without touching meeting notes or
-egress receipts; nothing calls it yet.
-The one in-process destination is the practice field shown in onboarding and
-Settings: composition swaps in its destination only while that field's window
-is key and the app is active, so practice never borrows the clipboard, posts a
-paste or needs Accessibility, and every other session keeps the captured
-external destination.
-
-The last-mile `TextInserter` returns a typed result. It waits for physical
-modifiers, revalidates the captured destination before borrowing the clipboard
-and immediately before posting, and checks cancellation after synchronous AX
-inspection. A pinned destination posts only to the captured positive process
-identifier. An application that exposes no focused AX element at capture keeps
-the previous session-stream Paste, gated on the same frontmost application, a
-non-secure inspectable system-wide focused field, and no key Portavoz panel
-holding the keyboard stream. Delivery never activates an application. Rich clipboard snapshots
-are restored after refusal or a delay only while their change count still owns
-the board. A clipboard owner change during final inspection prevents dispatch.
-`DictationDeliveryOutcome` in Core separates verified observation, unverified
-dispatch and typed refusal without importing platform types. The app's narrow
-readback adapter observes only the expected inserted span and selection/count
-metadata, plus at most two units on each side of the selection to space the insertion,
-with per-object AX timeouts and a bounded polling window. Neither a
-whole external document nor an old selection enters the domain or storage.
-Unsupported or ambiguous readback remains dispatched and cannot authorize a
-retry. The controller expires only verified feedback through a separately owned
-dismissal task. Unverified dispatch retains complete output for explicit Copy or
-Discard, with no retry capability; it is non-modal, so the next dictation starts
-normally and replaces only that notice. Neither presentation
-retains the capture runtime lease; SwiftUI does not inspect Accessibility. Event dispatch is not an external editor
-acknowledgement, and even matching readback is not an atomic focus transaction.
-
-The controller retains a refused output in memory, independently of microphone
-and model lifetime. New input triggers reveal this recovery state instead of
-replacing it. Explicit Copy is a user Copy that replaces the clipboard without
-snapshot or rollback; the output stays available and selectable whether it
-succeeds or fails. Reinsert retries only
-the original captured destination without opening audio, and Discard retires
-the delivery identity and clears presentation copies. A destination that could
-not be captured permits Copy but not implicit retargeting. Retry tasks are
-cancellable and identity-fenced so a late result cannot revive discarded text
-or dismiss a later session. The SwiftUI recovery view owns no platform effect
-or storage write; quitting is not durable recovery. AppKit and hosted SwiftUI
-content share one bounded height authority so revealing retained work does not
-move the panel through conflicting intrinsic-size constraints. Discard uses
-native cancellation semantics for uncommitted work, not a deletion role or an
-application-wide first-click override.
+A library from 1.x may hold dictation history and statistics in the same
+database. Their migrations live in `Sources/StorageKit/Schema/Legacy` and are
+frozen with their limits as literals. `LegacyDictationRetention`, a SQL-only
+facade, expires that data on its frozen horizons whatever the consent rows say,
+or deletes it, without touching meeting notes or egress receipts;
+`LegacyDictationModel` is its only app caller. Sync, exports, Spotlight and MCP
+do not read these tables. Dictation's pure text rules, Polish prompt, fidelity
+check and polishers, and the store's dictation history, statistics and
+meeting-note reads still compile in the capability modules with no app caller.
 
 Live Apuntador keeps endpoint and semantic admission split across layers. The
 pure `TurnEndpointPolicy` in `IntelligenceKit` owns the remote-channel, noise,
@@ -1680,7 +1480,7 @@ readiness check is not runtime unload. Live failure cancels output and joins
 the native recognizer through its `finish()` barrier before cleanup; cancelling
 the pinned vendor task alone does not prove an in-flight prediction ended.
 The raw-directory loader remains for
-externally owned fixtures; app v3/Ultra and CLI product loading use the leased
+externally owned fixtures; app v3 and CLI product loading use the leased
 entry point. Other model families still have the lease gap recorded in `GAPS.md`.
 
 `VerifiedModelLifecycle` wraps the process's shared `ModelStore`. It emits an
@@ -1802,11 +1602,10 @@ It includes:
   device-local enabled state, plus append-once exact-occurrence authority and
   one bounded digest-verified local artifact per successful standing run;
 - immutable generation-run provenance;
-- one opt-in dictation-history consent row with a generation, and saved
-  dictations keyed by session with bounded text and closed outcome values,
-  searchable through their own full-text index, and readable by local agents
-  only under a separate consent checked in the same read, and copyable into a
-  finished meeting's notes through a local provenance link;
+- 1.x dictation tables, kept only for legacy retention: a dictation-history
+  consent row with a generation, saved dictations keyed by session with bounded
+  text and closed outcome values and their own full-text index, an agent-read
+  consent, and provenance links from meeting notes copied from a dictation;
 - one regenerable enhanced-notes document per meeting (raw notes stay
   untouched; provenance commits atomically with the artifact);
 - content-free meeting egress attempts and receipt coverage;
@@ -2230,7 +2029,7 @@ transcription, diarization, playback, and refinement. The microphone channel is
 structurally the local user; system audio requires speaker attribution.
 
 Meeting capture obeys an observational passivity invariant: production
-recording and global dictation never enable AVAudioEngine voice processing,
+recording never enables AVAudioEngine voice processing,
 other-audio ducking, or a system mute/volume mutation. The conferencing app
 retains ownership of its microphone processing and playback graph. Raw
 microphone spill is handled after capture rather than by modifying the live
@@ -3680,7 +3479,7 @@ ends it after their streams drain. A load that completes after Stop sees the
 inactive attachment and ends its lease without delaying Stop or attaching
 captions to the closed session.
 
-Dictation borrows the same type-erased live-engine handle as recording;
+Recording borrows a type-erased live-engine handle;
 durable post-capture transcription, onboarding readiness, and the recording
 resource benchmark retain concrete leases for their complete operations. The
 balanced profile retains the 600-second idle deadline; explicit lightweight mode
@@ -4208,7 +4007,7 @@ Refine requires Whisper. Loading a verified model first uses the selected
 accelerator configuration; a failure triggers one cancellation-aware CPU-only
 retry before both underlying causes are surfaced. Attribution is degradable.
 Import requests its required transcriber and optional diarizer independently.
-Durable first-pass recovery and dictation request Parakeet without acquiring
+Durable first-pass recovery requests Parakeet without acquiring
 unrelated models. `ProcessPostCaptureJobs` keeps automatic recognition
 unhinted, removes nonlexical microphone fragments and periodic mic bleed,
 preserves each segment's detected language, and sets meeting-level language
@@ -6209,7 +6008,7 @@ window. The shared disposable-window boundary keeps
 the main and Settings windows at AppKit's standard `statusBar` level, above the
 accepted Notification Center modal, reducing occlusion without guaranteeing
 protection from later system modals. No
-production window is elevated. The palette, recording HUD, dictation and reminder
+production window is elevated. The palette, recording HUD and reminder
 panels retain the same elevated level only for that explicit disposable launch,
 so the main window cannot cover their input targets; ordinary launches retain
 `floating` even if they inherit a stale override without the test argument.
@@ -6554,19 +6353,15 @@ branch or unrelated package refresh can admit another SDK. Vendor types enter
 production only through the reviewed transcription and diarization adapters:
 `ParakeetEngine`, `ParakeetSegmentMapper`,
 `NemotronLatin1120Engine`, `SileroVoiceActivityDetector`,
-`SileroSpeechRegionDetector`, `PyannoteDiarizer` and `DiarizationEvaluation`. The streaming Silero adapter serves only the
-default-on dictation speech gate, over a copy of admitted PCM; batch Whisper
+`SileroSpeechRegionDetector`, `PyannoteDiarizer` and `DiarizationEvaluation`. No app path serves the streaming Silero adapter; batch Whisper
 uses `SileroSpeechRegionDetector` over a channel already loaded from disk. Core,
 ApplicationKit and executable presentation consume Portavoz contracts instead. In
 the test tree the vendor import is confined to engine-specific suites
 `TranscriptionTests`, `ParakeetLanguageConfigurationTests`,
-`NemotronLatin1120Tests`, `SileroVoiceActivityDetectorTests` and three
-engine-attribution files:
-`DictationModelBaselineTests`, `DictationVendorProbe` and
-`DictationVendorProbeTests`. Those three load the pinned vendor for the explicit
-comparison and exercise actual vendor updates through the mapper; controller,
-corpus, scoring and receipt tests still consume Portavoz contracts. This is a
-test-only attribution seam, not a new production adapter or dependency edge.
+`NemotronLatin1120Tests`, `SileroVoiceActivityDetectorTests` and
+`ParakeetModelLeaseTests`. `TranscriptionTests` also keeps the rejected
+timestamp adapter (`ParakeetSegmentMapper.LiveStream`) as a characterization of
+why serving uses revisions.
 
 The checked-in resolver revision and the architectural import inventory are tested
 together, over `Sources` and `Tests`, against code with comments and string
@@ -6910,13 +6705,6 @@ native-exclusion or storage errors.
 The audio-import supervisor keeps its owner task through idle-wake inspection.
 Processing completion does not discard a still-running storage lookup: suspension
 cancels and joins it, and new admission schedules one replacement owner.
-
-Dictation session completion and UI feedback have separate ownership.
-Recognizer EOF before an issued Stop is rejected before waiting for a live audio
-producer. Delivery waits for both its producer and its native Stop task; cosmetic
-feedback uses an independently fenced identity and never retains the runtime
-lease. Hotkey release belongs to the exact session that admitted its press,
-including permission/model preparation, without moving the first-buffer clock.
 
 Recording start and Settings root migration share the MainActor-owned storage-move
 admission fence. The mover sets it before its first suspension and retains it
