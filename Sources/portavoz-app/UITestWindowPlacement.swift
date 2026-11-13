@@ -60,10 +60,7 @@ enum UITestWindowPlacement {
         guard let visibleFrame = zeroScreenVisibleFrame else { return }
         let arguments = ProcessInfo.processInfo.arguments
         let preferredHeight: CGFloat?
-        let unverifiedDelivery = arguments.contains("-seed-dictation-delivery")
-            && !arguments.contains("-seed-dictation-verified")
-        if arguments.contains("-seed-dictation-recovery") || unverifiedDelivery
-            || arguments.contains("-seed-minimum-transcript-window") {
+        if arguments.contains("-seed-minimum-transcript-window") {
             preferredHeight = 560
         } else if arguments.contains("-seed-compact-transcript-window") {
             preferredHeight = 620
