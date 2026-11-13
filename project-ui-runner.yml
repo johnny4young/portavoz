@@ -21,17 +21,6 @@ settings:
     ENABLE_HARDENED_RUNTIME: NO
 
 targets:
-  PortavozDictationReceiver:
-    type: application
-    platform: macOS
-    deploymentTarget: "26.0"
-    sources:
-      - path: Tests/PortavozDictationReceiver
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.portavoz.dictation-test-receiver
-        GENERATE_INFOPLIST_FILE: YES
-
   PortavozUITests:
     type: bundle.ui-testing
     platform: macOS
@@ -50,7 +39,6 @@ schemes:
     build:
       targets:
         PortavozUITests: all
-        PortavozDictationReceiver: [test]
     test:
       config: Debug
       targets:

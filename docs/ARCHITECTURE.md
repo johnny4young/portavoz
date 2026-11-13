@@ -346,9 +346,7 @@ continuation), not AppKit or speech-provider types.
 Temporary meeting-store composition registers no global hotkey or event tap.
 The Settings-only Apple asset fixture is restricted to a disposable
 temporary-store launch; it exercises the real view/model without installing an
-OS asset or claiming recognition quality. The Xcode-only
-`PortavozDictationReceiver` target and the test-only `dictation-peer`
-executable remain in the project, and no test drives them.
+OS asset or claiming recognition quality.
 
 ### Database launch recovery
 
@@ -6755,13 +6753,6 @@ validator as a required CI step in the same job. Release reliability invokes
 both scripts. Swift and legacy tooling gates remain authoritative until
 equivalent replacements are validated; local hygiene alone is not full tooling
 or p95 qualification.
-
-The synthetic dictation launcher tests materialize their shared 480-cell audio
-input once per test process and cache immutable file bytes. Each case writes a
-fresh private directory with independent files and original modes; corruption
-and deletion tests cannot affect later cases. Producer tests retain real
-materialization. This test-only reuse does not cache test outcomes or model
-evidence, and never reads recorded user audio.
 
 The read-only Node CI inventory command selects heads at a fixed run-creation
 cutoff, then retrieves every API-visible CI run for each selected SHA. Two

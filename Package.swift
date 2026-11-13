@@ -42,7 +42,7 @@ let package = Package(
             url: "https://github.com/johnny4young/FluidAudio.git",
             revision: "16ff239818ddb6787629dab38ae43e8bdd0e7546",
             traits: ["Diarizer"]),
-        // Cooperative dictation ownership (MIT), shared with Secreteo. Leaves with dictation in 2.0.
+        // Dictation ownership (MIT), shared with Secreteo: 2.0 only releases a claim 1.x left behind.
         .package(
             url: "https://github.com/johnny4young/secreteo.git",
             revision: "9f1015452ae92eeb023793c37d95d60ae7a33ef6"),
@@ -233,22 +233,15 @@ let package = Package(
             ],
             path: "Tests",
             exclude: [
-                "PortavozAppTests", "PortavozTestSupport", "PortavozUITests", "PortavozDictationReceiver",
-                "UIInterruptionFixtures", "Tooling", "DictationPeer",
+                "PortavozAppTests", "PortavozTestSupport", "PortavozUITests",
+                "UIInterruptionFixtures", "Tooling",
             ],
             sources: ["PortavozKitTests", "Support"]
-        ),
-        // Another dictation app on the same Mac, for the coexistence tests. Leaves with dictation in 2.0.
-        .executableTarget(
-            name: "dictation-peer",
-            dependencies: [.product(name: "DictationOwnership", package: "secreteo")],
-            path: "Tests/DictationPeer"
         ),
         .testTarget(
             name: "PortavozAppTests",
             dependencies: [
                 "portavoz-app",
-                "dictation-peer",
                 "PortavozCLIKit",
                 "PortavozTestSupport",
                 "ApplicationKit",

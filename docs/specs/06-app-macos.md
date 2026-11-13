@@ -4404,7 +4404,6 @@ directory.
 The admission port, the ownership coordinator and owner row, the coexistence
 tests, the dictation Shortcuts actions and the statistics UI are gone with the
 rest of dictation (D640). `LegacyDictationOwnershipRelease` is the only app
-caller of the `DictationOwnership` package. The test-only `dictation-peer`
-executable that played the second app stays in the package with no test that
-drives it.
+caller of the `DictationOwnership` package; the test-only `dictation-peer`
+executable and the `PortavozDictationReceiver` UI-test target are gone too.
 
