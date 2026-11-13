@@ -53,6 +53,31 @@ in the `repository-hygiene` CI job and in release reliability validation. No
 existing check is optional; a local hygiene pass alone is not full tooling
 qualification. No npm packages or network requests are needed.
 
+Hygiene also runs `scripts/dictation_ratchet.mjs`, which keeps dictation from
+returning. `scripts/dictation_ratchet_baseline.json` pins every tracked regular
+file whose path or content mentions dictation in English or Spanish (`dicta`,
+case-insensitive, except `predictable`) with its exact count of occurrences.
+Symlinks and directories are skipped, skip-worktree files keep their pinned count,
+binary files count by path only, and untracked files only print a warning. A new
+file or a higher count fails; a lower count or a deleted file fails until the
+author runs `fnm exec -- node scripts/dictation_ratchet.mjs --write` and commits
+the baseline. `--write` only tightens: it refuses a new path, a higher count, a
+forbidden API or a missing pin, and writes nothing then. A raise means editing the
+JSON by hand in review. `CHANGELOG.md`, `docs/DECISIONS.md`,
+`docs/release-announcements.md` and the ratchet's own files are excluded. In
+`Sources/` it rejects Carbon imports (attribute and split-line forms too), event
+taps and posting (`tapCreate*`, `CGEventTapCreate*`, `.post(tap:)`,
+`CGEventPost*`, `CG{Preflight,Request}{Post,Listen}EventAccess`), Accessibility
+(`AXUIElement*`, `AXIsProcessTrusted*`), `IOHID{Request,Check}Access`,
+`RegisterEventHotKey` and `addGlobalMonitorForEvents`. It pins the leftovers
+that let Secreteo take ownership from a 1.x install:
+`LegacyDictationOwnershipRelease.swift` is the only `Sources/` importer of
+`DictationOwnership`, `Package.swift` keeps that `secreteo` product, and
+`project.yml` and `scripts/make-app.sh` keep the `DictationOwnershipProtocol`
+Info.plist key. It fails on an empty file list, a git error, or a missing or empty
+baseline, and a failure fails hygiene without skipping its other checks.
+`scripts/dictation_ratchet.test.mjs` covers each case on temporary fixture trees.
+
 Confirmed Topic memory has one real-app journey for current decisions, first
 discussion, decision conflicts and changes since a selected meeting. It retains
 each exact result, source label, screenshot and playback seek assertion, but
