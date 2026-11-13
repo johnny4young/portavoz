@@ -4,7 +4,7 @@ import PortavozCore
 import StorageKit
 
 /// Saved dictation texts for the Search dictations Shortcut, behind the
-/// history.s agent consent.
+/// history's agent consent.
 struct AppDictationIntentReader: PortavozDictationReader {
     let store: MeetingStore
 
