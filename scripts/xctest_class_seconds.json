@@ -56,7 +56,6 @@
   "DictationSessionMeasurementTests": 3.1,
   "DictationStatsStoreTests": 1.9,
   "DictationStreamingProjectionTests": 3.8,
-  "DictationToolboxTests": 1.6,
   "EnglishSourceTests": 35.8,
   "EnhancedNotesStorageTests": 1.5,
   "ExactPathMutationBenchmarkTests": 1.9,

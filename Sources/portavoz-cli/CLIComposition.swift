@@ -14,7 +14,6 @@ struct CLIComposition {
     private let store: MeetingStore
     let library: QueryMeetingLibrary
     let ask: AskMeetings
-    let dictations: DictationAgentReader
 
     static func open(
         dbPath: String?,
@@ -33,8 +32,7 @@ struct CLIComposition {
             library: .local(store: store),
             ask: .local(
                 store: store,
-                semanticRuntime: semanticRuntime),
-            dictations: .local(store: store))
+                semanticRuntime: semanticRuntime))
     }
 }
 

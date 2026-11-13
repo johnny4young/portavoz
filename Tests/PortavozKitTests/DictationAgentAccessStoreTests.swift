@@ -64,23 +64,6 @@ final class DictationAgentAccessStoreTests: XCTestCase {
         XCTAssertEqual(c.records.count, 1, "a zero limit still reads one row")
     }
 
-    func testOneDictationIsReadOnlyWithSharingOn() async throws {
-        let store = try MeetingStore.inMemory()
-        let generation = try await store.setDictationHistoryPolicy(
-            isEnabled: true, keepsOriginal: false, retentionDays: 30, at: now).generation
-        let dictation = record()
-        _ = try await store.recordDictation(dictation, admittedGeneration: generation, at: now)
-
-        let refused = try await store.dictationRecordForAgents(dictation.id)
-        _ = try await enableSharing(store)
-        let found = try await store.dictationRecordForAgents(dictation.id)
-        let missing = try await store.dictationRecordForAgents(DictationRecordID())
-
-        XCTAssertEqual(refused, .notAllowed)
-        XCTAssertEqual(found, .allowed(dictation))
-        XCTAssertEqual(missing, .allowed(nil))
-    }
-
     @discardableResult
     private func enableSharing(_ store: MeetingStore) async throws -> DictationHistoryPolicy {
         try await store.setDictationHistoryPolicy(

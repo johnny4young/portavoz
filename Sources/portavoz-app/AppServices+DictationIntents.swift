@@ -3,8 +3,8 @@ import ApplicationKit
 import PortavozCore
 import StorageKit
 
-/// Saved dictation texts for the Search dictations Shortcut, behind the same
-/// agent consent the MCP tools check.
+/// Saved dictation texts for the Search dictations Shortcut, behind the
+/// history's agent consent.
 struct AppDictationIntentReader: PortavozDictationReader {
     let store: MeetingStore
 
