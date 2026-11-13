@@ -1221,9 +1221,8 @@ touching meeting notes or egress receipts;
 do not read these tables, and neither `MeetingStore` nor PortavozCore has another
 dictation history or statistics type or API. Still compiling with no app caller:
 PortavozCore's `DictationRecipe`, `DictationTextMode`, `DictationDeliveryOutcome` and
-`DictationRecordID`; TranscriptionKit's dictation text rules, assembler, correction
-command, dictionary terms and Polish fidelity check. Dictation Polish, its prompt,
-polishers and use case are gone.
+`DictationRecordID`. Dictation Polish and TranscriptionKit's dictation text rules,
+assembler, correction command, dictionary terms and Polish fidelity check are gone.
 
 Live Apuntador keeps endpoint and semantic admission split across layers. The
 pure `TurnEndpointPolicy` in `IntelligenceKit` owns the remote-channel, noise,

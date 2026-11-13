@@ -212,6 +212,9 @@ not promise interruptible filesystem I/O. Producer tests use explicit speech
 doubles plus an actual bounded subprocess timeout; real synthesis is a separate
 lane and does not establish ASR or gesture-to-insertion performance.
 
+The Swift side of the installed-model lane below, its model probe, PCM feeder and
+corpus fixture, left with dictation in 2.0 (D640); the Python launchers and receipt
+validators described here remain until the tooling removal.
 The opt-in installed-model lane runs only in a Release test bundle and verifies
 already installed Parakeet artifacts without downloading. Its test-only consumer
 feeds bounded 100 ms PCM with a monotonic clock, applies the existing caption,
@@ -905,7 +908,6 @@ while SwiftBuild produces one for each, and the pool resolves the bundle by modu
 | WaveformTests / AudioTranscoderTests / MeetingAudioWorkflowTests | Exact range-aligned Accelerate envelopes, deterministic fixed-chunk cancellation, already-cancelled caller rejection, one 600-default/2,000-maximum immutable waveform snapshot, host AAC integration, canonical-output collision preservation, all-channel verification before raw deletion, rollback after later-channel failure, live filesystem byte accounting, text-only playback degradation, role-aware reversible clear-mix ranges, injected application codec semantics, and matched waveform/media-export work |
 | AudioProcessCatalogTests | direct tap scope by bundle ID: exact app/allowed helpers accepted, lookalikes and unrelated apps rejected |
 | AcceleratorFallbackTests / SubtitleExportTests / ExportDocumentTypesTests | One cancellation-aware CPU retry with both Whisper load failures preserved; exact SRT/VTT timestamps, lexical filtering, rendered prefix-aware cue bounds, same-name speaker identity separation, line/arrow sanitization; and extension-preserving text-conforming macOS subtitle content types |
-| DictationTextRulesTests | Conservative bilingual filler seams; bilingual whole-phrase line and paragraph commands that absorb recognizer commas and yield to user triggers; one-pass case-insensitive whole-trigger replacement without cascading or regex-template interpretation; canonical corrupt/duplicate storage |
 | UITestDefaultsTests | Disposable XCUITest launches overlay selected preferences in volatile `NSArgumentDomain`; the recording owner samples the injected authority only after installation; ordinary launches and malformed payloads are ignored |
 | TranscriptionTests / NemotronLatin1120Tests | Parakeet mapper/deltas, WhisperEngine helpers, anti-silence hygiene, **SpokenLanguageDetector** with automatic/fixed mixed-language policy, **VocabularyPrompt**, **AudioLevel.normalizePeak**, exact non-serving Nemotron artifact/revision/routing and filesystem-layout shape, rejection of unpinned optional bundles and missing artifacts, explicit EN/ES and no-vocabulary admission, index-based shared-timestamp deltas, cursor/non-finite/non-monotonic timing failure, bounded timing-free finalization, and no duplicate final emission |
 | LiveTranscriptionBenchTests | Invalid-duration rejection before file access, exact engine-error propagation without partial evidence, early-engine feeder cancellation/drain, and real WAV feeding through an exact EOF after a partial final chunk (no extra read from floating-point duration drift) |

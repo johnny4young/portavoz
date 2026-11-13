@@ -33,6 +33,11 @@ extension ArchitectureDependencyTests {
             + #"DictationTextPolishing|\w*DictationPolisher|dictationPolisher)\b"#
         XCTAssertEqual(try Self.sourceMatches(under: "Sources", pattern: polish, codeOnly: true), [])
 
+        let text = #"\b(DictationAssembler|DictationCorrectionCommand|DictationTerm|DictationReplacement|"#
+            + #"DictationPolishFidelity|DictationTextRules)\b"#
+        XCTAssertEqual(try Self.sourceMatches(under: "Sources", pattern: text, codeOnly: true), [])
+        XCTAssertEqual(try Self.sourceMatches(under: "Tests", pattern: text, codeOnly: true), [])
+
         let tool = try Self.contents(of: "Sources/portavoz-app/CommandLineToolSection.swift")
         XCTAssertTrue(tool.contains("PasteboardCopy.copy("))
         let bench = try Self.contents(of: "Sources/TranscriptionKit/LiveTranscriptionBench.swift")
