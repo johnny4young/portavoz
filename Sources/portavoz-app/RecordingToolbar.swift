@@ -42,23 +42,9 @@ struct RecordingToolbar: View {
 
     private var recordingStatus: some View {
         HStack(spacing: 12) {
-            TimelineView(.periodic(from: controller.startedAt, by: 1)) { context in
-                let elapsed = Int(context.date.timeIntervalSince(controller.startedAt))
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(.red)
-                        .frame(width: 10, height: 10)
-                        .opacity(elapsed.isMultiple(of: 2) ? 1 : 0.35)
-                        .animation(.easeInOut(duration: 0.6), value: elapsed)
-                    Text(ClockFormat.mmss(TimeInterval(elapsed)))
-                        .font(.system(size: 24, weight: .medium).monospacedDigit())
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                        .accessibilityIdentifier("recording-elapsed-time")
-                }
-            }
+            RecordingElapsedClock(startedAt: controller.startedAt)
             RecordingLevelMeter(controller: controller)
-            RecordingTalkBalanceCue(captions: controller.captions)
+            RecordingTalkBalanceCue(controller: controller)
         }
     }
 
@@ -154,11 +140,55 @@ struct RecordingToolbar: View {
     }
 }
 
-/// The meter is the only surface that needs the 20 Hz mic-level publication.
-/// Its observation boundary keeps those frames from rebuilding translation,
-/// Companion, catch-up, and window controls.
+/// Pulsing dot and elapsed clock. The ticking timeline lives in an overlay of
+/// a hidden same-size placeholder, so a tick repaints without re-measuring
+/// every `ViewThatFits` variant of the bar.
+private struct RecordingElapsedClock: View {
+    let startedAt: Date
+
+    @State private var placeholder = RecordingClockTemplate.placeholder(
+        for: ClockFormat.mmss(0))
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Color.clear.frame(width: 10, height: 10)
+            clockText(placeholder)
+        }
+        .hidden()
+        .overlay {
+            TimelineView(.periodic(from: startedAt, by: 1)) { context in
+                let elapsed = Int(context.date.timeIntervalSince(startedAt))
+                let clock = ClockFormat.mmss(TimeInterval(elapsed))
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(.red)
+                        .frame(width: 10, height: 10)
+                        .opacity(elapsed.isMultiple(of: 2) ? 1 : 0.35)
+                        .animation(.easeInOut(duration: 0.6), value: elapsed)
+                    clockText(clock)
+                        .accessibilityIdentifier("recording-elapsed-time")
+                }
+                .onChange(
+                    of: RecordingClockTemplate.placeholder(for: clock), initial: true
+                ) { _, widest in
+                    placeholder = widest
+                }
+            }
+        }
+    }
+
+    private func clockText(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 24, weight: .medium).monospacedDigit())
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+    }
+}
+
+/// Mute control and level track. Neither reads the 20 Hz level: a change in
+/// this body would re-measure every `ViewThatFits` variant of the bar.
 private struct RecordingLevelMeter: View {
-    @Bindable var controller: RecordingController
+    let controller: RecordingController
 
     var body: some View {
         HStack(spacing: 6) {
@@ -178,25 +208,26 @@ private struct RecordingLevelMeter: View {
             .accessibilityIdentifier("recording-mute-mic")
             .help(L10n.text(controller.micMuted
                     ? "Your mic is muted for Portavoz" : "Mute your mic for Portavoz"))
-            ZStack(alignment: .leading) {
-                Capsule().fill(.quaternary)
-                GeometryReader { geometry in
-                    Capsule()
-                        .fill(controller.micLevelLow ? Color.orange : Color.green)
-                        .frame(width: geometry.size.width * (controller.micMuted ? 0 : meterFraction))
-                }
-            }
-            .frame(width: 90, height: 5)
-            .opacity(controller.micMuted ? 0.4 : 1)
-            .animation(.easeOut(duration: 0.15), value: controller.micLevel)
+            Capsule()
+                .fill(.quaternary)
+                .frame(width: 90, height: 5)
+                .overlay { RecordingLevelMeterFill(controller: controller) }
+                .opacity(controller.micMuted ? 0.4 : 1)
         }
     }
+}
 
-    private var meterFraction: CGFloat {
-        let level = controller.micLevel
-        guard level > 0.0001 else { return 0 }
-        let decibels = 20 * log10(level)
-        return CGFloat(max(0, min(1, (Double(decibels) + 60) / 60)))
+/// The only reader of the 20 Hz level. It lives in an overlay, with its
+/// animation inside, so each sample redraws the fill and nothing else.
+private struct RecordingLevelMeterFill: View {
+    let controller: RecordingController
+
+    var body: some View {
+        LevelBarFill(
+            fraction: controller.micMuted
+                ? 0 : LevelBarFill.fraction(forLevel: controller.micLevel))
+            .fill(controller.micLevelLow ? Color.orange : Color.green)
+            .animation(.easeOut(duration: 0.15), value: controller.micLevel)
     }
 }
 

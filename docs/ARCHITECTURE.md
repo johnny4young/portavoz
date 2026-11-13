@@ -6195,6 +6195,16 @@ with their state shown as switches. Its wide layout is one row; at the 900 pt mi
 keeping the elapsed clock horizontal and Stop visible beside it. The focused external-recording XCUITest enforces those
 geometric invariants.
 
+`ViewThatFits` re-measures every variant, AppKit-backed controls included,
+whenever anything inside one changes its layout or the bar's own body runs
+again. State that changes while recording therefore stays out of both. The
+20 Hz level is read only by a fill view hosted in an overlay of the fixed-size
+track, with its animation inside that view. The pulsing dot and elapsed clock
+tick in a timeline hosted in an overlay of a hidden same-size placeholder that
+changes only when the clock gains a digit.
+The talk-balance cue reads captions in its own body. The floating panel's
+meter uses the same overlay fill.
+
 The live transcript has reader-owned scroll state independent from the
 playback lyrics treatment. Direct interaction pauses following indefinitely,
 incoming rows preserve that position, and browsing rows render without

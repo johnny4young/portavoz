@@ -306,24 +306,23 @@ struct RecordingNextQuestionCard: View {
 /// minutes as an amber fill. Pure math over closed captions — measured,
 /// not judged — with a soft emphasis only when you carry most of the
 /// conversation on solid evidence.
+///
+/// It reads the captions itself, so caption updates stay out of the recording
+/// bar's body.
 struct RecordingTalkBalanceCue: View {
-    let captions: [TranscriptSegment]
+    let controller: RecordingController
 
     var body: some View {
-        if let balance = LiveTalkTimePolicy.balance(captions) {
+        if let balance = LiveTalkTimePolicy.balance(controller.captions) {
             let percent = Int((balance.meFraction * 100).rounded())
             Capsule()
                 .fill(.quaternary)
                 .frame(width: 44, height: 6)
-                .overlay(alignment: .leading) {
-                    GeometryReader { geometry in
-                        Capsule()
-                            .fill(balance.isNotable
-                                ? AnyShapeStyle(.orange)
-                                : AnyShapeStyle(.tint))
-                            .frame(width: geometry.size.width
-                                * CGFloat(balance.meFraction))
-                    }
+                .overlay {
+                    LevelBarFill(fraction: CGFloat(balance.meFraction))
+                        .fill(balance.isNotable
+                            ? AnyShapeStyle(.orange)
+                            : AnyShapeStyle(.tint))
                 }
                 .accessibilityIdentifier("recording-talk-balance")
                 .accessibilityLabel(L10n.text("Talk balance"))
