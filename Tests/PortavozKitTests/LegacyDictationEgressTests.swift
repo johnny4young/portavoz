@@ -20,6 +20,48 @@ final class LegacyDictationEgressTests: XCTestCase {
         }
     }
 
+    func testGatewayRefusesDictationTextOnEveryOtherOperation() throws {
+        let (request, polish) = try polishRequest(endpoint: OllamaService.openAIEndpoint)
+        let operations: [DataEgressOperation] = [
+            .companionKnowledgeAnswer, .askAnswerGeneration, .webSourceRetrieval, .summaryGeneration,
+            .publishGitHubGist, .createGitHubIssue, .createLinearIssue,
+        ]
+        for operation in operations {
+            for meetingID in [nil, MeetingID()] {
+                let forged = DataEgressRequest(
+                    operation: operation, destination: polish.destination,
+                    dataClassification: .dictationText, meetingID: meetingID,
+                    consentSource: .dictationPolishMode, providerDisclosure: polish.providerDisclosure)
+                XCTAssertThrowsError(
+                    try URLSessionDataEgressGateway.validate(request, metadata: forged), "\(operation)")
+            }
+        }
+    }
+
+    func testGlobalJournalRejectsPolishReceiptsOutsideTheLocalContractOnRead() async throws {
+        let invalid = [
+            polishEvent(host: "192.168.1.20"),
+            polishEvent(classification: .meetingAnswerMaterial),
+            polishEvent(consent: .summaryEngineSettings),
+        ]
+        for event in invalid {
+            let store = try MeetingStore.inMemory()
+            try await store.database.write { db in
+                try db.execute(sql: "PRAGMA ignore_check_constraints = ON")
+                defer { try? db.execute(sql: "PRAGMA ignore_check_constraints = OFF") }
+                try GlobalDataEgressEventRecord(event, modelID: event.modelID).insert(db)
+            }
+            do {
+                _ = try await store.globalDataEgressEvents()
+                XCTFail("an out-of-contract 1.x polish receipt must fail on read: \(event)")
+            } catch StorageError.invalidDataEgressEvent(let reason) {
+                XCTAssertEqual(reason, "global receipts require bounded local dictation metadata")
+            } catch {
+                XCTFail("unexpected error: \(error)")
+            }
+        }
+    }
+
     func testStoreRefusesNewPolishReceipts() async throws {
         let store = try MeetingStore.inMemory()
         let meeting = Meeting(title: "Weekly", startedAt: now)
@@ -138,15 +180,20 @@ final class LegacyDictationEgressTests: XCTestCase {
         return (request, metadata)
     }
 
-    private func polishEvent(meetingID: MeetingID? = nil) -> DataEgressEvent {
+    private func polishEvent(
+        meetingID: MeetingID? = nil,
+        host: String = "localhost",
+        classification: DataEgressClassification = .dictationText,
+        consent: DataEgressConsentSource = .dictationPolishMode
+    ) -> DataEgressEvent {
         DataEgressEvent(
             meetingID: meetingID,
             operation: .dictationPolish,
-            destinationScope: .localDevice,
-            destinationHost: "localhost",
-            dataClassification: .dictationText,
-            consentSource: .dictationPolishMode,
-            providerID: "localhost",
+            destinationScope: DataEgressDestination.scope(forHost: host),
+            destinationHost: host,
+            dataClassification: classification,
+            consentSource: consent,
+            providerID: host,
             modelID: "qwen-local",
             attemptedAt: now)
     }

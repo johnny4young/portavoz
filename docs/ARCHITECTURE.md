@@ -5031,7 +5031,7 @@ headers, and streams to a 512 KiB ceiling; all other current gateway responses
 retain a 2 MiB ceiling. Per-meeting receipt projection remains unchanged.
 A 1.x library may hold `dictation-polish` attempts in that global journal. The
 operation, its classification and its consent source remain only so those rows
-still decode and show; the gateway refuses every dictation polish request and the
+still decode and validate; the gateway refuses every dictation polish request and the
 store refuses to record one, so nothing creates that egress any more.
 The meeting receipt also reports the meeting's
 private-sync standing, so an unqualified all-local claim can never coexist
