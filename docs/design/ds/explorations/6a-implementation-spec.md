@@ -12,8 +12,8 @@ Everything runs on-device; no feature may introduce network traffic.
 
 **Where it connects to the code:**
 - Reuse `RAGAnswerer` (IntelligenceKit) and `MeetingStore.search` (FTS5) — the pipeline already exists in `AskView.swift`; this is a new surface over the same engine.
-- Global hotkey: follow the `GlobalHotkey.swift` pattern (currently registers ⌥⌘D for dictation). Default: ⌘K within the app; optional global hotkey in Settings.
-- Panel: floating nonactivating `NSPanel` (same recipe as `RecordingHUD.swift` / `DictationPanel.swift`), 620pt wide, radius 16, `.regularMaterial`.
+- Shortcut: ⌘K within the app. Portavoz registers no global hotkey today; adding one is a separate decision.
+- Panel: floating nonactivating `NSPanel` (same recipe as `RecordingHUD.swift`), 620pt wide, radius 16, `.regularMaterial`.
 
 **Behavior:**
 1. ⌘K opens the panel with focus in the input. `esc` closes it. State is discarded on close.

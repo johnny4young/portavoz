@@ -27,8 +27,17 @@ get an acknowledgment within 72 hours.
 
 The current direct-download/Homebrew app is Developer-ID signed, Hardened
 Runtime-enabled, notarized, and intentionally **not App Sandbox-enabled**. We do
-not describe it as sandboxed. It requests only the shipping microphone and
-Calendar entitlements, while TCC still requires user permission.
+not describe it as sandboxed. It requests the microphone and Calendar
+entitlements plus the CloudKit and push capabilities that sync uses; TCC still
+asks the user.
+
+At runtime Portavoz asks macOS for the microphone, system audio capture,
+Calendar (for the agenda, the next-meeting card, meeting briefs and speaker-name
+suggestions), Reminders (when you create one), notifications (for commitment
+reminders) and the recordings folder you choose; its Info.plist also describes
+speech recognition for the optional Apple speech engine. It never requests
+Accessibility or Input Monitoring: it registers no global hotkey or event tap
+and never types into other apps.
 
 D78 records the signed sandbox/control capability evidence. Enabling App
 Sandbox today would separate the app's container from the CLI/MCP shared
@@ -36,7 +45,7 @@ library and model cache, invalidate plain-path persistent recording folders,
 and leave capture/update/automation paths without full feature-parity proof.
 Adoption therefore requires a reversible data/App Group migration,
 security-scoped bookmarks, Sparkle sandbox configuration, and signed product
-smoke for real process-tap capture, cross-app dictation, configured Shortcuts,
+smoke for real process-tap capture, configured Shortcuts,
 Calendar, panels, models, and updates. The reproducible probe is
 `scripts/run-sandbox-capability-spike.sh`; its current evidence is
 `docs/evidence/app-sandbox-capability-spike-20260716.json`.

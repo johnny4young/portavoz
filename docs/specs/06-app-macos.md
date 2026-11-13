@@ -2609,9 +2609,6 @@ example card (`onboarding-example-card`) drawn like a live Apuntador card;
 permissions; on-device models; and the optional voice enrollment.
 Skip stays available on every step (`onboarding-skip`).
 
-**Dictation step (Oct 2026, D575; removed in 2.0, D640).** Onboarding no longer
-has a dictation step, and `OnboardingDictationStep` is deleted.
-
 ## Ask and Radar layout (Sep 2026, D536)
 
 Ask puts the question first: the source picker, then the field
@@ -2630,7 +2627,7 @@ source stays visible on the card.
 ## Settings layout (Sep 2026, D537)
 
 Settings has seven categories: General & language, Audio (microphone, capture
-source, call-safe capture; dictation's sections left in 2.0, D640),
+source, call-safe capture),
 Intelligence (summary engine, languages, Apuntador, your voice, remembered
 voices, semantic search, structures, vocabulary), Agenda & automation,
 Automations, Integrations, and Your data (ledger, iCloud sync, background
@@ -2700,11 +2697,13 @@ download link: the repository names no public Secreteo page yet.
 At launch the shipping build (`app.portavoz.mac`, never Dev or a disposable library)
 calls `relinquishForRemoval()` once, off the main actor, through
 `LegacyDictationOwnershipRelease`, so an ownership 1.x left behind is freed for
-Secreteo; busy or failed is logged and nothing ever claims.
+Secreteo; busy or failed is logged and nothing ever claims. That release is the
+app's only caller of the pinned `DictationOwnership` package, and the Info.plist
+keeps declaring `DictationOwnershipProtocol` 1.
 
 ## Design system in app (Jul 2026) — tokens + voices B + accent
 
-Font: `docs/design/ds/` (authored in Claude Design, pine project). (1) `PVDesign` (app): Swift mirror of `tokens/*.css` — spacing 12/16/24, radios 8/10/12/14, tints 0.14/0.08, brand amber/violet/slate. When a value changes in the DS, it changes THERE and nowhere else. (2) **Voice B direction «el color ES la voz»**: `VoiceHue.index` (ApplicationKit, pure, FNV-1a — Swift hashValue is randomized by launch and DOESN'T work; 3 tests) assigns stable hue: named by hash of normalized name (same person = same color in all meetings), S-labels by appearance order; `VoicePalette` (app) maps to DS light/dark colors. Applied in: SpeakerPill (Me = solid amber + amber-contrast text; others hue 0.26), MeetingHealth bars (0.85), transcript pills, mic channel of waveform player (amber) and live recording labels. Indigo reserved for interaction (chips ✦, links, selection). (3) **App accent**: `assets/Assets.xcassets/AccentColor` (indigo #5856D6/#5E5CE6) compiled with `xcrun actool` in make-app.sh + `NSAccentColorName` — resolves system-accent debt for multicolor users (macOS gives priority to user who chose explicit color). **DS batch Jul 11 (2nd night — pull 9f11623 + implementation)**: (1) **Icon «La P que habla»**: assets/AppIcon.icns regenerated from DS SVG — the P is Fraunces (NOT installed locally): rendered in browser with Google Fonts via `scripts/icon-p.html` (canvas 1024, macOS grid: square 824 + radius 185) and `scripts/make-icns.sh` builds .icns; menu bar = `assets/icon/pv-menubar-32.png` pre-rendered as NSImage template (MenuBarIcon.swift) — the P adapts to appearance; recording follows record.circle.fill red (the «asta que pulsa» of DS remains flourish web). scripts/make-icon.swift (old icon) removed. (2) **Chips by evidence** (tokens --chip-* new): ChipLabel.swift (ai/voice/offer) + dynamic light/dark tokens in PVDesign (NSColor(name:dynamicProvider:)) — AI = violet tint + spark ✦ AMBER, voice = cyan + waveform, offer = neutral; applied to suggested title, S→name, voice matches, «Summarize as X?» and voice reminder offer. CONTROLS ✦ (Suggest names) follow indigo — deliberate distinction suggestion≠button. (3) **Settings 2a**: NavigationSplitView with 7 categories (SettingsCategories.swift) + search (.searchable filters by title and keyword bags EN/ES — ES live in catalog because EnglishSourceTests scans strings in code) + banner «100% local» → ledger; LedgerSection = real numbers (du of recordings root in Task.detached, count of meetings, enrolled+recorded voices) + honesty line of what actually goes out. gitHubSection extracted to GitHubSection.swift (file_length 700). (4) **Live lyrics 4a**: captionRow with colored voice pills (hash of label — S1/S2 stable, names = canonical hue), active line .title3, YOUR card in amber (me 0.12 + ring 0.35); FocusedTranscriptView already had fade/shrink/blur cylinder. **DS batch Jul 11 (3rd — pull 35264fb: Settings/Menubar/Dictation.jsx + menu bar implementation + mix)**: (1) **Menu bar 2b**: MenuBarContent rewritten as panel `.menuBarExtraStyle(.window)` (previously flat menu) — status header (mini waveform with amber/red peak when recording + a green local-first/opt-in-transfer policy), quick actions grid (Record red / Dictate indigo / Ask), next meeting card (only if calendar access — never prompt here) with «grabar al empezar» → route .recording(event), recent with relative dates, footer (Open / Launch at login / Quit). Panel closes only on focus loss (opening window closes it). (2) **Voice mix in sidebar** (kit signature): `MeetingStore.voiceMixes(for:)` (StorageKit) — ONE added query that sums segment durations by (meeting, speaker), normalizes to assigned voice of each meeting and returns ordered slices by talk-time (isMe/displayName/fraction/order); 3 tests (fractions sum to 1 + order, empty input, meeting without attributed speech absent). `VoiceMixBar` under each meeting row colors each slice with `VoicePalette.color(for slice:)` — amber = you, stable hue by name, order for S-labels. Meetings without attributed segments simply don't show bar (honest).
+Font: `docs/design/ds/` (authored in Claude Design, pine project). (1) `PVDesign` (app): Swift mirror of `tokens/*.css` — spacing 12/16/24, radios 8/10/12/14, tints 0.14/0.08, brand amber/violet/slate. When a value changes in the DS, it changes THERE and nowhere else. (2) **Voice B direction «el color ES la voz»**: `VoiceHue.index` (ApplicationKit, pure, FNV-1a — Swift hashValue is randomized by launch and DOESN'T work; 3 tests) assigns stable hue: named by hash of normalized name (same person = same color in all meetings), S-labels by appearance order; `VoicePalette` (app) maps to DS light/dark colors. Applied in: SpeakerPill (Me = solid amber + amber-contrast text; others hue 0.26), MeetingHealth bars (0.85), transcript pills, mic channel of waveform player (amber) and live recording labels. Indigo reserved for interaction (chips ✦, links, selection). (3) **App accent**: `assets/Assets.xcassets/AccentColor` (indigo #5856D6/#5E5CE6) compiled with `xcrun actool` in make-app.sh + `NSAccentColorName` — resolves system-accent debt for multicolor users (macOS gives priority to user who chose explicit color). **DS batch Jul 11 (2nd night — pull 9f11623 + implementation)**: (1) **Icon «La P que habla»**: assets/AppIcon.icns regenerated from DS SVG — the P is Fraunces (NOT installed locally): rendered in browser with Google Fonts via `scripts/icon-p.html` (canvas 1024, macOS grid: square 824 + radius 185) and `scripts/make-icns.sh` builds .icns; menu bar = `assets/icon/pv-menubar-32.png` pre-rendered as NSImage template (MenuBarIcon.swift) — the P adapts to appearance; recording follows record.circle.fill red (the «asta que pulsa» of DS remains flourish web). scripts/make-icon.swift (old icon) removed. (2) **Chips by evidence** (tokens --chip-* new): ChipLabel.swift (ai/voice/offer) + dynamic light/dark tokens in PVDesign (NSColor(name:dynamicProvider:)) — AI = violet tint + spark ✦ AMBER, voice = cyan + waveform, offer = neutral; applied to suggested title, S→name, voice matches, «Summarize as X?» and voice reminder offer. CONTROLS ✦ (Suggest names) follow indigo — deliberate distinction suggestion≠button. (3) **Settings 2a**: NavigationSplitView with 7 categories (SettingsCategories.swift) + search (.searchable filters by title and keyword bags EN/ES — ES live in catalog because EnglishSourceTests scans strings in code) + banner «100% local» → ledger; LedgerSection = real numbers (du of recordings root in Task.detached, count of meetings, enrolled+recorded voices) + honesty line of what actually goes out. gitHubSection extracted to GitHubSection.swift (file_length 700). (4) **Live lyrics 4a**: captionRow with colored voice pills (hash of label — S1/S2 stable, names = canonical hue), active line .title3, YOUR card in amber (me 0.12 + ring 0.35); FocusedTranscriptView already had fade/shrink/blur cylinder. **DS batch Jul 11 (3rd — pull 35264fb: Settings/Menubar/Dictation.jsx + menu bar implementation + mix)**: (1) **Menu bar 2b**: MenuBarContent rewritten as panel `.menuBarExtraStyle(.window)` (previously flat menu) — status header (mini waveform with amber/red peak when recording + a green local-first/opt-in-transfer policy), quick actions grid (Record red / Ask), next meeting card (only if calendar access — never prompt here) with «grabar al empezar» → route .recording(event), recent with relative dates, footer (Open / Launch at login / Quit). Panel closes only on focus loss (opening window closes it). (2) **Voice mix in sidebar** (kit signature): `MeetingStore.voiceMixes(for:)` (StorageKit) — ONE added query that sums segment durations by (meeting, speaker), normalizes to assigned voice of each meeting and returns ordered slices by talk-time (isMe/displayName/fraction/order); 3 tests (fractions sum to 1 + order, empty input, meeting without attributed speech absent). `VoiceMixBar` under each meeting row colors each slice with `VoicePalette.color(for slice:)` — amber = you, stable hue by name, order for S-labels. Meetings without attributed segments simply don't show bar (honest).
 
 **Catch me up (Jul 2026)**: a standing pull control in the recording bar (`recording-catch-up`) on EVERY platform. With the on-device model available it renders a 2-4 bullet recap of the last five minutes of CLOSED captions (`CatchUpPolicy.clip` — window and minimum rows pinned by tests; the growing coalescer row is excluded) via `FoundationModelSummaryProvider.catchUp` at interactive priority with the injection guard; the formatted clip keeps its TAIL when over budget because newest speech wins. Without Apple Intelligence the same button answers with the honest capability explanation ("Catch-up needs Apple Intelligence. Summaries at Stop still work with your configured engine.") — visible and truthful, never a hidden control. The card (`recording-catch-up-panel`) never persists anywhere; dismiss cancels any in-flight generation, and Stop synchronously cancels and clears the ephemeral card before capture crosses the durable boundary.
 
@@ -2856,16 +2855,6 @@ Exports also retain compatibility with field collection and reliability checks:
 both accept format 3 while preserving format-2 readers' existing workflows.
 The collector rejects unknown host fields and invalid typed measurements before
 creating an evidence package; it does not certify an unobserved real-world check.
-
-## Global dictation (Jul 2026, removed in 2.0)
-
-Portavoz 1.x shipped system-wide dictation: its controller, panel and compact
-indicator, hotkey, mouse and held-modifier push-to-talk, Accessibility delivery
-and clipboard loans, text modes, Polish and recipes, selection rewrite, spoken
-corrections, translation, practice field, history and statistics UI, speech
-gate, cooperative ownership with Secreteo and the opt-in Parakeet Ultra
-checkpoint. 2.0 deletes all of it; Secreteo owns dictation. What remains is the
-1.x retention described in "Dictation leaves Portavoz".
 
 ## Meeting transcript translation
 
@@ -4398,12 +4387,3 @@ without the tool says so (`settings-cli-unavailable`). `CommandLineToolLink`
 alone. Disposable launches use a scratch directory, and `-seed-command-line-tool`
 adds a stand-in tool so the install journey runs without touching the home
 directory.
-
-### Dictation runtime removed in 2.0 (D583, D584, D626–D629)
-
-The admission port, the ownership coordinator and owner row, the coexistence
-tests, the dictation Shortcuts actions and the statistics UI are gone with the
-rest of dictation (D640). `LegacyDictationOwnershipRelease` is the only app
-caller of the `DictationOwnership` package; the test-only `dictation-peer`
-executable and the `PortavozDictationReceiver` UI-test target are gone too.
-

@@ -43,14 +43,14 @@ Brand personality: **serious but warm, technical without being cold, honest**. B
 
 - **SF Symbols exclusively** in the app (`waveform.and.mic`, `record.circle.fill`, `person.wave.2`, `chart.bar.xaxis`, `sparkles`, `arrow.uturn.backward`…). No icon font, no PNG icons, no emoji.
 - The repo ships **no exportable icon assets** — SF Symbols are Apple-licensed and cannot ship on the web. This DS provides `SFIcon`, hand-recreated stroke stand-ins at SF weight whose names mirror the real symbol names (**flagged substitution** — in native code use the real symbols).
-- The chosen app icon is **«La P que habla»** — a Fraunces P whose stem IS an amber waveform bar: `assets/portavoz-icon-p.svg` (squircle) + `assets/portavoz-icon-p-menubar.svg` (16px monochrome template; stem pulses red when recording, indigo when dictating). The original waveform-in-a-capsule mark (`assets/portavoz-mark.svg`) remains for the web favicon/legacy.
+- The chosen app icon is **«La P que habla»** — a Fraunces P whose stem IS an amber waveform bar: `assets/portavoz-icon-p.svg` (squircle) + `assets/portavoz-icon-p-menubar.svg` (16px monochrome template; stem pulses red when recording). The original waveform-in-a-capsule mark (`assets/portavoz-mark.svg`) remains for the web favicon/legacy.
 - Unicode-as-icon: ✦ for AI, ▸ for co-authored lines, · as metadata separator.
 
 ## Fonts
 
 No font binaries in the repo; the site loads **Fraunces, Instrument Sans, IBM Plex Mono from Google Fonts** — `tokens/fonts.css` keeps that CDN import (flagged: replace with self-hosted `@font-face` if files are provided). The app font is the system font (SF Pro on Macs); no file needed or shipped.
 
-- **Approved product directions** (from `explorations/UI Refresh Proposals.html`, all rounds approved): Aurora shell for the app (1a/4a) · lyrics-Spotify transcript as the central pattern (live + playback are the same component) · Spotify-style player (waveform = progress, voice-colored) · Settings with sidebar categories + privacy ledger (2a) · rich menu-bar panel (2b) · Insights with clear indicators + heatmap + ✦ findings (3a) · dictation strip with visible target + confirmation (4b) · the four 6a features (⌘K, mirror mode, language bridge, first-listen onboarding — implementation spec in `explorations/6a-implementation-spec.md`).
+- **Approved product directions** (from `explorations/UI Refresh Proposals.html`; every round is approved except 4b, the dictation strip, which was withdrawn): Aurora shell for the app (1a/4a) · lyrics-Spotify transcript as the central pattern (live + playback are the same component) · Spotify-style player (waveform = progress, voice-colored) · Settings with sidebar categories + privacy ledger (2a) · rich menu-bar panel (2b) · Insights with clear indicators + heatmap + ✦ findings (3a) · the four 6a features (⌘K, mirror mode, language bridge, first-listen onboarding — implementation spec in `explorations/6a-implementation-spec.md`).
 
 ---
 
@@ -70,7 +70,7 @@ No font binaries in the repo; the site loads **Fraunces, Instrument Sans, IBM Pl
 | `Card` | `components/cards/` | stat tile · content card · Companion card |
 | `MicMeter`, `Gauge` | `components/meters/` | 4pt mic capsule · circular commitments gauge |
 | `ListRow` | `components/rows/` | meeting / to-do / trash+restore / agenda |
-| `FloatingPanel` | `components/panels/` | HUD 400×88 · dictation strip 520 · banner |
+| `FloatingPanel` | `components/panels/` | HUD 400×88 · banner |
 | `EmptyState` | `components/empty/` | icon + headline + one honest sentence |
 | `SFIcon` (+`SF_ICON_NAMES`) | `components/icons/` | SF Symbols stand-ins |
 
