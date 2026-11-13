@@ -1602,7 +1602,7 @@ use OS-managed assets and keep the disposable model root. Regular
 `-use-temp-store` automation still receives an empty model root.
 The resource
 dispatcher also returns from app initialization before normal sync,
-recovery, provider discovery, or dictation registration can start; it detaches
+recovery, provider discovery, or legacy-dictation retention can start; it detaches
 the AppKit delegate from product services. The runner refuses a dirty worktree,
 never targets the notarized installed app, removes the private
 fragments/fixture on failure, and publishes the receipt only after all
@@ -2710,11 +2710,20 @@ line (`settings-legacy-dictation-delete-failed`).
 `dictation-moved-delete-confirm` while rows remain, `dictation-moved-dismiss`):
 it is due only when rows remain after the purge or the 1.x switch
 `globalDictationEnabled` exists in defaults, and only until
-`dictationMovedNoticeShown` is set, which happens when the first main window
-claims it. A fresh install never sees it. Disposable libraries see it only with
+`dictationMovedNoticeShown` is set, which happens when the sheet appears or is
+dismissed, not when a window claims it. A fresh install never sees it. Main windows register and unregister as
+hosts; one that closes before the sheet appears hands it to the next, and a cancelled
+claim takes nothing. Row reads are generation-ordered, so a purge's late read cannot
+undo a delete. A failed delete shows `dictation-moved-delete-failed` and keeps the
+sheet open. Disposable libraries see it only with
 `-show-dictation-moved-notice` and never record it; `-seed-legacy-dictation`
 adds one stats day through a debug-only StorageKit fixture. The notice has no
 download link: the repository names no public Secreteo page yet.
+
+At launch the shipping build (`app.portavoz.mac`, never Dev or a disposable library)
+calls `relinquishForRemoval()` once, off the main actor, through
+`LegacyDictationOwnershipRelease`, so an ownership 1.x left behind is freed for
+Secreteo; busy or failed is logged and nothing ever claims.
 
 ## Design system in app (Jul 2026) — tokens + voices B + accent
 
@@ -3223,8 +3232,9 @@ placement that UI journeys rely on.
 
 **Practice field (D575).** `DictationPracticeView` shows an in-app field with
 Dictate here / Finish (`<prefix>-practice-start`, a toggle of the shared
-controller), Clear and the result (`<prefix>-practice-field`), in onboarding and
-under the shortcut in Settings › Audio & dictation (`settings-dictation-`). Each
+controller), Clear and the result (`<prefix>-practice-field`). It was shown in
+onboarding and under the shortcut in Settings › Audio & dictation
+(`settings-dictation-`) until 2.0 removed both; it has no caller now. Each
 visible field reports whether its window is key (`controlActiveState`) to
 `AppServices.dictationPractice`. While one is key and Portavoz is active,
 `makeDictationSessionDependencies` replaces only `canInsert`,
@@ -3267,7 +3277,8 @@ through `DictationMeetingPicker` (`dictation-meeting-picker-title`, `-note`,
 will follow the meeting's notes into sync, exports and Ask; the row then shows
 `Added to <meeting>` (`dictation-history-linked-N`) and, when that meeting shows
 tidied notes, a hint to tidy again (`dictation-history-tidy-hint-N`). Settings ›
-Audio & dictation adds a Dictation history section with every switch off
+Audio & dictation added a Dictation history section, with no caller since 2.0,
+with every switch off
 (`settings-dictation-history`, `-retention`, `-original`, `-note`). Disposable
 launches can turn history on in the temporary database with
 `-seed-dictation-history` and add two rows with `-seed-dictation-history-records`.
@@ -5317,7 +5328,7 @@ for dictations, words, speaking time, time saved and, when any, not delivered
 (`dictation-stats-dictations`, `-words`, `-speaking`, `-saved`,
 `-not-delivered`), words per day as bars, the busiest apps
 (`dictation-stats-app-N`) and an empty state (`dictation-stats-empty`).
-Settings › Audio & dictation adds Dictation statistics: Keep dictation
+Settings › Audio & dictation added Dictation statistics, with no caller since 2.0: Keep dictation
 statistics (`settings-dictation-stats`, off by default), its note
 (`settings-dictation-stats-note`) and Delete statistics with a confirmation
 (`settings-dictation-stats-delete`, `-delete-confirm`). `-seed-dictation-stats`

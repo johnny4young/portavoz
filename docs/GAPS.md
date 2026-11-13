@@ -163,8 +163,11 @@ complete local UI qualification from separate native dictation journeys.
 ### Dictation coexistence with a real second app
 
 Portavoz 2.0 no longer starts the ownership coordinator, so it never claims
-dictation and Secreteo owns it alone; a Mac whose last owner was Portavoz 1.x still
-records it as owner until the user moves dictation in Secreteo.
+dictation. At each launch the shipping build gives up an ownership 1.x left behind
+(`relinquishForRemoval`), so Secreteo can own dictation alone; Dev builds and
+disposable libraries never touch the shared state, and a release that finds the
+lock busy is logged and retried at the next launch. Not yet observed on a real Mac
+upgraded from 1.x with Secreteo installed.
 `DictationCoexistenceTests` proves the ownership rows with a second process, not a
 second app (D629). Still needing an installed Secreteo Dev build, with the physical
 test reserved: both apps launching at login, holding Fn and the mouse trigger with

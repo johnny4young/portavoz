@@ -142,4 +142,110 @@ struct LegacyDictationModelTests {
         #expect(try await store.legacyDictationRows().isEmpty)
         #expect(!model.hasRows)
     }
+
+    @Test
+    func aNoticeThatNeverAppearedIsStillDueAtTheNextLaunch() async {
+        let defaults = Self.defaults()
+        let calls = Calls()
+        calls.rows = true
+        let host = UUID()
+        let quitBeforeTheSheet = Self.model(calls: calls, defaults: defaults)
+        quitBeforeTheSheet.open(observesWake: false)
+        await quitBeforeTheSheet.claimNotice(in: host)
+        #expect(quitBeforeTheSheet.presentsNotice(in: host))
+
+        let relaunch = Self.model(calls: calls, defaults: defaults)
+        relaunch.open(observesWake: false)
+        await relaunch.claimNotice(in: host)
+        #expect(relaunch.presentsNotice(in: host), "claiming is not seeing")
+        relaunch.noticeDidAppear()
+
+        let third = Self.model(calls: calls, defaults: defaults)
+        third.open(observesWake: false)
+        await third.claimNotice(in: host)
+        #expect(!third.presentsNotice(in: host))
+    }
+
+    @Test
+    func aWindowThatGoesAwayHandsTheNoticeToAnotherAndACancelledAskClaimsNothing() async {
+        let calls = Calls()
+        calls.rows = true
+        let gate = Gate()
+        let model = LegacyDictationModel(
+            client: .init(
+                purgeExpired: { _ in await gate.wait() },
+                hasRows: { calls.rows },
+                deleteAll: {}),
+            notice: LegacyDictationNotice(defaults: Self.defaults(), usesTemporaryStore: false, forced: false))
+        model.open(observesWake: false)
+        let gone = UUID()
+        let asking = Task { await model.claimNotice(in: gone) }
+        await Task.yield()
+        asking.cancel()
+        model.unregister(hostID: gone)
+        let first = UUID()
+        let second = UUID()
+        model.register(hostID: first)
+        model.register(hostID: second)
+        await gate.open()
+        await asking.value
+        await model.claimNotice(in: second)
+        #expect(!model.presentsNotice(in: gone))
+        #expect(model.presentsNotice(in: first))
+
+        model.unregister(hostID: first)
+        #expect(model.presentsNotice(in: second), "the notice is not lost with its window")
+    }
+
+    @Test
+    func aPurgesLateReadCannotUndoADelete() async {
+        let calls = Calls()
+        calls.rows = true
+        let gate = Gate()
+        let reads = Counter()
+        let model = LegacyDictationModel(
+            client: .init(
+                purgeExpired: { _ in },
+                hasRows: {
+                    if await reads.next() == 1 {
+                        await gate.wait()
+                        return true
+                    }
+                    return calls.rows
+                },
+                deleteAll: { calls.rows = false }),
+            notice: LegacyDictationNotice(defaults: Self.defaults(), usesTemporaryStore: false, forced: false))
+        model.open(observesWake: false)
+        while await reads.count == 0 { await Task.yield() }
+        await model.deleteAll()
+        #expect(!model.hasRows)
+        await gate.open()
+        await model.claimNotice(in: UUID())
+        #expect(!model.hasRows, "the purge read before the delete")
+    }
+}
+
+private actor Gate {
+    private var isOpen = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func wait() async {
+        guard !isOpen else { return }
+        await withCheckedContinuation { waiters.append($0) }
+    }
+
+    func open() {
+        isOpen = true
+        waiters.forEach { $0.resume() }
+        waiters = []
+    }
+}
+
+private actor Counter {
+    private(set) var count = 0
+
+    func next() -> Int {
+        count += 1
+        return count
+    }
 }

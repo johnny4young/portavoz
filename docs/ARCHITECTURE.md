@@ -170,7 +170,10 @@ prewarms a model, and it is not a security boundary.
 Portavoz no longer starts dictation. No App Intent, menu bar action, Settings
 section, onboarding step, Library route or global trigger reaches
 `DictationController`, and launch neither starts the ownership coordinator nor
-arms a trigger, so Secreteo owns dictation alone. The controller, its panels and
+arms a trigger. The shipping build instead gives up, once per launch and off the
+main actor, an ownership 1.x left behind, so Secreteo can own dictation alone; it
+never claims, and Dev builds and disposable libraries leave the shared state alone.
+The controller, its panels and
 the coordinator remain in the tree without callers until they are deleted.
 
 A library from 1.x keeps its dictation rows. `LegacyDictationModel`, one per
@@ -178,8 +181,9 @@ process, purges them on their frozen horizons when the app opens, after the Mac
 wakes and whenever capture ends, beside the other maintenance that resumes then;
 a failure is logged, never shown, and never blocks launch. While rows remain,
 Settings › Your data offers deleting the history and statistics at once. The
-first main window shows one sheet saying dictation moved to Secreteo, once, and
-only to a user who dictated: legacy rows exist or the 1.x dictation switch was
+first main window shows one sheet saying dictation moved to Secreteo, recorded as
+seen only once it is on screen and handed to another window if its own closes first,
+and only to a user who dictated: legacy rows exist or the 1.x dictation switch was
 ever written. Disposable UI-test libraries see it only with
 `-show-dictation-moved-notice`.
 

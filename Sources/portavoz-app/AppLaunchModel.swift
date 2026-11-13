@@ -187,6 +187,7 @@ final class AppLaunchModel {
         Task { await services.standingPreMeetingBriefs.start() }
         services.requestSearchReconciliation()
         services.legacyDictation.open()
+        LegacyDictationOwnershipRelease.startIfNeeded(usesTemporaryStore: services.usesTemporaryMeetingStore)
         Task { @MainActor in
             await services.commitmentReminders.send(.start)
         }

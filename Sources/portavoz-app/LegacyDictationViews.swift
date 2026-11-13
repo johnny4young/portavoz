@@ -35,6 +35,11 @@ struct DictationMovedNoticeSheet: View {
                 .accessibilityIdentifier("dictation-moved-title")
             Text("Portavoz no longer dictates; global dictation is now its own app, Secreteo.")
                 .fixedSize(horizontal: false, vertical: true)
+            if model.deleteFailed {
+                Text("Could not delete them. Try again.")
+                    .font(.caption)
+                    .accessibilityIdentifier("dictation-moved-delete-failed")
+            }
             HStack {
                 if model.hasRows {
                     Button("Delete dictation history and statistics", role: .destructive) { confirming = true }

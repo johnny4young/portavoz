@@ -3,6 +3,7 @@ import Foundation
 import Observation
 import OSLog
 import StorageKit
+import Synchronization
 
 /// Whether the one notice that dictation moved to Secreteo is due. Only a user who dictated sees
 /// it, once; disposable libraries see it only when a UI test forces it.
@@ -49,7 +50,8 @@ final class LegacyDictationModel {
     @ObservationIgnored private let now: () -> Date
     @ObservationIgnored private var opening: Task<Void, Never>?
     @ObservationIgnored private var noticeIsDue = false
-    @ObservationIgnored private var waitingHostID: UUID?
+    @ObservationIgnored private var activeHostIDs: [UUID] = []
+    @ObservationIgnored private var refreshGeneration = 0
     @ObservationIgnored private var wakeObserver: (any NSObjectProtocol)?
     private static let logger = Logger(subsystem: "app.portavoz.mac", category: "legacy-dictation")
 
@@ -67,7 +69,7 @@ final class LegacyDictationModel {
             do { try await client.seedForUITests(now()) } catch { Self.logger.error("legacy dictation seed failed") }
             await purgeExpired()
             noticeIsDue = notice.isDue(hasLegacyRows: hasRows)
-            if let waitingHostID { presentNoticeIfDue(in: waitingHostID) }
+            if let host = activeHostIDs.first { presentNoticeIfDue(in: host) }
         }
         guard observesWake else { return }
         wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
@@ -104,30 +106,55 @@ final class LegacyDictationModel {
         await refresh()
     }
 
-    /// The first main window to ask presents the notice, after the opening purge, and marks it shown.
+    /// A main window that can present the notice; one that goes away hands it to the next.
+    func register(hostID: UUID) {
+        guard !activeHostIDs.contains(hostID) else { return }
+        activeHostIDs.append(hostID)
+    }
+
+    func unregister(hostID: UUID) {
+        activeHostIDs.removeAll { $0 == hostID }
+        guard noticeHostID == hostID else { return }
+        // Not seen yet, so it is still due: the next window presents it.
+        noticeHostID = nil
+        noticeIsDue = true
+        if let next = activeHostIDs.first { presentNoticeIfDue(in: next) }
+    }
+
+    /// The first registered window presents the notice after the opening purge; a cancelled ask claims nothing.
     func claimNotice(in hostID: UUID) async {
-        guard let opening else {
-            if waitingHostID == nil { waitingHostID = hostID }
-            return
-        }
+        guard !Task.isCancelled else { return }
+        register(hostID: hostID)
+        guard let opening else { return }
         await opening.value
+        guard !Task.isCancelled, activeHostIDs.contains(hostID) else { return }
         presentNoticeIfDue(in: hostID)
     }
 
     func presentsNotice(in hostID: UUID) -> Bool { noticeHostID == hostID }
 
-    func dismissNotice() { noticeHostID = nil }
+    /// Recorded only once the sheet is on screen, so a quit before that keeps the notice due.
+    func noticeDidAppear() { notice.markShown() }
+
+    func dismissNotice() {
+        notice.markShown()
+        noticeHostID = nil
+    }
 
     private func presentNoticeIfDue(in hostID: UUID) {
         guard noticeIsDue, noticeHostID == nil else { return }
         noticeIsDue = false
-        notice.markShown()
         noticeHostID = hostID
     }
 
+    /// Only the latest read writes, so a purge's late read cannot undo a delete.
     private func refresh() async {
+        refreshGeneration += 1
+        let generation = refreshGeneration
         do {
-            hasRows = try await client.hasRows()
+            let rows = try await client.hasRows()
+            guard generation == refreshGeneration else { return }
+            hasRows = rows
         } catch {
             Self.logger.error("legacy dictation read failed: \(String(describing: error), privacy: .private)")
         }
@@ -142,12 +169,25 @@ extension AppServices {
             client: LegacyDictationModel.Client(
                 purgeExpired: { try await store.purgeExpiredLegacyDictationData(now: $0) },
                 hasRows: { try await !store.legacyDictationRows().isEmpty },
-                deleteAll: { try await store.deleteAllLegacyDictationData() },
+                deleteAll: legacyDictationDelete(
+                    store: store, failsOnce: usesTemporaryStore
+                        && arguments.contains("-simulate-legacy-dictation-delete-failure-once")),
                 seedForUITests: legacyDictationSeed(
                     store: store, arguments: arguments, usesTemporaryStore: usesTemporaryStore)),
             notice: LegacyDictationNotice(
                 defaults: defaults, usesTemporaryStore: usesTemporaryStore,
                 forced: arguments.contains(LegacyDictationNotice.forceArgument)))
+    }
+
+    private static func legacyDictationDelete(
+        store: MeetingStore, failsOnce: Bool
+    ) -> @Sendable () async throws -> Void {
+        guard failsOnce else { return { try await store.deleteAllLegacyDictationData() } }
+        let first = FirstCall()
+        return {
+            if first.take() { throw CancellationError() }
+            try await store.deleteAllLegacyDictationData()
+        }
     }
 
     private static func legacyDictationSeed(
@@ -159,5 +199,17 @@ extension AppServices {
         }
         #endif
         return { _ in }
+    }
+}
+
+/// UI tests only: true for the first call, so one delete fails and the retry succeeds.
+private final class FirstCall: Sendable {
+    private let taken = Mutex(false)
+
+    func take() -> Bool {
+        taken.withLock { taken in
+            defer { taken = true }
+            return !taken
+        }
     }
 }

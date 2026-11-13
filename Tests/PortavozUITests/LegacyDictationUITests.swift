@@ -5,7 +5,9 @@ final class LegacyDictationUITests: PortavozUITestCase {
     @MainActor
     func testAnUpgradedLibraryLearnsDictationMovedAndCanDeleteItsHistory() throws {
         let app = try XCUIApplication.portavoz()
-        app.launchArguments += ["-seed-legacy-dictation", "-show-dictation-moved-notice"]
+        app.launchArguments += [
+            "-seed-legacy-dictation", "-show-dictation-moved-notice", "-simulate-legacy-dictation-delete-failure-once"
+        ]
         app.launchPortavoz()
         defer { finishUITestApplication(app) }
 
@@ -14,11 +16,19 @@ final class LegacyDictationUITests: PortavozUITestCase {
         let delete = app.buttons["dictation-moved-delete"]
         XCTAssertTrue(delete.waitForExistenceFast(timeout: 5), "kept rows can be deleted from the notice")
         attachScreenshot(of: app, named: "pr-dictation-moved-notice")
-        delete.click()
         let confirm = app.buttons["dictation-moved-delete-confirm"]
+        delete.click()
+        XCTAssertTrue(confirm.waitForExistenceFast(timeout: 5))
+        confirm.click()
+        XCTAssertTrue(
+            app.staticTexts["dictation-moved-delete-failed"].waitForExistenceFast(timeout: 5),
+            "a failed delete says so and keeps the notice open")
+        XCTAssertTrue(title.exists)
+        delete.click()
         XCTAssertTrue(confirm.waitForExistenceFast(timeout: 5))
         confirm.click()
         XCTAssertTrue(delete.waitForDisappearance(timeout: 5), "nothing is left to delete")
+        XCTAssertFalse(app.staticTexts["dictation-moved-delete-failed"].exists)
         app.buttons["dictation-moved-dismiss"].click()
         XCTAssertTrue(title.waitForDisappearance(timeout: 5))
     }

@@ -470,6 +470,13 @@ extension ArchitectureDependencyTests {
         for entry in ["dictationOwnership", "syncDictationTriggers", "installDictationIntentReader"] {
             XCTAssertFalse(appLaunch.contains(entry), entry)
         }
+        // Launch frees a 1.x claim once and never takes one.
+        XCTAssertTrue(appLaunch.contains("LegacyDictationOwnershipRelease.startIfNeeded("))
+        let release = try Self.contents(of: "Sources/portavoz-app/LegacyDictationOwnershipRelease.swift")
+        XCTAssertTrue(release.contains("relinquishForRemoval()"))
+        for claim in ["claimAtFirstRun", "takeOwnership", "preferenceTurnedOn", "acquire(", ".start("] {
+            XCTAssertFalse(release.contains(claim), claim)
+        }
         let admission = try Self.contents(of: "Sources/portavoz-app/DictationAdmission.swift")
         XCTAssertTrue(admission.contains("selectionRewrite.releaseGlobalKeys()"))
         XCTAssertTrue(admission.contains("selectionRewrite.revokeReplace()"))

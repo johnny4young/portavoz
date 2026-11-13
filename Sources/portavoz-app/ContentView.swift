@@ -211,7 +211,9 @@ struct ContentView: View {
                 .environment(services)
                 .tint(PVDesign.accent)
         }
+        .onAppear { services.legacyDictation.register(hostID: firstRunHostID) }
         .task { await services.legacyDictation.claimNotice(in: firstRunHostID) }
+        .onDisappear { services.legacyDictation.unregister(hostID: firstRunHostID) }
         .sheet(isPresented: Binding(
             get: {
                 services.legacyDictation.presentsNotice(in: firstRunHostID)
@@ -221,6 +223,7 @@ struct ContentView: View {
         )) {
             DictationMovedNoticeSheet(
                 model: services.legacyDictation, dismiss: services.legacyDictation.dismissNotice)
+                .onAppear { services.legacyDictation.noticeDidAppear() }
                 .portavozLocalized()
                 .tint(PVDesign.accent)
         }

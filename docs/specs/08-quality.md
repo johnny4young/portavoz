@@ -4920,7 +4920,7 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   retains the Keychain-backed secret adapter and durable identity root. It
   reuses the verified installed Portavoz model cache only where required and
   never targets the notarized installed app. Resource-mode app initialization
-  returns before sync, recovery, provider discovery, or dictation registration
+  returns before sync, recovery, provider discovery, or legacy-dictation retention
   can contaminate a measured operation; the AppKit delegate remains detached
   from product services. It also suppresses the production-only opportunistic
   MLX readiness refresh so its full pinned-artifact hash cannot enter idle or
@@ -5939,9 +5939,9 @@ literal `%`/`_` handling, exact identifier order, canonical-person and
 confirmed-commitment exclusion rules, app-value mapping, navigation buffering,
 typed malformed-ID recovery, exact Radar filter precedence, and model focus
 restore behavior. The architecture ratchet pins the SDK-only import boundary,
-standard dependency injection, three entities/queries/open actions, nine-action
+standard dependency injection, three entities/queries/open actions, five-action
 metadata contract, availability-gated `IndexedEntity`, and explicit absence of
-entity publication. Metadata extraction must report exactly nine actions,
+entity publication. Metadata extraction must report exactly five actions,
 three entities, and three queries. One real-app case per locale performs three
 isolated disposable launches through the same production SDK-only open-action
 logic used by each `OpenIntent`: meeting
@@ -5959,7 +5959,7 @@ the existing coalescing, unchanged-state, retry-exhaustion, recovery, cleanup-
 relaunch, and content-free telemetry cases. App Entity attributes separately
 prove meeting title/date/capped body, canonical-person name, and commitment
 title/due date. The source compiles under strict Swift 6; the backend keeps the non-Sendable
-AppIntents index receiver task-local. Metadata must remain exactly nine actions,
+AppIntents index receiver task-local. Metadata must remain exactly five actions,
 three entities, and three queries. Bilingual XCUITest reuses the exact entity
 open-route journey because temporary stores deliberately suppress host Spotlight
 publication. Feature-owner tests also require successful commitment confirmation
