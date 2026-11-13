@@ -68,20 +68,6 @@ extension AppServices {
             runtime: client)
     }
 
-    /// Dictation polish shares the one runtime, ledger and admission path.
-    func makeMLXDictationPolisher(modelDirectory: URL) -> MLXDictationPolisher {
-        let client = AppMLXSummaryRuntimeClient { [weak self] system, user, directory, maximumTokens in
-            guard let self else { throw MLXRuntimeError.servicesUnavailable }
-            return try await self.respondWithMLXRuntime(
-                system: system,
-                user: user,
-                directory: directory,
-                maximumResponseTokens: maximumTokens,
-                workloadClass: .userInitiated)
-        }
-        return MLXDictationPolisher(modelDirectory: modelDirectory, runtime: client)
-    }
-
     /// Acquires the exact runtime, generates while its active-use token is
     /// held, and arms the existing idle policy on every terminal outcome.
     private func respondWithMLXRuntime(

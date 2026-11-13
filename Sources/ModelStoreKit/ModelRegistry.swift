@@ -105,7 +105,7 @@ public enum ModelCatalog {
     /// Every pin this build can use. Claims outside this list count as re-pinned.
     public static var all: [ModelDescriptor] {
         [
-            parakeetTdtV3, parakeetUltra, nemotronLatin1120, speakerDiarization, sileroVAD,
+            parakeetTdtV3, nemotronLatin1120, speakerDiarization, sileroVAD,
             whisperLargeV3Turbo, whisperLargeV3_626MB, whisperTokenizer,
             mlxQwen3, mlxQwen35, mlxQwen35Point8BChallenger, mlxQwen35TwoBChallenger
         ]

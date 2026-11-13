@@ -4,12 +4,6 @@ import Foundation
 import ModelStoreKit
 import PortavozCore
 
-/// Verified Parakeet weights that share the v3 component contract.
-public enum ParakeetCheckpoint: String, Sendable {
-    case v3
-    case ultra
-}
-
 /// The live job's native lifecycle, including a join after cancellation. The
 /// pinned vendor's cancel() closes output but does not await recognition;
 /// finish() is its public recognition-task barrier.
@@ -39,7 +33,6 @@ extension SlidingWindowAsrManager: ParakeetLiveManaging {}
 /// thread-safe).
 public final class ParakeetEngine: TranscriptionEngine, Sendable {
     public let descriptor: EngineDescriptor
-    public let checkpoint: ParakeetCheckpoint
     typealias LiveManagerPreparation = @Sendable (SlidingWindowAsrConfig) async throws -> any ParakeetLiveManaging
     typealias BatchManagerPreparation = @Sendable (ASRConfig) async throws -> AsrManager
 
@@ -52,25 +45,21 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
     /// callers use `fromLeasedInstallation` so deletion cannot race native use.
     /// Never point this at an unverified download — model files are code.
     @concurrent
-    public static func load(
-        fromVerifiedDirectory directory: URL, checkpoint: ParakeetCheckpoint = .v3
-    ) async throws -> ParakeetEngine {
-        try load(directory: directory, checkpoint: checkpoint, installationLease: nil)
+    public static func load(fromVerifiedDirectory directory: URL) async throws -> ParakeetEngine {
+        try load(directory: directory, installationLease: nil)
     }
 
     /// Shared-store callers retain the deletion lock through native loading,
     /// runtime residency, observer copies and every live or batch job.
     @concurrent
     public static func load(
-        fromLeasedInstallation installation: ModelStore.ModelLease,
-        checkpoint: ParakeetCheckpoint = .v3
+        fromLeasedInstallation installation: ModelStore.ModelLease
     ) async throws -> ParakeetEngine {
-        try load(directory: installation.directory, checkpoint: checkpoint, installationLease: installation)
+        try load(directory: installation.directory, installationLease: installation)
     }
 
     private static func load(
         directory: URL,
-        checkpoint: ParakeetCheckpoint,
         installationLease: ModelStore.ModelLease?
     ) throws -> ParakeetEngine {
         try Task.checkCancellation()
@@ -80,10 +69,9 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
         guard !FileManager.default.fileExists(atPath: optionalHead.path) else {
             throw VerifiedLoadFailure.unexpectedOptionalModel
         }
-        let models = try AsrModels.loadLocal(
-            from: directory, version: checkpoint == .ultra ? .ultra : .v3, encoderPrecision: .int8)
+        let models = try AsrModels.loadLocal(from: directory, version: .v3, encoderPrecision: .int8)
         try Task.checkCancellation()
-        return ParakeetEngine(models: models, checkpoint: checkpoint, installationLease: installationLease)
+        return ParakeetEngine(models: models, installationLease: installationLease)
     }
 
     enum VerifiedLoadFailure: Error {
@@ -112,14 +100,12 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
             prepareLiveManager: prepareLiveManager,
             prepareBatchManager: prepareBatchManager,
             liveWorkObserver: observer,
-            checkpoint: checkpoint,
             installationLease: installationLease)
     }
 
     convenience init(
         models: AsrModels,
         liveWorkObserver: (@Sendable (ParakeetLiveWorkSample) -> Void)? = nil,
-        checkpoint: ParakeetCheckpoint = .v3,
         installationLease: ModelStore.ModelLease? = nil
     ) {
         self.init(
@@ -144,7 +130,6 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
                 }
             },
             liveWorkObserver: liveWorkObserver,
-            checkpoint: checkpoint,
             installationLease: installationLease)
     }
 
@@ -155,7 +140,6 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
         prepareLiveManager: @escaping LiveManagerPreparation,
         prepareBatchManager: @escaping BatchManagerPreparation,
         liveWorkObserver: (@Sendable (ParakeetLiveWorkSample) -> Void)? = nil,
-        checkpoint: ParakeetCheckpoint = .v3,
         installationLease: ModelStore.ModelLease? = nil
     ) {
         // Vendor debug messages contain hypotheses. Keep them out of stderr;
@@ -165,11 +149,10 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
         self.prepareLiveManager = prepareLiveManager
         self.prepareBatchManager = prepareBatchManager
         self.liveWorkObserver = liveWorkObserver
-        self.checkpoint = checkpoint
         self.installationLease = installationLease
         self.descriptor = EngineDescriptor(
-            id: checkpoint == .ultra ? "parakeet-ultra" : "parakeet-tdt-0.6b-v3",
-            displayName: checkpoint == .ultra ? "Parakeet Ultra" : "Parakeet TDT 0.6B v3",
+            id: "parakeet-tdt-0.6b-v3",
+            displayName: "Parakeet TDT 0.6B v3",
             languages: [],  // multilingual (25 European languages incl. es/en)
             realTimeFactor: 0.01,
             runsOnDevice: true,
@@ -210,11 +193,9 @@ public final class ParakeetEngine: TranscriptionEngine, Sendable {
                 var consumer: Task<Void, Error>?
                 let channelHolder = ParakeetStreamChannel()
                 do {
-                    // Parakeet's hint filters writing systems, not languages
-                    // sharing an alphabet: Spanish and English remain multilingual.
-                    let configuration = Self.liveWindowConfig.applying(
-                        language: hints.filtersLiveScript == true ? Self.fluidLanguage(hints) : nil)
-                    let manager = try await prepareLiveManager(configuration)
+                    // A fixed meeting language labels segments; it never drops
+                    // another script from live captions.
+                    let manager = try await prepareLiveManager(Self.liveWindowConfig)
                     preparedManager = manager
                     try await manager.startStreaming(source: .microphone)
                     probe?.begin(.feed)

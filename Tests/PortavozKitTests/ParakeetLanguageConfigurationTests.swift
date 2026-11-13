@@ -10,26 +10,10 @@ import Testing
 /// They prove configuration routing, not recognition quality or backend decoding.
 @Suite(.timeLimit(.minutes(1)))
 struct ParakeetLanguageConfigurationTests {
-    struct LanguageCase: Sendable {
-        let requested: String?
-        let expected: String?
-    }
-
     enum PreparationFailure: Error, Equatable { case live, batch, unexpectedRoute }
 
-    @Test(arguments: [
-        LanguageCase(requested: nil, expected: nil),
-        LanguageCase(requested: "es", expected: "es"),
-        LanguageCase(requested: "en", expected: "en"),
-        LanguageCase(requested: "el", expected: "el"),
-        LanguageCase(requested: "ru", expected: "ru"),
-        LanguageCase(requested: "", expected: nil),
-        LanguageCase(requested: "ES", expected: nil),
-        LanguageCase(requested: "es-ES", expected: nil),
-        LanguageCase(requested: " es ", expected: nil),
-        LanguageCase(requested: "日本語", expected: nil)
-    ])
-    func liveHintReachesPreparationWithoutChangingWindow(_ language: LanguageCase) async throws {
+    @Test(arguments: [nil, "es", "en", "el", "ru", "", "ES", "es-ES", " es ", "日本語"] as [String?])
+    func liveLanguageHintNeverFiltersScriptOrChangesWindow(_ language: String?) async throws {
         let observed = OSAllocatedUnfairLock<SlidingWindowAsrConfig?>(initialState: nil)
         let engine = ParakeetEngine(
             prepareLiveManager: { configuration in
@@ -41,13 +25,13 @@ struct ParakeetLanguageConfigurationTests {
 
         await #expect(throws: PreparationFailure.live) {
             for try await _ in engine.transcribe(
-                audio, hints: .init(language: language.requested, filtersLiveScript: true)) {
+                audio, hints: .init(language: language)) {
                 Issue.record("Preparation failure must not emit a transcript segment")
             }
         }
 
         let configuration = try #require(observed.withLock { $0 })
-        #expect(configuration.language?.rawValue == language.expected)
+        #expect(configuration.language == nil)
         #expect(configuration.chunkSeconds == 1)
         #expect(configuration.hypothesisChunkSeconds == 1)
         #expect(configuration.leftContextSeconds == 11)
@@ -77,7 +61,7 @@ struct ParakeetLanguageConfigurationTests {
     }
 
     @Test
-    func concurrentJobsAndObserverWrapperKeepIndependentHints() async {
+    func concurrentJobsAndObserverWrapperNeverFilterLiveScript() async {
         let observed = OSAllocatedUnfairLock<[String]>(initialState: [])
         let receipts = OSAllocatedUnfairLock<[ParakeetLiveWorkSample]>(initialState: [])
         let engine = ParakeetEngine(
@@ -94,7 +78,7 @@ struct ParakeetLanguageConfigurationTests {
                 group.addTask {
                     await #expect(throws: PreparationFailure.live) {
                         for try await _ in engine.transcribe(
-                            AsyncStream { $0.finish() }, hints: .init(language: language, filtersLiveScript: true)) {
+                            AsyncStream { $0.finish() }, hints: .init(language: language)) {
                             Issue.record("Preparation failure must not yield a segment")
                         }
                     }
@@ -102,7 +86,7 @@ struct ParakeetLanguageConfigurationTests {
             }
         }
 
-        #expect(observed.withLock { $0.sorted() } == ["automatic", "automatic", "en", "es", "es", "ru"])
+        #expect(observed.withLock { $0 } == Array(repeating: "automatic", count: languages.count))
         #expect(receipts.withLock { $0.count } == languages.count)
         #expect(receipts.withLock { $0.allSatisfy { $0.outcome == .failed && $0.finishCalls == 0 } })
     }
