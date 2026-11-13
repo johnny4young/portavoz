@@ -70,8 +70,6 @@ public enum PortavozCLI {
             await BenchCaptureCommand.run(arguments)
         case "bench-ask-quality":
             await BenchAskQualityCommand.run(arguments)
-        case "bench-dictation-search":
-            await BenchDictationSearchCommand.run(arguments)
         case "bench-ask-attribution":
             await BenchAskQualityCommand.run(arguments, attribution: true)
         case "bench-retrieval-chunks":
@@ -120,10 +118,6 @@ public enum PortavozCLI {
                                               [--asset-download never|if-needed]
                 units: segment, speaker-turn, conversation-window,
                        semantic-boundary
-              portavoz-cli bench-dictation-search --fixture <json> --output <json>
-                                                   --build <id> --commit <sha>
-                                                   [--asset-download never|if-needed]
-                                                   [--scales 1000,10000]
               portavoz-cli bench-ask-attribution --fixture <json> --output <json>
                                                   --build <id> --commit <sha>
                                                   [--retrieval-unit <unit>]

@@ -1,8 +1,8 @@
 import Foundation
 import IntelligenceKit
 
-/// Request and answer admission shared by the typed local sources (notes and
-/// dictations), whose evidence never mixes with transcript citations.
+/// Request and answer admission for the typed local notes source, whose
+/// evidence never mixes with transcript citations.
 enum AskTypedSource {
     /// nil means there is nothing to search: an empty question or a zero limit.
     static func validatedQuestion(

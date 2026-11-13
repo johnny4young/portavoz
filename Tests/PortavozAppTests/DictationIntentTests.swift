@@ -97,7 +97,7 @@ final class DictationIntentTests: XCTestCase {
     @MainActor
     func testASearchFromAShortcutReplacesOtherHistoryFilters() async throws {
         let model = DictationHistoryModel(store: try MeetingStore.inMemory())
-        model.focus(on: DictationRecordID())
+        await model.apply(DictationRecordFilter(applicationName: "Notes", onlyNotDelivered: true))
         model.show(search: "report")
         XCTAssertEqual(model.filter, DictationRecordFilter(query: "report"))
     }

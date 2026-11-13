@@ -492,8 +492,6 @@ extension LocalAskMeetingRetrieval {
             meetingID
         case .notes:
             throw AskSourcePolicyError.notesRequireTypedAdapter
-        case .dictations:
-            throw AskSourcePolicyError.dictationsRequireTypedAdapter
         case .web:
             throw AskSourcePolicyError.webUnavailable
         }

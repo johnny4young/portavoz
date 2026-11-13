@@ -19,7 +19,6 @@ extension AskModel {
         case library
         case meeting
         case notes
-        case dictations
         case web
     }
 
@@ -30,20 +29,10 @@ extension AskModel {
         case failed
     }
 
-    /// Dictations can be asked only while the history is on.
-    enum DictationSourceState: Equatable {
-        case unknown
-        case checking
-        case available
-        case historyOff
-        case failed
-    }
-
     enum ExchangeSource: Equatable {
         case library
         case meeting(id: MeetingID, title: String)
         case notes
-        case dictations
         case web(host: String)
     }
 
@@ -53,7 +42,6 @@ extension AskModel {
         let answer: String
         let citations: [AskCitation]
         let noteCitations: [AskNoteCitation]
-        let dictationCitations: [AskDictationCitation]
         let webCitations: [AskWebCitation]
         let webSourceFailures: [AskWebSourceFailure]
         let generationOutcome: AskGenerationOutcome
@@ -65,7 +53,6 @@ extension AskModel {
             answer: String,
             citations: [AskCitation],
             noteCitations: [AskNoteCitation] = [],
-            dictationCitations: [AskDictationCitation] = [],
             webCitations: [AskWebCitation] = [],
             webSourceFailures: [AskWebSourceFailure] = [],
             generationOutcome: AskGenerationOutcome,
@@ -76,7 +63,6 @@ extension AskModel {
             self.answer = answer
             self.citations = citations
             self.noteCitations = noteCitations
-            self.dictationCitations = dictationCitations
             self.webCitations = webCitations
             self.webSourceFailures = webSourceFailures
             self.generationOutcome = generationOutcome
@@ -84,8 +70,7 @@ extension AskModel {
         }
 
         var hasCitations: Bool {
-            !citations.isEmpty || !noteCitations.isEmpty || !dictationCitations.isEmpty
-                || !webCitations.isEmpty
+            !citations.isEmpty || !noteCitations.isEmpty || !webCitations.isEmpty
         }
     }
 
@@ -97,7 +82,6 @@ extension AskModel {
         var pendingQuestion: String?
         var pendingCitations: [AskCitation] = []
         var pendingNoteCitations: [AskNoteCitation] = []
-        var pendingDictationCitations: [AskDictationCitation] = []
         var pendingWebCitations: [AskWebCitation] = []
         var pendingWebSourceFailures: [AskWebSourceFailure] = []
         var pendingAnswerText: String?
@@ -107,7 +91,6 @@ extension AskModel {
         var sourceMeetings: [AskSourceMeetingOption] = []
         var selectedSourceMeetingID: MeetingID?
         var sourceCatalogState = SourceCatalogState.idle
-        var dictationSourceState = DictationSourceState.unknown
         var webSourceDraft = ""
         var webConsentApproved = false
     }

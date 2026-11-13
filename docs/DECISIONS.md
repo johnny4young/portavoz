@@ -22906,7 +22906,8 @@ Portavoz 1.4 lets only one app own dictation on a Mac and 1.5 shares its models
 with Secreteo. Keeping two dictation implementations doubles the CI and review
 cost and the Accessibility surface for one feature.
 
-**Decision:** once Secreteo 1.0 is public, Portavoz 2.0 removes dictation:
+**Decision:** Portavoz 2.0 removes dictation, and ships only once Secreteo 1.0
+is public:
 capture and delivery, its settings, menu and onboarding surfaces, App Intents,
 Ask over dictations and the three dictation MCP tools. Portavoz keeps what an
 existing library needs: migrations v54 to v59 stay registered and frozen, with
@@ -22930,6 +22931,7 @@ waveform keeps drawing at 30 fps after Stop; and the controller-lane validator
 rejects every audio-first observation.
 
 **Consequences:** until 2.0 ships, 1.x keeps dictation as released and
-hotfixes come from `release/1.5`. Between the first removal change and 2.0,
-`main` is not releasable. Users who stay on 1.x keep their dictation;
+hotfixes come from `release/1.5`. The removal lands on `main` without waiting
+for Secreteo (2026-11-13); only the 2.0 release waits. Between the first removal
+change and 2.0, `main` is not releasable. Users who stay on 1.x keep their dictation;
 Shortcuts and MCP clients must be set up again in Secreteo.

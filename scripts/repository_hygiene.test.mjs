@@ -57,7 +57,7 @@ test('legacy tooling remains a required CI and release step', () => {
   assert.match(release, /^set -euo pipefail$/m);
   assert.match(release, /scripts\/check-repository-hygiene.sh\nscripts\/check-legacy-tooling.sh\nswift build/);
 });
-for (const failure of [false, true]) test(`legacy runner ${failure ? 'propagates failure immediately' : 'retains all 81 invocations'}`, () => {
+for (const failure of [false, true]) test(`legacy runner ${failure ? 'propagates failure immediately' : 'retains all 79 invocations'}`, () => {
   const dir = mkdtempSync(join(tmpdir(), 'legacy-contracts-'));
   try {
     const log = join(dir, 'calls');
@@ -67,7 +67,7 @@ for (const failure of [false, true]) test(`legacy runner ${failure ? 'propagates
         LEGACY_CALLS: log, LEGACY_STATUS: failure ? '42' : '0'}});
     assert.equal(result.status, failure ? 42 : 0, result.stderr);
     const calls = readFileSync(log, 'utf8').trim().split('\n');
-    assert.equal(calls.length, failure ? 1 : 81);
+    assert.equal(calls.length, failure ? 1 : 79);
     assert.equal(calls[0], 'scripts/ui_test_scope.py --validate-catalog');
     if (!failure) assert.equal(calls.at(-1), '-m unittest Tests.Tooling.test_meeting_detail_performance');
   } finally { rmSync(dir, {recursive: true, force: true}); }

@@ -420,8 +420,6 @@ public struct AskMeetings: ApplicationUseCase {
             return
         case .notes:
             throw AskSourcePolicyError.notesRequireTypedAdapter
-        case .dictations:
-            throw AskSourcePolicyError.dictationsRequireTypedAdapter
         case .web:
             throw AskSourcePolicyError.webUnavailable
         }
