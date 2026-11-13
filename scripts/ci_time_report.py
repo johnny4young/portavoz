@@ -217,14 +217,20 @@ def critical_path(jobs: Sequence[dict[str, Any]]) -> list[str]:
 
 
 def classify_outcome(jobs: Sequence[dict[str, Any]], *, timeouts: dict[str, int], superseded: bool,
-                     run_cancelled: bool, advisory: bool, capacity: bool) -> str:
-    """Name why an attempt ended: passed, or the most actionable failure."""
+                     run_cancelled: bool, advisory: bool, capacity: bool | frozenset[str]) -> str:
+    """Name why an attempt ended: passed, or the most actionable failure.
+
+    `capacity` is true, or the names of the jobs no runner ever took.
+    """
     failed, cancelled = [], []
     for job in jobs:
         conclusion = job["conclusion"]
-        limit = timeouts.get(base_name(job["name"]))
+        name = base_name(job["name"])
+        limit = timeouts.get(name)
+        # A job no runner took is cancelled near 15 minutes, which is not a timeout.
+        starved = name in capacity if isinstance(capacity, frozenset) else capacity
         # GitHub reports most job timeouts as cancelled; only a limit reached with no newer run proves one.
-        if conclusion == "timed_out" or (conclusion == "cancelled" and not superseded and limit
+        if conclusion == "timed_out" or (conclusion == "cancelled" and not superseded and not starved and limit
                                          and job["duration_s"] is not None and job["duration_s"] >= limit * 60 - 60):
             return "timeout"
         if conclusion == "failure":
@@ -329,7 +335,7 @@ def suite_seconds(head: HeadAttempt) -> int | None:
 
 def attempt_row(head: HeadAttempt, *, changes: HeadChanges, build: dict[str, Any] | None,
                 scope: dict[str, Any] | None, timeouts: dict[str, int], superseded: bool,
-                advisory: bool = False, capacity: bool = False) -> dict[str, Any]:
+                advisory: bool = False, capacity: bool | frozenset[str] = False) -> dict[str, Any]:
     build = build or {}
     rows = [job_row(job, workflow=run.workflow, carried=not ran_in_attempt(job, run.start))
             for run in head.runs for job in run.jobs]
@@ -682,11 +688,11 @@ def head_rows(client: GitHub, event: str, head: dict[str, Any], branch_runs: dic
     return rows
 
 
-def _lacked_capacity(client: GitHub, attempt: HeadAttempt, event: str) -> bool:
+def _lacked_capacity(client: GitHub, attempt: HeadAttempt, event: str) -> frozenset[str]:
     # GitHub reports a job no runner ever took as a plain cancel; only its annotation says why.
-    return any(CAPACITY_ANNOTATION in message for job in attempt.fresh_jobs()
-               if job.get("conclusion") == "cancelled" and base_name(job["name"]) in BLOCKING[event]
-               for message in client.annotations(job["id"]))
+    return frozenset(base_name(job["name"]) for job in attempt.fresh_jobs()
+                     if job.get("conclusion") == "cancelled" and base_name(job["name"]) in BLOCKING[event]
+                     and any(CAPACITY_ANNOTATION in message for message in client.annotations(job["id"])))
 
 
 def _digest(client: GitHub, attempt: HeadAttempt, job_name: str, digest: Callable[[str], dict[str, Any]],

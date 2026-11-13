@@ -22936,3 +22936,25 @@ for Secreteo (2026-11-13); only the 2.0 release waits. Between the first removal
 change and 2.0, `main` is not releasable. Users who stay on 1.x keep their dictation;
 Shortcuts and MCP clients must be set up again in Secreteo. The removal is
 complete on `main`; README and the site change with the 2.0 release.
+
+---
+
+## D641 — Pull-request job ceilings follow the measured p95
+
+**Context:** D622 set the `ui-tests` ceiling at 22 minutes so a cold build could finish, and
+`build-and-test` kept 30 on every event. After dictation left, `scripts/ci_time_report.py`
+over the pull request heads from 2026-11-13 13:27 UTC measured `build-and-test` at a
+nearest-rank p95 of 13:04 (N=10) and `ui-tests` at 9:22 (N=8). The only cold-cache pull
+request in the previous nine days took 12:42 and 7:50.
+
+**Decision:** on a pull request, each job stops at its post-split p95 rounded up to the
+minute plus one: 15 minutes for `build-and-test` and 11 for `ui-tests`. Neither is ever
+set below its slowest successful post-split run plus a minute. Main pushes and manual
+runs keep 30 for `build-and-test`, because they run every test and may build cold, and a
+manual `full_ui` keeps 90. Nightly owns its own jobs and limits. The report no longer infers
+a timeout for a job whose runner was never acquired, since GitHub cancels it near 15 minutes.
+
+**Consequences:** this replaces D622's 22-minute ceiling. A run past the ceiling is a
+failure and counts against the SLO; it is not dropped as a sample. The evidence is thin
+(fewer than 30 heads in each cohort, one cold sample from before the split), so the values
+are re-derived with the same report once the window holds 30 ordinary heads.

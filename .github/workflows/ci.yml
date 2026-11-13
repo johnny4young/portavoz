@@ -139,7 +139,9 @@ jobs:
     needs: scope
     if: ${{ !cancelled() && needs.scope.result != 'failure' }}
     runs-on: macos-26
-    timeout-minutes: 30
+    # A pull request gets its measured p95 plus a minute, which also held a cold build.
+    # Main and manual runs keep every test and may build cold, so they keep 30.
+    timeout-minutes: ${{ github.event_name != 'pull_request' && 30 || 15 }}
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
     steps:
@@ -264,9 +266,9 @@ jobs:
        (needs.scope.outputs.interruption_controls == 'false' &&
         needs.interruption.result == 'skipped'))
     runs-on: macos-26
-    # The ceiling, not the target: a cold build still has to finish on a pull request.
-    # Only a manual full_ui run holds the complete catalog.
-    timeout-minutes: ${{ inputs.full_ui && 90 || 22 }}
+    # The measured p95 plus a minute, which also held a cold build; the selection fits
+    # UI_JOB_BUDGET_SECONDS inside it. Only a manual full_ui run holds the complete catalog.
+    timeout-minutes: ${{ inputs.full_ui && 90 || 11 }}
     outputs:
       attempt: ${{ github.run_attempt }}
       cut: ${{ steps.fit.outputs.cut }}

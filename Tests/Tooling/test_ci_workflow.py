@@ -157,7 +157,20 @@ class CIWorkflowTests(unittest.TestCase):
             "\n  gate:\n", 1
         )[0]
 
-        self.assertEqual(scoped_job.count("    timeout-minutes: ${{ inputs.full_ui && 90 || 22 }}\n"), 1)
+        self.assertEqual(scoped_job.count("    timeout-minutes: ${{ inputs.full_ui && 90 || 11 }}\n"), 1)
+
+    def test_build_lane_cuts_only_the_pull_request_ceiling(self):
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(
+            encoding="utf-8"
+        )
+        build_job = workflow.split("  build-and-test:\n", 1)[1].split(
+            "\n  ios-portability:\n", 1
+        )[0]
+
+        self.assertEqual(
+            build_job.count("    timeout-minutes: ${{ github.event_name != 'pull_request' && 30 || 15 }}\n"),
+            1,
+        )
 
     def test_one_job_builds_the_host_and_runs_it_without_a_second_compiler(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(

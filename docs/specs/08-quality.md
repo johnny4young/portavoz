@@ -314,6 +314,27 @@ verified conditional scope and causal timestamp ordering are prerequisites for
 execution. The exact gate can retain a total when a lane never starts, but a
 skipped, duplicate, foreign or contradictory gate cannot supply a duration.
 
+A cancelled job near its limit counts as a timeout unless its runner was never
+acquired: GitHub cancels such a job near 15 minutes, and its annotation makes it
+infrastructure. An explicit `timed_out` conclusion is always a timeout.
+
+Pull-request job ceilings come from this report (D641): each is the job's
+nearest-rank p95 execution, rounded up to the minute, plus one, and never below
+its slowest successful run plus one. Over the pull request heads from 2026-11-13
+13:27 UTC, when the product split began landing:
+
+| Job | Window | N | p50 | p90 | p95 | max | Ceiling |
+|---|---|--:|--:|--:|--:|--:|--:|
+| `build-and-test` | after the split | 10 | 6:09 | 11:29 | 13:04 | 13:04 | 15 |
+| `build-and-test` | 9 days before | 79 | 6:28 | 10:06 | 10:56 | 12:42 | — |
+| `ui-tests` | after the split | 8 | 7:58 | 9:22 | 9:22 | 9:22 | 11 |
+| `ui-tests` | 9 days before | 49 | 7:26 | 9:30 | 9:46 | 10:13 | — |
+
+Both post-split samples are under the 30-head minimum. The one cold-cache pull
+request before the split took 12:42 and 7:50, inside both ceilings. Main pushes
+and manual runs keep 30 minutes for `build-and-test`, a manual `full_ui` run keeps
+90 for `ui-tests`, and nightly jobs keep their own limits.
+
 Summaries use nearest-rank percentiles and keep ordinary failures, timeouts and
 superseded attempts visible. Missing measurements are counted and cannot produce
 a within-limit result. Complete head/attempt inventory, classification and
@@ -5348,7 +5369,7 @@ preserved English receipt and missing Spanish receipt distinguish orchestration
 exhaustion from a product assertion, skip, malformed receipt, or green retry.
 
 The `ui-tests` job keeps a 90-minute global orchestration ceiling only on a
-manual complete run, and 22 minutes on a pull request (D622). The 90 minutes were sized for one
+manual complete run, and 11 minutes on a pull request (D641). The 90 minutes were sized for one
 build plus both complete sequential locales with bounded
 hosted variance and cleanup/upload/classification headroom. Neither is a product
 or per-test runtime budget: selectors, assertions, test waits, the controlled-
