@@ -22935,3 +22935,18 @@ hotfixes come from `release/1.5`. The removal lands on `main` without waiting
 for Secreteo (2026-11-13); only the 2.0 release waits. Between the first removal
 change and 2.0, `main` is not releasable. Users who stay on 1.x keep their dictation;
 Shortcuts and MCP clients must be set up again in Secreteo.
+
+## D641 — The speech fork reuses its resampling converter
+
+During a live recording, FluidAudio's `AudioConverter` built and configured a new
+mastering-quality `AVAudioConverter` for every capture buffer, on both Parakeet
+channels and the live diarizer. On short buffers that setup cost about as much
+as the conversion itself.
+
+The fork, at `3648473d150307bde5d604a90137c839d1e0d2f1` on top of D569's
+revision, keeps the last converter while the formats match and resets it before
+each call. A reset converter produces the same samples as a fresh one, bit for
+bit, so ASR, diarization and their calibration are unchanged; the fork's tests
+compare both on uneven buffer sizes and a mid-stream format change, and
+concurrent callers never share an instance. Algorithm, quality and every other
+term of D559 and D569 are unchanged.
