@@ -6,6 +6,10 @@ extension MeetingStore: DataEgressEventRecorder {
     /// Persists the content-free attempt before the gateway can hand meeting
     /// material to URLSession. Missing or unknown meetings fail closed.
     public func recordDataEgressEvent(_ event: DataEgressEvent) async throws {
+        // 1.x dictation polish receipts stay readable; nothing may add one.
+        guard event.operation != .dictationPolish else {
+            throw StorageError.invalidDataEgressEvent("dictation polish is retired")
+        }
         try await database.write { db in
             try Self.validateDataEgressEvent(event)
             guard let meetingID = event.meetingID else {

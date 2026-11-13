@@ -2122,6 +2122,10 @@ frozen: their text and label limits are literals (20,000 and 256), not the app's
 constants, so the schema they create can never drift (D640). v59 also rebuilds the shared
 egress journal through `admitDictationPolishEgress`, which stays in
 `Schema+GlobalDataEgress.swift` and already uses only literals.
+The `dictation-polish` operation, `dictation-text` classification and
+`dictation-polish-mode` consent stay in PortavozCore only so those 1.x receipts decode:
+`globalDataEgressEvents()` still reads and validates them, while
+`recordDataEgressEvent` rejects any new dictation polish attempt before it opens a write.
 
 `LegacyDictationRetention.swift`, next to them, is the facade for that data now that
 Portavoz no longer dictates. The app's `LegacyDictationModel` is its only caller: it purges

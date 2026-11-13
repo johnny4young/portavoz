@@ -395,14 +395,5 @@ private actor MLXRAGRuntimeSpy: MLXSummaryRuntimeClient {
         return response
     }
 
-    func respond(
-        system: String,
-        user: String,
-        directory: URL,
-        maximumResponseTokens _: Int
-    ) async throws -> String {
-        try await respond(system: system, user: user, directory: directory)
-    }
-
     func request() -> Request? { captured }
 }

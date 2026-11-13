@@ -32,7 +32,7 @@ public struct VoiceActivityBatch: Sendable {
     public let observations: [VoiceActivityObservation]
 }
 
-/// Recording/dictation-scoped Silero stream over mono capture chunks. A caller
+/// Recording-scoped Silero stream over mono capture chunks. A caller
 /// consumes this actor from an off-callback task; it never edits or gates the
 /// original capture stream. The model is loaded only from ModelStore's fully
 /// verified installation and never through FluidAudio's downloading ModelHub.

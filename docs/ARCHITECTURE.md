@@ -1219,11 +1219,11 @@ or deletes it, clearing the dictated words from its search index too, without
 touching meeting notes or egress receipts;
 `LegacyDictationModel` is its only app caller. Sync, exports, Spotlight and MCP
 do not read these tables, and neither `MeetingStore` nor PortavozCore has another
-dictation history or statistics type or API. Still compiling with no app caller:
-PortavozCore's `DictationRecipe`, `DictationTextMode`, `DictationDeliveryOutcome` and
-`DictationRecordID`; TranscriptionKit's dictation text rules, assembler, correction
-command, dictionary terms and Polish fidelity check; IntelligenceKit's Polish prompt and
-polishers; and ApplicationKit's `PolishDictation`.
+dictation history or statistics type or API. No dictation domain, text or Polish
+type compiles without a caller: PortavozCore, TranscriptionKit, IntelligenceKit and
+ApplicationKit carry none, and `testNoDictationRuntimeRemains` keeps them out. The
+only dictation values left in PortavozCore are the three retired egress cases that
+decode 1.x receipts.
 
 Live Apuntador keeps endpoint and semantic admission split across layers. The
 pure `TurnEndpointPolicy` in `IntelligenceKit` owns the remote-channel, noise,
@@ -5029,6 +5029,10 @@ prompt, answer, or citation. The Web gateway accepts only body-free GET,
 requires HTTPS for remote destinations, blocks redirects, normalizes response
 headers, and streams to a 512 KiB ceiling; all other current gateway responses
 retain a 2 MiB ceiling. Per-meeting receipt projection remains unchanged.
+A 1.x library may hold `dictation-polish` attempts in that global journal. The
+operation, its classification and its consent source remain only so those rows
+still decode and validate; the gateway refuses every dictation polish request and the
+store refuses to record one, so nothing creates that egress any more.
 The meeting receipt also reports the meeting's
 private-sync standing, so an unqualified all-local claim can never coexist
 with an acknowledged iCloud copy (see Private text sync). The gateway requires its recorder by type — a
