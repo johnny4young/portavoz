@@ -9399,16 +9399,6 @@
         }
       }
     },
-    "Polish": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pulir"
-          }
-        }
-      }
-    },
     "Portable preferences": {
       "localizations": {
         "es": {
@@ -16607,16 +16597,6 @@
         }
       }
     },
-    "echo aec dictation hotkey microphone mic level": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "eco aec dictado atajo micrófono nivel"
-          }
-        }
-      }
-    },
     "export markdown backup folder recordings trash privacy local model credits licenses attribution": {
       "localizations": {
         "es": {
@@ -17547,16 +17527,6 @@
         }
       }
     },
-    "Dictations": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dictados"
-          }
-        }
-      }
-    },
     "Original": {
       "localizations": {
         "es": {
@@ -17833,26 +17803,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Buscar"
-          }
-        }
-      }
-    },
-    "Dictation statistics": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Estadísticas de dictado"
-          }
-        }
-      }
-    },
-    "Counts dictations, words and speaking time per day and app, never what you said. Kept for one year on this Mac, separate from the history.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cuenta dictados, palabras y tiempo hablando por día y por app, nunca lo que dijiste. Se guardan un año en este Mac, aparte del historial."
           }
         }
       }
