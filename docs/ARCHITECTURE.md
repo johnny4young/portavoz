@@ -1219,10 +1219,11 @@ or deletes it, clearing the dictated words from its search index too, without
 touching meeting notes or egress receipts;
 `LegacyDictationModel` is its only app caller. Sync, exports, Spotlight and MCP
 do not read these tables, and neither `MeetingStore` nor PortavozCore has another
-dictation history or statistics type or API. Still compiling with no app caller:
-PortavozCore's `DictationRecipe`, `DictationTextMode`, `DictationDeliveryOutcome` and
-`DictationRecordID`. Dictation Polish and TranscriptionKit's dictation text rules,
-assembler, correction command, dictionary terms and Polish fidelity check are gone.
+dictation history or statistics type or API. No dictation domain, text or Polish
+type compiles without a caller: PortavozCore, TranscriptionKit, IntelligenceKit and
+ApplicationKit carry none, and `testNoDictationRuntimeRemains` keeps them out. The
+only dictation values left in PortavozCore are the three retired egress cases that
+decode 1.x receipts.
 
 Live Apuntador keeps endpoint and semantic admission split across layers. The
 pure `TurnEndpointPolicy` in `IntelligenceKit` owns the remote-channel, noise,

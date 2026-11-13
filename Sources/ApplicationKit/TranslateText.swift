@@ -1,6 +1,6 @@
 import Foundation
 
-/// Translates one short text (a dictation, a transcript line) with the system's on-device translator.
+/// Translates one short text, such as a transcript line, with the system's on-device translator.
 public protocol TextTranslating: Sendable {
     /// Throws `TranslationUnavailable` when the language pair cannot run now.
     func translate(_ text: String, from source: String, to target: String) async throws -> String

@@ -46,8 +46,8 @@ enum AudioInputTapPolicy {
 ///   with the system channel.
 ///
 /// Raw capture is the default. Apple's voice-processing IO changes both the
-/// input and output graph and may duck other audio, so meeting and dictation
-/// surfaces must opt in only when they explicitly own that trade-off.
+/// input and output graph and may duck other audio, so meeting capture
+/// must opt in only when it explicitly owns that trade-off.
 ///
 /// `@unchecked Sendable`: the engine and continuation are mutated only from
 /// `start()`/`stop()` and the serial `restartQueue`; the tap block runs

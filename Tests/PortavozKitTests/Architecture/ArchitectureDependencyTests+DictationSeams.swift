@@ -38,6 +38,11 @@ extension ArchitectureDependencyTests {
         XCTAssertEqual(try Self.sourceMatches(under: "Sources", pattern: text, codeOnly: true), [])
         XCTAssertEqual(try Self.sourceMatches(under: "Tests", pattern: text, codeOnly: true), [])
 
+        let domain = #"\b(DictationRecipe|DictationTextChoice|DictationTextMode|DictationApplicationTextProfile|"#
+            + #"DictationTranslationTarget|DictationDeliveryOutcome|DictationRecordID)\b"#
+        XCTAssertEqual(try Self.sourceMatches(under: "Sources", pattern: domain, codeOnly: true), [])
+        XCTAssertEqual(try Self.sourceMatches(under: "Tests", pattern: domain, codeOnly: true), [])
+
         let tool = try Self.contents(of: "Sources/portavoz-app/CommandLineToolSection.swift")
         XCTAssertTrue(tool.contains("PasteboardCopy.copy("))
         let bench = try Self.contents(of: "Sources/TranscriptionKit/LiveTranscriptionBench.swift")
