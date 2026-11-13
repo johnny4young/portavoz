@@ -291,7 +291,7 @@ concurrency without treating that one fixture as universal accuracy evidence.
 - `TdtDecoderState()` is `throws` and is passed `inout` (local variable). `ASRResult.duration` = 0 on the disk-backed path → read actual duration with AVAudioFile.
 - First load compiles for ANE (~14 s for the encoder on M4 Max); CoreML caches it afterward (~1 s).
 - Licenses: Parakeet v3 model CC-BY-4.0, FluidAudio Apache-2.0, WhisperKit MIT — all MIT-compatible with attribution.
-- `ParakeetEngine` loads only the v3 graph. The catalog no longer pins 1.x's dictation-only Parakeet Ultra, so the launch-time `collectUnused(keeping: ModelCatalog.all)` retires Portavoz's claim on its files; the shared store keeps them only while another app, such as Secreteo, claims them.
+- `ParakeetEngine` loads only the v3 graph. The catalog no longer pins 1.x's dictation-only Parakeet Ultra, so the launch-time `collectUnused(keeping: ModelCatalog.all)` retires Portavoz's claim on its files; a retired claim still protects them for 14 days, and after that the shared store keeps them only while another app, such as Secreteo, claims or leases them.
 
 ### Opt-in public live-work observations (D484)
 
