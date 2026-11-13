@@ -22934,4 +22934,5 @@ rejects every audio-first observation.
 hotfixes come from `release/1.5`. The removal lands on `main` without waiting
 for Secreteo (2026-11-13); only the 2.0 release waits. Between the first removal
 change and 2.0, `main` is not releasable. Users who stay on 1.x keep their dictation;
-Shortcuts and MCP clients must be set up again in Secreteo.
+Shortcuts and MCP clients must be set up again in Secreteo. The removal is
+complete on `main`; README and the site change with the 2.0 release.

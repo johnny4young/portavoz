@@ -15,12 +15,10 @@ Two SEPARATE streams, never mixed before diarization:
 
 ## MicrophoneSource — `Sources/AudioCaptureKit/MicrophoneSource.swift`
 
-The app's meeting and dictation composition share preferred-input resolution;
-an unavailable saved UID is not erased by the per-session fallback. Dictation
-checks microphone permission before graph construction, owns a first-buffer
-startup deadline before warm-up/start, and retains its runtime lease through
-native Stop. These are application-level ownership rules (D543), not changes
-to the raw capture source, route-recovery policy or audio callback scheduling.
+The app's meeting composition resolves the preferred input; an unavailable
+saved UID is not erased by the per-session fallback. That is an
+application-level rule, not a change to the raw capture source, route-recovery
+policy or audio callback scheduling.
 
 - **Raw by default and for every production meeting (D125)**:
   `MicrophoneSource` defaults `voiceProcessing` to `false`, and the macOS
@@ -272,7 +270,7 @@ capture types or enumerate devices directly.
 ## Known limitations and risks
 
 1. **Call coexistence after removing VPIO (D125)**: the unsafe taps + VPIO
-   combination is no longer part of meeting or dictation capture. A real-call
+   combination is no longer part of meeting capture. A real-call
    A/B on Sequoia and Tahoe must still prove that starting Portavoz leaves
    participant playback and the meeting app's uplink unchanged while both
    Portavoz channels continue advancing.

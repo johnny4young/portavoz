@@ -343,7 +343,7 @@ it, and it is released only once idle. Core carries only transient
 live-update semantics (range revision, token preview, owned delta or word
 continuation), not AppKit or speech-provider types.
 
-Temporary meeting-store composition registers no global hotkey or event tap.
+Portavoz registers no global hotkey or event tap.
 The Settings-only Apple asset fixture is restricted to a disposable
 temporary-store launch; it exercises the real view/model without installing an
 OS asset or claiming recognition quality.

@@ -13,7 +13,7 @@ also retains 7.6% on that same public fixture and collar (miss 3.7%, false alarm
 1.3%, confusion 2.6%; two reference and hypothesis speakers). Both current live
 and batch two-speaker model paths pass without changing calibration. These local
 checks do not establish general field quality, process-resource parity or hosted
-qualification; dictation-only averages cannot establish diarization parity.
+qualification.
 
 External-audio import acquires the optional diarizer once after required
 transcription (D532). Preparation or inference failure produces honest

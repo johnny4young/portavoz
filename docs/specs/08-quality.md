@@ -181,11 +181,6 @@ Both result pages assert successful meeting actions, not only a zero unfinished
 count that could also contain failures. Recognition remains scripted, not
 ASR-quality evidence (D532).
 
-The dictation controller, readiness, recovery and panel tests left with
-dictation in 2.0 (D640), and so did the public dictation corpus, its
-installed-model, controller and field-recording lanes, the offline benchmark
-adapter and their Python tests.
-
 The confirmed-person commitments and blocker UI assertions share one bounded
 journey instead of repeating the identical seeded app launch and person load.
 It retains the exact selected identity, localized title, both screenshots,
@@ -207,12 +202,8 @@ Settings, and the compact Meeting Detail correction journeys. The compact journe
 checks the actual post-restoration AppKit frame at two short heights,
 opens both reading panes, retains the player, and reaches the existing
 correction editor. Its per-case budget is 30 seconds. A citation journey proves
-that an action returns from Summary to Transcript. Portavoz 2.0 removed every
-way to start dictation (D640), so the dictation, history, Polish, text-mode,
-practice, translation, correction and selection-rewrite UI tests, the
-dictation-only Settings, onboarding and Open dictations cases, and the
-permission-gated native-delivery lane (`make test-ui-native-dictation` and its
-runtime budget) were deleted with them; the catalog holds 119 cases.
+that an action returns from Summary to Transcript. Portavoz 2.0 has no
+dictation UI and no native-delivery lane (D640); the catalog holds 119 cases.
 `LegacyDictationUITests` owns the `dictation` selector now: the one-time notice
 that dictation moved, forced with `-show-dictation-moved-notice`, and deleting
 the kept history from Settings › Your data, both over a library seeded with
