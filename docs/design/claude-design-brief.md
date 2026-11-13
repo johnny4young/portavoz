@@ -46,7 +46,7 @@ promised", "your history is never hostage"). Bilingual ES/EN from the outset.
 record.circle.fill, person.wave.2, chart.bar.xaxis, sparkles ✦ for
 AI suggestions, arrow.uturn.backward for restore).
 
-**Motion**: pulse on active symbols (dictation); CSS waveform "breathe"
+**Motion**: pulse on active symbols (recording); CSS waveform "breathe"
 for 3.6s on the web, respecting `prefers-reduced-motion`.
 
 ## Real surface inventory (all exist today)
@@ -60,7 +60,7 @@ for 3.6s on the web, respecting `prefers-reduced-motion`.
    meeting health (talk-time bars), dense transcript with pills.
 3. **Live recording**: timer, lyrics-style caption carousel, mic meter
    (4pt capsule, dB mapping −60→0), notes, Companion cards.
-4. **Floating HUD** (400×88) and **dictation panel** (520×~70): material,
+4. **Floating HUD** (400×88): material,
    always on top, mic meter, live text.
 5. **Insights**: stat tiles (large value + caption label), weekly bar
    chart (Swift Charts), people cards, and circular gauge for
@@ -83,7 +83,7 @@ for 3.6s on the web, respecting `prefers-reduced-motion`.
    - Meter (mic level OK/low; circular gauge).
    - List row (meeting, to-do with checkbox, trash with restore).
    - Button (primary/secondary/destructive/ghost; sizes).
-   - Floating panel (HUD, dictation strip, pre-meeting banner).
+   - Floating panel (HUD, pre-meeting banner).
    - Empty states (empty library, no commitments, trash).
 3. **Voice and tone**: bilingual microcopy with the personality ("Deleted, not
    gone", "Measured, not promised").

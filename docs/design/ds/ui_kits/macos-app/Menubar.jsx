@@ -1,7 +1,7 @@
 // Menu bar — recreation of the rich menu-bar panel (exploration 2b).
 // The bar icon IS a live mini-waveform (amber peak); the dropdown carries
 // status, quick actions, the next meeting, and recents. Original idea:
-// the icon breathes red while recording, indigo while dictating.
+// the icon breathes red while recording.
 const { SFIcon } = window.PortavozDesignSystem_fd5562;
 
 function PVMiniWave({ bars, height = 20, w = 3.5 }) {
@@ -54,9 +54,8 @@ function PVMenubar() {
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, padding: "4px 14px 12px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, padding: "4px 14px 12px" }}>
           <PVQuick icon="record.circle" label="Grabar" tint="linear-gradient(135deg, rgba(255,69,58,0.25), rgba(255,69,58,0.12))" ink="#ff6961" />
-          <PVQuick icon="waveform" label="Dictar ⌥⌘D" tint="rgba(109,92,230,0.2)" ink="#cfc9ff" />
           <PVQuick icon="bubble.left.and.text.bubble.right" label="Preguntar" tint="rgba(255,255,255,0.08)" ink="rgba(255,255,255,0.85)" />
         </div>
 
@@ -84,7 +83,7 @@ function PVMenubar() {
         </div>
       </div>
 
-      <span style={{ marginTop: 18, font: "400 11px/1.6 var(--font-app)", color: "rgba(255,255,255,0.45)", maxWidth: 420, textAlign: "center" }}>El icono de la barra ES un mini-waveform vivo — reposo estático, rojo al grabar, indigo al dictar. El «in 1d 18h» de la próxima reunión vive al lado, clicable.</span>
+      <span style={{ marginTop: 18, font: "400 11px/1.6 var(--font-app)", color: "rgba(255,255,255,0.45)", maxWidth: 420, textAlign: "center" }}>El icono de la barra ES un mini-waveform vivo — reposo estático, rojo al grabar. El «in 1d 18h» de la próxima reunión vive al lado, clicable.</span>
     </div>
   );
 }

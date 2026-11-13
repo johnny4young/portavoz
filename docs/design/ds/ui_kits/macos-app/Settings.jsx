@@ -1,13 +1,13 @@
 // Settings — nav-driven redesign whose content mirrors the REAL Portavoz
 // Settings (see reference screenshot): system language, echo cancellation,
-// dictate-anywhere, summary engine (Apple / Ollama / Integrado MLX), Whisper
+// summary engine (Apple / Ollama / Integrado MLX), Whisper
 // refine models, vocabulary chips, agenda, integrations (BYOK + GitHub),
 // and "Tus datos" — the privacy ledger + recordings folder + title template.
 const { SFIcon } = window.PortavozDesignSystem_fd5562;
 
 const PV_SET_NAV = [
   { id: "general", icon: "globe", label: "General e idioma", sub: "Idioma sistema · English/Español · barra de menú" },
-  { id: "audio", icon: "mic", label: "Audio y dictado", sub: "Cancelación de eco · dicta en cualquier lugar · ⌥⌘D" },
+  { id: "audio", icon: "mic", label: "Audio", sub: "Cancelación de eco" },
   { id: "intel", icon: "sparkles", label: "Inteligencia", sub: "Motor de resúmenes · refine Whisper · vocabulario · 13" },
   { id: "voice", icon: "person.wave.2", label: "Mi voz y Companion", sub: "Voz enrolada 7 jul · tu nombre «Ana»" },
   { id: "agenda", icon: "calendar.badge.clock", label: "Agenda y automatización", sub: "Aviso 5 min antes · Atajo al terminar · títulos {date}" },
@@ -47,9 +47,6 @@ function PVSeg({ options, value, onPick }) {
     </span>
   );
 }
-function PVKeycap({ children }) {
-  return <span style={{ font: "500 12px/1 var(--font-mono)", color: "rgba(255,255,255,0.75)", background: "rgba(255,255,255,0.08)", borderRadius: 6, padding: "6px 10px", flexShrink: 0 }}>{children}</span>;
-}
 function PVRadio({ on }) {
   return <span style={{ width: 15, height: 15, borderRadius: 999, border: on ? "4px solid #5e5ce6" : "1.5px solid rgba(255,255,255,0.35)", background: on ? "#fff" : "transparent", flexShrink: 0, boxSizing: "border-box" }}></span>;
 }
@@ -74,13 +71,10 @@ function PVPaneGeneral() {
 function PVPaneAudio() {
   return (
     <>
-      <span style={{ font: "700 22px/1.2 var(--font-app)" }}>Audio y dictado</span>
+      <span style={{ font: "700 22px/1.2 var(--font-app)" }}>Audio</span>
       <PVGroup>
         <PVRow first title="Cancelación de eco" sub="recomendada con parlantes — con AirPods suele sonar mejor apagada" control={<PVToggle on />} />
-        <PVRow title="Dicta en cualquier lugar" sub="⌥⌘D en cualquier app; requiere permiso de Accesibilidad (macOS lo pide la primera vez)" control={<PVToggle on={false} />} />
-        <PVRow title="Atajo de dictado" control={<PVKeycap>^⌥⌘</PVKeycap>} />
       </PVGroup>
-      <span style={{ font: "400 11px/1.5 var(--font-app)", color: "rgba(255,255,255,0.4)" }}>Las palabras se escriben donde está tu cursor — jamás se guardan. Insertar texto requiere permiso de Accesibilidad.</span>
     </>
   );
 }
