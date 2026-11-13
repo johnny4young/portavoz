@@ -16,35 +16,18 @@ enum AppResourceGovernorAdmissionError: Error, Equatable, LocalizedError {
 
 final class AppResourceCaptureState: @unchecked Sendable {
     private let lock = NSLock()
-    private var recordingState = ResourceCaptureState.inactive
-    private var dictationOwners: Set<UUID> = []
+    private var state = ResourceCaptureState.inactive
 
     var current: ResourceCaptureState {
         lock.lock()
         defer { lock.unlock() }
-        // A transitional meeting phase must not mask live dictation capture.
-        return dictationOwners.isEmpty ? recordingState : .active
+        return state
     }
 
-    /// Recording phases never own or clear independent dictation sessions.
     func update(_ state: ResourceCaptureState) {
         lock.lock()
-        recordingState = state
+        self.state = state
         lock.unlock()
-    }
-
-    func beginDictation() -> UUID {
-        lock.lock()
-        defer { lock.unlock() }
-        let owner = UUID()
-        dictationOwners.insert(owner)
-        return owner
-    }
-
-    func endDictation(_ owner: UUID) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        return dictationOwners.remove(owner) != nil
     }
 }
 
@@ -124,15 +107,6 @@ extension AppServices {
     func recordingPhaseDidChange(_ phase: RecordingPhase) {
         resourceCaptureState.update(phase.resourceCaptureState)
         captureOwnershipDidChange()
-    }
-
-    func beginDictationCapture() -> () -> Void {
-        let owner = resourceCaptureState.beginDictation()
-        captureOwnershipDidChange()
-        return { [weak self] in
-            guard let self, resourceCaptureState.endDictation(owner) else { return }
-            captureOwnershipDidChange()
-        }
     }
 
     private func captureOwnershipDidChange() {

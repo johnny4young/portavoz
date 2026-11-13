@@ -140,9 +140,6 @@ extension ArchitectureDependencyTests {
         let imports = try Self.sourceMatches(
             under: "Tests", pattern: Self.fluidAudioImportPattern, codeOnly: true)
         XCTAssertEqual(imports, [
-            "PortavozAppTests/DictationModelBaselineTests.swift",
-            "PortavozAppTests/DictationVendorProbe.swift",
-            "PortavozAppTests/DictationVendorProbeTests.swift",
             "PortavozAppTests/TranscriptionTests.swift",
             "PortavozKitTests/NemotronLatin1120Tests.swift",
             "PortavozKitTests/ParakeetLanguageConfigurationTests.swift",

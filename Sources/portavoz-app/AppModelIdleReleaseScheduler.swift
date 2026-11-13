@@ -7,7 +7,7 @@ final class AppModelIdleReleaseScheduler {
     enum Slot: CaseIterable, Sendable {
         case recording, quality, language
 
-        /// Lightweight keeps a short grace so dictation bursts, the Stop to
+        /// Lightweight keeps a short grace so the Stop to
         /// post-capture handoff and follow-up questions reuse hot weights.
         func idleDelay(for profile: AppModelMemoryPreferences.Profile) -> Duration {
             switch (profile, self) {

@@ -6,7 +6,6 @@ import json
 import os
 from pathlib import Path
 import plistlib
-import re
 import subprocess
 import sys
 import tempfile
@@ -81,18 +80,6 @@ class DictationModelRunnerTests(unittest.TestCase):
         self.assertEqual({path.name: path.read_bytes() for path in third.iterdir()}, original)
         with self.assertRaises(FileExistsError):
             copy_synthetic_audio(second)
-
-    def test_every_runbook_selector_is_in_the_one_bundle_the_runbook_names(self):
-        import run_dictation_model_comparison as comparison
-        readme = (ROOT / 'Fixtures/DictationValidation/README.md').read_text(encoding='utf-8')
-        selectors = [runner.SELECTOR, runner.CONTROLLER_SELECTOR, comparison.SELECTOR,
-                     *re.findall(r'-XCTest (\S+)', readme)]
-
-        for selector in selectors:
-            module, name = selector.split('/')[0].split('.')
-            with self.subTest(selector=selector):
-                self.assertEqual(module, 'PortavozAppTests')
-                self.assertTrue((ROOT / 'Tests' / module / f'{name}.swift').is_file())
 
     def use_swiftbuild_layout(self, name='PortavozAppTests'):
         executable = self.bundle / 'Contents/MacOS' / name

@@ -153,7 +153,6 @@ final class AppServices {
     /// Retained only as a composition decision. Disposable automation must
     /// never resolve a real GitHub credential or transport.
     @ObservationIgnored let usesTemporaryMeetingStore: Bool
-    @ObservationIgnored let dictationShortcutUITestFixture: DictationShortcutUITestFixture?
     @ObservationIgnored let liveAssistUITestFixture: LiveAssistUITestFixture?
     /// Whole-library export state outlives Settings windows so closing a pane
     /// cannot cancel publication or start a competing backup.
@@ -182,17 +181,6 @@ final class AppServices {
     @ObservationIgnored var whisperBackgroundPreparation: Task<Void, Never>?
     @ObservationIgnored var whisperProgressObservers: [UUID: WhisperPreparationObserver] = [:]
     private(set) var mlxDownloaded = false
-    var speechGateModel = ConsentedModelState.unknown
-    var parakeetUltraModel = ConsentedModelState.unknown
-    @ObservationIgnored var parakeetUltraDownload: Task<Void, Never>?
-    @ObservationIgnored var pasteLastHotkey: GlobalHotkey?
-    var pasteLastShortcutUnavailable = false
-    @ObservationIgnored var rewriteSelectionHotkey: GlobalHotkey?
-    var rewriteSelectionShortcutUnavailable = false
-    /// Rewrites a selection in another app with Polish or a recipe.
-    let selectionRewrite = SelectionRewriteController()
-    /// Whether this app may capture and deliver globally right now.
-    @ObservationIgnored let dictationOwnership: DictationOwnershipCoordinator
     /// IntelligenceKit owns container mechanics; composition owns the one
     /// process runtime and every residency transition around it.
     @ObservationIgnored let mlxSummaryRuntime = MLXSummaryRuntime()
@@ -223,15 +211,6 @@ final class AppServices {
     let postCaptureProcessing: PostCaptureProcessingSupervisor
     @ObservationIgnored lazy var audioImports = AudioImportQueueModel(client: self)
     @ObservationIgnored lazy var audioImportUITestFixture = AudioImportUITestFixture.makeIfRequested()
-    /// System-wide dictation (⌥⌘D): lives here so the hotkey and its
-    /// session survive any window coming and going.
-    let dictation: DictationController
-    let dictationTextSettings: DictationTextSettingsModel
-    @ObservationIgnored let dictationPractice = DictationPracticeField()
-    @ObservationIgnored lazy var dictationHistory = DictationHistoryModel(store: store)
-    @ObservationIgnored lazy var dictationStats = DictationStatsModel(store: store)
-    @ObservationIgnored let dictationUITestFixture: DictationUITestFixture?
-    let dictationNativeUITestFixture: DictationNativeUITestFixture?
     /// THE recording session (one at a time by design): shared so the
     /// recording view, the HUD and the menu bar all observe the same one,
     /// and navigating away can never orphan a live session.
@@ -286,10 +265,8 @@ final class AppServices {
         storagePolicy: AppStorageIsolationPolicy? = nil,
         defaults: UserDefaults = .standard,
         modelMemoryPreferences: AppModelMemoryPreferences? = nil,
-        modelIdleReleaseScheduler: AppModelIdleReleaseScheduler = .init(),
-        dictation: DictationController = DictationController()
+        modelIdleReleaseScheduler: AppModelIdleReleaseScheduler = .init()
     ) throws {
-        self.dictation = dictation
         self.defaults = defaults
         let storagePolicy = Self.prepareStoragePolicy(
             arguments: arguments,
@@ -301,14 +278,6 @@ final class AppServices {
         recording = RecordingController(defaults: defaults)
         let usesTemporaryStore = storagePolicy.usesTemporaryMeetingStore
         usesTemporaryMeetingStore = usesTemporaryStore
-        dictationOwnership = .live(defaults: defaults, usesTemporaryStore: usesTemporaryStore)
-        dictationShortcutUITestFixture = DictationShortcutUITestFixture(
-            arguments: arguments, usesTemporaryStore: usesTemporaryStore)
-
-        dictationUITestFixture = DictationUITestFixture(
-            arguments: arguments, usesTemporaryStore: usesTemporaryStore)
-        dictationNativeUITestFixture = DictationNativeUITestFixture(
-            arguments: arguments, environment: environment, usesTemporaryStore: usesTemporaryStore)
         liveAssistUITestFixture = LiveAssistUITestFixture(
             arguments: arguments, usesTemporaryStore: usesTemporaryStore)
         let resourceCaptureState = AppResourceCaptureState()
@@ -322,8 +291,6 @@ final class AppServices {
         store = try Self.makeMeetingStore(storagePolicy: storagePolicy)
         legacyDictation = Self.makeLegacyDictationModel(
             store: store, defaults: defaults, arguments: arguments, usesTemporaryStore: usesTemporaryStore)
-        dictationTextSettings = DictationTextSettingsModel(
-            defaults: defaults, temporary: storagePolicy.usesTemporaryMeetingStore)
         let backgroundWork = BackgroundWorkCenterModel()
         self.backgroundWork = backgroundWork
         postCaptureProcessing = PostCaptureProcessingSupervisor(

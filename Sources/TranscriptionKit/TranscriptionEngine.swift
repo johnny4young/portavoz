@@ -54,17 +54,10 @@ public struct TranscriptionHints: Codable, Sendable {
     /// Meeting the emitted segments belong to; a fresh ID is generated per
     /// job when nil (dev CLI, ad-hoc file transcription).
     public var meetingID: MeetingID?
-    /// Lets a live decoder apply `language` as its script filter. Meetings leave
-    /// it unset so a fixed meeting language never drops other scripts from captions.
-    public var filtersLiveScript: Bool?
 
-    public init(
-        language: String? = nil, vocabulary: [String] = [], meetingID: MeetingID? = nil,
-        filtersLiveScript: Bool? = nil
-    ) {
+    public init(language: String? = nil, vocabulary: [String] = [], meetingID: MeetingID? = nil) {
         self.language = language
         self.vocabulary = vocabulary
         self.meetingID = meetingID
-        self.filtersLiveScript = filtersLiveScript
     }
 }

@@ -10,13 +10,13 @@ import XCTest
 /// ordinary CI without weights; the shared-engine case is opt-in.
 @MainActor
 final class LiveEngineLeaseIntegrationTests: XCTestCase {
-    func testCancelledDictationCallSiteNeverStartsSharedModelPreparation() async throws {
+    func testCancelledLiveCallSiteNeverStartsSharedModelPreparation() async throws {
         let suite = "cancelled-live-lease-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let services = try AppServices(arguments: ["portavoz-app", "-use-temp-store"], defaults: defaults)
         let task = Task { @MainActor in
-            try await DictationSessionDependencies.live(services: services, beginCapture: { {} }).acquireRuntime()
+            try await services.acquireLiveTranscriptionRuntime()
         }
         task.cancel()
         await Task.yield()
@@ -27,7 +27,7 @@ final class LiveEngineLeaseIntegrationTests: XCTestCase {
         }
         do {
             _ = try await task.value
-            XCTFail("pre-cancelled dictation must not acquire a live model")
+            XCTFail("a pre-cancelled caller must not acquire a live model")
         } catch is CancellationError {
             // Expected; no model-load task or residency ticket may be left.
         } catch {
@@ -38,7 +38,7 @@ final class LiveEngineLeaseIntegrationTests: XCTestCase {
         XCTAssertEqual(services.modelResidencyLedger.record(for: .liveSpeech).status, .unloaded)
     }
 
-    func testRecordingAndDictationBorrowTheSameResidentEngineIndependently() async throws {
+    func testRecordingAndASecondLiveCallerBorrowTheSameResidentEngineIndependently() async throws {
         try XCTSkipUnless(
             ProcessInfo.processInfo.environment["PORTAVOZ_LIVE_LEASE_TESTS"] == "1",
             "set PORTAVOZ_LIVE_LEASE_TESTS=1 with verified Parakeet assets installed")
@@ -58,17 +58,16 @@ final class LiveEngineLeaseIntegrationTests: XCTestCase {
         services.transcriber = engine
 
         let recording = try XCTUnwrap(services.acquireResidentLiveTranscriptionRuntime())
-        let dictation = try await DictationSessionDependencies.live(
-            services: services, beginCapture: { {} }).acquireRuntime()
+        let second = try await services.acquireLiveTranscriptionRuntime()
         XCTAssertEqual(recording.engine.descriptor.id, engine.descriptor.id)
-        XCTAssertEqual(dictation.engine.descriptor.id, engine.descriptor.id)
+        XCTAssertEqual(second.engine.descriptor.id, engine.descriptor.id)
         XCTAssertEqual(services.modelResidencyLedger.record(for: .liveSpeech).activeUseCount, 2)
         XCTAssertFalse(services.releaseLiveSpeechRuntime())
 
         recording.finish()
         XCTAssertEqual(services.modelResidencyLedger.record(for: .liveSpeech).activeUseCount, 1)
-        XCTAssertFalse(services.releaseLiveSpeechRuntime(), "dictation still owns the live model")
-        dictation.finish()
+        XCTAssertFalse(services.releaseLiveSpeechRuntime(), "the second caller still owns the live model")
+        second.finish()
         XCTAssertEqual(services.modelResidencyLedger.record(for: .liveSpeech).activeUseCount, 0)
         XCTAssertTrue(services.releaseLiveSpeechRuntime())
         XCTAssertNil(services.transcriber)

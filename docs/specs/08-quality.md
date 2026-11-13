@@ -181,39 +181,8 @@ Both result pages assert successful meeting actions, not only a zero unfinished
 count that could also contain failures. Recognition remains scripted, not
 ASR-quality evidence (D532).
 
-`DictationReadinessTests` exercises the actual controller with delayed permission,
-empty and nonempty PCM, a held native warm-up/Stop, startup deadline, invalid
-frames before/after partial text, and the 0.75-second boundary in English and
-Spanish. The fixture's pull acknowledgment proves an empty frame was consumed
-before advancing manual time; it does not assume that producer yield means
-consumer admission. The live microphone adapter's injected source factory
-observes the actual resolved UID and preservation of stored preferences. The
-AppServices settings-write adapter is called while dictation awaits permission
-and after cancellation, proving that Preparing also blocks preference import.
-
-The capture-integrity regression for a failure arriving after dispatch wraps
-only the already-captured destination's inserter, holding its result while the
-real controller receives the late producer notification. It requires one
-capture and one insertion: the test must neither bypass destination admission
-nor recapture a target when delivery is already in flight.
-Native-stop ordering and shared capture-owner regressions likewise wrap the
-captured insertion capability, retaining its identity and retry availability;
-they do not reintroduce an uncaptured insertion port for test convenience.
-Successful explicit recovery retries use the same owned feedback deadline as
-first delivery. A call-site test holds that deadline through EN→ES and ES→EN
-restarts, then returns after cancellation; the new session stays listening and
-retains its captions, while the old retry has already released its runtime.
-
-Disposable UI journeys cover permission-denial recovery, absent first audio
-with explicit preferred-device fallback, and cancellation while preparing.
-Recovery is also exercised with freshly constructed dependencies per menu
-invocation; failure-once state belongs to the app-owned fixture, not a dependency
-value that would reset on retry. All use temporary-store composition plus the
-explicit dictation seed; permission
-and audio are simulated, while the production controller and panel remain real.
-No system permission is granted by a test, and these scenarios do not qualify
-physical microphones, ASR or native insertion. Each new journey has a declared
-budget before its first execution; no existing per-case/full/p95 limit changes.
+The dictation controller, readiness, recovery and panel tests left with
+dictation in 2.0 (D640).
 
 **Public dictation corpus admission.**
 
@@ -286,8 +255,8 @@ concurrent replacement cannot retain a prelaunch digest as admitted evidence.
 Binary identity remains separate from source/commit qualification. Commands and limitations
 live in the corpus README.
 
-**Parakeet v3 and Ultra comparison with field recordings.**
-`DictationModelComparisonTests` runs v3 or Ultra, one model per process when
+**Parakeet v3 and Ultra comparison with field recordings (removed in 2.0).**
+`DictationModelComparisonTests` ran v3 or Ultra, one model per process when
 `PORTAVOZ_ASR_COMPARE_MODEL` is set, through the installed-model feed and scoring.
 Receipt schema 2 adds the physical footprint before load, after load, after the
 cells and at the process peak; the runner precedes each measured process with a
@@ -298,7 +267,10 @@ speech families (`<family>.field`), recorded by
 `scripts/dictation_field_corpus.py`. Field audio is personal and never committed.
 `scripts/run_dictation_model_comparison.py` validates both receipts and writes a
 content-free report with reference-weighted WER per cohort, failed and critical
-cells, loads, footprints and the pre-registered T38 rule (D612). Synthetic
+cells, loads, footprints and the pre-registered T38 rule (D612). The Swift test,
+`DictationModelBaselineTests` and `DictationControllerModelTests` were deleted with
+Parakeet Ultra and the controller, so the Python runners that select them stay
+only until the dictation tooling is removed. Synthetic
 evidence can never promote Ultra. Core ML maps the weights outside the process
 footprint: on the Mac that ran the first smoke both models stayed near 28 MB after
 load and the peak mostly reflects loading, so a Dev-app diagnostics snapshot
@@ -388,8 +360,8 @@ The native and XCUITest inventories are discovered from the current source;
 each run records its executed cases and explicit environment-gated omissions.
 The unattended catalog contained 140 UI cases after consolidating one pair of
 confirmed-person journeys and four Topic job journeys, including portable-settings,
-shortcut-recovery, the three audio-import, real dictation-panel and clipboard-borrow,
-three microphone-preparation/recovery, capture-failure recovery, two Apple Speech
+shortcut-recovery, the three audio-import, three microphone-preparation/recovery,
+capture-failure recovery, two Apple Speech
 Settings, and the compact Meeting Detail correction journeys. The compact journey
 checks the actual post-restoration AppKit frame at two short heights,
 opens both reading panes, retains the player, and reaches the existing
@@ -404,12 +376,14 @@ runtime budget) were deleted with them; the catalog holds 119 cases.
 that dictation moved, forced with `-show-dictation-moved-notice`, and deleting
 the kept history from Settings › Your data, both over a library seeded with
 `-seed-legacy-dictation`.
-`LiveEngineLeaseIntegrationTests` enters the real dictation dependency factory
+`LiveEngineLeaseIntegrationTests` enters the real live-transcription call site
 with a pre-cancelled task and requires zero model-load or residency side effects.
 Its opt-in installed-model case (`PORTAVOZ_LIVE_LEASE_TESTS=1`) verifies that
-recording's resident-only call site and dictation's live call site borrow the
-same verified Parakeet runtime independently; releasing one token cannot drop
-the other. Missing assets are an explicit skip, never a simulated ASR-quality
+recording's resident-only call site and a second live caller borrow the same
+verified Parakeet runtime independently; releasing one token cannot drop the
+other. `LiveSpeechRuntimeSharingTests` proves the same sharing in ordinary CI
+with an engine that loads no weights, and `RecordingResourceOwnershipTests` that
+recording phases alone set the capture state that pauses maintenance. Missing assets are an explicit skip, never a simulated ASR-quality
 result. The injected controller and recording-attacher tests retain their
 late-result, failure and cancellation coverage.
 Supported AppKit-capable CI and release hosts require zero
@@ -842,181 +816,9 @@ correction, job, Skills-storage, and search owner splits rather than blanket
 suppressions. Existing inherent exceptions remain suppressed inline with their
 local justification.
 
-## Clipboard preservation at the insertion boundary
+## Negative evidence from long live-token experiments
 
-`DictationClipboardInsertionTests` enters `TextInserter.insert` with real named
-pasteboards and inert platform effects. It covers ordered rich items, private
-lazy representations borrowed as opaque bytes and restored, missing
-representations, deferred readers across overlapping pastes, same-text foreign
-owners, provider-triggered cancellation/security transitions, and foreign writes
-at final validation. `DictationClipboardBoundaryTests` checks private/legacy types
-up to the inclusive item and retained-byte bounds and rejects unsafe fixture
-namespaces. The controller regression reaches the same inserter with an
-unreadable representation and verifies the refusal keeps the output in recovery,
-posts nothing and leaves the clipboard unchanged.
-
-The explicit `-seed-dictation-clipboard` journey also requires `-seed-dictation`,
-temporary composition and the native fixture's UUID pasteboard namespace. The
-production Dictate action borrows the named board, is refused at the inert post
-effect into the recovery panel, restores every rich/private representation and
-exits through Discard. Its platform event effects are inert; this qualifies the
-controller/clipboard/UI path, not AX permission or native editor delivery. The native receiver journey remains
-mandatory and distinct. Existing runtime budgets are unchanged; the new journey
-has a 20-second budget. AppKit providers remain synchronous, so tests prove
-retained-byte admission, not an allocation/latency ceiling on a foreign provider.
-
-## Dictation controller and native delivery coverage
-
-`DictationControllerTests` enters the real controller with disposable effects:
-permission denial before model/audio work, EN/ES cancellation after a partial,
-final deterministic replacements with literal regex metacharacters, effective
-hints at the engine invocation, punctuation-only output and late model
-preparation after cancellation. All preference changes use a volatile domain.
-Fixture selection is checked both with and without temporary composition.
-Capture-integrity regressions enter that controller with ordinary and
-cancellation-shaped source errors after EN/ES partials, 127/128/129 pending
-relay buffers, producer notifications before EOF, an unnotified failure at Stop,
-clean EOF before Stop or during its tail, and captions that end before the
-audio relay. Streaming fixtures finish captions only after their audio input
-ends, as real engines do. They require no automatic insertion, the localized interrupted message and a `pipelineFailed` measurement,
-and retain cleanup ownership. A late failure from a cancelled source cannot
-retire its replacement; a late report after delivery cannot promise rollback.
-The disposable capture-failure journey checks the localized panel and repeatable
-dismissal, not native hardware or verified external delivery.
-
-`DictationStreamingProjectionTests` drives the actual controller with an explicitly
-bounded delta stream: bilingual punctuation and final rules, noise/empty inputs,
-279/280/281-character boundaries, older callbacks, same-count replacement and a
-remote/microphone/direct sequence that reopens a closed row. It waits for a changing
-sentinel after ignored input rather than counting an unchanged screen as receipt.
-Cancellation tests await old runtime teardown and restart with a separate audio
-source; cancelled streams must not republish final text. Projection parity tests
-compare each intermediate state with full coalescer assembly and explicit golden
-cases. The opt-in `PORTAVOZ_DICTATION_PROJECTION_BENCHMARK=1` lane measures a bounded
-synthetic burst through that controller at three prefix sizes with output digests.
-It is not an ASR, native destination, real UI latency or memory qualification.
-The streaming real-app journey checks the complete multi-row EN/ES projection,
-cancellation and restart; its 20-second budget is an initial
-candidate limit, not an increased full-suite allowance.
-
-`DictationResourceOwnershipTests` uses real `AppServices` composition and the
-actual controller, with disposable speech effects. It checks maintenance
-admission and the search-reconciliation entry point while dictating, both orders
-of meeting/dictation completion, held cold preparation, native teardown after
-end of stream and overlapping a replacement, denied starts, failures and
-duplicate completion. Explicit gates hold asynchronous work; no model
-availability or physical-device behavior is inferred from these tests.
-The existing background-work XCUITest checks the shared waiting-for-capture
-status in both locales through its stable row identifiers.
-
-The receiver is an Xcode-only application target. SwiftPM's shared `Tests`
-root excludes that directory explicitly, alongside the UI and interruption
-fixtures; strict package diagnostics must not treat its entry point as an
-unhandled unit-test resource.
-
-`TextInsertionReadbackTests` runs the actual inserter against a deterministic
-receiver double, rather than testing only a comparison function. Cases cover
-bilingual Unicode and replaced selections, unchanged/wrong/unsupported editors,
-invalid and overflowing AX metadata, exact requested-span bounds, empty output,
-cancellation during inspection, a late matching answer, altered post-read
-selection and no duplicate event. `DictationDeliveryOutcomeTests` additionally
-routes final controller output through that same inserter, checks the resulting
-verified/unverified presentation state and rejects a retry after dispatch.
-These tests contain no native AX or model evaluation. The real receiver journey
-requires both `verified` and exact editor text; missing permission remains a
-failing gate. The dedicated delivery-banner journey exercises both distinct
-states in each locale: verified feedback expires, while unverified output
-supports failed Copy, successful full-output Copy and an explicit Discard control.
-Another trigger starts a new session that replaces only that notice without
-re-sending the old output, and Reinsert remains absent.
-Neither UI doubles nor typed verified results qualify native delivery. Schema 1
-measurement continues to report `dispatchReported` and
-`verifiedDeliveryMeasured == false` for either typed port result. Its 25-second candidate budget is separate
-from a measured baseline; the full-suite budget is unchanged.
-
-UI builds remain ad-hoc by default. A local owner may explicitly set both
-`UI_TEST_CODE_SIGN_IDENTITY` (the certificate's 40-character SHA-1 identifier)
-and `UI_TEST_DEVELOPMENT_TEAM` (the 10-character team ID) when invoking the
-maintained UI runner. It forwards those validated values as distinct Xcode
-build settings with explicit Manual style for SwiftPM-generated plugin/resource
-targets as well; those targets do not inherit the app project's signing style.
-Partial or malformed input fails before building or changing
-UI preferences. No certificate, team identity or signing secret is stored in
-the repository. Certificate-backed designated requirements can remain stable
-across builds, unlike an ad-hoc code-hash requirement. Inspect the actual built
-app's requirement and authorize that disposable app through macOS; signing does
-not itself grant Accessibility, qualify native insertion, or authorize release.
-An earlier ad-hoc permission entry can retain a code-hash requirement that rejects
-a valid certificate-backed replacement at the same path and bundle identifier.
-An enabled switch alone therefore does not establish trust. If the native app
-reports missing trust, inspect its actual launched path and designated requirement;
-a TCC code-requirement mismatch is a signing-identity admission failure, not
-failed text insertion. Replacing only that disposable application's stale entry
-through System Settings is a human permission operation, not a runner reset or
-an automated TCC database edit. Preserve the denied native receipt and obtain a
-new actual receiver result after authorization changes. Never add a private TCC
-entitlement in response to system diagnostic recommendations.
-CI without those explicit inputs keeps the existing signing policy. The runner's
-command-boundary tests cover absent, exact, partial, oversized and injected
-values; the real signed build remains separate evidence.
-
-`DictationDestinationRecoveryTests` changes the destination between controller
-preparation and delivery, exercises bilingual unpunctuated output, failed/full
-Copy, duplicate Retry and Discard during an uncooperative late callback. It
-awaits the actual retry task before asserting that state cannot revive.
-`DictationRecoveryCopyTests` adds adversarial Copy admission cases: multiple
-ordered items are refused without reading lazy providers or calling the writer;
-a lazy provider that publishes a new clipboard owner during snapshot capture
-is not overwritten; a failed single-item write still restores every captured
-representation. These AppKit tests require macOS execution.
-The controller's real Copy action also injects a failed pasteboard write after
-declaration: a rich original is restored, whereas a newer writer is left
-untouched, and the refused text remains available in both cases.
-Recovery freezes the final text-rule result: Copy and repeated Retry neither
-reapply replacements nor adopt preferences edited after the first refusal.
-`TextInsertionTargetTests` runs the production inserter against named rich
-clipboards with injectable modifier wait and event dispatch: refusal after a
-wait, changed/secure/missing final focus, cancellation inside either inspection,
-clipboard ownership changes during a successful final inspection, exact PID
-routing and observed restoration. A typed Core Foundation bridge test rejects
-a non-AX value before the real focus accessor can consume it. These doubles do not qualify native AX
-identity comparisons, native event routing or ASR quality.
-
-Two real-app recovery journeys use English/Spanish output matching the requested
-locale and cover retained text, explicit failed/successful
-Copy, Retry and a new trigger followed by Discard/restart. The temporary recovery
-fixture supplies deterministic destination refusal and retry dispatch, never a
-native event; only an explicitly admitted UUID clipboard can receive Copy.
-Neither fixture flags alone nor an arbitrary board name enables that effect.
-The visible control IDs and their nonempty labels/frames are asserted in UI
-coverage. The native panel is exposed as an AX Dialog rather than an ordinary
-Window. Long destination names must leave every action within its bounds, and
-re-showing recovery must preserve its frame. The discard journey uses a single
-click before restart: controller tests alone did not expose the deletion-role
-button consuming that click in the nonactivating panel. Native cancellation
-semantics match the pending operation without a double-click or focus override.
-The native receiver remains a separate permission-dependent journey.
-
-The recovery-only disposable menu host aligns the exact production menu content
-to the top, matching the real menu-bar surface rather than centering it behind
-the bottom-anchored recovery panel. The recovery-trigger journey checks that
-the panel and Dictate button do not overlap before clicking. Stable AX frames
-alone do not prove that a floating panel leaves a control reachable. An overlap
-fails as a layout assertion; unexpected-interruption handling is unchanged and
-never dismisses the recovery panel to make the trigger reachable.
-
-Each dictation journey has an individual 20-second budget; existing per-test,
-full-suite duration and p95 budgets are unchanged. Source/harness changes still
-expand conservatively. Lockfile changes select the smoke canaries rather than bypassing UI
-evidence (D597). The package manifest retains the shared-harness bilingual requirement,
-as do simultaneous localization or shared-harness changes. This coverage does not certify
-real ASR quality, physical
-audio devices, all external editors, or the outstanding capture/delivery gaps.
-
-
-### Negative evidence from long live-token experiments
-
-The ordinary dictation cells do not establish long-window replay safety. A local
+The public synthetic cells do not establish long-window replay safety. A local
 experiment concatenated public cells into repeated English, Spanish and mixed
 speech beyond the left-context window and ran the actual installed engine plus
 a separate replay. It disproved unconditional mapper passthrough despite green
@@ -1066,10 +868,6 @@ while SwiftBuild produces one for each, and the pool resolves the bundle by modu
 | SkillsControlCenterTests | Capability-derived catalogue disclosure, durable pause and per-Skill policy, independently typed policy/receipt read failures plus receipt cancellation, bounded Recent/Waiting/Attention/Completed receipts over exact v39 unfiltered and v42 exact-Skill index plans without a temporary sort, exact filter composition/order/limits, one-row continuation probing with sentinel trimming and fail-closed `hasMoreReceipts`, pre-read rejection of unknown catalogue filters, malformed storage-filter rejection, future unknown-state attention, malformed identity and policy rejection, one read-consistent receipt audit, strict retry-state replay, unknown failure-category rejection, predecessor/tail integrity, a 256-event materialization ceiling enforced with a 257-row probe, D341 recovery classification/routing that remains inert for local subjects and verification-only for external outcomes, D369 exact policy-read laziness that preserves audit-only evidence while local recovery fails closed, and D370 read-only Settings recovery after an unverified control mutation |
 | SkillActionAttemptTests | A failed control change, review, dismissal, revocation, recovery or context attempt keeps its subject and its retry; a retry starts clean; a superseded attempt cannot report a failure (D624) |
 | MeetingDetailSummaryPlaceholderTests | Only the newest cancelled summary explains a missing summary (D624) |
-| DictationOwnerStatusTests | Each ownership state says one thing, only known owners are named, coming back works from an owner that quit and from nobody, a timed-out handoff says so and changes nothing, a reset leaves a way back, the menu offers dictation only after the commit, and a refused Reinsert, Say how or Intent explains itself (D628) |
-| DictationOwnershipCoordinatorTests | Against real locks in a scratch folder: first-run claim, a non-owner refused and unarmed, `busy` during work, sharing only during the restore and only for `global`, the lock kept until the last session ends, a live intent refusing a join without giving up the lock, a handoff completing after the restore, a generation that changes on a trip there and back; a session's reaction to an intent by stage, and delivery refused with its words kept when the owner changed (D627) |
-| DictationCoexistenceTests | The real coordinator against `dictation-peer`, a second process on the real locks of a scratch folder: racing first-run claims and a claim racing a handoff, a toggle there and back, a peer that yields and one that never does, a Portavoz session preparing, listening and delivering when the peer asks, a delivery past the peer's deadline, a missed notification, a late release after a refused press, SIGKILL holding a lease and on either side of the commit, a frozen peer, an intent expiring with no other event and across sleep, a relaunch, a newer state file, an uninstalled peer and one turned off, a peer not ready, Dev and Release, an older Portavoz recognized by its bundle, and sessions in both processes across handoffs with no overlap in one shared log, whose negative control skips the lease. |
-| DictationAdmissionTests | A refused session, retry, Paste last, Rewrite, spoken instruction or replace opens and delivers nothing and keeps its text; practice runs with the preference off; a lease lasts through delivery and the clipboard restore, even when cancelled, and is released on every path; Rewrite holds none while the user decides (D626) |
 | SkillActivityPresentationStateTests | Matching- and mismatched-scope/filter loading, same-selection stale-row suppression, receipt-only unavailability, mutually exclusive verified empty/receipt presentation, explicit refresh only for verified empty/receipt states, verified continuation rather than visible-count inference, the bounded 20-to-50 history-window transition, and selection reset |
 | SkillProposalPresentationStateTests | Initial loading and unavailable retry isolation, verified empty/populated explicit refresh eligibility, retained verified projection during an in-flight refresh, and failable bounded one-based accessibility positions |
 | SkillOfferAuthorityTests / SkillExecutionStoreTests | Content-free v40 review authority, bounded reconciliation and newest-first plan, opaque review-UUID dismissal, expired/repeated unavailable outcomes, tombstone-wins stale reconciliation, exact one-shot and reusable-offer claim relationships, claim-time dismissal fencing, byte-preserving opaque EventKit execution identity, and v41 exact execution-subject/failure-category persistence with cascade cleanup and no legacy subject inference |
@@ -1107,7 +905,7 @@ while SwiftBuild produces one for each, and the pool resolves the bundle by modu
 | WaveformTests / AudioTranscoderTests / MeetingAudioWorkflowTests | Exact range-aligned Accelerate envelopes, deterministic fixed-chunk cancellation, already-cancelled caller rejection, one 600-default/2,000-maximum immutable waveform snapshot, host AAC integration, canonical-output collision preservation, all-channel verification before raw deletion, rollback after later-channel failure, live filesystem byte accounting, text-only playback degradation, role-aware reversible clear-mix ranges, injected application codec semantics, and matched waveform/media-export work |
 | AudioProcessCatalogTests | direct tap scope by bundle ID: exact app/allowed helpers accepted, lookalikes and unrelated apps rejected |
 | AcceleratorFallbackTests / SubtitleExportTests / ExportDocumentTypesTests | One cancellation-aware CPU retry with both Whisper load failures preserved; exact SRT/VTT timestamps, lexical filtering, rendered prefix-aware cue bounds, same-name speaker identity separation, line/arrow sanitization; and extension-preserving text-conforming macOS subtitle content types |
-| DictationTextRulesTests / MousePTTGestureTests / MouseButtonSettingTests | Conservative bilingual filler seams; bilingual whole-phrase line and paragraph commands that absorb recognizer commas and yield to user triggers; one-pass case-insensitive whole-trigger replacement without cascading or regex-template interpretation; canonical corrupt/duplicate storage; mouse press/release ownership; and vendor-facing Button 3+/invalid-default normalization without admitting left/right |
+| DictationTextRulesTests | Conservative bilingual filler seams; bilingual whole-phrase line and paragraph commands that absorb recognizer commas and yield to user triggers; one-pass case-insensitive whole-trigger replacement without cascading or regex-template interpretation; canonical corrupt/duplicate storage |
 | UITestDefaultsTests | Disposable XCUITest launches overlay selected preferences in volatile `NSArgumentDomain`; the recording owner samples the injected authority only after installation; ordinary launches and malformed payloads are ignored |
 | TranscriptionTests / NemotronLatin1120Tests | Parakeet mapper/deltas, WhisperEngine helpers, anti-silence hygiene, **SpokenLanguageDetector** with automatic/fixed mixed-language policy, **VocabularyPrompt**, **AudioLevel.normalizePeak**, exact non-serving Nemotron artifact/revision/routing and filesystem-layout shape, rejection of unpinned optional bundles and missing artifacts, explicit EN/ES and no-vocabulary admission, index-based shared-timestamp deltas, cursor/non-finite/non-monotonic timing failure, bounded timing-free finalization, and no duplicate final emission |
 | LiveTranscriptionBenchTests | Invalid-duration rejection before file access, exact engine-error propagation without partial evidence, early-engine feeder cancellation/drain, and real WAV feeding through an exact EOF after a partial final chunk (no extra read from floating-point duration drift) |
@@ -4498,19 +4296,14 @@ The shared sources, package test layout and test entitlement expand selection
 to the complete bilingual catalog. Scoped storage journeys remain diagnostic
 coverage, not that final qualification.
 
-The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when LaunchServices holds stale claimants of the `portavoz:` scheme: every build product that ever registered stays in that database, including temp copies whose paths are long gone, and `testRecordingAutomationRoutesStartAndStopThroughVisibleApp` can resolve to one — the launch fails silently and the test reports whichever app happened to be frontmost, which reads as a code regression and is not one. Observed on this machine: 21 of 31 claimants pointed at paths that no longer exist, and the test passed 4/4 in isolation on the same commit. A warning rather than a gate, because rebuilding the database is a system-wide action with its own side effects. **No UI gate asserts generated text** (D306): `testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState` used to pin an exact `RAGAnswerer` sentence and failed 3 of 6 runs on a quiet machine, because the workflow honestly falls back to "Closest passages from your meetings:" whenever the on-device model is unavailable or throttled. It now asserts `palette-answer`, which renders only from `state.answer` and therefore proves Enter ran the full Ask workflow, plus the citation that proves the receipt reaches the exact second — 6 of 6 after the change. A model's availability is not a property of this repository, and a gate that fails for it teaches the team to ignore red. It verifies the UI through automation instead of driving the screen. The harness treats `-portavoz-open-settings` only as a runner-side hint, removes it before launch, and opens the real production Settings scene with `⌘,`; no test-only sheet or app-owned window lifecycle can leak into the following case. Every relaunch first observes the prior process terminate, waits on the content-free running-process inventory to clear, and uses its app-specific scratch `TMPDIR` so AppKit saved state cannot race another case. Launch args: `-NSTreatUnknownArgumentsAsOpen NO`, `-NSAutomaticWindowAnimationsEnabled NO`, `-NSWindowResizeTime 0.001`, `-NSScrollAnimationEnabled NO` (no journey waits out a window or scroll animation; D625), `-ApplePersistenceIgnoreState YES`, `-use-temp-store` (disposable DB; Settings does not touch the real Keychain, local voice identity, or CloudKit/APNs and completion does not invoke host Shortcuts), `-simulate-reminder-open` (routes one content-free stale reminder response through the production delegate path to Radar and is legal only with the disposable store), `-simulate-app-entity-route meeting|person|commitment` (invokes the production SDK-only open-action logic shared with each `OpenIntent` after the bounded disposable catalog is seeded), `-seed-demo` (deterministic meeting with transcript, summary, typed overview, decision, action-item, and role-separated Apuntador sources, coauthorship bullet "▸", action item, audio, and a content-free remote-attempt receipt), `-seed-stale-derived` (appends one deterministic correction after seeded Summary and Apuntador provenance so stale presentation is exercised without a model), `-seed-commitment-inbox` (links the disposable Ana speaker to one exact canonical person and exposes an evidence-backed pending candidate), `-seed-commitment-radar` (adds four bounded confirmed commitments across owner, due, and lifecycle states), `-seed-showcase` (fictional bilingual library used only by the public screenshot contract), `-seed-unnamed-speaker` (leaves the disposable remote speaker unnamed so the explicit name-suggestion action can be verified without invoking a real model), `-seed-ai-suggestions` (adds deterministic title, recipe, and speaker-name recommendations so each dismiss path can be verified without invoking a real model), `-seed-live-translation-ui` (adds a deterministic translated row so the labeled translation rail can be verified without language assets), `-seed-latest-recipe` (adds a newer Standup snapshot to prove D45 reload selection), `-seed-recovery` (a staging-only recovery fixture, allowed only with the temp store), `-seed-processing` (a model-free durable-processing fixture, also temp-store-only), `-seed-processing-failure` (converts the disposable seed's first job into an exhausted failure), `-seed-refine-running` (a model-free cancellable refine fixture, temp-store-only), `-seed-just-recorded` (marks only the disposable seed as freshly captured so the opted-in mirror can be verified), `-seed-without-summary` (omits only the disposable summary), `-seed-scale` plus optional `-scale-auto-summary-update` (a temp-store-only 5k-detail fixture), `-simulate-no-apple-intelligence` (forces the app-owned Foundation Models capability unavailable), `-simulate-apuntador-refresh-success` (replaces a disposable stale snapshot through the production refresh action without invoking a real model), `-simulate-ask-progressive-handshake` (holds disposable lexical evidence and the partial local answer at two finite XCUITest-owned boundaries), `-simulate-semantic-assets-missing` (substitutes a disposable embedding model only with temporary storage so the explicit Settings transition cannot touch host assets), `-simulate-voice-storage-unavailable` (returns a typed missing key to both voice stores only with temporary storage so the recovery UI cannot touch host biometric data), `-simulate-recording-start-failure` (injects one typed preparation failure), `-simulate-system-capture-stall` (injects a prolonged content-free stall, the two-minute Stop affordance, and recovery), `-simulate-system-audio-clipping` (feeds only compact persisted-level evidence for a sustained ceiling warning), `-simulate-live-transcription-attach` (moves one active recording from preparing to a live caption), `-simulate-live-transcript-browsing` (emits an initial caption history, pauses, then appends rows while the reader owns scroll position), `-simulate-live-apuntador` (replaces one remote row with the locale-matched frozen public-synthetic question while the real bundled classifier remains authoritative), `-simulate-skill-receipt-scope-unavailable` (returns unavailable only for non-Recent Skill activity loads so verified durable controls and explicit retry remain testable), `-simulate-standing-reconciliation-cancellation-once` (throws one cancellation-shaped event-resolution failure only with temporary storage so stale standing-rule mutations remain locked until verified reload), `-simulate-skill-control-mutation-unavailable` (commits only a temporary-store policy mutation and then fails its response while the following durable read remains healthy, so recovery must adopt durable truth without replaying the ambiguous write), `-simulate-skill-receipt-refresh-handshake` (holds only non-Recent temporary-store receipt refreshes at a finite XCUITest-owned boundary so stale-row transitions and explicit refresh remain observable without a fixed delay), `-simulate-skill-receipt-policy-unavailable` (fails only the receipt inspector’s optional policy port so audit-only source review remains testable), `-simulate-skill-proposal-refresh-handshake` (holds each temporary-store proposal read at a finite XCUITest-owned boundary so retained inert actions and explicit refresh remain observable without a fixed delay), `-simulate-skill-proposal-unavailable` (fails only the content-free proposed-offer read so independently verified policy remains usable), `-simulate-skill-proposal-review-unavailable` (fails only the opaque review-to-context read while retaining the verified row and retry), `-simulate-skill-proposal-dismiss-unavailable` (fails only one opaque proposal-dismissal write while retaining the verified row and retry), `-seed-duplicate-skill-proposals` (uses the real meeting-offer producer for two disposable meetings so same-Skill assistive names must stay unique), `-seed-skill-history` (adds 25 content-free confirmed executions only to prove explicit 20-to-50 history expansion and same-scope refresh), `-seed-skill-exact-page-history` (adds exactly 20 matching executions so a full visible page cannot invent continuation), `-seed-skill-waiting` (adds one content-free confirmed execution that stops before begin), `-simulate-skill-receipt-revoke-unavailable` (fails only the waiting-revocation write while retaining its receipt and retry), `-seed-skill-failed-recoverable` (adds one failed local execution with an exact meeting subject), and `-simulate-skill-receipt-recovery-unavailable` (fails only the opaque receipt-to-context resolution while retaining its evidence and retry), `-seed-dictation-owner-secreteo` and `-seed-dictation-ownership-damaged` (write the launch's scratch ownership state before it starts); all are legal only with the temp store. The runner-only Settings hint is never visible to the app process; after the main window is ready, the harness invokes the production `⌘,` command and waits for the real Settings category control. Every launch receives a unique `PORTAVOZ_AUDIO_ROOT`; tests that exercise copied real audio may explicitly override it with `PORTAVOZ_TEST_AUDIO_ROOT`. The diagnostics case additionally supplies a unique `PORTAVOZ_UI_TEST_DIAGNOSTICS_PATH`, and the backup case a unique `PORTAVOZ_UI_TEST_BACKUP_FOLDER`; production launches ignore both overrides. Only disposable `-use-temp-store` launches place the throwaway main window and real Settings scene on AppKit's zero screen. The main frame retains left clearance for desktop overlays; Settings is constrained inside the same screen's visible frame, and the harness requires its navigation anchor to have nonnegative global coordinates before continuing. Production multi-display placement remains unchanged. Localized, asynchronously populated controls that can still reflow must hold a stable hittable frame before XCUITest activates them; existence alone does not make a cached click coordinate reliable. The native recording-route case additionally proves the elapsed clock remains wider than it is tall and Stop stays hittable inside the minimum-width window, protecting the responsive two-row recording bar without screenshot pixel matching. The seed synthesizes a two-tone clip (mic/system) or adopts only that scratch copy. Covers 105 cases in `AutomationUITests`, `LibraryUITests`, `InterviewAssistUITests`, `InsightsUITests`, `OnboardingUITests`, `MeetingDetailUITests`, `CommitmentRadarUITests`, `PublicShowcaseUITests`, `SettingsUITests`, and `SkillsSettingsUITests`: the targeted production `portavoz://record` handoff into a visible disposable recording, exact meeting/person/commitment App Entity routes, library and grouping, the global bounded Commitment Radar with separate generated-review triage and exact source navigation, exact Library result-to-timestamp seek, return from a browsed meeting to the still-active recording, source-grounded upcoming-meeting preparation, exact local-data receipts, full Ask and command-palette answer/citation paths (the palette case begins with its destination detail already open so it proves same-route delivery), interrupted staging recovery to a playable detail, durable processing resume/retry, typed recording-start failure/retry/reference, cold-model live-caption attachment, reader-owned live-caption history with an explicit Jump to live, visible prolonged system-callback outage, sustained incoming-clipping warning and dismissal, explicit Stop exit into the guarded typed no-audio Retry state, one complete heatmap/interlocutors journey, one sequential first-listen-to-local-voice enrollment journey, 5k-detail rendering plus scoped summary update, overview, decision, action-item, and Apuntador source-to-transcript/audio navigation, explicit summary-claim correction/unsupported/clear review, focused transcript text/speaker correction with original evidence and durable undo, explicit merge/hide/restore structural correction with hidden accepted evidence, correction-stale Summary/Apuntador evidence with explicit regeneration plus simulated-Sequoia preservation, summary/transcript/player/rail/privacy receipt/clip plus scoped action-item mutation, dismissible AI recommendations, reversible clear playback, a visually distinct live-translation rail, correction-aware SRT/WebVTT export-menu availability, explicit transcript/calendar name-suggestion entry, confirmed-person memory, newest-recipe reload, refine cancellation, the post-meeting mirror sheet, Sequoia intelligence recovery, Settings navigation, explicit iCloud sync opt-in/existing-library separation, redacted support export, readable whole-library Markdown backup, independent transcript/summary language controls, explicit semantic-asset preparation, custom structures, audio capture, local-voice enrollment, unreadable voice-storage recovery, mirror opt-in, live locale, truthful Skills activity transitions, distinct positional assistive names for repeated same-Skill proposals, read-only control recovery after an unverified committed mutation, cancellation-shaped automatic-action failure with stale-mutation lock and verified reload, bounded explicit Skills history expansion, same-selection explicit Skills refresh, exact query-level Skill and rolling-period filtering with 20/50 reset, exact-page continuation suppression, and the three public showcase surfaces. The palette screenshot targets its identified `NSPanel`; every other retained attachment targets an app window. The automation route retains `automation-visible-recording`; the App Entity route retains `app-entity-commitment-route`; the scaled detail, Ask surfaces, Meeting Detail claim review and overview/decision/action-item/Apuntador source/player, rail/player waveform, confirmed-person memory, grouped Library, global Commitment Radar, `commitment-review-queue`, `commitment-review-exact-source`, `commitment-reminder-open-radar`, Insights heatmap, post-meeting mirror, Sequoia capability, semantic-search preparation, diagnostics, recovery, recording-failure, remote-audio-recovery, remote-audio-stop-recovery, system-audio-clipping, live-transcript-hot-attach, live-transcript-history-paused, live-translation-rail, transcript-correction-original-evidence, transcript-structural-correction-evidence, meeting-detail-stale-derived-artifacts, meeting-detail-apuntador-refreshed, meeting-detail-correction-aware-export, transcript/calendar-name, local-voice, voice-storage-recovery, dismissible-AI, Skills activity transition, `skills-activity-expanded-history`, `skills-activity-explicit-refresh`, `skills-activity-period-filter`, `skills-activity-exact-page`, and public showcase cases keep named app-only `XCTAttachment` screenshots, including `public-meeting-detail`, `public-live-translation`, and `public-insights`, so feature-band runs can export and inspect deterministic visual evidence without screen driving or exposing unrelated desktop content. `make public-screenshots` runs only those three showcase cases, exports their attachments, and replaces the synchronized README/site assets. `make test-ui-en` and `make test-ui-es` use Xcode's `-testLanguage`/`-testRegion` contract; a shell environment variable alone is not accepted as localization evidence. Export itself (`AudioClipExporter`) is tested as a unit test — a 15 s clip from a 30 s source exports to m4a in a fraction of a second (comfortably below the < 2 s M11 criterion).
+The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when LaunchServices holds stale claimants of the `portavoz:` scheme: every build product that ever registered stays in that database, including temp copies whose paths are long gone, and `testRecordingAutomationRoutesStartAndStopThroughVisibleApp` can resolve to one — the launch fails silently and the test reports whichever app happened to be frontmost, which reads as a code regression and is not one. Observed on this machine: 21 of 31 claimants pointed at paths that no longer exist, and the test passed 4/4 in isolation on the same commit. A warning rather than a gate, because rebuilding the database is a system-wide action with its own side effects. **No UI gate asserts generated text** (D306): `testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState` used to pin an exact `RAGAnswerer` sentence and failed 3 of 6 runs on a quiet machine, because the workflow honestly falls back to "Closest passages from your meetings:" whenever the on-device model is unavailable or throttled. It now asserts `palette-answer`, which renders only from `state.answer` and therefore proves Enter ran the full Ask workflow, plus the citation that proves the receipt reaches the exact second — 6 of 6 after the change. A model's availability is not a property of this repository, and a gate that fails for it teaches the team to ignore red. It verifies the UI through automation instead of driving the screen. The harness treats `-portavoz-open-settings` only as a runner-side hint, removes it before launch, and opens the real production Settings scene with `⌘,`; no test-only sheet or app-owned window lifecycle can leak into the following case. Every relaunch first observes the prior process terminate, waits on the content-free running-process inventory to clear, and uses its app-specific scratch `TMPDIR` so AppKit saved state cannot race another case. Launch args: `-NSTreatUnknownArgumentsAsOpen NO`, `-NSAutomaticWindowAnimationsEnabled NO`, `-NSWindowResizeTime 0.001`, `-NSScrollAnimationEnabled NO` (no journey waits out a window or scroll animation; D625), `-ApplePersistenceIgnoreState YES`, `-use-temp-store` (disposable DB; Settings does not touch the real Keychain, local voice identity, or CloudKit/APNs and completion does not invoke host Shortcuts), `-simulate-reminder-open` (routes one content-free stale reminder response through the production delegate path to Radar and is legal only with the disposable store), `-simulate-app-entity-route meeting|person|commitment` (invokes the production SDK-only open-action logic shared with each `OpenIntent` after the bounded disposable catalog is seeded), `-seed-demo` (deterministic meeting with transcript, summary, typed overview, decision, action-item, and role-separated Apuntador sources, coauthorship bullet "▸", action item, audio, and a content-free remote-attempt receipt), `-seed-stale-derived` (appends one deterministic correction after seeded Summary and Apuntador provenance so stale presentation is exercised without a model), `-seed-commitment-inbox` (links the disposable Ana speaker to one exact canonical person and exposes an evidence-backed pending candidate), `-seed-commitment-radar` (adds four bounded confirmed commitments across owner, due, and lifecycle states), `-seed-showcase` (fictional bilingual library used only by the public screenshot contract), `-seed-unnamed-speaker` (leaves the disposable remote speaker unnamed so the explicit name-suggestion action can be verified without invoking a real model), `-seed-ai-suggestions` (adds deterministic title, recipe, and speaker-name recommendations so each dismiss path can be verified without invoking a real model), `-seed-live-translation-ui` (adds a deterministic translated row so the labeled translation rail can be verified without language assets), `-seed-latest-recipe` (adds a newer Standup snapshot to prove D45 reload selection), `-seed-recovery` (a staging-only recovery fixture, allowed only with the temp store), `-seed-processing` (a model-free durable-processing fixture, also temp-store-only), `-seed-processing-failure` (converts the disposable seed's first job into an exhausted failure), `-seed-refine-running` (a model-free cancellable refine fixture, temp-store-only), `-seed-just-recorded` (marks only the disposable seed as freshly captured so the opted-in mirror can be verified), `-seed-without-summary` (omits only the disposable summary), `-seed-scale` plus optional `-scale-auto-summary-update` (a temp-store-only 5k-detail fixture), `-simulate-no-apple-intelligence` (forces the app-owned Foundation Models capability unavailable), `-simulate-apuntador-refresh-success` (replaces a disposable stale snapshot through the production refresh action without invoking a real model), `-simulate-ask-progressive-handshake` (holds disposable lexical evidence and the partial local answer at two finite XCUITest-owned boundaries), `-simulate-semantic-assets-missing` (substitutes a disposable embedding model only with temporary storage so the explicit Settings transition cannot touch host assets), `-simulate-voice-storage-unavailable` (returns a typed missing key to both voice stores only with temporary storage so the recovery UI cannot touch host biometric data), `-simulate-recording-start-failure` (injects one typed preparation failure), `-simulate-system-capture-stall` (injects a prolonged content-free stall, the two-minute Stop affordance, and recovery), `-simulate-system-audio-clipping` (feeds only compact persisted-level evidence for a sustained ceiling warning), `-simulate-live-transcription-attach` (moves one active recording from preparing to a live caption), `-simulate-live-transcript-browsing` (emits an initial caption history, pauses, then appends rows while the reader owns scroll position), `-simulate-live-apuntador` (replaces one remote row with the locale-matched frozen public-synthetic question while the real bundled classifier remains authoritative), `-simulate-skill-receipt-scope-unavailable` (returns unavailable only for non-Recent Skill activity loads so verified durable controls and explicit retry remain testable), `-simulate-standing-reconciliation-cancellation-once` (throws one cancellation-shaped event-resolution failure only with temporary storage so stale standing-rule mutations remain locked until verified reload), `-simulate-skill-control-mutation-unavailable` (commits only a temporary-store policy mutation and then fails its response while the following durable read remains healthy, so recovery must adopt durable truth without replaying the ambiguous write), `-simulate-skill-receipt-refresh-handshake` (holds only non-Recent temporary-store receipt refreshes at a finite XCUITest-owned boundary so stale-row transitions and explicit refresh remain observable without a fixed delay), `-simulate-skill-receipt-policy-unavailable` (fails only the receipt inspector’s optional policy port so audit-only source review remains testable), `-simulate-skill-proposal-refresh-handshake` (holds each temporary-store proposal read at a finite XCUITest-owned boundary so retained inert actions and explicit refresh remain observable without a fixed delay), `-simulate-skill-proposal-unavailable` (fails only the content-free proposed-offer read so independently verified policy remains usable), `-simulate-skill-proposal-review-unavailable` (fails only the opaque review-to-context read while retaining the verified row and retry), `-simulate-skill-proposal-dismiss-unavailable` (fails only one opaque proposal-dismissal write while retaining the verified row and retry), `-seed-duplicate-skill-proposals` (uses the real meeting-offer producer for two disposable meetings so same-Skill assistive names must stay unique), `-seed-skill-history` (adds 25 content-free confirmed executions only to prove explicit 20-to-50 history expansion and same-scope refresh), `-seed-skill-exact-page-history` (adds exactly 20 matching executions so a full visible page cannot invent continuation), `-seed-skill-waiting` (adds one content-free confirmed execution that stops before begin), `-simulate-skill-receipt-revoke-unavailable` (fails only the waiting-revocation write while retaining its receipt and retry), `-seed-skill-failed-recoverable` (adds one failed local execution with an exact meeting subject), and `-simulate-skill-receipt-recovery-unavailable` (fails only the opaque receipt-to-context resolution while retaining its evidence and retry); all are legal only with the temp store. The runner-only Settings hint is never visible to the app process; after the main window is ready, the harness invokes the production `⌘,` command and waits for the real Settings category control. Every launch receives a unique `PORTAVOZ_AUDIO_ROOT`; tests that exercise copied real audio may explicitly override it with `PORTAVOZ_TEST_AUDIO_ROOT`. The diagnostics case additionally supplies a unique `PORTAVOZ_UI_TEST_DIAGNOSTICS_PATH`, and the backup case a unique `PORTAVOZ_UI_TEST_BACKUP_FOLDER`; production launches ignore both overrides. Only disposable `-use-temp-store` launches place the throwaway main window and real Settings scene on AppKit's zero screen. The main frame retains left clearance for desktop overlays; Settings is constrained inside the same screen's visible frame, and the harness requires its navigation anchor to have nonnegative global coordinates before continuing. Production multi-display placement remains unchanged. Localized, asynchronously populated controls that can still reflow must hold a stable hittable frame before XCUITest activates them; existence alone does not make a cached click coordinate reliable. The native recording-route case additionally proves the elapsed clock remains wider than it is tall and Stop stays hittable inside the minimum-width window, protecting the responsive two-row recording bar without screenshot pixel matching. The seed synthesizes a two-tone clip (mic/system) or adopts only that scratch copy. Covers 105 cases in `AutomationUITests`, `LibraryUITests`, `InterviewAssistUITests`, `InsightsUITests`, `OnboardingUITests`, `MeetingDetailUITests`, `CommitmentRadarUITests`, `PublicShowcaseUITests`, `SettingsUITests`, and `SkillsSettingsUITests`: the targeted production `portavoz://record` handoff into a visible disposable recording, exact meeting/person/commitment App Entity routes, library and grouping, the global bounded Commitment Radar with separate generated-review triage and exact source navigation, exact Library result-to-timestamp seek, return from a browsed meeting to the still-active recording, source-grounded upcoming-meeting preparation, exact local-data receipts, full Ask and command-palette answer/citation paths (the palette case begins with its destination detail already open so it proves same-route delivery), interrupted staging recovery to a playable detail, durable processing resume/retry, typed recording-start failure/retry/reference, cold-model live-caption attachment, reader-owned live-caption history with an explicit Jump to live, visible prolonged system-callback outage, sustained incoming-clipping warning and dismissal, explicit Stop exit into the guarded typed no-audio Retry state, one complete heatmap/interlocutors journey, one sequential first-listen-to-local-voice enrollment journey, 5k-detail rendering plus scoped summary update, overview, decision, action-item, and Apuntador source-to-transcript/audio navigation, explicit summary-claim correction/unsupported/clear review, focused transcript text/speaker correction with original evidence and durable undo, explicit merge/hide/restore structural correction with hidden accepted evidence, correction-stale Summary/Apuntador evidence with explicit regeneration plus simulated-Sequoia preservation, summary/transcript/player/rail/privacy receipt/clip plus scoped action-item mutation, dismissible AI recommendations, reversible clear playback, a visually distinct live-translation rail, correction-aware SRT/WebVTT export-menu availability, explicit transcript/calendar name-suggestion entry, confirmed-person memory, newest-recipe reload, refine cancellation, the post-meeting mirror sheet, Sequoia intelligence recovery, Settings navigation, explicit iCloud sync opt-in/existing-library separation, redacted support export, readable whole-library Markdown backup, independent transcript/summary language controls, explicit semantic-asset preparation, custom structures, audio capture, local-voice enrollment, unreadable voice-storage recovery, mirror opt-in, live locale, truthful Skills activity transitions, distinct positional assistive names for repeated same-Skill proposals, read-only control recovery after an unverified committed mutation, cancellation-shaped automatic-action failure with stale-mutation lock and verified reload, bounded explicit Skills history expansion, same-selection explicit Skills refresh, exact query-level Skill and rolling-period filtering with 20/50 reset, exact-page continuation suppression, and the three public showcase surfaces. The palette screenshot targets its identified `NSPanel`; every other retained attachment targets an app window. The automation route retains `automation-visible-recording`; the App Entity route retains `app-entity-commitment-route`; the scaled detail, Ask surfaces, Meeting Detail claim review and overview/decision/action-item/Apuntador source/player, rail/player waveform, confirmed-person memory, grouped Library, global Commitment Radar, `commitment-review-queue`, `commitment-review-exact-source`, `commitment-reminder-open-radar`, Insights heatmap, post-meeting mirror, Sequoia capability, semantic-search preparation, diagnostics, recovery, recording-failure, remote-audio-recovery, remote-audio-stop-recovery, system-audio-clipping, live-transcript-hot-attach, live-transcript-history-paused, live-translation-rail, transcript-correction-original-evidence, transcript-structural-correction-evidence, meeting-detail-stale-derived-artifacts, meeting-detail-apuntador-refreshed, meeting-detail-correction-aware-export, transcript/calendar-name, local-voice, voice-storage-recovery, dismissible-AI, Skills activity transition, `skills-activity-expanded-history`, `skills-activity-explicit-refresh`, `skills-activity-period-filter`, `skills-activity-exact-page`, and public showcase cases keep named app-only `XCTAttachment` screenshots, including `public-meeting-detail`, `public-live-translation`, and `public-insights`, so feature-band runs can export and inspect deterministic visual evidence without screen driving or exposing unrelated desktop content. `make public-screenshots` runs only those three showcase cases, exports their attachments, and replaces the synchronized README/site assets. `make test-ui-en` and `make test-ui-es` use Xcode's `-testLanguage`/`-testRegion` contract; a shell environment variable alone is not accepted as localization evidence. Export itself (`AudioClipExporter`) is tested as a unit test — a 15 s clip from a 30 s source exports to m4a in a fraction of a second (comfortably below the < 2 s M11 criterion).
 
 ## Measurement harnesses
 
-- The live ASR benchmark reports both historical final-only accuracy and the
-  pre-rules Dictation recognition at the actual caption/coalescer call site.
-  A short clip can have volatile rows but no final rows; synthetic EN/ES tests
-  make that distinction explicit, including overlap, empty output, and
-  punctuation-only noise. The CLI keeps the old JSON keys and adds separate
-  `dictation_wer`/`dictation_cer` fields, without writing transcript content to
-  the JSON receipt. A gain candidate must use the Dictation score, not infer
-  failed recognition from the final-only count; real model and insertion gates
-  remain separate.
+- The live ASR benchmark reports final-only accuracy (`wer_source`
+  `final-only`). A short clip can have volatile rows but no final rows, so its
+  final-only WER can be 100%; synthetic EN/ES tests make that explicit. The JSON
+  receipt carries no transcript content.
 - `make test-meeting-memory-graph-quality` runs seventeen deterministic tooling
   tests and canonical verification over D270's 36-case public-synthetic query
   corpus. The fixture is the exact cross-product of six longitudinal jobs and
@@ -9243,65 +9036,17 @@ regardless of their composition-file split; this split does not change deadlines
 or lease ownership.
 A failed profile-control reveal ends its UI journey before any further input.
 
-### Dictation controller phase observation
+### Dictation controller observations (removed in 2.0)
 
-`DictationSessionMeasurementTests` exercises the real controller with isolated
-microphones, a controlled engine and explicit monotonic-clock advances. It
-separates model preparation from microphone readiness, covers English/Spanish
-and typographic punctuation, and admits only a closed content-free receipt.
-Permission denial, empty/punctuation-only finals, delivery rejection, a disabled
-observer, cancellation during delivery, late model preparation and a restart
-before task scheduling cannot become a verified-delivery observation. The
-synthetic four-second preparation and two-second warmup are deterministic
-call-site assertions, not measured model latency. Existing controller rule and
-panel journeys remain parity evidence. No receipt from these doubles qualifies
-physical gestures, real ASR, receiver readback, memory or resource teardown.
-
-
-### Public PCM through the dictation controller
-
-The explicit Release-only `--controller` lane joins the pinned public corpus,
-installed Parakeet adapter, production controller timing sink and a bounded
-whole-process footprint observer. Its microphone source reuses the model-only
-PCM feeder; public EOF drives a real controller Stop, not an invented natural
-termination. The insertion port rejects without touching platform input.
-Proposed output remains in memory for the existing accuracy evaluator.
-Volatile literal/automatic/no-vocabulary preferences are isolated per attempt.
-
-Controller-mode requests/outcomes have schema 3 and a distinct schema-1
-observation; the existing model-only schema-2 contract is unchanged. Every
-requested cell/pass remains present, including short-utterance cancellation and
-pipeline failure. Input completion/fed frames and any public live-work sample
-are independent of the typed controller outcome. `pipelineCompleted` is
-recomputed at admission, never accepted as a success flag. Scores describe
-proposed output including unsuccessful attempts, not ASR in isolation or native
-delivery. Footprint endpoints, observed peak, sample count and thermal endpoints
-cover the whole XCTest process; sampling failure rejects memory evidence.
-Cancelled lease release does not join the adapter's asynchronous cleanup. A
-missing work sample cannot certify backend quiescence or accelerator memory.
-
-`DictationControllerModelProbeTests` exercises the actual controller/Stop/source
-and lease release with bilingual/Unicode/empty output, short PCM, input failure,
-preparation failure, invalid PCM and failed sampling. Launcher-boundary tests
-reject wrong modes, unknown content, malformed phases, forged input/completion
-and missing rows while retaining valid unsuccessful attempts. These doubles
-validate wiring and receipt handling only. The corpus README owns explicit
-native commands, context-window repetition, scopes and measurement limitations.
-The controller's reopened-closed-row journey also requires the opt-in phase
-receipt from that same incremental projection call site, with no claim of
-verified native delivery.
-
-Both launchers resolve the test executable from a bounded XML or binary
-`Contents/Info.plist`, not a fixed SwiftPM output name. The actual launcher tests
-cover native SwiftPM and SwiftBuild bundle layouts, Unicode executable names,
-malformed/missing metadata, invalid paths and symlink escape. Metadata bytes and
-the declared binary identity are rechecked after execution and between cohorts;
-a rewritten bundle cannot retain an admitted observation. This remains narrower
-than an immutable archive of all loaded frameworks and resources.
+`DictationSessionMeasurementTests`, `DictationControllerModelProbeTests` and the
+`--controller` lane drove the production dictation controller over the pinned
+public corpus. They left with the controller (D640); the observations below are
+the record of what they measured.
 
 ### Sequential controller corpus observations
 
-`run_dictation_controller_matrix.py` reuses the controller launcher, its closed
+`run_dictation_controller_matrix.py`, which stays only until the dictation
+tooling is removed and has no Swift test left to launch, reuses the controller launcher, its closed
 receipt validator and the private create-only JSON publisher. It admits the
 whole pinned audio manifest before planning unique selected cells in stable
 order. Each cohort has at most 16 cells and 120 seconds of input per pass; the
@@ -9419,103 +9164,6 @@ intentionally unreadable resource mode. The real payload verifier runs against
 both resource layouts under creation masks `077`, `027` and `022`; the parent
 stays `0700`, and unreadable bundles still fail closed. A restrictive test-runner
 mask is not a simulated distribution defect.
-
-### Dictation lifecycle ownership evidence
-
-`DictationSessionLifecycleTests.swift` exercises the real controller's EOF,
-provider cancellation, deferred native Stop, duplicate Stop, generation-fenced
-feedback, late key-up and replacement-session call sites. Bilingual text includes
-typographic apostrophes, punctuation-only input, empty text and the minimum
-capture boundary. Injected gates hold the actual lifecycle boundaries instead
-of guessing their completion with a fixed sleep. These complement readiness,
-resource-ownership and incremental-projection regressions; they do not substitute
-for physical devices, real ASR quality or native AX/editor readback.
-
-`testLateRecoveryFeedbackCannotCloseTheNextLanguageSession` holds the actual
-recovery retry's cancellation-uncooperative feedback deadline across a replacement
-capture, in both EN-to-ES and ES-to-EN directions. It checks destination capture
-count, delivery completion, runtime lease release and unchanged next-session
-text/phase, not just a timer policy or word count.
-
-`testDictationSourceEOFBeforeStopIsVisibleAndCanRestart` uses the real app's
-menu/panel with an isolated first-capture EOF before Stop, shows the localized
-interrupted message, then proves dismissal and restart in each locale. The fixture consumes its one-shot failure at source construction,
-not during menu dependency construction. Its scope has an explicit 20-second
-per-case budget; aggregate full-suite budgets are unchanged.
-
-### Deterministic dictation text-mode coverage
-
-Swift Testing enters the real DictationController from bilingual synthetic
-captions, not only the text-policy function. Cases preserve negations, typographic
-apostrophes, accented words, unpunctuated amounts and technical replacements;
-characterization separately exercises a fresh preference set and first Enable
-after actual AppServices construction. Legacy false filler/enable choices retain
-their semantics. Codec boundaries, profile replacement at capacity, rejected
-identifiers, temporary preference writes, chooser-fixture admission, and failed
-database admission have separate cases. Empty and non-lexical captions reach the
-real first-buffer/recognizer boundary rather than using an initially empty UI
-partial as readiness; literal fillers remain deliverable words. A parameterized matrix reaches delivery through exact captured
-bundle ID, exercises global/profile/session precedence and proves one destination
-capture. Late Settings edits, Stop-tail overrides, cancellation/restart and
-corrupt/duplicate profiles have separate observations. The existing fixture uses
-process-wide NSArgumentDomain; this suite serializes that fixture owner rather
-than claiming independent parallel preferences or production stress coverage.
-
-Three real-app journeys target the panel override/restart, malformed-profile
-Reset, and ordinary NSOpenPanel application selection/mode/removal/original
-preservation. Only the owned fixture's initial chooser directory is selected by
-composition; XCTest still selects the actual application bundle and production
-Bundle reader. Each new interactive control and mode choice has an identifier.
-The mode menu
-keeps the trigger identifier stable after selection; viewport-aware Settings
-interactions reuse the existing bounded reveal helper.
-Prospective per-case caps are 40/20/20 seconds; no existing cap, aggregate 1,300-second
-limit or full p95 30-second limit is widened. These cases belong to Dictation's
-scope; localization still expands bilingual coverage. These journeys target configuration and
-controller reachability, not acoustic recognition or universal native delivery.
-
-Unavailable delivery is exercised through the production destination factory
-and the real controller for secure/unreadable fields and bilingual captions.
-A captured Literal application profile must remain Literal in recovery, while
-Retry stays disabled and no paste is recorded. That test is not native AX or
-permission evidence. Profile-section journeys also assert the localized expansion
-state of the full-row disclosure button, not just the label's existence.
-
-The native application chooser is an asynchronous sheet attached to Settings;
-the journey queries that actual role and retains a diagnostic owned hierarchy
-before returning on missing presentation, rather than typing into an unknown
-modal context. The corrupt-profile journey proves both expansion and collapse.
-A headless real-AppServices case proves unavailable-window admission reports an
-error, releases selection ownership, and writes no profile.
-
-
-The native-controller fixture's Swift Testing coverage enters the same driver
-used by the real-app journey: it must wait for both the mode choice and a
-separate Stop acknowledgement, deliver the
-transformed output once, retire owned resources on cancellation, and reject an
-already active controller without cancelling it. Constructor matrices reject
-missing scripted-recognition flags or non-temporary composition; missing
-controller dependencies cannot silently select the direct-inserter path. These
-deterministic cases do not claim native focus, Accessibility, timing or ASR proof.
-
-Lifecycle success-feedback fixtures use `DictationControllerHarness.verifyingDelivery`
-to reach the real inserter and bounded readback through `TextReadbackHarness`.
-The general harness stays dispatched by default: a posted event is not a
-verified edit, and tests needing restartable success must supply observation
-explicitly. This remains deterministic platform-port evidence, not native AX
-or ASR qualification.
-
-The native receiver journey deliberately starts with a regular non-editor
-responder and an unavailable text view. It proves that the armed fixture stays
-waiting, then enables the editor through its identified control and requires
-both verified readback and exact Unicode content. Foreground identity and
-`canRetry` alone previously spent the only Paste before editor installation;
-the actual receiver remained empty. Read-only selection/count readiness now
-precedes that one attempt without changing production eligibility or the
-acknowledgement deadline. A failed status assertion does not return before
-checking the actual editor and clipboard: those are independent evidence, not
-implications of a port result. This prepared receiver does not qualify slow,
-unsupported or arbitrary third-party AX servers.
 
 ### Audio export bridge characterization
 

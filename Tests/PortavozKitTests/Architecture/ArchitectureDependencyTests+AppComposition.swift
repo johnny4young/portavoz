@@ -477,30 +477,6 @@ extension ArchitectureDependencyTests {
         for claim in ["claimAtFirstRun", "takeOwnership", "preferenceTurnedOn", "acquire(", ".start("] {
             XCTAssertFalse(release.contains(claim), claim)
         }
-        let admission = try Self.contents(of: "Sources/portavoz-app/DictationAdmission.swift")
-        XCTAssertTrue(admission.contains("selectionRewrite.releaseGlobalKeys()"))
-        XCTAssertTrue(admission.contains("selectionRewrite.revokeReplace()"))
-        let setup = try Self.contents(of: "Sources/portavoz-app/AppServices+DictationSetup.swift")
-        XCTAssertTrue(
-            try XCTUnwrap(setup.components(separatedBy: "preferenceChanged").last)
-                .contains("syncDictationTriggers(promptIfNeeded: enabled)"),
-            "Only the sync after the handoff can prompt, because only then does this app own anything")
-        XCTAssertFalse(
-            try Self.contents(of: "Sources/portavoz-app/AppLaunchModel.swift")
-                .contains("prewarmDictationIfConfigured"),
-            "Becoming the owner prewarms; a second call would start a second load")
-        for trigger in [
-            "DictationController+Hotkey.swift", "DictationController+ModifierKey.swift", "DictationController.swift",
-            "AppServices+PasteLastDictation.swift", "AppServices+SelectionRewrite.swift",
-        ] {
-            XCTAssertTrue(
-                try Self.contents(of: "Sources/portavoz-app/\(trigger)").contains("dictationTriggersMayArm"),
-                "\(trigger) arms a global trigger, which only the owner may do")
-        }
-        XCTAssertTrue(
-            try Self.contents(of: "Sources/portavoz-app/DictationOwnershipCoordinator.swift")
-                .contains("waitForRestoration(on: .general)"),
-            "A lease covers the clipboard restore that a delivery schedules")
         XCTAssertFalse(
             intents.contains("AppShortcutsProvider"),
             "macOS publishes the action only; an App Shortcut duplicates it in the picker")

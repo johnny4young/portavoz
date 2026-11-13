@@ -32,20 +32,20 @@ final class ModelMemoryResidencyIntegrationTests: XCTestCase {
         services.transcriber = engine
         engine = nil
 
-        // Enter the real resident-only acquisition seam twice, as independent
-        // recording and dictation borrowers do. No fabricated engine is used.
+        // Enter the real resident-only acquisition seam twice, as a recording and
+        // an independent second borrower do. No fabricated engine is used.
         var recording = try services.acquireResidentLiveSpeechRuntime()
-        var dictation = try services.acquireResidentLiveSpeechRuntime()
+        var second = try services.acquireResidentLiveSpeechRuntime()
         XCTAssertNotNil(recording)
-        XCTAssertNotNil(dictation)
+        XCTAssertNotNil(second)
         services.setModelMemoryProfile(.lightweight)
         try await waitForDeadlines(services)
         XCTAssertNotNil(observedEngine)
         XCTAssertTrue(services.transcriber === observedEngine)
         XCTAssertFalse(services.releaseLiveSpeechRuntime())
 
-        XCTAssertTrue(services.finishLiveSpeechRuntime(try XCTUnwrap(dictation)))
-        dictation = nil
+        XCTAssertTrue(services.finishLiveSpeechRuntime(try XCTUnwrap(second)))
+        second = nil
         services.scheduleRecordingEnginesRelease()
         try await waitForDeadlines(services)
         XCTAssertTrue(services.transcriber === observedEngine)
