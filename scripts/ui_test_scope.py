@@ -344,7 +344,11 @@ def app_features(filename: str) -> set[str]:
         # Root composition changes can affect every destination, but one
         # deterministic canary per route is sufficient; do not rerun all
         # feature permutations merely because a route was added or wired.
-        return {"background-work", "main-shell"}
+        # It also presents the legacy dictation notice.
+        return {"background-work", "main-shell", "dictation"}
+    if lowered == "settingsview.swift":
+        # Hosts the legacy dictation data section.
+        return {"settings-navigation", "dictation"}
     if lowered == "homeview.swift":
         # Today composes the Library snapshot; its own journeys plus the
         # sidebar canary cover navigation from and back to it.

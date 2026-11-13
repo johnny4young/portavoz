@@ -1077,6 +1077,7 @@ class UITestScopeTests(unittest.TestCase):
         selection = select_paths(["Sources/portavoz-app/ContentView.swift"])
         expected = set(FEATURE_TESTS["main-shell"])
         expected.update(FEATURE_TESTS["background-work"])
+        expected.update(FEATURE_TESTS["dictation"])
         self.assertEqual(set(selection.tests), expected)
         self.assertEqual(selection.locales, ("en",))
         self.assertLess(len(selection.tests), len(ALL_TESTS))
@@ -1144,6 +1145,15 @@ class UITestScopeTests(unittest.TestCase):
             expected = tuple(test for test in ALL_TESTS if test in FEATURE_TESTS["dictation"])
             self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en",), path)
+
+    def test_hosts_of_the_legacy_dictation_views_keep_their_journeys(self):
+        for path, own in (
+            ("Sources/portavoz-app/ContentView.swift", ("background-work", "main-shell")),
+            ("Sources/portavoz-app/SettingsView.swift", ("settings-navigation",)),
+        ):
+            selection = select_paths([path])
+            for feature in (*own, "dictation"):
+                self.assertLessEqual(set(FEATURE_TESTS[feature]), set(selection.tests), (path, feature))
 
     def test_shared_microphone_preference_reaches_recording_and_settings(self):
         selection = select_paths(["Sources/portavoz-app/MicrophoneInputSelection.swift"])

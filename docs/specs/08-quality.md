@@ -216,7 +216,8 @@ runtime budget) were deleted with them; the catalog holds 119 cases.
 `LegacyDictationUITests` owns the `dictation` selector now: the one-time notice
 that dictation moved, forced with `-show-dictation-moved-notice`, and deleting
 the kept history from Settings › Your data, both over a library seeded with
-`-seed-legacy-dictation`.
+`-seed-legacy-dictation`. `ContentView` and `SettingsView`, which host those
+views, select it too.
 `LiveEngineLeaseIntegrationTests` enters the real live-transcription call site
 with a pre-cancelled task and requires zero model-load or residency side effects.
 Its opt-in installed-model case (`PORTAVOZ_LIVE_LEASE_TESTS=1`) verifies that

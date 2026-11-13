@@ -107,8 +107,8 @@ lifecycle limitations. First-buffer readiness is not a continuous input-health
 watchdog or a sample-count duration guarantee; an input that stalls after its
 first callback needs separate capture-health evidence.
 
-The controller and native-receiver test seams (D515) improve reachability, not
-all dictation behavior. Source errors, producer failure notifications and
+The controller and native-receiver test seams (D515) left with dictation in
+2.0; they improved reachability, not all dictation behavior. Source errors, producer failure notifications and
 dropped relay yields revoke automatic delivery for their owning session;
 normal source or recognizer completion also requires the controller to have
 issued Stop, and cancelled terminal captions cannot overwrite a new session.
@@ -121,9 +121,7 @@ still need receiver/device evidence. Accessibility validation and keyboard-event
 posting are not an atomic editor transaction. The result now distinguishes
 bounded matching readback from unverified dispatch and refusal; unsupported
 editors remain explicitly unverified. Deterministic controller/inserter coverage
-cannot qualify native AX observation. The dedicated receiver requires the
-verified result and actual text, but its existence does not establish a passed
-gate. Timeout setup is applied to each newly retrieved focused-field object before
+cannot qualify native AX observation. No receiver target remains in 2.0. Timeout setup is applied to each newly retrieved focused-field object before
 security inspection, not just its application or an equal captured object.
 That wiring follows the SDK contract; adversarial slow native AX servers remain
 unmeasured. Specific AX timeouts limit requested work, not arbitrary server allocation
@@ -320,37 +318,11 @@ before choosing between trust repair and failure safety.
 
 ### Live dictation can propose text without speech
 
-**Open, reproduced in the public controller corpus.** The first complete
-480-variant/two-pass observation produced lexical text in 16 of 64 non-speech
-attempts: both passes of eight silence/tone variants. The real controller reached
-its delivery boundary; the explicit rejecting double prevented native Paste.
-The September 21 repeat with freshly materialized public audio and the current
-controller independently reproduced 16 lexical outputs in 64 non-speech attempts;
-the complete observation still does not accept recognition quality or native delivery.
-Lexical-content admission alone is therefore not evidence of speech, and the
-former claim that live Parakeet always yields no silence segment is withdrawn.
-The same run retained substantial recognition error in both languages; see the
-quality spec for scoped counts and measurement limitations. Diagnose model,
-stream lifecycle and adapter behavior, then validate a speech-admission mechanism
-with the existing corpus. Do not silently add RMS thresholds, output vocabulary
-filters or another default engine to hide these counterexamples. This work does
-not alter the original meeting audio or claim native delivery qualification.
-
-The dictation speech gate (D562) withholds the paste when Silero saw no speech
-in a complete pass, and offers the text for Copy instead. It is on by default
-since D563: over the 480-cell corpus it withheld 31 of 32 non-speech cells
-(a soft tone still pastes) with no speech cell missed. It fails open while its
-detector is missing, and the corpus is synthetic speech, so the
-real-microphone false-negative rate (whispering, distant microphones, accents)
-still needs field evidence. The detector analyzes only complete
-256 ms frames, so speech confined to the final partial frame of a session is
-not seen; the 250 ms stop tail makes that rare, and closing it needs a flush in
-the Silero adapter.
-
-The live lane still has no serving pre-transcription VAD gate. The distinct
-token-boundary defect and rejected passthrough repair are recorded below under
-**Live Parakeet token-delivery ownership needs field qualification**. Neither issue
-establishes the cause of every observed recognition error.
+**Not applicable (D640, Nov 2026).** The controller, its speech gate and the
+public corpus that reproduced this left Portavoz with dictation; this gap
+belongs to Secreteo. The meeting live lane still has no serving
+pre-transcription VAD gate; its token-boundary defect is recorded under
+**Live Parakeet token-delivery ownership needs field qualification**.
 
 ### Dictation cold start needs field timing
 
