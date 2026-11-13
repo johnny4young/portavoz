@@ -352,15 +352,6 @@ token-boundary defect and rejected passthrough repair are recorded below under
 **Live Parakeet token-delivery ownership needs field qualification**. Neither issue
 establishes the cause of every observed recognition error.
 
-The installed-model controller lane writes complete per-run receipts rather
-than per-caption progress. The sequential matrix launcher now preserves each
-bounded cohort's terminal files across later timeout or interruption, without
-raising the existing deadline or retrying failed cohorts. A failed cohort has
-no admitted partial cell count; a fresh process per cohort does not establish
-long single-process endurance or explain a backend stall. Complete matrix
-observation, quality acceptance, leak evidence and native delivery remain
-distinct requirements.
-
 ### Dictation cold start needs field timing
 
 D561 opens the microphone while the model loads and holds up to 30 s of queued
@@ -385,35 +376,10 @@ and Spanish, with VoiceOver on once, before calling the step finished.
 
 ### Dictation still needs a complete, phase-separated qualification
 
-The public corpus now specifies 480 variants over 60 text families, with exact
-source and local PCM admission checks. This is a test-data foundation, not a
-measured dictation-quality or latency result. An explicit installed-voice
-materializer now produces local PCM with code/voice-selection provenance,
-without treating synthetic output as ASR evidence. A separate installed-only
-Parakeet test lane now produces per-cell quality and live-work observations,
-not a competitive quality pass. Its same-process repetitions cannot establish
-cold-cache performance or distinguish every fixture/recognizer/composition cause
-of a mismatch. A separate explicit controller lane now joins the public input, real
-controller, installed adapter and whole-process footprint observation. It retains
-cancelled/failed attempts and rejects native insertion by design. Physical
-gesture/capture/dispatch acknowledgement and complete per-group qualification
-are not established by audio generation or a limited model/controller run.
-Natural accent/noise/device evidence is also distinct from synthetic variants.
-The controller lane also exposes a duration boundary hidden by model-only
-results: valid public minimal utterances can end before the existing minimum
-capture duration, so Stop cancels them without output. Keep those attempts in
-quality results; do not pad their audio or move the capture clock to model
-preparation to manufacture successful delivery. Any policy change needs separate
-gesture/capture characterization and preservation of tap/hold behavior.
-Do not adopt another engine or promote proposed numerical budgets on the
-strength of the corpus count. The source and audio-manifest contract lives in
-`Fixtures/DictationValidation/README.md` and the quality specification. A
-proposed, not yet accepted, natural-speaker qualification and comparison
-protocol lives in [DICTATION-QUALITY.md](DICTATION-QUALITY.md); its candidate
-targets are not release budgets. The offline `dictation_benchmark.py` report
-adapter only scores declared, content-free counts and phases: existing
-model/controller receipts still need a reviewed collection adapter, and its
-reports never qualify a population, consent or a quality threshold.
+**Not applicable (D640, Nov 2026).** Portavoz 2.0 removed the public dictation
+corpus, its installed-model, controller and field-recording lanes and the
+offline benchmark adapter with the rest of dictation. This qualification
+belongs to Secreteo.
 
 ### Live Parakeet token-delivery ownership needs field qualification
 
@@ -1436,15 +1402,6 @@ engine or claim a general speed/accuracy improvement until those gates pass.
 
 ## Dictation end-to-end measurement qualification
 
-The controller now exposes opt-in, content-free request-to-outcome phase
-observations. Deterministic call-site tests establish wiring and session
-ownership only. The separate public-PCM/controller lane binds source/model
-identity and samples whole-process memory but deliberately rejects insertion.
-It does not replace complete corpus review, independently repeatable host
-comparisons, AppServices cache ownership or native inserter readback evidence.
-Physical keyboard timing and rendered-frame latency
-are outside these controller timestamps. A dispatch-reported result is not a
-successful-delivery baseline. Native Accessibility admission and a verifiable
-receiver remain separate prerequisites; missing evidence is not an accepted
-performance result. Existing capture-loss, cancellation and destination-safety
-limitations are not closed by adding measurements.
+**Not applicable (D640, Nov 2026).** The controller, its phase observations and
+the public-PCM controller lane left Portavoz with dictation; Secreteo owns this
+measurement.

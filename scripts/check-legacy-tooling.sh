@@ -41,11 +41,6 @@ python3 -m unittest Tests.Tooling.test_release_symbols
 python3 -m unittest Tests.Tooling.test_ui_bundle_metadata
 python3 -m unittest Tests.Tooling.test_ui_host
 python3 -m unittest Tests.Tooling.test_ui_copy_policy
-python3 -m unittest Tests.Tooling.test_dictation_corpus \
-  Tests.Tooling.test_dictation_materialization Tests.Tooling.test_dictation_model_runner \
-  Tests.Tooling.test_dictation_controller_runner Tests.Tooling.test_dictation_controller_matrix \
-  Tests.Tooling.test_dictation_benchmark Tests.Tooling.test_dictation_field_corpus
-python3 scripts/dictation_corpus.py verify-public
 python3 -m unittest Tests.Tooling.test_commitment_quality
 python3 scripts/commitment_quality.py validate \
   --fixture Fixtures/CommitmentQuality/public-synthetic-v1.json
