@@ -19,7 +19,6 @@
     "DictationCorrectionUITests/testTheDictionaryGroupsEveryHeardFormUnderItsSpelling()": 31.2,
     "DictationHistoryUITests/testADictationCanBeAddedToAMeetingsNotes()": 15.9,
     "DictationHistoryUITests/testADictationSavedToHistorySaysSoInsteadOfNothingWasSaved()": 9.5,
-    "DictationHistoryUITests/testAskAboutDictationsCitesAndOpensTheDictation()": 17.0,
     "DictationHistoryUITests/testHistoryStartsOffAndTurnsOnFromTheDictationsPage()": 8.8,
     "DictationHistoryUITests/testSavedDictationsCanBeDeletedOneByOneOrAll()": 12.7,
     "DictationHistoryUITests/testSearchAndFiltersNarrowTheHistory()": 13.0,

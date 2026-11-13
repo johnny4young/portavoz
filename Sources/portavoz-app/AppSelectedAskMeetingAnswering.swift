@@ -15,7 +15,6 @@ enum AppAskAnswerProviderResolution: Sendable {
 final class AppSelectedAskMeetingAnswering:
     AskMeetingAnswering,
     AskNoteAnswering,
-    AskDictationAnswering,
     AskWebAnswering,
     InterviewQuestionAnswering,
     @unchecked Sendable {
@@ -104,27 +103,6 @@ final class AppSelectedAskMeetingAnswering:
             authoredAt: citation.authoredAt,
             timestamp: citation.timestamp,
             text: citation.text)
-    }
-
-    func answer(
-        question: String,
-        citations: [AskDictationCitation]
-    ) async throws -> String? {
-        guard let resolver = currentResolver() else { return nil }
-        switch await resolver() {
-        case .unavailable:
-            return nil
-        case .available(let provider):
-            return try await provider.answer(
-                question: question,
-                dictationPassages: citations.map {
-                    RAGDictationPassage(
-                        dictationID: $0.dictationID.rawValue,
-                        createdAt: $0.createdAt,
-                        applicationName: $0.applicationName,
-                        text: $0.text)
-                })
-        }
     }
 
     func answer(

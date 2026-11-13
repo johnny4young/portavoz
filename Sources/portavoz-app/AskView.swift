@@ -9,7 +9,6 @@ struct AskView: View {
     let model: AskModel
     let onOpenCitation: (AskCitation) -> Void
     let onOpenNoteCitation: (AskNoteCitation) -> Void
-    let onOpenDictationCitation: (AskDictationCitation) -> Void
 
     @FocusState private var questionFocused: Bool
 
@@ -158,14 +157,6 @@ struct AskView: View {
                         model.state.pendingNoteCitations,
                         identifierPrefix: "ask-pending-note-citation")
                 }
-                if !model.state.pendingDictationCitations.isEmpty {
-                    Text("From your dictations")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    dictationCitationButtons(
-                        model.state.pendingDictationCitations,
-                        identifierPrefix: "ask-pending-dictation-citation")
-                }
                 if !model.state.pendingWebCitations.isEmpty {
                     Text("Web sources available now")
                         .font(.caption.weight(.semibold))
@@ -228,11 +219,6 @@ struct AskView: View {
                 .accessibilityIdentifier("ask-sources-\(exchange.id.uuidString)")
             }
             webFailureNotice(exchange.webSourceFailures)
-            if !exchange.dictationCitations.isEmpty {
-                dictationCitationCards(
-                    exchange.dictationCitations,
-                    identifierPrefix: "ask-dictation-citation-\(exchange.id.uuidString)")
-            }
         }
         .id(exchange.id)
     }
@@ -264,67 +250,6 @@ extension AskView {
             .help("\(citation.authoredAt.formatted())\n\(citation.text)")
             .accessibilityIdentifier("\(identifierPrefix)-\(index)")
         }
-    }
-
-    @ViewBuilder
-    private func dictationCitationButtons(
-        _ citations: [AskDictationCitation],
-        identifierPrefix: String
-    ) -> some View {
-        ForEach(Array(citations.enumerated()), id: \.offset) { index, citation in
-            Button {
-                onOpenDictationCitation(citation)
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: PVSymbol.dictation)
-                    Text("“\(citation.text)” · \(dictationCaption(citation))")
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-                .font(.caption)
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(PVDesign.accent)
-            .help(citation.text)
-            .accessibilityIdentifier("\(identifierPrefix)-\(index)")
-        }
-    }
-
-    /// In an answer the dictation's own words are the content, so each one
-    /// shows its text; a click opens it in Dictations.
-    private func dictationCitationCards(
-        _ citations: [AskDictationCitation],
-        identifierPrefix: String
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ForEach(Array(citations.enumerated()), id: \.offset) { index, citation in
-                Button {
-                    onOpenDictationCitation(citation)
-                } label: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(citation.text)
-                            .lineLimit(3)
-                            .multilineTextAlignment(.leading)
-                            .foregroundStyle(.primary)
-                        Label(dictationCaption(citation), systemImage: PVSymbol.dictation)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: 640, alignment: .leading)
-                    .padding(10)
-                    .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: PVDesign.radiusSmall))
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help(L10n.text("Open in Dictations"))
-                .accessibilityIdentifier("\(identifierPrefix)-\(index)")
-            }
-        }
-    }
-
-    private func dictationCaption(_ citation: AskDictationCitation) -> String {
-        "\(citation.applicationName ?? L10n.text("Dictation")) · "
-            + citation.createdAt.formatted(date: .abbreviated, time: .shortened)
     }
 
     @ViewBuilder
@@ -413,9 +338,6 @@ extension AskView {
                 Label("Notes", systemImage: "note.text")
                     .tag(AskModel.SourceMode.notes)
                     .accessibilityIdentifier("ask-source-notes")
-                Label("Dictations", systemImage: PVSymbol.dictation)
-                    .tag(AskModel.SourceMode.dictations)
-                    .accessibilityIdentifier("ask-source-dictations")
                 Label("Web", systemImage: "globe")
                     .tag(AskModel.SourceMode.web)
                     .accessibilityIdentifier("ask-source-web")
@@ -445,41 +367,8 @@ extension AskView {
                 "Only your explicit local notes will be searched. AI-enhanced notes are excluded.",
                 systemImage: "person.crop.circle.badge.checkmark")
                 .accessibilityIdentifier("ask-source-status-notes")
-        case .dictations:
-            // One stable container, so the consent is read once per showing.
-            VStack(alignment: .leading) { dictationSourceStatus }
-                .task { model.refreshDictationSource() }
         case .web:
             webSourceStatus
-        }
-    }
-
-    @ViewBuilder
-    private var dictationSourceStatus: some View {
-        switch model.state.dictationSourceState {
-        case .unknown, .checking:
-            HStack(spacing: 8) {
-                ProgressView().controlSize(.small)
-                Text("Checking dictation history…")
-            }
-            .accessibilityIdentifier("ask-source-dictations-checking")
-        case .available:
-            Label(
-                "Only your saved dictations on this Mac will be searched.",
-                systemImage: "lock")
-                .accessibilityIdentifier("ask-source-status-dictations")
-        case .historyOff:
-            Label(
-                "Dictation history is off. Turn it on in Dictations to ask about what you dictate.",
-                systemImage: "lock.slash")
-                .accessibilityIdentifier("ask-source-status-dictations-off")
-        case .failed:
-            HStack(spacing: 8) {
-                Label("Dictation history unavailable.", systemImage: PVSymbol.warning)
-                Button("Try again") { model.refreshDictationSource() }
-                    .accessibilityIdentifier("ask-source-dictations-retry")
-            }
-            .accessibilityIdentifier("ask-source-dictations-failed")
         }
     }
 
@@ -546,11 +435,6 @@ extension AskView {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("\(identifier)-notes")
-        case .dictations:
-            Label("Source: Dictations", systemImage: PVSymbol.dictation)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .accessibilityIdentifier("\(identifier)-dictations")
         case .web(let host):
             Label("Source: \(host)", systemImage: "globe")
                 .font(.caption)
@@ -579,8 +463,6 @@ extension AskView {
             selectedMeetingTitle != nil
         case .notes:
             true
-        case .dictations:
-            model.state.dictationSourceState == .available
         case .web:
             model.state.webConsentApproved && model.canApproveWebConsent
         }

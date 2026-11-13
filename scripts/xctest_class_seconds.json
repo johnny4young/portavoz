@@ -1,6 +1,5 @@
 {
   "ArchitectureDependencyTests": 45.7,
-  "AskDictationRetrievalTests": 2.3,
   "AskNoteSearchTests": 3.5,
   "AskPipelineTelemetryTests": 2.3,
   "AskQualityAttributionTests": 5.2,
@@ -54,8 +53,6 @@
   "DictationPracticeFieldTests": 1.0,
   "DictationReadinessTests": 5.0,
   "DictationResourceOwnershipTests": 3.9,
-  "DictationSearchBenchmarkTests": 4.5,
-  "DictationSearchStoreTests": 1.3,
   "DictationSessionMeasurementTests": 3.1,
   "DictationStatsStoreTests": 1.9,
   "DictationStreamingProjectionTests": 3.8,

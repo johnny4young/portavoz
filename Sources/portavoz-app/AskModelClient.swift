@@ -35,12 +35,6 @@ protocol AskModelClient: AnyObject {
         limit: Int,
         onEvidence: @escaping AskNoteEvidenceReceiver
     ) async throws -> AskNoteAnswer
-    func askDictationHistoryIsOn() async throws -> Bool
-    func answerAskDictations(
-        _ question: String,
-        limit: Int,
-        onEvidence: @escaping AskDictationEvidenceReceiver
-    ) async throws -> AskDictationAnswer
     func answerAskWeb(
         _ request: AskWebRequest,
         onEvidence: @escaping AskWebEvidenceReceiver,
@@ -63,23 +57,6 @@ extension AskModelClient {
 
     func loadAskSourceMeetings(limit _: Int) async throws -> [AskSourceMeetingOption] {
         []
-    }
-
-    func askDictationHistoryIsOn() async throws -> Bool {
-        false
-    }
-
-    func answerAskDictations(
-        _ question: String,
-        limit _: Int,
-        onEvidence _: @escaping AskDictationEvidenceReceiver
-    ) async throws -> AskDictationAnswer {
-        AskDictationAnswer(
-            question: question,
-            generatedText: nil,
-            citations: [],
-            generationOutcome: .notRequested,
-            historyIsOff: true)
     }
 
     func answerAskWeb(

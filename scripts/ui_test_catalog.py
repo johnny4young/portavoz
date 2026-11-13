@@ -65,7 +65,6 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("InterviewAssistUITests", "testInterviewAssistGroundsTheCurrentQuestionInExactEvidence"),
     ),
     "ask": (
-        test_id("DictationHistoryUITests", "testAskAboutDictationsCitesAndOpensTheDictation"),
         test_id("LibraryUITests", "testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState"),
         test_id("LibraryUITests", "testAskConversationAnswersAndSeeksToExactCitation"),
     ),
@@ -204,7 +203,6 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("DictationHistoryUITests", "testSettingsAskForHistoryConsentWithEverySwitchOff"),
         test_id("DictationHistoryUITests", "testSearchAndFiltersNarrowTheHistory"),
         test_id("DictationHistoryUITests", "testADictationCanBeAddedToAMeetingsNotes"),
-        test_id("DictationHistoryUITests", "testAskAboutDictationsCitesAndOpensTheDictation"),
         test_id("DictationHistoryUITests", "testStatisticsSummarizeTheWeekWithoutTheHistory"),
         test_id("DictationHistoryUITests", "testStatisticsStartOffAndTurnOnFromSettings"),
         test_id("AutomationUITests", "testOpenDictationsShortcutShowsItsSearch"),

@@ -63,8 +63,7 @@ final class DictationHistoryModel {
         filter = DictationRecordFilter(query: words)
     }
 
-    /// Shows only this dictation the next time the history loads, as when an
-    /// Ask citation opens it.
+    /// Shows only this dictation the next time the history loads.
     func focus(on id: DictationRecordID) {
         filter = DictationRecordFilter(recordID: id)
         records = records.filter { $0.id == id }
