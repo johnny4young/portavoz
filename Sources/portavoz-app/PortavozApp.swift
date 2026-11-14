@@ -59,7 +59,7 @@ struct PortavozApp: App {
             } else {
                 AppLaunchRootView(model: launch)
                     .portavozLocalized()
-                    .frame(minWidth: 900, minHeight: 560)
+                    .windowMinimumSize(width: 900, height: 560)
                     .tint(PVDesign.accent)
                     .background {
                         if usesDisposableStore {
