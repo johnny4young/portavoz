@@ -128,7 +128,7 @@ Requires active Apple Intelligence (`unavailabilityReason()` provides the human-
 
 The canonical real-model preflight runs all six gated classes in the SwiftPM
 Release configuration. This is both candidate-representative and a privacy
-boundary: FluidAudio fork at `16ff239818ddb6787629dab38ae43e8bdd0e7546`
+boundary: FluidAudio fork at `dbed9acbaaefcdeb0d17fd3a94e92a0319488069`
 provides log controls, and Parakeet disables console mirroring and below-warning
 SDK messages before manager preparation. Unconfigured vendor DEBUG diagnostics
 can still contain partial transcripts. The Parakeet integration test therefore

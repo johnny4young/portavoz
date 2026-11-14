@@ -1,5 +1,5 @@
 {
-  "originHash" : "046a09b25ec775bab4f5e73f64e1ba4790601f9f562552ffc011a0b812ecc985",
+  "originHash" : "0390c37f036eafdb34d8698fdf3a17c47a65f263e5780b775e61374f6df79ea5",
   "pins" : [
     {
       "identity" : "eventsource",
@@ -15,7 +15,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/johnny4young/FluidAudio.git",
       "state" : {
-        "revision" : "16ff239818ddb6787629dab38ae43e8bdd0e7546"
+        "revision" : "dbed9acbaaefcdeb0d17fd3a94e92a0319488069"
       }
     },
     {

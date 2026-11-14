@@ -149,15 +149,18 @@ this composer and corrected text remains intentionally unmaterialized.
 ## Engine dependency boundary
 
 FluidAudio is fixed to the reviewed fork at
-`16ff239818ddb6787629dab38ae43e8bdd0e7546`, based on upstream
-`224de0fb3c304b41bbae24e85e1801900865ff3e` (D559). The Swift 6.2 manifest enables
+`dbed9acbaaefcdeb0d17fd3a94e92a0319488069`, based on upstream
+`4ce08d26c9eb7f129e104fbe54da430ed8f5d4f1` (D559, D642). The Swift 6.2 manifest enables
 only Diarizer; ASR/VAD remain available, while unused TTS resources and NeMo
 linkage are excluded. D516's explicit-review policy remains; D539 records the
 historical 0.15.8 admission, not this fork's qualification. Resolving another
 dependency cannot move this full SHA. Production imports remain in the existing
 six transcription/diarization adapters, including `SileroVoiceActivityDetector`.
-App composition consumes Portavoz contracts. Model artifacts, engine defaults,
-window settings, batch serialization and deployment floors are unchanged.
+App composition consumes Portavoz contracts. The fork re-decodes the final live window
+from a fresh state when the opening windows emitted no tokens, so a short utterance keeps
+its start, and capture audio that is not 16 kHz mono resamples at the SDK's default medium
+mastering quality. Model artifacts, window settings, batch serialization and deployment
+floors are unchanged.
 An empty job validates terminal lineage without publishing a channel-scoped
 preview clear. Before any admitted PCM, native text is an unbound-source error,
 not microphone evidence.
