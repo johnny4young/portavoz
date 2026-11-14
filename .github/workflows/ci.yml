@@ -48,7 +48,8 @@ jobs:
         run: python3 -m unittest Tests.Tooling.test_perf_ledger
 
   lint:
-    runs-on: ubuntu-latest
+    # The pinned Linux SwiftLint links libxml2.so.2, which ubuntu-26.04 no longer ships.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
