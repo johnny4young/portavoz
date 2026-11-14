@@ -314,6 +314,34 @@ verified conditional scope and causal timestamp ordering are prerequisites for
 execution. The exact gate can retain a total when a lane never starts, but a
 skipped, duplicate, foreign or contradictory gate cannot supply a duration.
 
+A cancelled job near its limit counts as a timeout unless its runner was never
+acquired: GitHub cancels such a job after 15 minutes or more, and its annotation
+makes it infrastructure. An explicit `timed_out` conclusion is always a timeout.
+Each event is judged against its own ceiling, so a push reads `build-and-test`'s
+30 minutes, not the pull request's 17.
+
+Pull-request job ceilings hold the slowest measured case, not the warm p95
+(D641). Over the pull request heads from 2026-11-13 13:27 UTC, when the product
+split began landing:
+
+| Job | Window | N | p50 | p90 | p95 | max | Ceiling |
+|---|---|--:|--:|--:|--:|--:|--:|
+| `build-and-test` | after the split | 10 | 6:09 | 11:29 | 13:04 | 13:04 | 17 |
+| `build-and-test` | 9 days before | 79 | 6:28 | 10:06 | 10:56 | 12:42 | — |
+| `ui-tests` | after the split | 8 | 7:58 | 9:22 | 9:22 | 9:22 | 14 |
+| `ui-tests` | 9 days before | 49 | 7:26 | 9:30 | 9:46 | 10:13 | — |
+
+Both post-split samples are under the 30-head minimum, and none was cold. A pull
+request never saves the cache, so an image or Xcode change builds it cold. Cold
+`build-and-test` runs took 15:13, 13:55 and 12:31 on `main` pushes and 13:48 and
+12:55 on manual runs; a pull request that restored a seed took 15:00. Its 17
+minutes are 15:13 rounded up, plus one. In `ui-tests`, the slowest build left the
+fit 581 s into the job, the ten canaries need about 177 s, and the fit has overrun
+its 570-second budget by up to 67 s; its 14 minutes cover that plus teardown, plus
+one. Main pushes and manual runs keep 30 minutes for `build-and-test`; a manual
+`full_ui` run keeps 90 for `ui-tests`, one without it gets 14 and still fits its
+selection, and nightly jobs keep their own limits.
+
 Summaries use nearest-rank percentiles and keep ordinary failures, timeouts and
 superseded attempts visible. Missing measurements are counted and cannot produce
 a within-limit result. Complete head/attempt inventory, classification and
@@ -541,8 +569,10 @@ by feature tier and fewest seconds. After its build, the UI job's `scripts/ui_te
 while their hosted p90 and xcodebuild's overhead fit what remains of 570 seconds, less 15 for
 teardown (D622). The rest are not dropped: `cut` names them in the job
 summary, a `ui-budget-cut` notice, the gate's result and the lane receipt, and nightly owns them. A
-late build runs the canaries alone and never cuts one, while canaries over a nominal 300 seconds
-fail the selection, and `--budget` dry-runs that figure. `docs/evidence/ui-test-hosted-seconds.json` comes from
+late build runs the canaries alone and never cuts one. When even they cannot end before the job's
+14-minute timeout (`UI_JOB_CEILING_MINUTES`, D641) less teardown, the fit fails with a
+`ui-late-build` error instead of letting the timeout kill a test; a manual `full_ui` run passes its
+90 minutes. Canaries over a nominal 300 seconds fail the selection, and `--budget` dry-runs that figure. `docs/evidence/ui-test-hosted-seconds.json` comes from
 `scripts/ui_test_hosted_seconds.py` over nightly logs; a case without one counts at its ceiling. `scripts/ui_host.py` makes this lane
 capture screenshots instead of video (D625); nightly and local project runs keep their video. A local `make test-ui-changed`
 does not cut. `testCleanStopReachesAReadyMeetingWithItsTranscriptAndPlayer` proves a
@@ -5348,7 +5378,7 @@ preserved English receipt and missing Spanish receipt distinguish orchestration
 exhaustion from a product assertion, skip, malformed receipt, or green retry.
 
 The `ui-tests` job keeps a 90-minute global orchestration ceiling only on a
-manual complete run, and 22 minutes on a pull request (D622). The 90 minutes were sized for one
+manual complete run, and 14 minutes on a pull request (D641). The 90 minutes were sized for one
 build plus both complete sequential locales with bounded
 hosted variance and cleanup/upload/classification headroom. Neither is a product
 or per-test runtime budget: selectors, assertions, test waits, the controlled-

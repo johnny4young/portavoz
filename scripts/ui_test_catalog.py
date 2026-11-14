@@ -346,6 +346,8 @@ UI_TEST_BUDGET_SECONDS = 300.0
 # A pull request's UI job; after the build, its candidates get what remains of this.
 UI_JOB_BUDGET_SECONDS = 570.0
 UI_JOB_TEARDOWN_SECONDS = 15.0
+# The job's pull-request timeout: a cold build plus the canaries must end inside it.
+UI_JOB_CEILING_MINUTES = 14
 UI_TEST_OVERHEAD_SECONDS = 46.0
 UI_TEST_OVERHEAD_PER_TEST_SECONDS = 0.22
 

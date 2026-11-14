@@ -22521,6 +22521,10 @@ than before and has to dispatch `full_ui` when that matters.
 
 ## D622 — A pull request's UI host comes from the SwiftPM build, and the budget from its job
 
+> **Ceiling superseded by D641 (13 Nov 2026).** A pull request's `ui-tests` job now stops
+> at 14 minutes, and a build too late for the canaries fails the fit by name. Everything else
+> in this decision stands.
+
 The UI lane compiled the whole app a second time with `xcodebuild`, always cold, in a second
 macOS job that took 8 to 12 minutes before a test ran. No selection could fit a 10-minute job
 around that. The lane now restores the seed `build-and-test` uses, builds `portavoz-app` with the
@@ -22936,3 +22940,35 @@ for Secreteo (2026-11-13); only the 2.0 release waits. Between the first removal
 change and 2.0, `main` is not releasable. Users who stay on 1.x keep their dictation;
 Shortcuts and MCP clients must be set up again in Secreteo. The removal is
 complete on `main`; README and the site change with the 2.0 release.
+
+---
+
+## D641 — Pull-request job ceilings hold the slowest cold build
+
+**Context:** D622 set the `ui-tests` ceiling at 22 minutes so a cold build could finish, and
+`build-and-test` kept 30 on every event. After dictation left, `scripts/ci_time_report.py`
+over the pull request heads from 2026-11-13 13:27 UTC measured `build-and-test` at a
+nearest-rank p95 of 13:04 (N=10) and `ui-tests` at 9:22 (N=8). That 13:04 run restored a
+fallback seed, so it was not cold, and no post-split pull request was. A pull request never
+saves the cache, and a runner image or Xcode pin change makes it build fully cold. Cold
+`build-and-test` runs of the same workload took 15:13, 13:55 and 12:31 on `main` pushes and
+13:48 and 12:55 on manual runs, and one pull request that restored a seed still took 15:00. In
+`ui-tests`, the slowest build left the fit 581 s into the job, the ten canaries need about
+177 s at hosted p90 with xcodebuild's overhead, and the fit has overrun its 570-second budget
+by up to 67 s.
+
+**Decision:** a pull request's limit holds its slowest measured case, not its warm p95.
+`build-and-test` stops at 17 minutes: the slowest cold build, 15:13, rounded up, plus one.
+`ui-tests` stops at 14: 581 s of build, 177 s of canaries and teardown come to about 13
+minutes, plus one. The `ui-tests` ceiling lives in `scripts/ui_test_catalog.py`, and when the
+build leaves too little time for the cases that must run, `scripts/ui_test_fit.py` fails with
+an error that names the late build instead of letting the timeout kill a test. Main pushes and
+manual runs keep 30 for `build-and-test`. A manual `full_ui` keeps 90; a manual run without it
+gets 14 and still applies the fit. Nightly owns its own jobs and limits. The report reads each
+event's own ceiling, and it never infers a timeout for a job whose runner was never acquired,
+since GitHub cancels such a job after 15 minutes or more.
+
+**Consequences:** this replaces D622's 22-minute ceiling. A run past the ceiling is a
+failure and counts against the SLO; it is not dropped as a sample. The post-split evidence is
+thin (fewer than 30 heads in each cohort), so the values are re-derived with the same report
+once the window holds 30 ordinary heads and a cold pull request sample.

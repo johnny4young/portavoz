@@ -6541,8 +6541,11 @@ reliability evidence retained from 9 Aug, is:
   shards and on demand;
 - hosted pull-request UI runs compile once, execute the English selection as a
   first attempt, preserve its result bundle, and then apply one fail-closed
-  functional/receipt classifier. The enclosing job's ceiling is 22 minutes, and 90
-  on a manual complete run; this does not alter any
+  functional/receipt classifier. The enclosing job's ceiling is 14 minutes, and 90
+  on a manual complete run; `build-and-test` stops at 17 minutes on a pull request
+  and 30 on main and manual runs. Each pull-request ceiling holds the slowest
+  measured cold build plus a minute, and a build too late for the canaries fails
+  the fit by name instead of reaching the timeout. This does not alter any
   per-journey wait, assertion, runtime budget, selector, or retry policy;
 - every UI run emits content-free runtime and execution receipts. Controlled
   local/stable-Mac integration and release runs enforce the unchanged per-journey, exact-
