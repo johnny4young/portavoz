@@ -36,11 +36,11 @@ let package = Package(
         // caption behavior, so an upgrade needs matched ASR, diarization and
         // resource evidence. A minor bump is categorically riskier still —
         // FluidAudio renames public types across minors (0.12 → 0.15 did).
-        // Latest upstream plus an explicit raw-token revision contract.
+        // Upstream main plus two fixes proposed upstream.
         // Evaluation candidate: no new models, unused TTS/NeMo are not linked.
         .package(
             url: "https://github.com/johnny4young/FluidAudio.git",
-            revision: "3648473d150307bde5d604a90137c839d1e0d2f1",
+            revision: "dbed9acbaaefcdeb0d17fd3a94e92a0319488069",
             traits: ["Diarizer"]),
         // Dictation ownership (MIT), shared with Secreteo: 2.0 only releases a claim 1.x left behind.
         .package(

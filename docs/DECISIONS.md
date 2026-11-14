@@ -22975,17 +22975,26 @@ once the window holds 30 ordinary heads and a cold pull request sample.
 
 ---
 
-## D642 — The speech fork reuses its resampling converter
+## D642 — The speech fork follows upstream and reuses its resampling converter
 
-During a live recording, FluidAudio's `AudioConverter` built and configured a new
-mastering-quality `AVAudioConverter` for every capture buffer, on both Parakeet
-channels and the live diarizer. On short buffers that setup cost about as much
-as the conversion itself.
+Upstream FluidAudio merged the raw-token revision contract as #1035, so the fork now
+sits on upstream `4ce08d2d` instead of D559's snapshot. Upstream's token-revision code
+replaces the fork's earlier copy with the same public API. The fork, at `dbed9acbaaefcdeb0d17fd3a94e92a0319488069`, adds
+two reviewed changes on top, both proposed upstream as #1164 and #1165:
 
-The fork, at `3648473d150307bde5d604a90137c839d1e0d2f1` on top of D569's
-revision, keeps the last converter while the formats match and resets it before
-each call. A reset converter produces the same samples as a fresh one, bit for
-bit, so ASR, diarization and their calibration are unchanged; the fork's tests
-compare both on uneven buffer sizes and a mid-stream format change, and
-concurrent callers never share an instance. Algorithm, quality and every other
-term of D559 and D569 are unchanged.
+- The final re-decode after token-empty opening windows starts at frame zero with a
+  fresh state (D569's fork). Without it, upstream returned "como yo pienso" for a
+  ten-word Spanish phrase in Portavoz's live window layout.
+- `AudioConverter` keeps the last `AVAudioConverter` while the formats match and resets
+  it before each call. A reset converter produces the same samples as a fresh one, bit
+  for bit; a live recording no longer builds a converter for every capture buffer.
+
+Upstream lowered `AudioConverter`'s default from mastering at maximum quality to
+mastering at medium quality, which upstream measured flat to 7.5 kHz at 16 kHz output.
+Portavoz takes that default: it changes only the audio fed to ASR and diarization,
+never the saved recording.
+
+Live Parakeet on the 56 recorded field phrases moved from 40.9% to 39.1% word error
+(final captions only) with unchanged latency. Models, compute units, window settings,
+the 0.45 clustering threshold and deployment floors are unchanged. The fork goes away
+once an upstream release carries both changes.

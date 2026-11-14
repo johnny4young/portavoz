@@ -6349,9 +6349,10 @@ CTC head outside the curated graph is rejected before loading. Synchronous CoreM
 loading explicitly runs off the caller's actor. Models and compute units are unchanged.
 
 The Swift package requires the reviewed FluidAudio fork revision
-`3648473d150307bde5d604a90137c839d1e0d2f1`, based on upstream
-`224de0fb3c304b41bbae24e85e1801900865ff3e`. Its `AudioConverter` reuses one
-reset converter while the formats match, matching a fresh converter bit for bit.
+`dbed9acbaaefcdeb0d17fd3a94e92a0319488069`, based on upstream
+`4ce08d26c9eb7f129e104fbe54da430ed8f5d4f1`. On top it resets the final re-decode after
+token-empty windows and reuses one reset `AudioConverter` while the formats match;
+resampling uses the SDK's default medium mastering quality.
 Swift 6.2 dependency traits retain ASR/VAD and Diarizer while excluding unused
 TTS resources and NeMo linkage; the macOS 26/iOS 26 deployment floors and
 curated model artifacts are unchanged.
