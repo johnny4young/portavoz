@@ -250,7 +250,8 @@ AVFoundation integration cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: explicit macos-26/Xcode 26.6 current-SDK
 build/test, checksum-pinned
-**SwiftLint 0.65.0 `--strict`** on Linux, a separate current-SDK iOS 17
+**SwiftLint 0.65.0 `--strict`** on Ubuntu 24.04 (its Linux build needs `libxml2.so.2`,
+which Ubuntu 26.04 dropped), a separate current-SDK iOS 17
 Simulator compile for the four shared targets, and a repository-hygiene/tooling
 gate that runs beside the macOS lanes (D617)). Each behavioral Swift lane owns one
 test invocation, so compilation and tests use the same flags instead of a
