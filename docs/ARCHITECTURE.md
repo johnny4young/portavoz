@@ -6205,6 +6205,12 @@ changes only when the clock gains a digit.
 The talk-balance cue reads captions in its own body. The floating panel's
 meter uses the same overlay fill.
 
+AppKit asks the main window's root for its minimum size on every layout pass,
+and a `.frame(minWidth:minHeight:)` answers by measuring the whole tree, those
+`ViewThatFits` variants included. The root is wrapped in `WindowMinimumFrame`,
+which answers that query with the declared 900 × 560 without measuring the
+content and passes every larger proposal through.
+
 The live transcript has reader-owned scroll state independent from the
 playback lyrics treatment. Direct interaction pauses following indefinitely,
 incoming rows preserve that position, and browsing rows render without
