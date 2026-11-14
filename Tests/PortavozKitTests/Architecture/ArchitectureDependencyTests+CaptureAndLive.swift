@@ -72,6 +72,32 @@ extension ArchitectureDependencyTests {
             "### Bounded recording-level relay (D168)"))
     }
 
+    func testRecordingBarKeepsLiveStateOutOfItsLayout() throws {
+        let toolbar = try Self.contents(
+            of: "Sources/portavoz-app/RecordingToolbar.swift")
+        let hud = try Self.contents(
+            of: "Sources/portavoz-app/RecordingHUD.swift")
+
+        // Either read would re-run a body that ViewThatFits measures.
+        XCTAssertTrue(toolbar.contains("RecordingTalkBalanceCue(controller: controller)"))
+        let fill = try XCTUnwrap(
+            toolbar.range(of: "private struct RecordingLevelMeterFill: View"))
+        XCTAssertFalse(toolbar[..<fill.lowerBound].contains("controller.micLevel)"))
+        XCTAssertTrue(toolbar.contains(
+            ".overlay { RecordingLevelMeterFill(controller: controller) }"))
+        let clock = try XCTUnwrap(
+            toolbar.range(of: "private struct RecordingElapsedClock: View"))
+        XCTAssertFalse(toolbar[..<clock.lowerBound].contains("TimelineView("))
+
+        let hudFill = try XCTUnwrap(
+            hud.range(of: "private struct RecordingHUDMeterFill: View"))
+        XCTAssertFalse(hud[..<hudFill.lowerBound].contains("controller.micLevel"))
+
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        XCTAssertTrue(architecture.contains(
+            "State that changes while recording therefore stays out of both."))
+    }
+
     func testLiveTranslationUsesSignalDrivenBoundedWork() throws {
         let translation = try Self.contents(
             of: "Sources/portavoz-app/LiveTranslation.swift")

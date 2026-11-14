@@ -179,22 +179,10 @@ struct RecordingHUDView: View {
     }
 
     private var hudMeter: some View {
-        ZStack(alignment: .leading) {
-            Capsule().fill(.quaternary)
-            GeometryReader { geometry in
-                Capsule()
-                    .fill(controller.micLevelLow ? Color.orange : Color.green)
-                    .frame(width: geometry.size.width * hudMeterFraction)
-            }
-        }
-        .frame(width: 90, height: 4)
-    }
-
-    private var hudMeterFraction: CGFloat {
-        let level = controller.micLevel
-        guard level > 0.0001 else { return 0 }
-        let decibels = 20 * log10(level)
-        return CGFloat(max(0, min(1, (Double(decibels) + 60) / 60)))
+        Capsule()
+            .fill(.quaternary)
+            .frame(width: 90, height: 4)
+            .overlay { RecordingHUDMeterFill(controller: controller) }
     }
 
     private var hudCaptureHealthMessage: String {
@@ -218,5 +206,16 @@ struct RecordingHUDView: View {
         case .failed: .red
         case .healthy, .stalled, .recovering: .orange
         }
+    }
+}
+
+/// The only reader of the 20 Hz level in the HUD, behind an overlay so a
+/// sample redraws the fill without rebuilding the panel.
+private struct RecordingHUDMeterFill: View {
+    let controller: RecordingController
+
+    var body: some View {
+        LevelBarFill(fraction: LevelBarFill.fraction(forLevel: controller.micLevel))
+            .fill(controller.micLevelLow ? Color.orange : Color.green)
     }
 }
