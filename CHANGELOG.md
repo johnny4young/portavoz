@@ -75,6 +75,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 ## November 13, 2026
 
 - **🪶 Recording takes less of your Mac** — the recording window no longer redoes its layout many times a second for the mic meter, the clock and each new caption.
+- **🎙️ Dictation moved to Secreteo** — global dictation is now its own app; your old dictation history stays on this Mac until its retention period ends, or until you delete it in Settings › Your data.
 
 ## November 8, 2026
 

@@ -1,5 +1,5 @@
 /* Portavoz — motion. Two gestures only:
-   · pulse on active symbols (dictation mic, recording dot)
+   · pulse on active symbols (recording dot)
    · "breathe" on the brand waveform (3.6s ease-in-out, staggered)
    Always behind prefers-reduced-motion. */
 

@@ -95,7 +95,7 @@ test('blocking and nonblocking policies match independent historical expectation
 test('diagnostic tests are mandatory in hygiene and run on the declared Node runtime', () => {
   const hygiene = readFileSync(new URL('./check-repository-hygiene.sh', import.meta.url), 'utf8');
   assert.match(hygiene, /^set -euo pipefail$/m);
-  assert.match(hygiene, /^node --test scripts\/ci_time_\*.test.mjs scripts\/repository_hygiene.test.mjs$/m);
+  assert.match(hygiene, /^node --test scripts\/ci_time_\*.test.mjs scripts\/repository_hygiene.test.mjs scripts\/dictation_ratchet.test.mjs$/m);
   const lane = workflow.split('  repository-hygiene:\n')[1].split('\n  lint:')[0];
   assert.match(lane, /uses: actions\/setup-node@[a-f0-9]{40}/);
   assert.match(lane, /node-version-file: .nvmrc\n\s+check-latest: true/);

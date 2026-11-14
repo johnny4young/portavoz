@@ -343,7 +343,7 @@ it, and it is released only once idle. Core carries only transient
 live-update semantics (range revision, token preview, owned delta or word
 continuation), not AppKit or speech-provider types.
 
-Temporary meeting-store composition registers no global hotkey or event tap.
+Portavoz registers no global hotkey or event tap.
 The Settings-only Apple asset fixture is restricted to a disposable
 temporary-store launch; it exercises the real view/model without installing an
 OS asset or claiming recognition quality.
@@ -6551,8 +6551,11 @@ reliability evidence retained from 9 Aug, is:
   shards and on demand;
 - hosted pull-request UI runs compile once, execute the English selection as a
   first attempt, preserve its result bundle, and then apply one fail-closed
-  functional/receipt classifier. The enclosing job's ceiling is 22 minutes, and 90
-  on a manual complete run; this does not alter any
+  functional/receipt classifier. The enclosing job's ceiling is 14 minutes, and 90
+  on a manual complete run; `build-and-test` stops at 17 minutes on a pull request
+  and 30 on main and manual runs. Each pull-request ceiling holds the slowest
+  measured cold build plus a minute, and a build too late for the canaries fails
+  the fit by name instead of reaching the timeout. This does not alter any
   per-journey wait, assertion, runtime budget, selector, or retry policy;
 - every UI run emits content-free runtime and execution receipts. Controlled
   local/stable-Mac integration and release runs enforce the unchanged per-journey, exact-
@@ -6763,6 +6766,12 @@ validator as a required CI step in the same job. Release reliability invokes
 both scripts. Swift and legacy tooling gates remain authoritative until
 equivalent replacements are validated; local hygiene alone is not full tooling
 or p95 qualification.
+
+Hygiene runs a Node dictation ratchet: a checked-in baseline pins every tracked
+file that mentions dictation, in English or Spanish, with an exact occurrence
+count that may only go down, `Sources/` may not use Carbon, Accessibility, event
+taps or posting, global hotkeys or HID access, and the `DictationOwnership` importer and Info.plist key that let
+Secreteo take ownership from a 1.x install are pinned exactly.
 
 The read-only Node CI inventory command selects heads at a fixed run-creation
 cutoff, then retrieves every API-visible CI run for each selected SHA. Two

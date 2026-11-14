@@ -8,7 +8,7 @@ import {fileURLToPath} from 'node:url';
 const root = new URL('../', import.meta.url);
 const hygiene = readFileSync(new URL('scripts/check-repository-hygiene.sh', root), 'utf8');
 
-function fixture(change) {
+function fixture(change, extraEnv = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'repository-hygiene-'));
   const run = (cmd, args, env = process.env) => spawnSync(cmd, args, {cwd: dir, env, encoding: 'utf8'});
   try {
@@ -18,13 +18,13 @@ function fixture(change) {
     for (const match of hygiene.matchAll(/^bash -n (scripts\/\S+)$/gm)) writeFileSync(join(dir, match[1]), '#!/bin/bash\ntrue\n');
     writeFileSync(join(dir, '.github/workflows/fixture.yml'), `steps:\n  - uses: actions/checkout@${'a'.repeat(40)}\n`);
     writeFileSync(join(dir, 'Tests/PortavozUITests/Fixture.swift'), '// synthetic\n');
-    writeFileSync(join(dir, 'bin/node'), '#!/bin/sh\nexit 0\n', {mode: 0o700});
+    writeFileSync(join(dir, 'bin/node'), '#!/bin/sh\n[ "$1" = scripts/dictation_ratchet.mjs ] && echo ratchet-ran >&2 && exit "${RATCHET_STATUS:-0}"\nexit 0\n', {mode: 0o700});
     for (const name of ['python', 'python3']) writeFileSync(join(dir, 'bin', name), '#!/bin/sh\ntouch "$PYTHON_MARKER"\nexit 91\n', {mode: 0o700});
     assert.equal(run('git', ['init', '-q']).status, 0);
     assert.equal(run('git', ['add', '.']).status, 0);
     change?.(dir, run);
     const result = run('/bin/bash', ['scripts/check-repository-hygiene.sh'], {...process.env,
-      PATH: join(dir, 'bin') + ':' + process.env.PATH, PYTHON_MARKER: join(dir, 'python-ran')});
+      PATH: join(dir, 'bin') + ':' + process.env.PATH, PYTHON_MARKER: join(dir, 'python-ran'), ...extraEnv});
     assert.equal(existsSync(join(dir, 'python-ran')), false, 'hygiene must never invoke Python');
     return result;
   } finally { rmSync(dir, {recursive: true, force: true}); }
@@ -71,4 +71,16 @@ for (const failure of [false, true]) test(`legacy runner ${failure ? 'propagates
     assert.equal(calls[0], 'scripts/ui_test_scope.py --validate-catalog');
     if (!failure) assert.equal(calls.at(-1), '-m unittest Tests.Tooling.test_meeting_detail_performance');
   } finally { rmSync(dir, {recursive: true, force: true}); }
+});
+test('hygiene runs the dictation ratchet and its tests', () => {
+  assert.match(hygiene, /^node --test .*scripts\/dictation_ratchet\.test\.mjs$/m);
+  const passed = fixture();
+  assert.match(passed.stderr, /ratchet-ran/);
+});
+test('a ratchet failure fails hygiene without skipping later checks', () => {
+  const result = fixture(dir => writeFileSync(join(dir, '.github/workflows/fixture.yml'), 'steps:\n  - uses: actions/checkout@main\n'),
+    {RATCHET_STATUS: '1'});
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stderr, /ratchet-ran[\s\S]*immutable full-length commit SHAs/);
+  assert.doesNotMatch(result.stdout, /Repository hygiene passed/);
 });

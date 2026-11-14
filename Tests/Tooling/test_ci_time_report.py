@@ -250,6 +250,17 @@ class OutcomeTests(unittest.TestCase):
         self.assertEqual(self.outcome(jobs, capacity=True), "infrastructure")
         self.assertEqual(self.outcome(jobs, capacity=True, superseded=True), "infrastructure")
 
+    def test_a_runner_never_acquired_near_the_limit_is_infrastructure_not_a_timeout(self):
+        jobs = [job("build-and-test", "10:00:00", "10:00:00", "10:19:15", conclusion="cancelled")]
+        self.assertEqual(self.outcome(jobs, timeouts={"build-and-test": 17}), "timeout")
+        self.assertEqual(self.outcome(jobs, timeouts={"build-and-test": 17}, capacity=True), "infrastructure")
+        timed_out = [job("build-and-test", "10:00:00", "10:00:00", "10:17:01", conclusion="timed_out")]
+        self.assertEqual(self.outcome(timed_out, capacity=True), "timeout")
+        sibling = [*jobs, job("ios-portability", "10:00:00", "10:00:00", "10:00:00", conclusion="cancelled", runner=None)]
+        limits = {"build-and-test": 17, "ios-portability": 20}
+        self.assertEqual(self.outcome(sibling, timeouts=limits, capacity=frozenset({"ios-portability"})), "timeout")
+        self.assertEqual(self.outcome(sibling, timeouts=limits, capacity=frozenset({"build-and-test"})), "infrastructure")
+
     def test_a_hosted_outage_the_gate_accepts_is_infrastructure_not_a_pass(self):
         jobs = [job("ui-test-gate", "10:05:00", "10:05:00", "10:05:10")]
         self.assertEqual(self.outcome(jobs, advisory=True), "infrastructure")
@@ -548,6 +559,14 @@ class CollectionTests(unittest.TestCase):
                             notes=notes)
         self.assertEqual(self.rows(client)[0]["outcome"], "infrastructure")
 
+    def test_a_runner_never_acquired_at_the_build_limit_stays_infrastructure(self):
+        unacquired = job("build-and-test", "10:00:00", "10:00:00", "10:19:15", conclusion="cancelled", job_id=11)
+        notes = {11: ["The job was not acquired by Runner of type hosted even after multiple attempts"]}
+        client = FakeGitHub([run_entry(1, "ci.yml", "10:00:00")], {(1, 1): self.attempt_data("10:00:00", [unacquired])},
+                            notes=notes)
+        rows = report.head_rows(client, "pull_request", self.HEAD, {}, report.declared_timeouts(), None)
+        self.assertEqual(rows[0]["outcome"], "infrastructure")
+
     def test_an_expired_log_is_named_instead_of_guessed(self):
         data = self.attempt_data("10:00:00", [job("build-and-test", "10:00:00", "10:00:00", "10:05:00")])
         client = FakeGitHub([run_entry(1, "ci.yml", "10:00:00")], {(1, 1): data})
@@ -674,6 +693,25 @@ class TimeoutParsingTests(unittest.TestCase):
             workflow.write_text("jobs:\n  lane:\n    timeout-minutes: ${{ inputs.full_ui && 90 || 22 }}\n", encoding="utf-8")
 
             self.assertEqual(report.declared_timeouts((workflow,)), {"lane": 22})
+
+    def test_the_build_lane_reports_its_pull_request_ceiling(self):
+        self.assertEqual(report.declared_timeouts()["build-and-test"], 17)
+        self.assertEqual(report.declared_timeouts()["ui-tests"], 14)
+
+    def test_a_push_reads_the_ceiling_its_event_gets(self):
+        self.assertEqual(report.declared_timeouts(event="push")["build-and-test"], 30)
+        self.assertEqual(report.declared_timeouts(event="push")["ui-tests"], 14)
+        with tempfile.TemporaryDirectory() as directory:
+            workflow = Path(directory) / "ci.yml"
+            workflow.write_text("jobs:\n  build:\n    timeout-minutes: ${{ github.event_name != 'pull_request' && 30 || 17 }}\n",
+                                encoding="utf-8")
+            self.assertEqual(report.declared_timeouts((workflow,)), {"build": 17})
+            self.assertEqual(report.declared_timeouts((workflow,), event="push"), {"build": 30})
+
+    def test_a_push_build_cancelled_after_sixteen_minutes_is_not_a_timeout(self):
+        cancelled = [job("build-and-test", "10:00:00", "10:00:00", "10:16:30", conclusion="cancelled")]
+        self.assertEqual(row(cancelled, timeouts=report.declared_timeouts(event="push"))["outcome"], "cancelled")
+        self.assertEqual(row(cancelled, timeouts=report.declared_timeouts())["outcome"], "timeout")
 
 
 if __name__ == "__main__":

@@ -53,6 +53,31 @@ in the `repository-hygiene` CI job and in release reliability validation. No
 existing check is optional; a local hygiene pass alone is not full tooling
 qualification. No npm packages or network requests are needed.
 
+Hygiene also runs `scripts/dictation_ratchet.mjs`, which keeps dictation from
+returning. `scripts/dictation_ratchet_baseline.json` pins every tracked regular
+file whose path or content mentions dictation in English or Spanish (`dicta`,
+case-insensitive, except `predictable`) with its exact count of occurrences.
+Symlinks and directories are skipped, skip-worktree files keep their pinned count,
+binary files count by path only, and untracked files only print a warning. A new
+file or a higher count fails; a lower count or a deleted file fails until the
+author runs `fnm exec -- node scripts/dictation_ratchet.mjs --write` and commits
+the baseline. `--write` only tightens: it refuses a new path, a higher count, a
+forbidden API or a missing pin, and writes nothing then. A raise means editing the
+JSON by hand in review. `CHANGELOG.md`, `docs/DECISIONS.md`,
+`docs/release-announcements.md` and the ratchet's own files are excluded. In
+`Sources/` it rejects Carbon imports (attribute and split-line forms too), event
+taps and posting (`tapCreate*`, `CGEventTapCreate*`, `.post(tap:)`,
+`CGEventPost*`, `CG{Preflight,Request}{Post,Listen}EventAccess`), Accessibility
+(`AXUIElement*`, `AXIsProcessTrusted*`), `IOHID{Request,Check}Access`,
+`RegisterEventHotKey` and `addGlobalMonitorForEvents`. It pins the leftovers
+that let Secreteo take ownership from a 1.x install:
+`LegacyDictationOwnershipRelease.swift` is the only `Sources/` importer of
+`DictationOwnership`, `Package.swift` keeps that `secreteo` product, and
+`project.yml` and `scripts/make-app.sh` keep the `DictationOwnershipProtocol`
+Info.plist key. It fails on an empty file list, a git error, or a missing or empty
+baseline, and a failure fails hygiene without skipping its other checks.
+`scripts/dictation_ratchet.test.mjs` covers each case on temporary fixture trees.
+
 Confirmed Topic memory has one real-app journey for current decisions, first
 discussion, decision conflicts and changes since a selected meeting. It retains
 each exact result, source label, screenshot and playback seek assertion, but
@@ -181,11 +206,6 @@ Both result pages assert successful meeting actions, not only a zero unfinished
 count that could also contain failures. Recognition remains scripted, not
 ASR-quality evidence (D532).
 
-The dictation controller, readiness, recovery and panel tests left with
-dictation in 2.0 (D640), and so did the public dictation corpus, its
-installed-model, controller and field-recording lanes, the offline benchmark
-adapter and their Python tests.
-
 The confirmed-person commitments and blocker UI assertions share one bounded
 journey instead of repeating the identical seeded app launch and person load.
 It retains the exact selected identity, localized title, both screenshots,
@@ -207,12 +227,8 @@ Settings, and the compact Meeting Detail correction journeys. The compact journe
 checks the actual post-restoration AppKit frame at two short heights,
 opens both reading panes, retains the player, and reaches the existing
 correction editor. Its per-case budget is 30 seconds. A citation journey proves
-that an action returns from Summary to Transcript. Portavoz 2.0 removed every
-way to start dictation (D640), so the dictation, history, Polish, text-mode,
-practice, translation, correction and selection-rewrite UI tests, the
-dictation-only Settings, onboarding and Open dictations cases, and the
-permission-gated native-delivery lane (`make test-ui-native-dictation` and its
-runtime budget) were deleted with them; the catalog holds 119 cases.
+that an action returns from Summary to Transcript. Portavoz 2.0 has no
+dictation UI and no native-delivery lane (D640); the catalog holds 119 cases.
 `LegacyDictationUITests` owns the `dictation` selector now: the one-time notice
 that dictation moved, forced with `-show-dictation-moved-notice`, and deleting
 the kept history from Settings › Your data, both over a library seeded with
@@ -297,6 +313,34 @@ must belong to an earlier attempt. Complete job inventory, exact ownership,
 verified conditional scope and causal timestamp ordering are prerequisites for
 execution. The exact gate can retain a total when a lane never starts, but a
 skipped, duplicate, foreign or contradictory gate cannot supply a duration.
+
+A cancelled job near its limit counts as a timeout unless its runner was never
+acquired: GitHub cancels such a job after 15 minutes or more, and its annotation
+makes it infrastructure. An explicit `timed_out` conclusion is always a timeout.
+Each event is judged against its own ceiling, so a push reads `build-and-test`'s
+30 minutes, not the pull request's 17.
+
+Pull-request job ceilings hold the slowest measured case, not the warm p95
+(D641). Over the pull request heads from 2026-11-13 13:27 UTC, when the product
+split began landing:
+
+| Job | Window | N | p50 | p90 | p95 | max | Ceiling |
+|---|---|--:|--:|--:|--:|--:|--:|
+| `build-and-test` | after the split | 10 | 6:09 | 11:29 | 13:04 | 13:04 | 17 |
+| `build-and-test` | 9 days before | 79 | 6:28 | 10:06 | 10:56 | 12:42 | — |
+| `ui-tests` | after the split | 8 | 7:58 | 9:22 | 9:22 | 9:22 | 14 |
+| `ui-tests` | 9 days before | 49 | 7:26 | 9:30 | 9:46 | 10:13 | — |
+
+Both post-split samples are under the 30-head minimum, and none was cold. A pull
+request never saves the cache, so an image or Xcode change builds it cold. Cold
+`build-and-test` runs took 15:13, 13:55 and 12:31 on `main` pushes and 13:48 and
+12:55 on manual runs; a pull request that restored a seed took 15:00. Its 17
+minutes are 15:13 rounded up, plus one. In `ui-tests`, the slowest build left the
+fit 581 s into the job, the ten canaries need about 177 s, and the fit has overrun
+its 570-second budget by up to 67 s; its 14 minutes cover that plus teardown, plus
+one. Main pushes and manual runs keep 30 minutes for `build-and-test`; a manual
+`full_ui` run keeps 90 for `ui-tests`, one without it gets 14 and still fits its
+selection, and nightly jobs keep their own limits.
 
 Summaries use nearest-rank percentiles and keep ordinary failures, timeouts and
 superseded attempts visible. Missing measurements are counted and cannot produce
@@ -525,8 +569,10 @@ by feature tier and fewest seconds. After its build, the UI job's `scripts/ui_te
 while their hosted p90 and xcodebuild's overhead fit what remains of 570 seconds, less 15 for
 teardown (D622). The rest are not dropped: `cut` names them in the job
 summary, a `ui-budget-cut` notice, the gate's result and the lane receipt, and nightly owns them. A
-late build runs the canaries alone and never cuts one, while canaries over a nominal 300 seconds
-fail the selection, and `--budget` dry-runs that figure. `docs/evidence/ui-test-hosted-seconds.json` comes from
+late build runs the canaries alone and never cuts one. When even they cannot end before the job's
+14-minute timeout (`UI_JOB_CEILING_MINUTES`, D641) less teardown, the fit fails with a
+`ui-late-build` error instead of letting the timeout kill a test; a manual `full_ui` run passes its
+90 minutes. Canaries over a nominal 300 seconds fail the selection, and `--budget` dry-runs that figure. `docs/evidence/ui-test-hosted-seconds.json` comes from
 `scripts/ui_test_hosted_seconds.py` over nightly logs; a case without one counts at its ceiling. `scripts/ui_host.py` makes this lane
 capture screenshots instead of video (D625); nightly and local project runs keep their video. A local `make test-ui-changed`
 does not cut. `testCleanStopReachesAReadyMeetingWithItsTranscriptAndPlayer` proves a
@@ -5332,7 +5378,7 @@ preserved English receipt and missing Spanish receipt distinguish orchestration
 exhaustion from a product assertion, skip, malformed receipt, or green retry.
 
 The `ui-tests` job keeps a 90-minute global orchestration ceiling only on a
-manual complete run, and 22 minutes on a pull request (D622). The 90 minutes were sized for one
+manual complete run, and 14 minutes on a pull request (D641). The 90 minutes were sized for one
 build plus both complete sequential locales with bounded
 hosted variance and cleanup/upload/classification headroom. Neither is a product
 or per-test runtime budget: selectors, assertions, test waits, the controlled-

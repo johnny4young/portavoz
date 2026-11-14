@@ -12,6 +12,6 @@
   --radius-sm: 8px;      /* permission rows, small insets */
   --radius-tile: 10px;   /* stat tiles, summary card */
   --radius-card: 12px;   /* content cards, HUD */
-  --radius-panel: 14px;  /* floating panels (dictation, materials) */
+  --radius-panel: 14px;  /* floating panels (HUD, materials) */
   --radius-pill: 999px;  /* capsules: chips, pills, meters */
 }

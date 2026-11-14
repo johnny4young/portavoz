@@ -3,6 +3,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 import unittest
 from pathlib import Path
 
@@ -157,7 +158,35 @@ class CIWorkflowTests(unittest.TestCase):
             "\n  gate:\n", 1
         )[0]
 
-        self.assertEqual(scoped_job.count("    timeout-minutes: ${{ inputs.full_ui && 90 || 22 }}\n"), 1)
+        self.assertEqual(scoped_job.count("    timeout-minutes: ${{ inputs.full_ui && 90 || 14 }}\n"), 1)
+
+    def test_the_fit_knows_the_ui_job_timeout(self):
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(
+            encoding="utf-8"
+        )
+        scoped_job = workflow.split("  ui-tests:\n", 1)[1].split(
+            "\n  gate:\n", 1
+        )[0]
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from ui_test_catalog import UI_JOB_CEILING_MINUTES
+
+        ceiling = f"${{{{ inputs.full_ui && 90 || {UI_JOB_CEILING_MINUTES} }}}}"
+        self.assertIn(f"    timeout-minutes: {ceiling}\n", scoped_job)
+        self.assertIn(f"          CEILING: {ceiling}\n", scoped_job)
+        self.assertIn('--ceiling-minutes "$CEILING"', scoped_job)
+
+    def test_build_lane_cuts_only_the_pull_request_ceiling(self):
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(
+            encoding="utf-8"
+        )
+        build_job = workflow.split("  build-and-test:\n", 1)[1].split(
+            "\n  ios-portability:\n", 1
+        )[0]
+
+        self.assertEqual(
+            build_job.count("    timeout-minutes: ${{ github.event_name != 'pull_request' && 30 || 17 }}\n"),
+            1,
+        )
 
     def test_one_job_builds_the_host_and_runs_it_without_a_second_compiler(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(
