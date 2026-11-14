@@ -124,16 +124,21 @@ def distribution(values: Iterable[int | None]) -> dict[str, int] | None:
             "p95": percentile(present, 0.95), "max": max(present)}
 
 
-def declared_timeouts(paths: Iterable[Path] = WORKFLOW_FILES) -> dict[str, int]:
-    """A pull request's `timeout-minutes` by job id, read as text to stay stdlib-only."""
+# A job that limits only pull requests names the other events' ceiling first.
+NON_PR_LIMIT = re.compile(r"^\$\{\{ github\.event_name != 'pull_request' && (\d+) \|\|")
+
+
+def declared_timeouts(paths: Iterable[Path] = WORKFLOW_FILES, event: str = "pull_request") -> dict[str, int]:
+    """An event's `timeout-minutes` by job id, read as text to stay stdlib-only."""
     timeouts: dict[str, int] = {}
     for path in paths:
         job = None
         for line in path.read_text(encoding="utf-8").splitlines():
             if declared := re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line):
                 job = declared.group(1)
-            elif job and (limit := re.match(r"^    timeout-minutes: (?:\$\{\{.*\|\| )?(\d+)(?: \}\})?\s*$", line)):
-                timeouts[job] = int(limit.group(1))
+            elif job and (limit := re.match(r"^    timeout-minutes: ((?:\$\{\{.*\|\| )?(\d+)(?: \}\})?)\s*$", line)):
+                other = NON_PR_LIMIT.match(limit.group(1))
+                timeouts[job] = int(other.group(1) if other and event != "pull_request" else limit.group(2))
     return timeouts
 
 
@@ -227,7 +232,7 @@ def classify_outcome(jobs: Sequence[dict[str, Any]], *, timeouts: dict[str, int]
         conclusion = job["conclusion"]
         name = base_name(job["name"])
         limit = timeouts.get(name)
-        # A job no runner took is cancelled near 15 minutes, which is not a timeout.
+        # A job no runner took is cancelled after 15 minutes or more, which is not a timeout.
         starved = name in capacity if isinstance(capacity, frozenset) else capacity
         # GitHub reports most job timeouts as cancelled; only a limit reached with no newer run proves one.
         if conclusion == "timed_out" or (conclusion == "cancelled" and not superseded and not starved and limit
@@ -709,9 +714,9 @@ def _digest(client: GitHub, attempt: HeadAttempt, job_name: str, digest: Callabl
 
 
 def collect(client: GitHub, count: int, until: str | None) -> list[dict[str, Any]]:
-    timeouts = {**RETIRED_TIMEOUTS, **declared_timeouts()}
     rows: list[dict[str, Any]] = []
     for event in EVENTS:
+        timeouts = {**RETIRED_TIMEOUTS, **declared_timeouts(event=event)}
         heads, branch_runs = latest_heads(client, event, count, until)
         with ThreadPoolExecutor(max_workers=WORKERS) as pool:
             for result in pool.map(lambda head: head_rows(client, event, head, branch_runs, timeouts, until), heads):

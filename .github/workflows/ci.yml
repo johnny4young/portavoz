@@ -139,9 +139,9 @@ jobs:
     needs: scope
     if: ${{ !cancelled() && needs.scope.result != 'failure' }}
     runs-on: macos-26
-    # A pull request gets its measured p95 plus a minute, which also held a cold build.
-    # Main and manual runs keep every test and may build cold, so they keep 30.
-    timeout-minutes: ${{ github.event_name != 'pull_request' && 30 || 15 }}
+    # A pull request never saves the cache, so its limit holds the slowest cold build plus a minute.
+    # Main and manual runs keep every test, so they keep 30.
+    timeout-minutes: ${{ github.event_name != 'pull_request' && 30 || 17 }}
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
     steps:
@@ -266,9 +266,9 @@ jobs:
        (needs.scope.outputs.interruption_controls == 'false' &&
         needs.interruption.result == 'skipped'))
     runs-on: macos-26
-    # The measured p95 plus a minute, which also held a cold build; the selection fits
-    # UI_JOB_BUDGET_SECONDS inside it. Only a manual full_ui run holds the complete catalog.
-    timeout-minutes: ${{ inputs.full_ui && 90 || 11 }}
+    # UI_JOB_CEILING_MINUTES: the slowest build plus the canaries; the fit fails by name past it.
+    # Only a manual full_ui run holds the complete catalog.
+    timeout-minutes: ${{ inputs.full_ui && 90 || 14 }}
     outputs:
       attempt: ${{ github.run_attempt }}
       cut: ${{ steps.fit.outputs.cut }}
@@ -324,8 +324,9 @@ jobs:
         env:
           TESTS: ${{ needs.scope.outputs.tests }}
           RANKED: ${{ needs.scope.outputs.ranked }}
+          CEILING: ${{ inputs.full_ui && 90 || 14 }}
         run: |
-          python3 scripts/ui_test_fit.py --tests "$TESTS" --ranked "$RANKED" \
+          python3 scripts/ui_test_fit.py --tests "$TESTS" --ranked "$RANKED" --ceiling-minutes "$CEILING" \
             --elapsed "$(($(date +%s) - UI_JOB_STARTED))" > "$RUNNER_TEMP/ui-fit.txt"
           cat "$RUNNER_TEMP/ui-fit.txt" >> "$GITHUB_OUTPUT"
           cut="$(sed -n 's/^cut=//p' "$RUNNER_TEMP/ui-fit.txt")"

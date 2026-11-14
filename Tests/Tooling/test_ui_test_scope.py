@@ -15,7 +15,12 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from ui_test_catalog import UI_JOB_BUDGET_SECONDS, UI_JOB_TEARDOWN_SECONDS  # noqa: E402
+from ui_test_catalog import (  # noqa: E402
+    UI_JOB_BUDGET_SECONDS,
+    UI_JOB_CEILING_MINUTES,
+    UI_JOB_TEARDOWN_SECONDS,
+    UI_TEST_OVERHEAD_SECONDS,
+)
 import ui_test_scope as ui_scope  # noqa: E402
 from ui_test_scope import (  # noqa: E402
     ALL_TESTS,
@@ -1562,6 +1567,23 @@ class UITestScopeTests(unittest.TestCase):
         self.assertIn(f"cut={candidate}", late)
         self.assertIn(f"deferred={len(ALL_TESTS) - len(SMOKE_TESTS) - 1}", early)
         self.assertIn(f"deferred={len(ALL_TESTS) - len(SMOKE_TESTS)}", late)
+
+    def test_a_build_too_late_for_the_canaries_fails_by_name(self):
+        arguments = [sys.executable, str(ROOT / "scripts/ui_test_fit.py"), "--tests", " ".join(SMOKE_TESTS)]
+        hosted = ui_scope.hosted_seconds(ROOT)
+        canaries = UI_TEST_OVERHEAD_SECONDS + sum(ui_scope.case_seconds(test, hosted) for test in SMOKE_TESTS)
+        last_start = int(UI_JOB_CEILING_MINUTES * 60 - UI_JOB_TEARDOWN_SECONDS - canaries)
+
+        fits = subprocess.run([*arguments, "--elapsed", str(last_start)], capture_output=True, text=True)
+        late = subprocess.run([*arguments, "--elapsed", str(last_start + 2)], capture_output=True, text=True)
+        manual = subprocess.run([*arguments, "--elapsed", str(last_start + 2), "--ceiling-minutes", "90"],
+                                capture_output=True, text=True)
+
+        self.assertEqual(fits.returncode, 0, fits.stderr)
+        self.assertEqual(late.returncode, 1)
+        self.assertIn("::error title=ui-late-build::", late.stderr)
+        self.assertEqual(late.stdout, "")
+        self.assertEqual(manual.returncode, 0, manual.stderr)
 
     def test_the_ui_fixture_selects_its_import_journey(self):
         selection = select_paths(["Tests/Support/MeetingBundleFixture.swift"])
