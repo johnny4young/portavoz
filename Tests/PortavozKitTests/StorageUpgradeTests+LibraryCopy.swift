@@ -11,6 +11,10 @@ extension StorageUpgradeTests {
         guard let path = ProcessInfo.processInfo.environment["PORTAVOZ_LIBRARY_COPY"] else {
             throw XCTSkip("Set PORTAVOZ_LIBRARY_COPY to a SQLite backup of a library.")
         }
+        // A live library keeps committed pages in its -wal file, which a plain copy would drop.
+        let wal = (try? FileManager.default.attributesOfItem(atPath: path + "-wal")[.size] as? Int) ?? 0
+        XCTAssertEqual(wal, 0, "Point PORTAVOZ_LIBRARY_COPY at a backup, not a live library.")
+        guard wal == 0 else { return }
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("portavoz-library-copy-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -26,22 +30,25 @@ extension StorageUpgradeTests {
         store = try MeetingStore(databaseURL: url)
         try await assertLibrary(in: XCTUnwrap(store), matches: before)
 
-        // A clock past every horizon expires each legacy dictation row and keeps every note.
+        // Expiring every legacy row keeps every note.
         let reopened = try XCTUnwrap(store)
-        try await reopened.purgeExpiredLegacyDictationData(now: Date().addingTimeInterval(400 * 86_400))
-        let remaining = try await reopened.legacyDictationRows()
-        XCTAssertTrue(remaining.isEmpty)
-        try await assertLibrary(in: reopened, matches: before.afterLegacyDictationExpiry)
+        let expired = try await expireEveryLegacyRow(in: reopened)
+        XCTAssertTrue(expired)
+        try await assertLibrary(in: reopened, matches: before.afterLegacyExpiry)
     }
 
     private struct LibraryCounts: Equatable {
         var meetings: Int
         var notes: Int
         var segments: Int
+        var summaries: Int
+        var actionItems: Int
+        var enhancedNotes: Int
+        var translations: Int
         var egress: Int
         var noteLinks: Int
 
-        var afterLegacyDictationExpiry: Self {
+        var afterLegacyExpiry: Self {
             var counts = self
             counts.noteLinks = 0
             return counts
@@ -57,8 +64,12 @@ extension StorageUpgradeTests {
             meetings = try count("SELECT COUNT(*) FROM meeting")
             notes = try count("SELECT COUNT(*) FROM contextItem WHERE kind = 'note'")
             segments = try count("SELECT COUNT(*) FROM segment")
+            summaries = try count("SELECT COUNT(*) FROM summary")
+            actionItems = try count("SELECT COUNT(*) FROM actionItem")
+            enhancedNotes = try count("SELECT COUNT(*) FROM enhancedNote")
+            translations = try count("SELECT COUNT(*) FROM transcriptTranslation")
             egress = try count("SELECT COUNT(*) FROM globalDataEgressEvent")
-            noteLinks = try count("SELECT COUNT(*) FROM dictationMeetingNote")
+            noteLinks = try count(StorageUpgradeTests.legacyNoteLinkCount)
         }
     }
 

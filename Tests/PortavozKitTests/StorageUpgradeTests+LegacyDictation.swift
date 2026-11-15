@@ -5,9 +5,9 @@ import XCTest
 
 @testable import StorageKit
 
-// Libraries that hold dictation data, from the first dictation schema (v54) to the
-// current one. Dictation rows are written and read with SQL only, so these tests
-// name no dictation type and stay the upgrade criterion while that code leaves.
+// Libraries from the first legacy schema (v54) to the current one. Legacy rows are
+// written and read with SQL only, so these tests name no removed type and stay the
+// upgrade criterion.
 extension StorageUpgradeTests {
     func testEveryDictationSchemaUpgradesWithNotesSearchKeysAndEgressIntact() async throws {
         for base in 54...StorageSchema.version {
@@ -38,7 +38,7 @@ extension StorageUpgradeTests {
         XCTAssertEqual(Set(notes.map(\.content)), [fixture.ownNote, fixture.copiedNote], "v\(base)")
         // An FTS5 integrity check is issued as a write, though it changes nothing.
         try await store.database.write { database in
-            XCTAssertEqual(try Int.fetchOne(database, sql: "SELECT COUNT(*) FROM dictationMeetingNote"), 0, "v\(base)")
+            XCTAssertEqual(try Int.fetchOne(database, sql: Self.legacyNoteLinkCount), 0, "v\(base)")
             XCTAssertTrue(try Row.fetchAll(database, sql: "PRAGMA foreign_key_check").isEmpty, "v\(base)")
             try Self.assertSearchIndexesHealthy(in: database)
         }
@@ -279,6 +279,15 @@ extension StorageUpgradeTests {
                 try String.fetchAll(database, sql: "SELECT dictationID FROM dictationStatsCounted"),
                 base >= 58 ? [fixture.copiedDictationID] : [], "v\(base)", file: file, line: line)
         }
+    }
+
+    static let legacyNoteLinkCount = "SELECT COUNT(*) FROM dictationMeetingNote"
+
+    /// Expires every legacy row with a clock past each horizon; true when none remain.
+    func expireEveryLegacyRow(in store: MeetingStore) async throws -> Bool {
+        let pastEveryHorizon = Date().addingTimeInterval(Double(MeetingStore.legacyStatsRetentionDays + 1) * 86_400)
+        try await store.purgeExpiredLegacyDictationData(now: pastEveryHorizon)
+        return try await store.legacyDictationRows().isEmpty
     }
 
     static func assertSearchIndexesHealthy(
