@@ -281,7 +281,7 @@ extension StorageUpgradeTests {
         }
     }
 
-    private static func assertSearchIndexesHealthy(
+    static func assertSearchIndexesHealthy(
         in database: Database, file: StaticString = #filePath, line: UInt = #line
     ) throws {
         let tables = try String.fetchAll(
