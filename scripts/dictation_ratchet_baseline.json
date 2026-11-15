@@ -30,7 +30,7 @@
     "Sources/portavoz-app/MeetingDetailActivityLine.swift": 2,
     "Sources/portavoz-app/SettingsView.swift": 2,
     "Tests/PortavozAppTests/ExclusiveArgumentDomainTests.swift": 1,
-    "Tests/PortavozAppTests/LegacyDictationModelTests.swift": 20,
+    "Tests/PortavozAppTests/LegacyDictationModelTests.swift": 19,
     "Tests/PortavozAppTests/LegacyDictationOwnershipReleaseTests.swift": 11,
     "Tests/PortavozAppTests/LiveSpeechSelectionTests.swift": 1,
     "Tests/PortavozAppTests/PasteboardCopyTests.swift": 1,
