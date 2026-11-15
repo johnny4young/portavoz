@@ -416,6 +416,17 @@ cleanup evidence. The corrected main-queue callback must also acknowledge its
 execution; fresh controlled and hosted qualification is required. Notification
 Center metadata alone still cannot attribute a hosted alert to that crash.
 
+### Skills accessibility audit times out on Xcode 27
+
+`SkillsSettingsUITests/testSkillReceiptRestoresKeyboardFocusAndPassesAccessibilityAudit`
+fails three times out of three on a local Xcode 27.2 host: its
+`performAccessibilityAudit(for: .sufficientElementDescription)` call returns
+`accessibilityAudit` error -56, "Audit failed to complete in time". The other 118
+English release cases pass on that host, and the same test passes on hosted Xcode 26.6
+in the `main` and `release/2.0` nightlies. The 2.0.0 candidate accepts the hosted
+evidence for this one case. The test or the audit scope must pass on Xcode 27 before CI
+moves to it.
+
 ### Compact-window correction reachability has focused evidence only
 
 The 1.1 layout removed the fixed 240-point artifacts box (the area now
