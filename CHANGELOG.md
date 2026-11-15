@@ -4,6 +4,13 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## 2.0.0 — November 15, 2026
+
+**All about your meetings.**
+
+- **🎙️ Dictation moved to Secreteo** — global dictation is now its own app; your old dictation history stays on this Mac until its retention period ends, or until you delete it in Settings › Your data.
+- **🪶 Recording takes less of your Mac** — the recording window no longer redoes its layout many times a second for the mic meter, the clock and each new caption.
+
 ## 1.5.1 — November 12, 2026
 
 **Lighter on your Mac.**
