@@ -127,10 +127,10 @@ struct LegacyDictationModelTests {
             try db.execute(
                 sql: """
                     INSERT INTO dictationStatsDay (day, applicationName, dictations, words, spokenMs, notDelivered)
-                    VALUES ('2000-01-01', 'Notes', 1, 3, 1200, 0)
-                    """)
+                    VALUES ('2000-01-01', 'Notes', 1, 3, 1200, 0), (?, 'Notes', 1, 3, 1200, 0)
+                    """,
+                arguments: [MeetingStore.legacyStatsDay(of: now, calendar: .current)])
         }
-        try await store.seedLegacyDictationStatsDayForUITests(now: now)
         let model = AppServices.makeLegacyDictationModel(
             store: store, defaults: Self.defaults(), arguments: [], usesTemporaryStore: false)
         model.open(observesWake: false)
