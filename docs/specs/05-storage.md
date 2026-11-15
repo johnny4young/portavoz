@@ -2188,6 +2188,18 @@ place (`StorageUpgradeTests+LegacyDictation.swift`). `LegacyDictationRetentionTe
 seeds rows with SQL only and covers the facade, the copied-note cascade and the
 consent defaults the frozen migrations seed.
 
+A real library is checked the same way from a coherent SQLite backup
+(`sqlite3 -readonly <library> ".backup <file>"`, run while the app is open if a
+read-only open fails), never the live file. With
+`PORTAVOZ_LIBRARY_COPY=<file>`, `StorageUpgradeTests+LibraryCopy.swift`
+refuses a file with a non-empty `-wal`, restores it into a fresh folder, opens,
+closes and reopens it with meetings, notes, segments, summaries, action items,
+enhanced notes, translations, copied-note links and egress receipts unchanged,
+integrity,
+foreign keys and every FTS5 index healthy, then expires every legacy row with a
+clock past all horizons and keeps every note. Without the variable the test
+skips.
+
 ### Transcript translation (schema v60, D595)
 
 v60 adds `transcriptTranslation` (primary key `meetingID` + `targetLanguage` in

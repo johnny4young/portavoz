@@ -43,7 +43,7 @@
     "Tests/PortavozKitTests/LegacyDictationEgressTests.swift": 45,
     "Tests/PortavozKitTests/LegacyDictationRetentionTests.swift": 83,
     "Tests/PortavozKitTests/ParakeetLanguageConfigurationTests.swift": 1,
-    "Tests/PortavozKitTests/StorageUpgradeTests+LegacyDictation.swift": 73,
+    "Tests/PortavozKitTests/StorageUpgradeTests+LegacyDictation.swift": 71,
     "Tests/PortavozUITests/LegacyDictationUITests.swift": 22,
     "Tests/PortavozUITests/SettingsTransferUITests.swift": 3,
     "Tests/Tooling/test_release_notes.py": 4,
