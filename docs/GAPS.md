@@ -424,8 +424,18 @@ fails three times out of three on a local Xcode 27.2 host: its
 `accessibilityAudit` error -56, "Audit failed to complete in time". The other 118
 English release cases pass on that host, and the same test passes on hosted Xcode 26.6
 in the `main` and `release/2.0` nightlies. The 2.0.0 candidate accepts the hosted
-evidence for this one case. The test or the audit scope must pass on Xcode 27 before CI
-moves to it.
+evidence for this one case.
+
+The cause is the host, not Portavoz. On Xcode 27.2 (27B52) with macOS 26.6.2 (25G83),
+every audit returns -56 after about 15 seconds with no issues, whatever it audits: the
+main window alone, Settings, the receipt, or TextEdit's open panel. The Xcode 27 SDK
+offers only the app-wide `performAccessibilityAudit(for:_:)`, so narrowing the scope is
+not available. The run reports the failure as a declined test-app exit in
+`UITestStorage.finish`; the audit error is in the test log.
+
+Before CI moves to Xcode 27, a hosted probe must show this test passing on the Xcode 27
+runner image. If it also times out there, report it to Apple and keep CI on Xcode 26.6
+until a fix ships.
 
 ### Compact-window correction reachability has focused evidence only
 
