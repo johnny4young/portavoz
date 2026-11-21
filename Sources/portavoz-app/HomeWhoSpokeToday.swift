@@ -14,7 +14,7 @@ struct HomeWhoSpokeToday: View {
     static let maximumTalkers = 5
 
     /// Something happened or is still ahead today.
-    static func isShown(_ voices: TodayVoices) -> Bool {
+    nonisolated static func isShown(_ voices: TodayVoices) -> Bool {
         !voices.recorded.isEmpty || !voices.upcoming.isEmpty
     }
 

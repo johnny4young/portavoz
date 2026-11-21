@@ -309,7 +309,7 @@ struct HomeDayAxis: View {
 
     /// "3:15": the locale's hour and minute without AM/PM; omitting the period
     /// through the format style pads a 12-hour clock to "03:15".
-    static func clock(_ date: Date, locale: Locale, timeZone: TimeZone = .current) -> String {
+    nonisolated static func clock(_ date: Date, locale: Locale, timeZone: TimeZone = .current) -> String {
         var style = Date.FormatStyle.dateTime.hour().minute().locale(locale)
         style.timeZone = timeZone
         var text = date.formatted(style.attributedStyle)
