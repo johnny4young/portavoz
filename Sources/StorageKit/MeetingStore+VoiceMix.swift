@@ -6,13 +6,13 @@ extension MeetingStore {
     /// One speaker's slice of a meeting's attributed speech — the pieces of
     /// the sidebar's voice-mix bar (design system: "the library becomes a
     /// shelf of conversations you can read at a glance"). `order` is the
-    /// speaker's rank by talk time, used to color unnamed speakers by
-    /// appearance; named speakers color by their name instead.
+    /// speaker's rank by talk time; `firstHeard` is when they first spoke.
     public struct VoiceMixSlice: Sendable, Equatable {
         public let isMe: Bool
         public let displayName: String?
         public let fraction: Double
         public let order: Int
+        public let firstHeard: TimeInterval
     }
 
     /// The voice mix for a set of meetings, in ONE aggregate query — sums
@@ -41,7 +41,8 @@ extension MeetingStore {
                 SELECT segment.meetingID AS meetingID,
                        speaker.isMe AS isMe,
                        speaker.displayName AS displayName,
-                       SUM(segment.endTime - segment.startTime) AS seconds
+                       SUM(segment.endTime - segment.startTime) AS seconds,
+                       MIN(segment.startTime) AS firstHeard
                 FROM segment
                 JOIN meeting ON meeting.id = segment.meetingID
                     AND meeting.deletedAt IS NULL
@@ -56,13 +57,21 @@ extension MeetingStore {
                 """,
             arguments: StatementArguments(ids))
 
-        var byMeeting: [MeetingID: [(isMe: Bool, name: String?, seconds: Double)]] = [:]
+        struct SpeakerTalk {
+            let isMe: Bool
+            let name: String?
+            let seconds: Double
+            let firstHeard: Double
+        }
+        var byMeeting: [MeetingID: [SpeakerTalk]] = [:]
         for row in rows {
             let uuid = try PersistedIdentity.required(
                 row["meetingID"], table: "segment", column: "meetingID")
             let id = MeetingID(rawValue: uuid)
             byMeeting[id, default: []].append(
-                (isMe: row["isMe"], name: row["displayName"], seconds: row["seconds"]))
+                SpeakerTalk(
+                    isMe: row["isMe"], name: row["displayName"], seconds: row["seconds"],
+                    firstHeard: row["firstHeard"]))
         }
 
         var result: [MeetingID: [VoiceMixSlice]] = [:]
@@ -74,7 +83,8 @@ extension MeetingStore {
                     isMe: speaker.isMe,
                     displayName: speaker.name,
                     fraction: speaker.seconds / total,
-                    order: order)
+                    order: order,
+                    firstHeard: speaker.firstHeard)
             }
         }
         return result

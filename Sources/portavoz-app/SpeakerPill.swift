@@ -48,6 +48,7 @@ struct SpeakerPill: View {
         guard let speaker else { return .unnamed(VoicePalette.unnamed) }
         if speaker.isMe { return .you }
         let colour = VoicePalette.color(cast.tint(for: speaker), colorScheme: colorScheme)
-        return speaker.displayName == nil ? .unnamed(colour) : .named(colour)
+        let isNamed = speaker.displayName?.trimmingCharacters(in: .whitespaces).isEmpty == false
+        return isNamed ? .named(colour) : .unnamed(colour)
     }
 }

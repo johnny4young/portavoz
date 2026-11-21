@@ -7,12 +7,16 @@ public struct LibraryVoiceMixSlice: Equatable, Sendable {
     public let displayName: String?
     public let fraction: Double
     public let order: Int
+    public let firstHeard: TimeInterval
 
-    public init(isMe: Bool, displayName: String?, fraction: Double, order: Int) {
+    public init(
+        isMe: Bool, displayName: String?, fraction: Double, order: Int, firstHeard: TimeInterval
+    ) {
         self.isMe = isMe
         self.displayName = displayName
         self.fraction = fraction
         self.order = order
+        self.firstHeard = firstHeard
     }
 }
 

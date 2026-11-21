@@ -318,7 +318,8 @@ private struct LibraryModelFixture {
             isMe: true,
             displayName: "Me",
             fraction: 1,
-            order: 0)]
+            order: 0,
+            firstHeard: 0)]
     }
 
     var openItem: LibraryOpenItem {

@@ -162,15 +162,23 @@ public struct VoiceCast: Sendable, Equatable {
 }
 
 extension VoiceCast {
-    /// A finished meeting's cast, ranked by attributed talk.
+    /// A finished meeting's cast, ranked by attributed talk. Members are
+    /// passed in first-heard order, so a hue clash goes to whoever spoke first.
     public init(speakers: [Speaker], segments: [TranscriptSegment]) {
         var seconds: [SpeakerID: TimeInterval] = [:]
+        var firstHeard: [SpeakerID: TimeInterval] = [:]
         for segment in segments where segment.endTime > segment.startTime {
             guard let id = segment.speakerID else { continue }
             seconds[id, default: 0] += segment.endTime - segment.startTime
+            firstHeard[id] = min(firstHeard[id] ?? segment.startTime, segment.startTime)
         }
+        let heardOrder = speakers.enumerated().sorted { lhs, rhs in
+            let left = firstHeard[lhs.element.id] ?? .infinity
+            let right = firstHeard[rhs.element.id] ?? .infinity
+            return left != right ? left < right : lhs.offset < rhs.offset
+        }.map(\.element)
         self.init(
-            members: speakers.map {
+            members: heardOrder.map {
                 Member(
                     key: Self.key($0.id), isMe: $0.isMe, name: $0.displayName,
                     talkSeconds: seconds[$0.id, default: 0])
@@ -178,10 +186,10 @@ extension VoiceCast {
             ordering: .talkShare)
     }
 
-    /// A library row's cast from its voice mix.
+    /// A library row's cast from its voice mix, in first-heard order like the detail.
     public init(mix: [LibraryVoiceMixSlice]) {
         self.init(
-            members: mix.map {
+            members: mix.sorted { ($0.firstHeard, $0.order) < ($1.firstHeard, $1.order) }.map {
                 Member(
                     key: String($0.order), isMe: $0.isMe, name: $0.displayName,
                     talkSeconds: $0.fraction)

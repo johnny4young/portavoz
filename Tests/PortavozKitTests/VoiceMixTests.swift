@@ -39,6 +39,7 @@ final class VoiceMixTests: XCTestCase {
 
         XCTAssertEqual(slices.count, 3)
         XCTAssertEqual(slices.map(\.order), [0, 1, 2])
+        XCTAssertEqual(slices.map(\.firstHeard), [0, 6, 9])
         // Largest first: Me (6/10), Marta (3/10), S1 (1/10).
         XCTAssertTrue(slices[0].isMe)
         XCTAssertEqual(slices[0].fraction, 0.6, accuracy: 0.0001)

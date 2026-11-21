@@ -162,12 +162,28 @@ final class VoiceCastTests: XCTestCase {
         XCTAssertEqual(cast.tint(for: silent), .grey)
     }
 
-    func testLibraryMixCast() {
+    func testMeetingCastGivesAClashToWhoeverWasHeardFirst() {
+        let meeting = MeetingID()
+        let nora = Speaker(meetingID: meeting, label: "S1", displayName: "Nora")
+        let marta = Speaker(meetingID: meeting, label: "S2", displayName: "Marta")
+        let cast = VoiceCast(
+            speakers: [nora, marta],
+            segments: [segment(meeting, nora.id, 10, 30), segment(meeting, marta.id, 0, 5)])
+
+        let hue = VoiceHue.index(name: "Marta")
+        XCTAssertEqual(cast.tint(for: marta), .hue(hue))
+        XCTAssertEqual(cast.tint(for: nora), .hue((hue + 1) % VoiceHue.paletteSize))
+    }
+
+    func testLibraryMixCastAgreesWithTheMeetingOnAClash() {
         let cast = VoiceCast(mix: [
-            LibraryVoiceMixSlice(isMe: false, displayName: "Marta", fraction: 0.6, order: 0),
-            LibraryVoiceMixSlice(isMe: true, displayName: nil, fraction: 0.4, order: 1)
+            LibraryVoiceMixSlice(isMe: false, displayName: "Nora", fraction: 0.5, order: 0, firstHeard: 10),
+            LibraryVoiceMixSlice(isMe: false, displayName: "Marta", fraction: 0.3, order: 1, firstHeard: 0),
+            LibraryVoiceMixSlice(isMe: true, displayName: nil, fraction: 0.2, order: 2, firstHeard: 4)
         ])
-        XCTAssertEqual(cast.voices.map(\.tint), [.hue(VoiceHue.index(name: "Marta")), .you])
+        let hue = VoiceHue.index(name: "Marta")
+        XCTAssertEqual(cast.voices.map(\.name), ["Nora", "Marta", nil], "drawn by talk share")
+        XCTAssertEqual(cast.voices.map(\.tint), [.hue((hue + 1) % VoiceHue.paletteSize), .hue(hue), .you])
     }
 
     private func segment(

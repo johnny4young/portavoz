@@ -27,6 +27,13 @@ final class SpeakerPillVoiceTests: XCTestCase {
     }
 
     @MainActor
+    func testABlankNameStillReadsAsUnnamed() async {
+        let blank = Speaker(meetingID: MeetingID(), label: "S1", displayName: "  ")
+        let cast = VoiceCast(speakers: [blank], segments: [])
+        XCTAssertEqual(SpeakerPill.voice(for: blank, in: cast, colorScheme: .light), .unnamed(VoicePalette.unnamed))
+    }
+
+    @MainActor
     func testVoicesPastTheCastAreGreyEvenWhenNamed() async {
         let meeting = MeetingID()
         let people = ["Marta", "Bruno", "Carla", "Ilarion", "Lucia", "Elena"].enumerated().map {
