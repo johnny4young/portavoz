@@ -72,7 +72,7 @@ struct HomeView: View {
         HStack(alignment: .firstTextBaseline, spacing: PVDesign.space3) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Today")
-                    .font(.largeTitle.weight(.semibold))
+                    .pvDisplay(.title)
                     .accessibilityIdentifier("home-title")
                 Text(Date.now, format: .dateTime.weekday(.wide).day().month(.wide))
                     .font(.title3)
@@ -95,7 +95,7 @@ struct HomeView: View {
     /// The next meeting is the hero: it gets the large row with the countdown
     /// and both actions; the rest of the day and tomorrow follow compactly.
     private var agendaCard: some View {
-        card(title: L10n.text("Next meeting"), symbol: PVSymbol.today) {
+        card(title: L10n.text("Next meeting")) {
             if state.upcomingToday.isEmpty, state.upcomingTomorrow.isEmpty {
                 HStack(spacing: PVDesign.space3) {
                     if state.offerCalendar {
@@ -209,7 +209,6 @@ struct HomeView: View {
     private var openWorkCard: some View {
         card(
             title: L10n.text("Open to-dos"),
-            symbol: "checklist",
             trailing: state.openItems.count > Self.maximumOpenItems
                 ? L10n.format("%d more in Radar", state.openItems.count - Self.maximumOpenItems)
                 : nil,
@@ -259,7 +258,7 @@ struct HomeView: View {
     private var recentCard: some View {
         let openByMeeting = Dictionary(grouping: state.openItems, by: \.meetingID)
             .mapValues(\.count)
-        return card(title: L10n.text("Pick up where you left off"), symbol: PVSymbol.history) {
+        return card(title: L10n.text("Pick up where you left off")) {
             if state.meetings.isEmpty {
                 emptyLine("No meetings yet")
             } else {
@@ -331,15 +330,14 @@ struct HomeView: View {
 
     private func card<Content: View>(
         title: String,
-        symbol: String,
         trailing: String? = nil,
         trailingAction: (() -> Void)? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: PVDesign.space2) {
             HStack(alignment: .firstTextBaseline) {
-                Label(title, systemImage: symbol)
-                    .font(.headline)
+                Text(title)
+                    .pvDisplay(.section)
                 Spacer(minLength: 0)
                 if let trailing, let trailingAction {
                     Button(trailing, action: trailingAction)

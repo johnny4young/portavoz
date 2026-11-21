@@ -52,6 +52,9 @@ targets:
       - path: Sources/portavoz-app
       - path: Resources/Localization/Portavoz/Localizable.xcstrings
       - path: Resources/Localization/Portavoz/InfoPlist.xcstrings
+      - path: Resources/Fonts/Fraunces
+        type: folder
+        buildPhase: resources
     settings:
       base:
         # Never register disposable DerivedData builds as the shipping app.

@@ -48,6 +48,10 @@ if ! printf '%s\n' "$STATUS" | grep -q '^classifierLoadable=true$'; then
   echo "The app resolved its classifier bundle but could not load the model." >&2
   exit 65
 fi
+if ! printf '%s\n' "$STATUS" | grep -q '^displayFontRegistered=true$'; then
+  echo "The app could not register its bundled display font." >&2
+  exit 65
+fi
 
 # The command-line tool is the app executable started through a bundled link
 # (D582); Homebrew and the Settings install both point at it, so it must answer
@@ -66,4 +70,4 @@ if ! printf '%s\n' "$REPLY" | grep -q '"serverInfo"'; then
   exit 65
 fi
 
-echo "OK → $APP reads its own payload, resolves its bundled classifier and serves its command-line tool."
+echo "OK → $APP reads its own payload, resolves its bundled classifier and display font, and serves its command-line tool."

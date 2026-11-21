@@ -24,6 +24,7 @@ def make_app(
     *,
     resolved: str | None,
     loadable: bool = True,
+    font_registered: bool = True,
     mode: int = 0o755,
     nested_layout: bool = False,
     cli_link: str | None = "../MacOS/portavoz-app",
@@ -47,7 +48,8 @@ def make_app(
     binary.write_text(
         "#!/bin/bash\n"
         f"if [ \"$1\" = mcp ]; then cat >/dev/null; printf '%s\\n' '{mcp_reply}'; exit 0; fi\n"
-        f'printf "classifierBundle={reported}\\nclassifierLoadable={str(loadable).lower()}\\n"\n'
+        f'printf "classifierBundle={reported}\\nclassifierLoadable={str(loadable).lower()}'
+        f'\\ndisplayFontRegistered={str(font_registered).lower()}\\n"\n'
         f"exit {0 if loadable else 1}\n",
         encoding="utf-8",
     )
@@ -189,6 +191,17 @@ class AppPayloadPermissionTests(unittest.TestCase):
             completed = self.run_payload_gate(app)
             self.assertEqual(completed.returncode, 65)
             self.assertIn("could not resolve its bundled assets", completed.stderr)
+
+    def test_payload_gate_rejects_an_app_without_its_display_font(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app = make_app(Path(directory), resolved=None, font_registered=False)
+            completed = self.run_payload_gate(app)
+            self.assertEqual(completed.returncode, 65)
+            self.assertIn("display font", completed.stderr)
+
+    def test_packaging_stages_the_display_font_with_its_licence(self):
+        self.assertIn('cp -R Resources/Fonts/Fraunces "$APP/Contents/Resources/"', MAKE_APP)
+        self.assertIn("Resources/Fonts/Fraunces/OFL.txt", MAKE_APP)
 
     def test_module_resources_resolve_without_the_trapping_accessor(self):
         sources = list((ROOT / "Sources").rglob("*.swift"))

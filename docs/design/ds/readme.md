@@ -2,7 +2,7 @@
 
 Portavoz is a **privacy-first, local-first meeting assistant for macOS** (Swift 6 + SwiftUI, iOS next). It records meetings, transcribes live on the Neural Engine, separates voices on-device, and summarizes locally by default; remote providers and private iCloud sync require explicit opt-in. Two products share one identity:
 
-1. **The macOS app** — native, system-font, ink on paper, quiet.
+1. **The macOS app** — native, ink on paper, quiet; Fraunces for titles and display numerals, SF for everything else.
 2. **portavoz.app** — the marketing site, "the icon's world": dark slate, violet radials, one amber accent, Fraunces display serif.
 
 **Sources** (explore these to design better against the real product):
@@ -33,7 +33,7 @@ Brand personality: **serious but warm, technical without being cold, honest**. B
 - **Voices («color IS voice»):** you are ALWAYS amber (`--you`, `--you-ink` for amber text); up to five others get a stable hue (`--voice-1`…`--voice-5`: Cobalt, Madder, Moss, Clay, Lagoon), assigned by order of appearance and persistent per named person; `--voice-unnamed` is grey. Voice hues are fills; names stay ink on the tint.
 - **Semantics:** red (`--now`) = the present only (Record, Stop, live edge, now line), never a warning · green (`--green`) = Portavoz speaking (✦ chips, summaries, answers, translations) · `--ok` = success · warnings and errors = ink plus a glyph.
 - **Surfaces:** solid paper, sunk paper for sidebars, cards on `--card`; no gradients in the app, no left-edge accent strips (tint, weight or a full outline instead).
-- **Type:** app = system font (SF Pro), macOS text-style scale (largeTitle.bold pages → title2.bold tile values → headline card titles → caption helpers); numbers ALWAYS tabular (`monospacedDigit`). Web = Fraunces (display, `SOFT 50`, weight 560, amber italics on the em-dash turn) + Instrument Sans (body) + IBM Plex Mono (commands & measured numbers).
+- **Type:** app = bundled Fraunces for display roles (`PVDisplayStyle`: countdown 172/340 SOFT 100, page and meeting titles 40/480, section heads 21/520, heard quotes 19 italic; SOFT 40 elsewhere, WONK off) and SF Pro for body and controls, SF Mono for time codes. Fraunces has no tabular figures, so ticking time uses equal digit cells; SF numbers stay tabular (`monospacedDigit`). Web = Fraunces (display, `SOFT 50`, weight 560, amber italics on the em-dash turn) + Instrument Sans (body) + IBM Plex Mono (commands & measured numbers).
 - **Spacing:** 12/16/24 core scale (tiles pad 12, cards 16, pages 24). **Radii:** 8 insets · 10 tiles · 12 cards · 14 floating panels · 999 capsules.
 - **Motion:** exactly two gestures — `pv-breathe` (3.6s ease-in-out, staggered 0.35s, waveform bars) and `pv-pulse` (1s, recording dot / active mic symbols). Everything else is still. `prefers-reduced-motion` stops both. Hovers: chips deepen their tint (0.14→0.18), buttons brighten slightly, trash rows reveal restore.
 - **Capsules are the signature shape:** suggestion chips, speaker pills, mic meters (4pt), talk-time bars — all pill-radius.

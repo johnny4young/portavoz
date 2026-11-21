@@ -23016,3 +23016,27 @@ colour; named people therefore hash to new hues once. Voice hues are fills,
 not text colours: names stay ink on the tint, because the light hues do not
 reach 4.5:1 as text. `PVDesignPaletteTests` checks every text/background pair
 on the exact hex values in light, dark and Increase Contrast.
+
+## D644 — Fraunces is the bundled display face
+
+Titles, numerals and words quoted as heard use Fraunces (SIL Open Font
+License 1.1); body text and controls stay SF Pro and time codes SF Mono. The
+two unmodified upstream variable fonts (upright and italic, about 0.8 MB
+together, so no subsetting) and `OFL.txt` live in `Resources/Fonts/Fraunces/`.
+`make-app.sh` copies the folder into `Contents/Resources/` and the XcodeGen
+test host carries it as a folder resource; the SwiftPM target does not,
+because a SwiftPM resource must sit inside the target folder and the generated
+`Bundle.module` accessor traps when its bundle is missing.
+`PVFont.registerBundledFonts()` registers both faces for the process before
+the app starts, and `--bundled-assets-status` reports the result so the
+release payload gate fails on an app that cannot register them. Every lookup
+falls back to New York, so a missing file changes the look, never the layout.
+
+Roles (`PVDisplayStyle`): countdown 172 pt / weight 340 / SOFT 100, page and
+meeting titles 40 / 480, section heads 21 / 520, heard quotes 19 italic / 420;
+optical size follows the point size and WONK is held at 0. Sizes scale with
+Dynamic Type through `@ScaledMetric`. Fraunces has proportional figures only
+and no `tnum` feature, so ticking time (`DisplayTimeText`) sets each digit in
+a cell as wide as the widest figure instead of relying on tabular digits.
+`THIRD_PARTY_NOTICES.md` lists the font and Settings › Data credits it.
+

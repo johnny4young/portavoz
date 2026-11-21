@@ -41,7 +41,7 @@ struct InsightsView: View {
     private var header: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text("Insights")
-                .font(.largeTitle.bold())
+                .pvDisplay(.title)
                 .accessibilityIdentifier("insights-title")
             Picker("", selection: $scopeRaw) {
                 Text("Week").tag(InsightsScope.week.rawValue)
@@ -213,7 +213,7 @@ struct InsightsView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("Your rhythm · 12 weeks")
-                    .font(.headline)
+                    .pvDisplay(.section)
                     .accessibilityIdentifier("insights-heatmap")
                 Text("column = week · row = weekday · more intense = more meetings")
                     .font(.caption2)
@@ -271,7 +271,7 @@ struct InsightsView: View {
             // `.accessibilityIdentifier` stamps every descendant on macOS,
             // which would clobber each participant bar's own id.
             Text("Who you talk with, and how")
-                .font(.headline)
+                .pvDisplay(.section)
                 .accessibilityIdentifier("insights-participants")
             ForEach(balance.participants) { person in
                 participantRow(person)
@@ -356,7 +356,7 @@ extension InsightsView {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
                     Text("Findings ✦ from your meetings")
-                        .font(.headline)
+                        .pvDisplay(.section)
                         .accessibilityIdentifier("insights-findings")
                     Text("detected locally in your transcripts — each with an action")
                         .font(.caption2)

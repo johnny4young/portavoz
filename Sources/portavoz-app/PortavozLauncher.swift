@@ -9,6 +9,7 @@ import PortavozCLIKit
 enum PortavozLauncher {
     static func main() {
         guard CommandLineInvocation.runsCommandLineTool(CommandLine.arguments) else {
+            PVFont.registerBundledFonts()
             PortavozApp.main()
             return
         }

@@ -1461,7 +1461,7 @@ route. One privacy promise exists in the main window: the sidebar footer chip
 sent unless the user asks and opens Settings on Your data. Today,
 Insights, the menu-bar panel, onboarding and the Settings sidebar repeat no
 disclaimer; feature-specific on-device claims remain limited to
-operations that cannot use a remote provider. Colour is ink on paper: `PVDesign` holds every token as a light/dark `PVTone` mirrored in `docs/design/ds/tokens/colors.css`; chrome is ink, voices own the hues (`VoicePalette`: you in amber plus five), red marks only the present and green marks generated content. Every SF Symbol the app draws is a `PVSymbol` constant (one per concept, in `PVDesign.swift`); `sparkles` is reserved for `ChipLabel`, and an architecture ratchet keeps retired glyph literals out of view code.
+operations that cannot use a remote provider. Colour is ink on paper: `PVDesign` holds every token as a light/dark `PVTone` mirrored in `docs/design/ds/tokens/colors.css`; chrome is ink, voices own the hues (`VoicePalette`: you in amber plus five), red marks only the present and green marks generated content. Titles, section heads and display numerals use the bundled Fraunces variable font through `PVFont` and `.pvDisplay(_:)` roles, falling back to New York when it cannot register; body text and controls stay SF. Every SF Symbol the app draws is a `PVSymbol` constant (one per concept, in `PVDesign.swift`); `sparkles` is reserved for `ChipLabel`, and an architecture ratchet keeps retired glyph literals out of view code.
 
 ## Verified model lifecycle
 

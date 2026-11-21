@@ -178,8 +178,7 @@ private struct RecordingElapsedClock: View {
     }
 
     private func clockText(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 24, weight: .medium).monospacedDigit())
+        DisplayTimeText(text, style: .clock(size: 24))
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
     }
