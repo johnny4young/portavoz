@@ -56,6 +56,18 @@ enum UITestWindowPlacement {
         return .statusBar
     }
 
+    /// AppKit restores a collapsed sidebar on the next launch; a journey that
+    /// hides it must not decide the layout of the ones that follow.
+    static func forgetSplitViewFrames(
+        arguments: [String] = ProcessInfo.processInfo.arguments,
+        defaults: UserDefaults = .standard
+    ) {
+        guard arguments.contains("-use-temp-store"), arguments.contains("-reset-sidebar") else { return }
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("NSSplitView Subview Frames ") {
+            defaults.removeObject(forKey: key)
+        }
+    }
+
     static func positionMainWindow(_ window: NSWindow) {
         guard let visibleFrame = zeroScreenVisibleFrame else { return }
         let arguments = ProcessInfo.processInfo.arguments

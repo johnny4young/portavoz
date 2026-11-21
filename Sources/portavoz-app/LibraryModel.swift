@@ -64,6 +64,9 @@ final class LibraryModel {
         /// nil when the event has no previous occurrence.
         let lines: MeetingBriefLines?
 
+        /// False for both empty states the card words.
+        var hasLines: Bool { lines?.people.isEmpty == false }
+
         func isFor(_ event: UpcomingEvent) -> Bool {
             occurrence == MeetingBriefLines.Occurrence(event: event)
         }

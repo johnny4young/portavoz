@@ -3012,13 +3012,18 @@ column, present whenever there is a hero so the card arriving never moves the
 countdown, sits beside the hero when the section is at least 940 pt wide, growing
 from 360 to 552 pt while the hero keeps at least 536 pt, and below it
 otherwise; `HomeHeroLayout` decides from the proposed width alone, so the
-ticking hero is never measured against alternative layouts. A divider then leads to **Open to-dos** (the first five
+ticking hero is never measured against alternative layouts. `HomeAgendaSection`
+reads that same rule (`HomeHeroLayout.isWide(width:)`) from its own width and
+tells the side column, which leaves out a brief card with no lines while
+stacked: beside the hero the empty state holds the column, under it the card
+would only push open work below the fold. A divider then leads to **Open to-dos** (the first five
 open action items with the sidebar's checkbox action and a link to the source
 meeting, plus "N more in Radar") beside **Pick up where you left off** (the
 three newest meetings with their voice strip, duration, open count and
 lifecycle badge). The week's totals live in Insights. `HomeView` renders
 `LibraryModel.State` and sends the sidebar's own actions, with no `.task` or
-`@State` of its own; its `.onChange` handlers only send actions. The sidebar `Today`
+`@State` of its own (the wide-or-stacked flag belongs to `HomeAgendaSection`); its
+`.onChange` handlers only send actions. The sidebar `Today`
 destination (`library-home-button`) is selected for both the nil and
 `.library` routes. Identifiers: `home-title`, `home-record`, `home-ask`,
 `home-ask-field`, `home-ask-suggestions`, `home-ask-chip-<n>`,
@@ -3032,7 +3037,11 @@ event-linked occurrence of its weekly sync with three voices and two to-dos, so
 the public Today screenshot reads lived-in without touching the operator's
 calendar; `-seed-brief-previous` adds an earlier occurrence of the
 `-seed-brief` event for the brief card's journey; `-seed-wide-window` (disposable store only)
-drops the test window's left clearance so the wide layout can be asserted.
+drops the test window's left clearance so the wide layout can be asserted. On a
+1024 pt screen that layout still needs the sidebar hidden, so the journeys
+collapse it with the split view's toolbar toggle, and `-reset-sidebar` (with
+`-use-temp-store`, passed by every UI-test launch) forgets the saved split-view
+frames at launch so a collapsed sidebar never carries into the next test.
 
 ## Views and flows
 

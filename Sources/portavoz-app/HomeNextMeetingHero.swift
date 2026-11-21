@@ -309,6 +309,9 @@ struct HomeHeroLayout: Layout {
     private static let stackedSpacing = PVDesign.space6
     private static let minimumWideWidth = minimumHeroWidth + spacing + sideWidths.lowerBound
 
+    /// Whether a section this wide puts the side column beside the hero.
+    static func isWide(width: CGFloat) -> Bool { width >= minimumWideWidth }
+
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let width = proposal.width ?? Self.minimumWideWidth
         let heights = frames(width: width, subviews: subviews).map(\.maxY)
@@ -325,7 +328,7 @@ struct HomeHeroLayout: Layout {
 
     private func frames(width: CGFloat, subviews: Subviews) -> [CGRect] {
         guard subviews.count == 2 else { return [] }
-        if width >= Self.minimumWideWidth {
+        if Self.isWide(width: width) {
             // The side grows to its full width once the hero keeps its minimum.
             let side = min(Self.sideWidths.upperBound, width - Self.minimumHeroWidth - Self.spacing)
             let heroWidth = width - side - Self.spacing
@@ -343,5 +346,24 @@ struct HomeHeroLayout: Layout {
 
     private func size(_ subview: LayoutSubview, width: CGFloat) -> CGSize {
         CGSize(width: width, height: subview.sizeThatFits(ProposedViewSize(width: width, height: nil)).height)
+    }
+}
+
+/// The agenda in `HomeHeroLayout`, telling the side column which arrangement
+/// it is in. Owns that one flag so `HomeView` keeps no state of its own.
+struct HomeAgendaSection<Hero: View, Side: View>: View {
+    @ViewBuilder let hero: Hero
+    @ViewBuilder let side: (_ isWide: Bool) -> Side
+    @State private var isWide = false
+
+    var body: some View {
+        HomeHeroLayout {
+            hero
+            side(isWide)
+        }
+        // The section's width comes from the window alone, never from its content.
+        .onGeometryChange(for: Bool.self) { proxy in
+            HomeHeroLayout.isWide(width: proxy.size.width)
+        } action: { isWide = $0 }
     }
 }

@@ -156,10 +156,12 @@ struct HomeView: View {
         if state.heroEvent == nil, !hasLater {
             hero
         } else {
-            HomeHeroLayout {
+            HomeAgendaSection {
                 hero
+            } side: { isWide in
                 VStack(alignment: .leading, spacing: PVDesign.space4) {
-                    if let briefPreview { briefCard(briefPreview) }
+                    // Stacked, an empty brief only pushes open work below the fold.
+                    if let briefPreview, isWide || briefPreview.hasLines { briefCard(briefPreview) }
                     if hasLater { laterCard }
                 }
             }

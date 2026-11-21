@@ -115,7 +115,7 @@ extension XCUIApplication {
         app.launchArguments = [
             "-NSTreatUnknownArgumentsAsOpen", "NO",
             "-NSAutomaticWindowAnimationsEnabled", "NO", "-NSWindowResizeTime", "0.001", "-NSScrollAnimationEnabled", "NO",
-            "-ApplePersistenceIgnoreState", "YES", "-use-temp-store", "-reset-app-language",
+            "-ApplePersistenceIgnoreState", "YES", "-use-temp-store", "-reset-app-language", "-reset-sidebar",
         ]
         if seedDemo {
             app.launchArguments.append("-seed-demo")

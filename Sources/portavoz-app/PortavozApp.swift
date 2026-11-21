@@ -24,6 +24,7 @@ struct PortavozApp: App {
             || process.environment["PORTAVOZ_RESET_APP_LANGUAGE"] == "1" {
             UserDefaults.standard.removeObject(forKey: AppLanguage.storageKey)
         }
+        UITestWindowPlacement.forgetSplitViewFrames(arguments: process.arguments)
         if process.arguments.contains("-use-temp-store")
             && process.arguments.contains("-simulate-app-intent") {
             // XCUITest-only proof of the native intent's cold-launch race:

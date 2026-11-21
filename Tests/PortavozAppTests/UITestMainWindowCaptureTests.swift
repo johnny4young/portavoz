@@ -111,6 +111,24 @@ final class UITestMainWindowCaptureTests: XCTestCase {
         }
     }
 
+    func testOnlyAResetDisposableLaunchForgetsTheSidebar() async throws {
+        let suite = "portavoz-split-view-tests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let key = "NSSplitView Subview Frames main-AppWindow-1, SidebarNavigationSplitView"
+        defaults.set(["collapsed"], forKey: key)
+        defaults.set("kept", forKey: "other")
+
+        for arguments in [["Portavoz"], ["Portavoz", "-reset-sidebar"], ["Portavoz", "-use-temp-store"]] {
+            UITestWindowPlacement.forgetSplitViewFrames(arguments: arguments, defaults: defaults)
+            XCTAssertNotNil(defaults.object(forKey: key), "\(arguments) must keep the saved sidebar")
+        }
+        UITestWindowPlacement.forgetSplitViewFrames(
+            arguments: ["Portavoz", "-use-temp-store", "-reset-sidebar"], defaults: defaults)
+        XCTAssertNil(defaults.object(forKey: key))
+        XCTAssertEqual(defaults.string(forKey: "other"), "kept")
+    }
+
     func testMenuFixtureFramePreservesTopAlignmentOnOffsetScreens() async {
         for screen in [NSRect(x: 0, y: 25, width: 1_512, height: 870),
                        NSRect(x: -1_440, y: -200, width: 1_440, height: 900),
