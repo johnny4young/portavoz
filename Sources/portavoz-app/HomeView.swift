@@ -75,8 +75,8 @@ struct HomeView: View {
                     voices: voices,
                     onOpenMeeting: { route = .meeting($0) },
                     onOpenEvent: { perform(.openBrief($0)) },
-                    // A live strip changes per caption, so its growth is read once a minute.
-                    onMinute: { if recordingToday { perform(.loadTodayVoices) } })
+                    // Per minute, never per caption: a live strip changes with every one.
+                    onMinute: { if HomeWhoSpokeToday.isStale(voices, at: Date()) { perform(.loadTodayVoices) } })
             }
             Divider().padding(.vertical, PVDesign.space1)
             ViewThatFits(in: .horizontal) {
@@ -462,10 +462,6 @@ private extension HomeView {
         let event: UpcomingEvent?
         let revision: Int
         let sourceStrip: VoiceStripColumns?
-    }
-
-    var recordingToday: Bool {
-        state.todayVoices?.recorded.contains(where: \.isRecording) == true
     }
 
     /// Shown once the hero's own occurrence has loaded.

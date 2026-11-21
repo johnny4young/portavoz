@@ -70,4 +70,15 @@ final class HomeWhoSpokeTodayTests: XCTestCase {
             events: [], people: [:])
         XCTAssertEqual(single.talkers.map(HomeTalkerColumn.caption), ["Retro"], "one meeting is named by its title")
     }
+
+    func testTheMinuteTickRereadsOnlyWhenTheDayMoved() {
+        let sync = UpcomingEvent(id: "sync", title: "Sync", startDate: at(16), attendees: [], endDate: at(16.5))
+        let read = today(events: [sync])
+        XCTAssertFalse(HomeWhoSpokeToday.isStale(read, at: at(15.5)), "nothing started, ended or is recording")
+        XCTAssertTrue(HomeWhoSpokeToday.isStale(read, at: at(16.1)), "a start changes what is still to go")
+        XCTAssertTrue(HomeWhoSpokeToday.isStale(read, at: at(16.6)), "an ended event leaves the axis")
+        XCTAssertTrue(HomeWhoSpokeToday.isStale(read, at: at(24.1)), "a new day starts over")
+        let started = TodayVoices(day: day, now: at(16.1), meetings: [], events: [sync], people: [:])
+        XCTAssertFalse(HomeWhoSpokeToday.isStale(started, at: at(16.2)), "a fresh read settles it")
+    }
 }

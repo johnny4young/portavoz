@@ -3037,7 +3037,8 @@ opens its brief), and the red now line with its `Now 3:15` pill
 `LoadTodayVoices` with today's agenda; HomeView sends it when the model bumps
 `todayVoicesRevision` (today's meeting rows, their finished strips or today's
 agenda changed) and, from the axis's minute tick, only while a meeting of today
-is recording, so captions never trigger a read. A failed read keeps what is
+is recording, an event shown has started or ended since the read, or the day
+has turned, so captions never trigger a read. A failed read keeps what is
 shown. The hero's invitees take the same day cast (`State.inviteeCast(for:)`),
 so a person wears one hue across the page. The **Later today** card stays beside
 the hero because it carries tomorrow and each event's Record and Brief buttons.

@@ -44,7 +44,7 @@ extension AppServices {
                 meetingID: meeting.id, speakerID: speakers[voice].id,
                 channel: voice == 0 ? .microphone : .system,
                 text: "Turn \(index + 1) of \(title).",
-                startTime: Double(index) * turn, endTime: Double(index + 1) * turn - 1, isFinal: true)
+                startTime: Double(index) * turn, endTime: (Double(index) + 0.9) * turn, isFinal: true)
         })
     }
 }

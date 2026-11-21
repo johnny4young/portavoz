@@ -93,6 +93,14 @@ final class HomeDayAxisTests: XCTestCase {
         XCTAssertEqual(axis.upcoming[1].titleWidth, 1_200 - axis.upcoming[1].x, accuracy: 0.001)
     }
 
+    func testMeetingsSharingAStartShowOneTitle() {
+        let axis = layout(
+            now: at(8),
+            upcoming: [.init(start: at(15), end: at(16)), .init(start: at(15), end: at(15, 30))])
+        XCTAssertGreaterThan(axis.upcoming[0].titleWidth, 0)
+        XCTAssertEqual(axis.upcoming[1].titleWidth, 0, "a second title on the same start would overprint")
+    }
+
     func testTitleStopsBeforeTheNowPill() throws {
         let axis = layout(
             now: at(11),

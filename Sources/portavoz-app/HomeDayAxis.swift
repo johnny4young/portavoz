@@ -91,10 +91,12 @@ struct DayAxisLayout: Sendable, Equatable {
 
         let edges = items.map { max(0, position($0.start)) }
         let total = self.width
-        func frames(_ items: [Item], minimumWidth: CGFloat) -> [Frame] {
-            items.map { item in
+        func frames(_ items: [Item], offset: Int, minimumWidth: CGFloat) -> [Frame] {
+            items.enumerated().map { index, item in
                 let x = max(0, position(item.start))
                 var limit = edges.filter { $0 > x }.min().map { $0 - Self.titleGap } ?? total
+                // Meetings sharing a start would print one title over the other; the first keeps it.
+                if edges.prefix(offset + index).contains(x) { limit = x }
                 if let nowX, item.start < now { limit = min(limit, nowX - Self.nowClearance) }
                 return Frame(
                     x: x,
@@ -102,8 +104,8 @@ struct DayAxisLayout: Sendable, Equatable {
                     titleWidth: max(0, limit - x))
             }
         }
-        self.recorded = frames(recorded, minimumWidth: Self.minimumRecordedWidth)
-        self.upcoming = frames(upcoming, minimumWidth: Self.minimumUpcomingWidth)
+        self.recorded = frames(recorded, offset: 0, minimumWidth: Self.minimumRecordedWidth)
+        self.upcoming = frames(upcoming, offset: recorded.count, minimumWidth: Self.minimumUpcomingWidth)
     }
 
     func x(_ date: Date) -> CGFloat {

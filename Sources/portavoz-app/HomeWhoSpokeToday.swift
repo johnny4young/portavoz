@@ -68,6 +68,15 @@ struct HomeWhoSpokeToday: View {
         }
     }
 
+    /// A recording grows, and an event starting or ending changes "to go" and
+    /// the axis without touching the agenda the model watches.
+    nonisolated static func isStale(_ voices: TodayVoices, at now: Date) -> Bool {
+        now >= voices.day.end
+            || voices.recorded.contains(where: \.isRecording)
+            || voices.upcoming.count { $0.event.startDate > now } != voices.toGo
+            || voices.upcoming.contains { ($0.event.endDate ?? $0.event.startDate) <= now }
+    }
+
     /// "3 meetings recorded · 1 h 46 min · 2 to go", keeping only what applies.
     nonisolated static func summary(_ voices: TodayVoices) -> String? {
         var parts: [String] = []
