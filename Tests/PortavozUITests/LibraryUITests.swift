@@ -101,10 +101,11 @@ final class LibraryUITests: PortavozUITestCase {
         defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
-        let upcoming = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "identifier BEGINSWITH 'library-upcoming-'"))
-            .firstMatch
-        XCTAssertTrue(upcoming.waitForExistenceFast(timeout: 10))
+        // The agenda lives on Today; the sidebar lists past meetings only.
+        XCTAssertFalse(app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'library-upcoming-'")).firstMatch.exists)
+        let upcoming = app.buttons["home-upcoming-brief-ui-test-upcoming-rollout"]
+        XCTAssertTrue(upcoming.waitForStableFrame(timeout: 10))
         upcoming.click()
 
         XCTAssertTrue(app.control(withIdentifier: "brief-title").waitForExistenceFast(timeout: 10))

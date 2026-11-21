@@ -81,6 +81,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 21, 2026
 
+- **📌 Your to-dos say who said them** — on Today each open to-do now tells you who said it ("You said it", "Marta asked"), in which meeting and when, with the owner and due day on a chip; click it to land on that moment. Below, the meetings to pick back up show where you stopped listening on their voice strip, which ones you never played, their open to-dos and who spoke; the sidebar now lists just your past meetings, and Radar shows how many suggestions wait for review.
 - **🎛️ Player menus in narrow windows** — when the meeting column is tight, speed, voice and playback options drop to a second row instead of hiding under the side panel.
 - **⏯️ Pick up where you left off** — reopen a meeting and the player is back where you stopped listening; following a quote or search result still jumps straight to that moment.
 - **🗓️ Who spoke today** — Today now adds up how long you and each person talked across today's meetings, then lays the day out on an hour ruler: every recorded meeting as its voice strip at its real time and length, the meetings still ahead as outlined pills with who's invited, and a red line at now. Click a meeting to open it, or an upcoming one for its brief.

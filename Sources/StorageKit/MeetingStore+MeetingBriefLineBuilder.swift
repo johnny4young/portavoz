@@ -3,7 +3,7 @@ import GRDB
 import PortavozCore
 
 extension MeetingStore {
-    private struct Transcript {
+    struct AttributedTranscript {
         /// Live speakers with attributed speech, most talkative first.
         var speakers: [SpeakerID] = []
         var spoken: [SpeakerID: [MeetingBriefLines.Spoken]] = [:]
@@ -27,14 +27,14 @@ extension MeetingStore {
 
     /// Accepted segments of live speakers with the effective corrections
     /// applied, the attribution the voice strip draws.
-    private static func readableTranscript(
+    static func readableTranscript(
         in db: Database, for meetingID: MeetingID
-    ) throws -> Transcript {
+    ) throws -> AttributedTranscript {
         let key = meetingID.rawValue.uuidString
         guard let revision = try Int.fetchOne(
             db, sql: "SELECT transcriptRevision FROM meeting WHERE id = ? AND deletedAt IS NULL",
             arguments: [key])
-        else { return Transcript() }
+        else { return AttributedTranscript() }
         let history = try fetchTranscriptCorrectionHistory(meetingID: meetingID, in: db)
         let corrections = try TranscriptCorrectionPolicy.effectiveCorrections(
             in: history, meetingID: meetingID, baseTranscriptRevision: revision)
@@ -63,7 +63,7 @@ extension MeetingStore {
         let live = Set(try String.fetchAll(
             db, sql: "SELECT id FROM speaker WHERE deletedAt IS NULL AND meetingID = ?",
             arguments: [key]).compactMap(UUID.init(uuidString:)))
-        var transcript = Transcript()
+        var transcript = AttributedTranscript()
         var talk: [SpeakerID: (seconds: TimeInterval, firstHeard: TimeInterval)] = [:]
         let attributed = VoiceColumns.attributedLines(lines: accepted, corrections: corrections)
             .filter { live.contains($0.speaker.rawValue) && $0.start.isFinite }
@@ -91,7 +91,7 @@ extension MeetingStore {
     /// Owned action items of each recipe's latest live snapshot, the rule open
     /// items use. A confirmed commitment's status wins over the checkbox.
     private static func commitmentLines(
-        in db: Database, for meetingID: MeetingID, transcript: Transcript
+        in db: Database, for meetingID: MeetingID, transcript: AttributedTranscript
     ) throws -> [SpeakerID: [MeetingBriefLines.Line]] {
         let rows = try ownedActionItemRows(in: db, for: meetingID)
         func ownerID(of row: Row) throws -> SpeakerID {
@@ -131,6 +131,16 @@ extension MeetingStore {
         return lines.mapValues(MeetingBriefLines.pendingFirst)
     }
 
+    /// Joins `commitment` to the live commitment an action item most recently fed.
+    static let actionItemLatestCommitmentJoinSQL = """
+        LEFT JOIN commitment ON commitment.id = (
+            SELECT source.commitmentID FROM commitmentSource AS source
+            JOIN commitment AS confirmed
+              ON confirmed.id = source.commitmentID AND confirmed.deletedAt IS NULL
+            WHERE source.actionItemID = actionItem.id
+            ORDER BY source.firstSeenAt DESC, source.id LIMIT 1)
+        """
+
     private static func ownedActionItemRows(in db: Database, for meetingID: MeetingID) throws -> [Row] {
         try Row.fetchAll(
             db,
@@ -146,12 +156,7 @@ extension MeetingStore {
                        commitment.status AS commitmentStatus, commitment.dueAt AS dueAt
                 FROM actionItem
                 JOIN summary ON summary.id = actionItem.summaryID AND summary.deletedAt IS NULL
-                LEFT JOIN commitment ON commitment.id = (
-                    SELECT source.commitmentID FROM commitmentSource AS source
-                    JOIN commitment AS confirmed
-                      ON confirmed.id = source.commitmentID AND confirmed.deletedAt IS NULL
-                    WHERE source.actionItemID = actionItem.id
-                    ORDER BY source.firstSeenAt DESC, source.id LIMIT 1)
+                \(actionItemLatestCommitmentJoinSQL)
                 WHERE actionItem.meetingID = ? AND actionItem.deletedAt IS NULL
                   AND actionItem.ownerSpeakerID IS NOT NULL
                   AND summary.version = (
@@ -165,7 +170,7 @@ extension MeetingStore {
     }
 
     private static func questionLines(
-        in db: Database, for meetingID: MeetingID, transcript: Transcript
+        in db: Database, for meetingID: MeetingID, transcript: AttributedTranscript
     ) throws -> [SpeakerID: [MeetingBriefLines.Line]] {
         let rows = try Row.fetchAll(
             db,

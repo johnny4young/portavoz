@@ -99,6 +99,14 @@ final class PublicShowcaseUITests: PortavozUITestCase {
                 .matching(NSPredicate(format: "identifier BEGINSWITH 'home-recent-'"))
                 .firstMatch.waitForExistenceFast(timeout: 10))
         attachScreenshot(of: app, named: "public-today")
+
+        // The showcase's generated to-dos wait in Radar's review queue.
+        let radarLink = app.buttons["home-radar-link"]
+        XCTAssertTrue(radarLink.waitForStableFrame(timeout: 10))
+        radarLink.click()
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 10) { app.buttons["library-commitment-radar-button"].isSelected },
+            "the link opens Radar")
     }
 
     @MainActor

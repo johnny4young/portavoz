@@ -3,6 +3,8 @@ import SwiftUI
 /// Presentation-only destinations remain available while an import is working.
 struct LibraryNavigationControls: View {
     let route: Route?
+    /// Generated suggestions waiting in Radar.
+    var suggestionsToReview = 0
     let onNavigate: (Route) -> Void
 
     var body: some View {
@@ -22,7 +24,9 @@ struct LibraryNavigationControls: View {
             navigationButton(
                 "Radar", symbol: PVSymbol.radar, id: "library-commitment-radar-button",
                 help: "Track confirmed commitments, deadlines, sources and changes",
-                selected: route?.isCommitmentRadar == true) { onNavigate(.commitments(nil)) }
+                selected: route?.isCommitmentRadar == true, badge: suggestionsToReview) {
+                onNavigate(.commitments(nil))
+            }
         }
     }
 
@@ -33,9 +37,10 @@ struct LibraryNavigationControls: View {
 
     private func navigationButton(
         _ title: LocalizedStringKey, symbol: String, id: String, help: String,
-        selected: Bool = false, action: @escaping () -> Void
+        selected: Bool = false, badge: Int = 0, action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
+        let badgeText = badge > 0 ? badge.formatted(.number.locale(AppLanguage.current.locale)) : ""
+        return Button(action: action) {
             HStack(spacing: 10) {
                 Image(systemName: symbol)
                     .symbolRenderingMode(.hierarchical)
@@ -46,6 +51,12 @@ struct LibraryNavigationControls: View {
                     .font(.body.weight(selected ? .semibold : .regular))
                     .lineLimit(1)
                 Spacer(minLength: 0)
+                if badge > 0 {
+                    Text(badgeText)
+                        .font(.caption.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(PVDesign.ink2)
+                        .accessibilityIdentifier("\(id)-badge")
+                }
             }
             .padding(.horizontal, 10)
             .frame(minHeight: 36)
@@ -56,6 +67,7 @@ struct LibraryNavigationControls: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(title))
+        .accessibilityValue(badgeText)
         .accessibilityAddTraits(selected ? .isSelected : [])
         .accessibilityIdentifier(id)
         .help(L10n.text(help))

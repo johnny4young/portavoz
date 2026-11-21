@@ -18,9 +18,6 @@ struct LibraryView: View {
     /// Opens Settings on Your data, where the activity log lives.
     let onOpenActivity: () -> Void
 
-    /// To-dos fold away when the user wants a lean sidebar; the choice
-    /// survives relaunches.
-    @AppStorage("todosSectionExpanded") private var todosExpanded = true
     @State private var showsPrivacyNote = false
     private let briefTimer = Timer.publish(every: 300, on: .main, in: .common).autoconnect()
 
@@ -55,6 +52,7 @@ struct LibraryView: View {
 
             LibraryNavigationControls(
                 route: route,
+                suggestionsToReview: state.suggestionsToReview,
                 onNavigate: { route = $0 })
                 .padding(.horizontal, 12)
                 .padding(.top, 12)
@@ -116,35 +114,12 @@ struct LibraryView: View {
                         }
                     }
                 } else {
-                    if !state.upcomingToday.isEmpty {
-                        Section("Today") {
-                            ForEach(state.upcomingToday) { event in
-                                upcomingRow(event)
-                            }
-                        }
-                    }
-                    if !state.upcomingTomorrow.isEmpty {
-                        Section("Tomorrow") {
-                            ForEach(state.upcomingTomorrow) { event in
-                                upcomingRow(event)
-                            }
-                        }
-                    }
-                    if !state.openItems.isEmpty {
-                        Section("To-dos", isExpanded: $todosExpanded) {
-                            ForEach(state.openItems, id: \.item.id) { open in
-                                todoRow(open)
-                            }
-                        }
-                    }
+                    // Past meetings only: the agenda and open to-dos live on Today.
                     if state.meetings.isEmpty {
                         Section("Meetings") {
                             Text("No meetings yet").foregroundStyle(.secondary)
                         }
                     }
-                    // Grouped by recency (design system: HOY · ESTA SEMANA ·
-                    // SEMANA PASADA · antes) so the library reads like a
-                    // timeline, not one long undated pile.
                     ForEach(meetingGroups, id: \.key) { group in
                         Section(group.title) {
                             ForEach(group.meetings) { meeting in
@@ -215,75 +190,14 @@ struct LibraryView: View {
         .task {
             _ = await model.send(.observeLibrary)
         }
+        // New summaries and to-dos change what Radar has to review.
+        .onChange(of: state.libraryRevision) { perform(.refreshSuggestions) }
+        // Reviewing in Radar changes the queue without touching the library.
+        .onChange(of: route?.isCommitmentRadar == true) { perform(.refreshSuggestions) }
         .onReceive(briefTimer) { _ in
             perform(.refreshAgenda)
             perform(.refreshAutomations)
         }
-    }
-
-    /// One agenda row: time + title; click builds that event's brief.
-    private func upcomingRow(_ event: UpcomingEvent) -> some View {
-        Button {
-            openBrief(for: event)
-        } label: {
-            HStack(spacing: 6) {
-                if state.briefLoading == event {
-                    ProgressView().controlSize(.mini)
-                } else {
-                    Image(systemName: "calendar.badge.clock")
-                        .foregroundStyle(.secondary)
-                }
-                Text(event.startDate.formatted(date: .omitted, time: .shortened))
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                Text(event.title).lineLimit(1)
-            }
-        }
-        .buttonStyle(.plain)
-        // Agenda actions live inside the selectable meeting List but are not
-        // meeting routes. Prevent AppKit's row-selection gesture from racing
-        // the async brief action and opening the adjacent meeting instead.
-        .selectionDisabled()
-        .help("See who's coming, related meetings and open to-dos")
-        .accessibilityIdentifier("library-upcoming-\(event.id)")
-    }
-
-    private func openBrief(for event: UpcomingEvent) {
-        perform(.openBrief(event))
-    }
-
-    /// One open action item: check it off right here, or click through to
-    /// its meeting. Checking refreshes this model through the open-item
-    /// observation and retains broad invalidation only for the detail view.
-    /// NOT a selection
-    /// row: several to-dos share one meeting, and tagging them with it made
-    /// the List paint every sibling as selected at once (field bug, Jul 11)
-    /// — so navigation is an explicit tap and selection stays disabled.
-    private func todoRow(_ open: LibraryOpenItem) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Toggle(isOn: todoBinding(open)) { EmptyView() }
-                .toggleStyle(.pvCheckbox)
-                .labelsHidden()
-            VStack(alignment: .leading, spacing: 2) {
-                Text(open.item.text).lineLimit(2)
-                Text(open.meetingTitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            .contentShape(Rectangle())
-            .onTapGesture { route = .meeting(open.meetingID) }
-        }
-        .selectionDisabled()
-    }
-
-    private func todoBinding(_ open: LibraryOpenItem) -> Binding<Bool> {
-        Binding(
-            get: { open.item.isDone },
-            set: { done in
-                perform(.setActionItem(open.item.id, done: done))
-            }
-        )
     }
 
     private func isAudio(_ url: URL) -> Bool {
@@ -338,37 +252,17 @@ struct LibraryView: View {
 }
 
 extension LibraryView {
-    /// Meetings bucketed by recency, newest bucket first, empty buckets
-    /// dropped — the sidebar's timeline (design system: HOY · ESTA SEMANA ·
-    /// SEMANA PASADA · antes).
+    /// This week (today included) and Earlier, newest first; empty groups drop.
     private var meetingGroups: [(key: String, title: LocalizedStringKey, meetings: [Meeting])] {
-        let calendar = Calendar.current
         let now = Date()
-        let startOfToday = calendar.startOfDay(for: now)
-        let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? startOfToday
-        let startOfLastWeek =
-            calendar.date(byAdding: .weekOfYear, value: -1, to: startOfWeek) ?? startOfWeek
-
-        var today: [Meeting] = [], thisWeek: [Meeting] = []
-        var lastWeek: [Meeting] = [], earlier: [Meeting] = []
-        for meeting in state.meetings {
-            if meeting.startedAt >= startOfToday {
-                today.append(meeting)
-            } else if meeting.startedAt >= startOfWeek {
-                thisWeek.append(meeting)
-            } else if meeting.startedAt >= startOfLastWeek {
-                lastWeek.append(meeting)
-            } else {
-                earlier.append(meeting)
-            }
-        }
+        let startOfWeek = Calendar.current.dateInterval(of: .weekOfYear, for: now)?.start
+            ?? Calendar.current.startOfDay(for: now)
+        let thisWeek = state.meetings.filter { $0.startedAt >= startOfWeek }
+        let earlier = state.meetings.filter { $0.startedAt < startOfWeek }
         return [
-            ("today", LocalizedStringKey("Today"), today),
-            ("thisweek", LocalizedStringKey("This week"), thisWeek),
-            ("lastweek", LocalizedStringKey("Last week"), lastWeek),
-            ("earlier", LocalizedStringKey("Earlier"), earlier)
-        ].filter { !$0.2.isEmpty }
-            .map { (key: $0.0, title: $0.1, meetings: $0.2) }
+            (key: "thisweek", title: LocalizedStringKey("This week"), meetings: thisWeek),
+            (key: "earlier", title: LocalizedStringKey("Earlier"), meetings: earlier)
+        ].filter { !$0.meetings.isEmpty }
     }
 
     /// Native sidebar selection owns contrast, focus and inactive-window styling.
@@ -376,8 +270,8 @@ extension LibraryView {
     private func meetingRow(_ meeting: Meeting) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(MeetingRowTitle.display(meeting.title)).lineLimit(1)
-            Text(meeting.startedAt.formatted(date: .abbreviated, time: .shortened))
-                .font(.caption)
+            Text(meeting.dayAndLength)
+                .font(.caption.monospacedDigit())
                 .foregroundStyle(.secondary)
             VoiceStrip(state.voiceStrips[meeting.id] ?? .empty)
         }

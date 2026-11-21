@@ -28,8 +28,11 @@ protocol LibraryModelClient: AnyObject {
     func buildLibraryBrief(for event: UpcomingEvent) async -> MeetingBrief?
     func libraryBriefLines(for event: UpcomingEvent) async throws -> MeetingBriefLines?
     func libraryTodayVoices(at now: Date, events: [UpcomingEvent]) async throws -> TodayVoices
+    func libraryTodayWork(_ request: LoadTodayWork.Request) async throws -> TodayWork
     /// Skill offers waiting for review; zero when they cannot be read.
     func pendingLibraryAutomations() async -> Int
+    /// Suggestions waiting in Radar's review queue; nil when they cannot be read.
+    func librarySuggestionsToReview() async -> Int?
 }
 
 /// Per-window presentation owner for the Library. Views render one value-state
@@ -113,6 +116,20 @@ final class LibraryModel {
         /// Bumped when a meeting or an open to-do changes, not by transcript
         /// writes alone, so a live recording does not reload the brief per caption.
         fileprivate(set) var libraryRevision = 0
+        /// Saved listening positions of the pick-up candidates; nil until read.
+        fileprivate(set) var playbackPositions: [MeetingID: MeetingPlaybackPosition]?
+        /// Who said each shown to-do, by item.
+        fileprivate(set) var openItemSources: [UUID: OpenItemSource] = [:]
+        /// Generated suggestions waiting in Radar's review queue.
+        fileprivate(set) var suggestionsToReview = 0
+
+        /// The open to-dos Today lists.
+        var shownOpenItems: ArraySlice<LibraryOpenItem> { openItems.prefix(TodayPickUp.maximumOpenItems) }
+
+        /// Pick up where you left off; rows carry no progress until positions load.
+        var pickUpRows: [TodayPickUp.Row] {
+            TodayPickUp.rows(meetings: meetings, positions: playbackPositions)
+        }
 
         /// The first event of today, else the first of tomorrow.
         var heroEvent: (event: UpcomingEvent, isToday: Bool)? {
@@ -149,6 +166,8 @@ final class LibraryModel {
         case loadBriefPreview(UpcomingEvent)
         case loadTodayVoices
         case refreshAutomations
+        case refreshSuggestions
+        case loadTodayWork
     }
 
     enum Effect: Equatable {
@@ -166,6 +185,8 @@ final class LibraryModel {
     private var inlineFailures: [LibrarySection: Int] = [:]
     private var briefPreviewRequest = 0
     private var todayVoicesRequest = 0
+    private var todayWorkTask: Task<Void, Never>?
+    private var suggestionsRequest = 0
     private var meetingSignatures: [MeetingSignature] = []
     private var openItemSignatures: [OpenItemSignature] = []
     private var todaySignature: TodaySignature?
@@ -247,6 +268,10 @@ private extension LibraryModel {
             await loadTodayVoices()
         case .refreshAutomations:
             await refreshAutomations()
+        case .refreshSuggestions:
+            await refreshSuggestions()
+        case .loadTodayWork:
+            await loadTodayWork()
         default:
             break
         }
@@ -440,6 +465,17 @@ private extension LibraryModel {
         let count = await client.pendingLibraryAutomations()
         guard !Task.isCancelled else { return }
         state.pendingAutomations = count
+        await refreshSuggestions()
+    }
+
+    /// An unreadable count keeps the badge as it is; the newest request wins.
+    func refreshSuggestions() async {
+        suggestionsRequest &+= 1
+        let request = suggestionsRequest
+        let review = await client.librarySuggestionsToReview()
+        guard !Task.isCancelled, request == suggestionsRequest, let review, review != state.suggestionsToReview
+        else { return }
+        state.suggestionsToReview = review
     }
 
     func openBrief(_ event: UpcomingEvent) async {
@@ -481,6 +517,25 @@ private extension LibraryModel {
         }
         guard !Task.isCancelled, request == todayVoicesRequest else { return }
         if state.todayVoices != voices { state.todayVoices = voices }
+    }
+
+    /// Waits for the meetings and open to-dos to arrive; a newer request
+    /// cancels the older read, and a failed part keeps what is shown.
+    func loadTodayWork() async {
+        guard observedSections.union(failedSections).isSuperset(of: [.meetings, .openItems]) else { return }
+        todayWorkTask?.cancel()
+        let request = LoadTodayWork.Request(
+            meetingIDs: TodayPickUp.candidates(state.meetings).map(\.id),
+            itemIDs: state.shownOpenItems.map(\.id))
+        let task = Task {
+            guard let work = try? await client.libraryTodayWork(request), !Task.isCancelled else { return }
+            if let positions = work.positions, positions != state.playbackPositions {
+                state.playbackPositions = positions
+            }
+            if let sources = work.sources, sources != state.openItemSources { state.openItemSources = sources }
+        }
+        todayWorkTask = task
+        await task.value
     }
 
     func recordAction(_ operation: () async throws -> Void) async {

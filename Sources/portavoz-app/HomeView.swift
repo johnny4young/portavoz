@@ -4,11 +4,9 @@ import SwiftUI
 
 /// The default destination: one screen for someone who lives in calls.
 ///
-/// Everything a day needs sits above the fold and reads from the Library
-/// snapshot that the sidebar already observes — the next meeting as the
-/// hero, the rest of the agenda, the to-dos still open, and the meetings to
-/// pick back up. It renders the Library snapshot and sends the same actions
-/// the sidebar sends.
+/// It reads the Library snapshot the sidebar observes: the next meeting as the
+/// hero beside the rest of the agenda, who spoke today, the to-dos still open
+/// and the meetings to pick back up.
 struct HomeView: View {
     let model: LibraryModel
     @Binding var route: Route?
@@ -22,10 +20,6 @@ struct HomeView: View {
 
     private var state: LibraryModel.State { model.state }
 
-    // Sized so the hero, open work and recent meetings land above the fold
-    // at the default window height.
-    private static let maximumOpenItems = 5
-    private static let maximumRecentMeetings = 3
     private static let maximumTomorrowEvents = 3
 
     /// Suggested questions: the ones a daily user types most, ready to send.
@@ -50,8 +44,19 @@ struct HomeView: View {
         .onAppear { perform(.refreshAutomations) }
         // Re-read when the window regains focus, e.g. after reviewing in Settings.
         .onChange(of: controlActiveState) { _, state in
-            if state == .key { perform(.refreshAutomations) }
+            if state == .key {
+                perform(.refreshAutomations)
+                perform(.loadTodayWork)
+            }
         }
+        // Positions are never observed, so returning to Today re-reads them.
+        .onChange(
+            of: TodayWorkTrigger(
+                loadPhase: state.loadPhase,
+                revision: state.libraryRevision,
+                sourceStrips: state.shownOpenItems.map { state.voiceStrips[$0.meetingID] }),
+            initial: true
+        ) { perform(.loadTodayWork) }
         // Re-read on library changes, so edits to the previous meeting show.
         .onChange(
             of: BriefPreviewTrigger(
@@ -64,24 +69,24 @@ struct HomeView: View {
         .onChange(of: state.todayVoicesRevision, initial: true) { perform(.loadTodayVoices) }
     }
 
-    /// Header, the next meeting as the hero beside the rest of the agenda,
-    /// open work beside the meetings to pick up, then who spoke today.
+    /// Header, the hero beside the rest of the agenda, the to-dos beside the
+    /// meetings to pick up, then who spoke today.
     private var content: some View {
         VStack(alignment: .leading, spacing: PVDesign.space4) {
             header
             agendaSection
-            Divider().padding(.vertical, PVDesign.space1)
+            Divider()
             ViewThatFits(in: .horizontal) {
-                HStack(alignment: .top, spacing: PVDesign.space4) {
-                    openWorkCard.frame(maxWidth: .infinity, alignment: .topLeading)
-                    recentCard.frame(maxWidth: .infinity, alignment: .topLeading)
+                HStack(alignment: .top, spacing: 44) {
+                    yoursToDo.frame(maxWidth: .infinity, alignment: .topLeading)
+                    pickUp.frame(maxWidth: .infinity, alignment: .topLeading)
                 }
                 VStack(alignment: .leading, spacing: PVDesign.space4) {
-                    openWorkCard
-                    recentCard
+                    yoursToDo
+                    pickUp
                 }
             }
-            // Below open work: the day's talk time must never cost the fold.
+            // Below the work rows: the day's talk time must never cost the fold.
             if let voices = state.todayVoices, HomeWhoSpokeToday.isShown(voices) {
                 HomeWhoSpokeToday(
                     voices: voices,
@@ -296,149 +301,37 @@ struct HomeView: View {
         .accessibilityIdentifier("home-upcoming-\(event.id)")
     }
 
-    // MARK: - Open work
+    // MARK: - Work
 
-    private var openWorkCard: some View {
-        card(
-            title: L10n.text("Open to-dos"),
-            trailing: state.openItems.count > Self.maximumOpenItems
-                ? L10n.format("%d more in Radar", state.openItems.count - Self.maximumOpenItems)
-                : nil,
-            trailingAction: { route = .commitments(nil) },
-            content: {
-                if state.openItems.isEmpty {
-                    emptyLine("All caught up — nothing open.")
-                } else {
-                    ForEach(state.openItems.prefix(Self.maximumOpenItems)) { open in
-                        openItemRow(open)
-                    }
-                }
-            })
+    private var yoursToDo: some View {
+        HomeYoursToDo(
+            items: state.shownOpenItems,
+            totalOpen: state.openItems.count,
+            sources: state.openItemSources,
+            strips: state.voiceStrips,
+            suggestionsToReview: state.suggestionsToReview,
+            onToggle: { perform(.setActionItem($0, done: $1)) },
+            onOpen: onOpenMeeting,
+            onOpenRadar: { route = .commitments(nil) })
     }
 
-    private func openItemRow(_ open: LibraryOpenItem) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: PVDesign.space2) {
-            Toggle(isOn: Binding(
-                get: { open.item.isDone },
-                set: { perform(.setActionItem(open.item.id, done: $0)) }
-            )) { EmptyView() }
-                .toggleStyle(.pvCheckbox)
-                .labelsHidden()
-                .accessibilityLabel(Text(open.item.text))
-                .accessibilityIdentifier("home-todo-toggle-\(open.id.uuidString)")
-            Button {
-                route = .meeting(open.meetingID)
-            } label: {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(open.item.text).lineLimit(2)
-                    Text(MeetingRowTitle.display(open.meetingTitle))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(.rect)
-            }
-            .buttonStyle(.plain)
-            .help("Open the meeting this to-do came from")
-            .accessibilityIdentifier("home-todo-\(open.id.uuidString)")
-        }
-    }
-
-    // MARK: - Recent meetings
-
-    private var recentCard: some View {
-        let openByMeeting = Dictionary(grouping: state.openItems, by: \.meetingID)
-            .mapValues(\.count)
-        return card(title: L10n.text("Pick up where you left off")) {
-            if state.meetings.isEmpty {
-                emptyLine("No meetings yet")
-            } else {
-                ForEach(state.meetings.prefix(Self.maximumRecentMeetings)) { meeting in
-                    recentRow(meeting, openCount: openByMeeting[meeting.id] ?? 0)
-                }
-            }
-        }
-    }
-
-    private func recentRow(_ meeting: Meeting, openCount: Int) -> some View {
-        Button {
-            route = .meeting(meeting.id)
-        } label: {
-            HStack(alignment: .firstTextBaseline, spacing: PVDesign.space3) {
-                // The row button would read the strip's label before the title.
-                VoiceStrip(state.voiceStrips[meeting.id] ?? .empty)
-                    .frame(width: 44)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(MeetingRowTitle.display(meeting.title))
-                        .font(.body.weight(.medium))
-                        .lineLimit(1)
-                    Text(meeting.startedAt, format: .dateTime.weekday(.abbreviated).day().month().hour().minute())
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 0)
-                if let minutes = meeting.durationMinutes {
-                    Text(L10n.format("%d min", minutes))
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
-                if openCount > 0 {
-                    Text(L10n.format("%d open", openCount))
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(PVDesign.ink)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 2)
-                        .background(PVDesign.ink.opacity(PVDesign.offerTint), in: Capsule())
-                }
-                lifecycleBadge(meeting.lifecycleState)
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("home-recent-\(meeting.id.rawValue.uuidString)")
-    }
-
-    @ViewBuilder
-    private func lifecycleBadge(_ lifecycle: MeetingLifecycleState) -> some View {
-        switch lifecycle {
-        case .processing, .captured:
-            Label("Processing", systemImage: "gearshape.2")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        case .needsAttention:
-            Label("Needs attention", systemImage: PVSymbol.warning)
-                .font(.caption)
-                .foregroundStyle(PVDesign.caution)
-        case .recording, .ready:
-            EmptyView()
-        }
+    private var pickUp: some View {
+        HomePickUp(
+            rows: state.pickUpRows,
+            hasMeetings: !state.meetings.isEmpty,
+            strips: state.voiceStrips,
+            openItems: state.openItems,
+            onOpen: { route = .meeting($0) })
     }
 
     // MARK: - Chrome
 
     private func card<Content: View>(
-        title: String,
-        trailing: String? = nil,
-        trailingAction: (() -> Void)? = nil,
-        @ViewBuilder content: () -> Content
+        title: String, @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: PVDesign.space2) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(title)
-                    .pvDisplay(.section)
-                Spacer(minLength: 0)
-                if let trailing, let trailingAction {
-                    Button(trailing, action: trailingAction)
-                        .buttonStyle(.link)
-                        .font(.caption)
-                }
-            }
+            Text(title)
+                .pvDisplay(.section)
             content()
         }
         .padding(PVDesign.space4)
@@ -458,6 +351,14 @@ struct HomeView: View {
 }
 
 private extension HomeView {
+    /// Speaker fixes in a to-do's meeting rename who said it.
+    struct TodayWorkTrigger: Equatable {
+        /// Leaves loading once both sections arrived, whichever came last.
+        let loadPhase: LibraryModel.LoadPhase
+        let revision: Int
+        let sourceStrips: [VoiceStripColumns?]
+    }
+
     /// The source's strip follows speaker fixes in that meeting.
     struct BriefPreviewTrigger: Equatable {
         let event: UpcomingEvent?
@@ -481,12 +382,5 @@ private extension HomeView {
             briefDisabled: state.briefLoading != nil,
             onBrief: { state.heroEvent.map { perform(.openBrief($0.event)) } },
             onOpenLine: onOpenMeeting)
-    }
-}
-
-extension Meeting {
-    var durationMinutes: Int? {
-        guard let endedAt else { return nil }
-        return max(0, Int(endedAt.timeIntervalSince(startedAt) / 60))
     }
 }

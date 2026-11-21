@@ -71,7 +71,7 @@ struct HomeBriefCard: View {
                     .lineLimit(1)
                 Spacer(minLength: PVDesign.space2)
                 if let source {
-                    Text(Self.sourceFacts(source))
+                    Text(source.dayAndLength)
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(PVDesign.ink3)
                         .lineLimit(1)
@@ -90,40 +90,12 @@ struct HomeBriefCard: View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 14) {
                 VoiceStrip(strip, size: .card).frame(width: 210)
-                HStack(spacing: 14) { legendItems }.fixedSize()
+                HStack(spacing: 14) { VoiceLegend(cast: strip.cast) }.fixedSize()
             }
             VStack(alignment: .leading, spacing: PVDesign.space2) {
                 VoiceStrip(strip, size: .card)
-                FlowLayout(spacing: 14, rowSpacing: 4) { legendItems }
+                FlowLayout(spacing: 14, rowSpacing: 4) { VoiceLegend(cast: strip.cast) }
             }
-        }
-    }
-
-    /// The strip already reads the cast and its shares to VoiceOver.
-    @ViewBuilder
-    private var legendItems: some View {
-        let legend = VoiceStrip.legend(strip.cast)
-        ForEach(legend.named, id: \.voice.id) { entry in
-            HStack(spacing: 5) {
-                Circle()
-                    .fill(VoicePalette.color(entry.voice.tint, colorScheme: colorScheme))
-                    .frame(width: 7, height: 7)
-                Text(entry.name)
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(PVDesign.ink)
-                Text(entry.voice.share.formatted(VoiceStrip.percent))
-                    .font(.callout.monospacedDigit())
-                    .foregroundStyle(PVDesign.ink3)
-            }
-            .lineLimit(1)
-            .accessibilityHidden(true)
-        }
-        if legend.unnamed > 0 {
-            Text(L10n.format("Others · %d", legend.unnamed))
-                .font(.callout.weight(.semibold))
-                .foregroundStyle(PVDesign.ink2)
-                .lineLimit(1)
-                .accessibilityHidden(true)
         }
     }
 
@@ -178,18 +150,7 @@ struct HomeBriefCard: View {
     }
 
     nonisolated static func name(_ person: MeetingBriefLines.Person) -> String {
-        person.isMe ? L10n.text("You") : person.displayName ?? person.label
-    }
-
-    /// "Wed 9 Sep · 31 min", or only the day while the meeting has no end.
-    nonisolated static func sourceFacts(_ meeting: Meeting) -> String {
-        let day = meeting.startedAt.formatted(dayStyle)
-        guard let minutes = meeting.durationMinutes else { return day }
-        return "\(day) · \(L10n.format("%d min", minutes))"
-    }
-
-    nonisolated private static var dayStyle: Date.FormatStyle {
-        Date.FormatStyle(locale: AppLanguage.current.locale).weekday(.abbreviated).day().month(.abbreviated)
+        HomeVoiceName.of(isMe: person.isMe, name: person.displayName, label: person.label)
     }
 
     /// "12:40 · still unresolved"; a line without transcript evidence has no time.
@@ -217,7 +178,7 @@ struct HomeBriefCard: View {
                 return L10n.text("open, due tomorrow")
             }
             if due < now { return L10n.text("open, overdue") }
-            return L10n.format("open, due %@", due.formatted(dayStyle))
+            return L10n.format("open, due %@", due.formatted(Meeting.dayStyle))
         }
     }
 }

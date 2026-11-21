@@ -13,11 +13,13 @@ struct VoiceStrip: View {
         case live
         /// A meeting on Today's day axis.
         case axis
+        /// A pick-up row: where listening stopped, with the rest dimmed.
+        case resume
 
         var height: CGFloat {
             switch self {
             case .row: 6
-            case .card: 8
+            case .card, .resume: 8
             case .player: 16
             case .live: 12
             case .axis: 10
@@ -27,18 +29,19 @@ struct VoiceStrip: View {
         var radius: CGFloat {
             switch self {
             case .row: 3
-            case .card: 4
+            case .card, .resume: 4
             case .player, .live, .axis: 5
             }
         }
 
         /// Compact strips calm short runs and draw no playhead.
         var isCompact: Bool { self == .row || self == .card || self == .axis }
+
+        var unplayedOpacity: Double { self == .resume ? 0.3 : 0.45 }
     }
 
     /// How far the playhead and chapter ticks reach past the strip.
     private static let overhang: CGFloat = 4
-    private static let unplayedOpacity = 0.45
     static var percent: FloatingPointFormatStyle<Double>.Percent {
         .percent.precision(.fractionLength(0)).locale(AppLanguage.current.locale)
     }
@@ -86,8 +89,10 @@ struct VoiceStrip: View {
         .accessibilityHidden(strip.columns.isEmpty)
     }
 
+    /// A resume strip at zero is unheard: everything dims and no playhead marks a spot.
     private var playhead: Double? {
-        size.isCompact ? nil : progress
+        guard !size.isCompact, let progress, size != .resume || progress > 0 else { return nil }
+        return progress
     }
 
     /// The cast in order, "You 25%, Marta 30%, Others · 2"; unnamed and
@@ -120,7 +125,7 @@ struct VoiceStrip: View {
                 GraphicsContext.Shading.color(VoicePalette.color($0, colorScheme: colorScheme)))
         }
         var ahead = context
-        ahead.opacity = Self.unplayedOpacity
+        ahead.opacity = size.unplayedOpacity
         let column = canvas.width / CGFloat(columns.count)
         let split = ((progress ?? 1) * canvas.width).rounded()
         for run in VoiceColumns.runs(columns) where Int(run.voice) < shadings.count {
@@ -159,6 +164,40 @@ struct VoiceStrip: View {
         path.move(to: CGPoint(x: playhead * canvas.width, y: width / 2))
         path.addLine(to: CGPoint(x: playhead * canvas.width, y: canvas.height - width / 2))
         context.stroke(path, with: ink, style: StrokeStyle(lineWidth: width, lineCap: .round))
+    }
+}
+
+/// Each named voice of a strip with its share, then "Others · n". The strip
+/// already reads the cast to VoiceOver, so the legend stays hidden from it.
+struct VoiceLegend: View {
+    let cast: VoiceCast
+    var font: Font = .callout
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        let legend = VoiceStrip.legend(cast)
+        ForEach(legend.named, id: \.voice.id) { entry in
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(VoicePalette.color(entry.voice.tint, colorScheme: colorScheme))
+                    .frame(width: 7, height: 7)
+                Text(entry.name)
+                    .font(font.weight(.semibold))
+                    .foregroundStyle(PVDesign.ink)
+                Text(entry.voice.share.formatted(VoiceStrip.percent))
+                    .font(font.monospacedDigit())
+                    .foregroundStyle(PVDesign.ink3)
+            }
+            .lineLimit(1)
+            .accessibilityHidden(true)
+        }
+        if legend.unnamed > 0 {
+            Text(L10n.format("Others · %d", legend.unnamed))
+                .font(font.weight(.semibold))
+                .foregroundStyle(PVDesign.ink2)
+                .lineLimit(1)
+                .accessibilityHidden(true)
+        }
     }
 }
 

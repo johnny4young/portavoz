@@ -1463,10 +1463,11 @@ builds the read model for who spoke today and the day axis from the
 meetings started today, their stored voice strips and the adapter's upcoming
 events, with invitees resolved to confirmed people by unique exact alias;
 `LibraryModel` reads it through its client and Today draws it as the "Who
-spoke today" section and day axis.
-Agenda buttons explicitly opt out of selectable
-meeting-row behavior, so opening a brief cannot race the sidebar's meeting
-route. One privacy promise exists in the main window: the sidebar footer chip
+spoke today" section and day axis. `LoadTodayWork` reads, outside the library
+observation, the saved playback positions behind "Pick up where you left off"
+(ordered by `TodayPickUp`) and who said each shown to-do (`openItemSources`,
+over the corrected transcript); the review queue's count behind the Radar badge
+rides the automation-count refresh. The sidebar lists past meetings only; the agenda lives on Today. One privacy promise exists in the main window: the sidebar footer chip
 "On your Mac" (`library-privacy-chip`), whose popover explains that nothing is
 sent unless the user asks and opens Settings on Your data. Today,
 Insights, the menu-bar panel, onboarding and the Settings sidebar repeat no

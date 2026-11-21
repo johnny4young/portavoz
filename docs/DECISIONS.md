@@ -23240,3 +23240,29 @@ position. Meeting Detail runs its saves one after another and the store keeps
 the last write, so a clock stepped back cannot freeze the position; once heard,
 a meeting stays heard. Quitting can lose up to the last periodic checkpoint. A route seek still wins over the saved position, and positions within a
 second of either end open at the start.
+
+## D654 — Today's work rows read their extras on demand
+
+Today's to-dos say who said each one and the pick-up rows say where listening
+stopped. Both come from reads that stay out of the library observation: who
+said a to-do needs the meeting's corrected transcript, which an observation
+would rebuild on every caption, and playback positions are unobserved per D653.
+`LoadTodayWork` reads positions for the twenty newest finished meetings and the
+sources of the five shown to-dos once the library has been observed, when the
+library revision or a shown to-do's strip changes, on every return to Today and
+on focus; a newer request cancels the older read. Each part that fails keeps
+what is shown, and nothing reads "unheard" until positions have loaded once.
+The review queue's count behind the Radar badge rides the automation-count
+refresh, the existing home for sidebar counts, and the sidebar re-reads it when
+the library revision changes.
+
+"Said it" means the owner spoke the item's first readable evidence line;
+"asked" means someone else did. The owner is Radar's assignee once the item is a
+confirmed commitment, and an owner taken from the line's original speaker
+follows a speaker fix on that line, so a correction never turns "said it" into
+"asked". A row opens the meeting, which resumes on its own, instead of
+starting playback from Today. A meeting heard to the end leaves Pick up, since
+nothing is left to resume. The sidebar lists past meetings only, in This week
+and Earlier: the agenda and the open to-dos already live on Today, and the
+sidebar must not repeat them. Who spoke today stays below the work rows, so the
+to-dos and pick-up rows keep the fold the Today screen promises.
