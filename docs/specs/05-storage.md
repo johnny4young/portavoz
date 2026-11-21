@@ -204,7 +204,7 @@ hidden stage. A main-file or WAL size/modification change across the private
 copy also fails closed rather than publishing a mixed point in time. The source is never opened through `MeetingStore`, so no
 migration/configuration write can occur, and it is never renamed or deleted.
 
-### Schema (`v1`–`v60` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v61` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
@@ -246,6 +246,8 @@ Singular camelCase tables, 1:1 with Codable records:
 | `segmentCorrectedText` (v33/v37) | segmentID (TEXT PK, FK cascade), meetingID (FK cascade, indexed), correctionID (UNIQUE, FK cascade), baseTranscriptRevision, non-empty text, optional language, updatedAt, optional embedding BLOB and embeddingFingerprint; disposable one-row-per-segment projection of the active `replaceText` correction (D313), rebuilt transactionally with every correction/revision write and backfilled at migration; v37's derived vector belongs only to the exact current corrected source (D330) |
 | `segmentCorrectedSearch` (v33) | FTS5 external-content over segmentCorrectedText.text, synchronized by GRDB triggers exactly like `segmentSearch` |
 | `transcriptCorrectionSearchState` (v36) | meetingID (TEXT PK, FK cascade), baseTranscriptRevision, 64-character effective correctionRevision; sparse content-free lineage for active overlays only, rebuilt in the same transaction as corrected text and used to fence Spotlight summaries/text (D329) |
+| `meetingVoiceColumns` (v61) | meetingID (TEXT PK, FK cascade), duration (seconds, ≥ 0), columns BLOB (one byte per column, ≤ 2 000), updatedAt; disposable voice strip cache, see Voice strip columns (D648) |
+| `meetingVoiceColumnsVoice` (v61) | meetingID FK cascade to `meetingVoiceColumns`, voiceIndex (0–254), speakerID, talkSeconds, firstHeard; primary key meeting + index; the strip's voice index map in first-heard order |
 | `transcriptStructuralSearchRow` (v38) | resultID (TEXT PK), indexed meetingID/correctionID FK cascade, baseTranscriptRevision, checked split/merge kind, non-empty text, optional language, start/end time, updatedAt, optional embedding BLOB and embeddingFingerprint; disposable current structural retrieval units keyed by split-part UUID or merge-correction UUID (D334) |
 | `transcriptStructuralSearchSource` (v38) | resultID (FK cascade), ordered accepted segmentID (indexed FK cascade), composite PK and unique result+source; exact immutable provenance for each structural retrieval unit |
 | `transcriptStructuralSearch` (v38) | FTS5 external-content over transcriptStructuralSearchRow.text, synchronized by GRDB triggers |
@@ -2221,3 +2223,40 @@ correction revision, then replaces that language's translation and succeeds the
 job in one transaction. `reconcileProcessingLifecycle` ignores translation jobs.
 `observeTranscriptTranslations` feeds Meeting Detail; a tombstoned meeting exposes
 none.
+
+### Voice strip columns (schema v61, D648)
+
+`VoiceColumns` (PortavozCore) folds attributed turns into equal time columns:
+each column holds the voice with the most speech inside it, ties to the lower
+index, or `silence` (255) when nobody covers 30% of it, at most 2 000 columns.
+`VoiceColumns.strip` indexes voices in first-heard order and stretches the
+duration to the last turn; `attributedTurns` applies effective corrections.
+ApplicationKit adds the drawing rules: one column per 2 pt of width
+(`count(forWidth:)`) and `calmed`, which lets a lone column between agreeing
+neighbours take their value for small sizes.
+
+v61 stores 200 columns per meeting in `meetingVoiceColumns` and the voice index
+map in `meetingVoiceColumnsVoice`, so library rows and Today can draw without a
+transcript. The turns are the readable attribution: accepted segments of live
+speakers with `TranscriptCorrectionPolicy.effectiveCorrections` applied
+(`changeSpeaker` reassigns, `suppress` removes, `split` parts carry their own
+speaker and times); a malformed correction history fails the rebuild, as it
+fails the other correction-aware projections. The timeline is
+the longest live audio asset or the last turn, whichever is later.
+
+Triggers delete a meeting's row on segment insert/delete or a change to its
+meeting, speaker, times or tombstone; a speaker tombstone or deletion; a
+`transcriptRevision` bump; any correction insert, delete or update; and an audio
+asset insert, delete or change to duration, supersession or tombstone.
+`refreshTranscriptCorrectionSearchProjection`, the hook every correction,
+revision, sync replay, audio trim, refine and transcript write already calls,
+rebuilds the row in the same transaction. `voiceColumns(for:)` reads many meetings at
+once and rebuilds any missing row in one write, which is also how libraries
+from before v61 fill in. Names, `isMe` and labels resolve from `speaker` at read
+time, so a rename never rebuilds. A meeting with nothing attributed keeps an
+empty row and is absent from the result, like a tombstoned one. The cache is
+not synced or backed up: replay and restore write segments, and the triggers
+drop the row. ApplicationKit bins a loaded transcript the same way
+(`MeetingVoiceColumns(speakers:segments:duration:count:)`) and maps voices to
+tints with `VoiceCast(columns:)`. `voiceMixes(for:)` stays until the strip
+replaces the voice mix bar.
