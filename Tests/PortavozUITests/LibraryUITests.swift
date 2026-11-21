@@ -854,7 +854,7 @@ final class LibraryUITests: PortavozUITestCase {
             (strip.value as? String)?.contains(spanish ? "Tú " : "You ") == true,
             "the strip reads the cast with your share")
 
-        attachScreenshot(of: app, named: "band-2o-library-voice-mix")
+        attachScreenshot(of: app, names: ["band-2o-library-voice-mix", "pr-library-voice-strip"])
 
         // Search crosses the SwiftUI binding, feature-model debounce, and
         // real FTS projection before publishing a new Library snapshot.
