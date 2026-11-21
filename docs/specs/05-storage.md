@@ -2243,7 +2243,9 @@ speakers with `TranscriptCorrectionPolicy.effectiveCorrections` applied
 speaker and times); a malformed correction history fails the rebuild, as it
 fails the other correction-aware projections, and `voiceColumns(for:)` then
 leaves only that meeting absent. The timeline is
-the longest live audio asset or the last turn, whichever is later.
+the longest live audio asset, capped at the meeting's length (a tail trim
+shortens the meeting without rewriting the asset's recorded duration), or the
+last turn, whichever is later.
 
 Triggers delete a meeting's row on segment insert/delete or a change to its
 meeting, speaker, times, finality or tombstone; a speaker insert, tombstone or
@@ -2264,10 +2266,12 @@ tints with `VoiceCast(columns:)`. The raw-segment `voiceMixes(for:)` query is
 retired: library rows draw the strip and the talk-share mirror averages its
 `talkSeconds`.
 
-The library observation reads the cached strips and, for a meeting without a
-row, bins the same attribution in memory (`computeVoiceColumns`) without
-writing; `LibraryMeetingRows.uncachedVoiceColumns` names those meetings, except
-one still recording (each segment drops its row again until the finalize hook
-rebuilds it), and the app's Library adapter stores them through
-`voiceColumns(for:)` in chunks of 50, once per meeting per stream. Tracking `meetingVoiceColumns` covers correction and audio changes,
-whose triggers drop the row before the correction hook rebuilds it (D649).
+The library observation reads the cached strips. A finished meeting without a
+row has no strip until stored: `LibraryMeetingRows.uncachedVoiceColumns` names
+it and the app's Library adapter stores it through `voiceColumns(for:)` in
+chunks of 50, off the loop that publishes rows, queued once while it stays
+uncached. A meeting still recording is binned in memory (`computeVoiceColumns`)
+without writing and is never listed, because each segment drops its row again.
+Tracking `meetingVoiceColumns` covers correction and audio changes, whose
+triggers drop the row before the correction hook rebuilds it, and each store
+(D649).

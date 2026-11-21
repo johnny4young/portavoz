@@ -73,6 +73,7 @@ struct VoiceStrip: View {
         .accessibilityLabel(L10n.text("Who spoke when"))
         .accessibilityValue(spokenCast)
         .accessibilityAddTraits(.isImage)
+        .accessibilityHidden(strip.columns.isEmpty)
     }
 
     private var playhead: Double? {

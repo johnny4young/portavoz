@@ -23,7 +23,7 @@ extension AppServices: LibraryModelClient {
             trash: store.observeLibraryTrash(),
             storeVoiceColumns: { ids in
                 // Chunked so filling an upgraded library never holds the writer for long.
-                for start in stride(from: 0, to: ids.count, by: 50) {
+                for start in stride(from: 0, to: ids.count, by: 50) where !Task.isCancelled {
                     _ = try? await store.voiceColumns(for: Array(ids[start..<min(ids.count, start + 50)]))
                 }
             })
@@ -167,16 +167,24 @@ private func makeApplicationLibraryStream(
     AsyncStream { continuation in
         let task = Task {
             await withTaskGroup(of: Void.self) { group in
+                // Stored off the meetings loop, so a long backfill never holds back sidebar updates.
+                let (uncachedBatches, uncachedSink) = AsyncStream.makeStream(of: [MeetingID].self)
                 group.addTask {
+                    for await ids in uncachedBatches { await storeVoiceColumns(ids) }
+                }
+                group.addTask {
+                    defer { uncachedSink.finish() }
                     do {
-                        // Once per meeting, so a rebuild that fails is not retried on every refresh.
-                        var stored = Set<MeetingID>()
+                        // Queued once while uncached: a failed rebuild is not retried on every
+                        // refresh, and a meeting dropped again later is queued again.
+                        var queued = Set<MeetingID>()
                         for try await value in meetings {
                             continuation.yield(.meetings(
                                 makeApplicationMeetingRows(value.rows),
                                 failures: value.failures))
-                            let uncached = value.uncachedVoiceColumns.filter { stored.insert($0).inserted }
-                            if !uncached.isEmpty { await storeVoiceColumns(uncached) }
+                            let uncached = value.uncachedVoiceColumns.filter { !queued.contains($0) }
+                            queued = Set(value.uncachedVoiceColumns)
+                            if !uncached.isEmpty { uncachedSink.yield(uncached) }
                         }
                     } catch is CancellationError {
                         // Parent cancellation ends the complete merged stream.

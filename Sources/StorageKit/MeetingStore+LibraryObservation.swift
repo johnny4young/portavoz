@@ -14,9 +14,9 @@ extension MeetingStore {
     public struct LibraryMeetingRows: Sendable {
         public let rows: [LibraryMeetingRow]
         public let failures: Int
-        /// Finished meetings drawn from the transcript because their cache was
-        /// missing; `voiceColumns(for:)` stores them. A recording is left out:
-        /// each segment drops its row again until the finalize hook rebuilds it.
+        /// Meetings whose cache is missing; they draw only the track until
+        /// `voiceColumns(for:)` stores them. A recording is drawn from its
+        /// transcript instead, because each segment drops its row again.
         public var uncachedVoiceColumns: [MeetingID] = []
     }
 
@@ -161,8 +161,8 @@ private extension MeetingStore {
         do {
             let stored = try fetchVoiceColumns(in: database, for: meetings.map(\.id))
             let recording = Set(meetings.filter { $0.lifecycleState == .recording }.map(\.id))
-            let strips = stored.columns.merging(
-                computeVoiceColumns(in: database, for: stored.missing)) { cached, _ in cached }
+            let strips = stored.columns.merging(computeVoiceColumns(
+                in: database, for: stored.missing.filter(recording.contains))) { cached, _ in cached }
             return LibraryMeetingRows(
                 rows: meetings.map {
                     LibraryMeetingRow(meeting: $0, voiceColumns: strips[$0.id])

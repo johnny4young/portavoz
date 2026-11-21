@@ -155,8 +155,8 @@ extension MeetingStore {
     }
 
     /// The strip a rebuild would store, without writing, so a read-only
-    /// observation can draw a meeting whose cache was dropped. A meeting whose
-    /// correction history is malformed is absent, as in `voiceColumns(for:)`.
+    /// observation can draw a recording whose cache each segment drops. A
+    /// meeting whose correction history is malformed is absent.
     static func computeVoiceColumns(
         in db: Database, for meetingIDs: [MeetingID]
     ) -> [MeetingID: MeetingVoiceColumns] {
@@ -183,6 +183,7 @@ extension MeetingStore {
             db,
             sql: """
                 SELECT meeting.id AS meetingID, meeting.transcriptRevision AS revision,
+                       meeting.startedAt, meeting.endedAt,
                        EXISTS (
                            SELECT 1 FROM transcriptCorrection AS correction
                            WHERE correction.meetingID = meeting.id) AS corrected,
@@ -208,8 +209,13 @@ extension MeetingStore {
             let turns = VoiceColumns.attributedTurns(
                 lines: lines[key] ?? [], corrections: corrections
             ).filter { speakers[$0.key.rawValue.uuidString] != nil }
-            let audio: Double? = row["audio"]
-            let strip = VoiceColumns.strip(turns, duration: audio ?? 0, count: VoiceColumns.storedCount)
+            var audio: Double = row["audio"] ?? 0
+            // A tail trim shortens the meeting but leaves the asset's recorded duration.
+            if let started: Date = row["startedAt"], let ended: Date = row["endedAt"],
+                ended > started {
+                audio = min(audio, ended.timeIntervalSince(started))
+            }
+            let strip = VoiceColumns.strip(turns, duration: audio, count: VoiceColumns.storedCount)
             // Turns are filtered to live speakers, so every voice resolves and indexes stay aligned.
             let voices = strip.voices.compactMap { voice in
                 speakers[voice.key.rawValue.uuidString].map {

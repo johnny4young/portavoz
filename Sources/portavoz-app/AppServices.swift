@@ -250,7 +250,10 @@ final class AppServices {
         // One more than `recent` so excluding this meeting still leaves a full
         // window; the store already orders newest first.
         guard let meetings = try? await store.meetings(limit: recent + 1) else { return nil }
-        let recentIDs = meetings.filter { $0.id != meetingID }.prefix(recent).map(\.id)
+        // A recording's strip is rebuilt on every segment, so reading it here would only churn.
+        let recentIDs = meetings
+            .filter { $0.id != meetingID && $0.lifecycleState != .recording }
+            .prefix(recent).map(\.id)
         guard !recentIDs.isEmpty,
             let strips = try? await store.voiceColumns(for: Array(recentIDs))
         else { return nil }

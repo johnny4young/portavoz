@@ -90,10 +90,14 @@ final class LibraryObservationTests: XCTestCase {
                 isFinal: true)
         ])
         let afterTranscript = try await nextMeetingRows(&meetingRows) {
+            $0.uncachedVoiceColumns == [meeting.id]
+        }
+        XCTAssertNil(afterTranscript.rows.first?.voiceColumns)
+        _ = try await store.voiceColumns(for: [meeting.id])
+        let afterStore = try await nextMeetingRows(&meetingRows) {
             $0.rows.first?.voiceColumns?.voices.count == 1
         }
-        XCTAssertEqual(afterTranscript.rows.first?.voiceColumns?.voices.first?.isMe, true)
-        XCTAssertEqual(afterTranscript.uncachedVoiceColumns, [meeting.id])
+        XCTAssertEqual(afterStore.rows.first?.voiceColumns?.voices.first?.isMe, true)
 
         let action = ActionItem(text: "Enviar propuesta")
         _ = try await store.saveSummary(SummaryDraft(
@@ -128,7 +132,7 @@ final class LibraryObservationTests: XCTestCase {
         XCTAssertTrue(trashAfterRestore.isEmpty)
     }
 
-    func testVoiceStripsDrawWithoutTheirCacheAndFollowCorrections() async throws {
+    func testVoiceStripsWaitForTheirCacheAndFollowCorrections() async throws {
         let store = try MeetingStore.inMemory()
         let meeting = Meeting(title: "Planning", startedAt: Date())
         try await store.save(meeting)
@@ -147,7 +151,7 @@ final class LibraryObservationTests: XCTestCase {
         var rows = store.observeLibraryMeetings().makeAsyncIterator()
 
         let uncached = try await nextMeetingRows(&rows)
-        let drawn = try XCTUnwrap(uncached.rows.first?.voiceColumns)
+        XCTAssertNil(uncached.rows.first?.voiceColumns, "a finished meeting waits for its cache")
         XCTAssertEqual(uncached.uncachedVoiceColumns, [meeting.id])
         let cachedCount = try await store.database.read { db in
             try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM meetingVoiceColumns")
@@ -155,9 +159,9 @@ final class LibraryObservationTests: XCTestCase {
         XCTAssertEqual(cachedCount, 0, "the observation never writes")
 
         let stored = try await store.voiceColumns(for: [meeting.id])
-        XCTAssertEqual(stored[meeting.id], drawn, "the drawn strip is the one storage keeps")
         let cached = try await nextMeetingRows(&rows) { $0.uncachedVoiceColumns.isEmpty }
-        XCTAssertEqual(cached.rows.first?.voiceColumns, drawn)
+        XCTAssertEqual(cached.rows.first?.voiceColumns, stored[meeting.id])
+        XCTAssertNotNil(cached.rows.first?.voiceColumns)
 
         _ = try await store.appendTranscriptCorrections([
             TranscriptCorrectionEvent(
