@@ -71,6 +71,11 @@ struct MeetingCommitmentInboxSection: View {
 
     private func candidateCard(_ candidate: CommitmentInboxCandidate) -> some View {
         VStack(alignment: .leading, spacing: 9) {
+            PVCardCaption(
+                text: caption(candidate),
+                systemImage: PVSymbol.commitment,
+                tint: PVDesign.ink3)
+                .accessibilityIdentifier("commitment-\(candidate.id.uuidString)-caption")
             Text(candidate.actionItem.text)
                 .font(.body.weight(.semibold))
                 .textSelection(.enabled)
@@ -84,10 +89,14 @@ struct MeetingCommitmentInboxSection: View {
                 focus: actions.focusEvidence)
             actionRow(candidate)
         }
-        .padding(12)
-        .background(.background.opacity(0.75), in: RoundedRectangle(cornerRadius: 8))
+        .pvCard(.outlined)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("commitment-candidate-\(candidate.id.uuidString)")
+    }
+
+    private func caption(_ candidate: CommitmentInboxCandidate) -> String {
+        guard let dueAt = candidate.suggestedDueAt else { return L10n.text("Commitment") }
+        return L10n.format("Commitment · due %@", values.presentation.shortDate(dueAt))
     }
 
     private func suggestionSummary(_ candidate: CommitmentInboxCandidate) -> some View {
@@ -101,11 +110,7 @@ struct MeetingCommitmentInboxSection: View {
             } else {
                 Label("No owner suggested", systemImage: "person.crop.circle.badge.questionmark")
             }
-            if let dueAt = candidate.suggestedDueAt {
-                Label(
-                    L10n.format("Suggested due date: %@", values.presentation.shortDate(dueAt)),
-                    systemImage: "calendar.badge.clock")
-            } else {
+            if candidate.suggestedDueAt == nil {
                 Label("No deadline suggested", systemImage: "calendar.badge.questionmark")
             }
         }
@@ -139,7 +144,7 @@ struct MeetingCommitmentInboxSection: View {
             Button("Review and confirm…") {
                 editingCandidate = candidate
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.pvPrimary)
             .controlSize(.small)
             .disabled(!hasCurrentEvidence(candidate) || processingID != nil)
             .help(confirmHelp(candidate))
@@ -254,7 +259,7 @@ private struct MeetingCommitmentConfirmationSheet: View {
                     .keyboardShortcut(.cancelAction)
                 Button("Confirm") { save() }
                     .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.pvPrimary)
                     .disabled(isSaving || normalizedTitle.isEmpty)
                     .accessibilityIdentifier("commitment-editor-confirm")
             }

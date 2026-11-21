@@ -113,7 +113,7 @@ struct MeetingDetailTrustSection: View {
                 Label("Retry processing", systemImage: PVSymbol.retry)
             }
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(.pvPrimary)
         .controlSize(.small)
         .disabled(retryingProcessing)
         .accessibilityIdentifier("detail-retry-processing")
@@ -154,14 +154,14 @@ struct MeetingDetailTrustSection: View {
     private var processingRecoveryAction: some View {
         if values.hasSavedAudio {
             Button("Improve from saved audio", action: actions.refineSavedAudio)
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.pvPrimary)
                 .controlSize(.small)
                 .accessibilityIdentifier("detail-recover-with-refine")
                 .help(L10n.text(
                     "Re-transcribe the saved audio with Whisper, then review the result before applying it."))
         } else {
             Button("Open support diagnostics", action: actions.openSupportDiagnostics)
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.pvPrimary)
                 .controlSize(.small)
                 .accessibilityIdentifier("detail-open-support-diagnostics")
         }

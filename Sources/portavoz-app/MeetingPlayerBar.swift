@@ -43,14 +43,15 @@ struct MeetingPlayerBar: View {
                 skipButton(seconds: -15, symbol: "gobackward.15", identifier: "player-skip-back")
                 skipButton(seconds: 15, symbol: "goforward.15", identifier: "player-skip-forward")
 
-                HStack(spacing: 2) {
-                    Text(ClockFormat.mmss(player.currentTime, paddedMinutes: false))
+                HStack(spacing: 4) {
+                    let now = ClockFormat.mmss(player.currentTime, paddedMinutes: false)
+                    StatusPill(kind: .now, text: L10n.format("Now %@", now))
                         .accessibilityIdentifier("player-current-time")
-                        .accessibilityValue(ClockFormat.mmss(player.currentTime, paddedMinutes: false))
+                        .accessibilityValue(now)
                     Text(verbatim: "/ \(ClockFormat.mmss(player.duration, paddedMinutes: false))")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
                 }
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
 
                 rateMenu
                 Spacer()

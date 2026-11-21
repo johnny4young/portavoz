@@ -119,8 +119,8 @@ struct RecordingToolbar: View {
         Button(action: onStop) {
             Label("Stop", systemImage: PVSymbol.stop)
         }
+        .buttonStyle(.pvStop)
         .controlSize(.small)
-        .tint(PVDesign.now)
         .keyboardShortcut(".")
         .accessibilityIdentifier("recording-stop")
     }

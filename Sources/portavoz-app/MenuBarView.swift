@@ -59,8 +59,20 @@ struct MenuBarContent: View {
     private var statusHeader: some View {
         HStack(spacing: 10) {
             liveWaveform
-            Text(recording ? "Recording…" : "Portavoz is idle")
-                .font(.subheadline.weight(.semibold))
+            if recording {
+                let startedAt = services.recording.startedAt
+                TimelineView(.periodic(from: startedAt, by: 1)) { context in
+                    StatusPill(
+                        kind: .recording,
+                        text: L10n.format(
+                            "Recording %@",
+                            ClockFormat.mmss(max(0, context.date.timeIntervalSince(startedAt)))))
+                }
+                .accessibilityIdentifier("menubar-recording-status")
+            } else {
+                Text("Portavoz is idle")
+                    .font(.subheadline.weight(.semibold))
+            }
             Spacer()
         }
         .padding(.bottom, 10)

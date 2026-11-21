@@ -23,7 +23,7 @@ struct MeetingBriefView: View {
                 } label: {
                     Label("Record this meeting", systemImage: PVSymbol.record)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.pvPrimary)
                 .accessibilityIdentifier("brief-record-button")
                 .help("Starts recording linked to this event: the meeting gets its real title")
             }

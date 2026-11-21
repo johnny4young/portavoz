@@ -177,7 +177,7 @@ private extension ReminderDraftSheet {
             Button("Allow Reminders Access") {
                 Task { await model.requestAccess() }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.pvPrimary)
             .accessibilityIdentifier("reminder-draft-allow-access")
         } else if confirmation?.authorization == .fullAccess,
                   confirmation?.target != nil {
@@ -185,7 +185,7 @@ private extension ReminderDraftSheet {
                 Task { await model.confirm() }
             }
             .keyboardShortcut(.defaultAction)
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.pvPrimary)
             .accessibilityIdentifier("reminder-draft-confirm")
         }
     }

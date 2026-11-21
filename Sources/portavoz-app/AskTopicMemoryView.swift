@@ -124,7 +124,7 @@ struct AskTopicMemoryView: View {
                 Button(loadButtonTitle) {
                     model.loadSelectedTopicMemory()
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.pvPrimary)
                 .disabled(loadIsDisabled)
                 .accessibilityIdentifier("ask-topic-load")
             }

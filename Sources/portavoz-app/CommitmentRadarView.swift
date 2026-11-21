@@ -138,19 +138,21 @@ private extension CommitmentRadarView {
     }
 
     var modePicker: some View {
-        Picker("Commitment view", selection: modeBinding) {
-            Text("Confirmed")
-                .tag(CommitmentRadarModel.Mode.confirmed)
-                .accessibilityIdentifier("commitment-radar-mode-confirmed")
-            Text("To review")
-                .tag(CommitmentRadarModel.Mode.review)
-                .accessibilityIdentifier("commitment-radar-mode-review")
-            Text("Quality")
-                .tag(CommitmentRadarModel.Mode.quality)
-                .accessibilityIdentifier("commitment-radar-mode-quality")
-        }
-        .pickerStyle(.segmented)
-        .frame(maxWidth: 480)
+        PVSegmentedControl(
+            segments: [
+                PVSegment(
+                    value: CommitmentRadarModel.Mode.confirmed, title: L10n.text("Confirmed"),
+                    accessibilityIdentifier: "commitment-radar-mode-confirmed"),
+                PVSegment(
+                    value: CommitmentRadarModel.Mode.review, title: L10n.text("To review"),
+                    accessibilityIdentifier: "commitment-radar-mode-review"),
+                PVSegment(
+                    value: CommitmentRadarModel.Mode.quality, title: L10n.text("Quality"),
+                    accessibilityIdentifier: "commitment-radar-mode-quality")
+            ],
+            selection: modeBinding)
+        .fixedSize()
+        .accessibilityLabel(L10n.text("Commitment view"))
         .accessibilityIdentifier("commitment-radar-mode")
     }
 
@@ -405,7 +407,7 @@ private extension CommitmentRadarView {
                 Button("Done") {
                     Task { await model.send(.complete(item.id)) }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.pvPrimary)
                 .accessibilityIdentifier(
                     "commitment-radar-complete-\(item.id.rawValue.uuidString)")
             case .done:

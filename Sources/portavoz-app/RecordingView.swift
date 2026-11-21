@@ -318,9 +318,7 @@ private struct LiveRecordingCaptionsView: View {
                 .font(.callout)
                 .foregroundStyle(.primary)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(PVDesign.greenBg, in: RoundedRectangle(cornerRadius: 7))
+        .pvCard(.generated, padding: 8)
     }
 
     private var liveTranslationLabel: String {
@@ -548,7 +546,7 @@ private extension RecordingView {
                 } label: {
                     Label("Try again", systemImage: PVSymbol.retry)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.pvPrimary)
                 .accessibilityIdentifier("recording-retry")
             case .library:
                 Button {
@@ -556,7 +554,7 @@ private extension RecordingView {
                 } label: {
                     Label("Open Library", systemImage: "books.vertical")
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.pvPrimary)
                     .accessibilityIdentifier("recording-open-library")
             case .supportDiagnostics:
                 Button {
@@ -565,7 +563,7 @@ private extension RecordingView {
                 } label: {
                     Label("Open support diagnostics", systemImage: "stethoscope")
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.pvPrimary)
                 .accessibilityIdentifier("recording-open-support-diagnostics")
             }
         }

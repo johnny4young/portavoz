@@ -209,7 +209,7 @@ struct TranscriptStructuralCorrectionControls: View {
             Button(confirmTitle) {
                 if let operation { run(operation) }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.pvPrimary)
             .disabled(disabled || isSaving || operation == nil)
             .accessibilityIdentifier("transcript-structure-confirm")
         }

@@ -31,6 +31,16 @@
         }
       }
     },
+    "%@ sounds like %@?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿%@ suena como %@?"
+          }
+        }
+      }
+    },
     "%@ · by voice": {
       "localizations": {
         "es": {
@@ -517,6 +527,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hay un token guardado en el Llavero de este dispositivo. Solo se usa después de que confirmes un Gist o un issue."
+          }
+        }
+      }
+    },
+    "Commitment · due %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compromiso · vence %@"
+          }
+        }
+      }
+    },
+    "Now %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ahora %@"
+          }
+        }
+      }
+    },
+    "Recording %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grabando %@"
           }
         }
       }
@@ -13407,16 +13447,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sugerir nombres"
-          }
-        }
-      }
-    },
-    "Suggested due date: %@": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fecha límite sugerida: %@"
           }
         }
       }

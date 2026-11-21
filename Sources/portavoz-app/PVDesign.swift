@@ -74,6 +74,7 @@ enum PVDesign {
         static let onInk = PVTone(0xFBF7F2, 0x121615)
         static let now = PVTone(0xB93A22, 0xFF6A4C)
         static let nowBg = PVTone(0xFBE3DB, 0x3B1710)
+        static let onNow = PVTone(0xFFFFFF, 0x220C05)
         static let green = PVTone(0x1F6F5C, 0x7FD1B9)
         static let greenBg = PVTone(0xE0EEE8, 0x15312B)
         static let ok = PVTone(0x1F6F5C, 0x6FCF97)
@@ -108,6 +109,8 @@ enum PVDesign {
     /// The present only: Record, Stop, the live edge and the now line.
     static let now = Tone.now.color
     static let nowBg = Tone.nowBg.color
+    /// Labels on a red fill: Stop and the "Now" pill.
+    static let onNow = Tone.onNow.color
     /// Portavoz speaking: briefs, summaries, suggestions, answers.
     static let green = Tone.green.color
     static let greenBg = Tone.greenBg.color
@@ -124,6 +127,12 @@ enum PVDesign {
     static let youBg = Tone.youBg.color
     /// Text on an amber fill.
     static let onYou = Tone.onYou.color
+
+    // MARK: Lines
+
+    /// Hairlines, tracks and neutral chip fills.
+    static let line = Tone.ink.color(alpha: 0.10)
+    static let line2 = Tone.ink.color(alpha: 0.20)
 
     // MARK: Spacing (12/16/24 core scale)
 
@@ -240,6 +249,7 @@ enum PVSymbol {
     static let correction = "pencil.line"
     static let translate = "translate"
     static let history = "clock.arrow.circlepath"
+    static let commitment = "flag"
     // Recording
     static let record = "record.circle"
     static let stop = "stop.fill"

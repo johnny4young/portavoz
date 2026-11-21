@@ -43,13 +43,19 @@ struct InsightsView: View {
             Text("Insights")
                 .pvDisplay(.title)
                 .accessibilityIdentifier("insights-title")
-            Picker("", selection: $scopeRaw) {
-                Text("Week").tag(InsightsScope.week.rawValue)
-                Text("Month").tag(InsightsScope.month.rawValue)
-                Text("Year").tag(InsightsScope.year.rawValue)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
+            PVSegmentedControl(
+                segments: [
+                    PVSegment(
+                        value: InsightsScope.week.rawValue, title: L10n.text("Week"),
+                        accessibilityIdentifier: "insights-scope-week"),
+                    PVSegment(
+                        value: InsightsScope.month.rawValue, title: L10n.text("Month"),
+                        accessibilityIdentifier: "insights-scope-month"),
+                    PVSegment(
+                        value: InsightsScope.year.rawValue, title: L10n.text("Year"),
+                        accessibilityIdentifier: "insights-scope-year")
+                ],
+                selection: $scopeRaw)
             .fixedSize()
             .accessibilityIdentifier("insights-scope")
             Spacer()
@@ -410,13 +416,7 @@ extension InsightsView {
                 }
             }
             .frame(maxWidth: .infinity, minHeight: 92, alignment: .topLeading)
-            .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(PVDesign.greenBg))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(PVDesign.green.opacity(0.22)))
+            .pvCard(.generated, padding: 14)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(identifier)

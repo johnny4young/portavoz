@@ -84,7 +84,7 @@ struct HomeView: View {
                     recordingActive ? LocalizedStringKey("Return to recording") : LocalizedStringKey("New recording"),
                     systemImage: recordingActive ? PVSymbol.record : "plus")
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.pvPrimary)
             .controlSize(.large)
             .accessibilityIdentifier("home-record")
         }
@@ -112,10 +112,9 @@ struct HomeView: View {
                     }
                     Spacer(minLength: 0)
                     Button(action: onRecord) {
-                        Label("Record now", systemImage: PVSymbol.record)
+                        RecordLabel("Record now")
                     }
-                    .buttonStyle(.bordered)
-                    .tint(PVDesign.accent)
+                    .buttonStyle(.pvSecondary)
                     .accessibilityIdentifier("home-hero-record")
                 }
             } else {
@@ -179,7 +178,7 @@ struct HomeView: View {
                     Label("Brief", systemImage: "doc.text.magnifyingglass")
                 }
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.pvSecondary)
             .controlSize(.small)
             .disabled(state.briefLoading != nil)
             .help("See who's coming, related meetings and open to-dos")
@@ -187,11 +186,10 @@ struct HomeView: View {
             Button {
                 route = .recording(event)
             } label: {
-                Label("Record", systemImage: PVSymbol.record)
+                RecordLabel("Record")
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.pvSecondary)
             .controlSize(.small)
-            .tint(PVDesign.accent)
             .help("Starts recording linked to this event: the meeting gets its real title")
             .accessibilityIdentifier("home-upcoming-record-\(event.id)")
         }
@@ -230,7 +228,7 @@ struct HomeView: View {
                 get: { open.item.isDone },
                 set: { perform(.setActionItem(open.item.id, done: $0)) }
             )) { EmptyView() }
-                .toggleStyle(.checkbox)
+                .toggleStyle(.pvCheckbox)
                 .labelsHidden()
                 .accessibilityLabel(Text(open.item.text))
                 .accessibilityIdentifier("home-todo-toggle-\(open.id.uuidString)")

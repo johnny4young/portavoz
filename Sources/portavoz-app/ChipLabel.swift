@@ -1,10 +1,9 @@
 import SwiftUI
 
-/// The suggestion-chip capsule. Anything Portavoz proposes (✦ suggestion,
+/// The kinds of suggestion chip. Anything Portavoz proposes (✦ suggestion,
 /// voice match) rides the green tint; an offer stays a soft neutral, so a
-/// suggestion never reads as an ink button. Wrap in a plain-style Button;
-/// the capsule is the whole look.
-struct ChipLabel: View {
+/// suggestion never reads as an ink button.
+enum ChipLabel {
     enum Kind {
         case ai, voice, offer
 
@@ -19,16 +18,6 @@ struct ChipLabel: View {
         fileprivate var background: Color {
             self == .offer ? PVDesign.chipOfferBg : PVDesign.greenBg
         }
-    }
-
-    let kind: Kind
-    let text: String
-
-    var body: some View {
-        ChipContent(kind: kind, text: text)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 3)
-        .background(kind.background, in: Capsule())
     }
 }
 
@@ -51,21 +40,13 @@ struct DismissibleSuggestionChip: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier(acceptAccessibilityIdentifier)
 
-            Button(action: dismiss) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 8, weight: .bold))
-                    .foregroundStyle(kind.ink.opacity(0.75))
-                    .frame(width: 14, height: 14)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(L10n.text("Dismiss suggestion"))
-            .accessibilityIdentifier(dismissAccessibilityIdentifier)
+            ChipCloseButton(
+                kind: kind,
+                accessibilityLabel: L10n.text("Dismiss suggestion"),
+                accessibilityIdentifier: dismissAccessibilityIdentifier,
+                action: dismiss)
         }
-        .padding(.leading, 8)
-        .padding(.trailing, 4)
-        .padding(.vertical, 3)
-        .background(kind.background, in: Capsule())
+        .pvPill(kind.background, trailing: 4)
     }
 }
 
@@ -74,12 +55,13 @@ private struct ChipContent: View {
     let text: String
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 5) {
             Image(systemName: kind.icon)
-                .font(.caption2)
+                .font(.caption)
                 .foregroundStyle(kind.ink)
             Text(text)
-                .font(.caption.weight(.semibold))
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
                 .foregroundStyle(kind.ink)
         }
     }
@@ -99,24 +81,36 @@ struct UndoableAppliedChip: View {
         HStack(spacing: 6) {
             ChipContent(kind: kind, text: text)
             Button(L10n.text("Undo"), action: undo)
-                .font(.caption.weight(.semibold))
+                .font(.subheadline.weight(.semibold))
                 .buttonStyle(.plain)
                 .foregroundStyle(PVDesign.accent)
                 .accessibilityIdentifier(undoAccessibilityIdentifier)
-            Button(action: keep) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 8, weight: .bold))
-                    .foregroundStyle(kind.ink.opacity(0.75))
-                    .frame(width: 14, height: 14)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(keepAccessibilityLabel)
-            .accessibilityIdentifier(keepAccessibilityIdentifier)
+            ChipCloseButton(
+                kind: kind,
+                accessibilityLabel: keepAccessibilityLabel,
+                accessibilityIdentifier: keepAccessibilityIdentifier,
+                action: keep)
         }
-        .padding(.leading, 8)
-        .padding(.trailing, 4)
-        .padding(.vertical, 3)
-        .background(kind.background, in: Capsule())
+        .pvPill(kind.background, trailing: 4)
+    }
+}
+
+private struct ChipCloseButton: View {
+    let kind: ChipLabel.Kind
+    let accessibilityLabel: String
+    let accessibilityIdentifier: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "xmark")
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(kind.ink.opacity(0.75))
+                .frame(width: 14, height: 14)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityIdentifier(accessibilityIdentifier)
     }
 }

@@ -288,7 +288,7 @@ struct MeetingDetailFlowHost<Content: View>: View {
                     .keyboardShortcut(.cancelAction)
                 Button("Save") { actions.renameMeeting(flow.renameMeetingTitle) }
                     .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.pvPrimary)
             }
         }
         .padding(20)

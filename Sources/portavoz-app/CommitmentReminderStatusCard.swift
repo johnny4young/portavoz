@@ -56,7 +56,7 @@ private extension CommitmentReminderStatusCard {
                 Button("Enable reminders") {
                     Task { await model.send(.enable) }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.pvPrimary)
                 .disabled(model.state.phase == .requestingPermission)
                 .accessibilityIdentifier("commitment-reminder-enable")
             case .denied:

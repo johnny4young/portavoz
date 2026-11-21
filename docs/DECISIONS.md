@@ -23063,3 +23063,28 @@ The menu-bar mark is drawn at runtime from the same paths instead of a
 pre-rendered PNG: idle is a template, recording is a drawing-handler image
 whose strands use `labelColor` and whose middle swell uses the `now` tone,
 so both re-resolve for a light or a dark menu bar.
+
+## D646 — Portavoz and Secreteo share one family of controls
+
+Portavoz and Secreteo are sibling apps and keep the same values for what
+they share: amber `#F2B33D` is you, paper `#FBF7F2` / `#F4ECE3`, green
+`#1F6F5C` / `#7FD1B9` is the app speaking, and the light red `#B93A22` is the
+present. Both use the same type roles (serif for titles and numerals, italic
+serif for words as heard, SF Pro for controls and body, SF Mono for time and
+keys), the same squircle icon grid, the same 1.5 pt round-cap glyph pen and
+the same control shapes: 8 pt rounded buttons, 22 pt capsule chips and status
+pills, 10 pt cards, a segmented track with raised 6 pt segments and a 15 pt
+checkbox. They differ on purpose in the accent (Portavoz has none, its chrome
+is ink; Secreteo uses copper), the dark surface (green-black `#121615` versus
+lacquer), the display face (Fraunces versus Instrument Serif) and the
+signature (many voices versus one parenthesis).
+
+`PVComponents.swift` holds the shapes: `PVButtonStyle` (ink primary, raised
+secondary, red Stop; height follows the control size), `VoiceChip`,
+`StatusPill` (the red "Recording" and "Now" labels), `pvCard(.outlined)` for
+records such as commitments and `pvCard(.generated)` for text Portavoz wrote,
+`PVSegmentedControl` and `PVCheckboxToggleStyle`. Focus keeps the system ring
+(D643). An unnamed voice shows an open dot in its cast-order hue on a dashed
+outline, so transcript rows still tell unnamed voices apart. Native pickers
+stay in Settings forms, the Ask source picker and pop-up menus, where macOS
+conventions matter more than the family shape.

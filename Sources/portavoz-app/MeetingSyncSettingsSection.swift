@@ -124,7 +124,7 @@ struct MeetingSyncSettingsSection: View {
             } label: {
                 Label("Enable iCloud sync", systemImage: "icloud.and.arrow.up")
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.pvPrimary)
             .accessibilityIdentifier("settings-sync-enable")
             .disabled(model.isBusy || status.failure == .transportStateUnavailable)
         } else {

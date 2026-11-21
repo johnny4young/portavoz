@@ -114,7 +114,7 @@ struct MenuBarPreparedBriefSheet: View {
                 Button(action: record) {
                     Label("Record this meeting", systemImage: PVSymbol.record)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.pvPrimary)
                 .accessibilityIdentifier("menu-bar-brief-result-record")
             }
         }

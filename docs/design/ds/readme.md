@@ -58,24 +58,20 @@ No font binaries in the repo; the site loads **Fraunces, Instrument Sans, IBM Pl
 
 - `styles.css` — global entry; imports everything in `tokens/`.
 - `tokens/` — `colors.css` (app light/dark via `[data-theme="dark"]` + brand), `typography.css`, `spacing.css`, `motion.css`, `fonts.css`.
-- `guidelines/` — 12 specimen cards (colors, type, spacing, radii, motion, voice & tone, mark).
+- `guidelines/` — specimen cards for the brand icon, the logo and voice & tone.
 - `assets/` — `portavoz-icon.svg`, `portavoz-icon-light.svg`, `portavoz-mark-menubar.svg` (generated), `portavoz-mark.svg` (legacy).
-- `components/` — one directory per family, each with `.jsx` + `.d.ts` + `.prompt.md` + card:
+- Components live in the app, not here: `Sources/portavoz-app/PVComponents.swift` holds the family shapes shared with Secreteo (D646):
 
-| Component | Path | What |
-|---|---|---|
-| `Button` | `components/buttons/` | primary / secondary / destructive / ghost · 3 sizes |
-| `SuggestionChip` | `components/chips/` | ✦ AI / voice / recipe / title / offer · applied state |
-| `SpeakerPill` | `components/pills/` | Me (accent) / named / S-label / editable |
-| `Card` | `components/cards/` | stat tile · content card · Companion card |
-| `MicMeter`, `Gauge` | `components/meters/` | 4pt mic capsule · circular commitments gauge |
-| `ListRow` | `components/rows/` | meeting / to-do / trash+restore / agenda |
-| `FloatingPanel` | `components/panels/` | HUD 400×88 · banner |
-| `EmptyState` | `components/empty/` | icon + headline + one honest sentence |
-| `SFIcon` (+`SF_ICON_NAMES`) | `components/icons/` | SF Symbols stand-ins |
-
-**Intentional additions:** `SFIcon` (SF Symbols can't ship on the web — see Iconography).
+| Component | What |
+|---|---|
+| `PVButtonStyle` (`.pvPrimary`, `.pvSecondary`, `.pvStop`) | ink primary, raised secondary, red Stop · 8 pt radius · 24/30/32/36 pt by control size |
+| `RecordLabel` | red dot + title for Record buttons |
+| `VoiceChip` | dot + name (+ share) · you on amber · unnamed with an open dot on a dashed outline |
+| `DismissibleSuggestionChip`, `UndoableAppliedChip` (`ChipLabel.swift`) | ✦ and voice-match suggestions on the green tint · offers on a soft neutral |
+| `StatusPill` | "Recording 12:04" on the red tint · solid "Now 3:15" |
+| `pvCard(.outlined)` / `pvCard(.generated)` + `PVCardCaption` | commitments and records outlined · Portavoz text on the green tint |
+| `PVSegmentedControl` | tabs on a tinted track, selected segment raised |
+| `PVCheckboxToggleStyle` (`.pvCheckbox`) | 15 pt box, ink fill and paper tick when on |
 
 - `ui_kits/macos-app/` — interactive app recreation (library with voice-mix rows, meeting detail, insights, recording + HUD).
-- `templates/macos-app/`, `templates/website/` — starting-point templates for consuming projects. The website template (bilingual ES/EN, constellation hero, copy-to-clipboard CTA) is the CANONICAL landing — the old ui_kits/website recreation was retired in its favor.
 - `SKILL.md` — agent skill entry point.
