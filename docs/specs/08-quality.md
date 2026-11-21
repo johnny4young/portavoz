@@ -3189,7 +3189,11 @@ descriptor never falls back. XCUITest does not start this server: the runner
 validates the same tracked fixture and forwards only its exact bounded payload
 to a temporary-store-only `URLProtocol`. This avoids macOS 15 Local Network
 Privacy prompts on launch-agent-owned hosted runners without granting,
-dismissing, or automating a user permission. Real socket, partial-response,
+dismissing, or automating a user permission. While that transport is installed,
+retrieval reads a fixed instant (2026-08-24T00:00:00Z, the same one the package
+integration lane injects) instead of the wall clock, so each route's declared
+freshness holds on any calendar day; a unit test checks every dated route
+against the 90-day window. Real socket, partial-response,
 disconnect, cancellation, and receipt behavior remains independently covered
 by the package integration lane. This fixture is test infrastructure, not
 product web authority or evidence that a real provider behaves the same way.

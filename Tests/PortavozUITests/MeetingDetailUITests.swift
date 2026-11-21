@@ -28,8 +28,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
             transcriptTitle.waitForExistenceFast(timeout: 10),
             "Meeting Detail must render first content for 5,000 segments")
         XCTAssertTrue(
-            app.staticTexts["Scale baseline summary revision 1."]
-                .waitForExistenceFast(timeout: 15),
+            waitForSummaryText(
+                app.staticTexts["Scale baseline summary revision 1."],
+                in: app),
             "the 5,000-segment detail must render its initial summary")
         selectRailTab("chapters", in: app)
         XCTAssertTrue(
@@ -68,8 +69,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
             generatedDocument.waitForExistenceFast(timeout: 15),
             "the scale detail must expose one bounded generated-document surface")
         XCTAssertTrue(
-            generatedDocument.staticTexts["Scale baseline summary revision 1."]
-                .waitForExistenceFast(timeout: 15),
+            waitForSummaryText(
+                generatedDocument.staticTexts["Scale baseline summary revision 1."],
+                in: app),
             "the first subscribed summary must render before the fixture updates it")
         XCTAssertTrue(
             app.continueFeatureUITestHandshake(
@@ -82,8 +84,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
             app.control(withIdentifier: "detail-chapters").waitForExistenceFast(timeout: 15),
             "the 20,000-segment detail must complete its chapter projection")
         XCTAssertTrue(
-            generatedDocument.staticTexts["Scale baseline summary revision 2."]
-                .waitForExistenceFast(timeout: 15),
+            waitForSummaryText(
+                generatedDocument.staticTexts["Scale baseline summary revision 2."],
+                in: app),
             "the 20,000-segment detail must stay subscribed to scoped summary updates")
     }
 
@@ -100,6 +103,22 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             try waitForEvidenceNavigation(in: app, selected: false),
             "reset must leave the cited timestamp AND deselect the source row")
+    }
+
+    /// A short window keeps the summary behind its pane, and the detail can
+    /// switch to that layout after first content; the full layout shows both.
+    @MainActor
+    private func waitForSummaryText(
+        _ text: XCUIElement,
+        in app: XCUIApplication,
+        timeout: TimeInterval = 15
+    ) -> Bool {
+        let summaryPane = app.buttons["detail-compact-summary"]
+        return waitForUITestCondition(timeout: timeout) {
+            if text.exists { return true }
+            if summaryPane.exists, !summaryPane.isSelected { summaryPane.click() }
+            return false
+        }
     }
 
     /// The rail shows one lens at a time; tests name the lens they need.

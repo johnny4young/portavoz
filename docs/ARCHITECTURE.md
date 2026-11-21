@@ -5983,7 +5983,9 @@ validates and forwards the exact canonical public payload after its shared
 build. Only the Web journey forwards it into temporary-store composition,
 which installs one `URLProtocol`. It opens no listener and makes no Local
 Network privacy choice while preserving the receipt-backed `URLSession`
-gateway, direct-page parser, and presentation path. Exact checksum, schema,
+gateway, direct-page parser, and presentation path. The same composition
+injects a fixed retrieval instant, so fixture freshness never depends on the
+wall clock; production always reads the system clock. Exact checksum, schema,
 generation, route-count, origin, and payload-size
 checks fail closed; production composition can never install this transport.
 The runner preserves an explicit `DEVELOPER_DIR`, otherwise follows the active

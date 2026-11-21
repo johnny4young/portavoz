@@ -348,15 +348,21 @@ extension AppServices {
         usesTemporaryStore: Bool,
         answering: any AskWebAnswering
     ) -> AskWeb {
-        AskWeb(
+        let (session, servesFixture) = makeAskWebSession(
+            usesTemporaryStore: usesTemporaryStore)
+        // The fixture's dates are fixed, so its retrieval instant must be too.
+        let fixedDate = servesFixture
+            ? UITestAskWebFixtureURLProtocol.retrievalDate
+            : nil
+        return AskWeb(
             retrieval: URLSessionAskWebSourceRetrieval(
                 gateway: URLSessionDataEgressGateway(
-                    session: makeAskWebSession(
-                        usesTemporaryStore: usesTemporaryStore),
+                    session: session,
                     receiptRecorder: store),
                 policy: usesTemporaryStore
                     ? .loopbackFixture
-                    : .publicHTTPS),
+                    : .publicHTTPS,
+                now: { fixedDate ?? Date() }),
             answering: answering)
     }
 
@@ -422,7 +428,7 @@ extension AppServices {
 
     private static func makeAskWebSession(
         usesTemporaryStore: Bool
-    ) -> URLSession {
+    ) -> (session: URLSession, servesFixture: Bool) {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.requestCachePolicy = .reloadIgnoringLocalAndRemoteCacheData
         configuration.urlCache = nil
@@ -431,12 +437,11 @@ extension AppServices {
         configuration.timeoutIntervalForRequest = 8
         configuration.timeoutIntervalForResource = 10
         configuration.waitsForConnectivity = false
-        if usesTemporaryStore {
-            _ = UITestAskWebFixtureURLProtocol.install(
+        let servesFixture = usesTemporaryStore
+            && UITestAskWebFixtureURLProtocol.install(
                 into: configuration,
                 environment: ProcessInfo.processInfo.environment)
-        }
-        return URLSession(configuration: configuration)
+        return (URLSession(configuration: configuration), servesFixture)
     }
 }
 
