@@ -100,7 +100,7 @@ struct SkillReceiptInspectionSheet: View {
                         "Source context could not be verified. This did not start or change the action run.",
                         systemImage: PVSymbol.warning)
                         .font(.callout)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(PVDesign.caution)
                         .accessibilityIdentifier("skill-receipt-context-error")
                     Button("Try again") {
                         Task { await resolveContext() }
@@ -151,7 +151,7 @@ struct SkillReceiptInspectionSheet: View {
                         "Recovery context could not be verified. Nothing ran.",
                         systemImage: PVSymbol.warning)
                         .font(.callout)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(PVDesign.caution)
                         .accessibilityIdentifier("skill-receipt-recovery-error")
                     Button("Try again") {
                         Task { await resolveRecovery() }
@@ -184,7 +184,7 @@ struct SkillReceiptInspectionSheet: View {
                 "The outcome may exist outside Portavoz. Verify the external destination before continuing.",
                 systemImage: "arrow.up.right.square")
                 .font(.callout)
-                .foregroundStyle(.orange)
+                .foregroundStyle(PVDesign.caution)
                 .accessibilityIdentifier("skill-receipt-recovery-external")
         case .unavailable:
             Label(
@@ -210,7 +210,7 @@ struct SkillReceiptInspectionSheet: View {
                     "Approval could not be revoked. The run is still waiting.",
                     systemImage: PVSymbol.warning)
                     .font(.callout)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(PVDesign.caution)
                     .accessibilityIdentifier("skill-receipt-revoke-error")
                 Button("Try again") {
                     Task { await revokeApproval() }
@@ -250,7 +250,7 @@ struct SkillReceiptInspectionSheet: View {
                     "History is unavailable",
                     systemImage: PVSymbol.warning)
                     .font(.headline)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(PVDesign.caution)
                     .accessibilityIdentifier("skill-receipt-inspection-error")
                 Text(
                     "Portavoz could not verify this entry. Nothing runs or retries from here.")
@@ -486,8 +486,8 @@ private extension SkillReceiptInspectionSheet {
     ) -> Color {
         switch kind {
         case .confirmed, .started: .secondary
-        case .succeeded: .green
-        case .failed: .orange
+        case .succeeded: PVDesign.ok
+        case .failed: PVDesign.caution
         case .cancelled: .secondary
         }
     }

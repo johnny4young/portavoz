@@ -24,7 +24,7 @@ struct CommandLineToolSection: View {
             if let failure = model.failure {
                 Text(failure)
                     .font(.caption)
-                    .foregroundStyle(.orange)
+                    .cautionText()
                     .accessibilityIdentifier("settings-cli-error")
             }
         }

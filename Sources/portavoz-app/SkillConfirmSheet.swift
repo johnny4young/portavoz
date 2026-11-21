@@ -39,7 +39,7 @@ struct SkillConfirmSheet: View {
         if let failure {
             Label(failure, systemImage: PVSymbol.error)
                 .font(.callout)
-                .foregroundStyle(.red)
+                .foregroundStyle(PVDesign.caution)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("skill-confirm-error")
         }
@@ -73,7 +73,7 @@ struct SkillConfirmSheet: View {
             case .gistPublished(let url):
                 Label(L10n.text("Gist published"), systemImage: PVSymbol.success)
                     .font(.headline)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(PVDesign.ok)
                     .accessibilityIdentifier("gist-result-title")
                 gistResultURL(url)
                 gistResultActions(outputURL: url)
@@ -82,7 +82,7 @@ struct SkillConfirmSheet: View {
                     L10n.text("Publication outcome unknown — check GitHub"),
                     systemImage: PVSymbol.error)
                     .font(.headline)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(PVDesign.caution)
                     .accessibilityIdentifier("gist-result-title")
                 Text(message)
                     .font(.callout)
@@ -170,7 +170,7 @@ struct SkillConfirmSheet: View {
                         emailBoundary,
                         systemImage: "envelope.open")
                         .font(.caption)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(PVDesign.caution)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityLabel(emailBoundary)
                         .accessibilityIdentifier("skill-confirm-email-boundary")
@@ -200,7 +200,7 @@ struct SkillConfirmSheet: View {
                     gistBoundary,
                     systemImage: PVSymbol.privacy)
                     .font(.caption)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(PVDesign.caution)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityLabel(gistBoundary)
                     .accessibilityIdentifier("skill-confirm-gist-boundary")
@@ -254,7 +254,7 @@ struct SkillConfirmSheet: View {
             .font(.caption2)
             .padding(.horizontal, 8)
             .padding(.vertical, 2)
-            .background(Color.accentColor.opacity(0.12), in: Capsule())
+            .background(PVDesign.accent.opacity(0.12), in: Capsule())
             .foregroundStyle(.tint)
     }
 

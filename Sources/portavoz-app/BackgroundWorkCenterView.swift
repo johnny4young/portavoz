@@ -266,11 +266,10 @@ private struct BackgroundWorkRow: View {
 
     private var tint: Color {
         switch snapshot.phase {
-        case .failed: .red
-        case .retryScheduled: .orange
-        case .waitingForRecording: .blue
-        case .running: .accentColor
-        case .idle: snapshot.lastOutcome == nil ? .secondary : .green
+        case .failed, .retryScheduled: PVDesign.caution
+        case .waitingForRecording: .secondary
+        case .running: PVDesign.accent
+        case .idle: snapshot.lastOutcome == nil ? .secondary : PVDesign.ok
         }
     }
 }

@@ -46,8 +46,8 @@ extension CommitmentRadarView {
         switch activity {
         case .new: PVDesign.accent
         case .unchanged: .secondary
-        case .completed: .green
-        case .reopened: PVDesign.brandAmber
+        case .completed: PVDesign.ok
+        case .reopened: PVDesign.caution
         }
     }
 }

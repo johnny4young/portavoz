@@ -103,9 +103,8 @@ struct CompanionSettingsSection: View {
 
     private var statusTint: Color {
         switch readiness {
-        case .ready, .readyThroughProvider: .green
-        case .questionsOnly: .orange
-        case .unavailable: .red
+        case .ready, .readyThroughProvider: PVDesign.ok
+        case .questionsOnly, .unavailable: PVDesign.caution
         }
     }
 

@@ -122,7 +122,7 @@ struct LedgerSection: View {
                     L10n.text("Opt-in"),
                     "network transfers",
                     identifier: "settings-ledger-network-policy",
-                    tint: .green)
+                    tint: PVDesign.ok)
                 tile(
                     voiceText,
                     "voices, encrypted here",

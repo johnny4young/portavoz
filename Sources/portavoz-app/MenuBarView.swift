@@ -80,7 +80,7 @@ struct MenuBarContent: View {
     }
 
     private func peakColor(_ index: Int) -> Color {
-        if recording { return index == 2 ? .red : .red.opacity(0.5) }
+        if recording { return index == 2 ? PVDesign.now : PVDesign.now.opacity(0.5) }
         return index == 2 ? VoicePalette.me : .secondary
     }
 
@@ -89,12 +89,12 @@ struct MenuBarContent: View {
     private var quickActions: some View {
         HStack(spacing: 8) {
             if recording {
-                quickAction("Stop", PVSymbol.stop, tint: .red) {
+                quickAction("Stop", PVSymbol.stop, tint: PVDesign.now) {
                     let services = self.services
                     Task { await services.recording.stop(services: services) }
                 }
             } else {
-                quickAction("Record", PVSymbol.record, tint: .red) {
+                quickAction("Record", PVSymbol.record, tint: PVDesign.now) {
                     openMainWindow()
                     services.pendingRoute = .recording(nil)
                 }
@@ -148,7 +148,7 @@ struct MenuBarContent: View {
                 } else if model.state.preparedEventID == event.id {
                     Label("Brief prepared", systemImage: PVSymbol.success)
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.green)
+                        .foregroundStyle(PVDesign.ok)
                         .accessibilityIdentifier("menu-bar-brief-prepared")
                 }
                 Spacer(minLength: 4)
@@ -165,7 +165,7 @@ struct MenuBarContent: View {
             if let failure = model.state.briefFailure {
                 Text(failure)
                     .font(.caption2)
-                    .foregroundStyle(.red)
+                    .cautionText()
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("menu-bar-brief-error")
             }

@@ -27,7 +27,7 @@ struct SettingsSidebar: View {
             .accessibilityIdentifier("settings-category-list")
             Spacer(minLength: 0)
         }
-        .background { AuroraSidebarBackground() }
+        .background { PVDesign.paperSunk.ignoresSafeArea() }
     }
 
     private var searchField: some View {

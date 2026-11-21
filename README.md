@@ -85,7 +85,7 @@ Everything below runs on your Mac. Grouped by what you're doing:
 
 **Reflect & review**
 - **Today** — the screen you land on: this week's numbers, the day's agenda with a **Brief** and a linked **Record** per event, the to-dos still open (check them off right there), the meetings to pick back up, and one-click questions for Ask. Everything above the fold, nothing to type.
-- **Insights** — scope your meeting life to this week/month/year, see **who you talk with and how much** (amber = you, violet = them), your talk balance, a 12-week rhythm heatmap, and open commitments — all local.
+- **Insights** — scope your meeting life to this week/month/year, see **who you talk with and how much** (amber = you, grey = them), your talk balance, a 12-week rhythm heatmap, and open commitments — all local.
 - **🪞 Post-meeting mirror** (opt-in) — a private card at the end of a real meeting: your numbers next to your usual average, measured, never judged.
 - **Actionable recovery** — Meeting Detail tells you when local processing is active or exhausted, preserves the audio/transcript already saved, and offers one safe retry. Settings can save a redacted diagnostics JSON locally; Portavoz never uploads it.
 - **⌘K — ask your week** — a Spotlight-style palette over any view: instant accent-insensitive English/Spanish results as you type, optional local semantic recall, and a full on-device answer with citation chips that jump to the exact moment.

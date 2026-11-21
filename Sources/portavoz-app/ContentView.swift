@@ -73,7 +73,7 @@ struct ContentView: View {
                     openSettings()
                 })
                 .navigationSplitViewColumnWidth(min: 260, ideal: 300)
-                .background { AuroraSidebarBackground() }
+                .background { PVDesign.paperSunk.ignoresSafeArea() }
         } detail: {
             Group {
                 switch route {
@@ -139,7 +139,7 @@ struct ContentView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background { AuroraDetailBackground() }
+            .background { PVDesign.paper.ignoresSafeArea() }
         }
         .toolbar {
             ToolbarItem(placement: .automatic) {

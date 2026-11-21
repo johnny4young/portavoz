@@ -49,9 +49,8 @@ enum RecordingApuntadorState: Equatable {
     var tint: Color {
         switch self {
         case .listening: PVDesign.accent
-        case .questionsOnly: .orange
+        case .questionsOnly, .unavailable: PVDesign.caution
         case .off: .secondary
-        case .unavailable: .red
         }
     }
 }

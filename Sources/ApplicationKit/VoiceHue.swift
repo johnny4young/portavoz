@@ -6,7 +6,7 @@ import Foundation
 /// fall back to their order of appearance. Pure so it's testable; the
 /// actual colors live app-side.
 public enum VoiceHue {
-    public static let paletteSize = 6
+    public static let paletteSize = 5
 
     public static func index(name: String?, fallbackOrder: Int) -> Int {
         if let name {

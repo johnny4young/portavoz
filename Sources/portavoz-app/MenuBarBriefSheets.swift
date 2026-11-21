@@ -27,7 +27,7 @@ struct MenuBarBriefConfirmSheet: View {
             if let failure {
                 Label(failure, systemImage: PVSymbol.error)
                     .font(.callout)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(PVDesign.caution)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("menu-bar-brief-confirm-error")
             }
@@ -84,7 +84,7 @@ struct MenuBarBriefConfirmSheet: View {
             .font(.caption2)
             .padding(.horizontal, 8)
             .padding(.vertical, 2)
-            .background(Color.accentColor.opacity(0.12), in: Capsule())
+            .background(PVDesign.accent.opacity(0.12), in: Capsule())
             .foregroundStyle(.tint)
             .accessibilityIdentifier("menu-bar-brief-capability-\(id)")
     }
@@ -100,7 +100,7 @@ struct MenuBarPreparedBriefSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Brief ready", systemImage: PVSymbol.success)
                 .font(.headline)
-                .foregroundStyle(.green)
+                .foregroundStyle(PVDesign.ok)
             ScrollView {
                 MeetingBriefArtifactView(
                     brief: brief,

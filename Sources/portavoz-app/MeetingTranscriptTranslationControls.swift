@@ -25,7 +25,7 @@ struct MeetingTranscriptTranslationControls: View {
             }
             if let language, !state.isCurrent(language) {
                 Image(systemName: PVSymbol.warning)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(PVDesign.caution)
                     .help("The transcript changed after this translation. Translate again to update it.")
                     .accessibilityLabel("Translation out of date")
                     .accessibilityIdentifier("detail-transcript-translation-stale")
@@ -50,7 +50,7 @@ struct MeetingTranscriptTranslationControls: View {
             menu
         case .failed(missingLanguages: false):
             Image(systemName: PVSymbol.error)
-                .foregroundStyle(.red)
+                .foregroundStyle(PVDesign.caution)
                 .help("The last translation failed. Try again.")
                 .accessibilityLabel("Translation failed")
                 .accessibilityIdentifier("detail-transcript-translation-failure")

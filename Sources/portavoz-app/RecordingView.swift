@@ -268,7 +268,7 @@ private struct LiveRecordingCaptionsView: View {
         return HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(voice.label)
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(voice.isMe ? VoicePalette.meContrast : pillInk(voice))
+                .foregroundStyle(pillText(voice))
                 .padding(.horizontal, 7)
                 .padding(.vertical, 2)
                 .background(pillBackground(voice), in: Capsule())
@@ -302,32 +302,25 @@ private struct LiveRecordingCaptionsView: View {
         _ translated: String,
         segmentID: UUID
     ) -> some View {
-        HStack(alignment: .top, spacing: 7) {
-            Capsule()
-                .fill(Color.indigo)
-                .frame(width: 3)
-            VStack(alignment: .leading, spacing: 2) {
-                // The language is named once, in the Translate picker; each
-                // line carries only the mark and keeps the full name for
-                // assistive technology.
-                Label(liveTranslationLabel, systemImage: "translate")
-                    .labelStyle(.iconOnly)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.indigo)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(liveTranslationLabel)
-                    .accessibilityIdentifier(
-                        "recording-live-translation-\(segmentID.uuidString)")
-                Text(translated)
-                    .font(.callout)
-                    .foregroundStyle(.primary)
-            }
+        VStack(alignment: .leading, spacing: 2) {
+            // The language is named once, in the Translate picker; each
+            // line carries only the mark and keeps the full name for
+            // assistive technology.
+            Label(liveTranslationLabel, systemImage: "translate")
+                .labelStyle(.iconOnly)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(PVDesign.green)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(liveTranslationLabel)
+                .accessibilityIdentifier(
+                    "recording-live-translation-\(segmentID.uuidString)")
+            Text(translated)
+                .font(.callout)
+                .foregroundStyle(.primary)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
-        .background(
-            Color.indigo.opacity(0.08),
-            in: RoundedRectangle(cornerRadius: 7))
+        .background(PVDesign.greenBg, in: RoundedRectangle(cornerRadius: 7))
     }
 
     private var liveTranslationLabel: String {
@@ -341,11 +334,10 @@ private struct LiveRecordingCaptionsView: View {
         }
     }
 
-    private func pillInk(_ voice: (label: String, isMe: Bool)) -> Color {
-        guard voice.label != L10n.text("Them") else { return .secondary }
-        return VoicePalette.color(
-            index: VoiceHue.index(name: voice.label, fallbackOrder: 0),
-            colorScheme: colorScheme)
+    /// Voice hues are fills, not text colours: labels stay ink on the tint.
+    private func pillText(_ voice: (label: String, isMe: Bool)) -> Color {
+        if voice.isMe { return VoicePalette.meContrast }
+        return voice.label == L10n.text("Them") ? PVDesign.ink3 : PVDesign.ink
     }
 
     private func pillBackground(_ voice: (label: String, isMe: Bool)) -> Color {
@@ -353,7 +345,10 @@ private struct LiveRecordingCaptionsView: View {
         guard voice.label != L10n.text("Them") else {
             return Color(nsColor: .quaternarySystemFill)
         }
-        return pillInk(voice).opacity(0.22)
+        return VoicePalette.color(
+            index: VoiceHue.index(name: voice.label, fallbackOrder: 0),
+            colorScheme: colorScheme)
+            .opacity(0.22)
     }
 
     private func liveVoice(

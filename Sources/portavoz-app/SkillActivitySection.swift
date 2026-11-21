@@ -274,7 +274,7 @@ struct SkillActivitySection: View {
                 Label(
                     "History is unavailable",
                     systemImage: PVSymbol.warning)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(PVDesign.caution)
                 Text("The selected activity view could not be verified. No runs are shown.")
                     .font(.caption)
                     .foregroundStyle(.secondary)

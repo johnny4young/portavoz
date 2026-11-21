@@ -34,7 +34,7 @@ struct SummaryClaimFeedbackView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.mini)
-                .tint(isUnsupported ? .orange : nil)
+                .tint(isUnsupported ? PVDesign.caution : nil)
                 .accessibilityAddTraits(isUnsupported ? .isSelected : [])
                 .accessibilityIdentifier("summary-feedback-unsupported")
                 if claim.feedback != nil {
@@ -74,7 +74,7 @@ struct SummaryClaimFeedbackView: View {
         case .unsupported:
             Label("Marked as unsupported", systemImage: "exclamationmark.bubble")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.orange)
+                .foregroundStyle(PVDesign.caution)
                 .accessibilityIdentifier("summary-feedback-status")
         case nil:
             EmptyView()
@@ -137,7 +137,7 @@ private struct SummaryCorrectionSheet: View {
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
                 if let errorMessage {
-                    Text(errorMessage).font(.caption).foregroundStyle(.red)
+                    Text(errorMessage).font(.caption).cautionText()
                 }
                 Spacer()
                 Button("Cancel", role: .cancel) { dismiss() }

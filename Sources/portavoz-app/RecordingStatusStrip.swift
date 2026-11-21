@@ -21,9 +21,8 @@ struct RecordingNotice: Identifiable {
         var tint: Color {
             switch self {
             case .info: .secondary
-            case .success: .green
-            case .warning: .orange
-            case .error: .red
+            case .success: PVDesign.ok
+            case .warning, .error: PVDesign.caution
             }
         }
     }

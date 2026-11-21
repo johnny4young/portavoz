@@ -25,7 +25,7 @@ struct RememberedVoicesSection: View {
                     if let errorMessage {
                         Text(errorMessage)
                             .font(.caption)
-                            .foregroundStyle(.red)
+                            .cautionText()
                             .accessibilityIdentifier("settings-remembered-voices-error")
                         HStack {
                             Button("Try again") {

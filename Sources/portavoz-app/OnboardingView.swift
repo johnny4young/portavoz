@@ -191,7 +191,7 @@ struct OnboardingView: View {
         case .captionsUnavailable:
             VStack(alignment: .leading, spacing: 8) {
                 Label("Got it.", systemImage: PVSymbol.success)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(PVDesign.ok)
                 Text("Live captions are unavailable right now. Recording still works.")
                     .font(.caption).foregroundStyle(.secondary)
             }
@@ -302,7 +302,7 @@ struct OnboardingView: View {
                 .foregroundStyle(.secondary)
             if enrolled {
                 HStack(spacing: 10) {
-                    Image(systemName: PVSymbol.success).foregroundStyle(.green)
+                    Image(systemName: PVSymbol.success).foregroundStyle(PVDesign.ok)
                     Text("Voice enrolled").font(.callout)
                 }
             } else if enrolling {
@@ -372,7 +372,7 @@ struct OnboardingView: View {
             }
             Spacer()
             if done {
-                Image(systemName: PVSymbol.success).foregroundStyle(.green)
+                Image(systemName: PVSymbol.success).foregroundStyle(PVDesign.ok)
             } else if let action {
                 Button(actionLabel, action: action).controlSize(.small)
             }
@@ -487,7 +487,7 @@ private extension OnboardingView {
         switch modelPreparation.phase {
         case .ready:
             Label("Models ready", systemImage: PVSymbol.success)
-                .foregroundStyle(.green)
+                .foregroundStyle(PVDesign.ok)
                 .accessibilityIdentifier("onboarding-models-ready")
         case .preparing:
             HStack(spacing: 10) {

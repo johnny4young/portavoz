@@ -28,7 +28,7 @@ extension CommitmentRadarView {
                     "Created in Reminders",
                     systemImage: PVSymbol.success)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.green)
+                    .foregroundStyle(PVDesign.ok)
                     .accessibilityIdentifier(
                         "commitment-radar-reminder-created-\(item.id.rawValue.uuidString)")
             } else if let receipt = surface.receipt {
@@ -36,7 +36,7 @@ extension CommitmentRadarView {
                     reminderDraftReceiptLabel(receipt.state),
                     systemImage: PVSymbol.error)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(PVDesign.caution)
                     .accessibilityIdentifier(
                         "commitment-radar-reminder-status-\(item.id.rawValue.uuidString)")
             }

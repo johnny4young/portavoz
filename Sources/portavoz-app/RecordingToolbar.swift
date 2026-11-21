@@ -120,7 +120,7 @@ struct RecordingToolbar: View {
             Label("Stop", systemImage: PVSymbol.stop)
         }
         .controlSize(.small)
-        .tint(.red)
+        .tint(PVDesign.now)
         .keyboardShortcut(".")
         .accessibilityIdentifier("recording-stop")
     }
@@ -161,7 +161,7 @@ private struct RecordingElapsedClock: View {
                 let clock = ClockFormat.mmss(TimeInterval(elapsed))
                 HStack(spacing: 8) {
                     Circle()
-                        .fill(.red)
+                        .fill(PVDesign.now)
                         .frame(width: 10, height: 10)
                         .opacity(elapsed.isMultiple(of: 2) ? 1 : 0.35)
                         .animation(.easeInOut(duration: 0.6), value: elapsed)
@@ -200,8 +200,7 @@ private struct RecordingLevelMeter: View {
                         ? "mic.slash.fill" : (controller.micLevelLow ? "mic.fill" : "mic")
                 )
                 .foregroundStyle(
-                    controller.micMuted ? .red : (controller.micLevelLow ? .orange : .secondary)
-                )
+                    controller.micMuted || controller.micLevelLow ? PVDesign.caution : .secondary)
                 .font(.caption)
             }
             .buttonStyle(.plain)
@@ -226,7 +225,7 @@ private struct RecordingLevelMeterFill: View {
         LevelBarFill(
             fraction: controller.micMuted
                 ? 0 : LevelBarFill.fraction(forLevel: controller.micLevel))
-            .fill(controller.micLevelLow ? Color.orange : Color.green)
+            .fill(controller.micLevelLow ? PVDesign.ink3 : VoicePalette.me)
             .animation(.easeOut(duration: 0.15), value: controller.micLevel)
     }
 }

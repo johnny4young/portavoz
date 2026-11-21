@@ -227,9 +227,9 @@ struct MeetingSyncSettingsSection: View {
 
     private var statusTint: Color {
         switch status.phase {
-        case .synchronized: .green
-        case .failed: .orange
-        default: .accentColor
+        case .synchronized: PVDesign.ok
+        case .failed: PVDesign.caution
+        default: PVDesign.accent
         }
     }
 

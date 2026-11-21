@@ -20,7 +20,7 @@ struct ReminderDraftSheet: View {
             if let failure = confirmation?.failure {
                 Label(failure, systemImage: PVSymbol.error)
                     .font(.callout)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(PVDesign.caution)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("reminder-draft-error")
             }
@@ -98,7 +98,7 @@ private extension ReminderDraftSheet {
                 Label(
                     "Reminders access is off. Nothing was created.",
                     systemImage: PVSymbol.privacy)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(PVDesign.caution)
                     .accessibilityIdentifier("reminder-draft-access-denied")
                 HStack {
                     Button("Open System Settings", action: openReminderSettings)
@@ -115,7 +115,7 @@ private extension ReminderDraftSheet {
                 if let target = confirmation?.target {
                     HStack(spacing: 8) {
                         Image(systemName: "list.bullet.circle.fill")
-                            .foregroundStyle(.green)
+                            .foregroundStyle(PVDesign.ok)
                             .accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Reminders list")
@@ -152,7 +152,7 @@ private extension ReminderDraftSheet {
             .font(.caption2)
             .padding(.horizontal, 8)
             .padding(.vertical, 2)
-            .background(Color.accentColor.opacity(0.12), in: Capsule())
+            .background(PVDesign.accent.opacity(0.12), in: Capsule())
             .foregroundStyle(.tint)
     }
 

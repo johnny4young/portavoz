@@ -48,7 +48,7 @@ struct MirrorCard: View {
             HStack(alignment: .top, spacing: 6) {
                 Image(systemName: PVSymbol.generate)
                     .font(.caption)
-                    .foregroundStyle(PVDesign.chipAISpark)
+                    .foregroundStyle(PVDesign.green)
                 Text(MirrorStats.synthesis(
                     myShare: myShare, average: averageShare,
                     questions: myQuestions, language: language))
@@ -86,7 +86,7 @@ struct MirrorCard: View {
         VStack(alignment: .leading, spacing: 3) {
             Text(value)
                 .font(.title.weight(.bold).monospacedDigit())
-                .foregroundStyle(highlight ? VoicePalette.me : .primary)
+                .foregroundStyle(highlight ? PVDesign.youInk : .primary)
             Text(label)
                 .font(.caption2)
                 .foregroundStyle(.secondary)

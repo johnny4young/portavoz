@@ -71,7 +71,7 @@ struct SkillProposalSection: View {
                 Label(
                     "Automations are unavailable",
                     systemImage: PVSymbol.warning)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(PVDesign.caution)
                     .accessibilityIdentifier(
                         "settings-skills-proposals-error")
                 Text("No suggestion is shown until Portavoz verifies its saved explanation.")
@@ -277,7 +277,7 @@ struct SkillProposalSection: View {
                 "This proposal could not be opened. It remains available.",
                 systemImage: PVSymbol.warning)
                 .font(.caption)
-                .foregroundStyle(.orange)
+                .foregroundStyle(PVDesign.caution)
                 .accessibilityIdentifier(
                     reviewIdentifier("error", offer: offer))
             Button("Try again") { review(offer) }
@@ -307,7 +307,7 @@ struct SkillProposalSection: View {
                 "This proposal could not be dismissed. It remains available.",
                 systemImage: PVSymbol.warning)
                 .font(.caption)
-                .foregroundStyle(.orange)
+                .foregroundStyle(PVDesign.caution)
                 .accessibilityIdentifier(
                     dismissalIdentifier("error", offer: offer))
             Button("Try again") { dismiss(offer) }

@@ -59,7 +59,7 @@ struct TranscriptCorrectionEditor: View {
             if let operationError {
                 Label(operationError, systemImage: PVSymbol.warning)
                     .font(.callout)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(PVDesign.caution)
                     .accessibilityIdentifier("transcript-correction-error")
             }
             Spacer(minLength: 0)

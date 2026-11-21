@@ -57,7 +57,7 @@ struct TranscriptStructuralCorrectionControls: View {
             if let operationError {
                 Label(operationError, systemImage: PVSymbol.warning)
                     .font(.callout)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(PVDesign.caution)
                     .accessibilityIdentifier("transcript-structure-error")
             }
         }
@@ -342,7 +342,7 @@ struct SuppressedTranscriptCorrectionsSheet: View {
                 }
             }
             if let operationError {
-                Text(operationError).font(.callout).foregroundStyle(.red)
+                Text(operationError).font(.callout).cautionText()
             }
             HStack {
                 Spacer()

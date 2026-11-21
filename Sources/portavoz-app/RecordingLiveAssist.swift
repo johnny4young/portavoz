@@ -44,7 +44,7 @@ struct RecordingObjectivesPanel: View {
             if let issue = controller.objectives.admissionIssue {
                 Text(objectiveIssue(issue))
                     .font(.caption2)
-                    .foregroundStyle(.orange)
+                    .cautionText()
                     .accessibilityIdentifier("recording-objective-limit")
             }
             if controller.interviewAssist.isEnabled {
@@ -93,7 +93,7 @@ struct RecordingObjectivesPanel: View {
             if objective.checkedByModel {
                 Image(systemName: PVSymbol.generate)
                     .font(.caption2)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(PVDesign.caution)
                     .help(L10n.text("Checked off by Apuntador"))
             }
             Spacer(minLength: 2)
@@ -206,10 +206,10 @@ struct RecordingProactiveAssistView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+        .background(PVDesign.ink.opacity(PVDesign.offerTint), in: RoundedRectangle(cornerRadius: 8))
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(.orange.opacity(0.25), lineWidth: 1))
+                .strokeBorder(PVDesign.ink.opacity(0.25), lineWidth: 1))
         .accessibilityIdentifier(
             "recording-proactive-suggestion-\(suggestion.kind.rawValue)")
     }
@@ -320,9 +320,7 @@ struct RecordingTalkBalanceCue: View {
                 .frame(width: 44, height: 6)
                 .overlay {
                     LevelBarFill(fraction: CGFloat(balance.meFraction))
-                        .fill(balance.isNotable
-                            ? AnyShapeStyle(.orange)
-                            : AnyShapeStyle(.tint))
+                        .fill(VoicePalette.me.opacity(balance.isNotable ? 1 : 0.55))
                 }
                 .accessibilityIdentifier("recording-talk-balance")
                 .accessibilityLabel(L10n.text("Talk balance"))

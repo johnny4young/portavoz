@@ -101,7 +101,7 @@ struct GitHubIssueSkillSheet: View {
                 "Confirming sends this title, body, and cited excerpts to this repository and creates one issue.",
                 systemImage: PVSymbol.privacy)
                 .font(.caption)
-                .foregroundStyle(.orange)
+                .foregroundStyle(PVDesign.caution)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("github-issue-boundary")
             failureView
@@ -202,7 +202,7 @@ struct GitHubIssueSkillSheet: View {
         case .published(let outputURL):
             Label("GitHub issue created", systemImage: PVSymbol.success)
                 .font(.headline)
-                .foregroundStyle(.green)
+                .foregroundStyle(PVDesign.ok)
                 .accessibilityIdentifier("github-issue-result-title")
             if let outputURL {
                 resultURL(outputURL)
@@ -217,7 +217,7 @@ struct GitHubIssueSkillSheet: View {
                 "Issue outcome unknown — check GitHub",
                 systemImage: PVSymbol.error)
                 .font(.headline)
-                .foregroundStyle(.orange)
+                .foregroundStyle(PVDesign.caution)
                 .accessibilityIdentifier("github-issue-result-title")
             Text(message)
                 .font(.callout)
@@ -259,7 +259,7 @@ struct GitHubIssueSkillSheet: View {
         if let failure {
             Label(failure, systemImage: PVSymbol.error)
                 .font(.callout)
-                .foregroundStyle(.red)
+                .foregroundStyle(PVDesign.caution)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("github-issue-error")
         }

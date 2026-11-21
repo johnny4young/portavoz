@@ -11,9 +11,9 @@ final class VoiceHueTests: XCTestCase {
 
     func testUnnamedFallsBackToAppearanceOrder() {
         XCTAssertEqual(VoiceHue.index(name: nil, fallbackOrder: 0), 0)
-        XCTAssertEqual(VoiceHue.index(name: nil, fallbackOrder: 7), 1)
+        XCTAssertEqual(VoiceHue.index(name: nil, fallbackOrder: 7), 2)
         XCTAssertEqual(VoiceHue.index(name: "", fallbackOrder: 2), 2)
-        XCTAssertEqual(VoiceHue.index(name: nil, fallbackOrder: -1), 5, "negative order stays in range")
+        XCTAssertEqual(VoiceHue.index(name: nil, fallbackOrder: -1), 4, "negative order stays in range")
     }
 
     func testIndexAlwaysInPaletteRange() {

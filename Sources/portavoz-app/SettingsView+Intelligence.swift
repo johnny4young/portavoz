@@ -137,7 +137,7 @@ extension SettingsView {
                         CustomRecipeStore.delete(id: recipe.id)
                         customStructures = CustomRecipeStore.custom()
                     } label: {
-                        Image(systemName: "trash").foregroundStyle(.red)
+                        Image(systemName: "trash").foregroundStyle(PVDesign.caution)
                     }
                     .buttonStyle(.plain)
                 }
@@ -192,9 +192,8 @@ extension SettingsView {
         _ phase: SemanticSearchPreparationModel.Phase
     ) -> Color {
         switch phase {
-        case .ready: .green
-        case .blockedByCapture: .orange
-        case .failed: .red
+        case .ready: PVDesign.ok
+        case .blockedByCapture, .failed: PVDesign.caution
         case .checking, .needsPreparation, .preparing, .unsupported: .secondary
         }
     }
