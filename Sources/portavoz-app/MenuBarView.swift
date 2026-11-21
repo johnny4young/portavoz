@@ -130,7 +130,7 @@ struct MenuBarContent: View {
             Text(L10n.format("Next meeting · %@", relative(event.startDate)))
                 .font(.caption2.weight(.semibold))
                 .textCase(.uppercase)
-                .foregroundStyle(VoicePalette.me)
+                .foregroundStyle(PVDesign.youInk)
             Text(event.title).font(.callout.weight(.medium)).lineLimit(1)
             HStack(spacing: 6) {
                 if let offer = model.state.briefOffer,

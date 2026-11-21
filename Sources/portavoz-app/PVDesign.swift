@@ -164,7 +164,7 @@ enum VoicePalette {
         PVTone(0xB25F36, 0xE09468),
         PVTone(0x2B8FA6, 0x5CC4D6)
     ]
-    /// A voice nobody has named yet, or one beyond the six in colour.
+    /// Grey for voices outside the cast: "them" in Insights and the far channel of the waveform.
     static let unnamedTone = PVTone(0x8791A0, 0x99A4B2)
 
     private static let lightColors = hues.map { Color(nsColor: PVTone.srgb($0.light)) }

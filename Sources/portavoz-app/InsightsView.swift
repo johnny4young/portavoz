@@ -17,7 +17,6 @@ struct InsightsView: View {
     private var noDecision: InsightsFindings.NoDecision? { readModel?.noDecision }
     private var topics: [InsightsFindings.RecurringTopic] { readModel?.topics ?? [] }
 
-
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {

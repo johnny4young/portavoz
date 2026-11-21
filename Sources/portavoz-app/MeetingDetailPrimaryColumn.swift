@@ -59,11 +59,11 @@ struct MeetingDetailPrimaryColumn<Material: View, Transcript: View, Player: View
             Button("Transcript") { selectedPane = .transcript }
                 .accessibilityIdentifier("detail-compact-transcript")
                 .accessibilityAddTraits(selectedPane == .transcript ? .isSelected : [])
-                .tint(selectedPane == .transcript ? PVDesign.accent : .gray)
+                .tint(selectedPane == .transcript ? PVDesign.accent : PVDesign.ink3)
             Button("Summary") { selectedPane = .summary }
                 .accessibilityIdentifier("detail-compact-summary")
                 .accessibilityAddTraits(selectedPane == .summary ? .isSelected : [])
-                .tint(selectedPane == .summary ? PVDesign.accent : .gray)
+                .tint(selectedPane == .summary ? PVDesign.accent : PVDesign.ink3)
             Spacer(minLength: 0)
         }
         .buttonStyle(.bordered)

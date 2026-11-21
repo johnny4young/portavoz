@@ -93,7 +93,7 @@ struct RecordingObjectivesPanel: View {
             if objective.checkedByModel {
                 Image(systemName: PVSymbol.generate)
                     .font(.caption2)
-                    .foregroundStyle(PVDesign.caution)
+                    .foregroundStyle(PVDesign.green)
                     .help(L10n.text("Checked off by Apuntador"))
             }
             Spacer(minLength: 2)

@@ -250,7 +250,7 @@ struct MeetingGeneratedDocumentSection: View {
         } label: {
             Text(label)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(selected ? Color.white : .secondary)
+                .foregroundStyle(selected ? PVDesign.onInk : .secondary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
                 .background {

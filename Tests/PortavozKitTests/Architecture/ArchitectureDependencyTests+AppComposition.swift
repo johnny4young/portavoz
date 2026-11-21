@@ -2125,10 +2125,12 @@ extension ArchitectureDependencyTests {
     }
 
     func testColoursComeFromTheDesignTokens() throws {
-        let hues = "red|orange|green|yellow|blue|purple|indigo|mint|teal|pink|cyan|brown"
+        let hues = "red|orange|green|yellow|blue|purple|indigo|mint|teal|pink|cyan|brown|gray"
+        let systemHues = "Red|Orange|Green|Yellow|Blue|Purple|Indigo|Mint|Teal|Pink|Cyan|Brown|Gray"
         let rawColours = try Self.sourceMatches(
             under: "Sources/portavoz-app",
-            pattern: #"(^|[^A-Za-z0-9_.])\.(\#(hues))\b|Color\.(\#(hues)|accentColor)\b|Color\(red:"#,
+            pattern: #"(^|[^A-Za-z0-9_.])\.(\#(hues))\b|Color\.(\#(hues)|accentColor)\b"#
+                + #"|Color\((\.sRGB, )?red:|NSColor\.system(\#(systemHues))\b"#,
             codeOnly: true)
         XCTAssertEqual(rawColours.filter { $0 != "PVDesign.swift" }, [], "chrome is ink; hues live in PVDesign")
 
