@@ -1,6 +1,7 @@
 import ApplicationKit
 import AudioPlaybackKit
 import Foundation
+import PortavozCore
 import StorageKit
 
 extension AppServices {
@@ -16,6 +17,14 @@ extension AppServices {
             resolver: AppMeetingAudioChannelResolver(),
             compressionAdmission: store,
             telemetry: workloadTelemetry).execute(request)
+    }
+
+    func meetingDetailPlaybackPosition(_ meetingID: MeetingID) async throws -> MeetingPlaybackPosition? {
+        try await store.playbackPositions(for: [meetingID])[meetingID]
+    }
+
+    func saveMeetingDetailPlaybackPosition(_ position: MeetingPlaybackPosition) async throws {
+        try await store.savePlaybackPosition(position)
     }
 
     func compressMeetingDetailAudio(

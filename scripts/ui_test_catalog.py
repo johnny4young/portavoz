@@ -128,6 +128,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     "meeting-audio": (
         test_id("MeetingAudioTrimUITests", "testSilentTailRequiresConfirmationAndCutsOnlyAfterConfirmation"),
         test_id("MeetingDetailUITests", "testPlayerMarksAClipJumpsFromALineAndPlaysOneVoice"),
+        test_id("MeetingDetailUITests", "testReopeningAMeetingResumesWhereListeningStopped"),
     ),
     "meeting-correction": (
         test_id("MeetingDetailUITests", "testExplicitApuntadorRefreshUsesCorrectedTranscript"),

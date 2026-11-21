@@ -1374,6 +1374,9 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     var metadataCancellationsRemaining = 0
     var playbackCancellationsRemaining = 0
     var preparedPlaybackResult: PreparedMeetingPlayback?
+    var savedPlaybackPosition: MeetingPlaybackPosition?
+    var playbackPositionReads = 0
+    var savedPlaybackPositions: [MeetingPlaybackPosition] = []
     var audioCompressionAllowed = true
     var audioCompressionCheckFailure = false
     var audioCompressionCheckOverride: (() async throws -> Bool)?
@@ -1691,6 +1694,15 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
         return preparedPlaybackResult
     }
 
+    func meetingDetailPlaybackPosition(_ meetingID: MeetingID) -> MeetingPlaybackPosition? {
+        playbackPositionReads += 1
+        return savedPlaybackPosition
+    }
+
+    func saveMeetingDetailPlaybackPosition(_ position: MeetingPlaybackPosition) {
+        savedPlaybackPositions.append(position)
+    }
+
     func compressMeetingDetailAudio(
         _ request: CompressMeetingAudioRequest
     ) throws -> MeetingAudioCompressionResult {
@@ -1958,25 +1970,6 @@ struct MeetingDetailCompressionPermissionTests {
             #expect(model.state.playback?.session === prepared.session)
         }
     }
-
-    private func makePreparedPlayback(
-        sampleRate: Double = 16_000, frames: AVAudioFrameCount = 3_200
-    ) async throws -> (PreparedMeetingPlayback, URL) {
-        let file = FileManager.default.temporaryDirectory.appendingPathComponent("permission-\(UUID().uuidString).wav")
-        do {
-            let format = try #require(AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1))
-            let buffer = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames))
-            buffer.frameLength = buffer.frameCapacity
-            let samples = try #require(buffer.floatChannelData?[0])
-            for index in 0..<Int(buffer.frameLength) { samples[index] = 0.1 }
-            let writer = try AVAudioFile(forWriting: file, settings: format.settings)
-            try writer.write(from: buffer)
-        }
-        let prepared = try #require(try await PrepareMeetingPlayback(
-            resolver: PermissionAudioResolver(file: file), compressionAdmission: DenyAudioCompression()).execute(
-                PrepareMeetingPlaybackRequest(relativeAudioDirectory: "Audio/imported", segments: [])))
-        return (prepared, file)
-    }
 }
 
 @MainActor
@@ -1996,6 +1989,112 @@ private final class HeldMeetingCompressionPermissionRead {
         completion?.resume(returning: allowed)
         completion = nil
     }
+}
+
+@MainActor
+struct MeetingDetailPlaybackResumeTests {
+    private func loadedModel(
+        saved: MeetingPlaybackPosition? = nil
+    ) async throws -> (MeetingDetailModel, MeetingDetailModelClientFake, PreparedMeetingPlayback, URL) {
+        let fixture = MeetingDetailModelFixture()
+        var meeting = fixture.meeting
+        meeting.audioDirectory = "Audio/imported"
+        let client = MeetingDetailModelClientFake(updates: [
+            .core(MeetingReviewCore(meeting: meeting, speakers: [], segments: []))
+        ])
+        let (prepared, file) = try await makePreparedPlayback(frames: 80_000)
+        client.preparedPlaybackResult = prepared
+        client.savedPlaybackPosition = saved.map {
+            MeetingPlaybackPosition(meetingID: meeting.id, seconds: $0.seconds, isHeard: $0.isHeard, updatedAt: $0.updatedAt)
+        }
+        let model = MeetingDetailModel(meetingID: meeting.id, client: client)
+        await model.observe()
+        await model.send(.loadPlayback)
+        return (model, client, prepared, file)
+    }
+
+    private func waitForSaves(_ count: Int, in client: MeetingDetailModelClientFake) async {
+        for _ in 0..<100 where client.savedPlaybackPositions.count < count { await Task.yield() }
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func reopeningResumesAtTheSavedPosition() async throws {
+        let saved = MeetingPlaybackPosition(meetingID: MeetingID(), seconds: 2.5, isHeard: false, updatedAt: Date())
+        let (model, _, prepared, file) = try await loadedModel(saved: saved)
+        defer { model.invalidatePlayback(); try? FileManager.default.removeItem(at: file) }
+
+        #expect(model.state.playback?.session === prepared.session)
+        #expect(prepared.session.currentTime == 2.5)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func aPositionAtTheEndOpensAtTheStart() async throws {
+        let saved = MeetingPlaybackPosition(meetingID: MeetingID(), seconds: 4.8, isHeard: false, updatedAt: Date())
+        let (model, _, prepared, file) = try await loadedModel(saved: saved)
+        defer { model.invalidatePlayback(); try? FileManager.default.removeItem(at: file) }
+
+        #expect(prepared.session.currentTime == 0)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func browsingWithoutPlayingRecordsNothing() async throws {
+        let (model, client, prepared, file) = try await loadedModel()
+        defer { try? FileManager.default.removeItem(at: file) }
+
+        prepared.session.seek(to: 1.5)
+        model.invalidatePlayback()
+        await waitForSaves(1, in: client)
+
+        #expect(client.savedPlaybackPositions.isEmpty, "opening or jumping around a meeting is not listening to it")
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func pauseAndCloseSaveWhereListeningStopped() async throws {
+        let (model, client, prepared, file) = try await loadedModel()
+        defer { try? FileManager.default.removeItem(at: file) }
+
+        prepared.session.play()
+        prepared.session.pause()
+        await waitForSaves(1, in: client)
+        #expect(client.savedPlaybackPositions.count == 1, "pausing saves the position")
+
+        prepared.session.seek(to: 3)
+        model.invalidatePlayback()
+        await waitForSaves(2, in: client)
+        let closed = try #require(client.savedPlaybackPositions.last)
+        #expect(closed.seconds == 3)
+        #expect(closed.isHeard == false)
+        #expect(closed.meetingID == model.meetingID)
+
+        // The reload after an audio change resumes from memory, even before the save lands.
+        let reads = client.playbackPositionReads
+        let (reloaded, reloadedFile) = try await makePreparedPlayback(frames: 80_000)
+        defer { reloaded.session.invalidate(); try? FileManager.default.removeItem(at: reloadedFile) }
+        client.preparedPlaybackResult = reloaded
+        await model.send(.loadPlayback)
+        #expect(reloaded.session.currentTime == 3)
+        #expect(client.playbackPositionReads == reads)
+    }
+}
+
+@MainActor
+private func makePreparedPlayback(
+    sampleRate: Double = 16_000, frames: AVAudioFrameCount = 3_200
+) async throws -> (PreparedMeetingPlayback, URL) {
+    let file = FileManager.default.temporaryDirectory.appendingPathComponent("permission-\(UUID().uuidString).wav")
+    do {
+        let format = try #require(AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1))
+        let buffer = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames))
+        buffer.frameLength = buffer.frameCapacity
+        let samples = try #require(buffer.floatChannelData?[0])
+        for index in 0..<Int(buffer.frameLength) { samples[index] = 0.1 }
+        let writer = try AVAudioFile(forWriting: file, settings: format.settings)
+        try writer.write(from: buffer)
+    }
+    let prepared = try #require(try await PrepareMeetingPlayback(
+        resolver: PermissionAudioResolver(file: file), compressionAdmission: DenyAudioCompression()).execute(
+            PrepareMeetingPlaybackRequest(relativeAudioDirectory: "Audio/imported", segments: [])))
+    return (prepared, file)
 }
 
 private struct PermissionAudioResolver: MeetingAudioChannelResolving {

@@ -1905,6 +1905,40 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "canceling a quality pass must leave the current transcript visible")
     }
 
+    @MainActor
+    func testReopeningAMeetingResumesWhereListeningStopped() throws {
+        let app = try launchOnSeededMeeting()
+        defer { finishUITestApplication(app) }
+
+        let play = app.buttons["player-play-pause"]
+        let currentTime = app.control(withIdentifier: "player-current-time")
+        XCTAssertTrue(play.waitForExistenceFast(timeout: 15))
+        XCTAssertTrue(currentTime.waitForValue("0:00", timeout: 5))
+        play.click()
+        play.click()
+        let waveform = app.control(withIdentifier: "player-waveform")
+        XCTAssertTrue(waveform.waitForHittable(timeout: 5))
+        waveform.click()  // seek to the six-second fixture's center without playing
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+            ["0:02", "0:03", "0:04"].contains(currentTime.value as? String ?? "")
+        })
+        let stoppedAt = try XCTUnwrap(currentTime.value as? String)
+
+        let insights = app.control(withIdentifier: "library-insights-button")
+        XCTAssertTrue(insights.waitForStableFrame(timeout: 5))
+        insights.click()
+        let meeting = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
+            .firstMatch
+        XCTAssertTrue(meeting.waitForStableFrame(timeout: 10))
+        meeting.click()
+
+        XCTAssertTrue(play.waitForExistenceFast(timeout: 15))
+        let resumed = currentTime.waitForValue(stoppedAt, timeout: 10)
+        attachScreenshot(of: app, named: "pr-meeting-detail-resume-position")
+        XCTAssertTrue(resumed, "reopening the meeting must resume at \(stoppedAt)")
+    }
+
     /// One launch in the order the player needs: the clip wants a fresh paused
     /// cursor, and playback goes last because it runs to the end of the file.
     @MainActor

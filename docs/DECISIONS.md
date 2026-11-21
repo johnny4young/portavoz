@@ -23224,3 +23224,19 @@ a person when exactly one live person holds that exact normalized alias;
 ambiguity stays a plain name, and nothing is linked or written. Attendee email
 addresses are not used, because Portavoz stores no address per person and
 keeping them would add personal data the user never confirmed.
+
+## D653 — Playback position is per-Mac user state saved from the session
+
+Meeting Detail reopens where listening stopped, and Today needs to tell a
+meeting never played from one stopped part way. One row per meeting holds the
+position and when playback first reached the end; no row means unheard. The row
+is user state of this Mac rather than meeting content, so it is not synced,
+backed up or observed: a save every few seconds must not reload any screen.
+
+Only listening counts. The application session reports checkpoints (pause, a
+settled seek, every 10 s of playback, the end, close) only after the user has
+pressed play, so opening a meeting or following a citation never creates a
+position. Writes carry their checkpoint time and the store keeps the newest,
+which makes unordered fire-and-forget saves safe; once heard, a meeting stays
+heard. A route seek still wins over the saved position, and positions within a
+second of either end open at the start.

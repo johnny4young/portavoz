@@ -46,6 +46,7 @@ final class MeetingDetailModel {
     private var reviewAccumulator = MeetingDetailReviewAccumulator()
     private var metadataSuggestionState = MeetingDetailMetadataSuggestionState()
     private var playbackDirectoryAttempt: String?
+    private let playbackResume = MeetingDetailPlaybackResume()
     private let audioCompressionAdmission = MeetingDetailAudioCompressionState()
 
     init(
@@ -697,10 +698,9 @@ private extension MeetingDetailModel {
         playbackDirectoryAttempt = relative
 
         do {
-            let prepared = try await client.prepareMeetingDetailPlayback(
-                PrepareMeetingPlaybackRequest(
-                    relativeAudioDirectory: relative,
-                    segments: detail.segments))
+            let prepared = try await playbackResume.prepare(
+                PrepareMeetingPlaybackRequest(relativeAudioDirectory: relative, segments: detail.segments),
+                meetingID: meetingID, client: client)
             guard !Task.isCancelled else {
                 prepared?.session.invalidate()
                 playbackDirectoryAttempt = nil
