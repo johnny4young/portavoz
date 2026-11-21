@@ -194,6 +194,45 @@ final class VoiceCastTests: XCTestCase {
         XCTAssertEqual(strip.columns, stored.columns)
     }
 
+    func testInviteesKeepCalendarOrderWithYouLast() {
+        let cast = VoiceCast(invitees: ["Marta", "Ilarion"])
+        XCTAssertEqual(cast.voices.map(\.name), ["Marta", "Ilarion", nil])
+        XCTAssertEqual(cast.voices.last?.tint, .you)
+        XCTAssertEqual(
+            cast.voices.first?.tint, .hue(VoiceHue.index(name: "Marta")),
+            "an invitee wears the hue their name has in recorded meetings")
+    }
+
+    func testInviteesPastTheCastFoldIntoOthers() {
+        let names = (1...7).map { "Person \($0)" }
+        let cast = VoiceCast(invitees: names)
+        XCTAssertEqual(cast.voices.count, VoiceHue.paletteSize + 1)
+        XCTAssertEqual(cast.others.map(\.name), ["Person 6", "Person 7"])
+    }
+
+    func testAPageCastKeepsEveryTintItGaveAndLendsNoneOfItsHues() throws {
+        let marta = VoiceHue.index(name: "Marta")
+        let rival = try XCTUnwrap((1...100).map { "Person \($0)" }.first { VoiceHue.index(name: $0) == marta })
+        let page = VoiceCast(
+            members: [Member(key: "person", name: "Marta", talkSeconds: 9),
+                      Member(key: "guest", name: "Guest", talkSeconds: 4),
+                      Member(key: "p5", name: nil, talkSeconds: 1)],
+            ordering: .talkShare)
+        XCTAssertEqual(page.tint(for: "person"), .hue(marta))
+        XCTAssertEqual(page.tint(for: "p5"), .grey, "an unnamed voice is grey")
+
+        let meeting = VoiceCast(
+            members: [Member(key: "person", name: "Marta G.", talkSeconds: 1),
+                      Member(key: "p5", name: "Guest 5", talkSeconds: 9),
+                      Member(key: "stranger", name: rival, talkSeconds: 5)],
+            ordering: .talkShare, page: page)
+        XCTAssertEqual(meeting.tint(for: "person"), .hue(marta), "known by key under another name")
+        XCTAssertEqual(meeting.tint(for: "p5"), .grey, "grey on the page stays grey")
+        let pageHues = Set(page.voices.map(\.tint))
+        XCTAssertFalse(pageHues.contains(meeting.tint(for: "stranger")), "a newcomer takes a hue the page left free")
+        XCTAssertNotEqual(meeting.tint(for: "stranger"), .grey)
+    }
+
     private func segment(
         _ meeting: MeetingID, _ speaker: SpeakerID?, _ start: TimeInterval, _ end: TimeInterval
     ) -> TranscriptSegment {

@@ -7,6 +7,11 @@ extension MeetingStore {
     public struct LibraryMeetingRow: Sendable {
         public let meeting: Meeting
         public let voiceColumns: MeetingVoiceColumns?
+
+        public init(meeting: Meeting, voiceColumns: MeetingVoiceColumns?) {
+            self.meeting = meeting
+            self.voiceColumns = voiceColumns
+        }
     }
 
     /// One meetings projection may preserve rows when only the degradable

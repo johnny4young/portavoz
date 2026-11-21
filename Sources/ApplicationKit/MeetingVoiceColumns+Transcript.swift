@@ -41,7 +41,7 @@ extension MeetingVoiceColumns {
                 cast[voice.key].map {
                     Voice(
                         speakerID: $0.id, isMe: $0.isMe, label: $0.label, displayName: $0.displayName,
-                        talkSeconds: voice.talkSeconds, firstHeard: voice.firstHeard)
+                        personID: $0.personID, talkSeconds: voice.talkSeconds, firstHeard: voice.firstHeard)
                 }
             })
     }

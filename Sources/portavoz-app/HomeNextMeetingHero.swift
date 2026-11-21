@@ -132,7 +132,7 @@ struct HomeNextMeetingHero: View {
 
     @ViewBuilder
     private var details: some View {
-        let cast = Self.inviteeCast(event.attendees)
+        let cast = VoiceCast(invitees: event.attendees)
         if !event.attendees.isEmpty {
             HStack(spacing: PVDesign.space4) {
                 ForEach(cast.voices) { voice in
@@ -162,15 +162,6 @@ struct HomeNextMeetingHero: View {
                     .lineLimit(1)
             }
         }
-    }
-
-    /// Invitees in calendar order with you last; colour follows the same
-    /// cast rule as a recorded meeting, so a name keeps its hue.
-    nonisolated static func inviteeCast(_ attendees: [String]) -> VoiceCast {
-        let members = attendees.enumerated().map { index, name in
-            VoiceCast.Member(key: "invitee-\(index)", name: name, talkSeconds: 0)
-        } + [VoiceCast.Member(key: "me", isMe: true, name: nil, talkSeconds: 0)]
-        return VoiceCast(members: members, ordering: .talkShare)
     }
 
     /// Platform · duration · recurrence, keeping only what the calendar gave.
