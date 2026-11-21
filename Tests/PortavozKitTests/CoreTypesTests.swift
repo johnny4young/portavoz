@@ -332,6 +332,15 @@ final class TitleTemplateTests: XCTestCase {
             TitleTemplate.render("{foo} x", date: sample, sequence: 1), "{foo} x")
     }
 
+    func testEventTitlesLoseTheirDateWhenCompared() {
+        let title = TitleTemplate.eventTitle("Sprint Demo", date: sample)
+        XCTAssertEqual(title, "2026-07-07 Sprint Demo")
+        XCTAssertEqual(TitleTemplate.withoutDatePrefix(title), "Sprint Demo")
+        XCTAssertEqual(TitleTemplate.withoutDatePrefix("2026-07-07"), "2026-07-07")
+        XCTAssertEqual(TitleTemplate.withoutDatePrefix("07-07-2026 Sync"), "07-07-2026 Sync")
+        XCTAssertEqual(MeetingBriefLines.titleKey(title), MeetingBriefLines.titleKey("sprint  demo"))
+    }
+
     func testWeekdayUsesLocale() {
         let title = TitleTemplate.render(
             "{weekday}", date: sample, sequence: 1, locale: Locale(identifier: "es_CO"))

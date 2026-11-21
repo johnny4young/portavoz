@@ -42,6 +42,11 @@ final class HomeUITests: PortavozUITestCase {
             XCTAssertTrue(element.exists, "\(element) must render")
             XCTAssertTrue(window.contains(element.frame), "\(element) must sit above the fold")
         }
+        // An empty brief holds the column beside the hero; it never stacks under it.
+        let emptyBrief = app.descendants(matching: .any)["home-brief-empty"]
+        if emptyBrief.exists {
+            XCTAssertGreaterThan(emptyBrief.frame.minX, countdown.frame.maxX, "an empty brief must not cost the fold")
+        }
         XCTAssertTrue(app.staticTexts["Presupuesto rollout"].exists)
         XCTAssertTrue(app.staticTexts["Prepare the rollout"].exists)
         attachScreenshot(of: app, named: "home-today")
@@ -84,6 +89,10 @@ final class HomeUITests: PortavozUITestCase {
         let toggle = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'home-todo-toggle-'"))
             .firstMatch
+        // Opening the brief records its source, so the card now has lines; in a
+        // narrow window it stacks under the hero and open work scrolls into view.
+        let scroll = app.scrollViews.containing(.staticText, identifier: "home-title").element
+        XCTAssertTrue(toggle.revealVertically(in: scroll))
         XCTAssertTrue(toggle.waitForStableFrame(timeout: 5))
         toggle.click()
         XCTAssertTrue(
@@ -91,6 +100,7 @@ final class HomeUITests: PortavozUITestCase {
             "a completed to-do must leave the open list")
 
         // A recent meeting opens its detail; Today remains one click away.
+        XCTAssertTrue(recent.revealVertically(in: scroll))
         XCTAssertTrue(recent.waitForStableFrame(timeout: 5))
         recent.click()
         XCTAssertTrue(app.staticTexts["Test meeting"].waitForExistenceFast(timeout: 10))
@@ -107,6 +117,52 @@ final class HomeUITests: PortavozUITestCase {
         // the real title is assigned when the meeting is saved at Stop.
         XCTAssertTrue(app.control(withIdentifier: "recording-live-transcript").waitForExistenceFast(timeout: 10))
         XCTAssertTrue(app.buttons["library-return-to-recording"].waitForExistenceFast(timeout: 5))
+    }
+
+    @MainActor
+    func testBriefCardShowsWhatEachPersonSaidLastTime() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
+        app.launchArguments += ["-seed-brief-previous", "-seed-wide-window", "-AppleInterfaceStyle", "Light"]
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        let card = app.descendants(matching: .any)["home-brief"]
+        XCTAssertTrue(card.waitForExistenceFast(timeout: 15), "the hero's previous occurrence fills the brief")
+        let rows = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'home-brief-person-'"))
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 10) { rows.count == 2 }, "one row per person heard last time")
+        let countdown = app.descendants(matching: .any)["home-upcoming-countdown"]
+        XCTAssertTrue(countdown.waitForExistenceFast(timeout: 5))
+        // A 1024 pt screen only has room for the wide layout without the sidebar.
+        setSidebar(visible: false, in: app)
+        XCTAssertTrue(card.waitForStableFrame(timeout: 5))
+        XCTAssertGreaterThan(card.frame.minX, countdown.frame.maxX, "the brief sits beside the countdown")
+        attachScreenshot(of: app, named: "pr-home-brief-card")
+
+        // A row opens the previous meeting at the moment the line was said.
+        let ana = rows.matching(NSPredicate(format: "label CONTAINS 'no confirmed owner'")).firstMatch
+        XCTAssertTrue(ana.waitForStableFrame(timeout: 5))
+        ana.click()
+        XCTAssertTrue(
+            app.staticTexts.matching(NSPredicate(format: "value CONTAINS 'no confirmed owner' OR label CONTAINS 'no confirmed owner'"))
+                .firstMatch.waitForExistenceFast(timeout: 10),
+            "the source meeting's transcript opens")
+        XCTAssertFalse(card.exists)
+
+        // Back on Today, the card opens the full brief.
+        setSidebar(visible: true, in: app)
+        let today = app.buttons["library-home-button"]
+        XCTAssertTrue(today.waitForStableFrame(timeout: 5))
+        today.click()
+        let open = app.buttons["home-brief-open"]
+        XCTAssertTrue(open.waitForStableFrame(timeout: 10))
+        open.click()
+        XCTAssertTrue(app.control(withIdentifier: "brief-title").waitForExistenceFast(timeout: 10))
+        let close = app.buttons["brief-close-button"]
+        XCTAssertTrue(close.waitForStableFrame(timeout: 5))
+        close.click()
     }
 
     @MainActor
@@ -132,10 +188,31 @@ final class HomeUITests: PortavozUITestCase {
         XCTAssertLessThan(
             countdown.frame.maxY, app.buttons["home-upcoming-record-ui-test-upcoming-rollout"].frame.minY,
             "the countdown leads the hero, the actions close it")
+        // Without an earlier occurrence the brief card says so, beside the countdown.
+        // A 1024 pt screen only has room for the wide layout without the sidebar.
+        setSidebar(visible: false, in: app)
+        let empty = app.descendants(matching: .any)["home-brief-empty"]
+        XCTAssertTrue(empty.waitForExistenceFast(timeout: 10), "a first meeting has nothing said last time")
+        XCTAssertTrue(empty.waitForStableFrame(timeout: 5))
+        XCTAssertGreaterThan(empty.frame.minX, countdown.frame.maxX, "the brief sits beside the hero when wide")
         attachScreenshot(of: app, named: "pr-home-wide-header")
         pill.click()
         XCTAssertTrue(
             app.control(withIdentifier: "settings-skills-pause-all").waitForExistenceFast(timeout: 10),
             "the pill opens Settings on Automations")
+    }
+
+    /// The split view's own toggle carries only a localized label, so it is
+    /// addressed as the window toolbar's leading button and checked by its effect.
+    @MainActor
+    private func setSidebar(visible: Bool, in app: XCUIApplication) {
+        let today = app.buttons["library-home-button"]
+        guard today.exists != visible else { return }
+        let toggle = app.windows.firstMatch.toolbars.buttons.firstMatch
+        XCTAssertTrue(toggle.waitForStableFrame(timeout: 5))
+        toggle.click()
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 5) { today.exists == visible },
+            "the sidebar must end \(visible ? "shown" : "hidden")")
     }
 }

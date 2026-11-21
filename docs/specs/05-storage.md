@@ -2293,7 +2293,10 @@ The same write prunes every source whose event started more than one day before
 `previousMeetingOccurrence(title:before:)` returns the most recent live meeting
 started in the 180 days before the date and ended by it whose title equals the event's
 under `MeetingBriefLines.titleKey` (case, diacritics and spacing folded in
-Swift, because SQLite cannot fold diacritics).
+Swift, because SQLite cannot fold diacritics, and the leading ISO date of an
+event-linked recording's title dropped through `TitleTemplate.withoutDatePrefix`,
+D651). Repeated action-item texts are compared with `foldedKey`, which keeps
+the date.
 
 The builder reads the same readable attribution as the voice strip:
 `VoiceColumns.attributedLines` over accepted segments of live speakers with the

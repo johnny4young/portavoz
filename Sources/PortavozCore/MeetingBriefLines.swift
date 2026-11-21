@@ -32,6 +32,13 @@ public struct MeetingBriefLines: Sendable, Equatable {
         case unresolved
         case open(due: Date?)
         case closed
+
+        public var isPending: Bool {
+            switch self {
+            case .unresolved, .open: true
+            case .said, .closed: false
+            }
+        }
     }
 
     public struct Line: Sendable, Equatable {
@@ -69,6 +76,14 @@ public struct MeetingBriefLines: Sendable, Equatable {
             self.label = label
             self.displayName = displayName
             self.lines = lines
+        }
+
+        /// The one line a preview shows: the earliest still pending, else the
+        /// earliest commitment or question, else the first quote.
+        public var lead: Line? {
+            lines.first(where: \.status.isPending)
+                ?? lines.first { $0.kind != .quote }
+                ?? lines.first
         }
     }
 
@@ -154,9 +169,15 @@ public struct MeetingBriefLines: Sendable, Equatable {
         return result
     }
 
-    /// Titles compared without case, diacritics or spacing differences.
+    /// Titles compared like `foldedKey`, without the date an event-linked
+    /// recording puts in front of its title.
     public static func titleKey(_ title: String) -> String {
-        title.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+        foldedKey(TitleTemplate.withoutDatePrefix(title))
+    }
+
+    /// Text compared without case, diacritics or spacing differences.
+    public static func foldedKey(_ text: String) -> String {
+        text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
             .split(whereSeparator: \.isWhitespace)
             .joined(separator: " ")
     }

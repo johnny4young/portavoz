@@ -129,6 +129,7 @@ final class AppServices {
     /// Upcoming-meeting preparation shares Ask retrieval and returns only
     /// storage-independent ApplicationKit values.
     @ObservationIgnored let meetingBriefUseCase: PrepareMeetingBrief
+    @ObservationIgnored let meetingBriefLinesUseCase: LoadMeetingBriefLines
     /// One no-prompt calendar boundary supplies opaque event references to
     /// Library, reminders, and the resident brief proposal.
     @ObservationIgnored let upcomingEventSource: AppUpcomingEventSource
@@ -356,6 +357,8 @@ final class AppServices {
             synthesizer: meetingBriefSynthesizer,
             sources: meetingBriefLibrary)
         self.meetingBriefUseCase = meetingBriefUseCase
+        meetingBriefLinesUseCase = LoadMeetingBriefLines(
+            lines: meetingBriefLibrary, sources: meetingBriefLibrary)
         let standingBriefPreparer: any StandingPreMeetingBriefPreparing =
             usesTemporaryStore
                 && arguments.contains("-simulate-standing-brief-failure-once")

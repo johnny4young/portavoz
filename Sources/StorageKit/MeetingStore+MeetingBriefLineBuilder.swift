@@ -105,7 +105,7 @@ extension MeetingStore {
         // A dismissed item stays hidden when another recipe repeats it.
         var seen: [SpeakerID: Set<String>] = [:]
         for row in rows where (row["commitmentStatus"] as String?) == CommitmentStatus.dismissed.rawValue {
-            seen[try ownerID(of: row), default: []].insert(MeetingBriefLines.titleKey(trimmedText(of: row)))
+            seen[try ownerID(of: row), default: []].insert(MeetingBriefLines.foldedKey(trimmedText(of: row)))
         }
         for row in rows {
             let owner = try ownerID(of: row)
@@ -119,7 +119,7 @@ extension MeetingStore {
             }
             // Two recipes can state the same item.
             guard !text.isEmpty,
-                  seen[owner, default: []].insert(MeetingBriefLines.titleKey(text)).inserted
+                  seen[owner, default: []].insert(MeetingBriefLines.foldedKey(text)).inserted
             else { continue }
             let segment = try PersistedIdentity.optional(
                 row["segmentID"], table: "summaryActionItemEvidenceSegment", column: "segmentID")

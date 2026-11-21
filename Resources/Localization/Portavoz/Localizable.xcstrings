@@ -541,6 +541,26 @@
         }
       }
     },
+    "Brief · what they said last time": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brief · lo que dijeron la última vez"
+          }
+        }
+      }
+    },
+    "closed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cerrado"
+          }
+        }
+      }
+    },
     "Commitment · suggested due %@": {
       "localizations": {
         "es": {
@@ -611,6 +631,26 @@
         }
       }
     },
+    "Nobody was heard last time.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La vez anterior no se oyó a nadie."
+          }
+        }
+      }
+    },
+    "Nothing from a previous meeting yet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay nada de una reunión anterior."
+          }
+        }
+      }
+    },
     "Now": {
       "localizations": {
         "es": {
@@ -631,12 +671,72 @@
         }
       }
     },
+    "open": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "abierto"
+          }
+        }
+      }
+    },
     "Open brief": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Abrir brief"
+          }
+        }
+      }
+    },
+    "Open the meeting at this moment": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir la reunión en este momento"
+          }
+        }
+      }
+    },
+    "open, due %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "abierto, vence %@"
+          }
+        }
+      }
+    },
+    "open, due today": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "abierto, vence hoy"
+          }
+        }
+      }
+    },
+    "open, due tomorrow": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "abierto, vence mañana"
+          }
+        }
+      }
+    },
+    "open, overdue": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "abierto, vencido"
           }
         }
       }
@@ -13441,6 +13541,16 @@
         }
       }
     },
+    "still unresolved": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sin resolver"
+          }
+        }
+      }
+    },
     "Stop": {
       "localizations": {
         "es": {
@@ -17243,6 +17353,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "tú todavía pulsas Enviar"
+          }
+        }
+      }
+    },
+    "“%@”": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@»"
           }
         }
       }

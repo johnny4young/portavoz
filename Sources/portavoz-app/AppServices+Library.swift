@@ -128,7 +128,7 @@ extension AppServices: LibraryModelClient {
                 today: [UpcomingEvent(
                     id: "ui-test-upcoming-rollout",
                     title: "Presupuesto rollout",
-                    startDate: Date().addingTimeInterval(15 * 60),
+                    startDate: Self.fixtureAgendaStart.addingTimeInterval(15 * 60),
                     attendees: ["Ana"])],
                 tomorrow: [])
         }
@@ -155,6 +155,10 @@ extension AppServices: LibraryModelClient {
 
     func buildLibraryBrief(for event: UpcomingEvent) async -> MeetingBrief? {
         try? await meetingBriefUseCase.execute(event)
+    }
+
+    func libraryBriefLines(for event: UpcomingEvent) async throws -> MeetingBriefLines? {
+        try await meetingBriefLinesUseCase.execute(event)
     }
 
     func pendingLibraryAutomations() async -> Int {

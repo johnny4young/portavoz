@@ -7,12 +7,15 @@ import SwiftUI
 struct VoiceStrip: View {
     enum Size {
         case row
+        /// A summary strip inside a card.
+        case card
         case player
         case live
 
         var height: CGFloat {
             switch self {
             case .row: 6
+            case .card: 8
             case .player: 16
             case .live: 12
             }
@@ -21,15 +24,19 @@ struct VoiceStrip: View {
         var radius: CGFloat {
             switch self {
             case .row: 3
+            case .card: 4
             case .player, .live: 5
             }
         }
+
+        /// Compact strips calm short runs and draw no playhead.
+        var isCompact: Bool { self == .row || self == .card }
     }
 
     /// How far the playhead and chapter ticks reach past the strip.
     private static let overhang: CGFloat = 4
     private static let unplayedOpacity = 0.45
-    private static var percent: FloatingPointFormatStyle<Double>.Percent {
+    static var percent: FloatingPointFormatStyle<Double>.Percent {
         .percent.precision(.fractionLength(0)).locale(AppLanguage.current.locale)
     }
 
@@ -77,31 +84,32 @@ struct VoiceStrip: View {
     }
 
     private var playhead: Double? {
-        size == .row ? nil : progress
+        size.isCompact ? nil : progress
     }
 
     /// The cast in order, "You 25%, Marta 30%, Others · 2"; unnamed and
     /// folded voices are counted. Empty when the strip has nothing attributed.
     var spokenCast: String {
         guard !strip.columns.isEmpty else { return "" }
-        var parts: [String] = []
-        var unnamed = strip.cast.others.count
-        for voice in strip.cast.voices {
-            guard let name = voice.isMe ? L10n.text("You") : voice.name else {
-                unnamed += 1
-                continue
-            }
-            parts.append("\(name) \(voice.share.formatted(Self.percent))")
-        }
-        if unnamed > 0 { parts.append(L10n.format("Others · %d", unnamed)) }
+        let legend = Self.legend(strip.cast)
+        var parts = legend.named.map { "\($0.name) \($0.voice.share.formatted(Self.percent))" }
+        if legend.unnamed > 0 { parts.append(L10n.format("Others · %d", legend.unnamed)) }
         return parts.joined(separator: ", ")
+    }
+
+    /// Named voices in cast order; unnamed and folded voices only count.
+    static func legend(_ cast: VoiceCast) -> (named: [(voice: VoiceCast.Voice, name: String)], unnamed: Int) {
+        let named = cast.voices.compactMap { voice in
+            (voice.isMe ? L10n.text("You") : voice.name).map { (voice: voice, name: $0) }
+        }
+        return (named, cast.others.count + cast.voices.count - named.count)
     }
 
     private func drawRuns(in context: inout GraphicsContext, size canvas: CGSize) {
         context.fill(Path(CGRect(origin: .zero, size: canvas)), with: .color(PVDesign.line))
         let count = VoiceColumns.count(forWidth: canvas.width)
         var columns = VoiceColumns.resampled(strip.columns, count: count)
-        if size == .row { columns = VoiceColumns.calmed(columns) }
+        if size.isCompact { columns = VoiceColumns.calmed(columns) }
         guard !columns.isEmpty else { return }
         // Resolved once per draw: dynamic voice colours are costly per run.
         let shadings = strip.tints.map {

@@ -48,7 +48,22 @@ extension TitleTemplate {
     /// ("2026-07-10 Platform Team Sprint Demo", not five identical names).
     public static func eventTitle(_ eventTitle: String, date: Date) -> String {
         let formatter = DateFormatter()
+        // POSIX keeps Gregorian years and ASCII digits whatever the user's calendar.
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd"
         return "\(formatter.string(from: date)) \(eventTitle)"
+    }
+
+    /// "2026-07-10 Sprint Demo" → "Sprint Demo". A title without a leading
+    /// ISO date, or one that is only a date, is returned unchanged.
+    public static func withoutDatePrefix(_ title: String) -> String {
+        let scalars = Array(title.unicodeScalars)
+        guard scalars.count > 11,
+              scalars[4] == "-", scalars[7] == "-", scalars[10] == " ",
+              [0, 1, 2, 3, 5, 6, 8, 9].allSatisfy({ CharacterSet.decimalDigits.contains(scalars[$0]) })
+        else { return title }
+        let rest = String(String.UnicodeScalarView(scalars[11...]))
+            .trimmingCharacters(in: .whitespaces)
+        return rest.isEmpty ? title : rest
     }
 }

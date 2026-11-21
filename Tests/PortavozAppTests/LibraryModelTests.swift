@@ -147,6 +147,56 @@ final class LibraryModelTests: XCTestCase {
         XCTAssertEqual(client.queries, ["presupuesto", "missing", "broken"])
     }
 
+    func testBriefPreviewIsKeptPerOccurrenceAndSurvivesAFailedRead() async {
+        let fixture = LibraryModelFixture()
+        let client = LibraryModelClientFake(fixture: fixture)
+        let model = LibraryModel(client: client, searchDelay: .zero)
+
+        _ = await model.send(.loadBriefPreview(fixture.eventToday))
+        XCTAssertEqual(model.state.briefPreview?.isFor(fixture.eventToday), true)
+        XCTAssertNil(model.state.briefPreview?.lines, "no previous occurrence is an empty preview")
+
+        let lines = MeetingBriefLines(
+            occurrence: .init(event: fixture.eventToday),
+            sourceMeetingID: fixture.meeting.id, preparedAt: fixture.eventToday.startDate, people: [])
+        client.briefLines = lines
+        _ = await model.send(.loadBriefPreview(fixture.eventToday))
+        XCTAssertEqual(model.state.briefPreview?.lines, lines, "a meeting that arrived later is found")
+
+        client.failures = [.briefLines]
+        _ = await model.send(.loadBriefPreview(fixture.eventToday))
+        XCTAssertEqual(model.state.briefPreview?.lines, lines, "a failed re-read keeps what is shown")
+
+        client.failures = []
+        _ = await model.send(.loadBriefPreview(fixture.eventTomorrow))
+        XCTAssertEqual(model.state.briefPreview?.isFor(fixture.eventTomorrow), true)
+        XCTAssertFalse(model.state.briefPreview?.isFor(fixture.eventToday) ?? true)
+    }
+
+    func testLibraryUpdatesBumpTheRevisionTheBriefPreviewRereadsOn() async {
+        let fixture = LibraryModelFixture()
+        let client = LibraryModelClientFake(fixture: fixture)
+        let model = LibraryModel(client: client, searchDelay: .zero)
+
+        _ = await model.send(.observeLibrary)
+        XCTAssertEqual(model.state.libraryRevision, 2, "meetings and open items each bump it")
+
+        _ = await model.send(.observeLibrary)
+        XCTAssertEqual(model.state.libraryRevision, 2, "an update that changes no meeting or to-do does not")
+    }
+
+    func testPreparingTheHerosBriefReloadsItsPreview() async {
+        let fixture = LibraryModelFixture()
+        let client = LibraryModelClientFake(fixture: fixture)
+        client.agenda = fixture.agenda
+        let model = LibraryModel(client: client, searchDelay: .zero)
+        _ = await model.send(.refreshAgenda)
+
+        _ = await model.send(.openBrief(fixture.eventToday))
+
+        XCTAssertEqual(client.calls.last, .briefLines(fixture.eventToday.id))
+    }
+
     func testPendingAutomationsAreReadOnRefreshOnly() async {
         let fixture = LibraryModelFixture()
         let client = LibraryModelClientFake(fixture: fixture)
@@ -383,6 +433,7 @@ private enum LibraryModelFailure: String, Error, Hashable, LocalizedError, Senda
     case importFile
     case enqueue
     case purge
+    case briefLines
 
     var errorDescription: String? { "library-model-\(rawValue)" }
 }
@@ -400,6 +451,7 @@ private enum LibraryModelCall: Equatable {
     case enqueue([URL])
     case requestCalendarAccess
     case brief(String)
+    case briefLines(String)
 }
 
 @MainActor
@@ -410,6 +462,7 @@ private final class LibraryModelClientFake: LibraryModelClient {
     var agenda: LibraryModel.Agenda?
     var brief: MeetingBrief?
     var pendingAutomations = 0
+    var briefLines: MeetingBriefLines?
     var failures: Set<LibraryModelFailure> = []
     var calls: [LibraryModelCall] = []
     var queries: [String] = []
@@ -492,6 +545,12 @@ private final class LibraryModelClientFake: LibraryModelClient {
     func buildLibraryBrief(for event: UpcomingEvent) -> MeetingBrief? {
         calls.append(.brief(event.id))
         return brief
+    }
+
+    func libraryBriefLines(for event: UpcomingEvent) throws -> MeetingBriefLines? {
+        calls.append(.briefLines(event.id))
+        try fail(.briefLines)
+        return briefLines
     }
 
     func pendingLibraryAutomations() -> Int {

@@ -62,12 +62,7 @@ struct ContentView: View {
                 onReturnToRecording: {
                     route = .recording(nil)
                 },
-                onOpenSearchHit: { hit in
-                    services.requestMeetingSeek(
-                        meetingID: hit.meetingID,
-                        timestamp: hit.startTime)
-                    route = .meeting(hit.meetingID)
-                },
+                onOpenSearchHit: { hit in openMeeting(hit.meetingID, at: hit.startTime) },
                 onOpenActivity: {
                     services.pendingSettingsCategory = .data
                     openSettings()
@@ -101,10 +96,7 @@ struct ContentView: View {
                             route = .meeting(citation.meetingID)
                         },
                         onOpenNoteCitation: { citation in
-                            services.requestMeetingSeek(
-                                meetingID: citation.meetingID,
-                                timestamp: citation.timestamp)
-                            route = .meeting(citation.meetingID)
+                            openMeeting(citation.meetingID, at: citation.timestamp)
                         })
                 case .insights:
                     InsightsView(model: insightsModel, route: $route)
@@ -115,14 +107,7 @@ struct ContentView: View {
                         reminderDrafts: reminderDraftModel,
                         focus: focus,
                         onClearFocus: { route = .commitments(nil) },
-                        onOpenMeeting: { meetingID, timestamp in
-                            if let timestamp {
-                                services.requestMeetingSeek(
-                                    meetingID: meetingID,
-                                    timestamp: timestamp)
-                            }
-                            route = .meeting(meetingID)
-                        })
+                        onOpenMeeting: openMeeting)
                 case .library, nil:
                     HomeView(
                         model: libraryModel,
@@ -139,7 +124,8 @@ struct ContentView: View {
                         onOpenAutomations: {
                             services.pendingSettingsCategory = .skills
                             openSettings()
-                        })
+                        },
+                        onOpenMeeting: openMeeting)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -239,4 +225,11 @@ struct ContentView: View {
         }
     }
 
+    /// Opens a meeting, at a moment when one is given.
+    private func openMeeting(_ meetingID: MeetingID, at timestamp: TimeInterval?) {
+        if let timestamp {
+            services.requestMeetingSeek(meetingID: meetingID, timestamp: timestamp)
+        }
+        route = .meeting(meetingID)
+    }
 }

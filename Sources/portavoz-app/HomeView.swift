@@ -16,6 +16,8 @@ struct HomeView: View {
     let onRecord: () -> Void
     let onAsk: (String?) -> Void
     let onOpenAutomations: () -> Void
+    /// Opens a meeting, at a moment when one is given.
+    let onOpenMeeting: (MeetingID, TimeInterval?) -> Void
     @Environment(\.controlActiveState) private var controlActiveState
 
     private var state: LibraryModel.State { model.state }
@@ -49,6 +51,15 @@ struct HomeView: View {
         // Re-read when the window regains focus, e.g. after reviewing in Settings.
         .onChange(of: controlActiveState) { _, state in
             if state == .key { perform(.refreshAutomations) }
+        }
+        // Re-read on library changes, so edits to the previous meeting show.
+        .onChange(
+            of: BriefPreviewTrigger(
+                event: state.heroEvent?.event, revision: state.libraryRevision,
+                sourceStrip: state.briefPreview?.lines.flatMap { state.voiceStrips[$0.sourceMeetingID] }),
+            initial: true
+        ) { _, trigger in
+            if let event = trigger.event { perform(.loadBriefPreview(event)) }
         }
     }
 
@@ -128,38 +139,38 @@ struct HomeView: View {
 
     // MARK: - Agenda
 
-    /// The hero event is the first of today, else the first of tomorrow; a
-    /// positional fact, so the emphasis never goes stale.
-    private var heroEvent: (event: UpcomingEvent, isToday: Bool)? {
-        if let first = state.upcomingToday.first { return (first, true) }
-        return state.upcomingTomorrow.first.map { ($0, false) }
-    }
-
     private var laterToday: ArraySlice<UpcomingEvent> {
         state.upcomingToday.dropFirst()
     }
 
     private var tomorrow: ArraySlice<UpcomingEvent> {
         state.upcomingTomorrow
-            .dropFirst(heroEvent?.isToday == false ? 1 : 0)
+            .dropFirst(state.heroEvent?.isToday == false ? 1 : 0)
             .prefix(Self.maximumTomorrowEvents)
     }
 
     @ViewBuilder
     private var agendaSection: some View {
-        if laterToday.isEmpty, tomorrow.isEmpty {
+        let hasLater = !laterToday.isEmpty || !tomorrow.isEmpty
+        // Laid out from the hero alone, so the card arriving never moves the countdown.
+        if state.heroEvent == nil, !hasLater {
             hero
         } else {
-            HomeHeroLayout {
+            HomeAgendaSection {
                 hero
-                laterCard
+            } side: { isWide in
+                VStack(alignment: .leading, spacing: PVDesign.space4) {
+                    // Stacked, an empty brief only pushes open work below the fold.
+                    if let briefPreview, isWide || briefPreview.hasLines { briefCard(briefPreview) }
+                    if hasLater { laterCard }
+                }
             }
         }
     }
 
     @ViewBuilder
     private var hero: some View {
-        if let next = heroEvent {
+        if let next = state.heroEvent {
             let event = next.event
             HomeNextMeetingHero(
                 event: event,
@@ -204,9 +215,8 @@ struct HomeView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
-
     private var laterCard: some View {
-        let heroIsToday = heroEvent?.isToday ?? true
+        let heroIsToday = state.heroEvent?.isToday ?? true
         return card(title: heroIsToday ? L10n.text("Later today") : L10n.text("Tomorrow")) {
             if !laterToday.isEmpty {
                 ForEach(laterToday) { event in
@@ -436,7 +446,34 @@ struct HomeView: View {
     }
 }
 
-private extension Meeting {
+private extension HomeView {
+    /// The source's strip follows speaker fixes in that meeting.
+    struct BriefPreviewTrigger: Equatable {
+        let event: UpcomingEvent?
+        let revision: Int
+        let sourceStrip: VoiceStripColumns?
+    }
+
+    /// Shown once the hero's own occurrence has loaded.
+    var briefPreview: LibraryModel.BriefPreview? {
+        guard let event = state.heroEvent?.event, let preview = state.briefPreview, preview.isFor(event)
+        else { return nil }
+        return preview
+    }
+
+    func briefCard(_ preview: LibraryModel.BriefPreview) -> some View {
+        let sourceID = preview.lines?.sourceMeetingID
+        return HomeBriefCard(
+            preview: preview,
+            source: sourceID.flatMap { id in state.meetings.first { $0.id == id } },
+            strip: sourceID.flatMap { state.voiceStrips[$0] } ?? .empty,
+            briefDisabled: state.briefLoading != nil,
+            onBrief: { state.heroEvent.map { perform(.openBrief($0.event)) } },
+            onOpenLine: onOpenMeeting)
+    }
+}
+
+extension Meeting {
     var durationMinutes: Int? {
         guard let endedAt else { return nil }
         return max(0, Int(endedAt.timeIntervalSince(startedAt) / 60))

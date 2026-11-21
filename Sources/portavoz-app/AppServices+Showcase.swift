@@ -19,8 +19,8 @@ extension AppServices {
         let audioDirectory = Self.prepareSeedAudio()
 
         // Background meetings so the library looks lived-in.
+        await seedShowcasePreviousSync()
         for (title, daysAgo, minutes) in [
-            ("2026-07-09 Sync semanal QVTL", 1.0, 31),
             ("2026-07-08 1:1 con Marta", 2.0, 28),
             ("2026-07-07 Retro sprint 14", 3.0, 47),
             ("2026-07-04 Kickoff Aurora Suite", 6.0, 55)
@@ -118,6 +118,47 @@ extension AppServices {
         requestSearchReconciliation()
     }
     // swiftlint:enable function_body_length
+
+    /// Last week's occurrence of the showcase agenda's weekly sync, clock
+    /// relative so Today's brief card always finds it.
+    private func seedShowcasePreviousSync() async {
+        let start = Self.fixtureAgendaStart.addingTimeInterval(-7 * 86_400 + 45 * 60)
+        let meeting = Meeting(
+            title: TitleTemplate.eventTitle("Sync semanal QVTL", date: start), startedAt: start,
+            endedAt: start.addingTimeInterval(31 * 60), language: "es")
+        try? await store.save(meeting)
+        let me = Speaker(meetingID: meeting.id, label: "Me", isMe: true)
+        let marta = Speaker(meetingID: meeting.id, label: "S1", displayName: "Marta")
+        let ilarion = Speaker(meetingID: meeting.id, label: "S2", displayName: "Ilarion")
+        try? await store.save([me, marta, ilarion])
+        let turns: [(Speaker, String, ClosedRange<TimeInterval>)] = [
+            (marta, "Repasemos el estado de QVTL antes de la demo del lunes con el cliente.", 0...300),
+            (ilarion, "El provisioning ya registra los dispositivos nuevos sin duplicar el device-ID.", 300...720),
+            (me, "Bien, entonces nos queda cerrar el plan de pruebas y el acceso a Kepler.", 720...760),
+            (marta, "Nora todavía no tiene acceso a los dashboards de Kepler.", 760...1_180),
+            (ilarion, "Quiero el fix del provisioning verificado en los 40 dispositivos del lab.", 1_374...1_574),
+            (me, "Yo me encargo del plan de pruebas de QVTL y lo comparto el jueves.", 1_630...2_090)
+        ]
+        let segments = turns.map { speaker, text, span in
+            TranscriptSegment(
+                meetingID: meeting.id, speakerID: speaker.id,
+                channel: speaker.isMe ? .microphone : .system,
+                text: text, startTime: span.lowerBound, endTime: span.upperBound, isFinal: true)
+        }
+        try? await store.save(segments)
+        let verify = ActionItem(
+            text: "Verificar el fix del provisioning en los 40 dispositivos del lab",
+            ownerSpeakerID: ilarion.id, isDone: true)
+        let plan = ActionItem(text: "Compartir el plan de pruebas de QVTL el jueves", ownerSpeakerID: me.id)
+        _ = try? await store.saveSummary(SummaryDraft(
+            meetingID: meeting.id, recipeID: Recipe.general.id, language: "es",
+            markdown: "Estado de QVTL antes de la demo del lunes.",
+            actionItems: [verify, plan],
+            actionItemEvidence: [
+                SummaryActionItemEvidence(actionItemID: verify.id, evidenceSegmentIDs: [segments[4].id]),
+                SummaryActionItemEvidence(actionItemID: plan.id, evidenceSegmentIDs: [segments[5].id])
+            ]))
+    }
 }
 
 /// Fictional bilingual runtime data shared by the disposable public showcase.
@@ -174,10 +215,13 @@ extension AppServices {
     static let showcaseHeroMeetingID = MeetingID(rawValue: UUID(
         uuidString: "5E0C0A5E-0000-4000-8000-000000000001")!)
 
+    /// Fixed per launch, so every agenda refresh returns the same occurrences.
+    nonisolated static let fixtureAgendaStart = Date()
+
     /// Fictional agenda for the public Today screenshot: nothing here reads
-    /// the operator's calendar, and the times track the real clock.
+    /// the operator's calendar, and the times are relative to launch.
     static func showcaseAgenda() -> LibraryModel.Agenda {
-        let now = Date()
+        let now = fixtureAgendaStart
         let calendar = Calendar.current
         let startOfTomorrow = calendar.startOfDay(for: now.addingTimeInterval(24 * 3_600))
         return LibraryModel.Agenda(

@@ -1,6 +1,7 @@
 import ApplicationKit
 import Foundation
 import PortavozCore
+import SwiftUI
 import XCTest
 
 @testable import portavoz_app
@@ -83,5 +84,30 @@ final class HomeNextMeetingHeroTests: XCTestCase {
 
         let bare = UpcomingEvent(id: "e", title: "Sync", startDate: start, attendees: [])
         XCTAssertNil(HomeNextMeetingHero.facts(bare))
+    }
+}
+
+@MainActor
+final class HomeHeroLayoutTests: XCTestCase {
+    private let block: CGFloat = 40
+
+    func testSideSitsBesideTheHeroOnlyFromItsMinimumWidth() async {
+        // 536 pt of hero, a 44 pt gutter and a 360 pt side column.
+        XCTAssertFalse(HomeHeroLayout.isWide(width: 939))
+        XCTAssertTrue(HomeHeroLayout.isWide(width: 940))
+        XCTAssertEqual(height(width: 940, side: block), block, "beside the hero the section is one row tall")
+        XCTAssertGreaterThan(height(width: 939, side: block), 2 * block, "stacked, the side follows after a gap")
+    }
+
+    func testAnEmptySideAddsNothingUnderAStackedHero() async {
+        XCTAssertEqual(height(width: 939, side: 0), block)
+    }
+
+    private func height(width: CGFloat, side: CGFloat) -> CGFloat {
+        let layout = HomeHeroLayout {
+            Color.clear.frame(height: block)
+            Color.clear.frame(height: side)
+        }
+        return NSHostingView(rootView: layout.frame(width: width)).fittingSize.height
     }
 }

@@ -4,11 +4,14 @@ import SwiftUI
 /// voice match) rides the green tint; an offer stays a soft neutral, so a
 /// suggestion never reads as an ink button.
 enum ChipLabel {
+    /// Marks content Portavoz generated, on and off a chip.
+    static let generatedSymbol = "sparkles"
+
     enum Kind {
         case ai, voice, offer
 
         fileprivate var icon: String {
-            self == .voice ? "waveform" : "sparkles"
+            self == .voice ? "waveform" : ChipLabel.generatedSymbol
         }
 
         fileprivate var ink: Color {

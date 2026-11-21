@@ -299,14 +299,18 @@ private struct HomeCountdown: View {
     }
 }
 
-/// The hero beside the rest of the agenda when there is room, above it
+/// The hero beside the brief and the rest of the agenda when there is room, above it
 /// otherwise. Chosen from the proposed width alone, so the ticking hero is
 /// never measured against alternative layouts. Expects two subviews.
 struct HomeHeroLayout: Layout {
-    private static let sideWidth: CGFloat = 360
+    private static let sideWidths: ClosedRange<CGFloat> = 360...552
+    private static let minimumHeroWidth: CGFloat = 536
     private static let spacing: CGFloat = 44
     private static let stackedSpacing = PVDesign.space6
-    private static let minimumWideWidth: CGFloat = 940
+    private static let minimumWideWidth = minimumHeroWidth + spacing + sideWidths.lowerBound
+
+    /// Whether a section this wide puts the side column beside the hero.
+    static func isWide(width: CGFloat) -> Bool { width >= minimumWideWidth }
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let width = proposal.width ?? Self.minimumWideWidth
@@ -324,19 +328,42 @@ struct HomeHeroLayout: Layout {
 
     private func frames(width: CGFloat, subviews: Subviews) -> [CGRect] {
         guard subviews.count == 2 else { return [] }
-        if width >= Self.minimumWideWidth {
-            let heroWidth = width - Self.sideWidth - Self.spacing
+        if Self.isWide(width: width) {
+            // The side grows to its full width once the hero keeps its minimum.
+            let side = min(Self.sideWidths.upperBound, width - Self.minimumHeroWidth - Self.spacing)
+            let heroWidth = width - side - Self.spacing
             return [
                 CGRect(origin: .zero, size: size(subviews[0], width: heroWidth)),
-                CGRect(origin: CGPoint(x: width - Self.sideWidth, y: 0), size: size(subviews[1], width: Self.sideWidth))
+                CGRect(origin: CGPoint(x: width - side, y: 0), size: size(subviews[1], width: side))
             ]
         }
         let hero = CGRect(origin: .zero, size: size(subviews[0], width: width))
-        let sideY = hero.maxY + Self.stackedSpacing
-        return [hero, CGRect(origin: CGPoint(x: 0, y: sideY), size: size(subviews[1], width: width))]
+        let side = size(subviews[1], width: width)
+        // An empty side column adds no gap under the hero.
+        let sideY = hero.maxY + (side.height > 0 ? Self.stackedSpacing : 0)
+        return [hero, CGRect(origin: CGPoint(x: 0, y: sideY), size: side)]
     }
 
     private func size(_ subview: LayoutSubview, width: CGFloat) -> CGSize {
         CGSize(width: width, height: subview.sizeThatFits(ProposedViewSize(width: width, height: nil)).height)
+    }
+}
+
+/// The agenda in `HomeHeroLayout`, telling the side column which arrangement
+/// it is in. Owns that one flag so `HomeView` keeps no state of its own.
+struct HomeAgendaSection<Hero: View, Side: View>: View {
+    @ViewBuilder let hero: Hero
+    @ViewBuilder let side: (_ isWide: Bool) -> Side
+    @State private var isWide = false
+
+    var body: some View {
+        HomeHeroLayout {
+            hero
+            side(isWide)
+        }
+        // The section's width comes from the window alone, never from its content.
+        .onGeometryChange(for: Bool.self) { proxy in
+            HomeHeroLayout.isWide(width: proxy.size.width)
+        } action: { isWide = $0 }
     }
 }
