@@ -216,7 +216,7 @@ extension AppServices {
         uuidString: "5E0C0A5E-0000-4000-8000-000000000001")!)
 
     /// Fixed per launch, so every agenda refresh returns the same occurrences.
-    static let fixtureAgendaStart = Date()
+    nonisolated static let fixtureAgendaStart = Date()
 
     /// Fictional agenda for the public Today screenshot: nothing here reads
     /// the operator's calendar, and the times are relative to launch.

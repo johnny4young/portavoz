@@ -54,7 +54,10 @@ struct HomeView: View {
         }
         // Re-read on library changes, so edits to the previous meeting show.
         .onChange(
-            of: BriefPreviewTrigger(event: state.heroEvent?.event, revision: state.libraryRevision), initial: true
+            of: BriefPreviewTrigger(
+                event: state.heroEvent?.event, revision: state.libraryRevision,
+                sourceStrip: state.briefPreview?.lines.flatMap { state.voiceStrips[$0.sourceMeetingID] }),
+            initial: true
         ) { _, trigger in
             if let event = trigger.event { perform(.loadBriefPreview(event)) }
         }
@@ -442,9 +445,11 @@ struct HomeView: View {
 }
 
 private extension HomeView {
+    /// The source's strip follows speaker fixes in that meeting.
     struct BriefPreviewTrigger: Equatable {
         let event: UpcomingEvent?
         let revision: Int
+        let sourceStrip: VoiceStripColumns?
     }
 
     /// Shown once the hero's own occurrence has loaded.

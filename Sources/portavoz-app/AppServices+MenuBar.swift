@@ -117,7 +117,7 @@ actor AppUpcomingEventSource: StandingPreMeetingBriefEventSource {
             ? UpcomingEvent(
                 id: "ui-test-upcoming-rollout",
                 title: "Presupuesto rollout",
-                startDate: Date().addingTimeInterval(15 * 60),
+                startDate: AppServices.fixtureAgendaStart.addingTimeInterval(15 * 60),
                 attendees: ["Ana"])
             : nil
         simulatedReconciliationCancellationCount = usesTemporaryStore

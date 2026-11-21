@@ -2983,9 +2983,11 @@ recording` (`home-record`, ⌘R).
 person said in the hero event's previous occurrence. `LibraryModel.State.briefPreview`
 holds one `BriefPreview` per occurrence (event identifier plus start) from
 `LoadMeetingBriefLines` (D651); `HomeView` sends `.loadBriefPreview` when the
-hero or `libraryRevision` (bumped by every meetings and open-items update)
-changes; an unchanged result leaves the state untouched and a failed load
-keeps the card as it was. A
+hero, the source meeting's voice strip or `libraryRevision` changes (bumped
+only when a meeting row's identity, title, times or transcript revision, or the
+open to-dos, change, so a live recording's caption writes do not reload it), and
+the model reloads it after preparing the hero's brief; an unchanged result
+leaves the state untouched and a failed load keeps the card as it was. A
 white card (16 pt radius, line ring, soft shadow) opens with a green
 `sparkles` kicker `BRIEF · WHAT THEY SAID LAST TIME` and the source meeting's
 day · length, which together form `home-brief-open` (it opens the full brief,

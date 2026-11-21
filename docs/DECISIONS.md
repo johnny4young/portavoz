@@ -23179,12 +23179,15 @@ and the cache is neither synced nor backed up.
 
 Today shows the brief lines of its hero event without the user opening the
 brief, so it cannot wait for a preparation (D650). `LoadMeetingBriefLines`
-reads the cached lines; when the occurrence has no source it looks up the
-previous same-title meeting and records it, which builds the lines in the same
-write. `LibraryModel` loads on every meetings or open-items update, so an edit
-to the previous meeting or a meeting that just ended shows without reopening
-Today; a read that changes nothing leaves the state untouched, and a failed
-read keeps the card as it was. A first meeting records nothing and shows the
+reads the cached lines alongside the latest same-title meeting and records that
+meeting when it differs from the cached source, which builds the lines in the
+same write; without a same-title meeting the cached source, possibly a related
+meeting a preparation chose, stays. `LibraryModel` loads when a meeting row or
+an open to-do changes (transcript writes of a live recording alone do not), when
+the source meeting's voice strip changes and after the hero's brief is
+prepared, so a meeting that just ended or an edit to the previous one shows
+without reopening Today; a read that changes nothing leaves the state
+untouched, and a failed read keeps the card as it was. A first meeting records nothing and shows the
 empty card; opening the brief can still record the best related meeting.
 Occurrence titles are compared without the date that `TitleTemplate.eventTitle`
 puts in front of an event-linked recording, so a recurring meeting recorded

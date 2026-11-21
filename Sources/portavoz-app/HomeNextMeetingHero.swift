@@ -335,8 +335,10 @@ struct HomeHeroLayout: Layout {
             ]
         }
         let hero = CGRect(origin: .zero, size: size(subviews[0], width: width))
-        let sideY = hero.maxY + Self.stackedSpacing
-        return [hero, CGRect(origin: CGPoint(x: 0, y: sideY), size: size(subviews[1], width: width))]
+        let side = size(subviews[1], width: width)
+        // An empty side column adds no gap under the hero.
+        let sideY = hero.maxY + (side.height > 0 ? Self.stackedSpacing : 0)
+        return [hero, CGRect(origin: CGPoint(x: 0, y: sideY), size: side)]
     }
 
     private func size(_ subview: LayoutSubview, width: CGFloat) -> CGSize {

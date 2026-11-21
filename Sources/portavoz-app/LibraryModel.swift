@@ -100,7 +100,8 @@ final class LibraryModel {
         fileprivate(set) var briefLoading: UpcomingEvent?
         fileprivate(set) var pendingAutomations = 0
         fileprivate(set) var briefPreview: BriefPreview?
-        /// Bumped by every meetings or open-items update.
+        /// Bumped when a meeting or an open to-do changes, not by transcript
+        /// writes alone, so a live recording does not reload the brief per caption.
         fileprivate(set) var libraryRevision = 0
 
         /// The first event of today, else the first of tomorrow.
@@ -148,6 +149,8 @@ final class LibraryModel {
     private var failedSections: Set<LibrarySection> = []
     private var inlineFailures: [LibrarySection: Int] = [:]
     private var briefPreviewRequest = 0
+    private var meetingSignatures: [MeetingSignature] = []
+    private var openItemSignatures: [OpenItemSignature] = []
 
     init(
         client: any LibraryModelClient,
@@ -264,12 +267,12 @@ private extension LibraryModel {
                 ($0.meeting.id, $0.voiceStrip)
             })
             markObserved(.meetings, inlineFailureCount: failures)
-            state.libraryRevision &+= 1
+            bumpRevision(meetings: rows.map { MeetingSignature($0.meeting) })
             refreshAgenda()
         case .openItems(let items):
             state.openItems = items
             markObserved(.openItems)
-            state.libraryRevision &+= 1
+            bumpRevision(openItems: items.map { OpenItemSignature(id: $0.id, text: $0.item.text) })
         case .trash(let items):
             state.trashed = items
             markObserved(.trash)
@@ -278,6 +281,19 @@ private extension LibraryModel {
             inlineFailures[section] = 0
         }
         refreshLoadPhase()
+    }
+
+    func bumpRevision(meetings: [MeetingSignature]? = nil, openItems: [OpenItemSignature]? = nil) {
+        var changed = false
+        if let meetings, meetings != meetingSignatures {
+            meetingSignatures = meetings
+            changed = true
+        }
+        if let openItems, openItems != openItemSignatures {
+            openItemSignatures = openItems
+            changed = true
+        }
+        if changed { state.libraryRevision &+= 1 }
     }
 
     func markObserved(
@@ -399,6 +415,8 @@ private extension LibraryModel {
         guard state.briefLoading == event else { return }
         state.briefLoading = nil
         state.brief = brief
+        // Preparing the brief can record the source Today's card reads.
+        if state.heroEvent?.event == event { await loadBriefPreview(event) }
     }
 
     /// A failed load keeps what is shown; the newest request wins.
@@ -429,4 +447,26 @@ private extension LibraryModel {
     func isCancellation(_ error: Error) -> Bool {
         Task.isCancelled || error is CancellationError
     }
+}
+
+/// What a brief line can depend on in a meeting row.
+private struct MeetingSignature: Equatable {
+    let id: MeetingID
+    let title: String
+    let startedAt: Date
+    let endedAt: Date?
+    let transcriptRevision: Int
+
+    init(_ meeting: Meeting) {
+        id = meeting.id
+        title = meeting.title
+        startedAt = meeting.startedAt
+        endedAt = meeting.endedAt
+        transcriptRevision = meeting.transcriptRevision
+    }
+}
+
+private struct OpenItemSignature: Equatable {
+    let id: UUID
+    let text: String
 }

@@ -1457,8 +1457,8 @@ after access already exists. The workflow ranks shared Ask evidence, loads
 current live summaries in one bounded database projection, overlaps commitment
 loading, and admits generated context only when its source index resolves to a
 navigable related meeting. Today's brief card enters `LoadMeetingBriefLines`,
-which reads the cached per-person lines and, on a miss, records the hero's
-previous same-title occurrence.
+which reads the cached per-person lines and records the hero's latest
+same-title occurrence when it differs from the cached source.
 Agenda buttons explicitly opt out of selectable
 meeting-row behavior, so opening a brief cannot race the sidebar's meeting
 route. One privacy promise exists in the main window: the sidebar footer chip

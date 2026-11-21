@@ -179,8 +179,22 @@ final class LibraryModelTests: XCTestCase {
         let model = LibraryModel(client: client, searchDelay: .zero)
 
         _ = await model.send(.observeLibrary)
-
         XCTAssertEqual(model.state.libraryRevision, 2, "meetings and open items each bump it")
+
+        _ = await model.send(.observeLibrary)
+        XCTAssertEqual(model.state.libraryRevision, 2, "an update that changes no meeting or to-do does not")
+    }
+
+    func testPreparingTheHerosBriefReloadsItsPreview() async {
+        let fixture = LibraryModelFixture()
+        let client = LibraryModelClientFake(fixture: fixture)
+        client.agenda = fixture.agenda
+        let model = LibraryModel(client: client, searchDelay: .zero)
+        _ = await model.send(.refreshAgenda)
+
+        _ = await model.send(.openBrief(fixture.eventToday))
+
+        XCTAssertEqual(client.calls.last, .briefLines(fixture.eventToday.id))
     }
 
     func testPendingAutomationsAreReadOnRefreshOnly() async {

@@ -15,8 +15,8 @@ public protocol MeetingBriefLinesReading: Sendable {
 }
 
 /// What each person said in an upcoming event's previous occurrence, for
-/// Today's preview. Reads the cache; an occurrence without a source records
-/// its previous same-title meeting first.
+/// Today's preview. The latest same-title meeting is recorded when it differs
+/// from the cached source; without one, the cached source stays.
 public struct LoadMeetingBriefLines: ApplicationUseCase {
     private let lines: any MeetingBriefLinesReading
     private let sources: any MeetingBriefSourceRecording
@@ -28,10 +28,11 @@ public struct LoadMeetingBriefLines: ApplicationUseCase {
 
     public func execute(_ event: UpcomingEvent) async throws -> MeetingBriefLines? {
         let occurrence = MeetingBriefLines.Occurrence(event: event)
-        if let cached = try await lines.meetingBriefLines(for: occurrence) { return cached }
-        guard let previous = try await sources.previousMeetingBriefOccurrence(
+        async let cachedLines = lines.meetingBriefLines(for: occurrence)
+        let previous = try await sources.previousMeetingBriefOccurrence(
             title: event.title, before: event.startDate)
-        else { return nil }
+        let cached = try await cachedLines
+        guard let previous, previous != cached?.sourceMeetingID else { return cached }
         try await sources.recordMeetingBriefSource(
             eventID: event.id, eventStartAt: event.startDate, sourceMeetingID: previous)
         return try await lines.meetingBriefLines(for: occurrence)
