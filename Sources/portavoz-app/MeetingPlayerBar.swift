@@ -28,36 +28,26 @@ struct MeetingPlayerBar: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            HStack(spacing: 10) {
-                Button {
-                    player.togglePlayPause()
-                } label: {
-                    Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.title)
+            // A narrow detail column moves the menus to a second row instead of
+            // pushing them under the rail.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    transportControls
+                    rateMenu
+                    Spacer(minLength: 8)
+                    secondaryMenus
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(.tint)
-                .help(player.isPlaying ? "Pause" : "Play")
-                .accessibilityIdentifier("player-play-pause")
-
-                skipButton(seconds: -15, symbol: "gobackward.15", identifier: "player-skip-back")
-                skipButton(seconds: 15, symbol: "goforward.15", identifier: "player-skip-forward")
-
-                HStack(spacing: 4) {
-                    let now = ClockFormat.mmss(player.currentTime, paddedMinutes: false)
-                    StatusPill(kind: .now, text: L10n.format("Now %@", now))
-                        .accessibilityLabel(L10n.text("Current time"))
-                        .accessibilityIdentifier("player-current-time")
-                        .accessibilityValue(now)
-                    Text(verbatim: "/ \(ClockFormat.mmss(player.duration, paddedMinutes: false))")
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 10) {
+                        transportControls
+                        Spacer(minLength: 0)
+                    }
+                    HStack(spacing: 10) {
+                        rateMenu
+                        Spacer(minLength: 8)
+                        secondaryMenus
+                    }
                 }
-
-                rateMenu
-                Spacer()
-                if voices.count > 1 { voiceMenu }
-                optionsMenu
             }
             if waveform.isEmpty {
                 Slider(
@@ -94,6 +84,41 @@ struct MeetingPlayerBar: View {
         } message: {
             Text("The audio after the last phrase is deleted for good, and transcript edits are reset.")
         }
+    }
+
+    @ViewBuilder
+    private var transportControls: some View {
+        Button {
+            player.togglePlayPause()
+        } label: {
+            Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                .font(.title)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.tint)
+        .help(player.isPlaying ? "Pause" : "Play")
+        .accessibilityIdentifier("player-play-pause")
+
+        skipButton(seconds: -15, symbol: "gobackward.15", identifier: "player-skip-back")
+        skipButton(seconds: 15, symbol: "goforward.15", identifier: "player-skip-forward")
+
+        HStack(spacing: 4) {
+            let now = ClockFormat.mmss(player.currentTime, paddedMinutes: false)
+            StatusPill(kind: .now, text: L10n.format("Now %@", now))
+                .accessibilityLabel(L10n.text("Current time"))
+                .accessibilityIdentifier("player-current-time")
+                .accessibilityValue(now)
+            Text(verbatim: "/ \(ClockFormat.mmss(player.duration, paddedMinutes: false))")
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+        }
+        .fixedSize()
+    }
+
+    @ViewBuilder
+    private var secondaryMenus: some View {
+        if voices.count > 1 { voiceMenu }
+        optionsMenu
     }
 
     private func skipButton(seconds: TimeInterval, symbol: String, identifier: String) -> some View {

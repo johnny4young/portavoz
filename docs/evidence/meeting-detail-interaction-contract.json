@@ -3477,7 +3477,8 @@
     {
       "feature": "playback-and-clips",
       "tests": [
-        "testPlayerMarksAClipJumpsFromALineAndPlaysOneVoice"
+        "testPlayerMarksAClipJumpsFromALineAndPlaysOneVoice",
+        "testReopeningAMeetingResumesWhereListeningStopped"
       ],
       "sourceAnchors": [
         {
@@ -3495,7 +3496,8 @@
       ],
       "screenshots": [
         "clip-paused-export",
-        "meeting-detail-waveform"
+        "meeting-detail-waveform",
+        "pr-meeting-detail-resume-position"
       ]
     },
     {

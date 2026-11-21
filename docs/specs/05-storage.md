@@ -204,7 +204,7 @@ hidden stage. A main-file or WAL size/modification change across the private
 copy also fails closed rather than publishing a mixed point in time. The source is never opened through `MeetingStore`, so no
 migration/configuration write can occur, and it is never renamed or deleted.
 
-### Schema (`v1`–`v62` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v63` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
@@ -250,6 +250,7 @@ Singular camelCase tables, 1:1 with Codable records:
 | `meetingVoiceColumnsVoice` (v61) | meetingID FK cascade to `meetingVoiceColumns`, voiceIndex (0–254), speakerID, talkSeconds, firstHeard; primary key meeting + index; the strip's voice index map in first-heard order |
 | `meetingBriefSource` (v62) | id (INTEGER autoincrement PK), eventID (1–2 000 bytes), eventStartAt (indexed), unique eventID + eventStartAt, sourceMeetingID (FK cascade, indexed), preparedAt, linesBuiltAt (NULL = lines need a rebuild); the previous occurrence chosen for one occurrence of an upcoming event, see Brief lines (D650) |
 | `meetingBriefLine` (v62) | sourceID FK cascade to `meetingBriefSource`, ordinal (≥ 0), speakerID, kind (`quote`, `commitment`, `question`), text (nonblank), segmentID (nullable), time (seconds, ≥ 0), status (`said`, `unresolved`, `open`, `closed`, checked against kind), dueAt (only when `open`); primary key source + ordinal; disposable cache |
+| `meetingPlaybackPosition` (v63) | meetingID (TEXT PK, FK cascade), positionSeconds (≥ 0), heardAt (nullable: first time playback reached the end), updatedAt; where listening stopped, see Playback position (D653) |
 | `transcriptStructuralSearchRow` (v38) | resultID (TEXT PK), indexed meetingID/correctionID FK cascade, baseTranscriptRevision, checked split/merge kind, non-empty text, optional language, start/end time, updatedAt, optional embedding BLOB and embeddingFingerprint; disposable current structural retrieval units keyed by split-part UUID or merge-correction UUID (D334) |
 | `transcriptStructuralSearchSource` (v38) | resultID (FK cascade), ordered accepted segmentID (indexed FK cascade), composite PK and unique result+source; exact immutable provenance for each structural retrieval unit |
 | `transcriptStructuralSearch` (v38) | FTS5 external-content over transcriptStructuralSearchRow.text, synchronized by GRDB triggers |
@@ -2351,3 +2352,16 @@ status, due date or tombstone, mapped through `commitmentSource`. A change to
 the meeting's title or tombstone deletes the source row, because the occurrence
 was chosen by title; a hard delete cascades. The cache is not synced or backed
 up.
+
+### Playback position (schema v63, D653)
+
+`meetingPlaybackPosition` keeps one row per meeting the user has listened to:
+the position in seconds, `heardAt` once playback has run to the end, and
+`updatedAt`. A meeting without a row has never been played.
+`savePlaybackPosition(_:)` upserts the row; the last write wins whatever its
+clock, so callers save in order, and `heardAt` is kept once set. `playbackPositions(for:)` reads any set of
+meetings in one query, deduplicating IDs and leaving out tombstoned meetings;
+restoring a meeting from the trash brings its position back and purging it
+cascades. The row is user state of this Mac: it is neither synced nor backed up
+and is outside every observed region, so a save never reloads the library or
+Meeting Detail.

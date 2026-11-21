@@ -15,6 +15,8 @@ public final class MeetingPlayer {
     public private(set) var currentTime: TimeInterval = 0
     public private(set) var duration: TimeInterval = 0
     public private(set) var isPlaying = false
+    /// Counts playbacks that ran to the end and rewound.
+    public private(set) var playedToEndCount = 0
 
     /// Clip in/out marks (M11). Set from the current playhead; a clip is
     /// valid once both exist and start < end.
@@ -96,8 +98,10 @@ public final class MeetingPlayer {
             forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
-                self?.isPlaying = false
-                self?.seek(to: 0)
+                guard let self else { return }
+                self.isPlaying = false
+                self.playedToEndCount += 1
+                self.seek(to: 0)
             }
         }
     }

@@ -2096,7 +2096,18 @@ from the transcript on screen, because post-capture processing replaces
 speaker identities after playback has loaded) and an options menu
 (`player-options`) holding Skip silence (`player-skip-silence`), Reduce echo
 (`player-clear-playback`) and Mark clip start/end (`clip-mark-start`,
-`clip-mark-end`). A phrase ending exactly at the audio duration remains speech and prevents
+`clip-mark-end`). Meeting Detail reopens at the position where listening
+stopped (D653): before preparing playback the model reads the saved position
+(or the one it saved last, ahead of a write still in flight) and seeks there
+unless it is within a second of either end; a pending route seek (a citation,
+search hit or brief line) is applied afterwards and wins. The application
+session reports a checkpoint on pause, one second after the last seek or skip,
+every 10 s of playback, on reaching the end (position 0, heard) and when the
+route closes or the audio is prepared again; nothing is reported until the user
+has pressed play, so opening or browsing a meeting never records listening.
+Saves run one after another, so the last checkpoint is the one stored;
+they are optional, so a failed read or write leaves playback as it was.
+Quitting the app can lose up to the last 10 s of listening. A phrase ending exactly at the audio duration remains speech and prevents
 tail trimming. When the last phrase ends at least five minutes before the
 audio of a settled meeting, the same menu offers "Remove … of silence at the
 end…" (`player-trim-silence`), confirmed in a destructive dialog

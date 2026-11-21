@@ -34,6 +34,9 @@ public protocol MeetingAudioChannelResolving: Sendable {
 public final class MeetingPlaybackSession {
     private let player: MeetingPlayer
     private var synchronizationTask: Task<Void, Never>?
+    private var checkpoints = PlaybackCheckpointTracker()
+    private var seenEndCount = 0
+    private var lastCheckpoint: PlaybackCheckpoint?
 
     public private(set) var currentTime: TimeInterval
     public private(set) var duration: TimeInterval
@@ -58,6 +61,10 @@ public final class MeetingPlaybackSession {
         didSet { player.clearPlayback = clearPlayback }
     }
 
+    /// Receives each listening position worth keeping: on pause, a settled
+    /// seek, every few seconds of playback, the end, and on close.
+    public var onCheckpoint: (@MainActor (PlaybackCheckpoint) -> Void)?
+
     init(player: MeetingPlayer, timeline: PlaybackTimeline) {
         self.player = player
         self.timeline = timeline
@@ -69,6 +76,7 @@ public final class MeetingPlaybackSession {
         rate = player.rate
         canClearPlayback = player.canClearPlayback
         clearPlayback = player.clearPlayback
+        seenEndCount = player.playedToEndCount
         synchronizationTask = Task { [weak self] in
             while !Task.isCancelled {
                 do {
@@ -83,6 +91,7 @@ public final class MeetingPlaybackSession {
     }
 
     public func play() {
+        checkpoints.didPlay(at: uptime())
         player.play()
         synchronize()
     }
@@ -93,16 +102,19 @@ public final class MeetingPlaybackSession {
     }
 
     public func togglePlayPause() {
+        if !player.isPlaying { checkpoints.didPlay(at: uptime()) }
         player.togglePlayPause()
         synchronize()
     }
 
     public func seek(to seconds: TimeInterval) {
+        checkpoints.didSeek(at: uptime())
         player.seek(to: seconds)
         synchronize()
     }
 
     public func skip(by seconds: TimeInterval) {
+        checkpoints.didSeek(at: uptime())
         player.skip(by: seconds)
         synchronize()
     }
@@ -138,6 +150,11 @@ public final class MeetingPlaybackSession {
     }
 
     public func invalidate() {
+        synchronize()  // an end reached since the last tick still counts as heard
+        if checkpoints.hasPlayed {
+            emit(PlaybackCheckpoint(seconds: player.currentTime, reachedEnd: false))
+        }
+        onCheckpoint = nil
         synchronizationTask?.cancel()
         synchronizationTask = nil
         player.invalidate()
@@ -149,6 +166,19 @@ public final class MeetingPlaybackSession {
         duration = player.duration
         isPlaying = player.isPlaying
         clipRange = player.clipRange
+        let reachedEnd = player.playedToEndCount != seenEndCount
+        seenEndCount = player.playedToEndCount
+        if checkpoints.shouldCheckpoint(isPlaying: isPlaying, reachedEnd: reachedEnd, at: uptime()) {
+            emit(PlaybackCheckpoint(seconds: reachedEnd ? 0 : currentTime, reachedEnd: reachedEnd))
+        }
+    }
+
+    private func uptime() -> TimeInterval { ProcessInfo.processInfo.systemUptime }
+
+    private func emit(_ checkpoint: PlaybackCheckpoint) {
+        guard checkpoint != lastCheckpoint else { return }
+        lastCheckpoint = checkpoint
+        onCheckpoint?(checkpoint)
     }
 }
 
