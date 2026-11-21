@@ -166,6 +166,66 @@ final class HomeUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testWhoSpokeTodayLeadsTheDayAxisAndOpensItsMeetings() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
+        app.launchArguments += ["-seed-today-voices", "-seed-wide-window", "-AppleInterfaceStyle", "Light"]
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        let section = app.descendants(matching: .any)["home-who-spoke"]
+        XCTAssertTrue(section.waitForExistenceFast(timeout: 15), "today's meetings fill the section")
+        let summary = app.staticTexts["home-who-spoke-summary"]
+        XCTAssertTrue(summary.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 10) {
+                let text = renderedText(of: summary)
+                return text.hasPrefix("2 meetings recorded · ") && text.hasSuffix(" · 1 to go")
+            },
+            "recorded meetings, their length and what is still ahead")
+        let you = app.descendants(matching: .any)["home-talker-me"]
+        let marta = app.descendants(matching: .any)["home-talker-name-marta"]
+        XCTAssertTrue(you.waitForExistenceFast(timeout: 5), "you lead the talkers")
+        XCTAssertTrue(marta.exists)
+        XCTAssertTrue(marta.label.contains("2 meetings"), marta.label)
+        let unnamed = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'home-talker-speaker-'"))
+        XCTAssertEqual(unnamed.count, 1, "a voice nobody named keeps its own column")
+        XCTAssertTrue(unnamed.firstMatch.label.contains("not named yet"))
+        XCTAssertLessThanOrEqual(you.frame.minX, marta.frame.minX)
+
+        let axis = app.descendants(matching: .any)["home-day-axis"]
+        let meetings = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'home-day-meeting-'"))
+        let upcoming = app.descendants(matching: .any)["home-day-upcoming-ui-test-upcoming-rollout"]
+        let now = app.descendants(matching: .any)["home-day-now"]
+        XCTAssertTrue(axis.waitForExistenceFast(timeout: 5))
+        XCTAssertEqual(meetings.count, 2, "each recorded meeting sits on the axis")
+        XCTAssertTrue(upcoming.exists, "the next meeting waits on the axis")
+        XCTAssertTrue(now.exists)
+        XCTAssertGreaterThan(upcoming.frame.minX, now.frame.minX, "what is ahead sits after the now line")
+        XCTAssertGreaterThan(axis.frame.minY, marta.frame.maxY, "talk time leads, the axis follows")
+
+        // A 1024 pt screen only has room for the wide layout without the sidebar.
+        setSidebar(visible: false, in: app)
+        let scroll = app.scrollViews.containing(.staticText, identifier: "home-title").element
+        XCTAssertTrue(axis.revealVertically(in: scroll))
+        XCTAssertTrue(axis.waitForStableFrame(timeout: 5))
+        attachScreenshot(of: app, named: "pr-home-who-spoke-today")
+
+        // A meeting on the axis opens its detail.
+        let demo = meetings.matching(NSPredicate(format: "label BEGINSWITH 'Sprint demo'")).firstMatch
+        XCTAssertTrue(demo.waitForStableFrame(timeout: 5))
+        demo.click()
+        XCTAssertTrue(
+            app.staticTexts.matching(NSPredicate(format: "value CONTAINS 'Turn 1 of Sprint demo' OR label CONTAINS 'Turn 1 of Sprint demo'"))
+                .firstMatch.waitForExistenceFast(timeout: 10),
+            "the axis opens that meeting")
+        XCTAssertFalse(section.exists)
+        setSidebar(visible: true, in: app)
+    }
+
+    @MainActor
     func testPendingAutomationsOpenTheirSettings() throws {
         let app = try XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
         app.launchArguments += ["-seed-duplicate-skill-proposals", "-seed-wide-window", "-AppleInterfaceStyle", "Light"]

@@ -11,6 +11,8 @@ struct VoiceStrip: View {
         case card
         case player
         case live
+        /// A meeting on Today's day axis.
+        case axis
 
         var height: CGFloat {
             switch self {
@@ -18,6 +20,7 @@ struct VoiceStrip: View {
             case .card: 8
             case .player: 16
             case .live: 12
+            case .axis: 10
             }
         }
 
@@ -25,12 +28,12 @@ struct VoiceStrip: View {
             switch self {
             case .row: 3
             case .card: 4
-            case .player, .live: 5
+            case .player, .live, .axis: 5
             }
         }
 
         /// Compact strips calm short runs and draw no playhead.
-        var isCompact: Bool { self == .row || self == .card }
+        var isCompact: Bool { self == .row || self == .card || self == .axis }
     }
 
     /// How far the playhead and chapter ticks reach past the strip.
@@ -156,5 +159,18 @@ struct VoiceStrip: View {
         path.move(to: CGPoint(x: playhead * canvas.width, y: width / 2))
         path.addLine(to: CGPoint(x: playhead * canvas.width, y: canvas.height - width / 2))
         context.stroke(path, with: ink, style: StrokeStyle(lineWidth: width, lineCap: .round))
+    }
+}
+
+/// One voice's colour as a dot.
+struct VoiceDot: View {
+    let tint: VoiceCast.Tint
+    var size: CGFloat = 7
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        Circle()
+            .fill(VoicePalette.color(tint, colorScheme: colorScheme))
+            .frame(width: size, height: size)
     }
 }

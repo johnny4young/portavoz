@@ -27,6 +27,7 @@ protocol LibraryModelClient: AnyObject {
     func requestLibraryCalendarAccess() async
     func buildLibraryBrief(for event: UpcomingEvent) async -> MeetingBrief?
     func libraryBriefLines(for event: UpcomingEvent) async throws -> MeetingBriefLines?
+    func libraryTodayVoices(at now: Date, events: [UpcomingEvent]) async throws -> TodayVoices
     /// Skill offers waiting for review; zero when they cannot be read.
     func pendingLibraryAutomations() async -> Int
 }
@@ -103,6 +104,12 @@ final class LibraryModel {
         fileprivate(set) var briefLoading: UpcomingEvent?
         fileprivate(set) var pendingAutomations = 0
         fileprivate(set) var briefPreview: BriefPreview?
+        /// Who spoke today and the day axis; nil until the first read.
+        fileprivate(set) var todayVoices: TodayVoices?
+        /// Bumped when today's meetings, their finished strips or today's
+        /// agenda change; a recording's live strip is left out, so captions
+        /// never trigger a read.
+        fileprivate(set) var todayVoicesRevision = 0
         /// Bumped when a meeting or an open to-do changes, not by transcript
         /// writes alone, so a live recording does not reload the brief per caption.
         fileprivate(set) var libraryRevision = 0
@@ -111,6 +118,11 @@ final class LibraryModel {
         var heroEvent: (event: UpcomingEvent, isToday: Bool)? {
             if let first = upcomingToday.first { return (first, true) }
             return upcomingTomorrow.first.map { ($0, false) }
+        }
+
+        /// Invitees in the hues the day axis gives them, once today's read has the event.
+        func inviteeCast(for event: UpcomingEvent) -> VoiceCast {
+            todayVoices?.upcoming.first { $0.event == event }?.cast ?? VoiceCast(invitees: event.attendees)
         }
     }
 
@@ -135,6 +147,7 @@ final class LibraryModel {
         case openBrief(UpcomingEvent)
         case dismissBrief
         case loadBriefPreview(UpcomingEvent)
+        case loadTodayVoices
         case refreshAutomations
     }
 
@@ -152,8 +165,10 @@ final class LibraryModel {
     private var failedSections: Set<LibrarySection> = []
     private var inlineFailures: [LibrarySection: Int] = [:]
     private var briefPreviewRequest = 0
+    private var todayVoicesRequest = 0
     private var meetingSignatures: [MeetingSignature] = []
     private var openItemSignatures: [OpenItemSignature] = []
+    private var todaySignature: TodaySignature?
 
     init(
         client: any LibraryModelClient,
@@ -228,6 +243,8 @@ private extension LibraryModel {
             state.brief = nil
         case .loadBriefPreview(let event):
             await loadBriefPreview(event)
+        case .loadTodayVoices:
+            await loadTodayVoices()
         case .refreshAutomations:
             await refreshAutomations()
         default:
@@ -399,10 +416,24 @@ private extension LibraryModel {
     }
 
     func refreshAgenda() {
-        guard let agenda = client.libraryAgenda() else { return }
-        state.offerCalendar = agenda.offerCalendar
-        state.upcomingToday = agenda.today
-        state.upcomingTomorrow = agenda.tomorrow
+        if let agenda = client.libraryAgenda() {
+            state.offerCalendar = agenda.offerCalendar
+            state.upcomingToday = agenda.today
+            state.upcomingTomorrow = agenda.tomorrow
+        }
+        refreshTodaySignature()
+    }
+
+    func refreshTodaySignature() {
+        let startOfDay = Calendar.current.startOfDay(for: Date())
+        let today = state.meetings.filter { $0.startedAt >= startOfDay || $0.lifecycleState == .recording }
+        let signature = TodaySignature(
+            meetings: today.map(MeetingSignature.init),
+            strips: today.filter { $0.lifecycleState != .recording }.map { state.voiceStrips[$0.id] ?? .empty },
+            events: state.upcomingToday)
+        guard signature != todaySignature else { return }
+        todaySignature = signature
+        state.todayVoicesRevision &+= 1
     }
 
     func refreshAutomations() async {
@@ -438,6 +469,20 @@ private extension LibraryModel {
         if state.briefPreview != preview { state.briefPreview = preview }
     }
 
+    /// Same rules as the brief preview: a failed read keeps what is shown.
+    func loadTodayVoices() async {
+        todayVoicesRequest &+= 1
+        let request = todayVoicesRequest
+        let voices: TodayVoices
+        do {
+            voices = try await client.libraryTodayVoices(at: Date(), events: state.upcomingToday)
+        } catch {
+            return
+        }
+        guard !Task.isCancelled, request == todayVoicesRequest else { return }
+        if state.todayVoices != voices { state.todayVoices = voices }
+    }
+
     func recordAction(_ operation: () async throws -> Void) async {
         state.lastActionError = nil
         do {
@@ -467,6 +512,13 @@ private struct MeetingSignature: Equatable {
         endedAt = meeting.endedAt
         transcriptRevision = meeting.transcriptRevision
     }
+}
+
+/// What today's talk totals and day axis can depend on.
+private struct TodaySignature: Equatable {
+    let meetings: [MeetingSignature]
+    let strips: [VoiceStripColumns]
+    let events: [UpcomingEvent]
 }
 
 private struct OpenItemSignature: Equatable {

@@ -3016,7 +3016,34 @@ ticking hero is never measured against alternative layouts. `HomeAgendaSection`
 reads that same rule (`HomeHeroLayout.isWide(width:)`) from its own width and
 tells the side column, which leaves out a brief card with no lines while
 stacked: beside the hero the empty state holds the column, under it the card
-would only push open work below the fold. A divider then leads to **Open to-dos** (the first five
+would only push open work below the fold.
+
+When anything was recorded today or is still ahead, **Who spoke today**
+(`home-who-spoke`, `HomeWhoSpokeToday`) closes the page under a line, after
+open work and recent meetings, so it never pushes them below the fold: the
+section title with a summary (`home-who-spoke-summary`, "2 meetings recorded ·
+1 h 46 min · 1 to go", keeping only the parts that apply), then up to five
+talkers from `TodayVoices.talkers` (you first, then most talk) as equal columns
+(`home-talker-<identity key>`, three per row when narrow): voice dot, name and
+minutes, a bar measured against today's longest talker, and below it the one
+meeting's title, "N meetings", or "not named yet" for an unnamed voice. Under it
+the **day axis** (`home-day-axis`, `HomeDayAxis`, 96 pt) lays out an hour ruler
+padded half an hour around everything shown (at least five hours), each
+recorded meeting's `VoiceStrip` (`.axis`, 10 pt) at its real start and length
+with its title, minutes and voice dots (`home-day-meeting-<uuid>`, opens the
+meeting), each upcoming event as an outlined pill with invitee dots and either
+"in 44 min" for the next one or its start time (`home-day-upcoming-<id>`,
+opens its brief), and the red now line with its `Now 3:15` pill
+(`home-day-now`). `LibraryModel.Action.loadTodayVoices` reads
+`LoadTodayVoices` with today's agenda; HomeView sends it when the model bumps
+`todayVoicesRevision` (today's meeting rows, their finished strips or today's
+agenda changed) and, from the axis's minute tick, only while a meeting of today
+is recording, an event shown has started or ended since the read, or the day
+has turned, so captions never trigger a read. A failed read keeps what is
+shown. The hero's invitees take the same day cast (`State.inviteeCast(for:)`),
+so a person wears one hue across the page. The **Later today** card stays beside
+the hero because it carries tomorrow and each event's Record and Brief buttons.
+Between the agenda and that section, a divider leads to **Open to-dos** (the first five
 open action items with the sidebar's checkbox action and a link to the source
 meeting, plus "N more in Radar") beside **Pick up where you left off** (the
 three newest meetings with their voice strip, duration, open count and
@@ -3030,13 +3057,17 @@ destination (`library-home-button`) is selected for both the nil and
 `home-automations`, `home-upcoming-<id>` (+`-brief-`/`-record-`),
 `home-upcoming-countdown`, `home-upcoming-invitees`, `home-brief`,
 `home-brief-open`, `home-brief-person-<uuid>`, `home-brief-empty`, `home-todo-<uuid>`/
-`home-todo-toggle-<uuid>`, `home-recent-<uuid>`, `home-calendar-offer`. The
+`home-todo-toggle-<uuid>`, `home-recent-<uuid>`, `home-calendar-offer`,
+`home-who-spoke`, `home-who-spoke-summary`, `home-talker-<key>`,
+`home-day-axis`, `home-day-meeting-<uuid>`, `home-day-upcoming-<id>`,
+`home-day-now`. The
 showcase seed adds a fictional agenda (Google Meet, 45 min, weekly), fixed for
 the launch so every refresh returns the same occurrences, plus last week's
 event-linked occurrence of its weekly sync with three voices and two to-dos, so
 the public Today screenshot reads lived-in without touching the operator's
 calendar; `-seed-brief-previous` adds an earlier occurrence of the
-`-seed-brief` event for the brief card's journey; `-seed-wide-window` (disposable store only)
+`-seed-brief` event for the brief card's journey; `-seed-today-voices` adds two
+meetings earlier today, relative to the clock, for the talk totals and day axis; `-seed-wide-window` (disposable store only)
 drops the test window's left clearance so the wide layout can be asserted. On a
 1024 pt screen that layout still needs the sidebar hidden, so the journeys
 collapse it with the split view's toolbar toggle, and `-reset-sidebar` (with

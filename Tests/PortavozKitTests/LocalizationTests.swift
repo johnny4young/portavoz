@@ -63,7 +63,7 @@ final class LocalizationTests: XCTestCase {
 
     func testSpanishMatchesEnglishOnlyForUntranslatableTerms() throws {
         let sameInBothLanguages: Set = [
-            "%@ min", "%d min", "%d%%", "1:1", "Agenda", "App", "Apuntador", "Audio",
+            "%@ min", "%d h %d min", "%d min", "%d%%", "1:1", "Agenda", "App", "Apuntador", "Audio",
             "BYOK OpenAI-compatible · GitHub gists · MCP", "Brief", "Control", "Email", "English",
             "Español", "Feedback", "GitHub", "HUD", "Literal", "Markdown", "OK", "h", "min",
             "Ollama (local)", "Original", "Portavoz", "Postmortem", "Radar", "Slack", "Standup", "Web",

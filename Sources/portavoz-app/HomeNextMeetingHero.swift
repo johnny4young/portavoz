@@ -66,6 +66,8 @@ struct CountdownSchedule: TimelineSchedule {
 /// who is invited, how it runs, and the two things to do about it.
 struct HomeNextMeetingHero: View {
     let event: UpcomingEvent
+    /// Invitees with you last, in the day's hues when known.
+    let cast: VoiceCast
     let isToday: Bool
     let recordingActive: Bool
     /// The event whose brief is being prepared, if any.
@@ -132,7 +134,6 @@ struct HomeNextMeetingHero: View {
 
     @ViewBuilder
     private var details: some View {
-        let cast = VoiceCast(invitees: event.attendees)
         if !event.attendees.isEmpty {
             HStack(spacing: PVDesign.space4) {
                 ForEach(cast.voices) { voice in

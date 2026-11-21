@@ -349,7 +349,10 @@ def app_features(filename: str) -> set[str]:
     if lowered == "settingsview.swift":
         # Hosts the legacy dictation data section.
         return {"settings-navigation", "dictation"}
-    if lowered in {"homeview.swift", "homeaskfield.swift", "homenextmeetinghero.swift", "homebriefcard.swift"}:
+    if lowered in {
+        "homeview.swift", "homeaskfield.swift", "homenextmeetinghero.swift", "homebriefcard.swift",
+        "homewhospoketoday.swift", "homedayaxis.swift", "appservices+todayvoicesuitestfixture.swift",
+    }:
         # Today composes the Library snapshot; its own journeys plus the
         # sidebar canary cover navigation from and back to it.
         return {"home", "library"}
