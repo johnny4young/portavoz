@@ -1,0 +1,54 @@
+import Foundation
+import PortavozCore
+
+/// The Voices table of a finished meeting: each voice of the cast that spoke,
+/// with its turns on the meeting's time axis.
+public struct MeetingVoiceTable: Sendable, Equatable {
+    public struct Row: Sendable, Equatable, Identifiable {
+        public let speakerID: SpeakerID
+        public let voice: VoiceCast.Voice
+        /// This voice's turns in time order.
+        public let turns: [ClosedRange<TimeInterval>]
+        public var id: String { voice.key }
+
+        /// The first turn starting after `time`, wrapping to the first turn.
+        public func nextTurn(after time: TimeInterval) -> TimeInterval? {
+            let later = turns.first { $0.lowerBound > time + MeetingVoiceTable.stepTolerance }
+            return (later ?? turns.first)?.lowerBound
+        }
+    }
+
+    /// A seek that lands just short of a turn counts as being on it.
+    static let stepTolerance: TimeInterval = 0.5
+
+    /// You and the promoted voices, in cast order.
+    public let rows: [Row]
+    /// Voices folded into "Others · n", by talk share.
+    public let others: [Row]
+    /// Seconds the rows' time axis spans.
+    public let duration: TimeInterval
+
+    public var count: Int { rows.count + others.count }
+    public var isEmpty: Bool { rows.isEmpty && others.isEmpty }
+    public var othersShare: Double { others.reduce(0) { $0 + $1.voice.share } }
+    public var othersTalkSeconds: TimeInterval { others.reduce(0) { $0 + $1.voice.talkSeconds } }
+
+    /// - Parameter meetingLength: wall-clock length; the axis stretches to the
+    ///   last turn when the meeting is shorter or still unknown.
+    public init(cast: VoiceCast, segments: [TranscriptSegment], meetingLength: TimeInterval = 0) {
+        var turns: [String: (id: SpeakerID, turns: [ClosedRange<TimeInterval>])] = [:]
+        for segment in segments where segment.endTime > segment.startTime {
+            guard let id = segment.speakerID else { continue }
+            turns[VoiceCast.key(id), default: (id, [])].turns.append(segment.startTime...segment.endTime)
+        }
+        let lastTurn = turns.values.flatMap(\.turns).map(\.upperBound).max() ?? 0
+        duration = max(meetingLength.isFinite ? meetingLength : 0, lastTurn)
+        func row(_ voice: VoiceCast.Voice) -> Row? {
+            turns[voice.key].map {
+                Row(speakerID: $0.id, voice: voice, turns: $0.turns.sorted { $0.lowerBound < $1.lowerBound })
+            }
+        }
+        rows = cast.voices.compactMap(row)
+        others = cast.others.compactMap(row)
+    }
+}

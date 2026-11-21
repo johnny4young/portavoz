@@ -9,7 +9,9 @@ struct MeetingDetailHeaderValues {
     let segmentCount: String
     let titleSuggestion: String?
     let speakers: [Speaker]
-    let voiceCast: VoiceCast
+    let voiceTable: MeetingVoiceTable
+    /// Nil without audio.
+    let playback: MeetingVoicesPlayback?
     let isSuggestingNames: Bool
     let nameSuggestions: [MeetingNameSuggestion]
     let voiceSuggestions: [MeetingVoiceSuggestion]
@@ -18,7 +20,7 @@ struct MeetingDetailHeaderValues {
     let voiceOffer: MeetingDetailRememberOffer?
 
     var hasSuggestions: Bool {
-        !nameSuggestions.isEmpty || !voiceSuggestions.isEmpty || !autoAssignedVoices.isEmpty
+        !nameSuggestions.isEmpty || !autoAssignedVoices.isEmpty
             || personOffer != nil || voiceOffer != nil
     }
 }
@@ -42,6 +44,8 @@ struct MeetingDetailHeaderActions {
     let acceptTitleSuggestion: @MainActor (String) -> Void
     let dismissTitleSuggestion: @MainActor () -> Void
     let renameSpeaker: @MainActor (Speaker) -> Void
+    let stepThroughTurns: @MainActor (MeetingVoiceTable.Row) -> Void
+    let toggleOnly: @MainActor (MeetingVoiceTable.Row) -> Void
     let suggestNames: @MainActor () -> Void
     let acceptNameSuggestion: @MainActor (MeetingNameSuggestion) -> Void
     let dismissNameSuggestion: @MainActor (String) -> Void
@@ -79,7 +83,7 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
             titleRow
             actionContent
             factsRow
-            participantsRow
+            voicesTable
             suggestionsRow
         }
         .accessibilityElement(children: .contain)
@@ -121,18 +125,30 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
         .foregroundStyle(.secondary)
     }
 
-    private var participantsRow: some View {
-        let unnamed = values.speakers.filter { !$0.isMe && $0.displayName == nil }
-        return VoiceCastRow(
-            speakers: values.speakers, cast: values.voiceCast, onRename: actions.renameSpeaker
-        ) {
-            if !unnamed.isEmpty {
-                suggestNamesControl
+    @ViewBuilder
+    private var voicesTable: some View {
+        if !values.voiceTable.isEmpty {
+            MeetingVoicesTable(
+                table: values.voiceTable,
+                speakers: values.speakers,
+                voiceSuggestions: values.voiceSuggestions,
+                playback: values.playback,
+                actions: MeetingVoicesTableActions(
+                    stepThroughTurns: actions.stepThroughTurns,
+                    toggleOnly: actions.toggleOnly,
+                    rename: actions.renameSpeaker,
+                    acceptVoiceSuggestion: actions.acceptVoiceSuggestion,
+                    dismissVoiceSuggestion: actions.dismissVoiceSuggestion)
+            ) {
+                if values.speakers.contains(where: { !$0.isMe && $0.displayName == nil }) {
+                    suggestNamesControl
+                }
             }
+            .padding(.top, 6)
         }
     }
 
-    /// Every ✦ suggestion and offer sits in one scrolling row under the cast,
+    /// The remaining ✦ suggestions and offers sit in one scrolling row under the voices,
     /// so a meeting with many suggestions never pushes the summary down.
     @ViewBuilder
     private var suggestionsRow: some View {
@@ -141,7 +157,6 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
                 HStack(spacing: 8) {
                     autoAssignedVoiceChips
                     nameSuggestionChips
-                    voiceSuggestionChips
                     rememberPersonOffer
                     rememberVoiceOffer
                 }
@@ -180,28 +195,6 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
                 dismiss: { actions.dismissNameSuggestion(suggestion.label) })
             .fixedSize()
             .help(nameSuggestionHelp(suggestion))
-        }
-    }
-
-    @ViewBuilder
-    private var voiceSuggestionChips: some View {
-        ForEach(values.voiceSuggestions, id: \.speakerLabel) { suggestion in
-            DismissibleSuggestionChip(
-                kind: .voice,
-                text: L10n.format(
-                    "%@ sounds like %@?", suggestion.speakerLabel, suggestion.name),
-                acceptAccessibilityIdentifier:
-                    "detail-voice-suggestion-\(suggestion.speakerLabel)",
-                dismissAccessibilityIdentifier:
-                    "detail-voice-suggestion-dismiss-\(suggestion.speakerLabel)",
-                accept: { actions.acceptVoiceSuggestion(suggestion) },
-                dismiss: {
-                    actions.dismissVoiceSuggestion(suggestion.speakerLabel)
-                })
-            .fixedSize()
-            .help(L10n.format(
-                "Matches “%@” from your remembered voices",
-                suggestion.name))
         }
     }
 

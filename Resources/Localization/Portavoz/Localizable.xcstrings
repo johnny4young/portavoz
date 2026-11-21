@@ -31,16 +31,6 @@
         }
       }
     },
-    "%@ sounds like %@?": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "¿%@ suena como %@?"
-          }
-        }
-      }
-    },
     "%@ · by voice": {
       "localizations": {
         "es": {
@@ -9549,32 +9539,12 @@
         }
       }
     },
-    "Play only one person's turns": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reproducir solo los turnos de una persona"
-          }
-        }
-      }
-    },
     "Play only your own turns — skips everyone else": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Reproduce solo tus turnos — salta a los demás"
-          }
-        }
-      }
-    },
-    "Play: %@": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reproducir: %@"
           }
         }
       }
@@ -18543,6 +18513,116 @@
           "stringUnit": {
             "state": "translated",
             "value": "Abre esta reunión"
+          }
+        }
+      }
+    },
+    "Voices": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voces"
+          }
+        }
+      }
+    },
+    "%d voices": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d voces"
+          }
+        }
+      }
+    },
+    "%d voices · %d in colour": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d voces · %d en color"
+          }
+        }
+      }
+    },
+    "Step through their turns · right-click to rename": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recorre sus turnos · clic derecho para renombrar"
+          }
+        }
+      }
+    },
+    "Sounds like %@ — name": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suena como %@ — nombrar"
+          }
+        }
+      }
+    },
+    "Play everyone again": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a escuchar a todos"
+          }
+        }
+      }
+    },
+    "Play only this voice": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escuchar solo esta voz"
+          }
+        }
+      }
+    },
+    "Play only %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escuchar solo a %@"
+          }
+        }
+      }
+    },
+    "Only": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo"
+          }
+        }
+      }
+    },
+    "No questions or interruptions.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin preguntas ni interrupciones."
+          }
+        }
+      }
+    },
+    "Counts the questions this speaker asked": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuenta las preguntas que hizo esta persona"
           }
         }
       }

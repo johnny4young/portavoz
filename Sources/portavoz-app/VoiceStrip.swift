@@ -201,15 +201,33 @@ struct VoiceLegend: View {
     }
 }
 
-/// One voice's colour as a dot.
+/// One voice's colour as a dot; an unnamed voice is an open ring.
 struct VoiceDot: View {
     let tint: VoiceCast.Tint
     var size: CGFloat = 7
+    var isOpen = false
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        Circle()
-            .fill(VoicePalette.color(tint, colorScheme: colorScheme))
-            .frame(width: size, height: size)
+        let colour = VoicePalette.color(tint, colorScheme: colorScheme)
+        Group {
+            if isOpen {
+                Circle().strokeBorder(colour, lineWidth: 1.6)
+            } else {
+                Circle().fill(colour)
+            }
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+/// How a voice is named: "You", else its name, else its diarization label.
+enum VoiceName {
+    nonisolated static func of(isMe: Bool, name: String?, label: String) -> String {
+        isMe ? L10n.text("You") : name ?? label
+    }
+
+    nonisolated static func of(_ speaker: Speaker) -> String {
+        of(isMe: speaker.isMe, name: speaker.displayName, label: speaker.label)
     }
 }

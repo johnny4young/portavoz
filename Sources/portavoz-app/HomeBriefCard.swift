@@ -150,7 +150,7 @@ struct HomeBriefCard: View {
     }
 
     nonisolated static func name(_ person: MeetingBriefLines.Person) -> String {
-        HomeVoiceName.of(isMe: person.isMe, name: person.displayName, label: person.label)
+        VoiceName.of(isMe: person.isMe, name: person.displayName, label: person.label)
     }
 
     /// "12:40 · still unresolved"; a line without transcript evidence has no time.

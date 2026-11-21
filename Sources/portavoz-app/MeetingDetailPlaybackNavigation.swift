@@ -14,6 +14,8 @@ import PortavozCore
 final class MeetingDetailPlaybackNavigation {
     private var transcript = MeetingTranscriptNavigationState()
     private var didRunPerformanceSeek = false
+    /// Where stepping through a voice's turns got to without audio.
+    @ObservationIgnored private var voiceStep: (speaker: SpeakerID, time: TimeInterval)?
 
     var focusedRowID: UUID? { transcript.focusedRowID }
 
@@ -49,6 +51,24 @@ final class MeetingDetailPlaybackNavigation {
         guard let target = transcript.consumePendingSeek() else { return }
         player.seek(to: target)
         player.play()
+    }
+
+    /// Plays the voice's next turn after the playhead, or without audio
+    /// reveals its next line.
+    func stepThroughTurns(
+        of row: MeetingVoiceTable.Row,
+        content: MeetingTranscriptContent,
+        player: MeetingPlaybackSession?
+    ) {
+        let from = player?.currentTime ?? voiceStep.flatMap { $0.speaker == row.speakerID ? $0.time : nil }
+        guard let start = row.nextTurn(after: from ?? -.infinity) else { return }
+        voiceStep = (row.speakerID, start)
+        guard let player else {
+            requestSeek(to: start, content: content, player: nil)
+            return
+        }
+        if let focus = player.voiceFocus, focus != row.speakerID { player.focus(on: nil) }
+        seekAndPlay(start, content: content, player: player)
     }
 
     @discardableResult

@@ -43,6 +43,12 @@ final class MeetingAudioWorkflowTests: XCTestCase {
         XCTAssertEqual(playback.session.voiceFocus, speaker)
         playback.session.focus(on: nil)
         XCTAssertNil(playback.session.voiceFocus)
+        playback.session.toggleFocus(on: speaker, turns: [0.1...0.3])
+        XCTAssertEqual(playback.session.voiceFocus, speaker)
+        XCTAssertTrue(playback.session.isPlaying, "Only starts playback when paused")
+        playback.session.toggleFocus(on: speaker, turns: [0.1...0.3])
+        XCTAssertNil(playback.session.voiceFocus, "the same voice again plays everyone")
+        playback.session.pause()
         XCTAssertTrue(playback.session.skipSilence, "dead time is skipped by default")
         playback.session.rate = 1.5
         XCTAssertEqual(playback.session.rate, 1.5)

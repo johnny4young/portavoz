@@ -11,6 +11,7 @@ public struct MeetingReviewCore: Sendable {
     public let isRefinedTranscript: Bool
     /// Who keeps a colour, computed once per load rather than per view.
     public let voiceCast: VoiceCast
+    public let voiceTable: MeetingVoiceTable
 
     public init(
         meeting: Meeting,
@@ -29,6 +30,9 @@ public struct MeetingReviewCore: Sendable {
             corrections: corrections)
         self.isRefinedTranscript = isRefinedTranscript
         self.voiceCast = VoiceCast(speakers: speakers, segments: segments)
+        self.voiceTable = MeetingVoiceTable(
+            cast: voiceCast, segments: segments,
+            meetingLength: meeting.endedAt.map { $0.timeIntervalSince(meeting.startedAt) } ?? 0)
     }
 
     private static func derivedCorrectionRevision(

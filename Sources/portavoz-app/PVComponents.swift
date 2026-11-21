@@ -239,15 +239,21 @@ extension View {
 /// The small uppercase line that names what a card holds.
 struct PVCardCaption: View {
     let text: String
-    let systemImage: String
+    var systemImage: String?
     let tint: Color
 
     var body: some View {
-        Label(text, systemImage: systemImage)
-            .font(.caption2.weight(.semibold))
-            .tracking(1.2)
-            .textCase(.uppercase)
-            .foregroundStyle(tint)
+        Group {
+            if let systemImage {
+                Label(text, systemImage: systemImage)
+            } else {
+                Text(text)
+            }
+        }
+        .font(.caption2.weight(.semibold))
+        .tracking(1.2)
+        .textCase(.uppercase)
+        .foregroundStyle(tint)
     }
 }
 

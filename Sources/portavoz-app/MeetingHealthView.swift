@@ -3,11 +3,10 @@ import IntelligenceKit
 import PortavozCore
 import SwiftUI
 
-/// Meeting-health panel (M13b): talk time per speaker, questions and
-/// interruptions — computed locally from the attributed transcript, no
-/// model involved. Collapsed into a compact block under the summary.
+/// Meeting-health panel (M13b): questions and interruptions per speaker,
+/// computed locally from the attributed transcript, no model involved. Talk
+/// share and time live in the header's Voices table.
 struct MeetingHealthView: View {
-    @Environment(\.colorScheme) private var colorScheme
     let speakers: [Speaker]
     let segments: [TranscriptSegment]
     let voiceCast: VoiceCast
@@ -15,14 +14,13 @@ struct MeetingHealthView: View {
     private var health: MeetingHealth { MeetingHealth.compute(segments: segments) }
 
     private func name(_ id: SpeakerID) -> String {
-        guard let speaker = speakers.first(where: { $0.id == id }) else { return "?" }
-        if speaker.isMe { return L10n.text("Me") }
-        return speaker.displayName ?? speaker.label
+        speakers.first(where: { $0.id == id }).map(VoiceName.of(_:)) ?? "?"
     }
 
     var body: some View {
         let health = health
         if health.stats.count >= 2 {
+            let active = health.stats.filter { $0.questions > 0 || $0.interruptionsMade > 0 }
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
                     Label("Meeting health", systemImage: "waveform.path.ecg")
@@ -38,9 +36,12 @@ struct MeetingHealthView: View {
                             .help("Counts how often someone talked over someone else")
                     }
                 }
-                ForEach(health.stats) { stat in
-                    speakerRow(stat)
+                if active.isEmpty {
+                    Text("No questions or interruptions.")
+                        .font(.caption)
+                        .foregroundStyle(PVDesign.ink3)
                 }
+                ForEach(active) { speakerRow($0) }
             }
             .padding(14)
             .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
@@ -48,35 +49,22 @@ struct MeetingHealthView: View {
     }
 
     private func speakerRow(_ stat: MeetingHealth.SpeakerStat) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
+            VoiceDot(tint: voiceCast.tint(for: stat.speakerID))
             Text(name(stat.speakerID))
                 .font(.caption.weight(.semibold))
-                .frame(width: 76, alignment: .trailing)
+                .foregroundStyle(PVDesign.ink)
                 .lineLimit(1)
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(.quaternary)
-                    Capsule()
-                        .fill(voiceColor(stat.speakerID))
-                        .frame(width: max(3, geometry.size.width * stat.share))
-                }
+            Spacer(minLength: 4)
+            if stat.questions > 0 {
+                chip(PVSymbol.apuntador, "\(stat.questions)")
+                    .help("Counts the questions this speaker asked")
             }
-            .frame(height: 8)
-            Text(ClockFormat.mmss(stat.speechSeconds, paddedMinutes: false) + " · \(Int((stat.share * 100).rounded()))%")
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
-                .frame(width: 96, alignment: .leading)
             if stat.interruptionsMade > 0 {
                 chip("exclamationmark.bubble", "\(stat.interruptionsMade)")
                     .help("Counts how often this speaker interrupted")
             }
         }
-    }
-
-    /// Each bar wears its voice's cast colour; voices outside the cast are grey.
-    private func voiceColor(_ id: SpeakerID) -> Color {
-        let tint = voiceCast.tint(for: id)
-        return VoicePalette.color(tint, colorScheme: colorScheme).opacity(tint == .you ? 1 : 0.85)
     }
 
     private func chip(_ icon: String, _ value: String) -> some View {
@@ -90,5 +78,4 @@ struct MeetingHealthView: View {
         .padding(.vertical, 2)
         .background(.quaternary.opacity(0.6), in: Capsule())
     }
-
 }
