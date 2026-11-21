@@ -71,7 +71,7 @@ struct StandingSkillRulesSection: View {
                         "The last rule change could not be verified. Reload before trying again.",
                         systemImage: PVSymbol.warning)
                         .font(.caption)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(PVDesign.caution)
                         .accessibilityIdentifier(
                             "settings-standing-mutation-error")
                     Button("Reload automatic actions") {
@@ -111,7 +111,7 @@ private extension StandingSkillRulesSection {
             Label(
                 "Automatic actions are unavailable",
                 systemImage: PVSymbol.warning)
-                .foregroundStyle(.orange)
+                .foregroundStyle(PVDesign.caution)
                 .accessibilityIdentifier("settings-standing-load-error")
             Text("Loading your automations…")
                 .font(.caption)
@@ -311,7 +311,7 @@ private extension StandingSkillRulesSection {
             if briefLoadFailedID == receipt.record.proposalID {
                 Text("The prepared brief could not be verified.")
                     .font(.caption)
-                    .foregroundStyle(.orange)
+                    .cautionText()
                     .accessibilityIdentifier(
                         "settings-standing-history-brief-error")
             }
@@ -368,8 +368,8 @@ private extension StandingSkillRulesSection {
         _ item: StandingSkillRuleControlItem,
         controls: StandingSkillRuleControlSnapshot
     ) -> Color {
-        item.isEffectivelyEnabled ? .green
-            : controls.isPaused || item.rule.isEnabled ? .orange : .secondary
+        item.isEffectivelyEnabled ? PVDesign.ok
+            : controls.isPaused || item.rule.isEnabled ? PVDesign.caution : .secondary
     }
 
     private func historyStatus(
@@ -488,7 +488,7 @@ private struct StandingSkillBriefSheet: View {
         VStack(alignment: .leading, spacing: 14) {
             Label("Prepared brief", systemImage: PVSymbol.success)
                 .font(.headline)
-                .foregroundStyle(.green)
+                .foregroundStyle(PVDesign.ok)
             ScrollView {
                 MeetingBriefArtifactView(brief: brief, openMeeting: nil)
             }

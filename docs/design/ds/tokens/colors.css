@@ -1,74 +1,55 @@
-/* Portavoz — color tokens.
-   Two worlds, one system:
-   · APP (macOS): system indigo accent, macOS neutrals, light + dark.
-   · BRAND (portavoz.app web): slate ground, violet radials, one amber accent.
-   Stance on the known debt: list selection uses INDIGO, never the user's
-   system accent. Indigo is the one accent of the product. */
+/* Portavoz — color tokens: ink on paper.
+   Chrome is ink on paper: buttons, selection and icons carry no hue.
+   Colour belongs to voices (six at a time, you always amber), red is only
+   the present (Record, Stop, live edge, now line) and green is Portavoz
+   speaking (briefs, summaries, suggestions, answers). Shared with Secreteo:
+   amber, paper, green and the light red. Mirrored in Swift by PVDesign. */
 
 :root {
-  /* ---- accent (macOS system indigo, light appearance) ---- */
-  --accent: #5856d6;
-  --accent-tint-14: rgba(88, 86, 214, 0.14);  /* suggestion chip capsule */
-  --accent-tint-08: rgba(88, 86, 214, 0.08);  /* secondary offer capsule */
-  --accent-tint-18: rgba(88, 86, 214, 0.18);  /* "Me" speaker pill */
-  --on-accent: #ffffff;
+  /* ---- surfaces (light) ---- */
+  --paper: #fbf7f2;
+  --paper-2: #f4ece3;      /* sidebars, sunk wells */
+  --card: #fffdfa;
+  --raise: #ffffff;
+  --line: rgba(20, 32, 30, 0.1);
+  --line-2: rgba(20, 32, 30, 0.22);
 
-  /* ---- suggestion chips: color-coded by evidence source ----
-     AI ✦ = violet ink + brand-amber spark (the intelligence signature);
-     voice = cyan ("sounds like"); offer = soft neutral. Distinct from the
-     plain indigo of ordinary controls so a suggestion never reads as a button. */
-  --chip-ai-ink: #5b3fd0;
-  --chip-ai-bg: rgba(91, 63, 208, 0.10);
-  --chip-ai-bg-hover: rgba(91, 63, 208, 0.17);
-  --chip-ai-spark: #e0912a;              /* amber ✦, AA on the violet tint */
-  --chip-voice-ink: #1f88bf;
-  --chip-voice-bg: rgba(31, 136, 191, 0.11);
-  --chip-voice-bg-hover: rgba(31, 136, 191, 0.18);
-  --chip-offer-ink: #6b6b76;
-  --chip-offer-bg: rgba(120, 120, 128, 0.10);
-  --chip-offer-bg-hover: rgba(120, 120, 128, 0.16);
+  /* ---- ink ---- */
+  --ink: #14201e;          /* 15.7:1 on paper */
+  --ink-2: #46534f;
+  --ink-3: #5c6763;        /* 5.5:1 on paper */
+  --accent: var(--ink);    /* primary buttons, selection, focus */
+  --on-accent: #fbf7f2;
 
-  /* ---- semantics (macOS system palette, light) ---- */
-  --success: #34c759;      /* mic OK, checkmarks, enrolled */
-  --warning: #ff9500;      /* mic low, permissions pending */
-  --destructive: #ff3b30;  /* delete, recording dot */
-  --recording: var(--destructive);
-  --ai: var(--accent);     /* ✦ suggestions are always accent-colored */
+  /* ---- meaning ---- */
+  --now: #b93a22;          /* the present only: never a warning */
+  --now-bg: #fbe3db;
+  --green: #1f6f5c;        /* Portavoz speaking */
+  --green-bg: #e0eee8;
+  --ok: #1f6f5c;
+  --caution: var(--ink);   /* warnings: ink + glyph, no hue */
 
-  /* ---- app neutrals (light) ---- */
-  --bg-window: #ffffff;
-  --bg-sidebar: #f5f4f5;
-  --text-primary: rgba(0, 0, 0, 0.85);
-  --text-secondary: rgba(0, 0, 0, 0.5);
-  --text-tertiary: rgba(0, 0, 0, 0.26);
-  --separator: rgba(0, 0, 0, 0.1);
-  --fill-quaternary: rgba(120, 120, 128, 0.16);       /* .quaternary */
-  --surface-card: rgba(120, 120, 128, 0.08);          /* quaternary.opacity(0.5) */
-  --surface-card-soft: rgba(120, 120, 128, 0.05);     /* opacity(0.3) */
-  --surface-material: rgba(246, 246, 246, 0.82);      /* .regularMaterial stand-in */
-  --pill-neutral: rgba(120, 120, 128, 0.18);          /* secondary speaker pill */
+  /* ---- you (same amber as Secreteo) ---- */
+  --you: #f2b33d;
+  --you-ink: #8a5600;      /* amber as text on paper */
+  --you-bg: #fcebc2;
+  --on-you: #14201e;
 
-  /* ---- Aurora (dirección canónica de la app: el mundo del icono entra al shell) ---- */
-  --aurora-window: linear-gradient(140deg, #1c1a2e 0%, #262626 45%, #262626 100%); /* @kind other */
-  --aurora-sidebar: rgba(14, 17, 32, 0.6);
-  --aurora-header:
-    radial-gradient(700px 260px at 20% -40%, rgba(82, 38, 191, 0.5), transparent 70%); /* @kind other */
-  --aurora-selection: linear-gradient(135deg, rgba(94, 92, 230, 0.85), rgba(82, 38, 191, 0.85)); /* @kind other */
+  /* ---- voices: you + five hues; unnamed stays grey ---- */
+  --voice-1: #3b6bd6;      /* Cobalt */
+  --voice-2: #c9437b;      /* Madder */
+  --voice-3: #6c8a28;      /* Moss */
+  --voice-4: #b25f36;      /* Clay */
+  --voice-5: #2b8fa6;      /* Lagoon */
+  --voice-unnamed: #8791a0;
 
-  /* ---- voces (dirección B: «el color ES la voz») ----
-     Tú SIEMPRE ámbar; cada speaker recibe un hue estable por orden de
-     aparición (persistente por persona nombrada). La UI se mantiene neutra
-     para que el único color con significado sea la voz. */
-  --voice-me: #fdbf47;
-  --voice-me-contrast: #4a3800;
-  --voice-1: #8b7cf0;
-  --voice-2: #4aa8d8;
-  --voice-3: #3fbf9a;
-  --voice-4: #e07a9b;
-  --voice-5: #b98ae0;
-  --voice-6: #d8a24a;
+  /* ---- chips: generated content rides the green tint ---- */
+  --chip-ai-ink: var(--green);
+  --chip-ai-bg: var(--green-bg);
+  --chip-offer-ink: var(--ink-3);
+  --chip-offer-bg: rgba(20, 32, 30, 0.07);
 
-  /* ---- brand (portavoz.app — the icon's world; always dark) ---- */
+  /* ---- brand (portavoz.app web and brand guidelines; always dark) ---- */
   --brand-ink: #f3f1ec;
   --brand-ink-dim: #b9b6c4;
   --brand-ground-0: #0e1120;
@@ -80,43 +61,55 @@
     radial-gradient(1200px 700px at 85% -10%, rgba(82, 38, 191, 0.55), transparent 60%),
     radial-gradient(900px 600px at -10% 30%, rgba(82, 38, 191, 0.25), transparent 55%),
     #0e1120; /* @kind other */
+
+  /* ---- pre-v6 names, kept so the UI kit renders in the new palette ---- */
+  --bg-window: var(--paper);
+  --bg-sidebar: var(--paper-2);
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-3);
+  --text-tertiary: var(--ink-3);
+  --separator: var(--line);
+  --fill-quaternary: var(--chip-offer-bg);
+  --surface-card: var(--card);
+  --surface-card-soft: var(--card);
+  --pill-neutral: var(--chip-offer-bg);
+  --accent-tint-14: var(--chip-offer-bg);
+  --success: var(--ok);
+  --warning: var(--caution);
+  --destructive: var(--now);
+  --chip-ai-spark: var(--green);
+  --voice-me: var(--you);
+  --voice-me-contrast: var(--on-you);
+  --aurora-window: var(--paper); /* @kind other */
+  --aurora-sidebar: var(--paper-2);
+  --aurora-header: none; /* @kind other */
+  --aurora-selection: var(--chip-offer-bg); /* @kind other */
 }
 
-/* macOS dark appearance — scope any subtree with data-theme="dark". */
+/* Dark: Night, a green-black. Scope any subtree with data-theme="dark". */
 [data-theme="dark"] {
-  --accent: #5e5ce6;
-  --accent-tint-14: rgba(94, 92, 230, 0.2);
-  --accent-tint-08: rgba(94, 92, 230, 0.12);
-  --accent-tint-18: rgba(94, 92, 230, 0.28);
-  --chip-ai-ink: #b6a8ff;
-  --chip-ai-bg: rgba(157, 143, 250, 0.16);
-  --chip-ai-bg-hover: rgba(157, 143, 250, 0.26);
-  --chip-ai-spark: #fdbf47;              /* brand amber pops on dark */
-  --chip-voice-ink: #6cc4ec;
-  --chip-voice-bg: rgba(92, 184, 230, 0.16);
-  --chip-voice-bg-hover: rgba(92, 184, 230, 0.26);
-  --chip-offer-ink: rgba(255, 255, 255, 0.62);
-  --chip-offer-bg: rgba(255, 255, 255, 0.08);
-  --chip-offer-bg-hover: rgba(255, 255, 255, 0.14);
-  --success: #30d158;
-  --warning: #ff9f0a;
-  --destructive: #ff453a;
-  --bg-window: #262626;
-  --bg-sidebar: #1e1e1e;
-  --text-primary: rgba(255, 255, 255, 0.85);
-  --text-secondary: rgba(255, 255, 255, 0.55);
-  --text-tertiary: rgba(255, 255, 255, 0.26);
-  --separator: rgba(255, 255, 255, 0.1);
-  --fill-quaternary: rgba(120, 120, 128, 0.26);
-  --surface-card: rgba(120, 120, 128, 0.13);
-  --surface-card-soft: rgba(120, 120, 128, 0.08);
-  --surface-material: rgba(40, 40, 40, 0.78);
-  --pill-neutral: rgba(120, 120, 128, 0.3);
-  /* voces: en dark suben un punto de luminancia para AA sobre #262626 */
-  --voice-1: #9d8ffa;
-  --voice-2: #5cb8e6;
-  --voice-3: #4fd0ab;
-  --voice-4: #ef8fae;
-  --voice-5: #c89aee;
-  --voice-6: #e6b25e;
+  --paper: #121615;
+  --paper-2: #0e1211;
+  --card: #191e1c;
+  --raise: #222826;
+  --line: rgba(238, 235, 226, 0.1);
+  --line-2: rgba(238, 235, 226, 0.22);
+  --ink: #eeebe2;
+  --ink-2: #b4bbb6;
+  --ink-3: #8d9692;
+  --on-accent: #121615;
+  --now: #ff6a4c;
+  --now-bg: #3b1710;
+  --green: #7fd1b9;
+  --green-bg: #15312b;
+  --ok: #6fcf97;
+  --you-ink: #f2b33d;
+  --you-bg: #3a2c0c;
+  --voice-1: #7da1f6;
+  --voice-2: #ee7dad;
+  --voice-3: #a8c759;
+  --voice-4: #e09468;
+  --voice-5: #5cc4d6;
+  --voice-unnamed: #99a4b2;
+  --chip-offer-bg: rgba(238, 235, 226, 0.07);
 }

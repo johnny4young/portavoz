@@ -15,7 +15,7 @@ struct MeetingDetailOperationStatus: View {
             }
         }
         if let error {
-            Text(error).font(.caption).foregroundStyle(.red)
+            Text(error).font(.caption).cautionText()
         }
     }
 }
@@ -84,12 +84,12 @@ struct MeetingDetailTrustSection: View {
     }
 
     private func failedProcessingCard(_ jobs: [ProcessingJob]) -> some View {
-        processingCard(tint: .orange) {
+        processingCard(tint: PVDesign.caution) {
             Label(
                 "Processing needs attention",
                 systemImage: PVSymbol.retry)
                 .font(.headline)
-                .foregroundStyle(.orange)
+                .foregroundStyle(PVDesign.caution)
                 .accessibilityIdentifier("detail-processing-status")
             Text(failedProcessingExplanation(jobs))
                 .font(.caption)
@@ -135,12 +135,12 @@ struct MeetingDetailTrustSection: View {
     }
 
     private var recordingRecoveryCard: some View {
-        processingCard(tint: .orange) {
+        processingCard(tint: PVDesign.caution) {
             Label(
                 "Recording needs recovery",
                 systemImage: "waveform.badge.exclamationmark")
                 .font(.headline)
-                .foregroundStyle(.orange)
+                .foregroundStyle(PVDesign.caution)
                 .accessibilityIdentifier("detail-processing-status")
             Text(recoveryExplanation(values.lastProcessingError))
                 .font(.caption)

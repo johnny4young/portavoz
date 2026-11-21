@@ -91,7 +91,7 @@ struct RecordingCompanionCardsView: View {
         identity: String
     ) -> some View {
         let card = row.card
-        let tint: Color = card.directed ? .orange : PVDesign.accent
+        let tint: Color = card.directed ? PVDesign.youInk : PVDesign.accent
         return VStack(alignment: .leading, spacing: 6) {
             header(row, identity: identity)
             if !card.answer.isEmpty {

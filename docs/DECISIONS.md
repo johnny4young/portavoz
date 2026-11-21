@@ -22998,3 +22998,21 @@ Live Parakeet on the 56 recorded field phrases moved from 40.9% to 39.1% word er
 (final captions only) with unchanged latency. Models, compute units, window settings,
 the 0.45 clustering threshold and deployment floors are unchanged. The fork goes away
 once an upstream release carries both changes.
+
+## D643 — Ink on paper: colour belongs to voices
+
+The app drops the system-indigo accent and the dark-only Aurora gradients.
+Chrome is ink on paper in both appearances (paper `#FBF7F2`, ink `#14201E`;
+Night `#121615`, ink `#EEEBE2`): primary buttons, selection and focus are ink,
+and macOS still paints native list selection and focus rings with the user's
+system accent. Colour keeps four meanings only: the voices (you in amber
+`#F2B33D` plus five hues), the present in red (Record, Stop, the live edge and
+the now line, never a warning), Portavoz-generated content in green, and status
+success in green. Warnings and errors are ink with a glyph.
+
+Amber, paper, green and the light red are shared values with Secreteo.
+`VoiceHue.paletteSize` drops from six to five so you plus five others keep a
+colour; named people therefore hash to new hues once. Voice hues are fills,
+not text colours: names stay ink on the tint, because the light hues do not
+reach 4.5:1 as text. `PVDesignPaletteTests` checks every text/background pair
+on the exact hex values in light, dark and Increase Contrast.

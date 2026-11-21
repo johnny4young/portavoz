@@ -15,7 +15,7 @@ struct SettingsVoiceSection: View {
             if let loadError {
                 Text(loadError)
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .cautionText()
                     .accessibilityIdentifier("settings-voice-storage-error")
                 HStack {
                     Button("Try again") {

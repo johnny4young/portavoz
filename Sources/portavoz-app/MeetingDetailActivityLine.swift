@@ -97,7 +97,7 @@ struct MeetingDetailActivityLine: View {
                             ? PVSymbol.success
                             : PVSymbol.warning)
                             .foregroundStyle(
-                                receipt.state == .succeeded ? .green : .orange)
+                                receipt.state == .succeeded ? PVDesign.ok : PVDesign.caution)
                         Text(skillReceiptTitle(receipt))
                             .font(.caption)
                         Spacer(minLength: 4)
@@ -189,7 +189,7 @@ struct MeetingDetailActivityLine: View {
             VStack(alignment: .leading, spacing: 2) {
                 Label(L10n.text("Synced to private iCloud"), systemImage: "icloud.fill")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(PVDesign.ok)
                 Text(L10n.text(
                     "This meeting's text was stored in encrypted fields in your private iCloud database."))
                     .font(.caption2)
@@ -206,9 +206,8 @@ struct MeetingDetailActivityLine: View {
 
     private func privacyReceiptTint(_ status: PrivacyReceiptStatus) -> Color {
         switch status {
-        case .allContentStayedOnDevice: .green
-        case .noRemoteTransferRecorded: .orange
-        case .remoteTransferAttempted: .orange
+        case .allContentStayedOnDevice: PVDesign.ok
+        case .noRemoteTransferRecorded, .remoteTransferAttempted: PVDesign.caution
         }
     }
 

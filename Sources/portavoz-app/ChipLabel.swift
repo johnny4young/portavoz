@@ -1,10 +1,9 @@
 import SwiftUI
 
-/// The suggestion-chip capsule. The DS color-codes chips by their
-/// EVIDENCE source — ✦ AI = violet ink with the amber spark, voice match
-/// = cyan with the waveform, offer = soft neutral — deliberately distinct
-/// from the indigo of ordinary controls, so a suggestion never reads as
-/// a button. Wrap in a plain-style Button; the capsule is the whole look.
+/// The suggestion-chip capsule. Anything Portavoz proposes (✦ suggestion,
+/// voice match) rides the green tint; an offer stays a soft neutral, so a
+/// suggestion never reads as an ink button. Wrap in a plain-style Button;
+/// the capsule is the whole look.
 struct ChipLabel: View {
     enum Kind {
         case ai, voice, offer
@@ -14,23 +13,11 @@ struct ChipLabel: View {
         }
 
         fileprivate var ink: Color {
-            switch self {
-            case .ai: PVDesign.chipAIInk
-            case .voice: PVDesign.chipVoiceInk
-            case .offer: PVDesign.chipOfferInk
-            }
-        }
-
-        fileprivate var iconInk: Color {
-            self == .ai ? PVDesign.chipAISpark : ink
+            self == .offer ? PVDesign.chipOfferInk : PVDesign.green
         }
 
         fileprivate var background: Color {
-            switch self {
-            case .ai: PVDesign.chipAIBg
-            case .voice: PVDesign.chipVoiceBg
-            case .offer: PVDesign.chipOfferBg
-            }
+            self == .offer ? PVDesign.chipOfferBg : PVDesign.greenBg
         }
     }
 
@@ -90,7 +77,7 @@ private struct ChipContent: View {
         HStack(spacing: 4) {
             Image(systemName: kind.icon)
                 .font(.caption2)
-                .foregroundStyle(kind.iconInk)
+                .foregroundStyle(kind.ink)
             Text(text)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(kind.ink)

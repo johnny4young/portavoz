@@ -102,7 +102,7 @@ struct RecordingHUDView: View {
                 let elapsed = Int(context.date.timeIntervalSince(controller.startedAt))
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(.red)
+                        .fill(PVDesign.now)
                         .frame(width: 8, height: 8)
                         .opacity(elapsed.isMultiple(of: 2) ? 1 : 0.35)
                     Text(ClockFormat.mmss(TimeInterval(elapsed)))
@@ -124,7 +124,7 @@ struct RecordingHUDView: View {
                 if controller.microphoneCaptureFailed {
                     Label(L10n.text("Microphone capture failed. Stop and start a new recording."),
                           systemImage: "mic.slash.fill")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(PVDesign.caution)
                         .accessibilityIdentifier("recording-hud-microphone-capture-failure")
                 }
                 if case .asking(let secondsUntilStop) = controller.callEnd {
@@ -134,7 +134,7 @@ struct RecordingHUDView: View {
                             Duration.seconds(secondsUntilStop).formatted(.time(pattern: .minuteSecond))),
                         systemImage: PVSymbol.warning)
                         .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(PVDesign.caution)
                         .accessibilityIdentifier("recording-hud-call-ended")
                 }
                 if controller.systemCaptureHealth != .healthy {
@@ -156,7 +156,7 @@ struct RecordingHUDView: View {
             Button(action: onStop) {
                 Image(systemName: PVSymbol.stop)
                     .font(.title3)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(PVDesign.now)
             }
             .buttonStyle(.plain)
             .help("Stop recording")
@@ -201,11 +201,7 @@ struct RecordingHUDView: View {
     }
 
     private var hudCaptureHealthColor: Color {
-        switch controller.systemCaptureHealth {
-        case .recovered: .green
-        case .failed: .red
-        case .healthy, .stalled, .recovering: .orange
-        }
+        controller.systemCaptureHealth == .recovered ? PVDesign.ok : PVDesign.caution
     }
 }
 
@@ -216,6 +212,6 @@ private struct RecordingHUDMeterFill: View {
 
     var body: some View {
         LevelBarFill(fraction: LevelBarFill.fraction(forLevel: controller.micLevel))
-            .fill(controller.micLevelLow ? Color.orange : Color.green)
+            .fill(controller.micLevelLow ? PVDesign.ink3 : VoicePalette.me)
     }
 }

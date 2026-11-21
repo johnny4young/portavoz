@@ -332,6 +332,11 @@ struct WaveformView: View {
         let progress = timeline.fraction(at: currentTime)
         let mid = size.height / 2
         let gaps = timeline.gaps
+        // Resolved once per draw: dynamic voice colours are costly per bar.
+        let mePlayed = context.resolve(GraphicsContext.Shading.color(VoicePalette.me.opacity(0.9)))
+        let meAhead = context.resolve(GraphicsContext.Shading.color(VoicePalette.me.opacity(0.3)))
+        let themPlayed = context.resolve(GraphicsContext.Shading.color(VoicePalette.unnamed.opacity(0.9)))
+        let themAhead = context.resolve(GraphicsContext.Shading.color(VoicePalette.unnamed.opacity(0.3)))
         for (index, bucket) in buckets.enumerated() {
             let start = Double(index) * bucketLength
             let center = start + bucketLength / 2
@@ -343,12 +348,12 @@ struct WaveformView: View {
             let rect = CGRect(
                 x: left + (right - left - width) / 2, y: mid - height / 2,
                 width: width, height: height)
-            // Voices B: your channel is amber — the color IS the voice.
-            let base: Color = bucket.microphoneDominant ? PVDesign.brandAmber : .gray
+            // Your channel is amber: the colour is the voice.
             let played = timeline.fraction(at: center) <= progress
-            context.fill(
-                Path(roundedRect: rect, cornerRadius: 1),
-                with: .color(base.opacity(played ? 0.9 : 0.3)))
+            let shading = bucket.microphoneDominant
+                ? (played ? mePlayed : meAhead)
+                : (played ? themPlayed : themAhead)
+            context.fill(Path(roundedRect: rect, cornerRadius: 1), with: shading)
         }
     }
 

@@ -1461,7 +1461,7 @@ route. One privacy promise exists in the main window: the sidebar footer chip
 sent unless the user asks and opens Settings on Your data. Today,
 Insights, the menu-bar panel, onboarding and the Settings sidebar repeat no
 disclaimer; feature-specific on-device claims remain limited to
-operations that cannot use a remote provider. Every SF Symbol the app draws is a `PVSymbol` constant (one per concept, in `PVDesign.swift`); `sparkles` is reserved for `ChipLabel`, and an architecture ratchet keeps retired glyph literals out of view code.
+operations that cannot use a remote provider. Colour is ink on paper: `PVDesign` holds every token as a light/dark `PVTone` mirrored in `docs/design/ds/tokens/colors.css`; chrome is ink, voices own the hues (`VoicePalette`: you in amber plus five), red marks only the present and green marks generated content. Every SF Symbol the app draws is a `PVSymbol` constant (one per concept, in `PVDesign.swift`); `sparkles` is reserved for `ChipLabel`, and an architecture ratchet keeps retired glyph literals out of view code.
 
 ## Verified model lifecycle
 
@@ -4042,7 +4042,7 @@ translation stores the exact source revision that produced it. A
 recording-scoped wake relay reacts to caption and lane-state changes without an
 idle poll; each Apple request admits no more than eight chronological rows from
 the existing 60-row live lookback. Batch responses publish as their
-asynchronous sequence arrives, and the UI renders them in a labeled indigo rail
+asynchronous sequence arrives, and the UI renders them in a labeled green block
 rather than as another spoken transcript row.
 
 `TranscriptContentPolicy` is the channel-neutral minimum boundary: text with no

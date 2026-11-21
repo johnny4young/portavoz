@@ -34,7 +34,7 @@ struct MeetingDetailRefineReviewSheet: View {
                     "The refine covers much less speech than the current transcript — it probably failed. Do not apply it.",
                     systemImage: PVSymbol.error
                 )
-                .foregroundStyle(.red)
+                .foregroundStyle(PVDesign.caution)
             }
 
             comparisonGrid

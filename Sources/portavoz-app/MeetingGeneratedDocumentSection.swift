@@ -90,7 +90,7 @@ struct MeetingGeneratedDocumentSection: View {
                     "Transcript changed — regenerate this summary to use your corrections.",
                     systemImage: PVSymbol.history)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(PVDesign.caution)
                     .accessibilityIdentifier("detail-stale-summary")
                 Spacer()
                 Button("Regenerate") {
@@ -250,7 +250,7 @@ struct MeetingGeneratedDocumentSection: View {
         } label: {
             Text(label)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(selected ? Color.white : .secondary)
+                .foregroundStyle(selected ? PVDesign.onInk : .secondary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
                 .background {

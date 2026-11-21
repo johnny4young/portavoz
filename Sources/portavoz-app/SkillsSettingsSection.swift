@@ -182,7 +182,7 @@ struct SkillsSettingsSection: View {
                 Label(
                     "No direct network handoff",
                     systemImage: PVSymbol.privacy)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(PVDesign.ok)
                     .accessibilityIdentifier(
                         "settings-skill-\(skill.id)-boundary")
                     .accessibilityLabel("No direct network handoff")
@@ -190,7 +190,7 @@ struct SkillsSettingsSection: View {
                 Label(
                     "May share outside Portavoz",
                     systemImage: "arrow.up.right.square.fill")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(PVDesign.caution)
                     .accessibilityIdentifier(
                         "settings-skill-\(skill.id)-boundary")
                     .accessibilityLabel("May share outside Portavoz")
@@ -480,7 +480,7 @@ private extension SkillsSettingsSection {
         } else if controlLoadFailed, snapshot == nil {
             VStack(alignment: .leading, spacing: 8) {
                 Label("Action controls are unavailable", systemImage: PVSymbol.warning)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(PVDesign.caution)
                     .accessibilityIdentifier("settings-skills-load-error")
                 Text("Nothing can be changed until Portavoz reads the durable policy.")
                     .font(.caption)
@@ -505,7 +505,7 @@ private extension SkillsSettingsSection {
             if snapshot?.isPaused == true {
                 Label("All actions are paused", systemImage: "pause.circle.fill")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(PVDesign.caution)
                     .accessibilityIdentifier("settings-skills-paused-status")
             }
             if controlLoadFailed {
@@ -514,7 +514,7 @@ private extension SkillsSettingsSection {
                         "The last change could not be verified. Reload controls before trying again.",
                         systemImage: PVSymbol.warning)
                         .font(.caption)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(PVDesign.caution)
                         .accessibilityIdentifier("settings-skills-stale-error")
                     Button("Reload controls") {
                         Task { await load() }

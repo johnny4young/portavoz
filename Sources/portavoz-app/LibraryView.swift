@@ -394,11 +394,9 @@ extension LibraryView {
         }
     }
 
-    /// The primary action, styled to the design system: an indigo→violet
-    /// gradient pill whose leading glyph is a mini-waveform with your amber
-    /// peak — the brand mark on the button you press most.
-    /// The primary action plus a ▾ menu for the rare ones (Import), so the
-    /// navigation list stays destinations only.
+    /// The primary action, an ink pill led by a mini-waveform with your amber
+    /// peak, plus a ▾ menu for the rare ones (Import), so the navigation list
+    /// stays destinations only.
     private var recordButton: some View {
         HStack(spacing: 4) {
             recordAction
@@ -413,11 +411,9 @@ extension LibraryView {
             } label: {
                 Image(systemName: "chevron.down")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(PVDesign.onInk)
                     .frame(width: 24, height: 34)
-                    .background(
-                        PVDesign.brandViolet.opacity(0.9),
-                        in: RoundedRectangle(cornerRadius: 10))
+                    .background(PVDesign.ink, in: RoundedRectangle(cornerRadius: 10))
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
@@ -439,28 +435,23 @@ extension LibraryView {
             HStack(spacing: 8) {
                 if recordingActive {
                     Circle()
-                        .fill(.red)
+                        .fill(PVDesign.now)
                         .frame(width: 9, height: 9)
                     Text("Return to recording").fontWeight(.medium)
                 } else {
                     HStack(alignment: .bottom, spacing: 2) {
-                        Capsule().fill(.white.opacity(0.75)).frame(width: 2.5, height: 6)
+                        Capsule().fill(PVDesign.onInk.opacity(0.75)).frame(width: 2.5, height: 6)
                         Capsule().fill(VoicePalette.me).frame(width: 2.5, height: 13)
-                        Capsule().fill(.white.opacity(0.75)).frame(width: 2.5, height: 8)
+                        Capsule().fill(PVDesign.onInk.opacity(0.75)).frame(width: 2.5, height: 8)
                     }
                     .frame(height: 13)
                     Text("New recording").fontWeight(.medium)
                 }
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(PVDesign.onInk)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 9)
-            .background(
-                LinearGradient(
-                    colors: [PVDesign.accent, PVDesign.brandViolet],
-                    startPoint: .topLeading, endPoint: .bottomTrailing),
-                in: RoundedRectangle(cornerRadius: 10))
-            .shadow(color: PVDesign.brandViolet.opacity(0.18), radius: 3, y: 1)
+            .background(PVDesign.ink, in: RoundedRectangle(cornerRadius: 10))
         }
         .buttonStyle(.plain)
         .keyboardShortcut("n")

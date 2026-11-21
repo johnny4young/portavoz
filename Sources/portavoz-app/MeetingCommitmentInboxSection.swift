@@ -43,7 +43,7 @@ struct MeetingCommitmentInboxSection: View {
                 }
             }
             .padding(14)
-            .background(.blue.opacity(0.07), in: RoundedRectangle(cornerRadius: 10))
+            .background(PVDesign.ink.opacity(PVDesign.offerTint), in: RoundedRectangle(cornerRadius: 10))
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("detail-commitment-inbox")
             .sheet(item: $editingCandidate) { candidate in

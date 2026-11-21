@@ -51,7 +51,7 @@ struct SkillOfferMenu: View {
                     .overlay(alignment: .topTrailing) {
                         Text("\(offers.count)")
                             .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(PVDesign.onInk)
                             .padding(.horizontal, 4)
                             .background(Capsule().fill(PVDesign.accent))
                     }

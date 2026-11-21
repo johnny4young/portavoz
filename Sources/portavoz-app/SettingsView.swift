@@ -149,6 +149,8 @@ struct SettingsView: View {
                 }
             }
             .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
+            .background(PVDesign.paper)
             .frame(maxWidth: .infinity)
         }
         // Resizable: the sidebar keeps its width and the pane takes the rest,

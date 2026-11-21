@@ -2,7 +2,7 @@
 
 Portavoz is a **privacy-first, local-first meeting assistant for macOS** (Swift 6 + SwiftUI, iOS next). It records meetings, transcribes live on the Neural Engine, separates voices on-device, and summarizes locally by default; remote providers and private iCloud sync require explicit opt-in. Two products share one identity:
 
-1. **The macOS app** — native, system-font, indigo-accented, quiet.
+1. **The macOS app** — native, system-font, ink on paper, quiet.
 2. **portavoz.app** — the marketing site, "the icon's world": dark slate, violet radials, one amber accent, Fraunces display serif.
 
 **Sources** (explore these to design better against the real product):
@@ -28,11 +28,11 @@ Brand personality: **serious but warm, technical without being cold, honest**. B
 
 ## VISUAL FOUNDATIONS
 
-- **Two palettes, one system.** App: macOS system **indigo** accent (`--accent`, light #5856d6 / dark #5e5ce6) on native neutrals. Web: slate `#0e1120` ground with violet `#5226bf` radial gradients, warm-paper ink `#f3f1ec`, and exactly ONE amber accent `#fdbf47` (the waveform's peak bar). In the **Aurora direction (canonical)** the icon's world enters the app shell in controlled doses: `--aurora-window` (slate→dark gradient), `--aurora-sidebar` (deep glass), `--aurora-header` (violet radial) and `--aurora-selection` (indigo→violet). Amber remains reserved for the user's voice.
-- **DS stance on the accent debt:** list selection is INDIGO (`--accent`), never the user's system accent. Resolved here; the app should adopt `.tint` explicitly.
-- **Voices (direction B — «color IS voice»):** the user's voice is ALWAYS solid amber (`--voice-me`); every other speaker gets a stable hue (`--voice-1`…`--voice-6`, assigned by order of appearance, persistent per named person) used consistently across pills, talk-time bars, lyrics highlights, player waveform and the web constellation. The UI stays neutral so voice is the only meaningful color; indigo is reserved for system interaction (✦ chips, links, selection).
-- **Semantics:** green = mic OK/success · orange = warning (mic low, permissions) · red = destructive/recording dot · ✦ AI suggestion = always accent indigo.
-- **Surfaces:** flat quaternary fills (`--surface-card`), no borders, no shadows on cards. Floating panels use material blur + hairline + soft shadow. Backgrounds are solid; gradients exist ONLY as the brand's violet radials on the web.
+- **Ink on paper (app).** Paper `#fbf7f2` / Night `#121615` surfaces with ink `#14201e` / `#eeebe2`. Chrome carries no hue: primary buttons, selection and focus are ink (`--accent: var(--ink)`). The web keeps its own slate ground and violet radials in `site/styles.css`; the Aurora shell doses are retired.
+- **Shared with Secreteo:** amber `#f2b33d`, paper `#fbf7f2` / `#f4ece3`, green `#1f6f5c` / `#7fd1b9` and the light red `#b93a22`.
+- **Voices («color IS voice»):** you are ALWAYS amber (`--you`, `--you-ink` for amber text); up to five others get a stable hue (`--voice-1`…`--voice-5`: Cobalt, Madder, Moss, Clay, Lagoon), assigned by order of appearance and persistent per named person; `--voice-unnamed` is grey. Voice hues are fills; names stay ink on the tint.
+- **Semantics:** red (`--now`) = the present only (Record, Stop, live edge, now line), never a warning · green (`--green`) = Portavoz speaking (✦ chips, summaries, answers, translations) · `--ok` = success · warnings and errors = ink plus a glyph.
+- **Surfaces:** solid paper, sunk paper for sidebars, cards on `--card`; no gradients in the app, no left-edge accent strips (tint, weight or a full outline instead).
 - **Type:** app = system font (SF Pro), macOS text-style scale (largeTitle.bold pages → title2.bold tile values → headline card titles → caption helpers); numbers ALWAYS tabular (`monospacedDigit`). Web = Fraunces (display, `SOFT 50`, weight 560, amber italics on the em-dash turn) + Instrument Sans (body) + IBM Plex Mono (commands & measured numbers).
 - **Spacing:** 12/16/24 core scale (tiles pad 12, cards 16, pages 24). **Radii:** 8 insets · 10 tiles · 12 cards · 14 floating panels · 999 capsules.
 - **Motion:** exactly two gestures — `pv-breathe` (3.6s ease-in-out, staggered 0.35s, waveform bars) and `pv-pulse` (1s, recording dot / active mic symbols). Everything else is still. `prefers-reduced-motion` stops both. Hovers: chips deepen their tint (0.14→0.18), buttons brighten slightly, trash rows reveal restore.
@@ -50,7 +50,7 @@ Brand personality: **serious but warm, technical without being cold, honest**. B
 
 No font binaries in the repo; the site loads **Fraunces, Instrument Sans, IBM Plex Mono from Google Fonts** — `tokens/fonts.css` keeps that CDN import (flagged: replace with self-hosted `@font-face` if files are provided). The app font is the system font (SF Pro on Macs); no file needed or shipped.
 
-- **Approved product directions** (from `explorations/UI Refresh Proposals.html`; every round is approved except 4b, the dictation strip, which was withdrawn): Aurora shell for the app (1a/4a) · lyrics-Spotify transcript as the central pattern (live + playback are the same component) · Spotify-style player (waveform = progress, voice-colored) · Settings with sidebar categories + privacy ledger (2a) · rich menu-bar panel (2b) · Insights with clear indicators + heatmap + ✦ findings (3a) · the four 6a features (⌘K, mirror mode, language bridge, first-listen onboarding — implementation spec in `explorations/6a-implementation-spec.md`).
+- **Approved product directions** (from `explorations/UI Refresh Proposals.html`; every round is approved except 4b, the dictation strip, which was withdrawn): Aurora shell for the app (1a/4a, since retired for ink on paper) · lyrics-Spotify transcript as the central pattern (live + playback are the same component) · Spotify-style player (waveform = progress, voice-colored) · Settings with sidebar categories + privacy ledger (2a) · rich menu-bar panel (2b) · Insights with clear indicators + heatmap + ✦ findings (3a) · the four 6a features (⌘K, mirror mode, language bridge, first-listen onboarding — implementation spec in `explorations/6a-implementation-spec.md`).
 
 ---
 

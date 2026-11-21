@@ -27,7 +27,7 @@ struct AppleSpeechChoiceControls: View {
             let phase = model.phase(for: languageHint)
             Text(statusText(for: phase))
                 .font(.caption)
-                .foregroundStyle(phase == .ready ? Color.secondary : Color.orange)
+                .foregroundStyle(phase == .ready ? Color.secondary : PVDesign.caution)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityLabel(statusText(for: phase))
                 .accessibilityIdentifier("\(identifierPrefix)-apple-status")

@@ -19,7 +19,7 @@ struct CaptureReportNotice: View {
                     .accessibilityIdentifier("detail-capture-failure-\(channel.channel.rawValue)")
             }
         }
-        .foregroundStyle(.orange)
+        .foregroundStyle(PVDesign.caution)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-capture-report")
     }

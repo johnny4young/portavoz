@@ -86,7 +86,7 @@ private extension CommitmentReminderStatusCard {
         } else {
             Label("On", systemImage: PVSymbol.success)
                 .font(.caption.bold())
-                .foregroundStyle(.green)
+                .foregroundStyle(PVDesign.ok)
                 .accessibilityIdentifier("commitment-reminder-enabled")
         }
     }
@@ -125,11 +125,7 @@ private extension CommitmentReminderStatusCard {
     }
 
     var statusColor: Color {
-        if model.state.phase == .failed { return .orange }
-        return switch model.state.permission {
-        case .unknown, .notDetermined: PVDesign.accent
-        case .denied: .orange
-        case .enabled: .green
-        }
+        model.state.phase != .failed && model.state.permission == .enabled
+            ? PVDesign.ok : PVDesign.caution
     }
 }

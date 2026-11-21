@@ -760,7 +760,7 @@ has enough language evidence. Its stable ID is paired with the exact translated
 source text, so another request is admitted after at least 18 characters of
 growth or a sentence boundary rather than leaving a stale partial translation.
 `TranslationSession.translate(batch:)` responses publish as they arrive. A
-labeled indigo language rail visually separates translated text from the
+labeled green language block visually separates translated text from the
 spoken row. Routing and state transitions have deterministic mixed
 Spanish/English, same-target, unknown, unsupported-then-supported, consent,
 cancellation, and stale-result tests, including growing-row revisions.

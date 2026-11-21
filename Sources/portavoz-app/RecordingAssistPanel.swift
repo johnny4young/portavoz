@@ -124,7 +124,7 @@ private extension RecordingAssistPanel {
             HStack(spacing: 6) {
                 Label(L10n.text("They asked you"), systemImage: "hand.raised.fill")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(PVDesign.youInk)
                 Spacer()
                 Text(ClockFormat.mmss(card.askedAt))
                     .font(.caption2.monospacedDigit())
@@ -150,10 +150,10 @@ private extension RecordingAssistPanel {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+        .background(PVDesign.youBg, in: RoundedRectangle(cornerRadius: 10))
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(Color.orange.opacity(0.35), lineWidth: 1)
+                .strokeBorder(VoicePalette.me.opacity(0.35), lineWidth: 1)
         )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("recording-focus-card")
@@ -194,10 +194,10 @@ private extension RecordingAssistPanel {
                 if badge > 0 {
                     Text("\(badge)")
                         .font(.caption2.weight(.bold).monospacedDigit())
-                        .foregroundStyle(.white)
+                        .foregroundStyle(PVDesign.onInk)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 1)
-                        .background(Color.orange, in: Capsule())
+                        .background(PVDesign.ink, in: Capsule())
                 }
             }
             .padding(.horizontal, 9)

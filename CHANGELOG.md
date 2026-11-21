@@ -79,6 +79,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## November 20, 2026
+
+- **🖋️ Ink on paper** — Portavoz trades indigo and violet for warm paper and ink in light and dark, so colour means something again: amber is you, each voice has its hue, red is only the live moment and green is what Portavoz wrote.
+
 ## November 13, 2026
 
 - **🪶 Recording takes less of your Mac** — the recording window no longer redoes its layout many times a second for the mic meter, the clock and each new caption.

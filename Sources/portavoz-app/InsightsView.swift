@@ -17,10 +17,6 @@ struct InsightsView: View {
     private var noDecision: InsightsFindings.NoDecision? { readModel?.noDecision }
     private var topics: [InsightsFindings.RecurringTopic] { readModel?.topics ?? [] }
 
-    /// Violet for "them" in the participation bar — amber (VoicePalette.me)
-    /// stays reserved for you.
-    private let themViolet = Color(.sRGB, red: 0.545, green: 0.486, blue: 0.941, opacity: 1)
-
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -84,7 +80,7 @@ struct InsightsView: View {
             let share = balance.myOverallShare
             HStack(spacing: 10) {
                 ZStack {
-                    Circle().stroke(themViolet.opacity(0.35), lineWidth: 5)
+                    Circle().stroke(VoicePalette.unnamed.opacity(0.35), lineWidth: 5)
                     Circle()
                         .trim(from: 0, to: share)
                         .stroke(VoicePalette.me, style: StrokeStyle(lineWidth: 5, lineCap: .round))
@@ -137,7 +133,7 @@ struct InsightsView: View {
                         if facts.openActionItems > 0 {
                             Image(systemName: PVSymbol.warning)
                                 .font(.caption2)
-                                .foregroundStyle(PVDesign.brandAmber)
+                                .foregroundStyle(PVDesign.caution)
                         }
                     }
                     Text(facts.openActionItems > 0
@@ -184,7 +180,7 @@ struct InsightsView: View {
                     if let delta, delta != 0 {
                         Text(delta > 0 ? "▲ +\(delta)" : "▼ \(delta)")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(delta > 0 ? Color.green : .secondary)
+                            .foregroundStyle(delta > 0 ? PVDesign.ok : .secondary)
                     }
                 }
                 Text(label)
@@ -320,7 +316,7 @@ struct InsightsView: View {
             HStack(spacing: 0) {
                 Rectangle().fill(VoicePalette.me)
                     .frame(width: geometry.size.width * clamped)
-                Rectangle().fill(themViolet)
+                Rectangle().fill(VoicePalette.unnamed)
             }
         }
         .frame(height: 7)
@@ -331,7 +327,7 @@ struct InsightsView: View {
         Text(String(name.prefix(1)).uppercased())
             .font(.caption2.weight(.bold))
             .frame(width: 22, height: 22)
-            .background(themViolet.opacity(0.25), in: Circle())
+            .background(VoicePalette.unnamed.opacity(0.25), in: Circle())
     }
 
     // MARK: - Formatting
@@ -409,7 +405,7 @@ extension InsightsView {
                 HStack(spacing: 4) {
                     Image(systemName: PVSymbol.generate)
                         .font(.caption2)
-                        .foregroundStyle(PVDesign.chipAISpark)
+                        .foregroundStyle(PVDesign.green)
                     Text("See").font(.caption2.weight(.medium)).foregroundStyle(PVDesign.accent)
                 }
             }
@@ -417,10 +413,10 @@ extension InsightsView {
             .padding(14)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(PVDesign.brandViolet.opacity(0.10)))
+                    .fill(PVDesign.greenBg))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(PVDesign.brandViolet.opacity(0.22)))
+                    .strokeBorder(PVDesign.green.opacity(0.22)))
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(identifier)

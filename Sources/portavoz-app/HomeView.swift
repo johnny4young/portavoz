@@ -294,10 +294,10 @@ struct HomeView: View {
                 if openCount > 0 {
                     Text(L10n.format("%d open", openCount))
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(PVDesign.amberContrast)
+                        .foregroundStyle(PVDesign.ink)
                         .padding(.horizontal, 7)
                         .padding(.vertical, 2)
-                        .background(PVDesign.brandAmber.opacity(0.7), in: Capsule())
+                        .background(PVDesign.ink.opacity(PVDesign.offerTint), in: Capsule())
                 }
                 lifecycleBadge(meeting.lifecycleState)
                 Image(systemName: "chevron.right")
@@ -321,7 +321,7 @@ struct HomeView: View {
         case .needsAttention:
             Label("Needs attention", systemImage: PVSymbol.warning)
                 .font(.caption)
-                .foregroundStyle(PVDesign.brandAmber)
+                .foregroundStyle(PVDesign.caution)
         case .recording, .ready:
             EmptyView()
         }

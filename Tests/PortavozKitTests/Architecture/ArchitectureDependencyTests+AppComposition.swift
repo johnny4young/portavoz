@@ -2123,4 +2123,22 @@ extension ArchitectureDependencyTests {
             XCTAssertEqual(owners.filter { $0 != "PVDesign.swift" }, [], literal)
         }
     }
+
+    func testColoursComeFromTheDesignTokens() throws {
+        let hues = "red|orange|green|yellow|blue|purple|indigo|mint|teal|pink|cyan|brown|gray"
+        let systemHues = "Red|Orange|Green|Yellow|Blue|Purple|Indigo|Mint|Teal|Pink|Cyan|Brown|Gray"
+        let rawColours = try Self.sourceMatches(
+            under: "Sources/portavoz-app",
+            pattern: #"(^|[^A-Za-z0-9_.])\.(\#(hues))\b|Color\.(\#(hues)|accentColor)\b"#
+                + #"|Color\((\.sRGB, )?red:|NSColor\.system(\#(systemHues))\b"#,
+            codeOnly: true)
+        XCTAssertEqual(rawColours.filter { $0 != "PVDesign.swift" }, [], "chrome is ink; hues live in PVDesign")
+
+        let presentOwners = try Self.sourceMatches(
+            under: "Sources/portavoz-app", pattern: #"PVDesign\.now\b"#, codeOnly: true)
+        XCTAssertEqual(
+            presentOwners,
+            ["LibraryView.swift", "MenuBarView.swift", "RecordingHUD.swift", "RecordingToolbar.swift"],
+            "red marks only the present: Record, Stop and the live dot")
+    }
 }

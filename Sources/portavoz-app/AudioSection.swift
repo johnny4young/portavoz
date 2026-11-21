@@ -42,7 +42,7 @@ struct AudioSection: View {
                 Label("Call-safe capture", systemImage: "checkmark.shield")
                 Spacer()
                 Text("Always on")
-                    .foregroundStyle(.green)
+                    .foregroundStyle(PVDesign.ok)
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("settings-call-safe-capture")

@@ -122,8 +122,8 @@ enum SkillReceiptPresentation {
 
     static func tint(for state: SkillExecutionState) -> Color {
         switch state {
-        case .succeeded: .green
-        case .failed, .executing: .orange
+        case .succeeded: PVDesign.ok
+        case .failed, .executing: PVDesign.caution
         case .dismissed, .confirmed, .proposed, .previewed: .secondary
         }
     }

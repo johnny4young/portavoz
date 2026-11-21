@@ -68,7 +68,7 @@ struct WhisperModelRow: View {
             id == variant.id {
             Text(L10n.format("Preparation failed: %@", message))
                 .font(.caption)
-                .foregroundStyle(.red)
+                .cautionText()
                 .lineLimit(2)
         } else {
             HStack(spacing: 0) {

@@ -251,14 +251,14 @@ struct MeetingDetailCompanionSection: View {
     }
 
     private func cardRow(_ card: CompanionCard) -> some View {
-        let tint: Color = card.directed ? .orange : PVDesign.accent
+        let tint: Color = card.directed ? PVDesign.youInk : PVDesign.accent
         return VStack(alignment: .leading, spacing: 5) {
             if values.freshnessByCardID[card.id] == .stale {
                 Label(
                     "Transcript changed — this answer may be out of date.",
                     systemImage: PVSymbol.history)
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(PVDesign.caution)
                     .accessibilityIdentifier("apuntador-card-\(card.id.uuidString)-stale")
             }
             HStack(alignment: .firstTextBaseline, spacing: 8) {

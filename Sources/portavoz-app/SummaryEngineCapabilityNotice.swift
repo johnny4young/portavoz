@@ -19,7 +19,7 @@ struct SummaryEngineCapabilityNotice: View {
                     systemImage: PVSymbol.error
                 )
                 .font(.caption)
-                .foregroundStyle(.orange)
+                .foregroundStyle(PVDesign.caution)
                 .accessibilityIdentifier("settings-summary-apple-unavailable")
             }
         }

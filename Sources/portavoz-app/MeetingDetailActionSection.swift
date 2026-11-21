@@ -194,7 +194,7 @@ struct MeetingDetailActionSection: View {
         Button(role: .destructive, action: actions.deleteMeeting) {
             Image(systemName: "trash")
                 .font(.system(size: 13))
-                .foregroundStyle(.red)
+                .foregroundStyle(PVDesign.caution)
                 .frame(width: 30, height: 30)
                 .background(Circle().fill(.quaternary.opacity(0.5)))
         }

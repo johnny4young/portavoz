@@ -3,17 +3,127 @@ import ApplicationKit
 import PortavozCore
 import SwiftUI
 
-/// The design system's tokens in Swift — the single source the app reads;
-/// values mirror `docs/design/ds/tokens/*.css` (authored in Claude Design,
-/// pulled to the repo). When a value changes there, it changes HERE and
-/// nowhere else in the app.
+/// One colour token with its light and dark values (sRGB hex). The hex
+/// stays readable so tests can check contrast on the exact values drawn.
+/// `increased` replaces both values under Increase Contrast.
+struct PVTone: Sendable {
+    let light: UInt32
+    let dark: UInt32
+    var increased: (light: UInt32, dark: UInt32)?
+
+    init(_ light: UInt32, _ dark: UInt32, increased: (light: UInt32, dark: UInt32)? = nil) {
+        self.light = light
+        self.dark = dark
+        self.increased = increased
+    }
+
+    init(_ both: UInt32) { self.init(both, both) }
+
+    func hex(dark isDark: Bool, increasedContrast: Bool = false) -> UInt32 {
+        if increasedContrast, let increased { return isDark ? increased.dark : increased.light }
+        return isDark ? dark : light
+    }
+
+    var nsColor: NSColor { nsColor(alpha: 1) }
+
+    private static let appearances: [NSAppearance.Name] = [
+        .accessibilityHighContrastAqua, .accessibilityHighContrastDarkAqua, .aqua, .darkAqua
+    ]
+
+    func nsColor(alpha: CGFloat) -> NSColor {
+        let light = PVTone.srgb(hex(dark: false), alpha: alpha)
+        let dark = PVTone.srgb(hex(dark: true), alpha: alpha)
+        let increasedLight = PVTone.srgb(hex(dark: false, increasedContrast: true), alpha: alpha)
+        let increasedDark = PVTone.srgb(hex(dark: true, increasedContrast: true), alpha: alpha)
+        return NSColor(name: nil) { appearance in
+            switch appearance.bestMatch(from: PVTone.appearances) {
+            case .accessibilityHighContrastAqua: increasedLight
+            case .accessibilityHighContrastDarkAqua: increasedDark
+            case .darkAqua: dark
+            default: light
+            }
+        }
+    }
+
+    var color: Color { Color(nsColor: nsColor) }
+
+    func color(alpha: CGFloat) -> Color { Color(nsColor: nsColor(alpha: alpha)) }
+
+    static func srgb(_ hex: UInt32, alpha: CGFloat = 1) -> NSColor {
+        NSColor(
+            srgbRed: CGFloat((hex >> 16) & 0xFF) / 255,
+            green: CGFloat((hex >> 8) & 0xFF) / 255,
+            blue: CGFloat(hex & 0xFF) / 255,
+            alpha: alpha)
+    }
+}
+
+/// The design system's tokens in Swift, mirroring
+/// `docs/design/ds/tokens/colors.css`: ink on paper. Chrome carries no hue;
+/// colour belongs to voices, red to the present, amber to you and green to
+/// what Portavoz generates.
 enum PVDesign {
-    /// The one accent of the product (the DS's stance on the accent debt):
-    /// system indigo — #5856D6 light / #5E5CE6 dark, exactly the DS tokens.
-    /// UI that means "the accent" reads THIS (or inherits the root `.tint`),
-    /// never `Color.accentColor`, which follows the user's system accent.
-    /// macOS still paints native list selection and focus rings itself.
-    static let accent = Color.indigo
+    enum Tone {
+        static let paper = PVTone(0xFBF7F2, 0x121615)
+        static let paperSunk = PVTone(0xF4ECE3, 0x0E1211)
+        static let card = PVTone(0xFFFDFA, 0x191E1C)
+        static let raise = PVTone(0xFFFFFF, 0x222826)
+        static let ink = PVTone(0x14201E, 0xEEEBE2)
+        static let ink2 = PVTone(0x46534F, 0xB4BBB6)
+        static let ink3 = PVTone(0x5C6763, 0x8D9692, increased: (0x46534F, 0xB4BBB6))
+        static let onInk = PVTone(0xFBF7F2, 0x121615)
+        static let now = PVTone(0xB93A22, 0xFF6A4C)
+        static let nowBg = PVTone(0xFBE3DB, 0x3B1710)
+        static let green = PVTone(0x1F6F5C, 0x7FD1B9)
+        static let greenBg = PVTone(0xE0EEE8, 0x15312B)
+        static let ok = PVTone(0x1F6F5C, 0x6FCF97)
+        static let you = PVTone(0xF2B33D)
+        static let youInk = PVTone(0x8A5600, 0xF2B33D)
+        static let youBg = PVTone(0xFCEBC2, 0x3A2C0C)
+        static let onYou = PVTone(0x14201E)
+    }
+
+    // MARK: Surfaces
+
+    static let paper = Tone.paper.color
+    /// Sidebars and sunk wells.
+    static let paperSunk = Tone.paperSunk.color
+    static let card = Tone.card.color
+    static let raise = Tone.raise.color
+
+    // MARK: Ink
+
+    static let ink = Tone.ink.color
+    static let ink2 = Tone.ink2.color
+    static let ink3 = Tone.ink3.color
+    /// Text and glyphs on an ink fill.
+    static let onInk = Tone.onInk.color
+    /// Primary buttons, selection and focus. Reads the ink, never
+    /// `PVDesign.accent`; macOS still paints native list selection and
+    /// focus rings with the user's system accent.
+    static let accent = ink
+
+    // MARK: Meaning
+
+    /// The present only: Record, Stop, the live edge and the now line.
+    static let now = Tone.now.color
+    static let nowBg = Tone.nowBg.color
+    /// Portavoz speaking: briefs, summaries, suggestions, answers.
+    static let green = Tone.green.color
+    static let greenBg = Tone.greenBg.color
+    /// Done, ready, connected.
+    static let ok = Tone.ok.color
+    /// Warnings and errors carry no hue: ink plus a glyph.
+    static let caution = ink
+
+    // MARK: You
+
+    static let you = Tone.you.color
+    /// Amber as text on paper.
+    static let youInk = Tone.youInk.color
+    static let youBg = Tone.youBg.color
+    /// Text on an amber fill.
+    static let onYou = Tone.onYou.color
 
     // MARK: Spacing (12/16/24 core scale)
 
@@ -30,84 +140,39 @@ enum PVDesign {
     static let radiusCard: CGFloat = 12
     static let radiusPanel: CGFloat = 14
 
-    // MARK: Accent tints (chips and pills ride the accent, per the DS)
+    // MARK: Ink tints
 
-    static let chipTint = 0.14        // suggestion chip capsule
+    static let chipTint = 0.14        // selected row, chip capsule
     static let offerTint = 0.08       // secondary offer capsule
-    static let mePillTint = 0.18      // legacy "Me" pill (pre voices-B)
 
-    // MARK: Suggestion chips (`--chip-*`: color-coded by evidence source
-    // — distinct from the plain indigo of ordinary controls, so a
-    // suggestion never reads as a button)
+    // MARK: Offer chips
 
-    /// ✦ AI suggestions: violet ink…
-    static let chipAIInk = dynamic(
-        light: NSColor(red: 0x5B / 255, green: 0x3F / 255, blue: 0xD0 / 255, alpha: 1),
-        dark: NSColor(red: 0xB6 / 255, green: 0xA8 / 255, blue: 0xFF / 255, alpha: 1))
-    static let chipAIBg = dynamic(
-        light: NSColor(red: 0x5B / 255, green: 0x3F / 255, blue: 0xD0 / 255, alpha: 0.10),
-        dark: NSColor(red: 0x9D / 255, green: 0x8F / 255, blue: 0xFA / 255, alpha: 0.16))
-    /// …with the amber ✦ — the intelligence signature.
-    static let chipAISpark = dynamic(
-        light: NSColor(red: 0xE0 / 255, green: 0x91 / 255, blue: 0x2A / 255, alpha: 1),
-        dark: NSColor(red: 0xFD / 255, green: 0xBF / 255, blue: 0x47 / 255, alpha: 1))
-    /// Voice matches ("sounds like"): cyan.
-    static let chipVoiceInk = dynamic(
-        light: NSColor(red: 0x1F / 255, green: 0x88 / 255, blue: 0xBF / 255, alpha: 1),
-        dark: NSColor(red: 0x6C / 255, green: 0xC4 / 255, blue: 0xEC / 255, alpha: 1))
-    static let chipVoiceBg = dynamic(
-        light: NSColor(red: 0x1F / 255, green: 0x88 / 255, blue: 0xBF / 255, alpha: 0.11),
-        dark: NSColor(red: 0x5C / 255, green: 0xB8 / 255, blue: 0xE6 / 255, alpha: 0.16))
-    /// Offers (consent gestures): soft neutral.
-    static let chipOfferInk = dynamic(
-        light: NSColor(red: 0x6B / 255, green: 0x6B / 255, blue: 0x76 / 255, alpha: 1),
-        dark: NSColor(white: 1, alpha: 0.62))
-    static let chipOfferBg = dynamic(
-        light: NSColor(red: 120 / 255, green: 120 / 255, blue: 128 / 255, alpha: 0.10),
-        dark: NSColor(white: 1, alpha: 0.08))
-
-    private static func dynamic(light: NSColor, dark: NSColor) -> Color {
-        Color(nsColor: NSColor(name: nil) { appearance in
-            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light
-        })
-    }
-
-    // MARK: Brand (the icon's world — web + Aurora doses)
-
-    static let brandAmber = Color(red: 0xFD / 255, green: 0xBF / 255, blue: 0x47 / 255)
-    static let brandViolet = Color(red: 0x52 / 255, green: 0x26 / 255, blue: 0xBF / 255)
-    static let brandSlate = Color(red: 0x0E / 255, green: 0x11 / 255, blue: 0x20 / 255)
-
-    /// Amber's readable counterpart for text ON amber (voice-me-contrast).
-    static let amberContrast = Color(red: 0x4A / 255, green: 0x38 / 255, blue: 0x00 / 255)
+    static let chipOfferInk = ink3
+    static let chipOfferBg = Tone.ink.color(alpha: 0.07)
 }
 
-/// Voices direction B — «el color ES la voz». The user's voice is ALWAYS
-/// solid amber; every other speaker gets a stable hue, assigned by
-/// order of appearance and persistent per NAMED person (a name hashes to
-/// the same hue in every meeting). The UI stays neutral so voice is the
-/// only meaningful color; indigo stays reserved for system interaction.
+/// «The colour is the voice»: you are always amber; every other speaker
+/// gets one of five hues, assigned by order of appearance and persistent
+/// per named person (a name hashes to the same hue in every meeting).
+/// Chrome stays ink so voice is the only colour with meaning.
 enum VoicePalette {
-    /// --voice-1…6 (light) / dark variants lift luminance one step for AA.
-    private static let lightHues: [Color] = [
-        Color(red: 0x8B / 255, green: 0x7C / 255, blue: 0xF0 / 255),
-        Color(red: 0x4A / 255, green: 0xA8 / 255, blue: 0xD8 / 255),
-        Color(red: 0x3F / 255, green: 0xBF / 255, blue: 0x9A / 255),
-        Color(red: 0xE0 / 255, green: 0x7A / 255, blue: 0x9B / 255),
-        Color(red: 0xB9 / 255, green: 0x8A / 255, blue: 0xE0 / 255),
-        Color(red: 0xD8 / 255, green: 0xA2 / 255, blue: 0x4A / 255)
+    /// Cobalt, Madder, Moss, Clay, Lagoon.
+    static let hues: [PVTone] = [
+        PVTone(0x3B6BD6, 0x7DA1F6),
+        PVTone(0xC9437B, 0xEE7DAD),
+        PVTone(0x6C8A28, 0xA8C759),
+        PVTone(0xB25F36, 0xE09468),
+        PVTone(0x2B8FA6, 0x5CC4D6)
     ]
-    private static let darkHues: [Color] = [
-        Color(red: 0x9D / 255, green: 0x8F / 255, blue: 0xFA / 255),
-        Color(red: 0x5C / 255, green: 0xB8 / 255, blue: 0xE6 / 255),
-        Color(red: 0x4F / 255, green: 0xD0 / 255, blue: 0xAB / 255),
-        Color(red: 0xEF / 255, green: 0x8F / 255, blue: 0xAE / 255),
-        Color(red: 0xC8 / 255, green: 0x9A / 255, blue: 0xEE / 255),
-        Color(red: 0xE6 / 255, green: 0xB2 / 255, blue: 0x5E / 255)
-    ]
+    /// Grey for voices outside the cast: "them" in Insights and the far channel of the waveform.
+    static let unnamedTone = PVTone(0x8791A0, 0x99A4B2)
 
-    static let me = PVDesign.brandAmber
-    static let meContrast = PVDesign.amberContrast
+    private static let lightColors = hues.map { Color(nsColor: PVTone.srgb($0.light)) }
+    private static let darkColors = hues.map { Color(nsColor: PVTone.srgb($0.dark)) }
+
+    static let me = PVDesign.you
+    static let meContrast = PVDesign.onYou
+    static let unnamed = unnamedTone.color
 
     /// The voice color for a speaker within a meeting's cast: amber for
     /// "Me"; named people by stable name hash; S-labels by cast order.
@@ -125,8 +190,8 @@ enum VoicePalette {
     /// Color for a speaker (index from `VoiceHue.index` — ApplicationKit,
     /// pure and tested).
     static func color(index: Int, colorScheme: ColorScheme) -> Color {
-        let hues = colorScheme == .dark ? darkHues : lightHues
-        return hues[((index % 6) + 6) % 6]
+        let colors = colorScheme == .dark ? darkColors : lightColors
+        return colors[((index % colors.count) + colors.count) % colors.count]
     }
 
     /// The color of one sidebar voice-mix slice: amber for you, a stable
@@ -138,6 +203,13 @@ enum VoicePalette {
         return color(
             index: VoiceHue.index(name: slice.displayName, fallbackOrder: slice.order),
             colorScheme: colorScheme)
+    }
+}
+
+extension View {
+    /// Warning and error copy: ink, set apart by weight rather than hue.
+    func cautionText() -> some View {
+        foregroundStyle(PVDesign.caution).fontWeight(.semibold)
     }
 }
 
