@@ -1,4 +1,5 @@
 import ApplicationKit
+import Foundation
 import IntelligenceKit
 import PortavozCore
 import StorageKit
@@ -24,6 +25,26 @@ struct AppMeetingBriefLibraryReader: MeetingBriefLibraryReading {
                 meetingTitle: open.meetingTitle,
                 text: open.item.text)
         }
+    }
+}
+
+extension AppMeetingBriefLibraryReader: MeetingBriefSourceRecording {
+    func previousMeetingBriefOccurrence(
+        title: String,
+        before date: Date
+    ) async throws -> MeetingID? {
+        try await store.previousMeetingOccurrence(title: title, before: date)
+    }
+
+    func recordMeetingBriefSource(
+        eventID: String,
+        eventStartAt: Date,
+        sourceMeetingID: MeetingID?
+    ) async throws {
+        try await store.recordMeetingBriefSource(
+            eventID: eventID,
+            eventStartAt: eventStartAt,
+            sourceMeetingID: sourceMeetingID)
     }
 }
 

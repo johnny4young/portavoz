@@ -118,6 +118,17 @@ public enum VoiceColumns {
         }
     }
 
+    /// One readable line after effective corrections. A split part keeps the
+    /// accepted segment it came from and carries its own text.
+    public struct AttributedLine: Sendable, Equatable {
+        public let id: UUID
+        public let segmentID: UUID?
+        public let speaker: SpeakerID
+        public let start: TimeInterval
+        public let end: TimeInterval
+        public let partText: String?
+    }
+
     /// Who spoke after effective corrections: speaker changes reassign lines,
     /// suppressions drop them and splits replace them with their parts. Text
     /// edits and same-speaker merges leave attribution as it is.
@@ -125,11 +136,20 @@ public enum VoiceColumns {
         lines: [Line],
         corrections: [TranscriptCorrectionEvent]
     ) -> [(key: SpeakerID, start: TimeInterval, end: TimeInterval)] {
+        attributedLines(lines: lines, corrections: corrections)
+            .map { (key: $0.speaker, start: $0.start, end: $0.end) }
+    }
+
+    /// The same attribution as `attributedTurns`, keeping each line's identity.
+    public static func attributedLines(
+        lines: [Line],
+        corrections: [TranscriptCorrectionEvent]
+    ) -> [AttributedLine] {
         var speakers = Dictionary(
             lines.map { ($0.id, $0.speaker) }, uniquingKeysWith: { first, _ in first })
         let accepted = Set(lines.map(\.id))
         var removed = Set<UUID>()
-        var turns: [(key: SpeakerID, start: TimeInterval, end: TimeInterval)] = []
+        var turns: [AttributedLine] = []
         for correction in corrections {
             switch correction.kind {
             case .changeSpeaker(let speaker):
@@ -141,7 +161,11 @@ public enum VoiceColumns {
                 // A split of a tombstoned line must not bring its speech back.
                 guard correction.targetSegmentIDs.allSatisfy(accepted.contains) else { break }
                 turns += parts.compactMap { part in
-                    part.speakerID.map { (key: $0, start: part.startTime, end: part.endTime) }
+                    part.speakerID.map {
+                        AttributedLine(
+                            id: part.id, segmentID: correction.targetSegmentIDs.first, speaker: $0,
+                            start: part.startTime, end: part.endTime, partText: part.text)
+                    }
                 }
             case .replaceText, .merge, .restore:
                 break
@@ -149,7 +173,9 @@ public enum VoiceColumns {
         }
         for line in lines where !removed.contains(line.id) {
             if case let speaker?? = speakers[line.id] {
-                turns.append((key: speaker, start: line.start, end: line.end))
+                turns.append(AttributedLine(
+                    id: line.id, segmentID: line.id, speaker: speaker,
+                    start: line.start, end: line.end, partText: nil))
             }
         }
         return turns

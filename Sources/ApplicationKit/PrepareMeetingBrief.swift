@@ -116,6 +116,20 @@ public protocol MeetingBriefLibraryReading: Sendable {
     func openMeetingBriefItems(limit: Int) async throws -> [MeetingBrief.OpenItem]
 }
 
+/// Remembers which past meeting an upcoming event continues.
+public protocol MeetingBriefSourceRecording: Sendable {
+    func previousMeetingBriefOccurrence(
+        title: String,
+        before date: Date
+    ) async throws -> MeetingID?
+    /// A nil source clears what was recorded for the event.
+    func recordMeetingBriefSource(
+        eventID: String,
+        eventStartAt: Date,
+        sourceMeetingID: MeetingID?
+    ) async throws
+}
+
 public protocol MeetingBriefSynthesizing: Sendable {
     func synthesizeMeetingBrief(
         eventTitle: String,
@@ -129,15 +143,18 @@ public struct PrepareMeetingBrief: ApplicationUseCase {
     private let ask: AskMeetings
     private let library: any MeetingBriefLibraryReading
     private let synthesizer: any MeetingBriefSynthesizing
+    private let sources: any MeetingBriefSourceRecording
 
     public init(
         ask: AskMeetings,
         library: any MeetingBriefLibraryReading,
-        synthesizer: any MeetingBriefSynthesizing
+        synthesizer: any MeetingBriefSynthesizing,
+        sources: any MeetingBriefSourceRecording
     ) {
         self.ask = ask
         self.library = library
         self.synthesizer = synthesizer
+        self.sources = sources
     }
 
     public func execute(_ event: UpcomingEvent) async throws -> MeetingBrief {
@@ -145,14 +162,20 @@ public struct PrepareMeetingBrief: ApplicationUseCase {
             eventTitle: event.title,
             attendees: event.attendees)
         let query = ([event.title] + event.attendees).joined(separator: " ")
-        let citations = try await degrade(to: []) {
+        // nil marks a degraded input, which must not replace a recorded source.
+        async let previousOccurrence = degrade(to: MeetingID??.none) {
+            .some(try await sources.previousMeetingBriefOccurrence(
+                title: event.title,
+                before: event.startDate))
+        }
+        let citations = try await degrade(to: [AskCitation]?.none) {
             try await ask.evidence(
                 query,
                 source: .library,
                 limit: 12)
         }
-        let ranked = BriefRelevance.rank(passages: citations, terms: terms)
-        async let summaryMarkdowns = degrade(to: [MeetingID: String]()) {
+        let ranked = BriefRelevance.rank(passages: citations ?? [], terms: terms)
+        async let summaryMarkdowns = degrade(to: [MeetingID: String]?.none) {
             try await library.meetingBriefSummaryMarkdowns(
                 for: ranked.map(\.meetingID))
         }
@@ -160,7 +183,8 @@ public struct PrepareMeetingBrief: ApplicationUseCase {
             try await library.openMeetingBriefItems(limit: 50)
         }
 
-        let summaries = try await summaryMarkdowns
+        let loadedSummaries = try await summaryMarkdowns
+        let summaries = loadedSummaries ?? [:]
         let related = ranked.compactMap { candidate -> MeetingBrief.RelatedMeeting? in
             guard let markdown = summaries[candidate.meetingID] else { return nil }
             return MeetingBrief.RelatedMeeting(
@@ -171,12 +195,40 @@ public struct PrepareMeetingBrief: ApplicationUseCase {
                 snippet: String(candidate.snippet.prefix(90)))
         }
 
+        // A same-title occurrence wins over the best related meeting.
+        let sourceMeetingID: MeetingID?? = switch try await previousOccurrence {
+        case .some(.some(let occurrence)): occurrence
+        case .some(.none) where citations != nil && loadedSummaries != nil: .some(related.first?.meetingID)
+        default: .none
+        }
+        async let recordedSource: Void = degrade(to: ()) {
+            guard case .some(let source) = sourceMeetingID else { return }
+            try await sources.recordMeetingBriefSource(
+                eventID: event.id,
+                eventStartAt: event.startDate,
+                sourceMeetingID: source)
+        }
+
         let relatedIDs = Set(related.map(\.meetingID))
         let allOpenItems = try await pendingOpenItems
         let openItems = Array(allOpenItems
             .filter { relatedIDs.contains($0.meetingID) }
             .prefix(8))
 
+        let whatToKnow = try await knowPoints(for: event, related: related)
+
+        try await recordedSource
+        return MeetingBrief(
+            event: event,
+            related: related,
+            openItems: openItems,
+            whatToKnow: whatToKnow)
+    }
+
+    private func knowPoints(
+        for event: UpcomingEvent,
+        related: [MeetingBrief.RelatedMeeting]
+    ) async throws -> [MeetingBrief.KnowPoint] {
         let sources = related.map {
             MeetingBrief.SynthesisSource(
                 meetingID: $0.meetingID,
@@ -190,7 +242,7 @@ public struct PrepareMeetingBrief: ApplicationUseCase {
                     eventTitle: event.title,
                     sources: sources)
             }
-        let whatToKnow: [MeetingBrief.KnowPoint] = synthesisPoints.compactMap { point in
+        return synthesisPoints.compactMap { point in
             guard sources.indices.contains(point.sourceIndex) else { return nil }
             let source = sources[point.sourceIndex]
             return MeetingBrief.KnowPoint(
@@ -198,12 +250,6 @@ public struct PrepareMeetingBrief: ApplicationUseCase {
                 meetingID: source.meetingID,
                 meetingTitle: source.meetingTitle)
         }
-
-        return MeetingBrief(
-            event: event,
-            related: related,
-            openItems: openItems,
-            whatToKnow: whatToKnow)
     }
 
     private static func overview(from markdown: String) -> String {
