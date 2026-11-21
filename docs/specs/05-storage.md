@@ -1289,7 +1289,9 @@ aggregate integrity while exposing no GRDB record to the workflow (D104).
 
 Canonical people use three narrow D86 APIs. `people(matchingAlias:)` applies
 Core's POSIX-stable whitespace/case/diacritic/width normalization and returns
-every exact live candidate in deterministic order without writing. The
+every exact live candidate in deterministic order without writing;
+`people(matchingAliases:)` answers several names in one read, keyed by each
+name as given, and leaves out names without candidates. The
 separate `createPersonAndLink` and `linkSpeaker` transactions accept only one
 live, non-user observed speaker. They atomically insert/reactivate the alias,
 set `speaker.personID`, and canonicalize that speaker's display name; failure
@@ -2258,8 +2260,9 @@ asset insert, delete or change to duration, supersession or tombstone.
 revision, sync replay, audio trim, refine and transcript write already calls,
 rebuilds the row in the same transaction. `voiceColumns(for:)` reads many meetings at
 once and rebuilds any missing row in one write, which is also how libraries
-from before v61 fill in. Names, `isMe` and labels resolve from `speaker` at read
-time, so a rename never rebuilds. A meeting with nothing attributed keeps an
+from before v61 fill in. Names, `isMe`, labels and the linked person (only
+while that person is live) resolve from `speaker` at read time, so a rename or
+a link never rebuilds. A meeting with nothing attributed keeps an
 empty row and is absent from the result, like a tombstoned one. The cache is
 not synced or backed up: replay and restore write segments, and the triggers
 drop the row. ApplicationKit bins a loaded transcript the same way
@@ -2277,6 +2280,12 @@ without writing and is never listed, because each segment drops its row again.
 Tracking `meetingVoiceColumns` covers correction and audio changes, whose
 triggers drop the row before the correction hook rebuilds it, and each store
 (D649).
+
+`meetingRows(startedIn:)` serves Today's talk time and day axis (D652): the
+live meetings whose start falls inside the interval, earliest first, each with
+its strip. Finished meetings go through `voiceColumns(for:)`, so a missing row
+is stored; a recording is binned in memory and never stored, as in the
+library.
 
 ### Brief lines (schema v62, D650)
 

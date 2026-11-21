@@ -6,6 +6,7 @@ import XCTest
 
 final class VoiceCastTests: XCTestCase {
     private typealias Member = VoiceCast.Member
+    private typealias Tint = VoiceCast.Tint
 
     func testThreeVoicesEachKeepTheirStableHueOrderedByTalk() {
         let cast = VoiceCast(
@@ -192,6 +193,40 @@ final class VoiceCastTests: XCTestCase {
         XCTAssertEqual(strip.cast.voices.map(\.name), ["Nora", "Marta", nil], "drawn by talk share")
         XCTAssertEqual(strip.tints, [.hue(hue), .you, .hue((hue + 1) % VoiceHue.paletteSize)])
         XCTAssertEqual(strip.columns, stored.columns)
+    }
+
+    func testInviteesKeepCalendarOrderWithYouLast() {
+        let cast = VoiceCast(invitees: ["Marta", "Ilarion"])
+        XCTAssertEqual(cast.voices.map(\.name), ["Marta", "Ilarion", nil])
+        XCTAssertEqual(cast.voices.last?.tint, .you)
+        XCTAssertEqual(
+            cast.voices.first?.tint, .hue(VoiceHue.index(name: "Marta")),
+            "an invitee wears the hue their name has in recorded meetings")
+    }
+
+    func testInviteesPastTheCastFoldIntoOthers() {
+        let names = (1...7).map { "Person \($0)" }
+        let cast = VoiceCast(invitees: names)
+        XCTAssertEqual(cast.voices.count, VoiceHue.paletteSize + 1)
+        XCTAssertEqual(cast.others.map(\.name), ["Person 6", "Person 7"])
+    }
+
+    func testPreviousKeepsAHueByKeyBeforeName() throws {
+        let marta = VoiceHue.index(name: "Marta")
+        let rival = try XCTUnwrap((1...100).map { "Person \($0)" }.first { VoiceHue.index(name: $0) == marta })
+        let page = VoiceCast(
+            members: [Member(key: "rival", name: rival, talkSeconds: 9),
+                      Member(key: "person", name: "Marta", talkSeconds: 5)],
+            ordering: .talkShare)
+        let martaOnPage = Tint.hue((marta + 1) % VoiceHue.paletteSize)
+        XCTAssertEqual(page.tint(for: "person"), martaOnPage, "first heard keeps the clashing hue")
+
+        let meeting = VoiceCast(
+            members: [Member(key: "person", name: "Marta G.", talkSeconds: 3),
+                      Member(key: "stranger", name: "Marta", talkSeconds: 2)],
+            ordering: .talkShare, previous: page)
+        XCTAssertEqual(meeting.tint(for: "person"), martaOnPage, "the same key keeps its hue under another name")
+        XCTAssertEqual(meeting.tint(for: "stranger"), .hue(marta), "a name taken by its key falls back to its own hue")
     }
 
     private func segment(

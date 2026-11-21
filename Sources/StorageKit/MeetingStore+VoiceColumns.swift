@@ -10,17 +10,20 @@ public struct MeetingVoiceColumns: Sendable, Equatable {
         public let isMe: Bool
         public let label: String
         public let displayName: String?
+        /// The confirmed person this speaker is linked to, while that person is live.
+        public let personID: PersonID?
         public let talkSeconds: TimeInterval
         public let firstHeard: TimeInterval
 
         public init(
             speakerID: SpeakerID, isMe: Bool, label: String, displayName: String?,
-            talkSeconds: TimeInterval, firstHeard: TimeInterval
+            personID: PersonID? = nil, talkSeconds: TimeInterval, firstHeard: TimeInterval
         ) {
             self.speakerID = speakerID
             self.isMe = isMe
             self.label = label
             self.displayName = displayName
+            self.personID = personID
             self.talkSeconds = talkSeconds
             self.firstHeard = firstHeard
         }
@@ -87,10 +90,11 @@ extension MeetingStore {
             db,
             sql: """
                 SELECT voice.meetingID, voice.speakerID, voice.talkSeconds, voice.firstHeard,
-                       speaker.isMe, speaker.label, speaker.displayName
+                       speaker.isMe, speaker.label, speaker.displayName, person.id AS personID
                 FROM meetingVoiceColumnsVoice AS voice
                 JOIN meeting ON meeting.id = voice.meetingID AND meeting.deletedAt IS NULL
                 JOIN speaker ON speaker.id = voice.speakerID
+                LEFT JOIN person ON person.id = speaker.personID AND person.deletedAt IS NULL
                 WHERE voice.meetingID IN (\(placeholders))
                 ORDER BY voice.meetingID, voice.voiceIndex
                 """,
@@ -101,8 +105,8 @@ extension MeetingStore {
                 row["speakerID"], table: "meetingVoiceColumnsVoice", column: "speakerID")
             voices[row["meetingID"], default: []].append(MeetingVoiceColumns.Voice(
                 speakerID: SpeakerID(rawValue: speaker), isMe: row["isMe"], label: row["label"],
-                displayName: row["displayName"], talkSeconds: row["talkSeconds"],
-                firstHeard: row["firstHeard"]))
+                displayName: row["displayName"], personID: try livePersonID(row),
+                talkSeconds: row["talkSeconds"], firstHeard: row["firstHeard"]))
         }
         var result = StoredVoiceColumns()
         for row in strips {
@@ -172,6 +176,13 @@ extension MeetingStore {
         let isMe: Bool
         let label: String
         let displayName: String?
+        let personID: PersonID?
+    }
+
+    /// The `personID` a left join on live people produced.
+    private static func livePersonID(_ row: Row) throws -> PersonID? {
+        try PersistedIdentity.optional(row["personID"], table: "speaker", column: "personID")
+            .map(PersonID.init(rawValue:))
     }
 
     private static func buildVoiceStrips(
@@ -221,7 +232,7 @@ extension MeetingStore {
                 speakers[voice.key.rawValue.uuidString].map {
                     MeetingVoiceColumns.Voice(
                         speakerID: voice.key, isMe: $0.isMe, label: $0.label,
-                        displayName: $0.displayName, talkSeconds: voice.talkSeconds,
+                        displayName: $0.displayName, personID: $0.personID, talkSeconds: voice.talkSeconds,
                         firstHeard: voice.firstHeard)
                 }
             }
@@ -257,12 +268,16 @@ extension MeetingStore {
         for row in try Row.fetchAll(
             db,
             sql: """
-                SELECT id, meetingID, isMe, label, displayName FROM speaker
-                WHERE deletedAt IS NULL AND meetingID IN (\(placeholders))
+                SELECT speaker.id, speaker.meetingID, speaker.isMe, speaker.label,
+                       speaker.displayName, person.id AS personID
+                FROM speaker
+                LEFT JOIN person ON person.id = speaker.personID AND person.deletedAt IS NULL
+                WHERE speaker.deletedAt IS NULL AND speaker.meetingID IN (\(placeholders))
                 """,
             arguments: StatementArguments(ids)) {
             speakers[row["meetingID"], default: [:]][row["id"]] = LiveSpeaker(
-                isMe: row["isMe"], label: row["label"], displayName: row["displayName"])
+                isMe: row["isMe"], label: row["label"], displayName: row["displayName"],
+                personID: try livePersonID(row))
         }
         return speakers
     }

@@ -58,22 +58,6 @@ final class HomeNextMeetingHeroTests: XCTestCase {
         XCTAssertEqual(NextMeetingCountdown(start: start, at: start.addingTimeInterval(600)), .now)
     }
 
-    func testInviteesKeepCalendarOrderWithYouLast() {
-        let cast = HomeNextMeetingHero.inviteeCast(["Marta", "Ilarion"])
-        XCTAssertEqual(cast.voices.map(\.name), ["Marta", "Ilarion", nil])
-        XCTAssertEqual(cast.voices.last?.tint, .you)
-        XCTAssertEqual(
-            cast.voices.first?.tint, .hue(VoiceHue.index(name: "Marta")),
-            "an invitee wears the hue their name has in recorded meetings")
-    }
-
-    func testInviteesPastTheCastFoldIntoOthers() {
-        let names = (1...7).map { "Person \($0)" }
-        let cast = HomeNextMeetingHero.inviteeCast(names)
-        XCTAssertEqual(cast.voices.count, VoiceHue.paletteSize + 1)
-        XCTAssertEqual(cast.others.map(\.name), ["Person 6", "Person 7"])
-    }
-
     func testFactsKeepOnlyWhatTheCalendarGave() {
         let full = UpcomingEvent(
             id: "e", title: "Sync", startDate: start, attendees: [],

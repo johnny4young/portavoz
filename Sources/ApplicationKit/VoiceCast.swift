@@ -68,8 +68,8 @@ public struct VoiceCast: Sendable, Equatable {
 
     /// - Parameters:
     ///   - current: live key of whoever is speaking now; leads a `.recency` cast.
-    ///   - previous: the last cast of the same meeting. Named voices keep the
-    ///     hue they already had, so live re-ranking or relabelling never
+    ///   - previous: an earlier cast. Named voices keep the hue it gave their
+    ///     key, else their name, so live re-ranking or relabelling never
     ///     recolours someone on screen.
     public init(
         members: [Member],
@@ -128,23 +128,28 @@ public struct VoiceCast: Sendable, Equatable {
         }
     }
 
-    /// Previous hues first, then each name's stable hue, or the next free one
-    /// when an earlier voice already holds it. Keyed by name, not live label.
+    /// Previous hues first, by key and then by name for a relabelled voice;
+    /// then each name's stable hue, or the next free one when taken.
     private static func assignHues(
         to named: [(key: String, name: String)], previous: VoiceCast?
     ) -> [String: Int] {
-        var kept: [String: Int] = [:]
+        var keptByKey: [String: Int] = [:]
+        var keptByName: [String: Int] = [:]
         for voice in previous?.voices ?? [] {
             if case .hue(let index) = voice.tint, let name = voice.name {
-                kept[VoiceHue.normalized(name)] = index
+                keptByKey[voice.key] = index
+                keptByName[VoiceHue.normalized(name)] = index
             }
         }
         var taken = Set<Int>()
         var result: [String: Int] = [:]
-        for member in named {
-            guard let index = kept[VoiceHue.normalized(member.name)], !taken.contains(index) else { continue }
-            result[member.key] = index
-            taken.insert(index)
+        for kept in [{ keptByKey[$0.key] }, { keptByName[VoiceHue.normalized($0.name)] }]
+            as [((key: String, name: String)) -> Int?] {
+            for member in named where result[member.key] == nil {
+                guard let index = kept(member), !taken.contains(index) else { continue }
+                result[member.key] = index
+                taken.insert(index)
+            }
         }
         for member in named where result[member.key] == nil {
             let preferred = VoiceHue.index(name: member.name)
@@ -182,6 +187,14 @@ extension VoiceCast {
                     talkSeconds: seconds[$0.id, default: 0])
             },
             ordering: .talkShare)
+    }
+
+    /// Calendar invitees in calendar order with you last.
+    public init(invitees: [String]) {
+        let members = invitees.enumerated().map { index, name in
+            Member(key: "invitee-\(index)", name: name, talkSeconds: 0)
+        } + [Member(key: "me", isMe: true, name: nil, talkSeconds: 0)]
+        self.init(members: members, ordering: .talkShare)
     }
 
     public static func key(_ id: SpeakerID) -> String { id.rawValue.uuidString }

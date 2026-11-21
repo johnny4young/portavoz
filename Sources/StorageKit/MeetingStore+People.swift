@@ -6,24 +6,43 @@ extension MeetingStore {
     /// Exact normalized-alias candidates. A nonempty result requires an
     /// explicit user choice; this method never links or merges anything.
     public func people(matchingAlias alias: String) async throws -> [Person] {
-        guard let normalized = PersonAliasNormalizer.normalize(alias) else { return [] }
-        return try await database.read { db in
-            try PersonRecord.fetchAll(
+        try await people(matchingAliases: [alias])[alias] ?? []
+    }
+
+    /// `people(matchingAlias:)` for several names in one read, keyed by each
+    /// name as given. A name without candidates is absent.
+    public func people(matchingAliases aliases: [String]) async throws -> [String: [Person]] {
+        var names: [String: [String]] = [:]
+        for alias in aliases {
+            guard let normalized = PersonAliasNormalizer.normalize(alias) else { continue }
+            names[normalized, default: []].append(alias)
+        }
+        guard !names.isEmpty else { return [:] }
+        let keys = Array(names.keys)
+        let matches = try await database.read { db in
+            try Row.fetchAll(
                 db,
                 sql: """
-                    SELECT DISTINCT person.*
+                    SELECT personAlias.normalizedAlias, person.*
                     FROM person
                     JOIN personAlias ON personAlias.personID = person.id
                     WHERE person.deletedAt IS NULL
                       AND personAlias.deletedAt IS NULL
-                      AND personAlias.normalizedAlias = ?
+                      AND personAlias.normalizedAlias IN (\(databaseQuestionMarks(count: keys.count)))
                     ORDER BY person.preferredName COLLATE NOCASE,
                              person.createdAt,
                              person.id
                     """,
-                arguments: [normalized])
-                .map { try $0.person }
+                arguments: StatementArguments(keys))
+                .map { (alias: $0["normalizedAlias"] as String, person: try PersonRecord(row: $0).person) }
         }
+        var result: [String: [Person]] = [:]
+        for match in matches {
+            for alias in names[match.alias] ?? [] {
+                result[alias, default: []].append(match.person)
+            }
+        }
+        return result
     }
 
     /// Creates one distinct person and links one live, non-user speaker in a
