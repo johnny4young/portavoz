@@ -894,7 +894,7 @@ extension ArchitectureDependencyTests {
         XCTAssertFalse(skills.contains("brief.execute(event)"))
         XCTAssertTrue(model.contains("let proposalID: UUID"))
         XCTAssertTrue(model.contains("approvedBrief: target.brief"))
-        XCTAssertTrue(adapter.contains("currentEvent == offer.event"))
+        XCTAssertTrue(adapter.contains("currentEvent.hasSamePreviewFacts(as: offer.event)"))
         XCTAssertTrue(adapter.contains("ExecuteSkill("))
         XCTAssertTrue(adapter.contains(
             "usesTemporaryStore && arguments.contains(\"-seed-brief\")"))

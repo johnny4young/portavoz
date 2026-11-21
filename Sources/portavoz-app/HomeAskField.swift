@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// The Ask entry on Today: one field with three ready questions under it.
-/// The typed text is the only state here; submitting hands it to the Ask
-/// surface exactly as the chips do.
+/// The Ask entry in Today's header. Its leading glyph opens three ready
+/// questions; submitting hands the text to the Ask surface exactly as a
+/// suggestion does.
 struct HomeAskField: View {
     let suggestions: [String]
     let onAsk: (String?) -> Void
@@ -10,53 +10,46 @@ struct HomeAskField: View {
     @State private var question = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: PVDesign.space2) {
-            HStack(spacing: PVDesign.space2) {
-                Image(systemName: PVSymbol.ask)
-                    .foregroundStyle(PVDesign.accent)
-                    .accessibilityHidden(true)
-                TextField("Ask your meetings…", text: $question)
-                    .textFieldStyle(.plain)
-                    .font(.body)
-                    .onSubmit(submit)
-                    .accessibilityIdentifier("home-ask-field")
-                Button(action: submit) {
-                    Label("Ask", systemImage: "arrow.up.circle.fill")
-                        .labelStyle(.iconOnly)
-                        .font(.title3)
+        HStack(spacing: PVDesign.space2) {
+            Menu {
+                ForEach(Array(suggestions.prefix(3).enumerated()), id: \.offset) { index, suggestion in
+                    let question = L10n.text(suggestion)
+                    Button(question) { onAsk(question) }
+                    .accessibilityIdentifier("home-ask-chip-\(index)")
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(PVDesign.accent)
-                .accessibilityLabel(L10n.text("Ask"))
-                .accessibilityIdentifier("home-ask")
-            }
-            .padding(.horizontal, PVDesign.space3)
-            .padding(.vertical, PVDesign.space2)
-            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: PVDesign.radiusCard))
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: PVDesign.space2) { chips }
-                VStack(alignment: .leading, spacing: PVDesign.space2) { chips }
-            }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("home-ask-section")
-    }
-
-    private var chips: some View {
-        ForEach(Array(suggestions.prefix(3).enumerated()), id: \.offset) { index, question in
-            Button {
-                onAsk(L10n.text(question))
             } label: {
-                Text(L10n.text(question))
-                    .font(.callout)
-                    .lineLimit(1)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(PVDesign.accent.opacity(PVDesign.chipTint), in: Capsule())
+                Image(systemName: PVSymbol.ask)
+                    .foregroundStyle(PVDesign.ink3)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Suggested questions")
+            .accessibilityLabel(L10n.text("Suggested questions"))
+            .accessibilityIdentifier("home-ask-suggestions")
+            TextField("Ask your meetings…", text: $question)
+                .textFieldStyle(.plain)
+                .onSubmit(submit)
+                .accessibilityIdentifier("home-ask-field")
+            Button(action: submit) {
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(PVDesign.onInk)
+                    .frame(width: 22, height: 22)
+                    .background(PVDesign.ink, in: Circle())
+                    .contentShape(Circle())
             }
             .buttonStyle(.plain)
-            .accessibilityIdentifier("home-ask-chip-\(index)")
+            .accessibilityLabel(L10n.text("Ask"))
+            .accessibilityIdentifier("home-ask")
         }
+        .padding(.leading, PVDesign.space3)
+        .padding(.trailing, 4)
+        .frame(height: 30)
+        .background(PVDesign.raise, in: Capsule())
+        .overlay(Capsule().strokeBorder(PVDesign.line2, lineWidth: 0.5))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("home-ask-section")
     }
 
     private func submit() {

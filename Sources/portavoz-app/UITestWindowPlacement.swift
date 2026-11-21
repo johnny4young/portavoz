@@ -67,17 +67,22 @@ enum UITestWindowPlacement {
         } else {
             preferredHeight = nil
         }
-        let frame = mainWindowFrame(in: visibleFrame, preferredHeight: preferredHeight)
+        let frame = mainWindowFrame(
+            in: visibleFrame,
+            preferredHeight: preferredHeight,
+            fullWidth: arguments.contains("-seed-wide-window"))
         applyAcceptedNotificationCenterIsolation(to: window)
         window.setFrame(frame, display: true, animate: false)
     }
 
+    /// `fullWidth` gives up the left clearance so wide layouts can be seen.
     static func mainWindowFrame(
         in visibleFrame: NSRect,
-        preferredHeight: CGFloat?
+        preferredHeight: CGFloat?,
+        fullWidth: Bool = false
     ) -> NSRect {
         let minimumWidth: CGFloat = 900
-        let leftClearance = min(
+        let leftClearance = fullWidth ? 0 : min(
             400,
             max(0, visibleFrame.width - minimumWidth))
         let height = min(visibleFrame.height, preferredHeight ?? visibleFrame.height)

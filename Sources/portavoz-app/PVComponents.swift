@@ -69,7 +69,7 @@ private struct PVButtonBody: View {
     }
 }
 
-private struct RecordDot: View {
+struct RecordDot: View {
     var size: CGFloat = 9
 
     var body: some View {

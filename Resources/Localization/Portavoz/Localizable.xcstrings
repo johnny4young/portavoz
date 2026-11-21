@@ -531,6 +531,16 @@
         }
       }
     },
+    "Automations · %d to review": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatizaciones · %d por revisar"
+          }
+        }
+      }
+    },
     "Commitment · suggested due %@": {
       "localizations": {
         "es": {
@@ -551,12 +561,82 @@
         }
       }
     },
+    "daily": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "diaria"
+          }
+        }
+      }
+    },
+    "h": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "h"
+          }
+        }
+      }
+    },
+    "Later today": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Más tarde hoy"
+          }
+        }
+      }
+    },
+    "min": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "min"
+          }
+        }
+      }
+    },
+    "monthly": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "mensual"
+          }
+        }
+      }
+    },
+    "Now": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ahora"
+          }
+        }
+      }
+    },
     "Now %@": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Ahora %@"
+          }
+        }
+      }
+    },
+    "Open brief": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir brief"
           }
         }
       }
@@ -11855,6 +11935,16 @@
         }
       }
     },
+    "Review the automations Portavoz suggested from your meetings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa las automatizaciones que Portavoz sugirió a partir de tus reuniones"
+          }
+        }
+      }
+    },
     "Review the available audio. Retranscribing cannot restore missing audio.": {
       "localizations": {
         "es": {
@@ -13301,6 +13391,16 @@
         }
       }
     },
+    "Starts %@ · in": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza a las %@ · faltan"
+          }
+        }
+      }
+    },
     "Starts a new Portavoz meeting recording.": {
       "localizations": {
         "es": {
@@ -13487,6 +13587,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Responsable sugerido: %@"
+          }
+        }
+      }
+    },
+    "Suggested questions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preguntas sugeridas"
           }
         }
       }
@@ -15191,6 +15301,16 @@
         }
       }
     },
+    "Tomorrow · %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mañana · %@"
+          }
+        }
+      }
+    },
     "Topic (optional)": {
       "localizations": {
         "es": {
@@ -15981,6 +16101,16 @@
         }
       }
     },
+    "weekly": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "semanal"
+          }
+        }
+      }
+    },
     "Went Well": {
       "localizations": {
         "es": {
@@ -16187,6 +16317,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Año"
+          }
+        }
+      }
+    },
+    "yearly": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "anual"
           }
         }
       }

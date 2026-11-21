@@ -105,6 +105,9 @@ final class UITestMainWindowCaptureTests: XCTestCase {
             XCTAssertTrue(visible.contains(compact))
             XCTAssertTrue(visible.contains(minimum))
             XCTAssertGreaterThanOrEqual(compact.width, 900)
+            let wide = UITestWindowPlacement.mainWindowFrame(
+                in: visible, preferredHeight: nil, fullWidth: true)
+            XCTAssertEqual(wide, visible)
         }
     }
 

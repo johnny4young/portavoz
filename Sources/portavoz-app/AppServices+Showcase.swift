@@ -187,12 +187,16 @@ extension AppServices {
                     id: "showcase-sync-qvtl",
                     title: "Sync semanal QVTL",
                     startDate: now.addingTimeInterval(45 * 60),
-                    attendees: ["Marta", "Ilarion"]),
+                    attendees: ["Marta", "Ilarion"],
+                    endDate: now.addingTimeInterval(90 * 60),
+                    platform: .googleMeet,
+                    recurrence: .weekly),
                 UpcomingEvent(
                     id: "showcase-1-1-marta",
                     title: "1:1 con Marta",
                     startDate: now.addingTimeInterval(4 * 3_600),
-                    attendees: ["Marta"])
+                    attendees: ["Marta"],
+                    endDate: now.addingTimeInterval(4 * 3_600 + 30 * 60))
             ],
             tomorrow: [
                 UpcomingEvent(

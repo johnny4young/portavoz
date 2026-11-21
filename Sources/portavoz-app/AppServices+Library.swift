@@ -156,6 +156,10 @@ extension AppServices: LibraryModelClient {
     func buildLibraryBrief(for event: UpcomingEvent) async -> MeetingBrief? {
         try? await meetingBriefUseCase.execute(event)
     }
+
+    func pendingLibraryAutomations() async -> Int {
+        (try? await loadSkillOfferReview())?.offers.count ?? 0
+    }
 }
 
 private func makeApplicationLibraryStream(

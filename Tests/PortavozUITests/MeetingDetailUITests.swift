@@ -66,7 +66,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "Meeting Detail must render first content for 20,000 segments")
         let generatedDocument = app.control(withIdentifier: "detail-generated-document")
         XCTAssertTrue(
-            generatedDocument.waitForExistenceFast(timeout: 15),
+            waitForSummaryText(generatedDocument, in: app),
             "the scale detail must expose one bounded generated-document surface")
         XCTAssertTrue(
             waitForSummaryText(

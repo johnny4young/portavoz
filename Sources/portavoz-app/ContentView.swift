@@ -135,6 +135,10 @@ struct ContentView: View {
                                 askModel.submit()
                             }
                             route = .ask
+                        },
+                        onOpenAutomations: {
+                            services.pendingSettingsCategory = .skills
+                            openSettings()
                         })
                 }
             }
