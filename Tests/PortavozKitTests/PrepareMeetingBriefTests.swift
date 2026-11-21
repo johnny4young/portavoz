@@ -145,10 +145,32 @@ final class PrepareMeetingBriefTests: XCTestCase {
         XCTAssertEqual(brief.related.map(\.meetingID), [relatedID])
     }
 
+    func testADegradedInputKeepsTheRecordedSource() async throws {
+        let failedRetrieval = BriefSourceRecorderFake(occurrence: nil)
+        _ = try await PrepareMeetingBrief(
+            ask: AskMeetings(
+                retrieval: BriefRetrievalFake(scenario: .failure),
+                answering: BriefAnsweringFake()),
+            library: BriefLibraryFake(summaries: [:], items: []),
+            synthesizer: BriefSynthesizerFake(points: []),
+            sources: failedRetrieval)(event)
+        let failedLookup = BriefSourceRecorderFake(occurrence: nil, failure: BriefFakeError.expected)
+        let relatedID = MeetingID()
+        _ = try await makeUseCase(
+            citations: [citation(relatedID, title: "Budget", text: "Ana approved the budget rollout")],
+            summaries: [relatedID: "Overview."], items: [], synthesis: [], sources: failedLookup)(event)
+
+        let afterRetrieval = await failedRetrieval.recorded
+        let afterLookup = await failedLookup.recorded
+        XCTAssertTrue(afterRetrieval.isEmpty)
+        XCTAssertTrue(afterLookup.isEmpty)
+    }
+
     func testSourceRecorderCancellationRemainsCancellation() async {
         for cancelsLookup in [true, false] {
             let recorder = BriefSourceRecorderFake(
-                occurrence: nil, failure: CancellationError(), failsLookupOnly: cancelsLookup)
+                occurrence: nil, failure: CancellationError(),
+                failsLookupOnly: cancelsLookup, failsRecordOnly: !cancelsLookup)
             do {
                 _ = try await makeUseCase(
                     citations: [], summaries: [:], items: [], synthesis: [], sources: recorder)(event)
@@ -213,18 +235,23 @@ private actor BriefSourceRecorderFake: MeetingBriefSourceRecording {
     private let occurrence: MeetingID?
     private let failure: (any Error)?
     private let failsLookupOnly: Bool
+    private let failsRecordOnly: Bool
     private(set) var lookups: [Lookup] = []
     private(set) var recorded: [Record] = []
 
-    init(occurrence: MeetingID?, failure: (any Error)? = nil, failsLookupOnly: Bool = false) {
+    init(
+        occurrence: MeetingID?, failure: (any Error)? = nil,
+        failsLookupOnly: Bool = false, failsRecordOnly: Bool = false
+    ) {
         self.occurrence = occurrence
         self.failure = failure
         self.failsLookupOnly = failsLookupOnly
+        self.failsRecordOnly = failsRecordOnly
     }
 
     func previousMeetingBriefOccurrence(title: String, before date: Date) async throws -> MeetingID? {
         lookups.append(Lookup(title: title, before: date))
-        if let failure { throw failure }
+        if let failure, !failsRecordOnly { throw failure }
         return occurrence
     }
 

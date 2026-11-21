@@ -8,8 +8,9 @@ extension MeetingStore {
     /// Sources of events that started longer ago than this are pruned.
     static let meetingBriefSourceRetention: TimeInterval = 86_400
 
-    /// The most recent live, ended meeting started before `date` whose title
-    /// equals `title` ignoring case, diacritics and spacing.
+    /// The most recent live meeting that ended by `date` whose title equals
+    /// `title` ignoring case, diacritics and spacing. Ending by the event's
+    /// start keeps an ongoing event's own recording out.
     public func previousMeetingOccurrence(
         title: String, before date: Date
     ) async throws -> MeetingID? {
@@ -21,12 +22,12 @@ extension MeetingStore {
                 db,
                 sql: """
                     SELECT id, title FROM meeting
-                    WHERE deletedAt IS NULL AND endedAt IS NOT NULL
+                    WHERE deletedAt IS NULL AND endedAt <= ?
                       AND startedAt < ? AND startedAt >= ?
                     ORDER BY startedAt DESC, id
                     LIMIT 2000
                     """,
-                arguments: [date, date.addingTimeInterval(-Self.meetingBriefOccurrenceWindow)])
+                arguments: [date, date, date.addingTimeInterval(-Self.meetingBriefOccurrenceWindow)])
             while let row = try rows.next() {
                 guard MeetingBriefLines.titleKey(row["title"]) == key else { continue }
                 return MeetingID(rawValue: try PersistedIdentity.required(
@@ -36,9 +37,9 @@ extension MeetingStore {
         }
     }
 
-    /// Remembers which past meeting an upcoming event continues and builds its
-    /// lines unless they are current. A nil, tombstoned or later-starting
-    /// source clears the event.
+    /// Remembers which past meeting an event occurrence continues and builds
+    /// its lines unless they are current. A nil or tombstoned source, or one
+    /// that had not ended by the event's start, clears the occurrence.
     public func recordMeetingBriefSource(
         eventID: String, eventStartAt: Date, sourceMeetingID: MeetingID?, at now: Date = Date()
     ) async throws {
@@ -53,102 +54,111 @@ extension MeetingStore {
                         INSERT INTO meetingBriefSource
                             (eventID, eventStartAt, sourceMeetingID, preparedAt, linesBuiltAt)
                         SELECT ?, ?, id, ?, NULL FROM meeting
-                        WHERE id = ? AND deletedAt IS NULL AND startedAt < ?
-                        ON CONFLICT(eventID) DO UPDATE SET
-                            eventStartAt = excluded.eventStartAt,
+                        WHERE id = ? AND deletedAt IS NULL AND startedAt < ? AND endedAt <= ?
+                        ON CONFLICT(eventID, eventStartAt) DO UPDATE SET
                             sourceMeetingID = excluded.sourceMeetingID,
                             preparedAt = excluded.preparedAt,
                             linesBuiltAt = CASE WHEN sourceMeetingID = excluded.sourceMeetingID
                                 THEN linesBuiltAt END
                         """,
                     arguments: [
-                        eventID, eventStartAt, now, sourceMeetingID.rawValue.uuidString, eventStartAt
+                        eventID, eventStartAt, now, sourceMeetingID.rawValue.uuidString,
+                        eventStartAt, eventStartAt
                     ])
                 if db.changesCount > 0 {
-                    let current = try Bool.fetchOne(
-                        db, sql: "SELECT linesBuiltAt IS NOT NULL FROM meetingBriefSource WHERE eventID = ?",
-                        arguments: [eventID]) ?? false
-                    // A failed build leaves the lines pending for the next read.
-                    if !current {
-                        try? db.inSavepoint {
-                            try Self.refreshMeetingBriefLines(in: db, forEventID: eventID, at: now)
-                            return .commit
-                        }
+                    let row = try Row.fetchOne(
+                        db,
+                        sql: """
+                            SELECT id, linesBuiltAt IS NOT NULL AS current FROM meetingBriefSource
+                            WHERE eventID = ? AND eventStartAt = ?
+                            """,
+                        arguments: [eventID, eventStartAt])
+                    if let row, !(row["current"] as Bool) {
+                        try Self.rebuildMeetingBriefLines(in: db, sourceID: row["id"], at: now)
                     }
                     return
                 }
             }
             try db.execute(
-                sql: "DELETE FROM meetingBriefSource WHERE eventID = ?", arguments: [eventID])
+                sql: "DELETE FROM meetingBriefSource WHERE eventID = ? AND eventStartAt = ?",
+                arguments: [eventID, eventStartAt])
         }
     }
 
-    public func meetingBriefLines(forEventID eventID: String) async throws -> MeetingBriefLines? {
-        try await meetingBriefLines(forEventIDs: [eventID])[eventID]
+    public func meetingBriefLines(
+        for occurrence: MeetingBriefLines.Occurrence
+    ) async throws -> MeetingBriefLines? {
+        try await meetingBriefLines(for: [occurrence])[occurrence]
     }
 
-    /// What each person said last time, per upcoming event, rebuilding any
-    /// lines a change to the source meeting cleared. Events without a recorded
-    /// source or with a tombstoned one are absent, as is one whose rebuild fails.
+    /// What each person said last time, per event occurrence, rebuilding any
+    /// lines a change to the source meeting cleared. Occurrences without a
+    /// recorded source or with a tombstoned one are absent.
     public func meetingBriefLines(
-        forEventIDs eventIDs: [String]
-    ) async throws -> [String: MeetingBriefLines] {
-        guard !eventIDs.isEmpty else { return [:] }
+        for occurrences: [MeetingBriefLines.Occurrence]
+    ) async throws -> [MeetingBriefLines.Occurrence: MeetingBriefLines] {
+        guard !occurrences.isEmpty else { return [:] }
         let stored = try await database.read { db in
-            try Self.fetchMeetingBriefLines(in: db, for: eventIDs)
+            try Self.fetchMeetingBriefLines(in: db, for: occurrences)
         }
         guard !stored.stale.isEmpty else { return stored.lines }
         let rebuilt = try await database.write { db in
-            for eventID in stored.stale {
-                try? db.inSavepoint {
-                    try Self.refreshMeetingBriefLines(in: db, forEventID: eventID)
-                    return .commit
-                }
+            for sourceID in stored.stale.values {
+                try Self.rebuildMeetingBriefLines(in: db, sourceID: sourceID, at: Date())
             }
-            return try Self.fetchMeetingBriefLines(in: db, for: stored.stale)
+            return try Self.fetchMeetingBriefLines(in: db, for: Array(stored.stale.keys))
         }
         return stored.lines.merging(rebuilt.lines) { _, new in new }
     }
 
     struct StoredMeetingBriefLines {
-        var lines: [String: MeetingBriefLines] = [:]
-        /// Events whose lines a source change cleared.
-        var stale: [String] = []
+        var lines: [MeetingBriefLines.Occurrence: MeetingBriefLines] = [:]
+        /// Sources whose lines a change cleared.
+        var stale: [MeetingBriefLines.Occurrence: Int64] = [:]
     }
 
     static func fetchMeetingBriefLines(
-        in db: Database, for eventIDs: [String]
+        in db: Database, for occurrences: [MeetingBriefLines.Occurrence]
     ) throws -> StoredMeetingBriefLines {
-        let placeholders = databaseQuestionMarks(count: eventIDs.count)
-        let sources = try Row.fetchAll(
-            db,
-            sql: """
-                SELECT source.eventID, source.eventStartAt, source.sourceMeetingID,
-                       source.preparedAt, source.linesBuiltAt
-                FROM meetingBriefSource AS source
-                JOIN meeting ON meeting.id = source.sourceMeetingID AND meeting.deletedAt IS NULL
-                WHERE source.eventID IN (\(placeholders))
-                """,
-            arguments: StatementArguments(eventIDs))
+        var result = StoredMeetingBriefLines()
+        var built: [Int64: (occurrence: MeetingBriefLines.Occurrence, row: Row)] = [:]
+        for occurrence in Set(occurrences) {
+            guard let row = try Row.fetchOne(
+                db,
+                sql: """
+                    SELECT source.id, source.sourceMeetingID, source.preparedAt, source.linesBuiltAt
+                    FROM meetingBriefSource AS source
+                    JOIN meeting ON meeting.id = source.sourceMeetingID AND meeting.deletedAt IS NULL
+                    WHERE source.eventID = ? AND source.eventStartAt = ?
+                    """,
+                arguments: [occurrence.eventID, occurrence.startAt])
+            else { continue }
+            if (row["linesBuiltAt"] as Date?) == nil {
+                result.stale[occurrence] = row["id"]
+            } else {
+                built[row["id"]] = (occurrence, row)
+            }
+        }
+        guard !built.isEmpty else { return result }
         let lineRows = try Row.fetchAll(
             db,
             sql: """
-                SELECT line.eventID, line.speakerID, line.kind, line.text, line.segmentID,
+                SELECT line.sourceID, line.speakerID, line.kind, line.text, line.segmentID,
                        line.time, line.status, line.dueAt,
                        speaker.isMe, speaker.label, speaker.displayName, speaker.personID
                 FROM meetingBriefLine AS line
                 JOIN speaker ON speaker.id = line.speakerID
-                WHERE line.eventID IN (\(placeholders))
-                ORDER BY line.eventID, line.ordinal
+                WHERE line.sourceID IN (\(databaseQuestionMarks(count: built.count)))
+                ORDER BY line.sourceID, line.ordinal
                 """,
-            arguments: StatementArguments(eventIDs))
-        var people: [String: [MeetingBriefLines.Person]] = [:]
+            arguments: StatementArguments(Array(built.keys)))
+        var people: [Int64: [MeetingBriefLines.Person]] = [:]
         for row in lineRows {
-            let event: String = row["eventID"]
+            let source: Int64 = row["sourceID"]
             let speaker = SpeakerID(rawValue: try PersistedIdentity.required(
                 row["speakerID"], table: "meetingBriefLine", column: "speakerID"))
             let line = try meetingBriefLine(from: row)
-            var known = people[event] ?? []
+            var known = people[source] ?? []
             // Ordinals keep one person's lines together.
             let previous = known.last?.speakerID == speaker ? known.removeLast().lines : []
             let person = try PersistedIdentity.optional(
@@ -157,20 +167,14 @@ extension MeetingStore {
                 speakerID: speaker, personID: person.map(PersonID.init(rawValue:)),
                 isMe: row["isMe"], label: row["label"], displayName: row["displayName"],
                 lines: previous + [line]))
-            people[event] = known
+            people[source] = known
         }
-        var result = StoredMeetingBriefLines()
-        for row in sources {
-            let event: String = row["eventID"]
-            guard (row["linesBuiltAt"] as Date?) != nil else {
-                result.stale.append(event)
-                continue
-            }
-            result.lines[event] = MeetingBriefLines(
-                eventID: event, eventStartAt: row["eventStartAt"],
+        for (sourceID, entry) in built {
+            result.lines[entry.occurrence] = MeetingBriefLines(
+                occurrence: entry.occurrence,
                 sourceMeetingID: MeetingID(rawValue: try PersistedIdentity.required(
-                    row["sourceMeetingID"], table: "meetingBriefSource", column: "sourceMeetingID")),
-                preparedAt: row["preparedAt"], people: people[event] ?? [])
+                    entry.row["sourceMeetingID"], table: "meetingBriefSource", column: "sourceMeetingID")),
+                preparedAt: entry.row["preparedAt"], people: people[sourceID] ?? [])
         }
         return result
     }
@@ -183,43 +187,51 @@ extension MeetingStore {
             time: row["time"], status: MeetingBriefLines.Status(column: row["status"], due: row["dueAt"]))
     }
 
-    /// Rebuilds one event's lines from its source meeting and marks them built,
-    /// even when there are none. A malformed correction history fails the rebuild.
-    static func refreshMeetingBriefLines(
-        in db: Database, forEventID eventID: String, at timestamp: Date = Date()
-    ) throws {
+    /// Replaces one source's lines and marks them built. A failed build keeps
+    /// no lines until the source changes again, so later reads stay reads.
+    static func rebuildMeetingBriefLines(in db: Database, sourceID: Int64, at timestamp: Date) throws {
+        try db.execute(sql: "DELETE FROM meetingBriefLine WHERE sourceID = ?", arguments: [sourceID])
+        do {
+            try db.inSavepoint {
+                try insertMeetingBriefLines(in: db, sourceID: sourceID)
+                return .commit
+            }
+        } catch {
+            // Disposable cache: an unreadable source shows no lines rather than failing the caller.
+        }
+        try db.execute(
+            sql: "UPDATE meetingBriefSource SET linesBuiltAt = ? WHERE id = ?",
+            arguments: [timestamp, sourceID])
+    }
+
+    private static func insertMeetingBriefLines(in db: Database, sourceID: Int64) throws {
         guard let meetingKey = try String.fetchOne(
             db,
             sql: """
                 SELECT source.sourceMeetingID FROM meetingBriefSource AS source
                 JOIN meeting ON meeting.id = source.sourceMeetingID AND meeting.deletedAt IS NULL
-                WHERE source.eventID = ?
+                WHERE source.id = ?
                 """,
-            arguments: [eventID])
+            arguments: [sourceID])
         else { return }
         let meetingID = MeetingID(rawValue: try PersistedIdentity.required(
             meetingKey, table: "meetingBriefSource", column: "sourceMeetingID"))
-        let people = try buildMeetingBriefLines(in: db, for: meetingID)
-        try db.execute(sql: "DELETE FROM meetingBriefLine WHERE eventID = ?", arguments: [eventID])
         let insert = try db.cachedStatement(sql: """
             INSERT INTO meetingBriefLine
-                (eventID, ordinal, speakerID, kind, text, segmentID, time, status, dueAt)
+                (sourceID, ordinal, speakerID, kind, text, segmentID, time, status, dueAt)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """)
         var ordinal = 0
-        for person in people {
+        for person in try buildMeetingBriefLines(in: db, for: meetingID) {
             for line in person.lines {
                 let status = line.status.column
                 try insert.execute(arguments: [
-                    eventID, ordinal, person.speakerID.rawValue.uuidString, line.kind.rawValue,
+                    sourceID, ordinal, person.speakerID.rawValue.uuidString, line.kind.rawValue,
                     line.text, line.segmentID?.uuidString, line.time, status.name, status.due
                 ])
                 ordinal += 1
             }
         }
-        try db.execute(
-            sql: "UPDATE meetingBriefSource SET linesBuiltAt = ? WHERE eventID = ?",
-            arguments: [timestamp, eventID])
     }
 }
 

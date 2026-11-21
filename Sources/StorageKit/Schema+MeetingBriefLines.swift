@@ -2,25 +2,28 @@ import GRDB
 import PortavozCore
 
 extension StorageSchema {
-    /// The previous occurrence chosen for an upcoming event and a disposable
+    /// The previous occurrence chosen for each occurrence of an upcoming event
+    /// (recurring events share their identifier) and a disposable
     /// cache of what each person said in it. Triggers clear the lines when the
     /// source meeting's content changes and drop the choice when it is renamed.
     static func registerMeetingBriefLinesMigration(in migrator: inout DatabaseMigrator) {
         migrator.registerMigration("v62") { db in
             try db.create(table: "meetingBriefSource") { table in
-                table.primaryKey("eventID", .text).check(sql: """
+                table.autoIncrementedPrimaryKey("id")
+                table.column("eventID", .text).notNull().check(sql: """
                     length(CAST(eventID AS BLOB)) BETWEEN 1 AND \(UpcomingEvent.maximumIdentifierLength)
                     """)
-                table.column("eventStartAt", .datetime).notNull()
+                table.column("eventStartAt", .datetime).notNull().indexed()
                 table.column("sourceMeetingID", .text).notNull().indexed()
                     .references("meeting", onDelete: .cascade)
                 table.column("preparedAt", .datetime).notNull()
                 // NULL means the lines need a rebuild; a built source may hold none.
                 table.column("linesBuiltAt", .datetime)
+                table.uniqueKey(["eventID", "eventStartAt"])
             }
             try db.create(table: "meetingBriefLine") { table in
-                table.column("eventID", .text).notNull()
-                    .references("meetingBriefSource", column: "eventID", onDelete: .cascade)
+                table.column("sourceID", .integer).notNull()
+                    .references("meetingBriefSource", onDelete: .cascade)
                 table.column("ordinal", .integer).notNull().check(sql: "ordinal >= 0")
                 table.column("speakerID", .text).notNull()
                 table.column("kind", .text).notNull()
@@ -31,7 +34,7 @@ extension StorageSchema {
                 table.column("status", .text).notNull()
                     .check(sql: "status IN ('said', 'unresolved', 'open', 'closed')")
                 table.column("dueAt", .datetime)
-                table.primaryKey(["eventID", "ordinal"])
+                table.primaryKey(["sourceID", "ordinal"])
                 table.check(sql: """
                     (kind = 'quote' AND status = 'said')
                     OR (kind = 'commitment' AND status IN ('open', 'closed'))
@@ -65,19 +68,19 @@ extension StorageSchema {
             "AFTER UPDATE OF \(columns.joined(separator: ", ")) ON \(table) WHEN \(valuesChanged(columns))"
         }
         // Migrations run with foreign keys off, so the child rows cannot rely on the cascade.
-        func events(_ meetings: String) -> String {
-            "SELECT eventID FROM meetingBriefSource WHERE sourceMeetingID IN (\(meetings))"
+        func sources(_ meetings: String) -> String {
+            "SELECT id FROM meetingBriefSource WHERE sourceMeetingID IN (\(meetings))"
         }
         func stale(_ meetings: String) -> String {
             """
-            DELETE FROM meetingBriefLine WHERE eventID IN (\(events(meetings)));
+            DELETE FROM meetingBriefLine WHERE sourceID IN (\(sources(meetings)));
             UPDATE meetingBriefSource SET linesBuiltAt = NULL
             WHERE linesBuiltAt IS NOT NULL AND sourceMeetingID IN (\(meetings));
             """
         }
         func forget(_ meetings: String) -> String {
             """
-            DELETE FROM meetingBriefLine WHERE eventID IN (\(events(meetings)));
+            DELETE FROM meetingBriefLine WHERE sourceID IN (\(sources(meetings)));
             DELETE FROM meetingBriefSource WHERE sourceMeetingID IN (\(meetings));
             """
         }

@@ -93,7 +93,46 @@ extension MeetingStore {
     private static func commitmentLines(
         in db: Database, for meetingID: MeetingID, transcript: Transcript
     ) throws -> [SpeakerID: [MeetingBriefLines.Line]] {
-        let rows = try Row.fetchAll(
+        let rows = try ownedActionItemRows(in: db, for: meetingID)
+        func ownerID(of row: Row) throws -> SpeakerID {
+            SpeakerID(rawValue: try PersistedIdentity.required(
+                row["ownerSpeakerID"], table: "actionItem", column: "ownerSpeakerID"))
+        }
+        func trimmedText(of row: Row) -> String {
+            (row["text"] as String).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        var lines: [SpeakerID: [MeetingBriefLines.Line]] = [:]
+        // A dismissed item stays hidden when another recipe repeats it.
+        var seen: [SpeakerID: Set<String>] = [:]
+        for row in rows where (row["commitmentStatus"] as String?) == CommitmentStatus.dismissed.rawValue {
+            seen[try ownerID(of: row), default: []].insert(MeetingBriefLines.titleKey(trimmedText(of: row)))
+        }
+        for row in rows {
+            let owner = try ownerID(of: row)
+            let text = trimmedText(of: row)
+            let status: MeetingBriefLines.Status
+            switch try (row["commitmentStatus"] as String?).map(commitmentStatus) {
+            case .dismissed: continue
+            case .done: status = .closed
+            case .confirmed: status = .open(due: row["dueAt"])
+            case nil: status = row["isDone"] ? .closed : .open(due: nil)
+            }
+            // Two recipes can state the same item.
+            guard !text.isEmpty,
+                  seen[owner, default: []].insert(MeetingBriefLines.titleKey(text)).inserted
+            else { continue }
+            let segment = try PersistedIdentity.optional(
+                row["segmentID"], table: "summaryActionItemEvidenceSegment", column: "segmentID")
+            let evidence = segment.flatMap { id in transcript.segments[id].map { (id: id, start: $0.start) } }
+            lines[owner, default: []].append(MeetingBriefLines.Line(
+                kind: .commitment, text: text, segmentID: evidence?.id,
+                time: max(0, evidence?.start ?? 0), status: status))
+        }
+        return lines.mapValues(MeetingBriefLines.pendingFirst)
+    }
+
+    private static func ownedActionItemRows(in db: Database, for meetingID: MeetingID) throws -> [Row] {
+        try Row.fetchAll(
             db,
             sql: """
                 SELECT actionItem.text, actionItem.ownerSpeakerID, actionItem.isDone,
@@ -123,31 +162,6 @@ extension MeetingStore {
                 ORDER BY actionItem.createdAt, actionItem.rowid
                 """,
             arguments: [meetingID.rawValue.uuidString])
-        var lines: [SpeakerID: [MeetingBriefLines.Line]] = [:]
-        var seen: [SpeakerID: Set<String>] = [:]
-        for row in rows {
-            let owner = SpeakerID(rawValue: try PersistedIdentity.required(
-                row["ownerSpeakerID"], table: "actionItem", column: "ownerSpeakerID"))
-            let text = (row["text"] as String).trimmingCharacters(in: .whitespacesAndNewlines)
-            let status: MeetingBriefLines.Status
-            switch try (row["commitmentStatus"] as String?).map(commitmentStatus) {
-            case .dismissed: continue
-            case .done: status = .closed
-            case .confirmed: status = .open(due: row["dueAt"])
-            case nil: status = row["isDone"] ? .closed : .open(due: nil)
-            }
-            // Two recipes can state the same item.
-            guard !text.isEmpty,
-                  seen[owner, default: []].insert(MeetingBriefLines.titleKey(text)).inserted
-            else { continue }
-            let segment = try PersistedIdentity.optional(
-                row["segmentID"], table: "summaryActionItemEvidenceSegment", column: "segmentID")
-            let evidence = segment.flatMap { id in transcript.segments[id].map { (id: id, start: $0.start) } }
-            lines[owner, default: []].append(MeetingBriefLines.Line(
-                kind: .commitment, text: text, segmentID: evidence?.id,
-                time: max(0, evidence?.start ?? 0), status: status))
-        }
-        return lines.mapValues(MeetingBriefLines.pendingFirst)
     }
 
     private static func questionLines(

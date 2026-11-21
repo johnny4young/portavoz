@@ -162,19 +162,20 @@ public struct PrepareMeetingBrief: ApplicationUseCase {
             eventTitle: event.title,
             attendees: event.attendees)
         let query = ([event.title] + event.attendees).joined(separator: " ")
-        async let previousOccurrence = degrade(to: MeetingID?.none) {
-            try await sources.previousMeetingBriefOccurrence(
+        // nil marks a degraded input, which must not replace a recorded source.
+        async let previousOccurrence = degrade(to: MeetingID??.none) {
+            .some(try await sources.previousMeetingBriefOccurrence(
                 title: event.title,
-                before: event.startDate)
+                before: event.startDate))
         }
-        let citations = try await degrade(to: []) {
+        let citations = try await degrade(to: [AskCitation]?.none) {
             try await ask.evidence(
                 query,
                 source: .library,
                 limit: 12)
         }
-        let ranked = BriefRelevance.rank(passages: citations, terms: terms)
-        async let summaryMarkdowns = degrade(to: [MeetingID: String]()) {
+        let ranked = BriefRelevance.rank(passages: citations ?? [], terms: terms)
+        async let summaryMarkdowns = degrade(to: [MeetingID: String]?.none) {
             try await library.meetingBriefSummaryMarkdowns(
                 for: ranked.map(\.meetingID))
         }
@@ -182,7 +183,8 @@ public struct PrepareMeetingBrief: ApplicationUseCase {
             try await library.openMeetingBriefItems(limit: 50)
         }
 
-        let summaries = try await summaryMarkdowns
+        let loadedSummaries = try await summaryMarkdowns
+        let summaries = loadedSummaries ?? [:]
         let related = ranked.compactMap { candidate -> MeetingBrief.RelatedMeeting? in
             guard let markdown = summaries[candidate.meetingID] else { return nil }
             return MeetingBrief.RelatedMeeting(
@@ -194,12 +196,17 @@ public struct PrepareMeetingBrief: ApplicationUseCase {
         }
 
         // A same-title occurrence wins over the best related meeting.
-        let sourceMeetingID = try await previousOccurrence ?? related.first?.meetingID
+        let sourceMeetingID: MeetingID?? = switch try await previousOccurrence {
+        case .some(.some(let occurrence)): occurrence
+        case .some(.none) where citations != nil && loadedSummaries != nil: .some(related.first?.meetingID)
+        default: .none
+        }
         async let recordedSource: Void = degrade(to: ()) {
+            guard case .some(let source) = sourceMeetingID else { return }
             try await sources.recordMeetingBriefSource(
                 eventID: event.id,
                 eventStartAt: event.startDate,
-                sourceMeetingID: sourceMeetingID)
+                sourceMeetingID: source)
         }
 
         let relatedIDs = Set(related.map(\.meetingID))

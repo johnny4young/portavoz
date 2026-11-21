@@ -53,8 +53,12 @@ final class MeetingBriefLinesStorageTests: XCTestCase {
             eventID: event ?? eventID, eventStartAt: eventStart, sourceMeetingID: fixture.meeting.id, at: base)
     }
 
+    private func occurrence(_ event: String? = nil) -> MeetingBriefLines.Occurrence {
+        MeetingBriefLines.Occurrence(eventID: event ?? eventID, startAt: eventStart)
+    }
+
     private func read(_ event: String? = nil) async throws -> MeetingBriefLines {
-        let lines = try await store.meetingBriefLines(forEventID: event ?? eventID)
+        let lines = try await store.meetingBriefLines(for: occurrence(event))
         return try XCTUnwrap(lines)
     }
 
@@ -105,8 +109,7 @@ final class MeetingBriefLinesStorageTests: XCTestCase {
 
         let lines = try await read()
 
-        XCTAssertEqual(lines.eventID, eventID)
-        XCTAssertEqual(lines.eventStartAt, eventStart)
+        XCTAssertEqual(lines.occurrence, occurrence())
         XCTAssertEqual(lines.sourceMeetingID, fixture.meeting.id)
         XCTAssertEqual(lines.preparedAt, base)
         XCTAssertEqual(lines.people.map(\.speakerID), [fixture.marta.id, fixture.me.id])
@@ -117,9 +120,9 @@ final class MeetingBriefLinesStorageTests: XCTestCase {
         XCTAssertEqual(lines.people[0].lines.map(\.segmentID), [fixture.segments[0].id, fixture.segments[2].id])
         XCTAssertEqual(lines.people[1].lines.map(\.text), [texts[1], texts[5]])
         XCTAssertTrue(lines.people.flatMap(\.lines).allSatisfy { $0.kind == .quote && $0.status == .said })
-        let absent = try await store.meetingBriefLines(forEventID: "unknown")
+        let absent = try await store.meetingBriefLines(for: occurrence("unknown"))
         XCTAssertNil(absent)
-        let empty = try await store.meetingBriefLines(forEventIDs: [])
+        let empty = try await store.meetingBriefLines(for: [])
         XCTAssertTrue(empty.isEmpty)
     }
 
@@ -152,6 +155,9 @@ final class MeetingBriefLinesStorageTests: XCTestCase {
             _ = try await store.applyCommitmentTransition(
                 transition, to: envelope.commitment.id, at: base.addingTimeInterval(1))
         }
+        try await saveSummary(fixture, items: [
+            (ActionItem(text: "rename the product", ownerSpeakerID: fixture.marta.id), 0),
+        ], recipe: "another-recipe")
         let topic = Topic(preferredLabel: "Retention")
         try await store.database.write { [base] db in
             try TopicRecord(topic, createdAt: base, updatedAt: base).insert(db)
@@ -310,11 +316,12 @@ final class MeetingBriefLinesStorageTests: XCTestCase {
         let lineCount = try await count("meetingBriefLine")
         XCTAssertNil(cleared)
         XCTAssertEqual(lineCount, 0)
-        let corrected = try await store.meetingBriefLines(forEventIDs: [eventID, "event-other"])
-        XCTAssertEqual(corrected[eventID]?.people, corrected["event-other"]?.people)
-        XCTAssertEqual(corrected[eventID]?.people[0].lines.first?.text.hasPrefix("We must ship"), true)
-        XCTAssertEqual(corrected[eventID]?.people[0].lines.map(\.time), [0, 300])
-        XCTAssertEqual(corrected[eventID]?.people[1].lines.map(\.text), [texts[1]])
+        let corrected = try await store.meetingBriefLines(for: [occurrence(), occurrence("event-other")])
+        let weekly = try XCTUnwrap(corrected[occurrence()])
+        XCTAssertEqual(weekly.people, corrected[occurrence("event-other")]?.people)
+        XCTAssertEqual(weekly.people[0].lines.first?.text.hasPrefix("We must ship"), true)
+        XCTAssertEqual(weekly.people[0].lines.map(\.time), [0, 300])
+        XCTAssertEqual(weekly.people[1].lines.map(\.text), [texts[1]])
 
         var edited = fixture.segments[1]
         edited.text = "I will write the rollback plan and share it tomorrow morning"
@@ -357,7 +364,7 @@ final class MeetingBriefLinesStorageTests: XCTestCase {
 
         fixture.meeting.title = "Weekly sync (old)"
         try await store.save(fixture.meeting)
-        let renamed = try await store.meetingBriefLines(forEventID: eventID)
+        let renamed = try await store.meetingBriefLines(for: occurrence())
         var sources = try await count("meetingBriefSource")
         var lineCount = try await count("meetingBriefLine")
         XCTAssertNil(renamed)
@@ -366,7 +373,7 @@ final class MeetingBriefLinesStorageTests: XCTestCase {
         try await record(fixture)
         _ = try await read()
         try await store.delete(fixture.meeting.id)
-        let deleted = try await store.meetingBriefLines(forEventID: eventID)
+        let deleted = try await store.meetingBriefLines(for: occurrence())
         sources = try await count("meetingBriefSource")
         XCTAssertNil(deleted)
         XCTAssertEqual(sources, 0)
@@ -406,10 +413,15 @@ final class MeetingBriefLinesStorageTests: XCTestCase {
             sourceMeetingID: fixture.meeting.id, at: base)
         var sources = try await count("meetingBriefSource")
         XCTAssertEqual(sources, 1, "the source must start before the event")
+        try await store.recordMeetingBriefSource(
+            eventID: "event-ongoing", eventStartAt: base.addingTimeInterval(60),
+            sourceMeetingID: fixture.meeting.id, at: base)
+        sources = try await count("meetingBriefSource")
+        XCTAssertEqual(sources, 1, "an ongoing event never continues its own recording")
 
         try await store.recordMeetingBriefSource(
             eventID: eventID, eventStartAt: eventStart, sourceMeetingID: nil, at: base)
-        let clearedLines = try await store.meetingBriefLines(forEventID: eventID)
+        let clearedLines = try await store.meetingBriefLines(for: occurrence())
         XCTAssertNil(clearedLines)
 
         try await record(fixture)
@@ -420,11 +432,57 @@ final class MeetingBriefLinesStorageTests: XCTestCase {
         sources = try await count("meetingBriefSource")
         let prunedLines = try await store.database.read { [eventID] db in
             try Int.fetchOne(
-                db, sql: "SELECT COUNT(*) FROM meetingBriefLine WHERE eventID = ?", arguments: [eventID]) ?? 0
+                db,
+                sql: """
+                    SELECT COUNT(*) FROM meetingBriefLine
+                    JOIN meetingBriefSource AS source ON source.id = meetingBriefLine.sourceID
+                    WHERE source.eventID = ?
+                    """,
+                arguments: [eventID]) ?? 0
         }
-        let pruned = try await store.meetingBriefLines(forEventID: eventID)
+        let pruned = try await store.meetingBriefLines(for: occurrence())
         XCTAssertEqual([sources, prunedLines], [1, 0])
         XCTAssertNil(pruned)
+    }
+
+    func testEachOccurrenceOfARecurringEventKeepsItsOwnSource() async throws {
+        let fixture = try await seed()
+        let other = try await seed(title: "Retro")
+        let nextWeek = MeetingBriefLines.Occurrence(eventID: eventID, startAt: eventStart.addingTimeInterval(7 * 86_400))
+        try await record(fixture)
+        try await store.recordMeetingBriefSource(
+            eventID: eventID, eventStartAt: nextWeek.startAt, sourceMeetingID: other.meeting.id, at: base)
+
+        let both = try await store.meetingBriefLines(for: [occurrence(), nextWeek])
+
+        XCTAssertEqual(both[occurrence()]?.sourceMeetingID, fixture.meeting.id)
+        XCTAssertEqual(both[nextWeek]?.sourceMeetingID, other.meeting.id)
+    }
+
+    func testAnUnreadableSourceKeepsNoLinesAndIsNotRetriedOnRead() async throws {
+        let fixture = try await seed()
+        let other = try await seed(title: "Retro")
+        try await record(fixture)
+        let key = other.meeting.id.rawValue.uuidString
+        try await store.database.write { db in
+            try db.execute(
+                sql: """
+                    UPDATE segment SET id = 'not-a-uuid'
+                    WHERE rowid = (SELECT MIN(rowid) FROM segment WHERE meetingID = ?)
+                    """,
+                arguments: [key])
+        }
+
+        try await store.recordMeetingBriefSource(
+            eventID: eventID, eventStartAt: eventStart, sourceMeetingID: other.meeting.id, at: base)
+        let built = try await builtAt()
+        let lineCount = try await count("meetingBriefLine")
+        _ = try await read()
+        let reread = try await builtAt()
+
+        XCTAssertEqual(built, base, "a failed build is settled, not retried on every read")
+        XCTAssertEqual(lineCount, 0, "the previous source's lines never outlive the switch")
+        XCTAssertEqual(reread, built)
     }
 
     func testPreviousOccurrenceMatchesTheTitleLoosely() async throws {
@@ -444,6 +502,7 @@ final class MeetingBriefLinesStorageTests: XCTestCase {
         _ = try await meeting("Revisión mensual", daysAgo: 3)
         _ = try await meeting("Planeación anual", daysAgo: 200)
 
+        _ = try await meeting("Revisión semanal", daysAgo: 0.001)
         let found = try await store.previousMeetingOccurrence(title: "revisión semanal", before: eventStart)
         let none = try await store.previousMeetingOccurrence(title: "Otra cosa", before: eventStart)
         let tooOld = try await store.previousMeetingOccurrence(title: "Planeación anual", before: eventStart)

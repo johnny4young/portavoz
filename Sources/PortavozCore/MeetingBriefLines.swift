@@ -10,6 +10,17 @@ public struct MeetingBriefLines: Sendable, Equatable {
     private static let minimumQuoteWords = 4
     public static let maximumQuoteLength = 160
 
+    /// One occurrence of a calendar event; recurring events share `eventID`.
+    public struct Occurrence: Sendable, Hashable {
+        public let eventID: String
+        public let startAt: Date
+
+        public init(eventID: String, startAt: Date) {
+            self.eventID = eventID
+            self.startAt = startAt
+        }
+    }
+
     public enum Kind: String, Sendable, Equatable {
         case quote
         case commitment
@@ -61,19 +72,16 @@ public struct MeetingBriefLines: Sendable, Equatable {
         }
     }
 
-    public let eventID: String
-    public let eventStartAt: Date
+    public let occurrence: Occurrence
     public let sourceMeetingID: MeetingID
     public let preparedAt: Date
     /// Most talkative first; a person without lines is absent.
     public let people: [Person]
 
     public init(
-        eventID: String, eventStartAt: Date, sourceMeetingID: MeetingID,
-        preparedAt: Date, people: [Person]
+        occurrence: Occurrence, sourceMeetingID: MeetingID, preparedAt: Date, people: [Person]
     ) {
-        self.eventID = eventID
-        self.eventStartAt = eventStartAt
+        self.occurrence = occurrence
         self.sourceMeetingID = sourceMeetingID
         self.preparedAt = preparedAt
         self.people = people

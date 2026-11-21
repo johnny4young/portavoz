@@ -248,8 +248,8 @@ Singular camelCase tables, 1:1 with Codable records:
 | `transcriptCorrectionSearchState` (v36) | meetingID (TEXT PK, FK cascade), baseTranscriptRevision, 64-character effective correctionRevision; sparse content-free lineage for active overlays only, rebuilt in the same transaction as corrected text and used to fence Spotlight summaries/text (D329) |
 | `meetingVoiceColumns` (v61) | meetingID (TEXT PK, FK cascade), duration (seconds, ≥ 0), columns BLOB (one byte per column, ≤ 2 000), updatedAt; disposable voice strip cache, see Voice strip columns (D648) |
 | `meetingVoiceColumnsVoice` (v61) | meetingID FK cascade to `meetingVoiceColumns`, voiceIndex (0–254), speakerID, talkSeconds, firstHeard; primary key meeting + index; the strip's voice index map in first-heard order |
-| `meetingBriefSource` (v62) | eventID (TEXT PK, 1–2 000 bytes), eventStartAt, sourceMeetingID (FK cascade, indexed), preparedAt, linesBuiltAt (NULL = lines need a rebuild); the previous occurrence chosen for an upcoming event, see Brief lines (D650) |
-| `meetingBriefLine` (v62) | eventID FK cascade to `meetingBriefSource`, ordinal (≥ 0), speakerID, kind (`quote`, `commitment`, `question`), text (nonblank), segmentID (nullable), time (seconds, ≥ 0), status (`said`, `unresolved`, `open`, `closed`, checked against kind), dueAt (only when `open`); primary key event + ordinal; disposable cache |
+| `meetingBriefSource` (v62) | id (INTEGER autoincrement PK), eventID (1–2 000 bytes), eventStartAt (indexed), unique eventID + eventStartAt, sourceMeetingID (FK cascade, indexed), preparedAt, linesBuiltAt (NULL = lines need a rebuild); the previous occurrence chosen for one occurrence of an upcoming event, see Brief lines (D650) |
+| `meetingBriefLine` (v62) | sourceID FK cascade to `meetingBriefSource`, ordinal (≥ 0), speakerID, kind (`quote`, `commitment`, `question`), text (nonblank), segmentID (nullable), time (seconds, ≥ 0), status (`said`, `unresolved`, `open`, `closed`, checked against kind), dueAt (only when `open`); primary key source + ordinal; disposable cache |
 | `transcriptStructuralSearchRow` (v38) | resultID (TEXT PK), indexed meetingID/correctionID FK cascade, baseTranscriptRevision, checked split/merge kind, non-empty text, optional language, start/end time, updatedAt, optional embedding BLOB and embeddingFingerprint; disposable current structural retrieval units keyed by split-part UUID or merge-correction UUID (D334) |
 | `transcriptStructuralSearchSource` (v38) | resultID (FK cascade), ordered accepted segmentID (indexed FK cascade), composite PK and unique result+source; exact immutable provenance for each structural retrieval unit |
 | `transcriptStructuralSearch` (v38) | FTS5 external-content over transcriptStructuralSearchRow.text, synchronized by GRDB triggers |
@@ -2280,15 +2280,18 @@ triggers drop the row before the correction hook rebuilds it, and each store
 
 ### Brief lines (schema v62, D650)
 
-`meetingBriefSource` remembers, per upcoming calendar event, which past meeting
+`meetingBriefSource` remembers, per occurrence of an upcoming calendar event
+(identifier plus start, because recurring events share the identifier), which past meeting
 is its previous occurrence; `meetingBriefLine` caches what each person said in
 it. `recordMeetingBriefSource(eventID:eventStartAt:sourceMeetingID:at:)` upserts
 the choice and, unless the same source's lines are already built, builds them
-in the same write (a failed build leaves them pending for the next read); a nil, missing, tombstoned or later-starting
-source clears the event instead. The same write prunes every source whose event
-started more than one day before `at`.
-`previousMeetingOccurrence(title:before:)` returns the most recent live, ended
-meeting started in the 180 days before the date whose title equals the event's
+in the same write; a nil,
+missing or tombstoned source, or one that had not ended by the event's start,
+clears the event instead, so an ongoing event never continues its own recording.
+The same write prunes every source whose event started more than one day before
+`at`.
+`previousMeetingOccurrence(title:before:)` returns the most recent live meeting
+started in the 180 days before the date and ended by it whose title equals the event's
 under `MeetingBriefLines.titleKey` (case, diacritics and spacing folded in
 Swift, because SQLite cannot fold diacritics).
 
@@ -2315,11 +2318,13 @@ time order. The selection is the pure `MeetingBriefLines.select` in
 PortavozCore; StorageKit only fetches its inputs, reading the source meeting's
 questions through `meetingQuestion_on_sourceMeeting` (v62).
 
-`meetingBriefLines(forEventID:)` and `meetingBriefLines(forEventIDs:)` read the
-cache and rebuild, in one write with a savepoint per event, every source whose
-`linesBuiltAt` is NULL. A built source may hold no lines and is not rebuilt
-again. An event without a source, with a tombstoned one or whose rebuild fails
-is absent. Names, `isMe`, labels and the canonical person resolve from
+`meetingBriefLines(for:)`, for one `MeetingBriefLines.Occurrence` or a list,
+reads the cache and rebuilds, in one write with a savepoint per source, every
+source whose `linesBuiltAt` is NULL. A build that fails stores no lines and
+still sets `linesBuiltAt`, so reads stay reads until the source changes again;
+switching an occurrence to another source deletes the old lines in the same
+write. A built source may hold no lines and is not rebuilt again. An occurrence
+without a source or with a tombstoned one is absent. Names, `isMe`, labels and the canonical person resolve from
 `speaker` at read time.
 
 Triggers clear the lines and set `linesBuiltAt` to NULL when the source
