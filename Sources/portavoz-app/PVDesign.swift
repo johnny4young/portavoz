@@ -160,9 +160,8 @@ enum PVDesign {
     static let chipOfferBg = Tone.ink.color(alpha: 0.07)
 }
 
-/// «The colour is the voice»: you are always amber; every other speaker
-/// gets one of five hues, assigned by order of appearance and persistent
-/// per named person (a name hashes to the same hue in every meeting).
+/// «The colour is the voice»: you are always amber; up to five named
+/// voices hold a hue and everyone else is grey (`VoiceCast` decides who).
 /// Chrome stays ink so voice is the only colour with meaning.
 enum VoicePalette {
     /// Cobalt, Madder, Moss, Clay, Lagoon.
@@ -173,7 +172,7 @@ enum VoicePalette {
         PVTone(0xB25F36, 0xE09468),
         PVTone(0x2B8FA6, 0x5CC4D6)
     ]
-    /// Grey for voices outside the cast: "them" in Insights and the far channel of the waveform.
+    /// Unnamed voices, voices past the cast, and the far channel of the waveform.
     static let unnamedTone = PVTone(0x8791A0, 0x99A4B2)
 
     private static let lightColors = hues.map { Color(nsColor: PVTone.srgb($0.light)) }
@@ -183,35 +182,14 @@ enum VoicePalette {
     static let meContrast = PVDesign.onYou
     static let unnamed = unnamedTone.color
 
-    /// The voice color for a speaker within a meeting's cast: amber for
-    /// "Me"; named people by stable name hash; S-labels by cast order.
-    static func color(
-        for speaker: Speaker, in cast: [Speaker], colorScheme: ColorScheme
-    ) -> Color {
-        if speaker.isMe { return me }
-        let others = cast.filter { !$0.isMe }
-        let order = others.firstIndex { $0.id == speaker.id } ?? 0
-        return color(
-            index: VoiceHue.index(name: speaker.displayName, fallbackOrder: order),
-            colorScheme: colorScheme)
-    }
-
-    /// Color for a speaker (index from `VoiceHue.index` — ApplicationKit,
-    /// pure and tested).
-    static func color(index: Int, colorScheme: ColorScheme) -> Color {
-        let colors = colorScheme == .dark ? darkColors : lightColors
-        return colors[((index % colors.count) + colors.count) % colors.count]
-    }
-
-    /// The color of one sidebar voice-mix slice: amber for you, a stable
-    /// name hue for named speakers, cast order for the rest.
-    static func color(
-        for slice: LibraryVoiceMixSlice, colorScheme: ColorScheme
-    ) -> Color {
-        if slice.isMe { return me }
-        return color(
-            index: VoiceHue.index(name: slice.displayName, fallbackOrder: slice.order),
-            colorScheme: colorScheme)
+    static func color(_ tint: VoiceCast.Tint, colorScheme: ColorScheme) -> Color {
+        switch tint {
+        case .you: return me
+        case .grey: return unnamed
+        case .hue(let index):
+            let colors = colorScheme == .dark ? darkColors : lightColors
+            return colors[((index % colors.count) + colors.count) % colors.count]
+        }
     }
 }
 

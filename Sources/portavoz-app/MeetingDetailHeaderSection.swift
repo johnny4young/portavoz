@@ -9,6 +9,7 @@ struct MeetingDetailHeaderValues {
     let segmentCount: String
     let titleSuggestion: String?
     let speakers: [Speaker]
+    let voiceCast: VoiceCast
     let isSuggestingNames: Bool
     let nameSuggestions: [MeetingNameSuggestion]
     let voiceSuggestions: [MeetingVoiceSuggestion]
@@ -122,14 +123,9 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
 
     private var participantsRow: some View {
         let unnamed = values.speakers.filter { !$0.isMe && $0.displayName == nil }
-        return FlowLayout(spacing: 8, rowSpacing: 8) {
-            ForEach(values.speakers) { speaker in
-                SpeakerPill(
-                    speaker: speaker,
-                    cast: values.speakers,
-                    accessibilityIdentifier: "cast-speaker-\(speaker.label)",
-                    onRename: actions.renameSpeaker)
-            }
+        return VoiceCastRow(
+            speakers: values.speakers, cast: values.voiceCast, onRename: actions.renameSpeaker
+        ) {
             if !unnamed.isEmpty {
                 suggestNamesControl
             }

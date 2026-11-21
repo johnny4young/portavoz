@@ -17017,16 +17017,6 @@
         }
       }
     },
-    "violet = they speak · amber = you. The bar is your share of talk with them.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "violeta = hablan ellos · ámbar = tú. La barra es tu parte del habla con esa persona."
-          }
-        }
-      }
-    },
     "voice enroll apuntador name remembered": {
       "localizations": {
         "es": {
@@ -18103,6 +18093,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sugiere este nombre cuando vuelva a escucharse esta voz. La huella de voz queda cifrada en esta Mac; puedes borrarla en Ajustes."
+          }
+        }
+      }
+    },
+    "Amber is you, their color is them. The bar is your share of talk with them.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El ámbar eres tú y su color es esa persona. La barra es tu parte del habla con ella."
+          }
+        }
+      }
+    },
+    "Others · %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otros · %d"
           }
         }
       }

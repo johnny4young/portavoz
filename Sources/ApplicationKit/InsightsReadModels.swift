@@ -66,6 +66,15 @@ public struct InsightsVoiceBalance: Sendable, Equatable {
         self.myOverallShare = myOverallShare
         self.hasData = hasData
     }
+
+    /// The people you talk with most keep their hue; the rest are grey.
+    public var voiceCast: VoiceCast {
+        VoiceCast(
+            members: participants.map {
+                VoiceCast.Member(key: $0.id, name: $0.name, talkSeconds: $0.theirSeconds)
+            },
+            ordering: .talkShare)
+    }
 }
 
 /// Stored evidence needed to derive local findings for one meeting.

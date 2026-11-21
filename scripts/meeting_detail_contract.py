@@ -61,6 +61,7 @@ INTERACTION_SOURCE_PATHS = (
     "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
     "Sources/portavoz-app/TranscriptSegmentsView.swift",
     "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+    "Sources/portavoz-app/VoiceCastRow.swift",
 )
 
 PERFORMANCE_EVIDENCE_PATHS = (
@@ -180,6 +181,18 @@ DEFAULT_FEATURE_OWNERSHIP = (
             {
                 "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
                 "anchor": '"summary-feedback-correction"',
+            },
+        ],
+    },
+    {
+        "feature": "many-voices",
+        "tests": [
+            "testManyVoicesKeepSixInTheCastAndFoldTheRestIntoOthers",
+        ],
+        "sourceAnchors": [
+            {
+                "path": "Sources/portavoz-app/VoiceCastRow.swift",
+                "anchor": '"cast-others"',
             },
         ],
     },

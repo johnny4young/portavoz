@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 120
+    "expectedCaseCount": 121
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -143,6 +143,7 @@
     "OnboardingUITests/testModelFailureCanContinueBackAndRetryWithoutDownloading()": 35.0,
     "CommandLineToolUITests/testIntegrationsInstallsAndRemovesTheCommandLineToolLink()": 30.0,
     "CommandLineToolUITests/testABuildWithoutTheToolSaysSo()": 25.0,
-    "MeetingDetailUITests/testFamilyControlsShapeCastSuggestionsTabsAndCommitmentCards()": 20.0
+    "MeetingDetailUITests/testFamilyControlsShapeCastSuggestionsTabsAndCommitmentCards()": 20.0,
+    "MeetingDetailUITests/testManyVoicesKeepSixInTheCastAndFoldTheRestIntoOthers()": 20.0
   }
 }

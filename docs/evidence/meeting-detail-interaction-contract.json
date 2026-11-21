@@ -46,7 +46,8 @@
     "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
     "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
     "Sources/portavoz-app/TranscriptSegmentsView.swift",
-    "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift"
+    "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+    "Sources/portavoz-app/VoiceCastRow.swift"
   ],
   "interactionSignals": [
     {
@@ -1308,12 +1309,6 @@
       "category": "control",
       "source": "DismissibleSuggestionChip(",
       "occurrences": 3
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
-      "category": "control",
-      "source": "SpeakerPill(",
-      "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
@@ -3246,6 +3241,30 @@
       "category": "state",
       "source": "@State private var splitTime: TimeInterval",
       "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/VoiceCastRow.swift",
+      "category": "control",
+      "source": "Button {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/VoiceCastRow.swift",
+      "category": "control",
+      "source": "SpeakerPill(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/VoiceCastRow.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"cast-others\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/VoiceCastRow.swift",
+      "category": "state",
+      "source": "@State private var showsOthers = false",
+      "occurrences": 1
     }
   ],
   "featureOwnership": [
@@ -3422,6 +3441,22 @@
       "screenshots": [
         "pr-family-cast-and-suggestions",
         "pr-family-tabs-and-cards"
+      ]
+    },
+    {
+      "feature": "many-voices",
+      "tests": [
+        "testManyVoicesKeepSixInTheCastAndFoldTheRestIntoOthers"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/VoiceCastRow.swift",
+          "anchor": "\"cast-others\""
+        }
+      ],
+      "screenshots": [
+        "pr-many-voices-cast",
+        "pr-many-voices-others-open"
       ]
     },
     {

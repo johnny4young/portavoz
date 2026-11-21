@@ -1,3 +1,4 @@
+import ApplicationKit
 import IntelligenceKit
 import PortavozCore
 import SwiftUI
@@ -9,6 +10,7 @@ struct MeetingHealthView: View {
     @Environment(\.colorScheme) private var colorScheme
     let speakers: [Speaker]
     let segments: [TranscriptSegment]
+    let voiceCast: VoiceCast
 
     private var health: MeetingHealth { MeetingHealth.compute(segments: segments) }
 
@@ -71,14 +73,10 @@ struct MeetingHealthView: View {
         }
     }
 
-    /// Voices B: each bar wears its speaker's color — "the color IS the voice".
+    /// Each bar wears its voice's cast colour; voices outside the cast are grey.
     private func voiceColor(_ id: SpeakerID) -> Color {
-        guard let speaker = speakers.first(where: { $0.id == id }) else {
-            return PVDesign.accent.opacity(0.65)
-        }
-        if speaker.isMe { return VoicePalette.me }
-        return VoicePalette.color(for: speaker, in: speakers, colorScheme: colorScheme)
-            .opacity(0.85)
+        let tint = voiceCast.tint(for: id)
+        return VoicePalette.color(tint, colorScheme: colorScheme).opacity(tint == .you ? 1 : 0.85)
     }
 
     private func chip(_ icon: String, _ value: String) -> some View {

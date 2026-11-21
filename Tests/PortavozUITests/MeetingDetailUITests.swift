@@ -748,6 +748,27 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testManyVoicesKeepSixInTheCastAndFoldTheRestIntoOthers() throws {
+        let app = try launchOnSeededMeeting(extraArguments: ["-seed-many-voices"])
+        defer { finishUITestApplication(app) }
+
+        let others = app.control(withIdentifier: "cast-others")
+        XCTAssertTrue(others.waitForExistenceFast(timeout: 10))
+        for label in ["Me", "S2", "S3", "S4", "S5", "S6"] {
+            XCTAssertTrue(app.control(withIdentifier: "cast-speaker-\(label)").exists, label)
+        }
+        XCTAssertFalse(app.control(withIdentifier: "cast-speaker-S11").exists, "folded voices start hidden")
+        XCTAssertTrue(app.control(withIdentifier: "detail-header-section").waitForStableFrame(timeout: 5))
+        attachScreenshot(of: app, named: "pr-many-voices-cast")
+
+        others.click()
+        let folded = app.control(withIdentifier: "cast-speaker-S11")
+        XCTAssertTrue(folded.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(app.control(withIdentifier: "cast-speaker-S1").exists)
+        attachScreenshot(of: app, named: "pr-many-voices-others-open")
+    }
+
+    @MainActor
     func testFamilyControlsShapeCastSuggestionsTabsAndCommitmentCards() throws {
         let app = try launchOnSeededMeeting(
             commitmentInbox: true,

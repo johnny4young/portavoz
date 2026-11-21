@@ -214,7 +214,8 @@ private func makeApplicationMeetingRows(
                     isMe: $0.isMe,
                     displayName: $0.displayName,
                     fraction: $0.fraction,
-                    order: $0.order)
+                    order: $0.order,
+                    firstHeard: $0.firstHeard)
             })
     }
 }
