@@ -121,7 +121,7 @@ private extension CommitmentRadarView {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Commitment Radar")
-                    .font(.largeTitle.bold())
+                    .pvDisplay(.title)
                     .accessibilityIdentifier("commitment-radar-title")
                 Text(headerDescription)
                     .foregroundStyle(.secondary)
@@ -324,8 +324,7 @@ private extension CommitmentRadarView {
             ForEach(groups(for: page.items)) { group in
                 VStack(alignment: .leading, spacing: 10) {
                     Text(verbatim: group.title)
-                        .font(.headline)
-                        .foregroundStyle(.secondary)
+                        .pvDisplay(.section)
                     ForEach(group.items) { item in
                         itemCard(item)
                     }

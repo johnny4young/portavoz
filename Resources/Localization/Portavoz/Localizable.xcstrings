@@ -256,7 +256,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%d abiertos"
+            "value": "Abiertos: %d"
           }
         }
       }
@@ -14601,6 +14601,16 @@
         }
       }
     },
+    "Third-party notices": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avisos de terceros"
+          }
+        }
+      }
+    },
     "This can't be undone.": {
       "localizations": {
         "es": {
@@ -15427,6 +15437,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Escribe el nombre de un atajo. Recibe la reunión terminada en Markdown. Cualquier herramienta puede abrir portavoz://record."
+          }
+        }
+      }
+    },
+    "Typeface": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tipografía"
           }
         }
       }

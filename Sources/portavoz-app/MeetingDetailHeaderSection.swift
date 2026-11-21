@@ -87,7 +87,7 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
 
     private var titleRow: some View {
         HStack(spacing: 8) {
-            Text(values.title).font(.title2.bold())
+            Text(values.title).pvDisplay(.title)
             Button(action: actions.renameMeeting) {
                 Image(systemName: "pencil").foregroundStyle(.secondary)
             }

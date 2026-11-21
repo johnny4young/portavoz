@@ -149,6 +149,15 @@ if [[ -f assets/icon/pv-menubar-32.png ]]; then
   cp assets/icon/pv-menubar-32.png "$APP/Contents/Resources/pv-menubar-32.png"
 fi
 
+# Display serif (SIL OFL 1.1): both faces and the licence travel together;
+# PVFont registers them at launch and falls back to New York without them.
+if [[ ! -f "Resources/Fonts/Fraunces/OFL.txt" ]] \
+    || ! compgen -G "Resources/Fonts/Fraunces/*.ttf" > /dev/null; then
+  echo "bundled Fraunces fonts or their licence are missing." >&2
+  exit 66
+fi
+cp -R Resources/Fonts/Fraunces "$APP/Contents/Resources/"
+
 # App accent color (design system: indigo is THE accent — resolves the
 # system-accent debt): compile the asset catalog so NSAccentColorName
 # resolves. Users who picked a specific system accent still win, per macOS.

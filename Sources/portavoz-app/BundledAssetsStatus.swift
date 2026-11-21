@@ -2,7 +2,8 @@ import Foundation
 import IntelligenceKit
 
 /// `portavoz-app --bundled-assets-status` reports where this install resolved
-/// its bundled Apuntador classifier, then exits.
+/// its bundled Apuntador classifier and whether its display font registered,
+/// then exits.
 ///
 /// The release verifier runs it on the extracted app so a payload that only
 /// resolves on the machine that built it fails before publication instead of
@@ -12,10 +13,11 @@ enum BundledAssetsStatus {
     static let flag = "--bundled-assets-status"
 
     /// Content-free, stable report the distribution verifier parses.
-    static func report(bundleURL: URL?, loadable: Bool) -> String {
+    static func report(bundleURL: URL?, loadable: Bool, displayFontRegistered: Bool) -> String {
         let payload: [String: String] = [
             "classifierBundle": bundleURL?.path ?? "",
-            "classifierLoadable": loadable ? "true" : "false"
+            "classifierLoadable": loadable ? "true" : "false",
+            "displayFontRegistered": displayFontRegistered ? "true" : "false"
         ]
         return payload
             .sorted { $0.key < $1.key }
@@ -27,7 +29,8 @@ enum BundledAssetsStatus {
         guard arguments.contains(flag) else { return }
         let bundleURL = IntelligenceResourceBundle.resolved?.bundleURL
         let loadable = BundledLiveQuestionDetector.resourceIsLoadable
-        print(report(bundleURL: bundleURL, loadable: loadable))
+        let fontRegistered = PVFont.registerBundledFonts()
+        print(report(bundleURL: bundleURL, loadable: loadable, displayFontRegistered: fontRegistered))
         exit(bundleURL != nil && loadable ? 0 : 1)
     }
 }

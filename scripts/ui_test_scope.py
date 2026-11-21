@@ -374,7 +374,7 @@ def app_features(filename: str) -> set[str]:
         # handoff and the exact reminder-to-Radar path without expanding an
         # isolated routing change to every destination behind ContentView.
         return {"automation-entry", "commitment-radar"}
-    if lowered == "appservices+meetingsync.swift":
+    if lowered in {"appservices+meetingsync.swift", "typefacecreditssection.swift"}:
         return {"settings-data"}
     if lowered == "microphoneinputselection.swift":
         return {"recording-recovery", "settings-audio"}

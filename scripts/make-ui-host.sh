@@ -17,6 +17,7 @@ cp "$executable" "$app/Contents/MacOS/Portavoz"
 cp -a "$bin_dir/Sparkle.framework" "$app/Contents/Frameworks/"
 install_name_tool -add_rpath "@executable_path/../Frameworks" "$app/Contents/MacOS/Portavoz"
 cp -R "$bin_dir/Portavoz_IntelligenceKit.bundle" "$app/Contents/Resources/"
+cp -R Resources/Fonts/Fraunces "$app/Contents/Resources/"
 python3 scripts/export-localizations.py "$app/Contents/Resources"
 scripts/build-appintents-metadata.sh "$app/Contents/Resources" debug
 python3 scripts/ui_host.py info-plist "$app/Contents/Info.plist"

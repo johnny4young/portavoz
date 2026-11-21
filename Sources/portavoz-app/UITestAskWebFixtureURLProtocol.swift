@@ -12,6 +12,9 @@ import Foundation
 final class UITestAskWebFixtureURLProtocol: URLProtocol, @unchecked Sendable {
     static let environmentKey = "PORTAVOZ_UI_WEB_FIXTURE_PAYLOAD"
     static let fixtureBaseURL = URL(string: "http://127.0.0.1:54321")!
+    /// The instant every fixture page is retrieved at (2026-08-24T00:00:00Z),
+    /// so declared freshness never depends on the day the tests run.
+    static let retrievalDate = Date(timeIntervalSince1970: 1_787_529_600)
 
     private static let canonicalFixtureSHA256 =
         "97a560b3049bd0d2e0b41fc2e8f7664272f7d20fcf4771b6ec7940295822fd26"

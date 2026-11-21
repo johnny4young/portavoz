@@ -1,6 +1,6 @@
 /* Portavoz — typography tokens.
-   APP: system font (SF Pro on a Mac). Numbers are ALWAYS tabular
-   (monospacedDigit in SwiftUI → font-variant-numeric: tabular-nums).
+   APP: Fraunces (bundled, PVDisplayStyle) for display roles; SF Pro for body
+   and controls. SF numbers are tabular (monospacedDigit → tabular-nums).
    WEB: Fraunces (display serif, SOFT 50) + Instrument Sans (body) +
    IBM Plex Mono (commands & measured numbers). */
 
@@ -13,9 +13,15 @@
   /* Fraunces axis settings used on the web */
   --display-settings: "SOFT" 50, "opsz" 100; /* @kind other */
 
-  /* macOS text-style scale (px) — the hierarchy the app actually uses */
-  --type-large-title: 700 26px/1.22 var(--font-app);  /* page titles */
-  --type-title2: 700 17px/1.3 var(--font-app);        /* tile values, meeting title */
+  /* App display roles (Fraunces, PVDisplayStyle) */
+  --type-countdown: 340 172px/1.24 var(--font-display); /* SOFT 100 */
+  --type-display-title: 480 40px/1.2 var(--font-display);  /* page and meeting titles */
+  --type-display-section: 520 21px/1.3 var(--font-display); /* section heads */
+  --type-heard: italic 420 19px/1.35 var(--font-display);   /* quoted speech */
+  --type-large-title: var(--type-display-title);           /* pre-v6 alias */
+
+  /* macOS text-style scale (px) for SF body and controls */
+  --type-title2: 700 17px/1.3 var(--font-app);        /* tile values */
   --type-title3: 600 15px/1.33 var(--font-app);
   --type-headline: 600 13px/1.38 var(--font-app);     /* card titles */
   --type-body: 400 13px/1.46 var(--font-app);

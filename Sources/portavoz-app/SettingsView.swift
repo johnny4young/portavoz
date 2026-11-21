@@ -146,6 +146,7 @@ struct SettingsView: View {
                     recordingsSection
                     ModelsOnThisMacSection(services: services)
                     ModelCreditsSection()
+                    TypefaceCreditsSection()
                 }
             }
             .formStyle(.grouped)

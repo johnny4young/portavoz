@@ -20,5 +20,15 @@ final class ModelsOnThisMacUITests: PortavozUITestCase {
             .scrollViews.element(boundBy: 1)
         XCTAssertTrue(row.revealVertically(in: form, maxScrolls: 24, maximumStep: 240))
         attachScreenshot(of: app, named: "pr-models-on-this-mac")
+
+        // The bundled display typeface is credited at the end of the same pane.
+        let typeface = app.control(withIdentifier: "settings-typeface-credit")
+        XCTAssertTrue(typeface.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(typeface.revealVertically(in: form, maxScrolls: 24, maximumStep: 240))
+        XCTAssertEqual(renderedText(of: typeface), "Fraunces")
+        XCTAssertTrue(renderedText(of: app.control(withIdentifier: "settings-typeface-credit-license"))
+            .contains("SIL Open Font License 1.1"))
+        XCTAssertTrue(app.control(withIdentifier: "settings-third-party-notices").exists)
+        attachScreenshot(of: app, named: "pr-typeface-credit")
     }
 }

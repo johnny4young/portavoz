@@ -59,7 +59,8 @@ struct OnboardingView: View {
     private var duringMeeting: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("During the meeting")
-                .font(.largeTitle.bold())
+                .pvDisplay(.title)
+                .lineLimit(1).minimumScaleFactor(0.6)
                 .accessibilityIdentifier("onboarding-during-meeting")
             Text("Three things Portavoz does while you talk. Nothing runs without you.")
                 .font(.title3)
@@ -149,7 +150,8 @@ struct OnboardingView: View {
             // `.accessibilityIdentifier` stamps ALL its descendants on macOS,
             // which would clobber the button's and caption's own ids.
             Text("Your first listen")
-                .font(.largeTitle.bold())
+                .pvDisplay(.title)
+                .lineLimit(1).minimumScaleFactor(0.6)
                 .accessibilityIdentifier("onboarding-first-listen")
             Text("Say a sentence, anything about your day. Portavoz transcribes it live.")
                 .font(.title3)
@@ -237,7 +239,8 @@ struct OnboardingView: View {
 
     private var permissions: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Permissions").font(.largeTitle.bold())
+            Text("Permissions").pvDisplay(.title)
+                .lineLimit(1).minimumScaleFactor(0.6)
             Text("Portavoz records locally; macOS asks for each permission once.")
                 .foregroundStyle(.secondary)
             permissionRow(
@@ -264,7 +267,8 @@ struct OnboardingView: View {
     private var models: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("On-device models").font(.largeTitle.bold())
+                Text("On-device models").pvDisplay(.title)
+                    .lineLimit(1).minimumScaleFactor(0.6)
                 Text("Models download once (about 1 GB) and work offline.")
                     .foregroundStyle(.secondary)
                 modelPreparationStatus
@@ -295,7 +299,8 @@ struct OnboardingView: View {
 
     private var voice: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Your voice (optional)").font(.largeTitle.bold())
+            Text("Your voice (optional)").pvDisplay(.title)
+                .lineLimit(1).minimumScaleFactor(0.6)
             // Two-sentence explainer.
             // swiftlint:disable:next line_length
             Text("A short voice sample lets Portavoz tag your interventions as “Me” on any microphone or channel. You can enroll or redo it later in Settings.")

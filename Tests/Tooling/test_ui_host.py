@@ -208,6 +208,12 @@ class HostAndRunnerSpecTests(unittest.TestCase):
             self.assertNotIn(inherited, script)
         self.assertIn("packaging/portavoz-local.entitlements", script)
 
+    def test_the_host_draws_the_shipped_display_font(self):
+        staging = 'cp -R Resources/Fonts/Fraunces "$app/Contents/Resources/"'
+        self.assertIn(staging, (ROOT / "scripts/make-ui-host.sh").read_text(encoding="utf-8"))
+        self.assertIn('cp -R Resources/Fonts/Fraunces "$APP/Contents/Resources/"',
+                      (ROOT / "scripts/make-app.sh").read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()

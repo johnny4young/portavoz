@@ -35,6 +35,33 @@ final class UITestAskWebFixtureURLProtocolTests: XCTestCase {
             "untrusted")
     }
 
+    func testRetrievalDateKeepsEveryDeclaredFreshnessTrue() throws {
+        let fixture = try XCTUnwrap(
+            UITestAskWebFixtureURLProtocol.fixture(
+                environment: try canonicalEnvironment()))
+        let window: TimeInterval = 90 * 86_400
+        var dated = 0
+
+        for route in fixture.routes.values {
+            guard let raw = route.publishedAt else { continue }
+            let published = try XCTUnwrap(
+                ISO8601DateFormatter().date(from: raw), route.path)
+            let age = UITestAskWebFixtureURLProtocol.retrievalDate
+                .timeIntervalSince(published)
+            switch route.freshness {
+            case "fresh":
+                XCTAssertTrue((0...window).contains(age), route.path)
+            case "stale":
+                XCTAssertGreaterThan(age, window, route.path)
+            default:
+                XCTFail("\(route.path) is dated but declares \(route.freshness)")
+            }
+            dated += 1
+        }
+
+        XCTAssertGreaterThan(dated, 0)
+    }
+
     func testInvalidOrOversizedPayloadFailsClosed() throws {
         var changed = try canonicalData()
         changed.append(0x20)
