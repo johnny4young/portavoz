@@ -2096,7 +2096,7 @@ extension ArchitectureDependencyTests {
         for concept in [
             "today", "ask", "insights", "radar", "apuntador", "apuntadorOff", "generate", "proactive",
             "automations", "intelligence", "privacy", "success", "warning", "error",
-            "retry", "history", "record", "stop"
+            "retry", "correction", "history", "record", "stop"
         ] {
             XCTAssertTrue(design.contains("static let \(concept) = \""), concept)
         }
@@ -2114,7 +2114,8 @@ extension ArchitectureDependencyTests {
             "wand.and.stars.inverse", "wand.and.stars", "sparkle",
             "sparkles.rectangle.stack.fill", "questionmark.bubble.fill",
             "questionmark.bubble", "record.circle", "stop.circle.fill", "stop.fill",
-            "checkmark.seal.fill", "checkmark.seal", "checkmark.circle.fill"
+            "checkmark.seal.fill", "checkmark.seal", "checkmark.circle.fill",
+            "bubble.left.and.text.bubble.right", "text.bubble", "pencil.line"
         ]
         for literal in retired {
             let owners = try Self.sourceMatches(
@@ -2135,10 +2136,13 @@ extension ArchitectureDependencyTests {
         XCTAssertEqual(rawColours.filter { $0 != "PVDesign.swift" }, [], "chrome is ink; hues live in PVDesign")
 
         let presentOwners = try Self.sourceMatches(
-            under: "Sources/portavoz-app", pattern: #"PVDesign\.now\b"#, codeOnly: true)
+            under: "Sources/portavoz-app", pattern: #"PVDesign\.(Tone\.)?now\b"#, codeOnly: true)
         XCTAssertEqual(
             presentOwners,
-            ["LibraryView.swift", "MenuBarView.swift", "RecordingHUD.swift", "RecordingToolbar.swift"],
+            [
+                "LibraryView.swift", "MenuBarIcon.swift", "MenuBarView.swift", "RecordingHUD.swift",
+                "RecordingToolbar.swift"
+            ],
             "red marks only the present: Record, Stop and the live dot")
     }
 }

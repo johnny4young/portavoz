@@ -91,13 +91,9 @@ struct PortavozApp: App {
                 .portavozLocalized()
                 .tint(PVDesign.accent)
         } label: {
-            if launch.services?.recording.phase == .recording {
-                Image(systemName: "record.circle.fill")
-            } else if let icon = MenuBarIcon.image {
-                Image(nsImage: icon)
-            } else {
-                Image(systemName: "waveform.and.mic")
-            }
+            let isRecording = launch.services?.recording.phase == .recording
+            Image(nsImage: isRecording ? MenuBarIcon.recording : MenuBarIcon.idle)
+                .accessibilityLabel(isRecording ? "Recording…" : "Portavoz")
         }
         .menuBarExtraStyle(.window)
         Settings {

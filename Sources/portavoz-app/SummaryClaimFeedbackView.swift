@@ -63,7 +63,7 @@ struct SummaryClaimFeedbackView: View {
         switch claim.feedback?.kind {
         case .correction:
             VStack(alignment: .leading, spacing: 3) {
-                Label("Your correction", systemImage: "text.bubble")
+                Label("Your correction", systemImage: PVSymbol.correction)
                     .font(.caption.weight(.semibold))
                     .accessibilityIdentifier("summary-feedback-status")
                 Text(claim.feedback?.correctionText ?? "")

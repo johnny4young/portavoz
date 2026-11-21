@@ -60,7 +60,7 @@ struct AskView: View {
         if model.state.exchanges.isEmpty && !model.state.isAsking {
             ContentUnavailableView(
                 "Ask your meetings",
-                systemImage: "bubble.left.and.text.bubble.right",
+                systemImage: PVSymbol.ask,
                 // One-line UI copy.
                 // swiftlint:disable:next line_length
                 description: Text("Questions like \"what did we agree about the budget?\" — answered on your Mac, citing meeting and moment."))

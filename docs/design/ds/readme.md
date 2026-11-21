@@ -43,7 +43,7 @@ Brand personality: **serious but warm, technical without being cold, honest**. B
 
 - **SF Symbols exclusively** in the app (`waveform.and.mic`, `record.circle.fill`, `person.wave.2`, `chart.bar.xaxis`, `sparkles`, `arrow.uturn.backward`…). No icon font, no PNG icons, no emoji.
 - The repo ships **no exportable icon assets** — SF Symbols are Apple-licensed and cannot ship on the web. This DS provides `SFIcon`, hand-recreated stroke stand-ins at SF weight whose names mirror the real symbol names (**flagged substitution** — in native code use the real symbols).
-- The chosen app icon is **«La P que habla»** — a Fraunces P whose stem IS an amber waveform bar: `assets/portavoz-icon-p.svg` (squircle) + `assets/portavoz-icon-p-menubar.svg` (16px monochrome template; stem pulses red when recording). The original waveform-in-a-capsule mark (`assets/portavoz-mark.svg`) remains for the web favicon/legacy.
+- The app icon is **three voice strands**, the amber one (you) swelling widest, on the shared squircle grid: `assets/portavoz-icon.svg` (dark) + `assets/portavoz-icon-light.svg` + `assets/portavoz-mark-menubar.svg` (monochrome template; the middle swell turns red while recording). All three are generated from the app's `PortavozMark` geometry by `scripts/make-icons.sh` — edit the geometry, not the SVGs. The original waveform-in-a-capsule mark (`assets/portavoz-mark.svg`) remains for legacy explorations.
 - Unicode-as-icon: ✦ for AI, ▸ for co-authored lines, · as metadata separator.
 
 ## Fonts
@@ -59,7 +59,7 @@ No font binaries in the repo; the site loads **Fraunces, Instrument Sans, IBM Pl
 - `styles.css` — global entry; imports everything in `tokens/`.
 - `tokens/` — `colors.css` (app light/dark via `[data-theme="dark"]` + brand), `typography.css`, `spacing.css`, `motion.css`, `fonts.css`.
 - `guidelines/` — 12 specimen cards (colors, type, spacing, radii, motion, voice & tone, mark).
-- `assets/` — `portavoz-mark.svg`, `reference/meeting-detail.png`.
+- `assets/` — `portavoz-icon.svg`, `portavoz-icon-light.svg`, `portavoz-mark-menubar.svg` (generated), `portavoz-mark.svg` (legacy).
 - `components/` — one directory per family, each with `.jsx` + `.d.ts` + `.prompt.md` + card:
 
 | Component | Path | What |
