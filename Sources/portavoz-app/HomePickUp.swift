@@ -65,14 +65,14 @@ struct HomePickUp: View {
                 // The row reads the cast below as its value instead.
                 VoiceStrip(strip, size: .resume, progress: row.playedFraction(of: strip.duration))
                     .accessibilityHidden(true)
-                    .padding(.top, 9)
+                    .padding(.top, 8)
                 if !strip.columns.isEmpty {
                     FlowLayout(spacing: 12, rowSpacing: 4) { VoiceLegend(cast: strip.cast, font: .caption) }
-                        .padding(.top, 8)
+                        .padding(.top, 6)
                 }
             }
-            .padding(.top, 10)
-            .padding(.bottom, 12)
+            .padding(.top, 8)
+            .padding(.bottom, 10)
             .contentShape(.rect)
         }
         .buttonStyle(.plain)

@@ -101,7 +101,7 @@ final class PublicShowcaseUITests: PortavozUITestCase {
         attachScreenshot(of: app, named: "public-today")
 
         // The showcase's generated to-dos wait in Radar's review queue.
-        let radarLink = app.buttons["home-todo-radar"]
+        let radarLink = app.buttons["home-radar-link"]
         XCTAssertTrue(radarLink.waitForStableFrame(timeout: 10))
         radarLink.click()
         XCTAssertTrue(

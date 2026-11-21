@@ -3096,7 +3096,7 @@ destination (`library-home-button`) is selected for both the nil and
 `home-automations`, `home-upcoming-<id>` (+`-brief-`/`-record-`),
 `home-upcoming-countdown`, `home-upcoming-invitees`, `home-brief`,
 `home-brief-open`, `home-brief-person-<uuid>`, `home-brief-empty`, `home-todo-<uuid>`/
-`home-todo-toggle-<uuid>`, `home-todo-radar`, `home-recent-<uuid>` (a pick-up row, whose label
+`home-todo-toggle-<uuid>`, `home-radar-link`, `home-recent-<uuid>` (a pick-up row, whose label
 carries its progress and open count), `home-calendar-offer`,
 `home-who-spoke`, `home-who-spoke-summary`, `home-talker-<key>`,
 `home-day-axis`, `home-day-meeting-<uuid>`, `home-day-upcoming-<id>`,

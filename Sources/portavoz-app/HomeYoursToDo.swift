@@ -29,7 +29,7 @@ struct HomeYoursToDo: View {
                     }
                     .buttonStyle(.plain)
                     .help("Review what Portavoz suggested in Radar")
-                    .accessibilityIdentifier("home-todo-radar")
+                    .accessibilityIdentifier("home-radar-link")
                 }
             }
             if items.isEmpty { HomeSectionEmpty(key: "All caught up — nothing open.") }
@@ -78,7 +78,7 @@ struct HomeYoursToDo: View {
             .help("Open the meeting this to-do came from")
             .accessibilityIdentifier("home-todo-\(open.id.uuidString)")
         }
-        .padding(.vertical, 10)
+        .padding(.vertical, 8)
     }
 
     /// "● You said it · Sprint Demo · 02:18"; the title alone when nobody is known.

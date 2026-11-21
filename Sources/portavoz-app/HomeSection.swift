@@ -13,7 +13,7 @@ struct HomeSectionHeader<Trailing: View>: View {
             Spacer(minLength: PVDesign.space2)
             trailing()
         }
-        .frame(minHeight: 34)
+        .frame(minHeight: 28)
     }
 }
 

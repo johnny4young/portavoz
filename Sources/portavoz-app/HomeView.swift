@@ -75,13 +75,13 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: PVDesign.space4) {
             header
             agendaSection
-            Divider().padding(.vertical, PVDesign.space1)
+            Divider()
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .top, spacing: 44) {
                     yoursToDo.frame(maxWidth: .infinity, alignment: .topLeading)
                     pickUp.frame(maxWidth: .infinity, alignment: .topLeading)
                 }
-                VStack(alignment: .leading, spacing: PVDesign.space6) {
+                VStack(alignment: .leading, spacing: PVDesign.space4) {
                     yoursToDo
                     pickUp
                 }

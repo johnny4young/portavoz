@@ -49,6 +49,9 @@ final class HomeUITests: PortavozUITestCase {
         }
         XCTAssertTrue(app.staticTexts["Presupuesto rollout"].exists)
         XCTAssertTrue(todo.label.contains("Prepare the rollout"), todo.label)
+        let radarLink = app.buttons["home-radar-link"]
+        XCTAssertTrue(radarLink.exists, "the review queue links to Radar from the to-dos")
+        XCTAssertTrue(radarLink.label.contains("Radar"), radarLink.label)
         attachScreenshot(of: app, named: "home-today")
         attachScreenshot(of: app, named: "pr-home-countdown-hero")
 
