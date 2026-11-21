@@ -2949,8 +2949,8 @@ that submit through `AskModel` before routing to Ask) and, when skill offers
 await review, the green `Automations · n to review` pill (`home-automations`)
 that opens Settings on Automations. `LibraryModel.State.pendingAutomations`
 holds the count (`LibraryModelClient.pendingLibraryAutomations()`, backed by
-`loadSkillOfferReview()`), re-read on the agenda timer and when Today
-appears; the library observation never waits on it. It counts the same
+`loadSkillOfferReview()`), re-read on the agenda timer, when Today
+appears and when its window becomes key again; the library observation never waits on it. It counts the same
 validated page Settings lists. The header falls back to two rows when narrow.
 
 **Next meeting hero** (`HomeNextMeetingHero`, `home-upcoming-<id>`): the first
@@ -2963,21 +2963,25 @@ the numeral: `NEXT MEETING · STARTS
 sit in equal cells (`DisplayTimeText`), so it keeps its width and nothing
 around it moves; `NextMeetingCountdown` gives mm:ss up to an hour and whole
 h:mm beyond it, and switches to a red `Now` (`NOW · STARTED <time>`) at the start
-time until the agenda drops the event at its end. The numeral is one
+time; at the event's end the hero re-reads the agenda, which drops it. The numeral is one
 accessibility element (`home-upcoming-countdown`) read as the relative start.
 Tomorrow's hero shows `NEXT MEETING · TOMORROW · <time>` without a numeral.
 Below: the title (`.title`), invitees as voice dots coloured by
 `VoiceCast` (calendar order, you last, past five folded into "Others · n";
 `home-upcoming-invitees`), then platform · duration · recurrence from
-`UpcomingEvent.platform`/`durationMinutes`/`recurrence` (only what the calendar
-gave), and the actions `Record` (`.pvPrimary`, ⌘R, event-linked,
+`UpcomingEvent.platform`/`durationMinutes`/`recurrence` (a recurrence only for a
+plain every-period rule; only what the calendar
+gave; decoding drops an end before the start and an unknown platform or
+recurrence), and the actions `Record` (`.pvPrimary`, ⌘R, event-linked, `Return to
+recording` while a capture is live,
 `home-upcoming-record-<id>`) and `Open brief` (`home-upcoming-brief-<id>`).
 With nothing scheduled the hero shows the calendar offer
 (`home-calendar-offer`) or "Nothing scheduled", and `Record now` / `Return to
 recording` (`home-record`, ⌘R).
 
 The rest of today and up to three of tomorrow's events sit in a **Later today**
-card (compact rows with icon-only Brief and Record, same identifiers) beside
+card (titled `Tomorrow` when the hero is tomorrow's; compact rows with
+icon-only Brief and Record, same identifiers) beside
 the hero when the section is at least 940 pt wide, below it otherwise;
 `HomeHeroLayout` decides from the proposed width alone, so the ticking hero is
 never measured against alternative layouts. A divider then leads to **Open to-dos** (the first five

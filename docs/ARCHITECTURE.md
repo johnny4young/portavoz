@@ -547,7 +547,8 @@ The resident pre-meeting brief uses the same execution authority without
 turning the existing manual Library brief into an implicit action. Its
 `UpcomingEvent` carries one bounded opaque EventKit reference; title, time and
 the optional end, call platform and recurrence are presentation facts, never
-identity. The resident source reads only when
+identity, and only the previewed facts (identifier, title, start, attendees)
+decide whether a confirmed brief went stale. The resident source reads only when
 full Calendar access already exists and never requests permission. A durable
 offer is absent while Skills are paused or this Skill is disabled, after an
 event-scoped dismissal, or whenever an existing execution is anything other

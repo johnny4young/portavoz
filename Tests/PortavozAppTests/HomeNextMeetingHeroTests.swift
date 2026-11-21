@@ -27,6 +27,10 @@ final class HomeNextMeetingHeroTests: XCTestCase {
             NextMeetingCountdown(start: start, at: start.addingTimeInterval(-3_600.5), locale: posix),
             .counting(lead: "1", trail: ":00", unit: .hours))
         XCTAssertEqual(
+            NextMeetingCountdown(start: start, at: start.addingTimeInterval(-3_720), locale: posix),
+            .counting(lead: "1", trail: ":01", unit: .hours),
+            "a tick on the minute shows the minute that follows it")
+        XCTAssertEqual(
             NextMeetingCountdown(
                 start: start, at: start.addingTimeInterval(-(2 * 3_600 + 15 * 60 + 59)), locale: posix),
             .counting(lead: "2", trail: ":15", unit: .hours))

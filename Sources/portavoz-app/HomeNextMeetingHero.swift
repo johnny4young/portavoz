@@ -24,7 +24,8 @@ enum NextMeetingCountdown: Equatable {
                 trail: String(format: ":%02d", locale: locale, seconds % 60),
                 unit: .minutes)
         } else {
-            let minutes = Int(remaining.rounded(.down)) / 60
+            // Rounded up like the seconds, so a tick on a boundary shows the minute it starts.
+            let minutes = (seconds - 1) / 60
             self = .counting(
                 lead: String(format: "%d", locale: locale, minutes / 60),
                 trail: String(format: ":%02d", locale: locale, minutes % 60),
@@ -66,10 +67,13 @@ struct CountdownSchedule: TimelineSchedule {
 struct HomeNextMeetingHero: View {
     let event: UpcomingEvent
     let isToday: Bool
+    let recordingActive: Bool
     /// The event whose brief is being prepared, if any.
     let briefLoading: UpcomingEvent?
     let onRecord: () -> Void
     let onBrief: () -> Void
+    /// Called once the event's end passes, so the agenda can drop it.
+    let onEnded: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -93,7 +97,7 @@ struct HomeNextMeetingHero: View {
             .padding(.top, PVDesign.space3)
             HStack(spacing: 10) {
                 Button(action: onRecord) {
-                    RecordLabel("Record")
+                    RecordLabel(recordingActive ? "Return to recording" : "Record")
                 }
                 .buttonStyle(.pvPrimary)
                 .controlSize(.large)
@@ -118,6 +122,12 @@ struct HomeNextMeetingHero: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home-upcoming-\(event.id)")
+        .task(id: event.endDate) {
+            guard let end = event.endDate else { return }
+            try? await Task.sleep(for: .seconds(max(0, end.timeIntervalSinceNow)))
+            guard !Task.isCancelled else { return }
+            onEnded()
+        }
     }
 
     @ViewBuilder

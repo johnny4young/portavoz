@@ -44,10 +44,10 @@ extension AppServices: MenuBarModelClient {
         offer: PreMeetingBriefOffer,
         approvedBrief: MeetingBrief
     ) async throws -> String? {
-        guard approvedBrief.event == offer.event,
+        guard approvedBrief.event.hasSamePreviewFacts(as: offer.event),
               let currentEvent = try await upcomingEventSource.upcomingEvent(
                 matching: offer.event.id),
-              currentEvent == offer.event
+              currentEvent.hasSamePreviewFacts(as: offer.event)
         else { return staleMenuBarBriefFailure }
         let key = offer.offerKey
         let existing = try await store.skillExecution(idempotencyKey: key)

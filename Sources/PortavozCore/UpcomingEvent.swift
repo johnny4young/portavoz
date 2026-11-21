@@ -38,6 +38,31 @@ public struct UpcomingEvent:
         self.recurrence = recurrence
     }
 
+    private enum CodingKeys: String, CodingKey {
+        case id, title, startDate, attendees, endDate, platform, recurrence
+    }
+
+    /// Details are optional and tolerant: an older encoding lacks them, and a
+    /// value a newer build added must not make a stored brief unreadable.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            id: try container.decode(String.self, forKey: .id),
+            title: try container.decode(String.self, forKey: .title),
+            startDate: try container.decode(Date.self, forKey: .startDate),
+            attendees: try container.decode([String].self, forKey: .attendees),
+            endDate: try container.decodeIfPresent(Date.self, forKey: .endDate),
+            platform: try? container.decodeIfPresent(MeetingPlatform.self, forKey: .platform),
+            recurrence: try? container.decodeIfPresent(EventRecurrence.self, forKey: .recurrence))
+    }
+
+    /// The facts a brief preview shows; end, platform and recurrence only
+    /// decorate Today, so editing them does not make a preview stale.
+    public func hasSamePreviewFacts(as other: UpcomingEvent) -> Bool {
+        id == other.id && title == other.title && startDate == other.startDate
+            && attendees == other.attendees
+    }
+
     /// Whole minutes between start and end, when the calendar gave an end.
     public var durationMinutes: Int? {
         endDate.map { Int($0.timeIntervalSince(startDate) / 60) }

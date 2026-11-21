@@ -16,6 +16,7 @@ struct HomeView: View {
     let onRecord: () -> Void
     let onAsk: (String?) -> Void
     let onOpenAutomations: () -> Void
+    @Environment(\.controlActiveState) private var controlActiveState
 
     private var state: LibraryModel.State { model.state }
 
@@ -45,6 +46,10 @@ struct HomeView: View {
         }
         .navigationTitle("Portavoz")
         .onAppear { perform(.refreshAutomations) }
+        // Re-read when the window regains focus, e.g. after reviewing in Settings.
+        .onChange(of: controlActiveState) { _, state in
+            if state == .key { perform(.refreshAutomations) }
+        }
     }
 
     /// Header, the next meeting as the hero beside the rest of the agenda,
@@ -159,9 +164,11 @@ struct HomeView: View {
             HomeNextMeetingHero(
                 event: event,
                 isToday: next.isToday,
+                recordingActive: recordingActive,
                 briefLoading: state.briefLoading,
                 onRecord: { route = .recording(event) },
-                onBrief: { perform(.openBrief(event)) })
+                onBrief: { perform(.openBrief(event)) },
+                onEnded: { perform(.refreshAgenda) })
         } else {
             emptyHero
         }
@@ -199,7 +206,8 @@ struct HomeView: View {
     }
 
     private var laterCard: some View {
-        card(title: L10n.text("Later today")) {
+        let heroIsToday = heroEvent?.isToday ?? true
+        return card(title: heroIsToday ? L10n.text("Later today") : L10n.text("Tomorrow")) {
             if !laterToday.isEmpty {
                 ForEach(laterToday) { event in
                     agendaRow(event)
@@ -207,14 +215,14 @@ struct HomeView: View {
             } else if !state.upcomingToday.isEmpty {
                 emptyLine("Nothing else scheduled today.")
             }
-            if !tomorrow.isEmpty {
+            if heroIsToday, !tomorrow.isEmpty {
                 Text("Tomorrow")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(PVDesign.ink3)
                     .padding(.top, 4)
-                ForEach(tomorrow) { event in
-                    agendaRow(event)
-                }
+            }
+            ForEach(tomorrow) { event in
+                agendaRow(event)
             }
         }
     }
