@@ -14,7 +14,9 @@ extension MeetingStore {
     public func people(matchingAliases aliases: [String]) async throws -> [String: [Person]] {
         var names: [String: [String]] = [:]
         for alias in aliases {
-            guard let normalized = PersonAliasNormalizer.normalize(alias) else { continue }
+            guard let normalized = PersonAliasNormalizer.normalize(alias),
+                  names[normalized]?.contains(alias) != true
+            else { continue }
             names[normalized, default: []].append(alias)
         }
         guard !names.isEmpty else { return [:] }

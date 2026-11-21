@@ -23207,10 +23207,17 @@ readable attribution the strips draw.
 
 One `VoiceCast` over the day's totals colours the page. Each meeting's strip
 and each invite list is cast with members keyed by those identities and that
-cast as `previous:`, which keeps a hue by key before falling back to the name,
-so a person keeps one hue across totals, strips and invites even when their
-meeting-local names differ, and a confirmed person never lends a hue to an
-unconfirmed voice of the same name.
+cast as `page:`: a voice the page knows keeps its tint, grey included, and a
+newcomer such as an invitee nobody heard takes a hue the page left free. Keys,
+not names, carry the tint, so a person keeps one hue across totals, strips and
+invites even when their meeting-local names differ, a voice folded grey never
+takes someone else's hue, and a confirmed person never lends a hue to an
+unconfirmed voice or invitee of the same name.
+
+An event under way is treated as recorded only when a meeting began at most
+15 minutes before its start and before its end, so an earlier recording that
+ran over does not hide it. A failed invitee lookup leaves plain names instead
+of failing the whole read.
 
 Calendar invitees resolve to people for display only: an attendee name maps to
 a person when exactly one live person holds that exact normalized alias;

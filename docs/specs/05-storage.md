@@ -1291,7 +1291,7 @@ Canonical people use three narrow D86 APIs. `people(matchingAlias:)` applies
 Core's POSIX-stable whitespace/case/diacritic/width normalization and returns
 every exact live candidate in deterministic order without writing;
 `people(matchingAliases:)` answers several names in one read, keyed by each
-name as given, and leaves out names without candidates. The
+name as given (a repeated name once), and leaves out names without candidates. The
 separate `createPersonAndLink` and `linkSpeaker` transactions accept only one
 live, non-user observed speaker. They atomically insert/reactivate the alias,
 set `speaker.personID`, and canonicalize that speaker's display name; failure
@@ -2282,8 +2282,8 @@ triggers drop the row before the correction hook rebuilds it, and each store
 (D649).
 
 `meetingRows(startedIn:)` serves Today's talk time and day axis (D652): the
-live meetings whose start falls inside the interval, earliest first, each with
-its strip. Finished meetings go through `voiceColumns(for:)`, so a missing row
+live meetings whose start falls inside the interval, plus one still recording
+that began earlier, earliest first, each with its strip. Finished meetings go through `voiceColumns(for:)`, so a missing row
 is stored; a recording is binned in memory and never stored, as in the
 library.
 

@@ -68,14 +68,17 @@ public struct VoiceCast: Sendable, Equatable {
 
     /// - Parameters:
     ///   - current: live key of whoever is speaking now; leads a `.recency` cast.
-    ///   - previous: an earlier cast. Named voices keep the hue it gave their
-    ///     key, else their name, so live re-ranking or relabelling never
+    ///   - previous: the last cast of the same meeting. Named voices keep the
+    ///     hue they already had, so live re-ranking or relabelling never
     ///     recolours someone on screen.
+    ///   - page: a cast that already coloured the page. A voice it knows by key
+    ///     keeps that tint, grey included; a new named voice takes a hue it left free.
     public init(
         members: [Member],
         ordering: Ordering,
         current: String? = nil,
-        previous: VoiceCast? = nil
+        previous: VoiceCast? = nil,
+        page: VoiceCast? = nil
     ) {
         let total = members.reduce(0) { $0 + $1.talkSeconds }
         let appearance = Dictionary(
@@ -89,7 +92,8 @@ public struct VoiceCast: Sendable, Equatable {
             to: promoted
                 .sorted { appearance[$0.key, default: 0] < appearance[$1.key, default: 0] }
                 .compactMap { member in member.name.map { (key: member.key, name: $0) } },
-            previous: previous)
+            previous: previous,
+            page: page)
 
         func voice(_ member: Member, tint: Tint) -> Voice {
             Voice(
@@ -128,28 +132,24 @@ public struct VoiceCast: Sendable, Equatable {
         }
     }
 
-    /// Previous hues first, by key and then by name for a relabelled voice;
-    /// then each name's stable hue, or the next free one when taken.
+    /// Previous hues first, then each name's stable hue, or the next free one
+    /// when an earlier voice already holds it. Keyed by name, not live label.
     private static func assignHues(
-        to named: [(key: String, name: String)], previous: VoiceCast?
+        to named: [(key: String, name: String)], previous: VoiceCast?, page: VoiceCast?
     ) -> [String: Int] {
-        var keptByKey: [String: Int] = [:]
-        var keptByName: [String: Int] = [:]
+        if let page { return assignHues(to: named, page: page) }
+        var kept: [String: Int] = [:]
         for voice in previous?.voices ?? [] {
             if case .hue(let index) = voice.tint, let name = voice.name {
-                keptByKey[voice.key] = index
-                keptByName[VoiceHue.normalized(name)] = index
+                kept[VoiceHue.normalized(name)] = index
             }
         }
         var taken = Set<Int>()
         var result: [String: Int] = [:]
-        for kept in [{ keptByKey[$0.key] }, { keptByName[VoiceHue.normalized($0.name)] }]
-            as [((key: String, name: String)) -> Int?] {
-            for member in named where result[member.key] == nil {
-                guard let index = kept(member), !taken.contains(index) else { continue }
-                result[member.key] = index
-                taken.insert(index)
-            }
+        for member in named {
+            guard let index = kept[VoiceHue.normalized(member.name)], !taken.contains(index) else { continue }
+            result[member.key] = index
+            taken.insert(index)
         }
         for member in named where result[member.key] == nil {
             let preferred = VoiceHue.index(name: member.name)
@@ -157,6 +157,30 @@ public struct VoiceCast: Sendable, Equatable {
                 .map({ (preferred + $0) % VoiceHue.paletteSize })
                 .first(where: { !taken.contains($0) })
             else { break }
+            result[member.key] = free
+            taken.insert(free)
+        }
+        return result
+    }
+
+    private static func assignHues(
+        to named: [(key: String, name: String)], page: VoiceCast
+    ) -> [String: Int] {
+        var taken = Set(page.tints.values.compactMap { tint -> Int? in
+            if case .hue(let index) = tint { return index }
+            return nil
+        })
+        var result: [String: Int] = [:]
+        for member in named {
+            if let tint = page.tints[member.key] {
+                if case .hue(let index) = tint { result[member.key] = index }
+                continue
+            }
+            let preferred = VoiceHue.index(name: member.name)
+            guard let free = (0..<VoiceHue.paletteSize)
+                .map({ (preferred + $0) % VoiceHue.paletteSize })
+                .first(where: { !taken.contains($0) })
+            else { continue }
             result[member.key] = free
             taken.insert(free)
         }

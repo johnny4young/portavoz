@@ -201,8 +201,8 @@ extension TodayVoices {
             strip: row.voiceColumns.map { strip(of: $0, cast: cast, names: names) } ?? .empty)
     }
 
-    /// The meeting's cast keyed by day identity, so each voice keeps its day
-    /// hue and wears the day's name.
+    /// The meeting's cast keyed by day identity with the day cast as its page,
+    /// so each voice keeps its day tint and wears the day's name.
     private static func strip(
         of columns: MeetingVoiceColumns, cast: VoiceCast, names: [Identity: String]
     ) -> VoiceStripColumns {
@@ -215,15 +215,18 @@ extension TodayVoices {
                     talkSeconds: $0.talkSeconds)
             },
             ordering: .talkShare,
-            previous: cast)
+            page: cast)
         return VoiceStripColumns(
             columns: columns.columns,
             tints: columns.voices.map { meetingCast.tint(for: identity(of: $0, name: name(of: $0)).key) },
             cast: meetingCast)
     }
 
-    /// Starts today and has not ended; one already under way is dropped when
-    /// a meeting recorded today overlaps it, because that meeting is its strip.
+    /// Starts today and has not ended; one already under way is dropped when a
+    /// recording began from shortly before its start, because that is its strip.
+    /// How early a recording may start and still be the event's own.
+    static let recordingLead: TimeInterval = 15 * 60
+
     private static func isStillAhead(
         _ event: UpcomingEvent, day: DateInterval, now: Date, recorded: [RecordedMeeting]
     ) -> Bool {
@@ -232,7 +235,7 @@ extension TodayVoices {
         guard end > now else { return false }
         guard event.startDate <= now else { return true }
         return !recorded.contains {
-            $0.startedAt < end && $0.startedAt.addingTimeInterval($0.duration) > event.startDate
+            $0.startedAt >= event.startDate.addingTimeInterval(-recordingLead) && $0.startedAt < end
         }
     }
 
@@ -249,14 +252,17 @@ extension TodayVoices {
     }
 
     /// Invitees with you last, keyed like the day's voices so a person or a
-    /// name heard today keeps its hue.
+    /// name heard today keeps its tint and nobody else takes it.
     private static func inviteeCast(_ invitees: [Invitee], day: VoiceCast) -> VoiceCast {
+        var used = Set<String>()
         let members = invitees.enumerated().map { index, invitee in
             let identity: Identity? = invitee.personID.map(Identity.person)
                 ?? PersonAliasNormalizer.normalize(invitee.name).map(Identity.name)
+            // A repeated unresolved name gets its own key, so voice ids stay unique.
+            let key = identity.map(\.key).flatMap { used.insert($0).inserted ? $0 : nil }
             return VoiceCast.Member(
-                key: identity?.key ?? "invitee-\(index)", name: invitee.name, talkSeconds: 0)
+                key: key ?? "invitee-\(index)", name: invitee.name, talkSeconds: 0)
         } + [VoiceCast.Member(key: Identity.me.key, isMe: true, name: nil, talkSeconds: 0)]
-        return VoiceCast(members: members, ordering: .talkShare, previous: day)
+        return VoiceCast(members: members, ordering: .talkShare, page: day)
     }
 }

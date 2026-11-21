@@ -34,9 +34,18 @@ public struct LoadTodayVoices: ApplicationUseCase {
         let start = request.calendar.startOfDay(for: request.now)
         let end = request.calendar.date(byAdding: .day, value: 1, to: start) ?? start.addingTimeInterval(86_400)
         let day = DateInterval(start: start, end: end)
-        let names = Array(Set(request.events.flatMap(\.attendees))).sorted()
+        let today = request.events.filter { day.start <= $0.startDate && $0.startDate < day.end }
+        let names = Array(Set(today.flatMap(\.attendees))).sorted()
         let meetings = try await store.meetingRows(startedIn: day)
-        let people = names.isEmpty ? [:] : try await store.people(matchingAliases: names)
+        let people: [String: [Person]]
+        do {
+            people = names.isEmpty ? [:] : try await store.people(matchingAliases: names)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            // Unresolved invitees still show as names; talk time never needs them.
+            people = [:]
+        }
         return TodayVoices(
             day: day, now: request.now, meetings: meetings, events: request.events, people: people)
     }

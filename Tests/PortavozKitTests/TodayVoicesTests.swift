@@ -99,6 +99,53 @@ final class TodayVoicesTests: XCTestCase {
         XCTAssertEqual(demo.strip.tints, [.you, martaTint, .grey, noraTint], "a person reads alike on the page")
     }
 
+    func testAVoiceGreyOnThePageStaysGreyInItsStrip() throws {
+        let crowd = (1...VoiceHue.paletteSize).map { voice("Person \($0)", talk: Double(100 * $0)) }
+        let today = TodayVoices(
+            day: day, now: at(15.25),
+            meetings: [
+                row("All hands", from: 9, to: 10, voices: crowd),
+                row("Quick chat", from: 11, to: 11.25, voices: [voice("Zed", talk: 10)])
+            ],
+            events: [], people: [:])
+
+        let zed = try XCTUnwrap(today.talkers.first { $0.name == "Zed" })
+        XCTAssertEqual(zed.tint, .grey)
+        XCTAssertEqual(today.recorded[1].strip.tints, [.grey], "a folded voice takes no hue another person holds")
+    }
+
+    func testAnUnresolvedInviteeNeverWearsAConfirmedPersonsHue() throws {
+        let twoMartas = [marta, Person(preferredName: "Marta")]
+        let today = TodayVoices(
+            day: day, now: at(15.25), meetings: dayOfMeetings(),
+            events: [event("Sync", from: 16, to: 17, ["Marta G."])], people: ["Marta G.": twoMartas])
+
+        let martaTint = try XCTUnwrap(today.talkers.first { $0.identity == .person(marta.id) }?.tint)
+        let invitee = try XCTUnwrap(today.upcoming.first?.cast.voices.first)
+        XCTAssertEqual(today.upcoming.first?.invitees.first?.personID, nil)
+        XCTAssertNotEqual(invitee.tint, martaTint)
+    }
+
+    func testAnEarlierRecordingThatRanOverDoesNotHideAMeetingUnderWay() {
+        let overran = row("Planning", from: 14, to: 15.1, voices: [voice(nil, isMe: true, talk: 60)])
+        let today = TodayVoices(
+            day: day, now: at(15.3), meetings: [overran],
+            events: [event("Review", from: 15, to: 16)], people: [:])
+
+        XCTAssertEqual(today.upcoming.map(\.id), ["Review"])
+        XCTAssertEqual(today.toGo, 0)
+    }
+
+    func testRepeatedInviteeNamesKeepDistinctVoices() {
+        let today = TodayVoices(
+            day: day, now: at(9), meetings: [],
+            events: [event("Sync", from: 10, to: 11, ["Ilarion", "ilarion"])], people: [:])
+
+        let ids = today.upcoming.first?.cast.voices.map(\.id) ?? []
+        XCTAssertEqual(ids.count, 3)
+        XCTAssertEqual(Set(ids).count, ids.count)
+    }
+
     func testARecordingRunsToNow() {
         let recording = row(
             "Live", from: 15, to: nil, state: .recording, duration: 600,
@@ -151,7 +198,7 @@ final class TodayVoicesTests: XCTestCase {
         XCTAssertEqual(today.toGo, 0)
     }
 
-    func testLoadReadsTodayAndLooksUpInviteesOnce() async throws {
+    func testLoadReadsTodayAndLooksUpTodaysInviteesOnce() async throws {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "UTC"))
         let now = at(15.25)
@@ -171,11 +218,21 @@ final class TodayVoicesTests: XCTestCase {
 
         let calls = await store.calls
         XCTAssertEqual(calls.intervals, [expectedDay])
-        XCTAssertEqual(calls.aliases, [["Ilarion", "Marta"]])
+        XCTAssertEqual(calls.aliases, [["Marta"]], "tomorrow's invitees are not looked up")
         XCTAssertEqual(today.upcoming.map(\.id), ["a"])
         XCTAssertEqual(
             today.upcoming.first?.invitees, [TodayVoices.Invitee(name: "Marta", personID: marta.id)],
             "nobody spoke today, so the person's own name")
+
+        let failing = FakeTodayStore(rows: [], people: [:], failsLookup: true)
+        let degraded = try await LoadTodayVoices(store: failing).execute(.init(
+            now: now, events: [UpcomingEvent(
+                id: "a", title: "a", startDate: expectedDay.start.addingTimeInterval(20 * 3600),
+                attendees: ["Marta"])],
+            calendar: calendar))
+        XCTAssertEqual(
+            degraded.upcoming.first?.invitees, [TodayVoices.Invitee(name: "Marta", personID: nil)],
+            "a failed lookup leaves plain names")
 
         let quiet = FakeTodayStore(rows: [], people: [:])
         _ = try await LoadTodayVoices(store: quiet).execute(.init(now: now, events: [], calendar: calendar))
@@ -199,11 +256,13 @@ private actor FakeTodayStore: TodayVoicesReading {
 
     let rows: [MeetingStore.LibraryMeetingRow]
     let people: [String: [Person]]
+    let failsLookup: Bool
     var calls = Calls()
 
-    init(rows: [MeetingStore.LibraryMeetingRow], people: [String: [Person]]) {
+    init(rows: [MeetingStore.LibraryMeetingRow], people: [String: [Person]], failsLookup: Bool = false) {
         self.rows = rows
         self.people = people
+        self.failsLookup = failsLookup
     }
 
     func meetingRows(startedIn interval: DateInterval) async throws -> [MeetingStore.LibraryMeetingRow] {
@@ -213,6 +272,7 @@ private actor FakeTodayStore: TodayVoicesReading {
 
     func people(matchingAliases aliases: [String]) async throws -> [String: [Person]] {
         calls.aliases.append(aliases)
+        if failsLookup { throw CocoaError(.fileReadCorruptFile) }
         return people.filter { aliases.contains($0.key) }
     }
 }

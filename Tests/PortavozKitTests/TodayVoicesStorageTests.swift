@@ -52,6 +52,15 @@ final class TodayVoicesStorageTests: XCTestCase {
         XCTAssertEqual(stored, 2, "finished meetings store their missing strip")
     }
 
+    func testARecordingStartedBeforeMidnightStillShows() async throws {
+        try await seed("Late call", at: -0.5, state: .recording)
+        try await seed("Finished late", at: -0.4)
+
+        let rows = try await store.meetingRows(startedIn: day)
+
+        XCTAssertEqual(rows.map(\.meeting.title), ["Late call"])
+    }
+
     func testARecordingIsBinnedWithoutStoringItsStrip() async throws {
         try await seed("Live", at: 15, state: .recording)
 
@@ -100,6 +109,8 @@ final class TodayVoicesStorageTests: XCTestCase {
         XCTAssertEqual(Set(matches["Ana"]?.map(\.id) ?? []), [anaOne.person.id, anaTwo.person.id])
         XCTAssertEqual(matches["  MÁRTA "]?.map(\.id), [marta.person.id])
         XCTAssertEqual(matches["Marta"]?.map(\.id), [marta.person.id])
+        let repeated = try await store.people(matchingAliases: ["Marta", "Marta"])
+        XCTAssertEqual(repeated["Marta"]?.map(\.id), [marta.person.id], "a repeated name is not ambiguity")
         let none = try await store.people(matchingAliases: [])
         XCTAssertTrue(none.isEmpty)
     }
