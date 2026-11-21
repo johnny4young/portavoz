@@ -47,7 +47,7 @@ struct AppLaunchRecoveryView: View {
                 Button("Try again") {
                     Task { await model.retry() }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.pvPrimary)
                 .keyboardShortcut(.defaultAction)
                 .accessibilityIdentifier("launch-recovery-retry")
                 .disabled(model.hasOperationInProgress)

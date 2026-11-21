@@ -84,7 +84,7 @@ struct RecordingInterviewAssistView: View {
         } label: {
             Label(L10n.text("Find grounded answer"), systemImage: "text.magnifyingglass")
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(.pvPrimary)
         .controlSize(.small)
         .disabled(controller.interviewAssist.answerState == .generating)
         .accessibilityIdentifier("recording-interview-answer")

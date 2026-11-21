@@ -29,7 +29,7 @@ struct MeetingActionItemsView: View {
             Toggle(isOn: actionItemBinding(item)) {
                 Text(item.text).strikethrough(item.isDone)
             }
-            .toggleStyle(.checkbox)
+            .toggleStyle(.pvCheckbox)
             .accessibilityIdentifier("action-item-\(item.id.uuidString)")
             Spacer(minLength: 8)
             if canCreateGitHubIssue(item) {

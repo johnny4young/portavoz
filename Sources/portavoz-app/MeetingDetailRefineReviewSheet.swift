@@ -46,7 +46,7 @@ struct MeetingDetailRefineReviewSheet: View {
                 Spacer()
                 Button("Discard", role: .cancel, action: actions.discard)
                 Button("Apply") { actions.apply(draft) }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.pvPrimary)
                     .disabled(draft.segments.isEmpty)
             }
         }

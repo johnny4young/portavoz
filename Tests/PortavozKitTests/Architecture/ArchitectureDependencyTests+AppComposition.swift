@@ -2140,9 +2140,9 @@ extension ArchitectureDependencyTests {
         XCTAssertEqual(
             presentOwners,
             [
-                "LibraryView.swift", "MenuBarIcon.swift", "MenuBarView.swift", "RecordingHUD.swift",
+                "MenuBarIcon.swift", "MenuBarView.swift", "PVComponents.swift", "RecordingHUD.swift",
                 "RecordingToolbar.swift"
             ],
-            "red marks only the present: Record, Stop and the live dot")
+            "red marks only the present: Record, Stop, the live dot and the Now label")
     }
 }

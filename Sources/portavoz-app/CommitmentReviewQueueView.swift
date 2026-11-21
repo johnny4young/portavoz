@@ -173,7 +173,7 @@ private extension CommitmentReviewQueueView {
         Button("Review in meeting") {
             onOpenMeeting(item.meetingID, firstEvidenceTime(item))
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(.pvPrimary)
         .controlSize(.small)
         .help("Open the full meeting before confirming.")
         .accessibilityIdentifier(

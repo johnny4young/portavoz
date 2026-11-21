@@ -15,9 +15,8 @@ final class MeetingTranscriptTranslationUITests: PortavozUITestCase {
         let translated = { tagged.count > 0 }
         XCTAssertTrue(waitForUITestCondition(timeout: 10, translated), "The translated reading opens once it is ready")
         XCTAssertFalse(app.control(withIdentifier: "detail-transcript-translation-stale").exists)
-        let original = language.radioButtons.count > 0
-            ? language.radioButtons.element(boundBy: 0) : language.buttons.element(boundBy: 0)
-        original.click()
+        XCTAssertTrue(app.control(withIdentifier: "detail-transcript-language-en").isSelected)
+        app.control(withIdentifier: "detail-transcript-language-original").click()
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { !translated() }, "Original shows the untouched transcript")
     }
 

@@ -748,6 +748,35 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testFamilyControlsShapeCastSuggestionsTabsAndCommitmentCards() throws {
+        let app = try launchOnSeededMeeting(
+            commitmentInbox: true,
+            unnamedSpeaker: true,
+            aiSuggestions: true)
+        defer { finishUITestApplication(app) }
+
+        let header = app.control(withIdentifier: "detail-header-section")
+        XCTAssertTrue(header.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(app.buttons["detail-title-suggestion"].waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(app.control(withIdentifier: "cast-speaker-S1").exists)
+        XCTAssertTrue(header.waitForStableFrame(timeout: 5))
+        attachScreenshot(of: app, named: "pr-family-cast-and-suggestions")
+
+        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
+        let summaryTab = app.control(withIdentifier: "summary-tab-0")
+        XCTAssertTrue(summaryTab.waitForExistenceFast(timeout: 10))
+        let inbox = app.control(withIdentifier: "detail-commitment-inbox")
+        XCTAssertTrue(inbox.waitForExistenceFast(timeout: 10))
+        attachScreenshot(of: app, named: "pr-family-tabs-and-cards")
+
+        XCTAssertTrue(summaryTab.isSelected, "the selected tab is exposed as selected")
+        let candidateID = "B5E00000-0000-4000-8000-000000000001"
+        XCTAssertTrue(
+            app.control(withIdentifier: "commitment-\(candidateID)-caption").exists,
+            "a commitment card names what it holds and when it is due")
+    }
+
+    @MainActor
     func testFailedDurableProcessingOffersOneRecoveryAction() throws {
         let app = try launchOnSeededMeeting(processingFailure: true)
         defer { finishUITestApplication(app) }

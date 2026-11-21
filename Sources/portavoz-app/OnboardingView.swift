@@ -174,8 +174,7 @@ struct OnboardingView: View {
                 Label("Listen for 10 seconds", systemImage: "mic.fill")
             }
             .controlSize(.large)
-            .buttonStyle(.borderedProminent)
-            .tint(PVDesign.accent)
+            .buttonStyle(.pvPrimary)
             .accessibilityIdentifier("onboarding-first-listen-button")
         case .preparing:
             HStack(spacing: 8) {
@@ -319,8 +318,7 @@ struct OnboardingView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     if canReuseFirstListen {
                         Button("Use my first listen") { enrollVoice(reusingFirstListen: true) }
-                            .buttonStyle(.borderedProminent)
-                            .tint(PVDesign.accent)
+                            .buttonStyle(.pvPrimary)
                             .accessibilityIdentifier("onboarding-voice-reuse")
                         Text("Reuses what you just said — no need to speak again.")
                             .font(.caption).foregroundStyle(.secondary)
@@ -329,8 +327,7 @@ struct OnboardingView: View {
                             .accessibilityIdentifier("onboarding-voice-record-fresh")
                     } else {
                         Button("Enroll my voice") { enrollVoice(reusingFirstListen: false) }
-                            .buttonStyle(.borderedProminent)
-                            .tint(PVDesign.accent)
+                            .buttonStyle(.pvPrimary)
                             .accessibilityIdentifier("onboarding-voice-enroll")
                     }
                 }

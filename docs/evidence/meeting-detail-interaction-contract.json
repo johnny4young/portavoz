@@ -88,13 +88,7 @@
     {
       "path": "Sources/portavoz-app/ChipLabel.swift",
       "category": "control",
-      "source": "Button(action: dismiss) {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/ChipLabel.swift",
-      "category": "control",
-      "source": "Button(action: keep) {",
+      "source": "Button(action: action) {",
       "occurrences": 1
     },
     {
@@ -112,13 +106,7 @@
     {
       "path": "Sources/portavoz-app/ChipLabel.swift",
       "category": "identifier",
-      "source": ".accessibilityIdentifier(dismissAccessibilityIdentifier)",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/ChipLabel.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(keepAccessibilityIdentifier)",
+      "source": ".accessibilityIdentifier(accessibilityIdentifier)",
       "occurrences": 1
     },
     {
@@ -582,6 +570,12 @@
       "category": "identifier",
       "source": ".accessibilityIdentifier(",
       "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-\\(candidate.id.uuidString)-caption\")",
+      "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
@@ -1863,12 +1857,6 @@
     },
     {
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
-      "category": "control",
-      "source": "return Button {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(",
       "occurrences": 1
@@ -1949,12 +1937,6 @@
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(staleIdentifier)",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(tag == 1000 ? \"summary-tab-todos\" : \"summary-tab-\\(tag)\")",
       "occurrences": 1
     },
     {
@@ -2453,12 +2435,6 @@
       "path": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
       "category": "control",
       "source": "Menu {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
-      "category": "control",
-      "source": "Picker(\"Transcript language\", selection: $language) {",
       "occurrences": 1
     },
     {
@@ -3414,6 +3390,38 @@
       ],
       "screenshots": [
         "meeting-detail-correction-aware-export"
+      ]
+    },
+    {
+      "feature": "family-controls",
+      "tests": [
+        "testFamilyControlsShapeCastSuggestionsTabsAndCommitmentCards"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+          "anchor": "\"commitment-\\(candidate.id.uuidString)-caption\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+          "anchor": "\"summary-tab-0\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+          "anchor": "\"summary-tab-todos\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
+          "anchor": "\"detail-transcript-language-original\""
+        },
+        {
+          "path": "Sources/portavoz-app/SpeakerPill.swift",
+          "anchor": "VoiceChip("
+        }
+      ],
+      "screenshots": [
+        "pr-family-cast-and-suggestions",
+        "pr-family-tabs-and-cards"
       ]
     },
     {

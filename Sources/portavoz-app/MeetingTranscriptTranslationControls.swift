@@ -12,16 +12,10 @@ struct MeetingTranscriptTranslationControls: View {
     var body: some View {
         HStack(spacing: 8) {
             if !state.languages.isEmpty {
-                Picker("Transcript language", selection: $language) {
-                    Text("Original").tag(String?.none)
-                    ForEach(state.languages, id: \.self) { code in
-                        Text(Self.name(code)).tag(String?.some(code))
-                    }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .fixedSize()
-                .accessibilityIdentifier("detail-transcript-language")
+                PVSegmentedControl(segments: languageSegments, selection: $language)
+                    .fixedSize()
+                    .accessibilityLabel(L10n.text("Transcript language"))
+                    .accessibilityIdentifier("detail-transcript-language")
             }
             if let language, !state.isCurrent(language) {
                 Image(systemName: PVSymbol.warning)
@@ -32,6 +26,17 @@ struct MeetingTranscriptTranslationControls: View {
             }
             activity
         }
+    }
+
+    private var languageSegments: [PVSegment<String?>] {
+        [PVSegment(
+            value: nil, title: L10n.text("Original"),
+            accessibilityIdentifier: "detail-transcript-language-original")]
+            + state.languages.map { code in
+                PVSegment(
+                    value: code, title: Self.name(code),
+                    accessibilityIdentifier: "detail-transcript-language-\(code)")
+            }
     }
 
     @ViewBuilder

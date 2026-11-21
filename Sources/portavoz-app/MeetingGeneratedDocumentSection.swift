@@ -72,9 +72,9 @@ struct MeetingGeneratedDocumentSection: View {
             staleSummaryNotice
             documentTabs
             documentContent
+                .pvCard(.generated)
         }
-        .padding(14)
-        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
+        .pvCard(.outlined, padding: 14)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-generated-document")
         .onChange(of: values.summary.version) { _, _ in
@@ -230,39 +230,28 @@ struct MeetingGeneratedDocumentSection: View {
     }
 
     private var documentTabs: some View {
-        let done = values.summary.draft.actionItems.filter(\.isDone).count
-        let total = values.summary.draft.actionItems.count
-        return HStack(spacing: 6) {
-            documentTab(L10n.text("Summary"), tag: 0)
-            ForEach(Array(document.sections.enumerated()), id: \.element.id) { index, section in
-                documentTab("\(section.heading) · \(section.bulletCount)", tag: index + 1)
-            }
-            if total > 0 {
-                documentTab(L10n.format("To-dos · %d/%d", done, total), tag: 1000)
-            }
-        }
+        PVSegmentedControl(segments: documentSegments, selection: $tabSelection)
     }
 
-    private func documentTab(_ label: String, tag: Int) -> some View {
-        let selected = tabSelection == tag
-        return Button {
-            tabSelection = tag
-        } label: {
-            Text(label)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(selected ? PVDesign.onInk : .secondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background {
-                    if selected {
-                        Capsule().fill(PVDesign.accent)
-                    } else {
-                        Capsule().fill(.quaternary.opacity(0.6))
-                    }
-                }
+    private var documentSegments: [PVSegment<Int>] {
+        let done = values.summary.draft.actionItems.filter(\.isDone).count
+        let total = values.summary.draft.actionItems.count
+        var segments = [
+            PVSegment(value: 0, title: L10n.text("Summary"), accessibilityIdentifier: "summary-tab-0")
+        ]
+        for (index, section) in document.sections.enumerated() {
+            segments.append(PVSegment(
+                value: index + 1,
+                title: "\(section.heading) · \(section.bulletCount)",
+                accessibilityIdentifier: "summary-tab-\(index + 1)"))
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(tag == 1000 ? "summary-tab-todos" : "summary-tab-\(tag)")
+        if total > 0 {
+            segments.append(PVSegment(
+                value: 1000,
+                title: L10n.format("To-dos · %d/%d", done, total),
+                accessibilityIdentifier: "summary-tab-todos"))
+        }
+        return segments
     }
 
     @ViewBuilder

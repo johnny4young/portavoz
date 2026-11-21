@@ -153,7 +153,7 @@ private extension StandingSkillRulesSection {
             } label: {
                 Label("Create automatic action", systemImage: "plus.circle")
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.pvPrimary)
             .accessibilityIdentifier("settings-standing-create")
             .disabled(durableMutationDisabled)
         }

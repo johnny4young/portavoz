@@ -653,7 +653,7 @@ extension SettingsView {
                             applyRecommendation(providerRecommendation)
                         }
                             .controlSize(.small)
-                            .buttonStyle(.borderedProminent)
+                            .buttonStyle(.pvPrimary)
                             .accessibilityIdentifier("settings-apply-summary-recommendation")
                             .padding(.top, 2)
                     }

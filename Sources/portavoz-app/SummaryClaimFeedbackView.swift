@@ -48,7 +48,7 @@ struct SummaryClaimFeedbackView: View {
             feedbackStatus
             Text("Stays on this Mac. Included only when you export a .portavoz file.")
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
         }
         .disabled(saving)
         .sheet(isPresented: $showingCorrection) {

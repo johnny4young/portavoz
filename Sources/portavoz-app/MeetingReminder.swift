@@ -113,7 +113,7 @@ struct ReminderBannerView: View {
                 Label("Record this meeting", systemImage: PVSymbol.record)
                     .font(.caption)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.pvPrimary)
             .controlSize(.small)
             Button(action: onDismiss) {
                 Image(systemName: "xmark.circle.fill")

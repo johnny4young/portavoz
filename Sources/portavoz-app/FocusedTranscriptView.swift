@@ -170,7 +170,7 @@ struct FocusedTranscriptView<
                     } label: {
                         Label("Jump to live", systemImage: "arrow.down.to.line")
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.pvPrimary)
                     .controlSize(.small)
                     .accessibilityIdentifier("recording-jump-to-live")
                     .padding(12)

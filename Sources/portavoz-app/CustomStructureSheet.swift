@@ -64,7 +64,7 @@ struct CustomStructureSheet: View {
                     .keyboardShortcut(.cancelAction)
                 Button("Save") { save() }
                     .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.pvPrimary)
                     .disabled(!canSave)
             }
         }

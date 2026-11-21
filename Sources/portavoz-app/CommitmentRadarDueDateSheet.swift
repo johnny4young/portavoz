@@ -55,7 +55,7 @@ struct CommitmentRadarDueDateSheet: View {
                     }
                 }
                 .keyboardShortcut(.defaultAction)
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.pvPrimary)
                 .disabled(isSaving)
                 .accessibilityIdentifier("commitment-radar-due-save")
             }

@@ -84,7 +84,7 @@ struct GitHubIssueSkillSheet: View {
                     }
                 }
                 .keyboardShortcut(.defaultAction)
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.pvPrimary)
                 .disabled(isPreparing || repository.trimmingCharacters(
                     in: .whitespacesAndNewlines).isEmpty)
                 .accessibilityIdentifier("github-issue-review")
@@ -173,7 +173,7 @@ struct GitHubIssueSkillSheet: View {
                 }
             }
             .keyboardShortcut(.defaultAction)
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.pvPrimary)
             .disabled(isConfirming)
             .accessibilityIdentifier("github-issue-confirm")
         }

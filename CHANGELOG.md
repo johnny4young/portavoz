@@ -81,6 +81,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 21, 2026
 
+- **🧩 One family of controls** — buttons, voice chips, suggestions, tabs, checkboxes and cards share one shape with Secreteo: ink buttons, a red Stop, capsule chips with each voice's dot, a red "Now" on the player and Portavoz's own text on a green tint.
 - **🧵 A new face: three voices** — the app icon is now three voice strands with your amber one swelling, in a light and a dark version that follow your Mac; the same mark sits in the menu bar and its middle swell turns red while you record.
 
 ## November 20, 2026

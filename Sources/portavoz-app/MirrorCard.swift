@@ -62,8 +62,7 @@ struct MirrorCard: View {
                 } label: {
                     Label("See my trend", systemImage: "chart.bar.xaxis")
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(PVDesign.accent)
+                .buttonStyle(.pvPrimary)
                 Spacer()
                 Button(L10n.text("Don’t show after each meeting")) {
                     onTurnOff()

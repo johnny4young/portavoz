@@ -70,24 +70,24 @@ struct AskView: View {
     }
 
     private var surfacePicker: some View {
-        Picker(
-            "Ask view",
+        PVSegmentedControl(
+            segments: [
+                PVSegment(
+                    value: AskModel.Surface.conversation, title: L10n.text("Ask"),
+                    accessibilityIdentifier: "ask-surface-conversation"),
+                PVSegment(
+                    value: AskModel.Surface.personCommitments, title: L10n.text("By person"),
+                    accessibilityIdentifier: "ask-surface-person-commitments"),
+                PVSegment(
+                    value: AskModel.Surface.topicDecisions, title: L10n.text("By topic"),
+                    accessibilityIdentifier: "ask-surface-topic-decisions")
+            ],
             selection: Binding(
                 get: { model.state.surface },
-                set: { model.selectSurface($0) })) {
-            Text("Ask")
-                .tag(AskModel.Surface.conversation)
-                .accessibilityIdentifier("ask-surface-conversation")
-            Text("By person")
-                .tag(AskModel.Surface.personCommitments)
-                .accessibilityIdentifier("ask-surface-person-commitments")
-            Text("By topic")
-                .tag(AskModel.Surface.topicDecisions)
-                .accessibilityIdentifier("ask-surface-topic-decisions")
-        }
-        .pickerStyle(.segmented)
-        .frame(maxWidth: 480)
+                set: { model.selectSurface($0) }))
+        .fixedSize()
         .padding(10)
+        .accessibilityLabel(L10n.text("Ask view"))
         .accessibilityIdentifier("ask-surface")
     }
 

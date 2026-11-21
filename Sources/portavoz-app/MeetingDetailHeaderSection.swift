@@ -192,7 +192,8 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
         ForEach(values.voiceSuggestions, id: \.speakerLabel) { suggestion in
             DismissibleSuggestionChip(
                 kind: .voice,
-                text: "\(suggestion.speakerLabel) → \(suggestion.name)?",
+                text: L10n.format(
+                    "%@ sounds like %@?", suggestion.speakerLabel, suggestion.name),
                 acceptAccessibilityIdentifier:
                     "detail-voice-suggestion-\(suggestion.speakerLabel)",
                 dismissAccessibilityIdentifier:

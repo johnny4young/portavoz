@@ -116,7 +116,7 @@ struct AskMemoryView: View {
             Button("Show current commitments") {
                 model.loadSelectedPersonCommitments()
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.pvPrimary)
             .disabled(model.state.outcome == .loading)
             .accessibilityIdentifier("ask-memory-load")
         }

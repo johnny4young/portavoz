@@ -260,7 +260,7 @@ struct LibraryView: View {
     private func todoRow(_ open: LibraryOpenItem) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Toggle(isOn: todoBinding(open)) { EmptyView() }
-                .toggleStyle(.checkbox)
+                .toggleStyle(.pvCheckbox)
                 .labelsHidden()
             VStack(alignment: .leading, spacing: 2) {
                 Text(open.item.text).lineLimit(2)
@@ -432,12 +432,9 @@ extension LibraryView {
                 route = .recording(nil)
             }
         } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: 7) {
                 if recordingActive {
-                    Circle()
-                        .fill(PVDesign.now)
-                        .frame(width: 9, height: 9)
-                    Text("Return to recording").fontWeight(.medium)
+                    RecordLabel("Return to recording")
                 } else {
                     HStack(alignment: .bottom, spacing: 2) {
                         Capsule().fill(PVDesign.onInk.opacity(0.75)).frame(width: 2.5, height: 6)
@@ -445,15 +442,14 @@ extension LibraryView {
                         Capsule().fill(PVDesign.onInk.opacity(0.75)).frame(width: 2.5, height: 8)
                     }
                     .frame(height: 13)
-                    Text("New recording").fontWeight(.medium)
+                    .accessibilityHidden(true)
+                    Text("New recording")
                 }
             }
-            .foregroundStyle(PVDesign.onInk)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 9)
-            .background(PVDesign.ink, in: RoundedRectangle(cornerRadius: 10))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pvPrimary)
+        .controlSize(.large)
         .keyboardShortcut("n")
         .accessibilityIdentifier(
             recordingActive
