@@ -23023,8 +23023,9 @@ Titles, numerals and words quoted as heard use Fraunces (SIL Open Font
 License 1.1); body text and controls stay SF Pro and time codes SF Mono. The
 two unmodified upstream variable fonts (upright and italic, about 0.8 MB
 together, so no subsetting) and `OFL.txt` live in `Resources/Fonts/Fraunces/`.
-`make-app.sh` copies the folder into `Contents/Resources/` and the XcodeGen
-test host carries it as a folder resource; the SwiftPM target does not,
+`make-app.sh` and the pull-request UI host (`make-ui-host.sh`) copy the folder
+into `Contents/Resources/`, and the XcodeGen test host carries it as a folder
+resource; registration succeeds only when both faces register; the SwiftPM target does not,
 because a SwiftPM resource must sit inside the target folder and the generated
 `Bundle.module` accessor traps when its bundle is missing.
 `PVFont.registerBundledFonts()` registers both faces for the process before

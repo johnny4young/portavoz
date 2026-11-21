@@ -9,6 +9,7 @@ import SwiftUI
 enum PVFont {
     static let family = "Fraunces"
     static let bundledFolder = "Fraunces"
+    static let faces = ["Fraunces[SOFT,WONK,opsz,wght].ttf", "Fraunces-Italic[SOFT,WONK,opsz,wght].ttf"]
 
     /// Registers the bundled faces for this process; safe to call again.
     @discardableResult
@@ -17,11 +18,11 @@ enum PVFont {
         return register(folder: folder)
     }
 
+    /// True only when both faces register; lookups made before then are dropped.
     static func register(folder: URL) -> Bool {
-        let faces = ((try? FileManager.default.contentsOfDirectory(
-            at: folder, includingPropertiesForKeys: nil)) ?? [])
-            .filter { $0.pathExtension.lowercased() == "ttf" }
-        return !faces.isEmpty && faces.map(register(face:)).allSatisfy { $0 }
+        let registered = faces.map { register(face: folder.appendingPathComponent($0)) }.allSatisfy { $0 }
+        if registered { cache.withLock { $0.removeAll() } }
+        return registered
     }
 
     private static func register(face: URL) -> Bool {
@@ -70,7 +71,9 @@ enum PVFont {
             if let cached = cache[key] { return cached }
             guard let font = ctFont(size: size, weight: weight, soft: soft, italic: italic, family: family) else {
                 let fallback = Font.system(size: size, weight: fallbackWeight(weight), design: .serif)
-                return Resolved(font: italic ? fallback.italic() : fallback.monospacedDigit(), digitCell: nil)
+                let resolved = Resolved(font: italic ? fallback.italic() : fallback.monospacedDigit(), digitCell: nil)
+                cache[key] = resolved
+                return resolved
             }
             let resolved = Resolved(font: Font(font), digitCell: italic ? nil : widestDigit(in: font))
             cache[key] = resolved
@@ -195,7 +198,8 @@ struct DisplayTimeText: View {
     var body: some View {
         let resolved = style.resolved(size: size)
         if let cell = resolved.digitCell {
-            HStack(spacing: 0) {
+            // Spacing stands in for tracking, which would widen a glyph past its cell.
+            HStack(spacing: size * style.tracking) {
                 ForEach(Array(text.enumerated()), id: \.offset) { _, character in
                     Text(String(character))
                         .frame(width: character.isNumber ? cell : nil)
@@ -204,8 +208,11 @@ struct DisplayTimeText: View {
             .font(resolved.font)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Text(verbatim: text))
+            .accessibilityAddTraits(.isStaticText)
         } else {
-            Text(verbatim: text).font(resolved.font)
+            Text(verbatim: text)
+                .font(resolved.font)
+                .tracking(size * style.tracking)
         }
     }
 }

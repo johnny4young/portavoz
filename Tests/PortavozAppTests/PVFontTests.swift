@@ -11,7 +11,8 @@ final class PVFontTests: XCTestCase {
         .appendingPathComponent("Resources/Fonts/Fraunces")
 
     func testTheShippedFolderCarriesBothFacesAndTheLicense() throws {
-        let names = try FileManager.default.contentsOfDirectory(atPath: Self.fontFolder.path).sorted()
+        let names = try FileManager.default.contentsOfDirectory(atPath: Self.fontFolder.path)
+            .filter { !$0.hasPrefix(".") }.sorted()
         XCTAssertEqual(names, [
             "Fraunces-Italic[SOFT,WONK,opsz,wght].ttf", "Fraunces[SOFT,WONK,opsz,wght].ttf", "OFL.txt"
         ])
@@ -36,6 +37,17 @@ final class PVFontTests: XCTestCase {
         let heard = try XCTUnwrap(PVFont.ctFont(size: 19, weight: 420, soft: 40, italic: true))
         XCTAssertTrue(CTFontGetSymbolicTraits(heard).contains(.traitItalic))
         XCTAssertTrue((CTFontCopyPostScriptName(heard) as String).contains("Italic"))
+    }
+
+    func testAFolderMissingTheItalicFaceDoesNotCountAsRegistered() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let upright = "Fraunces[SOFT,WONK,opsz,wght].ttf"
+        try FileManager.default.copyItem(
+            at: Self.fontFolder.appendingPathComponent(upright), to: folder.appendingPathComponent(upright))
+
+        XCTAssertFalse(PVFont.register(folder: folder))
     }
 
     func testDigitCellsFitTheWidestFigure() throws {
