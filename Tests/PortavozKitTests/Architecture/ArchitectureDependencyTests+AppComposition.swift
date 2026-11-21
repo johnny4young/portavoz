@@ -2136,10 +2136,13 @@ extension ArchitectureDependencyTests {
         XCTAssertEqual(rawColours.filter { $0 != "PVDesign.swift" }, [], "chrome is ink; hues live in PVDesign")
 
         let presentOwners = try Self.sourceMatches(
-            under: "Sources/portavoz-app", pattern: #"PVDesign\.now\b"#, codeOnly: true)
+            under: "Sources/portavoz-app", pattern: #"PVDesign\.(Tone\.)?now\b"#, codeOnly: true)
         XCTAssertEqual(
             presentOwners,
-            ["LibraryView.swift", "MenuBarView.swift", "RecordingHUD.swift", "RecordingToolbar.swift"],
+            [
+                "LibraryView.swift", "MenuBarIcon.swift", "MenuBarView.swift", "RecordingHUD.swift",
+                "RecordingToolbar.swift"
+            ],
             "red marks only the present: Record, Stop and the live dot")
     }
 }

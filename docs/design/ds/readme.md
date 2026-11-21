@@ -59,7 +59,7 @@ No font binaries in the repo; the site loads **Fraunces, Instrument Sans, IBM Pl
 - `styles.css` — global entry; imports everything in `tokens/`.
 - `tokens/` — `colors.css` (app light/dark via `[data-theme="dark"]` + brand), `typography.css`, `spacing.css`, `motion.css`, `fonts.css`.
 - `guidelines/` — 12 specimen cards (colors, type, spacing, radii, motion, voice & tone, mark).
-- `assets/` — `portavoz-mark.svg`, `reference/meeting-detail.png`.
+- `assets/` — `portavoz-icon.svg`, `portavoz-icon-light.svg`, `portavoz-mark-menubar.svg` (generated), `portavoz-mark.svg` (legacy).
 - `components/` — one directory per family, each with `.jsx` + `.d.ts` + `.prompt.md` + card:
 
 | Component | Path | What |
