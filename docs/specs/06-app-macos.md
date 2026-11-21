@@ -2979,27 +2979,57 @@ With nothing scheduled the hero shows the calendar offer
 (`home-calendar-offer`) or "Nothing scheduled", and `Record now` / `Return to
 recording` (`home-record`, ⌘R).
 
+**Brief card** (`HomeBriefCard`, `home-brief`) beside the countdown: what each
+person said in the hero event's previous occurrence. `LibraryModel.State.briefPreview`
+holds one `BriefPreview` per occurrence (event identifier plus start) from
+`LoadMeetingBriefLines` (D651); `HomeView` sends `.loadBriefPreview` when the
+hero or `libraryRevision` (bumped by every meetings and open-items update)
+changes; an unchanged result leaves the state untouched and a failed load
+keeps the card as it was. A
+white card (16 pt radius, line ring, soft shadow) opens with a green
+`sparkles` kicker `BRIEF · WHAT THEY SAID LAST TIME` and the source meeting's
+day · length, which together form `home-brief-open` (it opens the full brief,
+as does a click anywhere else on the card); then that meeting's `VoiceStrip`
+(`.card`, 8 pt) beside its named voices with their share, unnamed and folded
+voices counted as "Others · n" (the strip reads them to VoiceOver), and one row
+per person heard (`home-brief-person-<speakerUUID>`): a voice dot and the name
+in ink in an 84 pt column, then the person's `lead` line (`MeetingBriefLines.Person.lead`:
+the earliest still pending, else the earliest commitment or question, else the
+first quote) with a quote in Fraunces italic between quotation marks and other
+lines in SF, and below it the moment and status (`12:40 · still unresolved`,
+`closed`, `open, due tomorrow`; no moment without transcript evidence). A row
+opens the source meeting through the shared seek channel at that moment.
+Without a previous occurrence the card reads "Nothing from a previous meeting
+yet."; with one where nobody was attributed, "Nobody was heard last time."
+(`home-brief-empty`).
+
 The rest of today and up to three of tomorrow's events sit in a **Later today**
 card (titled `Tomorrow` when the hero is tomorrow's; compact rows with
-icon-only Brief and Record, same identifiers) beside
-the hero when the section is at least 940 pt wide, below it otherwise;
-`HomeHeroLayout` decides from the proposed width alone, so the ticking hero is
-never measured against alternative layouts. A divider then leads to **Open to-dos** (the first five
+icon-only Brief and Record, same identifiers) under the brief card. That side
+column, present whenever there is a hero so the card arriving never moves the
+countdown, sits beside the hero when the section is at least 940 pt wide, growing
+from 360 to 552 pt while the hero keeps at least 536 pt, and below it
+otherwise; `HomeHeroLayout` decides from the proposed width alone, so the
+ticking hero is never measured against alternative layouts. A divider then leads to **Open to-dos** (the first five
 open action items with the sidebar's checkbox action and a link to the source
 meeting, plus "N more in Radar") beside **Pick up where you left off** (the
 three newest meetings with their voice strip, duration, open count and
 lifecycle badge). The week's totals live in Insights. `HomeView` renders
 `LibraryModel.State` and sends the sidebar's own actions, with no `.task` or
-`@State` of its own. The sidebar `Today`
+`@State` of its own; its `.onChange` handlers only send actions. The sidebar `Today`
 destination (`library-home-button`) is selected for both the nil and
 `.library` routes. Identifiers: `home-title`, `home-record`, `home-ask`,
 `home-ask-field`, `home-ask-suggestions`, `home-ask-chip-<n>`,
 `home-automations`, `home-upcoming-<id>` (+`-brief-`/`-record-`),
-`home-upcoming-countdown`, `home-upcoming-invitees`, `home-todo-<uuid>`/
+`home-upcoming-countdown`, `home-upcoming-invitees`, `home-brief`,
+`home-brief-open`, `home-brief-person-<uuid>`, `home-brief-empty`, `home-todo-<uuid>`/
 `home-todo-toggle-<uuid>`, `home-recent-<uuid>`, `home-calendar-offer`. The
-showcase seed adds a fictional agenda (Google Meet, 45 min, weekly) and two
-clock-relative meetings so the public Today screenshot reads lived-in without
-touching the operator's calendar; `-seed-wide-window` (disposable store only)
+showcase seed adds a fictional agenda (Google Meet, 45 min, weekly), fixed for
+the launch so every refresh returns the same occurrences, plus last week's
+event-linked occurrence of its weekly sync with three voices and two to-dos, so
+the public Today screenshot reads lived-in without touching the operator's
+calendar; `-seed-brief-previous` adds an earlier occurrence of the
+`-seed-brief` event for the brief card's journey; `-seed-wide-window` (disposable store only)
 drops the test window's left clearance so the wide layout can be asserted.
 
 ## Views and flows

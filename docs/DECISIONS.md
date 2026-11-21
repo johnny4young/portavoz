@@ -23174,3 +23174,19 @@ no lines until the source changes again, so reads never retry it; a rename or
 tombstone drops the choice itself, since it was made by title. Speaker names
 resolve at read time. Rows of past events are pruned on the next preparation,
 and the cache is neither synced nor backed up.
+
+## D651 — Today records the hero's previous occurrence itself
+
+Today shows the brief lines of its hero event without the user opening the
+brief, so it cannot wait for a preparation (D650). `LoadMeetingBriefLines`
+reads the cached lines; when the occurrence has no source it looks up the
+previous same-title meeting and records it, which builds the lines in the same
+write. `LibraryModel` loads on every meetings or open-items update, so an edit
+to the previous meeting or a meeting that just ended shows without reopening
+Today; a read that changes nothing leaves the state untouched, and a failed
+read keeps the card as it was. A first meeting records nothing and shows the
+empty card; opening the brief can still record the best related meeting.
+Occurrence titles are compared without the date that `TitleTemplate.eventTitle`
+puts in front of an event-linked recording, so a recurring meeting recorded
+from the calendar finds last week's recording. Linking a recording to its
+calendar event when it starts would replace the title match for those meetings.

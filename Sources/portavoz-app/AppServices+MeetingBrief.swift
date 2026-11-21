@@ -48,6 +48,14 @@ extension AppMeetingBriefLibraryReader: MeetingBriefSourceRecording {
     }
 }
 
+extension AppMeetingBriefLibraryReader: MeetingBriefLinesReading {
+    func meetingBriefLines(
+        for occurrence: MeetingBriefLines.Occurrence
+    ) async throws -> MeetingBriefLines? {
+        try await store.meetingBriefLines(for: occurrence)
+    }
+}
+
 /// Optional Foundation Models synthesis stays behind the application port.
 /// Invalid model source indexes cannot escape into presentation.
 struct AppOnDeviceMeetingBriefSynthesizer: MeetingBriefSynthesizing {

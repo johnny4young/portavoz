@@ -1456,14 +1456,17 @@ Upcoming-meeting preparation belongs to the Library owner and enters
 after access already exists. The workflow ranks shared Ask evidence, loads
 current live summaries in one bounded database projection, overlaps commitment
 loading, and admits generated context only when its source index resolves to a
-navigable related meeting. Agenda buttons explicitly opt out of selectable
+navigable related meeting. Today's brief card enters `LoadMeetingBriefLines`,
+which reads the cached per-person lines and, on a miss, records the hero's
+previous same-title occurrence.
+Agenda buttons explicitly opt out of selectable
 meeting-row behavior, so opening a brief cannot race the sidebar's meeting
 route. One privacy promise exists in the main window: the sidebar footer chip
 "On your Mac" (`library-privacy-chip`), whose popover explains that nothing is
 sent unless the user asks and opens Settings on Your data. Today,
 Insights, the menu-bar panel, onboarding and the Settings sidebar repeat no
 disclaimer; feature-specific on-device claims remain limited to
-operations that cannot use a remote provider. Colour is ink on paper: `PVDesign` holds every token as a light/dark `PVTone` mirrored in `docs/design/ds/tokens/colors.css`; chrome is ink, voices own the hues (`VoicePalette`: you in amber plus five; `VoiceCast` in ApplicationKit decides which five, greys unnamed voices and folds the rest into "Others · n"), red marks only the present and green marks generated content. Titles, section heads and display numerals use the bundled Fraunces variable font through `PVFont` and `.pvDisplay(_:)` roles, falling back to New York when it cannot register; body text and controls stay SF. Every SF Symbol the app draws is a `PVSymbol` constant (one per concept, in `PVDesign.swift`); `sparkles` is reserved for `ChipLabel`, and an architecture ratchet keeps retired glyph literals out of view code. The app icon, the menu-bar mark and the brand files all draw the three-strand geometry in `PortavozMark`: `MenuBarIcon` renders it at runtime, and `scripts/make-icons.sh` compiles it into the Icon Composer document `assets/AppIcon.icon` (light and dark), the legacy `AppIcon.icns`, the SVGs and the social card.
+operations that cannot use a remote provider. Colour is ink on paper: `PVDesign` holds every token as a light/dark `PVTone` mirrored in `docs/design/ds/tokens/colors.css`; chrome is ink, voices own the hues (`VoicePalette`: you in amber plus five; `VoiceCast` in ApplicationKit decides which five, greys unnamed voices and folds the rest into "Others · n"), red marks only the present and green marks generated content. Titles, section heads and display numerals use the bundled Fraunces variable font through `PVFont` and `.pvDisplay(_:)` roles, falling back to New York when it cannot register; body text and controls stay SF. Every SF Symbol the app draws is a `PVSymbol` constant (one per concept, in `PVDesign.swift`); `sparkles` is reserved for `ChipLabel` (`ChipLabel.generatedSymbol` lends it to other generated content), and an architecture ratchet keeps retired glyph literals out of view code. The app icon, the menu-bar mark and the brand files all draw the three-strand geometry in `PortavozMark`: `MenuBarIcon` renders it at runtime, and `scripts/make-icons.sh` compiles it into the Icon Composer document `assets/AppIcon.icon` (light and dark), the legacy `AppIcon.icns`, the SVGs and the social card.
 
 ## Verified model lifecycle
 

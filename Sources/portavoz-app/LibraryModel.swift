@@ -26,6 +26,7 @@ protocol LibraryModelClient: AnyObject {
     func libraryAgenda() -> LibraryModel.Agenda?
     func requestLibraryCalendarAccess() async
     func buildLibraryBrief(for event: UpcomingEvent) async -> MeetingBrief?
+    func libraryBriefLines(for event: UpcomingEvent) async throws -> MeetingBriefLines?
     /// Skill offers waiting for review; zero when they cannot be read.
     func pendingLibraryAutomations() async -> Int
 }
@@ -55,6 +56,17 @@ final class LibraryModel {
     struct RenameState {
         let meeting: Meeting
         var title: String
+    }
+
+    /// What each person said last time, for one event occurrence.
+    struct BriefPreview: Equatable {
+        let occurrence: MeetingBriefLines.Occurrence
+        /// nil when the event has no previous occurrence.
+        let lines: MeetingBriefLines?
+
+        func isFor(_ event: UpcomingEvent) -> Bool {
+            occurrence == MeetingBriefLines.Occurrence(event: event)
+        }
     }
 
     struct Agenda {
@@ -87,6 +99,15 @@ final class LibraryModel {
         fileprivate(set) var brief: MeetingBrief?
         fileprivate(set) var briefLoading: UpcomingEvent?
         fileprivate(set) var pendingAutomations = 0
+        fileprivate(set) var briefPreview: BriefPreview?
+        /// Bumped by every meetings or open-items update.
+        fileprivate(set) var libraryRevision = 0
+
+        /// The first event of today, else the first of tomorrow.
+        var heroEvent: (event: UpcomingEvent, isToday: Bool)? {
+            if let first = upcomingToday.first { return (first, true) }
+            return upcomingTomorrow.first.map { ($0, false) }
+        }
     }
 
     enum Action {
@@ -109,6 +130,7 @@ final class LibraryModel {
         case requestCalendarAccess
         case openBrief(UpcomingEvent)
         case dismissBrief
+        case loadBriefPreview(UpcomingEvent)
         case refreshAutomations
     }
 
@@ -125,6 +147,7 @@ final class LibraryModel {
     private var observedSections: Set<LibrarySection> = []
     private var failedSections: Set<LibrarySection> = []
     private var inlineFailures: [LibrarySection: Int] = [:]
+    private var briefPreviewRequest = 0
 
     init(
         client: any LibraryModelClient,
@@ -197,6 +220,8 @@ private extension LibraryModel {
             await openBrief(event)
         case .dismissBrief:
             state.brief = nil
+        case .loadBriefPreview(let event):
+            await loadBriefPreview(event)
         case .refreshAutomations:
             await refreshAutomations()
         default:
@@ -239,10 +264,12 @@ private extension LibraryModel {
                 ($0.meeting.id, $0.voiceStrip)
             })
             markObserved(.meetings, inlineFailureCount: failures)
+            state.libraryRevision &+= 1
             refreshAgenda()
         case .openItems(let items):
             state.openItems = items
             markObserved(.openItems)
+            state.libraryRevision &+= 1
         case .trash(let items):
             state.trashed = items
             markObserved(.trash)
@@ -372,6 +399,22 @@ private extension LibraryModel {
         guard state.briefLoading == event else { return }
         state.briefLoading = nil
         state.brief = brief
+    }
+
+    /// A failed load keeps what is shown; the newest request wins.
+    func loadBriefPreview(_ event: UpcomingEvent) async {
+        briefPreviewRequest &+= 1
+        let request = briefPreviewRequest
+        let lines: MeetingBriefLines?
+        do {
+            lines = try await client.libraryBriefLines(for: event)
+        } catch {
+            return
+        }
+        guard !Task.isCancelled, request == briefPreviewRequest else { return }
+        let preview = BriefPreview(occurrence: MeetingBriefLines.Occurrence(event: event), lines: lines)
+        // An unchanged write would still re-render everything reading the state.
+        if state.briefPreview != preview { state.briefPreview = preview }
     }
 
     func recordAction(_ operation: () async throws -> Void) async {

@@ -485,6 +485,39 @@ final class MeetingBriefLinesStorageTests: XCTestCase {
         XCTAssertEqual(reread, built)
     }
 
+    func testAnEventLinkedRecordingIsItsEventsPreviousOccurrence() async throws {
+        let start = eventStart.addingTimeInterval(-7 * 86_400)
+        let linked = Meeting(
+            title: TitleTemplate.eventTitle("Weekly sync", date: start),
+            startedAt: start, endedAt: start.addingTimeInterval(600))
+        try await store.save(linked)
+
+        let found = try await store.previousMeetingOccurrence(title: "Weekly sync", before: eventStart)
+
+        XCTAssertEqual(found, linked.id, "a recording linked to the event carries its date in the title")
+    }
+
+    func testThePreviewLeadsWithWhatIsStillPending() {
+        func line(_ kind: MeetingBriefLines.Kind, _ status: MeetingBriefLines.Status, at time: TimeInterval)
+            -> MeetingBriefLines.Line {
+            MeetingBriefLines.Line(kind: kind, text: "\(kind) \(time)", segmentID: UUID(), time: time, status: status)
+        }
+        func lead(_ lines: [MeetingBriefLines.Line]) -> MeetingBriefLines.Line? {
+            MeetingBriefLines.Person(
+                speakerID: SpeakerID(), personID: nil, isMe: false, label: "S1", displayName: nil, lines: lines
+            ).lead
+        }
+        let quote = line(.quote, .said, at: 10)
+        let closed = line(.commitment, .closed, at: 20)
+        let unresolved = line(.question, .unresolved, at: 30)
+        let open = line(.commitment, .open(due: nil), at: 40)
+
+        XCTAssertEqual(lead([quote, closed, unresolved, open]), unresolved)
+        XCTAssertEqual(lead([quote, closed]), closed)
+        XCTAssertEqual(lead([quote, line(.quote, .said, at: 50)]), quote)
+        XCTAssertNil(lead([]))
+    }
+
     func testPreviousOccurrenceMatchesTheTitleLoosely() async throws {
         func meeting(_ title: String, daysAgo: Double, ended: Bool = true) async throws -> Meeting {
             let start = eventStart.addingTimeInterval(-daysAgo * 86_400)

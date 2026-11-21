@@ -110,6 +110,48 @@ final class HomeUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testBriefCardShowsWhatEachPersonSaidLastTime() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
+        app.launchArguments += ["-seed-brief-previous", "-seed-wide-window", "-AppleInterfaceStyle", "Light"]
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        let card = app.descendants(matching: .any)["home-brief"]
+        XCTAssertTrue(card.waitForExistenceFast(timeout: 15), "the hero's previous occurrence fills the brief")
+        let rows = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'home-brief-person-'"))
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 10) { rows.count == 2 }, "one row per person heard last time")
+        let countdown = app.descendants(matching: .any)["home-upcoming-countdown"]
+        XCTAssertTrue(countdown.waitForExistenceFast(timeout: 5))
+        XCTAssertGreaterThan(card.frame.minX, countdown.frame.maxX, "the brief sits beside the countdown")
+        attachScreenshot(of: app, named: "pr-home-brief-card")
+
+        // A row opens the previous meeting at the moment the line was said.
+        let ana = rows.matching(NSPredicate(format: "label CONTAINS 'no confirmed owner'")).firstMatch
+        XCTAssertTrue(ana.waitForStableFrame(timeout: 5))
+        ana.click()
+        XCTAssertTrue(
+            app.staticTexts.matching(NSPredicate(format: "value CONTAINS 'no confirmed owner' OR label CONTAINS 'no confirmed owner'"))
+                .firstMatch.waitForExistenceFast(timeout: 10),
+            "the source meeting's transcript opens")
+        XCTAssertFalse(card.exists)
+
+        // Back on Today, the card opens the full brief.
+        let today = app.buttons["library-home-button"]
+        XCTAssertTrue(today.waitForStableFrame(timeout: 5))
+        today.click()
+        let open = app.buttons["home-brief-open"]
+        XCTAssertTrue(open.waitForStableFrame(timeout: 10))
+        open.click()
+        XCTAssertTrue(app.control(withIdentifier: "brief-title").waitForExistenceFast(timeout: 10))
+        let close = app.buttons["brief-close-button"]
+        XCTAssertTrue(close.waitForStableFrame(timeout: 5))
+        close.click()
+    }
+
+    @MainActor
     func testPendingAutomationsOpenTheirSettings() throws {
         let app = try XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
         app.launchArguments += ["-seed-duplicate-skill-proposals", "-seed-wide-window", "-AppleInterfaceStyle", "Light"]
@@ -132,6 +174,10 @@ final class HomeUITests: PortavozUITestCase {
         XCTAssertLessThan(
             countdown.frame.maxY, app.buttons["home-upcoming-record-ui-test-upcoming-rollout"].frame.minY,
             "the countdown leads the hero, the actions close it")
+        // Without an earlier occurrence the brief card says so, beside the countdown.
+        let empty = app.descendants(matching: .any)["home-brief-empty"]
+        XCTAssertTrue(empty.waitForExistenceFast(timeout: 10), "a first meeting has nothing said last time")
+        XCTAssertGreaterThan(empty.frame.minX, countdown.frame.maxX, "the brief sits beside the hero when wide")
         attachScreenshot(of: app, named: "pr-home-wide-header")
         pill.click()
         XCTAssertTrue(
