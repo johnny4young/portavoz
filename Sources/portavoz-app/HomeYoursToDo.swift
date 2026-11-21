@@ -105,7 +105,7 @@ struct HomeYoursToDo: View {
     }
 
     nonisolated static func name(_ voice: OpenItemSource.Voice) -> String {
-        HomeVoiceName.of(isMe: voice.isMe, name: voice.displayName, label: voice.label)
+        VoiceName.of(isMe: voice.isMe, name: voice.displayName, label: voice.label)
     }
 
     nonisolated static func whoSaid(_ voice: OpenItemSource.Voice, ownerSaidIt: Bool) -> String {

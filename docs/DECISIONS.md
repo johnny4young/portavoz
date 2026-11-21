@@ -23266,3 +23266,20 @@ nothing is left to resume. The sidebar lists past meetings only, in This week
 and Earlier: the agenda and the open to-dos already live on Today, and the
 sidebar must not repeat them. Who spoke today stays below the work rows, so the
 to-dos and pick-up rows keep the fold the Today screen promises.
+
+## D655 — The Voices table owns who spoke in Meeting Detail
+
+Talk share, talk time and "play one voice" used to sit in three places: the
+header's speaker pills, the Meeting health bars and the player's "Play:" menu.
+The header's Voices table now holds them once, as the design's one-place rule
+asks: a row per voice with share, time, that voice's turns on its own strip and
+an Only button. Meeting health keeps only what the table does not show
+(questions and interruptions), and the "Play:" menu is removed.
+
+A click on a name steps through that voice's turns, so renaming moved to the
+row's context menu and a VoiceOver action; transcript pills still rename on
+click. The table is computed once per load in `MeetingReviewCore` beside the
+cast, so a header render never regroups turns. Each row draws that voice's
+turns exactly rather than the meeting strip with `only:`: binned columns go to
+whoever dominates each one, which hides short or overlapping turns of quieter
+voices, the very turns a per-voice row exists to show.

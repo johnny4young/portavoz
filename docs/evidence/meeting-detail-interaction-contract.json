@@ -47,7 +47,7 @@
     "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
     "Sources/portavoz-app/TranscriptSegmentsView.swift",
     "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
-    "Sources/portavoz-app/VoiceCastRow.swift"
+    "Sources/portavoz-app/MeetingVoicesTable.swift"
   ],
   "interactionSignals": [
     {
@@ -1308,7 +1308,7 @@
       "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
       "category": "control",
       "source": "DismissibleSuggestionChip(",
-      "occurrences": 3
+      "occurrences": 2
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
@@ -1956,7 +1956,7 @@
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
       "category": "control",
       "source": "Button {",
-      "occurrences": 7
+      "occurrences": 5
     },
     {
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
@@ -2004,7 +2004,7 @@
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
       "category": "control",
       "source": "Menu {",
-      "occurrences": 3
+      "occurrences": 2
     },
     {
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
@@ -2106,24 +2106,6 @@
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"player-trim-silence-confirm\")",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(\"player-voice-\\(voice.label)\")",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(\"player-voice-everyone\")",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(\"player-voice-focus\")",
       "occurrences": 1
     },
     {
@@ -2484,6 +2466,72 @@
       "path": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
       "category": "navigation",
       "source": "let openSettings: @MainActor () -> Void",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
+      "category": "control",
+      "source": "Button {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
+      "category": "control",
+      "source": "Button(\"Rename…\") { actions.rename(speaker) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
+      "category": "control",
+      "source": "DismissibleSuggestionChip(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
+      "category": "control",
+      "source": "return Button {",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"cast-others\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"cast-speaker-\\(speaker.label)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"cast-speaker-rename-\\(speaker.label)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-voices\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"voice-only-\\(speaker.label)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
+      "category": "state",
+      "source": "@State private var isNarrow = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
+      "category": "state",
+      "source": "@State private var showsOthers = false",
       "occurrences": 1
     },
     {
@@ -3241,30 +3289,6 @@
       "category": "state",
       "source": "@State private var splitTime: TimeInterval",
       "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/VoiceCastRow.swift",
-      "category": "control",
-      "source": "Button {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/VoiceCastRow.swift",
-      "category": "control",
-      "source": "SpeakerPill(",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/VoiceCastRow.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(\"cast-others\")",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/VoiceCastRow.swift",
-      "category": "state",
-      "source": "@State private var showsOthers = false",
-      "occurrences": 1
     }
   ],
   "featureOwnership": [
@@ -3450,8 +3474,12 @@
       ],
       "sourceAnchors": [
         {
-          "path": "Sources/portavoz-app/VoiceCastRow.swift",
+          "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
           "anchor": "\"cast-others\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
+          "anchor": "\"voice-only-\\(speaker.label)\""
         }
       ],
       "screenshots": [

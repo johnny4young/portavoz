@@ -137,7 +137,7 @@ struct HomeTalkerColumn: View {
     }
 
     nonisolated static func name(_ talker: TodayVoices.Talker) -> String {
-        HomeVoiceName.of(isMe: talker.isMe, name: talker.name, label: talker.label)
+        VoiceName.of(isMe: talker.isMe, name: talker.name, label: talker.label)
     }
 
     /// Share of today's longest talker, so the leader fills the track.

@@ -11,8 +11,6 @@ import UniformTypeIdentifiers
 struct MeetingPlayerBar: View {
     let player: MeetingPlaybackSession
     let waveform: [MeetingWaveformBucket]
-    /// Speakers playback can focus on, "Me" first.
-    let voices: [MeetingPlaybackVoice]
     let exportClip: @MainActor @Sendable (
         ClosedRange<TimeInterval>, URL
     ) async -> String?
@@ -35,7 +33,7 @@ struct MeetingPlayerBar: View {
                     transportControls
                     rateMenu
                     Spacer(minLength: 8)
-                    secondaryMenus
+                    optionsMenu
                 }
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 10) {
@@ -45,7 +43,7 @@ struct MeetingPlayerBar: View {
                     HStack(spacing: 10) {
                         rateMenu
                         Spacer(minLength: 8)
-                        secondaryMenus
+                        optionsMenu
                     }
                 }
             }
@@ -115,12 +113,6 @@ struct MeetingPlayerBar: View {
         .fixedSize()
     }
 
-    @ViewBuilder
-    private var secondaryMenus: some View {
-        if voices.count > 1 { voiceMenu }
-        optionsMenu
-    }
-
     private func skipButton(seconds: TimeInterval, symbol: String, identifier: String) -> some View {
         Button {
             player.skip(by: seconds)
@@ -156,31 +148,6 @@ struct MeetingPlayerBar: View {
         .accessibilityIdentifier("player-speed")
     }
 
-    private var voiceMenu: some View {
-        Menu {
-            Button {
-                player.focus(on: nil)
-            } label: {
-                focusLabel(L10n.text("Everyone"), selected: player.voiceFocus == nil)
-            }
-            .accessibilityIdentifier("player-voice-everyone")
-            ForEach(voices) { voice in
-                Button {
-                    player.focus(on: voice.id, turns: voice.turns)
-                } label: {
-                    focusLabel(voice.name, selected: player.voiceFocus == voice.id)
-                }
-                .accessibilityIdentifier("player-voice-\(voice.label)")
-            }
-        } label: {
-            Text(L10n.format("Play: %@", focusedVoiceName)).font(.caption)
-        }
-        .menuStyle(.borderlessButton)
-        .fixedSize()
-        .help("Play only one person's turns")
-        .accessibilityIdentifier("player-voice-focus")
-    }
-
     private var optionsMenu: some View {
         Menu {
             Toggle("Skip silence", isOn: Binding(
@@ -213,19 +180,6 @@ struct MeetingPlayerBar: View {
         .fixedSize()
         .help("Playback options")
         .accessibilityIdentifier("player-options")
-    }
-
-    @ViewBuilder
-    private func focusLabel(_ name: String, selected: Bool) -> some View {
-        if selected {
-            Label(name, systemImage: "checkmark")
-        } else {
-            Text(name)
-        }
-    }
-
-    private var focusedVoiceName: String {
-        voices.first { $0.id == player.voiceFocus }?.name ?? L10n.text("Everyone")
     }
 
     private static func rateLabel(_ rate: Float) -> String {
@@ -285,31 +239,6 @@ struct MeetingPlayerBar: View {
         }
     }
 
-}
-
-/// One speaker playback can focus on.
-struct MeetingPlaybackVoice: Identifiable, Equatable {
-    let id: SpeakerID
-    /// Stable speaker label ("Me", "S1") for accessibility identifiers.
-    let label: String
-    let name: String
-    /// This speaker's turns in the current transcript.
-    let turns: [ClosedRange<TimeInterval>]
-
-    /// Speakers with transcribed turns, "Me" first.
-    static func voices(speakers: [Speaker], segments: [TranscriptSegment]) -> [MeetingPlaybackVoice] {
-        let turns = Dictionary(grouping: segments.filter { $0.endTime > $0.startTime }, by: \.speakerID)
-        return speakers
-            .filter { turns[$0.id] != nil }
-            .sorted { ($0.isMe ? 0 : 1, $0.label) < ($1.isMe ? 0 : 1, $1.label) }
-            .map { speaker in
-                MeetingPlaybackVoice(
-                    id: speaker.id,
-                    label: speaker.label,
-                    name: speaker.isMe ? L10n.text("Me") : speaker.displayName ?? speaker.label,
-                    turns: turns[speaker.id, default: []].map { $0.startTime...$0.endTime })
-            }
-    }
 }
 
 /// The scrubber waveform (M11): peak-amplitude columns tinted by who was

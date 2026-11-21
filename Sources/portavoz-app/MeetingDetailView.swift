@@ -33,9 +33,7 @@ struct MeetingDetailView: View {
             sceneValues: sceneValues,
             sceneActions: sceneActions)
     }
-    private var refine: MeetingDetailRefinePresentation {
-        MeetingDetailRefinePresentation(sceneValues.refinePhase)
-    }
+    private var refine: MeetingDetailRefinePresentation { MeetingDetailRefinePresentation(sceneValues.refinePhase) }
     var body: some View {
         Group {
             if let detail, let transcriptPresentation = model.state.transcriptPresentation {
@@ -78,7 +76,7 @@ private extension MeetingDetailView {
         let transcript = transcriptPresentation.current
         let structureProjection = transcriptPresentation.structure
         return VStack(alignment: .leading, spacing: 12) {
-            headerSection(detail)
+            headerSection(detail, transcript: transcript)
             MeetingDetailActivityLine(values: MeetingDetailActivityValues(
                 privacyReceipt: detail.privacyReceipt,
                 skillReceipts: model.state.skillReceipts,
@@ -162,7 +160,6 @@ private extension MeetingDetailView {
             values: MeetingDetailPlayerValues(
                 player: player,
                 waveform: waveform,
-                voices: detail.map { MeetingPlaybackVoice.voices(speakers: $0.speakers, segments: $0.segments) } ?? [],
                 canCompressAudio: MeetingDetailAudioCompressionState.canCompress(model.state),
                 isCompressingAudio: model.state.isCompressingAudio,
                 compressionMessage: model.state.audioCompressionMessage,
@@ -284,20 +281,21 @@ private extension MeetingDetailView {
                 deferUntil: coordinator.deferCommitment))
     }
 
-    private func headerSection(_ detail: MeetingReviewReadModel) -> some View {
+    private func headerSection(_ detail: MeetingReviewReadModel, transcript: MeetingTranscriptContent) -> some View {
         MeetingDetailHeaderSection(
             values: headerValues(detail),
             actions: MeetingDetailHeaderActions(
                 renameMeeting: { flow.presentRenameMeeting(title: detail.meeting.title) },
-                acceptTitleSuggestion: {
-                    coordinator.acceptSuggestedTitle($0, meeting: detail.meeting)
-                },
+                acceptTitleSuggestion: { coordinator.acceptSuggestedTitle($0, meeting: detail.meeting) },
                 dismissTitleSuggestion: coordinator.dismissSuggestedTitle,
                 renameSpeaker: flow.presentRenameSpeaker,
-                suggestNames: coordinator.suggestNames,
-                acceptNameSuggestion: {
-                    coordinator.acceptNameSuggestion($0, in: detail)
+                stepThroughTurns: {
+                    readingPane = .transcript
+                    playbackNavigation.stepThroughTurns(of: $0, content: transcript, player: player)
                 },
+                toggleOnly: { player?.toggleFocus(on: $0.speakerID, turns: $0.turns) },
+                suggestNames: coordinator.suggestNames,
+                acceptNameSuggestion: { coordinator.acceptNameSuggestion($0, in: detail) },
                 dismissNameSuggestion: coordinator.dismissNameSuggestion,
                 acceptVoiceSuggestion: { coordinator.acceptVoiceSuggestion($0, in: detail) },
                 dismissVoiceSuggestion: coordinator.dismissVoiceSuggestion,
@@ -320,7 +318,8 @@ private extension MeetingDetailView {
             segmentCount: presentation.segmentCount(detail.segments.count),
             titleSuggestion: model.state.suggestedTitle,
             speakers: detail.speakers,
-            voiceCast: detail.core.voiceCast,
+            voiceTable: detail.core.voiceTable,
+            playback: player.map { MeetingVoicesPlayback(focus: $0.voiceFocus) },
             isSuggestingNames: model.state.isSuggestingNames,
             nameSuggestions: model.state.nameSuggestions,
             voiceSuggestions: model.state.voiceSuggestions,

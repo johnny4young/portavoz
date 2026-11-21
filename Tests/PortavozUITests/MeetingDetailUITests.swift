@@ -758,6 +758,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             XCTAssertTrue(app.control(withIdentifier: "cast-speaker-\(label)").exists, label)
         }
         XCTAssertFalse(app.control(withIdentifier: "cast-speaker-S11").exists, "folded voices start hidden")
+        XCTAssertTrue(app.buttons["voice-only-S2"].exists, "every voice row plays just that voice")
         XCTAssertTrue(app.control(withIdentifier: "detail-header-section").waitForStableFrame(timeout: 5))
         attachScreenshot(of: app, named: "pr-many-voices-cast")
 
@@ -766,6 +767,13 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(folded.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(app.control(withIdentifier: "cast-speaker-S1").exists)
         attachScreenshot(of: app, named: "pr-many-voices-others-open")
+
+        app.buttons["voice-only-S11"].click()
+        others.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "cast-speaker-S1").waitForDisappearance(timeout: 5),
+            "collapsing folds the quiet voices again")
+        XCTAssertTrue(folded.exists, "a folded voice playing alone keeps its row and its Only control")
     }
 
     @MainActor
@@ -1815,7 +1823,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             speaker.waitForExistenceFast(timeout: 10),
             "the observed participant must expose a stable rename boundary")
-        speaker.click()
+        speaker.rightClick()
+        let rename = app.menuItems["cast-speaker-rename-S1"]
+        XCTAssertTrue(rename.waitForExistenceFast(timeout: 5), "a voice row renames from its context menu")
+        rename.click()
 
         // SwiftUI's macOS alert bridge strips a TextField's custom AX
         // identifier. Scope the query to the alert sheet so we never type
@@ -2015,12 +2026,13 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "detail-compress-audio").exists,
             "raw seeded meeting audio must keep its compression action")
-        let voices = app.control(withIdentifier: "player-voice-focus")
-        XCTAssertTrue(voices.exists, "a meeting with two voices offers per-speaker playback")
-        voices.click()
-        app.menuItems["player-voice-Me"].click()
+        XCTAssertTrue(play.exists)
+        let onlyMe = app.buttons["voice-only-Me"]
+        XCTAssertTrue(onlyMe.waitForHittable(timeout: 5), "a meeting with two voices offers per-voice playback")
         let initialTime = String(describing: currentTime.value)
-        play.click()
+        onlyMe.click()
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 5) { onlyMe.isSelected }, "Only shows which voice is playing")
         XCTAssertTrue(
             currentTime.waitForValueChange(from: initialTime, timeout: 5),
             "playback must advance instead of merely accepting the click")

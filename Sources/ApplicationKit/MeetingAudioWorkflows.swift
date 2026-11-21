@@ -134,6 +134,14 @@ public final class MeetingPlaybackSession {
         player.playsFocusOnly = true
     }
 
+    /// Plays only this speaker's turns, starting playback when paused; the
+    /// same speaker again plays everyone.
+    public func toggleFocus(on speaker: SpeakerID, turns: [ClosedRange<TimeInterval>]) {
+        guard voiceFocus != speaker else { return focus(on: nil) }
+        focus(on: speaker, turns: turns)
+        if voiceFocus != nil, !isPlaying { play() }
+    }
+
     public func markClipStart() {
         player.markClipStart()
         synchronize()

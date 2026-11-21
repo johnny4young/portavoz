@@ -61,7 +61,7 @@ INTERACTION_SOURCE_PATHS = (
     "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
     "Sources/portavoz-app/TranscriptSegmentsView.swift",
     "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
-    "Sources/portavoz-app/VoiceCastRow.swift",
+    "Sources/portavoz-app/MeetingVoicesTable.swift",
 )
 
 PERFORMANCE_EVIDENCE_PATHS = (
@@ -191,8 +191,12 @@ DEFAULT_FEATURE_OWNERSHIP = (
         ],
         "sourceAnchors": [
             {
-                "path": "Sources/portavoz-app/VoiceCastRow.swift",
+                "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
                 "anchor": '"cast-others"',
+            },
+            {
+                "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
+                "anchor": '"voice-only-\\(speaker.label)"',
             },
         ],
     },

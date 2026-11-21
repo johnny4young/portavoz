@@ -1482,7 +1482,7 @@ extension ArchitectureDependencyTests {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            536)
+            540)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
             18)

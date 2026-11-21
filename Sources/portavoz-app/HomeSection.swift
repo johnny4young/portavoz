@@ -58,10 +58,3 @@ struct HomeChip: View {
             .fixedSize()
     }
 }
-
-/// How a voice is named on Today: "You", else its name, else its diarization label.
-enum HomeVoiceName {
-    nonisolated static func of(isMe: Bool, name: String?, label: String) -> String {
-        isMe ? L10n.text("You") : name ?? label
-    }
-}
