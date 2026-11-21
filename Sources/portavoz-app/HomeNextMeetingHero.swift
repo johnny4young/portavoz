@@ -166,7 +166,7 @@ struct HomeNextMeetingHero: View {
 
     /// Invitees in calendar order with you last; colour follows the same
     /// cast rule as a recorded meeting, so a name keeps its hue.
-    static func inviteeCast(_ attendees: [String]) -> VoiceCast {
+    nonisolated static func inviteeCast(_ attendees: [String]) -> VoiceCast {
         let members = attendees.enumerated().map { index, name in
             VoiceCast.Member(key: "invitee-\(index)", name: name, talkSeconds: 0)
         } + [VoiceCast.Member(key: "me", isMe: true, name: nil, talkSeconds: 0)]
@@ -174,7 +174,7 @@ struct HomeNextMeetingHero: View {
     }
 
     /// Platform · duration · recurrence, keeping only what the calendar gave.
-    static func facts(_ event: UpcomingEvent) -> String? {
+    nonisolated static func facts(_ event: UpcomingEvent) -> String? {
         let parts = [
             event.platform?.displayName,
             event.durationMinutes.map { L10n.format("%d min", $0) },
