@@ -40,5 +40,12 @@ final class InsightsUITests: PortavozUITestCase {
             app.control(withIdentifier: "insights-participant-Ana").exists,
             "each named participant must get an amber/violet participation bar")
         attachScreenshot(of: app, named: "band-2p-insights")
+
+        // The launch argument pins the scope, so only the segments and their state are checked.
+        XCTAssertTrue(
+            app.control(withIdentifier: "insights-scope-week").isSelected,
+            "the launch scope is the selected segment")
+        XCTAssertFalse(app.control(withIdentifier: "insights-scope-month").isSelected)
+        XCTAssertTrue(app.control(withIdentifier: "insights-scope-year").exists)
     }
 }

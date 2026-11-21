@@ -46,6 +46,7 @@ struct MeetingPlayerBar: View {
                 HStack(spacing: 4) {
                     let now = ClockFormat.mmss(player.currentTime, paddedMinutes: false)
                     StatusPill(kind: .now, text: L10n.format("Now %@", now))
+                        .accessibilityLabel(L10n.text("Current time"))
                         .accessibilityIdentifier("player-current-time")
                         .accessibilityValue(now)
                     Text(verbatim: "/ \(ClockFormat.mmss(player.duration, paddedMinutes: false))")

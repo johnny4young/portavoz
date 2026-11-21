@@ -444,10 +444,6 @@ extension LibraryView {
                     .frame(height: 13)
                     .accessibilityHidden(true)
                     Text("New recording")
-                    Text(verbatim: "⌘N")
-                        .fontWeight(.medium)
-                        .opacity(0.62)
-                        .accessibilityHidden(true)
                 }
             }
             .frame(maxWidth: .infinity)

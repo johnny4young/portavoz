@@ -96,7 +96,7 @@ struct MeetingCommitmentInboxSection: View {
 
     private func caption(_ candidate: CommitmentInboxCandidate) -> String {
         guard let dueAt = candidate.suggestedDueAt else { return L10n.text("Commitment") }
-        return L10n.format("Commitment · due %@", values.presentation.shortDate(dueAt))
+        return L10n.format("Commitment · suggested due %@", values.presentation.shortDate(dueAt))
     }
 
     private func suggestionSummary(_ candidate: CommitmentInboxCandidate) -> some View {

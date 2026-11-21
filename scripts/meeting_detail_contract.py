@@ -198,6 +198,14 @@ DEFAULT_FEATURE_OWNERSHIP = (
                 "anchor": '"summary-tab-0"',
             },
             {
+                "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+                "anchor": '"summary-tab-todos"',
+            },
+            {
+                "path": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
+                "anchor": '"detail-transcript-language-original"',
+            },
+            {
                 "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
                 "anchor": '"commitment-\\(candidate.id.uuidString)-caption"',
             },

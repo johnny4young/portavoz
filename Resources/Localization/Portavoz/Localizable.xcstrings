@@ -531,12 +531,22 @@
         }
       }
     },
-    "Commitment · due %@": {
+    "Commitment · suggested due %@": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Compromiso · vence %@"
+            "value": "Compromiso · vence %@ (sugerido)"
+          }
+        }
+      }
+    },
+    "Current time": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiempo actual"
           }
         }
       }

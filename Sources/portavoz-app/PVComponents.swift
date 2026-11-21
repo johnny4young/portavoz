@@ -318,8 +318,10 @@ struct PVCheckboxToggleStyle: ToggleStyle {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityAddTraits(.isToggle)
-        .accessibilityValue(Text(verbatim: configuration.isOn ? "1" : "0"))
+        .accessibilityRepresentation {
+            Toggle(isOn: configuration.$isOn) { configuration.label }
+                .toggleStyle(.checkbox)
+        }
     }
 
     private func box(isOn: Bool) -> some View {
