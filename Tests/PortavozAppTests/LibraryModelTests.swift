@@ -147,6 +147,22 @@ final class LibraryModelTests: XCTestCase {
         XCTAssertEqual(client.queries, ["presupuesto", "missing", "broken"])
     }
 
+    func testPendingAutomationsAreReadOnRefreshOnly() async {
+        let fixture = LibraryModelFixture()
+        let client = LibraryModelClientFake(fixture: fixture)
+        client.pendingAutomations = 2
+        let model = LibraryModel(client: client, searchDelay: .zero)
+
+        _ = await model.send(.observeLibrary)
+        XCTAssertEqual(model.state.pendingAutomations, 0, "the library observation never waits on the count")
+        _ = await model.send(.refreshAutomations)
+        XCTAssertEqual(model.state.pendingAutomations, 2)
+
+        client.pendingAutomations = 0
+        _ = await model.send(.refreshAutomations)
+        XCTAssertEqual(model.state.pendingAutomations, 0)
+    }
+
     func testMutationsFlowThroughActionsAndReturnNavigationEffects() async {
         let fixture = LibraryModelFixture()
         let client = LibraryModelClientFake(fixture: fixture)
@@ -393,6 +409,7 @@ private final class LibraryModelClientFake: LibraryModelClient {
     var hits: [LibrarySearchHit]
     var agenda: LibraryModel.Agenda?
     var brief: MeetingBrief?
+    var pendingAutomations = 0
     var failures: Set<LibraryModelFailure> = []
     var calls: [LibraryModelCall] = []
     var queries: [String] = []
@@ -475,6 +492,10 @@ private final class LibraryModelClientFake: LibraryModelClient {
     func buildLibraryBrief(for event: UpcomingEvent) -> MeetingBrief? {
         calls.append(.brief(event.id))
         return brief
+    }
+
+    func pendingLibraryAutomations() -> Int {
+        pendingAutomations
     }
 
     private func fail(_ failure: LibraryModelFailure) throws {

@@ -2796,7 +2796,7 @@ composition isolation, not a security sandbox for arbitrary environment paths.
 
 **Ink-on-paper palette (D643)**: `PVDesign` stores each colour as a `PVTone` (light and dark sRGB hex, optional Increase Contrast pair) and exposes `Color`s resolved by a dynamic `NSColor`; `docs/design/ds/tokens/colors.css` mirrors the same values. Surfaces: paper `#FBF7F2`/`#121615` (detail pane in `ContentView`, the Settings form), sunk paper `#F4ECE3`/`#0E1211` (main and Settings sidebars), card `#FFFDFA`/`#191E1C`, raised `#FFFFFF`/`#222826`. Ink `#14201E`/`#EEEBE2`, ink 2 `#46534F`/`#B4BBB6`, ink 3 `#5C6763`/`#8D9692` (ink 2 under Increase Contrast), `onInk` for labels on ink fills. `now` `#B93A22`/`#FF6A4C` is reserved for the present: Record, Stop, the live recording dot and the menu-bar recording peak. `green` `#1F6F5C`/`#7FD1B9` with `greenBg` marks generated content: ✦ and voice-match chips (`ChipLabel`), Insights findings, the Mirror synthesis and live translation blocks. `ok` marks success. `caution` is ink: warnings and errors carry a glyph or weight (`cautionText()`), not a hue. `testColoursComeFromTheDesignTokens` fails on any raw system hue, `Color.accentColor` or `Color(red:)` outside `PVDesign.swift`, and limits `PVDesign.now` to the record, stop and live-dot owners. The waveform scrubber resolves its four voice shadings once per draw. `you` `#F2B33D` with `youInk` (`#8A5600`/`#F2B33D`) for amber text, `youBg` for tints and `onYou` for text on amber; cards directed at you ("They asked you") and the live mic meter use it. The Aurora gradients, `brandViolet` and `brandSlate` are gone.
 
-**Display type (D644)**: `PVFont` (`Sources/portavoz-app/PVFont.swift`) registers the bundled Fraunces faces (`Resources/Fonts/Fraunces/`, copied to `Contents/Resources/Fraunces` by `make-app.sh`) from `PortavozLauncher` before the app starts; the CLI path skips it. `.pvDisplay(_:)` applies a `PVDisplayStyle` role with its wght/SOFT/opsz variations (WONK 0), -0.012 em tracking and `@ScaledMetric` sizing: `.title` (40/480) on Today, Commitment Radar, Insights, the onboarding steps and the meeting-detail title; `.section` (21/520) on the Today card heads, Radar group heads and Insights section heads; `.countdown` (172/340, SOFT 100) and `.heard` (19 italic) are ready for the countdown hero and quoted speech. `DisplayTimeText` draws the recording clock in `.clock(size: 24)` with equal digit cells, since Fraunces has no tabular figures. Without the font every role falls back to New York at the nearest system weight. `--bundled-assets-status` prints `displayFontRegistered`, and `scripts/verify-app-payload.sh` rejects an app that reports `false`. Settings › Data ends with a Typeface section crediting Fraunces under SIL OFL 1.1 with a link to `THIRD_PARTY_NOTICES.md`.
+**Display type (D644)**: `PVFont` (`Sources/portavoz-app/PVFont.swift`) registers the bundled Fraunces faces (`Resources/Fonts/Fraunces/`, copied to `Contents/Resources/Fraunces` by `make-app.sh`) from `PortavozLauncher` before the app starts; the CLI path skips it. `.pvDisplay(_:)` applies a `PVDisplayStyle` role with its wght/SOFT/opsz variations (WONK 0), -0.012 em tracking and `@ScaledMetric` sizing: `.title` (40/480) on Today, Commitment Radar, Insights, the onboarding steps and the meeting-detail title; `.section` (21/520) on the Today card heads, Radar group heads and Insights section heads; `.countdown` (172/340, SOFT 100) and its lighter `.countdownTrail` (172/300) draw Today's countdown hero, and `.heard` (19 italic) is ready for quoted speech. `DisplayTimeText` draws the recording clock in `.clock(size: 24)` with equal digit cells, since Fraunces has no tabular figures. Without the font every role falls back to New York at the nearest system weight. `--bundled-assets-status` prints `displayFontRegistered`, and `scripts/verify-app-payload.sh` rejects an app that reports `false`. Settings › Data ends with a Typeface section crediting Fraunces under SIL OFL 1.1 with a link to `THIRD_PARTY_NOTICES.md`.
 
 **Accent**: `PVDesign.accent` is the ink, and the root `.tint` and `AccentColor.colorset` (`#14201E`/`#EEEBE2`, compiled by `make-app.sh`) follow it, so primary buttons, selection and focus are neutral. `Color.accentColor` stays out of the app target. What macOS paints natively (list selection, focus rings) still follows the user's system accent. `VoicePalette` holds five voice hues (Cobalt, Madder, Moss, Clay, Lagoon) plus `unnamed` grey; `VoiceHue.paletteSize` is 5 so you plus five others keep a colour. Voice hues fill pills, bars and strips; voice names stay ink on the tint.
 
@@ -2942,28 +2942,61 @@ The transient range marker is excluded from `TranscriptSegment` coding.
 ## Today (home) — the default destination (D495, Sep 2026)
 
 `Route.library` and the empty route render `HomeView`, the screen a daily
-caller lands on: the header date with one primary action, `New
-recording`/`Return to recording`; the Ask field (`HomeAskField`,
-`home-ask-field`, submit button `home-ask`) with three ready questions under
-it (`home-ask-chip-<n>`) that submit through `AskModel` before routing to Ask;
-**Next meeting** as the hero row (large time, title, countdown, attendees,
-`Brief` and an event-linked `Record`), followed compactly by the rest of today
-and up to three of tomorrow's events, or the calendar offer plus `Record now`
-(`home-hero-record`) when nothing is scheduled; then **Open to-dos** (the
-first five open action items with the same checkbox action as the sidebar and
-a link to the source meeting, plus "N more in Radar") beside **Pick up where
-you left off** (the three newest meetings with their voice strip, duration, open count
-and lifecycle badge), both at content height. The week's totals live in
-Insights, not on Today. `HomeView` owns no store, observation, `.task`, or
-`@State` (the typed question lives in `HomeAskField`): it renders
-`LibraryModel.State` and sends the sidebar's own actions, and `ContentView`
-supplies the Ask and record closures. The sidebar gains a `Today` destination (`library-home-button`)
-selected for both the nil and `.library` routes. Identifiers:
-`home-title`, `home-record`, `home-ask`, `home-ask-field`, `home-hero-record`, `home-upcoming-<id>`
-(+`-brief-`/`-record-`), `home-todo-<uuid>`/`home-todo-toggle-<uuid>`,
-`home-recent-<uuid>`, `home-ask-chip-<n>`, `home-calendar-offer`. The showcase
-seed adds a fictional agenda and two clock-relative meetings so the public
-Today screenshot reads lived-in without touching the operator's calendar.
+caller lands on. The header row holds `Today` with the date, then the Ask field
+(`HomeAskField`: `home-ask-field`, submit `home-ask`; its leading glyph
+`home-ask-suggestions` is a menu of three ready questions, `home-ask-chip-<n>`,
+that submit through `AskModel` before routing to Ask) and, when skill offers
+await review, the green `Automations · n to review` pill (`home-automations`)
+that opens Settings on Automations. `LibraryModel.State.pendingAutomations`
+holds the count (`LibraryModelClient.pendingLibraryAutomations()`, backed by
+`loadSkillOfferReview()`), re-read on the agenda timer and when Today
+appears; the library observation never waits on it. It counts the same
+validated page Settings lists. The header falls back to two rows when narrow.
+
+**Next meeting hero** (`HomeNextMeetingHero`, `home-upcoming-<id>`): the first
+event of today, else the first of tomorrow. For today a `TimelineView` on
+`CountdownSchedule` (a tick per minute while more than an hour remains, per
+second in the last hour, and none after the start) redraws only the kicker and
+the numeral: `NEXT MEETING · STARTS
+<time> · IN` (ink; red is kept for a meeting under way) above a 172 pt Fraunces countdown (`.countdown`, lead unit in ink,
+`.countdownTrail` smaller unit in ink 3, `MIN` or `H` beside it) whose digits
+sit in equal cells (`DisplayTimeText`), so it keeps its width and nothing
+around it moves; `NextMeetingCountdown` gives mm:ss up to an hour and whole
+h:mm beyond it, and switches to a red `Now` (`NOW · STARTED <time>`) at the start
+time until the agenda drops the event at its end. The numeral is one
+accessibility element (`home-upcoming-countdown`) read as the relative start.
+Tomorrow's hero shows `NEXT MEETING · TOMORROW · <time>` without a numeral.
+Below: the title (`.title`), invitees as voice dots coloured by
+`VoiceCast` (calendar order, you last, past five folded into "Others · n";
+`home-upcoming-invitees`), then platform · duration · recurrence from
+`UpcomingEvent.platform`/`durationMinutes`/`recurrence` (only what the calendar
+gave), and the actions `Record` (`.pvPrimary`, ⌘R, event-linked,
+`home-upcoming-record-<id>`) and `Open brief` (`home-upcoming-brief-<id>`).
+With nothing scheduled the hero shows the calendar offer
+(`home-calendar-offer`) or "Nothing scheduled", and `Record now` / `Return to
+recording` (`home-record`, ⌘R).
+
+The rest of today and up to three of tomorrow's events sit in a **Later today**
+card (compact rows with icon-only Brief and Record, same identifiers) beside
+the hero when the section is at least 940 pt wide, below it otherwise;
+`HomeHeroLayout` decides from the proposed width alone, so the ticking hero is
+never measured against alternative layouts. A divider then leads to **Open to-dos** (the first five
+open action items with the sidebar's checkbox action and a link to the source
+meeting, plus "N more in Radar") beside **Pick up where you left off** (the
+three newest meetings with their voice strip, duration, open count and
+lifecycle badge). The week's totals live in Insights. `HomeView` renders
+`LibraryModel.State` and sends the sidebar's own actions, with no `.task` or
+`@State` of its own. The sidebar `Today`
+destination (`library-home-button`) is selected for both the nil and
+`.library` routes. Identifiers: `home-title`, `home-record`, `home-ask`,
+`home-ask-field`, `home-ask-suggestions`, `home-ask-chip-<n>`,
+`home-automations`, `home-upcoming-<id>` (+`-brief-`/`-record-`),
+`home-upcoming-countdown`, `home-upcoming-invitees`, `home-todo-<uuid>`/
+`home-todo-toggle-<uuid>`, `home-recent-<uuid>`, `home-calendar-offer`. The
+showcase seed adds a fictional agenda (Google Meet, 45 min, weekly) and two
+clock-relative meetings so the public Today screenshot reads lived-in without
+touching the operator's calendar; `-seed-wide-window` (disposable store only)
+drops the test window's left clearance so the wide layout can be asserted.
 
 ## Views and flows
 

@@ -105,7 +105,21 @@ public struct CalendarAttendeeSource: Sendable {
             id: identifier,
             title: event.title ?? "Meeting",
             startDate: event.startDate,
-            attendees: names)
+            attendees: names,
+            endDate: event.endDate,
+            platform: MeetingPlatform.detect(
+                in: [event.url?.absoluteString, event.location, event.notes]),
+            recurrence: event.recurrenceRules?.first.flatMap { recurrence($0.frequency) })
+    }
+
+    private static func recurrence(_ frequency: EKRecurrenceFrequency) -> EventRecurrence? {
+        switch frequency {
+        case .daily: .daily
+        case .weekly: .weekly
+        case .monthly: .monthly
+        case .yearly: .yearly
+        @unknown default: nil
+        }
     }
 
     /// Names of attendees (and organizers) of events overlapping

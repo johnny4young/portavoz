@@ -143,6 +143,9 @@ struct PVDisplayStyle: Equatable, Sendable {
     /// The hero countdown.
     static let countdown = PVDisplayStyle(
         size: 172, weight: 340, soft: 100, tracking: -0.045, relativeTo: .largeTitle)
+    /// The countdown's smaller unit, a lighter cut beside the lead.
+    static let countdownTrail = PVDisplayStyle(
+        size: 172, weight: 300, soft: 100, tracking: -0.045, relativeTo: .largeTitle)
     /// Page and meeting titles.
     static let title = PVDisplayStyle(size: 40, weight: 480, relativeTo: .largeTitle)
     static let section = PVDisplayStyle(size: 21, weight: 520, relativeTo: .title2)

@@ -81,6 +81,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 21, 2026
 
+- **⏳ Count down to your next call** — Today opens on your next meeting: a big countdown that turns to "Now" when it starts, who's invited in their voice colours, the call app, length and how often it repeats, with Record (⌘R) and Open brief right under it; the Ask field and any automations waiting for review sit in the header.
 - **⏱️ See who spoke when** — under every meeting in the sidebar and in Today's recent meetings, a flat strip now follows the meeting from start to end in the colour of whoever was talking, with silence left blank, and it follows speaker fixes you make in the transcript.
 - **🎨 Six colours at a time** — big meetings stay readable: you and the five people who talk most keep their colour, everyone else turns grey under "Others · n", which opens to the full list, and unnamed voices stay grey until you name them.
 - **🧩 One family of controls** — buttons, voice chips, suggestions, tabs, checkboxes and cards share one shape with Secreteo: ink buttons, a red Stop, capsule chips with each voice's dot, a red "Now" on the player and Portavoz's own text on a green tint.

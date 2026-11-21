@@ -26,6 +26,8 @@ protocol LibraryModelClient: AnyObject {
     func libraryAgenda() -> LibraryModel.Agenda?
     func requestLibraryCalendarAccess() async
     func buildLibraryBrief(for event: UpcomingEvent) async -> MeetingBrief?
+    /// Skill offers waiting for review; zero when they cannot be read.
+    func pendingLibraryAutomations() async -> Int
 }
 
 /// Per-window presentation owner for the Library. Views render one value-state
@@ -84,6 +86,7 @@ final class LibraryModel {
         fileprivate(set) var offerCalendar = false
         fileprivate(set) var brief: MeetingBrief?
         fileprivate(set) var briefLoading: UpcomingEvent?
+        fileprivate(set) var pendingAutomations = 0
     }
 
     enum Action {
@@ -106,6 +109,7 @@ final class LibraryModel {
         case requestCalendarAccess
         case openBrief(UpcomingEvent)
         case dismissBrief
+        case refreshAutomations
     }
 
     enum Effect: Equatable {
@@ -193,6 +197,8 @@ private extension LibraryModel {
             await openBrief(event)
         case .dismissBrief:
             state.brief = nil
+        case .refreshAutomations:
+            await refreshAutomations()
         default:
             break
         }
@@ -351,6 +357,12 @@ private extension LibraryModel {
         state.offerCalendar = agenda.offerCalendar
         state.upcomingToday = agenda.today
         state.upcomingTomorrow = agenda.tomorrow
+    }
+
+    func refreshAutomations() async {
+        let count = await client.pendingLibraryAutomations()
+        guard !Task.isCancelled else { return }
+        state.pendingAutomations = count
     }
 
     func openBrief(_ event: UpcomingEvent) async {

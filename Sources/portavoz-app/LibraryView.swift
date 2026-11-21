@@ -215,7 +215,10 @@ struct LibraryView: View {
         .task {
             _ = await model.send(.observeLibrary)
         }
-        .onReceive(briefTimer) { _ in perform(.refreshAgenda) }
+        .onReceive(briefTimer) { _ in
+            perform(.refreshAgenda)
+            perform(.refreshAutomations)
+        }
     }
 
     /// One agenda row: time + title; click builds that event's brief.

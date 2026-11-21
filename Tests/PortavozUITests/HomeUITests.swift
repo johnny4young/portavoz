@@ -1,8 +1,8 @@
 import XCTest
 
-/// Today: the default destination for someone who lives in calls. The agenda,
-/// open work, recent meetings, and one-click questions must all be reachable
-/// from one screen without scrolling or typing.
+/// Today: the default destination for someone who lives in calls. The next
+/// meeting, open work, recent meetings, and one-click questions must all be
+/// reachable from one screen without scrolling or typing.
 final class HomeUITests: PortavozUITestCase {
     @MainActor
     func testTodayShowsEverythingAboveTheFoldAndActsWithoutTyping() throws {
@@ -35,17 +35,25 @@ final class HomeUITests: PortavozUITestCase {
         XCTAssertTrue(recent.waitForExistenceFast(timeout: 10))
         let askField = app.control(withIdentifier: "home-ask-field")
         XCTAssertTrue(askField.waitForExistenceFast(timeout: 5), "Ask is one field on Today")
-        for element in [upcoming, todo, recent, app.buttons["home-ask-chip-0"], askField] {
+        let countdown = app.descendants(matching: .any)["home-upcoming-countdown"]
+        XCTAssertTrue(countdown.waitForExistenceFast(timeout: 5), "the next meeting counts down")
+        let record = app.buttons["home-upcoming-record-ui-test-upcoming-rollout"]
+        for element in [upcoming, countdown, record, todo, recent, askField] {
             XCTAssertTrue(element.exists, "\(element) must render")
             XCTAssertTrue(window.contains(element.frame), "\(element) must sit above the fold")
         }
         XCTAssertTrue(app.staticTexts["Presupuesto rollout"].exists)
         XCTAssertTrue(app.staticTexts["Prepare the rollout"].exists)
         attachScreenshot(of: app, named: "home-today")
+        attachScreenshot(of: app, named: "pr-home-countdown-hero")
 
-        // A suggested question reaches Ask already submitted.
-        let chip = app.buttons["home-ask-chip-0"]
-        XCTAssertTrue(chip.waitForStableFrame(timeout: 5))
+        // The field's glyph offers questions; one reaches Ask already submitted.
+        let suggestions = app.descendants(matching: .any)["home-ask-suggestions"]
+        XCTAssertTrue(suggestions.waitForStableFrame(timeout: 5))
+        suggestions.click()
+        let chip = app.menuItems["home-ask-chip-0"]
+        XCTAssertTrue(chip.waitForExistenceFast(timeout: 5))
+        attachScreenshot(of: app, named: "pr-home-ask-suggestions")
         chip.click()
         XCTAssertTrue(app.control(withIdentifier: "ask-question-field").waitForExistenceFast(timeout: 10))
         XCTAssertTrue(
@@ -92,13 +100,42 @@ final class HomeUITests: PortavozUITestCase {
         home.click()
         XCTAssertTrue(title.waitForExistenceFast(timeout: 10))
 
-        // The agenda also offers a linked recording, which ends the journey.
-        let record = app.buttons["home-upcoming-record-ui-test-upcoming-rollout"]
+        // The hero also offers a linked recording, which ends the journey.
         XCTAssertTrue(record.waitForStableFrame(timeout: 10))
         record.click()
         // The event-linked recording starts like the brief's own Record action;
         // the real title is assigned when the meeting is saved at Stop.
         XCTAssertTrue(app.control(withIdentifier: "recording-live-transcript").waitForExistenceFast(timeout: 10))
         XCTAssertTrue(app.buttons["library-return-to-recording"].waitForExistenceFast(timeout: 5))
+    }
+
+    @MainActor
+    func testPendingAutomationsOpenTheirSettings() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
+        app.launchArguments += ["-seed-duplicate-skill-proposals", "-seed-wide-window", "-AppleInterfaceStyle", "Light"]
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        // Returning to Today re-reads the count after the fixture has seeded.
+        let ask = app.buttons["library-ask-button"]
+        XCTAssertTrue(ask.waitForStableFrame(timeout: 5))
+        ask.click()
+        let today = app.buttons["library-home-button"]
+        XCTAssertTrue(today.waitForStableFrame(timeout: 5))
+        today.click()
+
+        let pill = app.buttons["home-automations"]
+        XCTAssertTrue(pill.waitForStableFrame(timeout: 10), "pending suggestions show in Today's header")
+        let countdown = app.descendants(matching: .any)["home-upcoming-countdown"]
+        XCTAssertTrue(countdown.waitForExistenceFast(timeout: 5))
+        XCTAssertLessThan(
+            countdown.frame.maxY, app.buttons["home-upcoming-record-ui-test-upcoming-rollout"].frame.minY,
+            "the countdown leads the hero, the actions close it")
+        attachScreenshot(of: app, named: "pr-home-wide-header")
+        pill.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-skills-pause-all").waitForExistenceFast(timeout: 10),
+            "the pill opens Settings on Automations")
     }
 }

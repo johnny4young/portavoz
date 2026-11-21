@@ -5,24 +5,25 @@ import SwiftUI
 /// The default destination: one screen for someone who lives in calls.
 ///
 /// Everything a day needs sits above the fold and reads from the Library
-/// snapshot that the sidebar already observes — the agenda with a brief and a
-/// linked recording per event, the to-dos still open, the meetings to pick
-/// back up, and one-click questions for the Ask surface. No new store,
-/// observation, or capability enters this view; it composes values and sends
-/// the same actions the sidebar sends.
+/// snapshot that the sidebar already observes — the next meeting as the
+/// hero, the rest of the agenda, the to-dos still open, and the meetings to
+/// pick back up. It renders the Library snapshot and sends the same actions
+/// the sidebar sends.
 struct HomeView: View {
     let model: LibraryModel
     @Binding var route: Route?
     let recordingActive: Bool
     let onRecord: () -> Void
     let onAsk: (String?) -> Void
+    let onOpenAutomations: () -> Void
 
     private var state: LibraryModel.State { model.state }
 
-    // Sized so the agenda, open work, recent meetings and the question chips
-    // all land above the fold at the default window height.
+    // Sized so the hero, open work and recent meetings land above the fold
+    // at the default window height.
     private static let maximumOpenItems = 5
     private static let maximumRecentMeetings = 3
+    private static let maximumTomorrowEvents = 3
 
     /// Suggested questions: the ones a daily user types most, ready to send.
     private static let suggestedQuestions: [String] = [
@@ -35,22 +36,24 @@ struct HomeView: View {
         GeometryReader { geometry in
             ScrollView {
                 content
-                    .padding(PVDesign.space6)
-                    .frame(maxWidth: 1100, alignment: .topLeading)
+                    .padding(.horizontal, PVDesign.space6)
+                    .padding(.bottom, PVDesign.space6)
+                    .padding(.top, PVDesign.space3)
+                    .frame(maxWidth: 1240, alignment: .topLeading)
                     .frame(maxWidth: .infinity, minHeight: geometry.size.height, alignment: .top)
             }
         }
         .navigationTitle("Portavoz")
+        .onAppear { perform(.refreshAutomations) }
     }
 
-    /// Header, Ask, the next meeting as the hero, then open work beside the
-    /// meetings to pick up. Every block takes the height its content needs;
-    /// the week's totals live in Insights.
+    /// Header, the next meeting as the hero beside the rest of the agenda,
+    /// then open work beside the meetings to pick up.
     private var content: some View {
         VStack(alignment: .leading, spacing: PVDesign.space4) {
             header
-            HomeAskField(suggestions: Self.suggestedQuestions, onAsk: onAsk)
-            agendaCard
+            agendaSection
+            Divider().padding(.vertical, PVDesign.space1)
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .top, spacing: PVDesign.space4) {
                     openWorkCard.frame(maxWidth: .infinity, alignment: .topLeading)
@@ -67,103 +70,169 @@ struct HomeView: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline, spacing: PVDesign.space3) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Today")
-                    .pvDisplay(.title)
-                    .accessibilityIdentifier("home-title")
-                Text(Date.now, format: .dateTime.weekday(.wide).day().month(.wide))
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 14) {
+                headerTitle
+                Spacer(minLength: PVDesign.space4)
+                headerTools
             }
-            Spacer(minLength: 0)
-            Button(action: onRecord) {
-                Label(
-                    recordingActive ? LocalizedStringKey("Return to recording") : LocalizedStringKey("New recording"),
-                    systemImage: recordingActive ? PVSymbol.record : "plus")
+            VStack(alignment: .leading, spacing: PVDesign.space3) {
+                headerTitle
+                headerTools
             }
-            .buttonStyle(.pvPrimary)
-            .controlSize(.large)
-            .accessibilityIdentifier("home-record")
+        }
+    }
+
+    private var headerTitle: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 14) {
+            Text("Today")
+                .font(.body.weight(.bold))
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("home-title")
+            Text(Date.now, format: .dateTime.weekday(.wide).month(.wide).day())
+                .foregroundStyle(PVDesign.ink3)
+        }
+        .lineLimit(1)
+        .fixedSize()
+    }
+
+    private var headerTools: some View {
+        HStack(spacing: 14) {
+            HomeAskField(suggestions: Self.suggestedQuestions, onAsk: onAsk)
+                .frame(minWidth: 240, maxWidth: 330)
+            if state.pendingAutomations > 0 {
+                Button(action: onOpenAutomations) {
+                    Label(
+                        L10n.format("Automations · %d to review", state.pendingAutomations),
+                        systemImage: PVSymbol.automations)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .foregroundStyle(PVDesign.green)
+                        .padding(.horizontal, 11)
+                        .frame(height: 26)
+                        .background(PVDesign.greenBg, in: Capsule())
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .fixedSize()
+                .help("Review the automations Portavoz suggested from your meetings")
+                .accessibilityIdentifier("home-automations")
+            }
         }
     }
 
     // MARK: - Agenda
 
-    /// The next meeting is the hero: it gets the large row with the countdown
-    /// and both actions; the rest of the day and tomorrow follow compactly.
-    private var agendaCard: some View {
-        card(title: L10n.text("Next meeting")) {
-            if state.upcomingToday.isEmpty, state.upcomingTomorrow.isEmpty {
-                HStack(spacing: PVDesign.space3) {
-                    if state.offerCalendar {
-                        Button {
-                            perform(.requestCalendarAccess)
-                        } label: {
-                            Label("Connect your calendar", systemImage: "calendar.badge.plus")
-                        }
-                        .accessibilityIdentifier("home-calendar-offer")
-                        // The help text is one catalog key; keep the sentence whole.
-                        .help("Shows today's and tomorrow's meetings with a brief for each.")
-                    } else {
-                        emptyLine("Nothing scheduled — record when the call starts.")
-                    }
-                    Spacer(minLength: 0)
-                    Button(action: onRecord) {
-                        RecordLabel("Record now")
-                    }
-                    .buttonStyle(.pvSecondary)
-                    .accessibilityIdentifier("home-hero-record")
+    /// The hero event is the first of today, else the first of tomorrow; a
+    /// positional fact, so the emphasis never goes stale.
+    private var heroEvent: (event: UpcomingEvent, isToday: Bool)? {
+        if let first = state.upcomingToday.first { return (first, true) }
+        return state.upcomingTomorrow.first.map { ($0, false) }
+    }
+
+    private var laterToday: ArraySlice<UpcomingEvent> {
+        state.upcomingToday.dropFirst()
+    }
+
+    private var tomorrow: ArraySlice<UpcomingEvent> {
+        state.upcomingTomorrow
+            .dropFirst(heroEvent?.isToday == false ? 1 : 0)
+            .prefix(Self.maximumTomorrowEvents)
+    }
+
+    @ViewBuilder
+    private var agendaSection: some View {
+        if laterToday.isEmpty, tomorrow.isEmpty {
+            hero
+        } else {
+            HomeHeroLayout {
+                hero
+                laterCard
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var hero: some View {
+        if let next = heroEvent {
+            let event = next.event
+            HomeNextMeetingHero(
+                event: event,
+                isToday: next.isToday,
+                briefLoading: state.briefLoading,
+                onRecord: { route = .recording(event) },
+                onBrief: { perform(.openBrief(event)) })
+        } else {
+            emptyHero
+        }
+    }
+
+    /// No meeting ahead: the calendar offer or a plain line, and recording
+    /// stays one click away.
+    private var emptyHero: some View {
+        VStack(alignment: .leading, spacing: PVDesign.space3) {
+            HomeHeroKicker(lead: L10n.text("Next meeting"), leadTint: PVDesign.ink3)
+            if state.offerCalendar {
+                Button {
+                    perform(.requestCalendarAccess)
+                } label: {
+                    Label("Connect your calendar", systemImage: "calendar.badge.plus")
                 }
+                .buttonStyle(.pvSecondary)
+                .accessibilityIdentifier("home-calendar-offer")
+                // The help text is one catalog key; keep the sentence whole.
+                .help("Shows today's and tomorrow's meetings with a brief for each.")
             } else {
-                ForEach(Array(state.upcomingToday.enumerated()), id: \.element.id) { index, event in
-                    agendaRow(event, isNext: index == 0)
+                Text("Nothing scheduled — record when the call starts.")
+                    .font(.title3)
+                    .foregroundStyle(PVDesign.ink2)
+            }
+            Button(action: onRecord) {
+                RecordLabel(recordingActive ? "Return to recording" : "Record now")
+            }
+            .buttonStyle(.pvPrimary)
+            .controlSize(.large)
+            .keyboardShortcut("r")
+            .accessibilityIdentifier("home-record")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var laterCard: some View {
+        card(title: L10n.text("Later today")) {
+            if !laterToday.isEmpty {
+                ForEach(laterToday) { event in
+                    agendaRow(event)
                 }
-                if state.upcomingToday.isEmpty {
-                    emptyLine("Nothing else scheduled today.")
-                }
-                if !state.upcomingTomorrow.isEmpty {
-                    Text("Tomorrow")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .padding(.top, 4)
-                    ForEach(state.upcomingTomorrow.prefix(3)) { event in
-                        agendaRow(event, isNext: false)
-                    }
+            } else if !state.upcomingToday.isEmpty {
+                emptyLine("Nothing else scheduled today.")
+            }
+            if !tomorrow.isEmpty {
+                Text("Tomorrow")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(PVDesign.ink3)
+                    .padding(.top, 4)
+                ForEach(tomorrow) { event in
+                    agendaRow(event)
                 }
             }
         }
     }
 
-    /// `isNext` is the first row of today — a positional fact, so the emphasis
-    /// never goes stale. The countdown reads "in 45 minutes" rather than a
-    /// ticking clock; the agenda refresh the sidebar already runs keeps it
-    /// current, and a glance never has to watch seconds count down.
-    private func agendaRow(_ event: UpcomingEvent, isNext: Bool) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: PVDesign.space2) {
+    private func agendaRow(_ event: UpcomingEvent) -> some View {
+        HStack(spacing: PVDesign.space2) {
             Text(event.startDate, format: .dateTime.hour().minute())
-                .font(isNext
-                    ? .title2.monospacedDigit().weight(.semibold)
-                    : .callout.monospacedDigit().weight(.medium))
-                .foregroundStyle(PVDesign.accent)
-                .frame(width: isNext ? 72 : 56, alignment: .leading)
+                .font(.callout.monospacedDigit().weight(.medium))
+                .frame(width: 64, alignment: .leading)
             VStack(alignment: .leading, spacing: 2) {
                 Text(event.title)
-                    .font(isNext ? .title3.weight(.semibold) : .body.weight(.medium))
+                    .font(.body.weight(.medium))
                     .lineLimit(1)
-                HStack(spacing: 6) {
-                    if isNext {
-                        Text(event.startDate, format: .relative(presentation: .named))
-                            .font(.caption.monospacedDigit().weight(.medium))
-                            .foregroundStyle(PVDesign.accent)
-                            .accessibilityIdentifier("home-upcoming-countdown")
-                    }
-                    if !event.attendees.isEmpty {
-                        Text(event.attendees.joined(separator: " · "))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
+                if !event.attendees.isEmpty {
+                    Text(event.attendees.joined(separator: " · "))
+                        .font(.caption)
+                        .foregroundStyle(PVDesign.ink3)
+                        .lineLimit(1)
                 }
             }
             Spacer(minLength: 0)
@@ -173,29 +242,27 @@ struct HomeView: View {
                 if state.briefLoading == event {
                     ProgressView().controlSize(.small)
                 } else {
-                    Label("Brief", systemImage: "doc.text.magnifyingglass")
+                    Label("Brief", systemImage: "doc.text")
+                        .labelStyle(.iconOnly)
                 }
             }
             .buttonStyle(.pvSecondary)
             .controlSize(.small)
             .disabled(state.briefLoading != nil)
             .help("See who's coming, related meetings and open to-dos")
+            .accessibilityLabel(L10n.text("Brief"))
             .accessibilityIdentifier("home-upcoming-brief-\(event.id)")
             Button {
                 route = .recording(event)
             } label: {
-                RecordLabel("Record")
+                RecordDot()
             }
             .buttonStyle(.pvSecondary)
             .controlSize(.small)
             .help("Starts recording linked to this event: the meeting gets its real title")
+            .accessibilityLabel(L10n.text("Record"))
             .accessibilityIdentifier("home-upcoming-record-\(event.id)")
         }
-        .padding(.vertical, isNext ? PVDesign.space3 : 0)
-        .padding(.horizontal, isNext ? PVDesign.space3 : 0)
-        .background(
-            isNext ? PVDesign.accent.opacity(PVDesign.offerTint) : .clear,
-            in: RoundedRectangle(cornerRadius: PVDesign.radiusSmall))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home-upcoming-\(event.id)")
     }
