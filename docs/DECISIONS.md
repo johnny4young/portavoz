@@ -23041,3 +23041,25 @@ and no `tnum` feature, so ticking time (`DisplayTimeText`) sets each digit in
 a cell as wide as the widest figure instead of relying on tabular digits.
 `THIRD_PARTY_NOTICES.md` lists the font and Settings › Data credits it.
 
+
+## D645 — One mark geometry drives the app icon, the menu bar and the brand files
+
+The Portavoz mark is three voice strands, the middle (amber, you) swelling
+widest. `PortavozMark` holds its geometry on the 100-unit icon box with no
+AppKit dependency, so the app and `scripts/make-icons.sh` share it: the
+script compiles it with `scripts/render-brand.swift` to write the Icon
+Composer document (`assets/AppIcon.icon`, a light and a dark fill and strand
+layer, glass, specular and translucency off so the icon stays flat), the
+site and design-system SVGs and the social card, then exports the renditions
+with Xcode's `ictool` and builds the legacy `AppIcon.icns` from the light one
+on the 824-in-1024 grid.
+
+`make-app.sh` compiles the asset catalog and the `.icon` in one `actool` pass
+(`CFBundleIconName`, so Finder and the Dock follow the appearance) and then
+copies the rendered `AppIcon.icns` over actool's smaller fallback, keeping
+the file name Sparkle and Homebrew expect.
+
+The menu-bar mark is drawn at runtime from the same paths instead of a
+pre-rendered PNG: idle is a template, recording is a drawing-handler image
+whose strands use `labelColor` and whose middle swell uses the `now` tone,
+so both re-resolve for a light or a dark menu bar.

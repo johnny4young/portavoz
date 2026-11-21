@@ -155,7 +155,7 @@ private struct CommandPaletteView: View {
 
     private var inputRow: some View {
         HStack(spacing: 10) {
-            Image(systemName: "bubble.left.and.text.bubble.right")
+            Image(systemName: PVSymbol.ask)
                 .foregroundStyle(PVDesign.accent)
             TextField("Ask your week…", text: $text)
                 .textFieldStyle(.plain)

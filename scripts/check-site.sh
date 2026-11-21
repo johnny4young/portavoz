@@ -13,7 +13,7 @@ fail() {
 
 [ -f site/index.html ] || fail "site/index.html is missing"
 [ -f site/styles.css ] || fail "site/styles.css is missing"
-[ -f site/assets/portavoz-mark.svg ] || fail "site/assets/portavoz-mark.svg is missing"
+[ -f site/assets/portavoz-icon.svg ] || fail "site/assets/portavoz-icon.svg is missing"
 [ -f site/assets/og.png ] || fail "site/assets/og.png is missing (social/OG card)"
 for screenshot in today meeting-detail recording-live-translation insights; do
 	[ -f "site/assets/screenshots/$screenshot.png" ] \

@@ -81,6 +81,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 20, 2026
 
+- **🧵 A new face: three voices** — the app icon is now three voice strands with your amber one swelling, in a light and a dark version that follow your Mac; the same mark sits in the menu bar and its middle strand turns red while you record.
 - **🇪🇸 Correct Spanish to-do badge** — Today no longer reads "1 abiertos" next to a meeting with one open to-do.
 - **🔤 Titles in a serif of their own** — page and meeting titles, section heads and the recording clock are set in Fraunces, a soft serif that ships inside the app, while text and controls stay in SF.
 - **🖋️ Ink on paper** — Portavoz trades indigo and violet for warm paper and ink in light and dark, so colour means something again: amber is you, each voice has its hue, red is only the live moment and green is what Portavoz wrote.

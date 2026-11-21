@@ -215,13 +215,14 @@ extension View {
 
 /// One SF Symbol per concept (D536). Views name the concept, never the glyph,
 /// so a symbol cannot drift between screens and `sparkles` stays reserved for
-/// the ✦ chip that marks generated content (`ChipLabel`).
+/// the ✦ chip that marks generated content (`ChipLabel`). Outlined symbols at
+/// regular weight stand in for the design's 1.5 pt round-cap glyphs.
 enum PVSymbol {
     // Navigation
     static let today = "calendar"
-    static let ask = "bubble.left.and.text.bubble.right"
+    static let ask = "text.bubble"
     static let insights = "chart.bar.xaxis"
-    static let radar = "checklist"
+    static let radar = "scope"
     // Assistants and generated work
     static let apuntador = "questionmark.bubble.fill"
     /// The same mark, outlined: Apuntador exists here but is switched off.
@@ -236,6 +237,7 @@ enum PVSymbol {
     static let warning = "exclamationmark.circle"
     static let error = "exclamationmark.triangle.fill"
     static let retry = "arrow.clockwise"
+    static let correction = "pencil.line"
     static let translate = "translate"
     static let history = "clock.arrow.circlepath"
     // Recording

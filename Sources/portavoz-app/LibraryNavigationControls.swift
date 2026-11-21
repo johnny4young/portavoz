@@ -12,7 +12,7 @@ struct LibraryNavigationControls: View {
                 help: "See today's agenda, open to-dos, recent meetings and quick questions",
                 selected: isHome) { onNavigate(.library) }
             navigationButton(
-                "Ask", symbol: "bubble.left.and.text.bubble.right", id: "library-ask-button",
+                "Ask", symbol: PVSymbol.ask, id: "library-ask-button",
                 help: "Ask anything across every meeting",
                 selected: route == .ask) { onNavigate(.ask) }
             navigationButton(

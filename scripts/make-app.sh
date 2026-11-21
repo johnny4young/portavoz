@@ -12,7 +12,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 PROFILE_PLIST=""
+ICON_PLIST="$(mktemp "${TMPDIR:-/tmp}/portavoz-icon.XXXXXX.plist")"
 cleanup() {
+  rm -f "$ICON_PLIST"
   if [[ -n "$PROFILE_PLIST" ]]; then
     rm -f "$PROFILE_PLIST"
   fi
@@ -140,15 +142,6 @@ else
   echo "warning: shipping without the MLX metallib — Built-in engine disabled." >&2
 fi
 
-# Icon «La P que habla» (regenerate with: scripts/icon-p.html + scripts/make-icns.sh)
-if [[ -f assets/AppIcon.icns ]]; then
-  cp assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
-fi
-# Menu bar template P (pre-rendered: Fraunces can't render without the font)
-if [[ -f assets/icon/pv-menubar-32.png ]]; then
-  cp assets/icon/pv-menubar-32.png "$APP/Contents/Resources/pv-menubar-32.png"
-fi
-
 # Display serif (SIL OFL 1.1): both faces and the licence travel together;
 # PVFont registers them at launch and falls back to New York without them.
 if [[ ! -f "Resources/Fonts/Fraunces/OFL.txt" ]] \
@@ -158,14 +151,16 @@ if [[ ! -f "Resources/Fonts/Fraunces/OFL.txt" ]] \
 fi
 cp -R Resources/Fonts/Fraunces "$APP/Contents/Resources/"
 
-# App accent color (design system: indigo is THE accent — resolves the
-# system-accent debt): compile the asset catalog so NSAccentColorName
-# resolves. Users who picked a specific system accent still win, per macOS.
-if [[ -d assets/Assets.xcassets ]]; then
-  xcrun actool assets/Assets.xcassets --compile "$APP/Contents/Resources" \
-    --platform macosx --minimum-deployment-target 26.0 \
-    --output-format human-readable-text > /dev/null
-fi
+# One asset catalog carries the accent colour (NSAccentColorName) and the
+# light/dark app icon (CFBundleIconName); regenerate the icon with
+# scripts/make-icons.sh. The rendered icns then replaces actool's smaller
+# fallback under the name Sparkle and Homebrew expect.
+xcrun actool assets/Assets.xcassets assets/AppIcon.icon \
+  --compile "$APP/Contents/Resources" --app-icon AppIcon \
+  --output-partial-info-plist "$ICON_PLIST" \
+  --platform macosx --minimum-deployment-target 26.0 \
+  --output-format human-readable-text > /dev/null
+cp assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
 # App Intents metadata (D139). SwiftPM never runs Xcode's
 # appintentsmetadataprocessor, so Shortcuts/Spotlight would not see the
@@ -199,6 +194,8 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
         <string>es</string>
     </array>
     <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundleIconName</key>
     <string>AppIcon</string>
     <key>NSAccentColorName</key>
     <string>AccentColor</string>

@@ -99,7 +99,7 @@ struct MenuBarContent: View {
                     services.pendingRoute = .recording(nil)
                 }
             }
-            quickAction("Ask", "bubble.left.and.text.bubble.right", tint: .secondary) {
+            quickAction("Ask", PVSymbol.ask, tint: .secondary) {
                 openMainWindow()
                 services.pendingRoute = .ask
             }
