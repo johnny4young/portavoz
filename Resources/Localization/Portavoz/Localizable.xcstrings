@@ -18526,6 +18526,26 @@
           }
         }
       }
+    },
+    "Nothing left to pick up": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada pendiente por retomar"
+          }
+        }
+      }
+    },
+    "Open this meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre esta reunión"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

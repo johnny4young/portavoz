@@ -186,6 +186,7 @@ final class LibraryModel {
     private var briefPreviewRequest = 0
     private var todayVoicesRequest = 0
     private var todayWorkTask: Task<Void, Never>?
+    private var suggestionsRequest = 0
     private var meetingSignatures: [MeetingSignature] = []
     private var openItemSignatures: [OpenItemSignature] = []
     private var todaySignature: TodaySignature?
@@ -467,10 +468,13 @@ private extension LibraryModel {
         await refreshSuggestions()
     }
 
-    /// An unreadable count keeps the badge as it is.
+    /// An unreadable count keeps the badge as it is; the newest request wins.
     func refreshSuggestions() async {
+        suggestionsRequest &+= 1
+        let request = suggestionsRequest
         let review = await client.librarySuggestionsToReview()
-        guard !Task.isCancelled, let review, review != state.suggestionsToReview else { return }
+        guard !Task.isCancelled, request == suggestionsRequest, let review, review != state.suggestionsToReview
+        else { return }
         state.suggestionsToReview = review
     }
 

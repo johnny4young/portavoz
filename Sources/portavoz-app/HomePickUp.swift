@@ -7,6 +7,7 @@ import SwiftUI
 /// resumes where listening stopped.
 struct HomePickUp: View {
     let rows: [TodayPickUp.Row]
+    let hasMeetings: Bool
     let strips: [MeetingID: VoiceStripColumns]
     let openItems: [LibraryOpenItem]
     let onOpen: (MeetingID) -> Void
@@ -14,7 +15,7 @@ struct HomePickUp: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HomeSectionHeader(title: L10n.text("Pick up where you left off"))
-            if rows.isEmpty { HomeSectionEmpty(key: "No meetings yet") }
+            if rows.isEmpty { HomeSectionEmpty(key: hasMeetings ? "Nothing left to pick up" : "No meetings yet") }
             ForEach(rows) { row in
                 HomeSectionRule()
                 self.row(row)
@@ -75,7 +76,7 @@ struct HomePickUp: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .help("Open this meeting where you stopped listening")
+        .help(row.progress.flatMap(Self.stoppedHelp) ?? L10n.text("Open this meeting"))
         .accessibilityValue(VoiceStrip(strip).spokenCast)
         .accessibilityIdentifier("home-recent-\(meeting.id.rawValue.uuidString)")
     }
@@ -94,6 +95,11 @@ struct HomePickUp: View {
         case .recording, .ready:
             EmptyView()
         }
+    }
+
+    nonisolated static func stoppedHelp(_ progress: TodayPickUp.Progress) -> String? {
+        guard case .stopped = progress else { return nil }
+        return L10n.text("Open this meeting where you stopped listening")
     }
 
     nonisolated static func progressText(_ progress: TodayPickUp.Progress) -> String {

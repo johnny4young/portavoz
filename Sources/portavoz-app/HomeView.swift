@@ -52,6 +52,7 @@ struct HomeView: View {
         // Positions are never observed, so returning to Today re-reads them.
         .onChange(
             of: TodayWorkTrigger(
+                loadPhase: state.loadPhase,
                 revision: state.libraryRevision,
                 sourceStrips: state.shownOpenItems.map { state.voiceStrips[$0.meetingID] }),
             initial: true
@@ -317,6 +318,7 @@ struct HomeView: View {
     private var pickUp: some View {
         HomePickUp(
             rows: state.pickUpRows,
+            hasMeetings: !state.meetings.isEmpty,
             strips: state.voiceStrips,
             openItems: state.openItems,
             onOpen: { route = .meeting($0) })
@@ -351,6 +353,8 @@ struct HomeView: View {
 private extension HomeView {
     /// Speaker fixes in a to-do's meeting rename who said it.
     struct TodayWorkTrigger: Equatable {
+        /// Leaves loading once both sections arrived, whichever came last.
+        let loadPhase: LibraryModel.LoadPhase
         let revision: Int
         let sourceStrips: [VoiceStripColumns?]
     }

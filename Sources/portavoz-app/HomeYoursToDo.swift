@@ -99,7 +99,9 @@ struct HomeYoursToDo: View {
     }
 
     private func tint(_ voice: OpenItemSource.Voice, in meetingID: MeetingID) -> VoiceCast.Tint {
-        voice.isMe ? .you : strips[meetingID]?.cast.tint(for: voice.speakerID) ?? .grey
+        if voice.isMe { return .you }
+        guard let speakerID = voice.speakerID, let cast = strips[meetingID]?.cast else { return .grey }
+        return cast.tint(for: speakerID)
     }
 
     nonisolated static func name(_ voice: OpenItemSource.Voice) -> String {
@@ -121,11 +123,15 @@ struct HomeYoursToDo: View {
         return (led ? "· " : "") + parts.joined(separator: " · ")
     }
 
-    /// "You · Fri"; the owner alone without a confirmed due day.
+    /// "You · Fri"; the owner alone without a confirmed due day. A past due
+    /// day names its date, so it never reads as the coming weekday.
     nonisolated static func ownerChip(
         _ owner: OpenItemSource.Voice, due: Date?, now: Date = Date(), calendar: Calendar = .current
     ) -> String {
         guard let due else { return name(owner) }
-        return "\(name(owner)) · \(Meeting.shortDay(due, now: now, calendar: calendar))"
+        let day = calendar.startOfDay(for: due) < calendar.startOfDay(for: now)
+            ? due.formatted(Meeting.dayStyle)
+            : Meeting.shortDay(due, now: now, calendar: calendar)
+        return "\(name(owner)) · \(day)"
     }
 }

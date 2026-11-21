@@ -41,6 +41,10 @@ final class HomeWorkRowsTests: XCTestCase {
         XCTAssertEqual(
             HomeYoursToDo.ownerChip(marta, due: later, now: now, calendar: calendar),
             "Marta · \(later.formatted(Meeting.dayStyle))", "a due day weeks away names its date")
+        let overdue = now.addingTimeInterval(-2 * 86_400)
+        XCTAssertEqual(
+            HomeYoursToDo.ownerChip(marta, due: overdue, now: now, calendar: calendar),
+            "Marta · \(overdue.formatted(Meeting.dayStyle))", "a past due day never reads as the coming weekday")
     }
 
     func testTheRadarLinkPrefersSuggestionsToReview() {
@@ -53,6 +57,8 @@ final class HomeWorkRowsTests: XCTestCase {
     func testPickUpRowsSayWhereListeningStopped() {
         XCTAssertEqual(HomePickUp.progressText(.stopped(at: 1_880)), L10n.format("stopped at %@", "31:20"))
         XCTAssertEqual(HomePickUp.progressText(.unheard), L10n.text("unheard"))
+        XCTAssertNotNil(HomePickUp.stoppedHelp(.stopped(at: 10)))
+        XCTAssertNil(HomePickUp.stoppedHelp(.unheard), "an unheard row never claims you stopped")
     }
 
     func testPickUpFactsUseTheWeekdayWithinAWeek() {

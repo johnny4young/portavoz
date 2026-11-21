@@ -3059,8 +3059,8 @@ Between the agenda and that section, a divider leads to **Yours to do**
 saying who said it, "You said it" / "Marta said it" when the owner spoke the
 evidence line and "You asked" / "Marta asked" when someone else did, beside
 that voice's dot, then the source meeting and the line's time; a chip names
-the owner, amber when it is you, with the weekday of a confirmed commitment's
-due date; the row opens the meeting at that line. The header links to Radar
+the owner (a confirmed commitment's assignee when Radar has one), amber when it
+is you, with the weekday of its due date (its date once past); the row opens the meeting at that line. The header links to Radar
 with "N suggestions to review in Radar" when the review queue has any, else
 "N more in Radar" when to-dos did not fit) beside **Pick up where you left off**
 (`HomePickUp`: up to three finished meetings from `TodayPickUp.rows`, those
@@ -3071,18 +3071,20 @@ a play glyph, the title, "Tue · 51 min" within the last week or "Tue 15 Sep ·
 "N open" chip, the full-width `VoiceStrip` at `.resume` size (8 pt, the
 unplayed part at 30% with an ink playhead where listening stopped; an unheard
 meeting dims whole with no playhead) and the voices with their shares. The row
-opens the meeting, which resumes where listening stopped; rows carry no
+opens the meeting, which resumes where listening stopped; with meetings but
+no row it says "Nothing left to pick up"; rows carry no
 progress until positions load, and the playhead sits on the strip's own span).
 `LibraryModel.Action.loadTodayWork` reads `LoadTodayWork` for the twenty newest
 finished meetings' positions and the shown to-dos' sources
 (`openItemSources(for:)`) once the meetings and open to-dos have been observed;
 each part that fails keeps what is shown and a newer request cancels the older
-read. HomeView sends it when the library revision or a shown to-do's meeting
+read. HomeView sends it when the library leaves loading, the library revision or a shown to-do's meeting
 strip changes (so renaming a voice renames who said it), on every return to
 Today (positions are never observed) and when the window regains focus. The
 review queue's count rides `refreshAutomations` with the automation count (on
 Today's appear and focus and the sidebar's five-minute timer), and the sidebar
-re-reads it alone (`refreshSuggestions`) whenever the library revision changes. Who
+re-reads it alone (`refreshSuggestions`) whenever the library revision changes
+and on entering or leaving Radar. Who
 spoke today stays below these rows so the to-dos and pick-up rows keep the
 fold. The week's totals live in Insights. `HomeView` renders
 `LibraryModel.State` and sends the sidebar's own actions, with no `.task` or
@@ -3117,7 +3119,7 @@ frames at launch so a collapsed sidebar never carries into the next test.
 
 ## Views and flows
 
-**LibraryView + LibraryModel**: `New recording` (⌘N) with a ▾ menu that holds `Import audio…` (`library-record-menu`, `library-import-audio-button`; the navigation list is destinations only), meeting rows titled without a leading ISO date (`MeetingRowTitle.display`, the date stays on the row's second line), FTS search with snippets, past meetings only, grouped This week (today included) and Earlier, each with its title, "Wed 9 Sep · 31 min" and voice strip, with `Rename`/`Delete` (the agenda and open to-dos live on Today), a Radar badge counting the suggestions waiting in its review queue (`library-commitment-radar-button-badge`), Recently Deleted restore/permanent purge, import progress/errors, and calendar briefs. The per-window model owns data, debounce, mutations, and effects through its narrow client; the SwiftUI views own rendering, native presentation, AppStorage disclosure state, file picking/drop acceptance, and route binding. Library and Meeting Detail deletion plus Recently Deleted restore/permanent purge still enter through ApplicationKit use cases; launch cleanup uses the same purge boundary for tombstones strictly older than 30 days. Existing controls, navigation, and degradable filesystem behavior remain while scoped observations update only their owning sections. `library-search-field` provides a stable automation boundary for the real FTS/model wiring. The query adapter expands a deterministic local English/Spanish meeting lexicon and StorageKit ORs complete language variants while keeping terms inside each variant conjunctive; `unicode61` folds Latin accents. Exact rows publish first. When Apple Latin embedding assets are already installed and capture is inactive, a shared ApplicationKit search actor appends bounded semantic paraphrase/cross-language hits from already-published vectors without downloading assets, writing the corpus, or replacing exact rank (D145/D197). Ask and Library share one typed readiness resolver; launch, searchable mutations, and capture completion wake the sole no-poll product writer, which uses the process coordinator and installed assets (D176/D178/D197). Search rows publish their exact timestamp through the shared one-shot seek channel before routing. While capture is preparing, recording, or processing, the main action becomes identified `Return to recording`; browsing history cannot hide the live timer and Stop control or create a second session. UITests use `firstMatch` for to-dos because a meeting title also appears as the row caption.
+**LibraryView + LibraryModel**: `New recording` (⌘N) with a ▾ menu that holds `Import audio…` (`library-record-menu`, `library-import-audio-button`; the navigation list is destinations only), meeting rows titled without a leading ISO date (`MeetingRowTitle.display`, the date stays on the row's second line), FTS search with snippets, past meetings only, grouped This week (today included) and Earlier, each with its title, "Wed 9 Sep · 31 min" and voice strip, with `Rename`/`Delete` (the agenda and open to-dos live on Today), a Radar badge counting the suggestions waiting in its review queue (`library-commitment-radar-button-badge`), Recently Deleted restore/permanent purge, import progress/errors, and calendar briefs. The per-window model owns data, debounce, mutations, and effects through its narrow client; the SwiftUI views own rendering, native presentation, file picking/drop acceptance, and route binding. Library and Meeting Detail deletion plus Recently Deleted restore/permanent purge still enter through ApplicationKit use cases; launch cleanup uses the same purge boundary for tombstones strictly older than 30 days. Existing controls, navigation, and degradable filesystem behavior remain while scoped observations update only their owning sections. `library-search-field` provides a stable automation boundary for the real FTS/model wiring. The query adapter expands a deterministic local English/Spanish meeting lexicon and StorageKit ORs complete language variants while keeping terms inside each variant conjunctive; `unicode61` folds Latin accents. Exact rows publish first. When Apple Latin embedding assets are already installed and capture is inactive, a shared ApplicationKit search actor appends bounded semantic paraphrase/cross-language hits from already-published vectors without downloading assets, writing the corpus, or replacing exact rank (D145/D197). Ask and Library share one typed readiness resolver; launch, searchable mutations, and capture completion wake the sole no-poll product writer, which uses the process coordinator and installed assets (D176/D178/D197). Search rows publish their exact timestamp through the shared one-shot seek channel before routing. While capture is preparing, recording, or processing, the main action becomes identified `Return to recording`; browsing history cannot hide the live timer and Stop control or create a second session. UITests use `firstMatch` for to-dos because a meeting title also appears as the row caption.
 
 **RecordingView + RecordingController** (full live pipeline):
 1. `start`: `RecordingController` resets live visual state and sends callbacks

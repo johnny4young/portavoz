@@ -23256,8 +23256,11 @@ The review queue's count behind the Radar badge rides the automation-count
 refresh, the existing home for sidebar counts, and the sidebar re-reads it when
 the library revision changes.
 
-"Said it" means the owner spoke the item's first evidence line; "asked" means
-someone else did. A row opens the meeting, which resumes on its own, instead of
+"Said it" means the owner spoke the item's first readable evidence line;
+"asked" means someone else did. The owner is Radar's assignee once the item is a
+confirmed commitment, and an owner taken from the line's original speaker
+follows a speaker fix on that line, so a correction never turns "said it" into
+"asked". A row opens the meeting, which resumes on its own, instead of
 starting playback from Today. A meeting heard to the end leaves Pick up, since
 nothing is left to resume. The sidebar lists past meetings only, in This week
 and Earlier: the agenda and the open to-dos already live on Today, and the

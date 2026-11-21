@@ -190,8 +190,10 @@ struct LibraryView: View {
         .task {
             _ = await model.send(.observeLibrary)
         }
-        // New summaries, to-dos and confirmations change what Radar has to review.
+        // New summaries and to-dos change what Radar has to review.
         .onChange(of: state.libraryRevision) { perform(.refreshSuggestions) }
+        // Reviewing in Radar changes the queue without touching the library.
+        .onChange(of: route?.isCommitmentRadar == true) { perform(.refreshSuggestions) }
         .onReceive(briefTimer) { _ in
             perform(.refreshAgenda)
             perform(.refreshAutomations)

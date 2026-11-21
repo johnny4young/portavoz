@@ -131,17 +131,6 @@ extension MeetingStore {
         return lines.mapValues(MeetingBriefLines.pendingFirst)
     }
 
-    /// An action item's first evidence segment, the line that said it.
-    static let actionItemFirstEvidenceSegmentSQL = """
-        (SELECT evidenceSegment.segmentID
-         FROM summaryActionItemEvidence AS evidence
-         JOIN summaryActionItemEvidenceSegment AS evidenceSegment
-           ON evidenceSegment.evidenceID = evidence.id
-         WHERE evidence.actionItemID = actionItem.id
-           AND evidenceSegment.segmentID IS NOT NULL
-         ORDER BY evidenceSegment.ordinal LIMIT 1)
-        """
-
     /// Joins `commitment` to the live commitment an action item most recently fed.
     static let actionItemLatestCommitmentJoinSQL = """
         LEFT JOIN commitment ON commitment.id = (
@@ -157,7 +146,13 @@ extension MeetingStore {
             db,
             sql: """
                 SELECT actionItem.text, actionItem.ownerSpeakerID, actionItem.isDone,
-                       \(actionItemFirstEvidenceSegmentSQL) AS segmentID,
+                       (SELECT evidenceSegment.segmentID
+                        FROM summaryActionItemEvidence AS evidence
+                        JOIN summaryActionItemEvidenceSegment AS evidenceSegment
+                          ON evidenceSegment.evidenceID = evidence.id
+                        WHERE evidence.actionItemID = actionItem.id
+                          AND evidenceSegment.segmentID IS NOT NULL
+                        ORDER BY evidenceSegment.ordinal LIMIT 1) AS segmentID,
                        commitment.status AS commitmentStatus, commitment.dueAt AS dueAt
                 FROM actionItem
                 JOIN summary ON summary.id = actionItem.summaryID AND summary.deletedAt IS NULL

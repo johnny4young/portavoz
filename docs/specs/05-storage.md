@@ -2369,11 +2369,16 @@ Meeting Detail.
 ### Open to-do sources
 
 `openItemSources(for:)` returns, for each live action item asked about, an
-`OpenItemSource`: the speaker of its first evidence segment and that segment's
-start, read through the same corrected transcript the voice strip and brief
-lines use (`readableTranscript`, so a reassigned line names its new speaker),
-the owner speaker, and the due date of the confirmed commitment the item became
-(none for a commitment done, dismissed or not confirmed). Speakers come back
+`OpenItemSource`: the speaker of its first evidence segment still in the
+readable transcript and that segment's start, read through the same corrected
+transcript the voice strip and brief lines use (`readableTranscript`, so a
+reassigned line names its new speaker and a suppressed one yields to the next),
+the owner, and the due date of the confirmed commitment the item became (none
+for a commitment done, dismissed or not confirmed). The owner is the confirmed
+commitment's assignee when there is one (you, a person by preferred name, or
+nobody when confirmed unassigned), else the proposal's owner speaker; an owner
+that was the evidence line's stored speaker follows a speaker fix on that line,
+since it was read off the same diarization. Speakers come back
 with `isMe`, label and display name; a deleted speaker reads as unknown. It is a
 read on demand for the few rows Today shows, never observed: attribution needs
 the whole corrected transcript, which an observation would rebuild on every
