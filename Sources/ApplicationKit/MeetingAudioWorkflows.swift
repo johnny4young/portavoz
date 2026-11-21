@@ -150,6 +150,7 @@ public final class MeetingPlaybackSession {
     }
 
     public func invalidate() {
+        synchronize()  // an end reached since the last tick still counts as heard
         if checkpoints.hasPlayed {
             emit(PlaybackCheckpoint(seconds: player.currentTime, reachedEnd: false))
         }

@@ -23236,7 +23236,7 @@ backed up or observed: a save every few seconds must not reload any screen.
 Only listening counts. The application session reports checkpoints (pause, a
 settled seek, every 10 s of playback, the end, close) only after the user has
 pressed play, so opening a meeting or following a citation never creates a
-position. Writes carry their checkpoint time and the store keeps the newest,
-which makes unordered fire-and-forget saves safe; once heard, a meeting stays
-heard. A route seek still wins over the saved position, and positions within a
+position. Meeting Detail runs its saves one after another and the store keeps
+the last write, so a clock stepped back cannot freeze the position; once heard,
+a meeting stays heard. Quitting can lose up to the last periodic checkpoint. A route seek still wins over the saved position, and positions within a
 second of either end open at the start.

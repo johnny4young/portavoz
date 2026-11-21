@@ -33,8 +33,8 @@ extension MeetingStore {
         }
     }
 
-    /// Records where listening stopped. An older position never replaces a
-    /// newer one, and a meeting once heard to the end stays heard.
+    /// Records where listening stopped; the last write wins, so callers save in
+    /// order. A meeting once heard to the end stays heard.
     public func savePlaybackPosition(_ position: MeetingPlaybackPosition) async throws {
         try await database.write { db in
             try db.execute(
@@ -45,7 +45,6 @@ extension MeetingStore {
                         positionSeconds = excluded.positionSeconds,
                         heardAt = COALESCE(meetingPlaybackPosition.heardAt, excluded.heardAt),
                         updatedAt = excluded.updatedAt
-                    WHERE excluded.updatedAt >= meetingPlaybackPosition.updatedAt
                     """,
                 arguments: [
                     position.meetingID.rawValue.uuidString, position.seconds,

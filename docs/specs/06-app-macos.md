@@ -2105,7 +2105,9 @@ session reports a checkpoint on pause, one second after the last seek or skip,
 every 10 s of playback, on reaching the end (position 0, heard) and when the
 route closes or the audio is prepared again; nothing is reported until the user
 has pressed play, so opening or browsing a meeting never records listening.
-Saves are optional: a failed read or write leaves playback as it was. A phrase ending exactly at the audio duration remains speech and prevents
+Saves run one after another, so the last checkpoint is the one stored;
+they are optional, so a failed read or write leaves playback as it was.
+Quitting the app can lose up to the last 10 s of listening. A phrase ending exactly at the audio duration remains speech and prevents
 tail trimming. When the last phrase ends at least five minutes before the
 audio of a settled meeting, the same menu offers "Remove … of silence at the
 end…" (`player-trim-silence`), confirmed in a destructive dialog

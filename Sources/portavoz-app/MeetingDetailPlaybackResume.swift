@@ -8,6 +8,8 @@ import PortavozCore
 final class MeetingDetailPlaybackResume {
     /// The last position saved here, ahead of a write still in flight.
     private var latest: MeetingPlaybackPosition?
+    /// Saves run one after another so the last checkpoint is the one stored.
+    private var pendingSave: Task<Void, Never>?
 
     /// The route applies its own pending seek afterwards, so that seek still wins.
     func prepare(
@@ -26,8 +28,13 @@ final class MeetingDetailPlaybackResume {
             let position = MeetingPlaybackPosition(
                 meetingID: meetingID, seconds: checkpoint.seconds,
                 isHeard: checkpoint.reachedEnd, updatedAt: Date())
-            self?.latest = position
-            Task { try? await client.saveMeetingDetailPlaybackPosition(position) }
+            guard let self else { return }
+            latest = position
+            let previous = pendingSave
+            pendingSave = Task {
+                await previous?.value
+                try? await client.saveMeetingDetailPlaybackPosition(position)
+            }
         }
         return prepared
     }

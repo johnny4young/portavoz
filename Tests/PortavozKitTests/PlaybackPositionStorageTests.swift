@@ -42,15 +42,15 @@ final class PlaybackPositionStorageTests: XCTestCase {
         XCTAssertTrue(none.isEmpty)
     }
 
-    func testLaterPositionReplacesAndOlderOneIsIgnored() async throws {
+    func testTheLastSaveWinsEvenWhenTheClockWentBack() async throws {
         let meeting = try await seedMeeting()
         try await store.savePlaybackPosition(position(meeting, 40, at: 10))
         try await store.savePlaybackPosition(position(meeting, 95, at: 20))
         try await store.savePlaybackPosition(position(meeting, 12, at: 15))
 
         let saved = try await store.playbackPositions(for: [meeting.id])[meeting.id]
-        XCTAssertEqual(saved?.seconds, 95, "a checkpoint that lands late must not rewind the position")
-        XCTAssertEqual(saved?.updatedAt, Date(timeIntervalSince1970: 1_800_000_020))
+        XCTAssertEqual(saved?.seconds, 12, "a clock stepped back must not freeze the position")
+        XCTAssertEqual(saved?.updatedAt, Date(timeIntervalSince1970: 1_800_000_015))
     }
 
     func testHeardStaysHeardAfterListeningAgain() async throws {
