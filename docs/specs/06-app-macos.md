@@ -3019,7 +3019,8 @@ stacked: beside the hero the empty state holds the column, under it the card
 would only push open work below the fold.
 
 When anything was recorded today or is still ahead, **Who spoke today**
-(`home-who-spoke`, `HomeWhoSpokeToday`) follows the agenda under a line: the
+(`home-who-spoke`, `HomeWhoSpokeToday`) closes the page under a line, after
+open work and recent meetings, so it never pushes them below the fold: the
 section title with a summary (`home-who-spoke-summary`, "2 meetings recorded ·
 1 h 46 min · 1 to go", keeping only the parts that apply), then up to five
 talkers from `TodayVoices.talkers` (you first, then most talk) as equal columns
@@ -3042,7 +3043,7 @@ has turned, so captions never trigger a read. A failed read keeps what is
 shown. The hero's invitees take the same day cast (`State.inviteeCast(for:)`),
 so a person wears one hue across the page. The **Later today** card stays beside
 the hero because it carries tomorrow and each event's Record and Brief buttons.
-A divider then leads to **Open to-dos** (the first five
+Between the agenda and that section, a divider leads to **Open to-dos** (the first five
 open action items with the sidebar's checkbox action and a link to the source
 meeting, plus "N more in Radar") beside **Pick up where you left off** (the
 three newest meetings with their voice strip, duration, open count and

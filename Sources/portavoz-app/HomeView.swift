@@ -65,19 +65,11 @@ struct HomeView: View {
     }
 
     /// Header, the next meeting as the hero beside the rest of the agenda,
-    /// then open work beside the meetings to pick up.
+    /// open work beside the meetings to pick up, then who spoke today.
     private var content: some View {
         VStack(alignment: .leading, spacing: PVDesign.space4) {
             header
             agendaSection
-            if let voices = state.todayVoices, HomeWhoSpokeToday.isShown(voices) {
-                HomeWhoSpokeToday(
-                    voices: voices,
-                    onOpenMeeting: { route = .meeting($0) },
-                    onOpenEvent: { perform(.openBrief($0)) },
-                    // Per minute, never per caption: a live strip changes with every one.
-                    onMinute: { if HomeWhoSpokeToday.isStale(voices, at: Date()) { perform(.loadTodayVoices) } })
-            }
             Divider().padding(.vertical, PVDesign.space1)
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .top, spacing: PVDesign.space4) {
@@ -88,6 +80,15 @@ struct HomeView: View {
                     openWorkCard
                     recentCard
                 }
+            }
+            // Below open work: the day's talk time must never cost the fold.
+            if let voices = state.todayVoices, HomeWhoSpokeToday.isShown(voices) {
+                HomeWhoSpokeToday(
+                    voices: voices,
+                    onOpenMeeting: { route = .meeting($0) },
+                    onOpenEvent: { perform(.openBrief($0)) },
+                    // Per minute, never per caption: a live strip changes with every one.
+                    onMinute: { if HomeWhoSpokeToday.isStale(voices, at: Date()) { perform(.loadTodayVoices) } })
             }
         }
     }
