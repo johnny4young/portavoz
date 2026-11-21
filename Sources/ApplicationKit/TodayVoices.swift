@@ -16,7 +16,8 @@ public struct TodayVoices: Sendable, Equatable {
         /// A voice nobody named; two meetings' unnamed voices never merge.
         case unnamed(SpeakerID)
 
-        var key: String {
+        /// Stable across launches; keys the day cast and UI test identifiers.
+        public var key: String {
             switch self {
             case .me: "me"
             case .person(let id): "person-\(id.rawValue.uuidString)"

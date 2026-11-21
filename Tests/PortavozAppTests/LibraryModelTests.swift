@@ -181,8 +181,12 @@ final class LibraryModelTests: XCTestCase {
         _ = await model.send(.observeLibrary)
         XCTAssertEqual(model.state.libraryRevision, 2, "meetings and open items each bump it")
 
+        let today = model.state.todayVoicesRevision
+        XCTAssertGreaterThan(today, 0)
+
         _ = await model.send(.observeLibrary)
         XCTAssertEqual(model.state.libraryRevision, 2, "an update that changes no meeting or to-do does not")
+        XCTAssertEqual(model.state.todayVoicesRevision, today, "nor does it re-read today's voices")
     }
 
     func testPreparingTheHerosBriefReloadsItsPreview() async {
@@ -195,6 +199,23 @@ final class LibraryModelTests: XCTestCase {
         _ = await model.send(.openBrief(fixture.eventToday))
 
         XCTAssertEqual(client.calls.last, .briefLines(fixture.eventToday.id))
+    }
+
+    func testTodayVoicesReadTodaysAgendaAndSurviveAFailedRead() async {
+        let fixture = LibraryModelFixture()
+        let client = LibraryModelClientFake(fixture: fixture)
+        client.agenda = fixture.agenda
+        let model = LibraryModel(client: client, searchDelay: .zero)
+        _ = await model.send(.refreshAgenda)
+
+        _ = await model.send(.loadTodayVoices)
+        XCTAssertEqual(client.calls.last, .todayVoices(fixture.agenda.today.map(\.id)))
+        let loaded = model.state.todayVoices
+        XCTAssertNotNil(loaded)
+
+        client.failures = [.todayVoices]
+        _ = await model.send(.loadTodayVoices)
+        XCTAssertEqual(model.state.todayVoices, loaded, "a failed re-read keeps what is shown")
     }
 
     func testPendingAutomationsAreReadOnRefreshOnly() async {
@@ -434,6 +455,7 @@ private enum LibraryModelFailure: String, Error, Hashable, LocalizedError, Senda
     case enqueue
     case purge
     case briefLines
+    case todayVoices
 
     var errorDescription: String? { "library-model-\(rawValue)" }
 }
@@ -452,6 +474,7 @@ private enum LibraryModelCall: Equatable {
     case requestCalendarAccess
     case brief(String)
     case briefLines(String)
+    case todayVoices([String])
 }
 
 @MainActor
@@ -551,6 +574,14 @@ private final class LibraryModelClientFake: LibraryModelClient {
         calls.append(.briefLines(event.id))
         try fail(.briefLines)
         return briefLines
+    }
+
+    func libraryTodayVoices(at now: Date, events: [UpcomingEvent]) throws -> TodayVoices {
+        calls.append(.todayVoices(events.map(\.id)))
+        try fail(.todayVoices)
+        return TodayVoices(
+            day: DateInterval(start: now.addingTimeInterval(-3_600), duration: 86_400),
+            now: now, meetings: [], events: events, people: [:])
     }
 
     func pendingLibraryAutomations() -> Int {

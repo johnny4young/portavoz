@@ -18386,6 +18386,66 @@
           }
         }
       }
+    },
+    "Who spoke today": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quién habló hoy"
+          }
+        }
+      }
+    },
+    "1 meeting recorded": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 reunión grabada"
+          }
+        }
+      }
+    },
+    "%d meetings recorded": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d reuniones grabadas"
+          }
+        }
+      }
+    },
+    "%d to go": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d por delante"
+          }
+        }
+      }
+    },
+    "not named yet": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sin nombre aún"
+          }
+        }
+      }
+    },
+    "%d h %d min": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d h %d min"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

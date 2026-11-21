@@ -1461,8 +1461,9 @@ which reads the cached per-person lines and records the hero's latest
 same-title occurrence when it differs from the cached source. `LoadTodayVoices`
 builds the read model for who spoke today and the day axis from the
 meetings started today, their stored voice strips and the adapter's upcoming
-events, with invitees resolved to confirmed people by unique exact alias; no
-Today surface consumes it yet.
+events, with invitees resolved to confirmed people by unique exact alias;
+`LibraryModel` reads it through its client and Today draws it as the "Who
+spoke today" section and day axis.
 Agenda buttons explicitly opt out of selectable
 meeting-row behavior, so opening a brief cannot race the sidebar's meeting
 route. One privacy promise exists in the main window: the sidebar footer chip

@@ -61,6 +61,7 @@ struct HomeView: View {
         ) { _, trigger in
             if let event = trigger.event { perform(.loadBriefPreview(event)) }
         }
+        .onChange(of: state.todayVoicesRevision, initial: true) { perform(.loadTodayVoices) }
     }
 
     /// Header, the next meeting as the hero beside the rest of the agenda,
@@ -69,6 +70,14 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: PVDesign.space4) {
             header
             agendaSection
+            if let voices = state.todayVoices, HomeWhoSpokeToday.isShown(voices) {
+                HomeWhoSpokeToday(
+                    voices: voices,
+                    onOpenMeeting: { route = .meeting($0) },
+                    onOpenEvent: { perform(.openBrief($0)) },
+                    // A live strip changes per caption, so its growth is read once a minute.
+                    onMinute: { if recordingToday { perform(.loadTodayVoices) } })
+            }
             Divider().padding(.vertical, PVDesign.space1)
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .top, spacing: PVDesign.space4) {
@@ -174,6 +183,7 @@ struct HomeView: View {
             let event = next.event
             HomeNextMeetingHero(
                 event: event,
+                cast: state.inviteeCast(for: event),
                 isToday: next.isToday,
                 recordingActive: recordingActive,
                 briefLoading: state.briefLoading,
@@ -452,6 +462,10 @@ private extension HomeView {
         let event: UpcomingEvent?
         let revision: Int
         let sourceStrip: VoiceStripColumns?
+    }
+
+    var recordingToday: Bool {
+        state.todayVoices?.recorded.contains(where: \.isRecording) == true
     }
 
     /// Shown once the hero's own occurrence has loaded.
