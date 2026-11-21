@@ -65,3 +65,11 @@ extension VoiceCast {
         columns.voices.map { $0.isMe ? .you : tint(for: $0.speakerID) }
     }
 }
+
+extension VoiceStripColumns {
+    /// A stored strip with its cast and the tint of every voice index.
+    public init(columns: MeetingVoiceColumns) {
+        let cast = VoiceCast(columns: columns)
+        self.init(columns: columns.columns, tints: cast.tints(for: columns), cast: cast)
+    }
+}

@@ -179,7 +179,7 @@ state owners plus process-scoped command-palette, first-run, and local-data
 receipt owners.
 SwiftUI views render and present native controls; app composition adapters map
 independent GRDB observations to storage-independent ApplicationKit updates.
-Library observes meeting rows/voice mix, open items, trash, and active FTS;
+Library observes meeting rows/voice strips, open items, trash, and active FTS;
 Insights observes meeting chronology, participant/commitment facts, talk
 balance, and scope-bounded finding evidence; Meeting Detail observes its
 transcript/cast, newest immutable summary, Apuntador cards, privacy receipt,

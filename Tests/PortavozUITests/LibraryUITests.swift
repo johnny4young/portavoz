@@ -844,8 +844,17 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.staticTexts["Earlier"].exists || app.staticTexts["Antes"].exists,
             "an old meeting must sit under the Earlier bucket")
+        // The row's identifier reaches its children, so the strip is found by label.
+        let spanish = UITestLocale.environmentLocale == "es"
+        let strip = app.images.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'library-meeting-' AND label == %@",
+            spanish ? "Quién habló cuándo" : "Who spoke when")).firstMatch
+        XCTAssertTrue(strip.waitForExistenceFast(timeout: 5), "the seeded row draws who spoke when")
+        XCTAssertTrue(
+            (strip.value as? String)?.contains(spanish ? "Tú " : "You ") == true,
+            "the strip reads the cast with your share")
 
-        attachScreenshot(of: app, named: "band-2o-library-voice-mix")
+        attachScreenshot(of: app, names: ["band-2o-library-voice-mix", "pr-library-voice-strip"])
 
         // Search crosses the SwiftUI binding, feature-model debounce, and
         // real FTS projection before publishing a new Library snapshot.

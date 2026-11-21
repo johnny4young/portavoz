@@ -1,34 +1,15 @@
 import Foundation
 import PortavozCore
 
-/// One speaker's contribution to a meeting row's compact voice-mix bar.
-public struct LibraryVoiceMixSlice: Equatable, Sendable {
-    public let isMe: Bool
-    public let displayName: String?
-    public let fraction: Double
-    public let order: Int
-    public let firstHeard: TimeInterval
-
-    public init(
-        isMe: Bool, displayName: String?, fraction: Double, order: Int, firstHeard: TimeInterval
-    ) {
-        self.isMe = isMe
-        self.displayName = displayName
-        self.fraction = fraction
-        self.order = order
-        self.firstHeard = firstHeard
-    }
-}
-
 /// Query-specific row for the Library's recency-grouped meeting shelf.
 public struct LibraryMeetingRow: Sendable, Identifiable {
     public let meeting: Meeting
-    public let voiceMix: [LibraryVoiceMixSlice]
+    public let voiceStrip: VoiceStripColumns
     public var id: MeetingID { meeting.id }
 
-    public init(meeting: Meeting, voiceMix: [LibraryVoiceMixSlice]) {
+    public init(meeting: Meeting, voiceStrip: VoiceStripColumns) {
         self.meeting = meeting
-        self.voiceMix = voiceMix
+        self.voiceStrip = voiceStrip
     }
 }
 

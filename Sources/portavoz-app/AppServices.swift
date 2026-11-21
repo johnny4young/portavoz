@@ -245,16 +245,23 @@ final class AppServices {
 
     /// The user's average talk-share over their recent meetings (excluding
     /// one) — the mirror compares "% you spoke" against this. Nil when there
-    /// isn't enough history. Reuses the aggregate voice-mix query.
+    /// isn't enough history. Reads the stored voice strips.
     func averageMyShare(excluding meetingID: MeetingID, recent: Int = 10) async -> Double? {
         // One more than `recent` so excluding this meeting still leaves a full
         // window; the store already orders newest first.
         guard let meetings = try? await store.meetings(limit: recent + 1) else { return nil }
-        let recentIDs = meetings.filter { $0.id != meetingID }.prefix(recent).map(\.id)
+        // A recording's strip is rebuilt on every segment, so reading it here would only churn.
+        let recentIDs = meetings
+            .filter { $0.id != meetingID && $0.lifecycleState != .recording }
+            .prefix(recent).map(\.id)
         guard !recentIDs.isEmpty,
-            let mixes = try? await store.voiceMixes(for: Array(recentIDs))
+            let strips = try? await store.voiceColumns(for: Array(recentIDs))
         else { return nil }
-        let shares = mixes.values.compactMap { $0.first(where: \.isMe)?.fraction }
+        let shares = strips.values.compactMap { strip -> Double? in
+            let total = strip.voices.reduce(0) { $0 + $1.talkSeconds }
+            guard total > 0, let me = strip.voices.first(where: \.isMe) else { return nil }
+            return me.talkSeconds / total
+        }
         guard !shares.isEmpty else { return nil }
         return shares.reduce(0, +) / Double(shares.count)
     }

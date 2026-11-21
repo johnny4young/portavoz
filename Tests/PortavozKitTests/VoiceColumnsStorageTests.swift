@@ -323,4 +323,28 @@ final class VoiceColumnsStorageTests: XCTestCase {
         }
         XCTAssertEqual(orphans, 0)
     }
+
+    func testATailTrimShortensTheStripTimeline() async throws {
+        let meeting = Meeting(
+            title: "Trimmed", startedAt: Date(timeIntervalSince1970: 0),
+            endedAt: Date(timeIntervalSince1970: 50))
+        try await store.save(meeting)
+        let me = Speaker(meetingID: meeting.id, label: "Me", isMe: true)
+        try await store.save([me])
+        try await store.save([TranscriptSegment(
+            meetingID: meeting.id, speakerID: me.id, channel: .microphone,
+            text: "hola", startTime: 0, endTime: 40, isFinal: true)])
+        try await store.database.write { db in
+            try db.execute(sql: """
+                INSERT INTO audioAsset
+                    (id, meetingID, channel, role, relativePath, durationSeconds, createdAt, updatedAt)
+                VALUES (?, ?, 'mic', 'capture', 'trim/mic.caf', 100, ?, ?)
+                """, arguments: [UUID().uuidString, meeting.id.rawValue.uuidString, Date(), Date()])
+        }
+
+        let trimmed = try await strip(meeting.id)
+        XCTAssertEqual(trimmed.duration, 50, "the asset still says 100 s after the trim")
+        XCTAssertEqual(trimmed.columns[180], silence)
+        XCTAssertEqual(trimmed.columns[100], 0)
+    }
 }

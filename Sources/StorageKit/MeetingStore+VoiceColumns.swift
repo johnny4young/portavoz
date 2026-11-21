@@ -125,12 +125,65 @@ extension MeetingStore {
     /// the rebuild, as it fails every other correction-aware projection.
     static func refreshVoiceColumns(in db: Database, for meetingIDs: [MeetingID]) throws {
         guard !meetingIDs.isEmpty else { return }
+        let built = try buildVoiceStrips(in: db, for: meetingIDs)
+        let ids = meetingIDs.map { $0.rawValue.uuidString }
+        // Migrations run with foreign keys off, so the child rows cannot rely on the cascade.
+        for table in ["meetingVoiceColumnsVoice", "meetingVoiceColumns"] {
+            try db.execute(
+                sql: "DELETE FROM \(table) WHERE meetingID IN (\(databaseQuestionMarks(count: ids.count)))",
+                arguments: StatementArguments(ids))
+        }
+        let insertStrip = try db.cachedStatement(sql: """
+            INSERT INTO meetingVoiceColumns (meetingID, duration, columns, updatedAt)
+            VALUES (?, ?, ?, ?)
+            """)
+        let insertVoice = try db.cachedStatement(sql: """
+            INSERT INTO meetingVoiceColumnsVoice
+                (meetingID, voiceIndex, speakerID, talkSeconds, firstHeard)
+            VALUES (?, ?, ?, ?, ?)
+            """)
+        let timestamp = Date()
+        for (id, strip) in built {
+            let key = id.rawValue.uuidString
+            try insertStrip.execute(arguments: [key, strip.duration, Data(strip.columns), timestamp])
+            for (index, voice) in strip.voices.enumerated() {
+                try insertVoice.execute(arguments: [
+                    key, index, voice.speakerID.rawValue.uuidString, voice.talkSeconds, voice.firstHeard
+                ])
+            }
+        }
+    }
+
+    /// The strip a rebuild would store, without writing, so a read-only
+    /// observation can draw a recording whose cache each segment drops. A
+    /// meeting whose correction history is malformed is absent.
+    static func computeVoiceColumns(
+        in db: Database, for meetingIDs: [MeetingID]
+    ) -> [MeetingID: MeetingVoiceColumns] {
+        guard !meetingIDs.isEmpty else { return [:] }
+        let built = (try? buildVoiceStrips(in: db, for: meetingIDs))
+            ?? meetingIDs.flatMap { (try? buildVoiceStrips(in: db, for: [$0])) ?? [] }
+        return Dictionary(
+            built.filter { !$0.strip.voices.isEmpty }.map { ($0.id, $0.strip) },
+            uniquingKeysWith: { first, _ in first })
+    }
+
+    private struct LiveSpeaker {
+        let isMe: Bool
+        let label: String
+        let displayName: String?
+    }
+
+    private static func buildVoiceStrips(
+        in db: Database, for meetingIDs: [MeetingID]
+    ) throws -> [(id: MeetingID, strip: MeetingVoiceColumns)] {
         let ids = meetingIDs.map { $0.rawValue.uuidString }
         let placeholders = databaseQuestionMarks(count: ids.count)
         let meetings = try Row.fetchAll(
             db,
             sql: """
                 SELECT meeting.id AS meetingID, meeting.transcriptRevision AS revision,
+                       meeting.startedAt, meeting.endedAt,
                        EXISTS (
                            SELECT 1 FROM transcriptCorrection AS correction
                            WHERE correction.meetingID = meeting.id) AS corrected,
@@ -144,24 +197,7 @@ extension MeetingStore {
             arguments: StatementArguments(ids))
         let lines = try fetchVoiceColumnLines(in: db, placeholders: placeholders, ids: ids)
         let liveSpeakers = try fetchLiveSpeakers(in: db, placeholders: placeholders, ids: ids)
-
-        // Migrations run with foreign keys off, so the child rows cannot rely on the cascade.
-        for table in ["meetingVoiceColumnsVoice", "meetingVoiceColumns"] {
-            try db.execute(
-                sql: "DELETE FROM \(table) WHERE meetingID IN (\(placeholders))",
-                arguments: StatementArguments(ids))
-        }
-        let insertStrip = try db.cachedStatement(sql: """
-            INSERT INTO meetingVoiceColumns (meetingID, duration, columns, updatedAt)
-            VALUES (?, ?, ?, ?)
-            """)
-        let insertVoice = try db.cachedStatement(sql: """
-            INSERT INTO meetingVoiceColumnsVoice
-                (meetingID, voiceIndex, speakerID, talkSeconds, firstHeard)
-            VALUES (?, ?, ?, ?, ?)
-            """)
-        let timestamp = Date()
-        for row in meetings {
+        return try meetings.map { row in
             let key: String = row["meetingID"]
             let id = MeetingID(rawValue: try PersistedIdentity.required(key, table: "meeting", column: "id"))
             let corrections = row["corrected"] as Bool
@@ -169,17 +205,27 @@ extension MeetingStore {
                     in: fetchTranscriptCorrectionHistory(meetingID: id, in: db),
                     meetingID: id, baseTranscriptRevision: row["revision"])
                 : []
+            let speakers = liveSpeakers[key] ?? [:]
             let turns = VoiceColumns.attributedTurns(
                 lines: lines[key] ?? [], corrections: corrections
-            ).filter { liveSpeakers[key]?.contains($0.key.rawValue.uuidString) == true }
-            let audio: Double? = row["audio"]
-            let strip = VoiceColumns.strip(turns, duration: audio ?? 0, count: VoiceColumns.storedCount)
-            try insertStrip.execute(arguments: [key, strip.duration, Data(strip.columns), timestamp])
-            for (index, voice) in strip.voices.enumerated() {
-                try insertVoice.execute(arguments: [
-                    key, index, voice.key.rawValue.uuidString, voice.talkSeconds, voice.firstHeard
-                ])
+            ).filter { speakers[$0.key.rawValue.uuidString] != nil }
+            var audio: Double = row["audio"] ?? 0
+            // A tail trim shortens the meeting but leaves the asset's recorded duration.
+            if let started: Date = row["startedAt"], let ended: Date = row["endedAt"],
+                ended > started {
+                audio = min(audio, ended.timeIntervalSince(started))
             }
+            let strip = VoiceColumns.strip(turns, duration: audio, count: VoiceColumns.storedCount)
+            // Turns are filtered to live speakers, so every voice resolves and indexes stay aligned.
+            let voices = strip.voices.compactMap { voice in
+                speakers[voice.key.rawValue.uuidString].map {
+                    MeetingVoiceColumns.Voice(
+                        speakerID: voice.key, isMe: $0.isMe, label: $0.label,
+                        displayName: $0.displayName, talkSeconds: voice.talkSeconds,
+                        firstHeard: voice.firstHeard)
+                }
+            }
+            return (id, MeetingVoiceColumns(duration: strip.duration, columns: strip.columns, voices: voices))
         }
     }
 
@@ -206,13 +252,17 @@ extension MeetingStore {
 
     private static func fetchLiveSpeakers(
         in db: Database, placeholders: String, ids: [String]
-    ) throws -> [String: Set<String>] {
-        var speakers: [String: Set<String>] = [:]
+    ) throws -> [String: [String: LiveSpeaker]] {
+        var speakers: [String: [String: LiveSpeaker]] = [:]
         for row in try Row.fetchAll(
             db,
-            sql: "SELECT id, meetingID FROM speaker WHERE deletedAt IS NULL AND meetingID IN (\(placeholders))",
+            sql: """
+                SELECT id, meetingID, isMe, label, displayName FROM speaker
+                WHERE deletedAt IS NULL AND meetingID IN (\(placeholders))
+                """,
             arguments: StatementArguments(ids)) {
-            speakers[row["meetingID"], default: []].insert(row["id"])
+            speakers[row["meetingID"], default: [:]][row["id"]] = LiveSpeaker(
+                isMe: row["isMe"], label: row["label"], displayName: row["displayName"])
         }
         return speakers
     }

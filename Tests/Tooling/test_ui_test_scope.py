@@ -1170,6 +1170,11 @@ class UITestScopeTests(unittest.TestCase):
         selection = select_paths(["Sources/portavoz-app/AppServices+SettingsTransfer.swift"])
         self.assertEqual(set(selection.tests), set(FEATURE_TESTS["settings-transfer"]))
 
+    def test_voice_strip_selects_the_sidebar_and_today_journeys(self):
+        selection = select_paths(["Sources/portavoz-app/VoiceStrip.swift"])
+        expected = set().union(*(FEATURE_TESTS[feature] for feature in ("home", "library")))
+        self.assertEqual(set(selection.tests), expected)
+
     def test_menu_bar_changes_cover_the_brief(self):
         selection = select_paths(["Sources/portavoz-app/MenuBarView.swift"])
         self.assertEqual(set(selection.tests), set(FEATURE_TESTS["menu-bar-brief"]))

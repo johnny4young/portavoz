@@ -1496,14 +1496,14 @@ ApplicationKit draft/apply boundary; terminal code does not call the Store
 directly (D47/D103).
 
 All cross-library projections are live-rooted. `libraryFacts`, `findingInputs`,
-`openActionItems`, `summary`/`latestSummary`, `voiceMixes`, and `voiceBalance`
+`openActionItems`, `summary`/`latestSummary`, `voiceColumns`, and `voiceBalance`
 join or validate a non-deleted meeting before exposing data. Deleting a meeting
 therefore removes it from Insights and library totals without mutating its
 children; restoring the root returns the exact previous projections.
 
 Library now has four independent GRDB `ValueObservation` streams (D54).
-Meeting rows plus voice mix explicitly observe `meeting`, `speaker`, and
-`segment`; open items observe `meeting`, `summary`, and `actionItem`; trash
+Meeting rows plus voice strips explicitly observe `meeting`, `speaker`, the
+scoped `segment` columns and `meetingVoiceColumns` (D649); open items observe `meeting`, `summary`, and `actionItem`; trash
 observes `meeting`; active FTS observes the base `meeting` and `segment` tables
 rather than FTS5 shadow tables.
 
@@ -1513,7 +1513,7 @@ the whole table (D305). The semantic backfill writes `embedding` and
 every batch commit re-fetch the entire library, recompute every voice mix, and
 re-run any active full-text query — the more of the library was being indexed,
 the more often it happened. `librarySegmentRegion` covers `meetingID`,
-`speakerID`, `deletedAt`, `startTime`, `endTime`; `searchSegmentRegion` covers
+`speakerID`, `deletedAt`, `startTime`, `endTime`, `isFinal`; `searchSegmentRegion` covers
 `id`, `meetingID`, `text`, `startTime`, `deletedAt`. An embedding write
 intersects neither; anything either projection shows still does, including an
 insert or delete. An architecture ratchet refuses a whole-table `segment`
@@ -1529,10 +1529,10 @@ iteration fails with a typed error instead of racing or trapping. The three
 persistent sidebar sources fail independently, so corrupt meeting projection
 data does not prevent open-item or trash reads from remaining available.
 Meeting rows retain the released partial fallback: if the meeting list is valid
-but voice mix cannot be decoded, rows publish with empty mixes and one inline
+but voice strips cannot be decoded, rows publish without strips and one inline
 failure.
 
-The existing one-shot `meetings`, `voiceMixes`, `openActionItems`,
+The existing one-shot `meetings`, `voiceColumns`, `openActionItems`,
 `deletedMeetings`, and `search` APIs share private query helpers with the
 observed paths; ordering, live-root joins, tombstone scope, and limits therefore
 have one implementation. StorageKit keeps GRDB-specific projection types at
@@ -2243,7 +2243,9 @@ speakers with `TranscriptCorrectionPolicy.effectiveCorrections` applied
 speaker and times); a malformed correction history fails the rebuild, as it
 fails the other correction-aware projections, and `voiceColumns(for:)` then
 leaves only that meeting absent. The timeline is
-the longest live audio asset or the last turn, whichever is later.
+the longest live audio asset, capped at the meeting's length (a tail trim
+shortens the meeting without rewriting the asset's recorded duration), or the
+last turn, whichever is later.
 
 Triggers delete a meeting's row on segment insert/delete or a change to its
 meeting, speaker, times, finality or tombstone; a speaker insert, tombstone or
@@ -2260,5 +2262,16 @@ empty row and is absent from the result, like a tombstoned one. The cache is
 not synced or backed up: replay and restore write segments, and the triggers
 drop the row. ApplicationKit bins a loaded transcript the same way
 (`MeetingVoiceColumns(speakers:segments:duration:count:)`) and maps voices to
-tints with `VoiceCast(columns:)`. `voiceMixes(for:)` stays until the strip
-replaces the voice mix bar.
+tints with `VoiceCast(columns:)`. The raw-segment `voiceMixes(for:)` query is
+retired: library rows draw the strip and the talk-share mirror averages its
+`talkSeconds`.
+
+The library observation reads the cached strips. A finished meeting without a
+row has no strip until stored: `LibraryMeetingRows.uncachedVoiceColumns` names
+it and the app's Library adapter stores it through `voiceColumns(for:)` in
+chunks of 50, off the loop that publishes rows, queued once while it stays
+uncached. A meeting still recording is binned in memory (`computeVoiceColumns`)
+without writing and is never listed, because each segment drops its row again.
+Tracking `meetingVoiceColumns` covers correction and audio changes, whose
+triggers drop the row before the correction hook rebuilds it, and each store
+(D649).

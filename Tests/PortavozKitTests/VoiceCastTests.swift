@@ -1,4 +1,5 @@
 import PortavozCore
+import StorageKit
 import XCTest
 
 @testable import ApplicationKit
@@ -56,7 +57,6 @@ final class VoiceCastTests: XCTestCase {
         XCTAssertEqual(cast.voices.map(\.key), ["s0", "s1", "s2", "s3", "s4", "me"])
         XCTAssertEqual(cast.others.map(\.key), ["s5", "s6", "s7", "s8", "s9", "s10"])
         XCTAssertTrue(cast.others.allSatisfy { $0.tint == .grey })
-        XCTAssertEqual(cast.othersShare, cast.others.map(\.share).reduce(0, +))
         XCTAssertEqual(cast.tint(for: "s10"), .grey)
         XCTAssertEqual(cast.tint(for: "unknown"), .grey)
     }
@@ -175,15 +175,23 @@ final class VoiceCastTests: XCTestCase {
         XCTAssertEqual(cast.tint(for: nora), .hue((hue + 1) % VoiceHue.paletteSize))
     }
 
-    func testLibraryMixCastAgreesWithTheMeetingOnAClash() {
-        let cast = VoiceCast(mix: [
-            LibraryVoiceMixSlice(isMe: false, displayName: "Nora", fraction: 0.5, order: 0, firstHeard: 10),
-            LibraryVoiceMixSlice(isMe: false, displayName: "Marta", fraction: 0.3, order: 1, firstHeard: 0),
-            LibraryVoiceMixSlice(isMe: true, displayName: nil, fraction: 0.2, order: 2, firstHeard: 4)
+    func testLibraryStripCastAgreesWithTheMeetingOnAClash() {
+        func voice(_ name: String?, isMe: Bool = false, talk: TimeInterval, heard: TimeInterval)
+            -> MeetingVoiceColumns.Voice {
+            MeetingVoiceColumns.Voice(
+                speakerID: SpeakerID(), isMe: isMe, label: "S", displayName: name,
+                talkSeconds: talk, firstHeard: heard)
+        }
+        let stored = MeetingVoiceColumns(duration: 30, columns: [0, 1, 2, VoiceColumns.silence], voices: [
+            voice("Marta", talk: 3, heard: 0),
+            voice(nil, isMe: true, talk: 2, heard: 4),
+            voice("Nora", talk: 5, heard: 10)
         ])
+        let strip = VoiceStripColumns(columns: stored)
         let hue = VoiceHue.index(name: "Marta")
-        XCTAssertEqual(cast.voices.map(\.name), ["Nora", "Marta", nil], "drawn by talk share")
-        XCTAssertEqual(cast.voices.map(\.tint), [.hue((hue + 1) % VoiceHue.paletteSize), .hue(hue), .you])
+        XCTAssertEqual(strip.cast.voices.map(\.name), ["Nora", "Marta", nil], "drawn by talk share")
+        XCTAssertEqual(strip.tints, [.hue(hue), .you, .hue((hue + 1) % VoiceHue.paletteSize)])
+        XCTAssertEqual(strip.columns, stored.columns)
     }
 
     private func segment(

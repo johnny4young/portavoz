@@ -66,7 +66,7 @@ final class LibraryModel {
     struct State {
         fileprivate(set) var loadPhase: LoadPhase = .idle
         fileprivate(set) var meetings: [Meeting] = []
-        fileprivate(set) var voiceMixes: [MeetingID: [LibraryVoiceMixSlice]] = [:]
+        fileprivate(set) var voiceStrips: [MeetingID: VoiceStripColumns] = [:]
         fileprivate(set) var openItems: [LibraryOpenItem] = []
         fileprivate(set) var trashed: [LibraryTrashItem] = []
 
@@ -229,8 +229,8 @@ private extension LibraryModel {
         switch update {
         case .meetings(let rows, let failures):
             state.meetings = rows.map(\.meeting)
-            state.voiceMixes = Dictionary(uniqueKeysWithValues: rows.map {
-                ($0.meeting.id, $0.voiceMix)
+            state.voiceStrips = Dictionary(uniqueKeysWithValues: rows.map {
+                ($0.meeting.id, $0.voiceStrip)
             })
             markObserved(.meetings, inlineFailureCount: failures)
             refreshAgenda()

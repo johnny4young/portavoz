@@ -22,7 +22,6 @@ struct LibraryView: View {
     /// survives relaunches.
     @AppStorage("todosSectionExpanded") private var todosExpanded = true
     @State private var showsPrivacyNote = false
-    @Environment(\.colorScheme) private var colorScheme
     private let briefTimer = Timer.publish(every: 300, on: .main, in: .common).autoconnect()
 
     /// Audio the importer accepts (drag-drop or the Import button).
@@ -370,16 +369,14 @@ extension LibraryView {
     }
 
     /// Native sidebar selection owns contrast, focus and inactive-window styling.
-    /// The voice mix remains a separate, meaningful recording cue.
+    /// The voice strip remains a separate, meaningful recording cue.
     private func meetingRow(_ meeting: Meeting) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(MeetingRowTitle.display(meeting.title)).lineLimit(1)
             Text(meeting.startedAt.formatted(date: .abbreviated, time: .shortened))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            if let mix = state.voiceMixes[meeting.id] {
-                VoiceMixBar(slices: mix, colorScheme: colorScheme)
-            }
+            VoiceStrip(state.voiceStrips[meeting.id] ?? .empty)
         }
         .tag(Route.meeting(meeting.id))
         .accessibilityIdentifier("library-meeting-\(meeting.id.rawValue.uuidString)")
