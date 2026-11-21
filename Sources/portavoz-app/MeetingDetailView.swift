@@ -125,6 +125,7 @@ private extension MeetingDetailView {
             values: MeetingTranscriptValues(
                 content: content,
                 speakers: detail.speakers,
+                voiceCast: detail.core.voiceCast,
                 correctionContext: {
                     detail.transcriptCorrectionEditorContext(for: $0)
                 },
@@ -161,9 +162,7 @@ private extension MeetingDetailView {
             values: MeetingDetailPlayerValues(
                 player: player,
                 waveform: waveform,
-                voices: detail.map {
-                    MeetingPlaybackVoice.voices(speakers: $0.speakers, segments: $0.segments)
-                } ?? [],
+                voices: detail.map { MeetingPlaybackVoice.voices(speakers: $0.speakers, segments: $0.segments) } ?? [],
                 canCompressAudio: MeetingDetailAudioCompressionState.canCompress(model.state),
                 isCompressingAudio: model.state.isCompressingAudio,
                 compressionMessage: model.state.audioCompressionMessage,
@@ -186,6 +185,7 @@ private extension MeetingDetailView {
                 hasHealth: detail.segments.contains { $0.speakerID != nil },
                 speakers: detail.speakers,
                 segments: detail.segments,
+                voiceCast: detail.core.voiceCast,
                 chapters: transcript.chapters,
                 companionCards: detail.companionCards,
                 companionFreshness: Dictionary(
@@ -320,6 +320,7 @@ private extension MeetingDetailView {
             segmentCount: presentation.segmentCount(detail.segments.count),
             titleSuggestion: model.state.suggestedTitle,
             speakers: detail.speakers,
+            voiceCast: detail.core.voiceCast,
             isSuggestingNames: model.state.isSuggestingNames,
             nameSuggestions: model.state.nameSuggestions,
             voiceSuggestions: model.state.voiceSuggestions,

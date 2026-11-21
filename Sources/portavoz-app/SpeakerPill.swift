@@ -1,14 +1,13 @@
+import ApplicationKit
 import PortavozCore
 import SwiftUI
 
-/// One speaker as a `VoiceChip`: you in amber, named people in their stable
-/// hue, unnamed voices with an open dot. Click to rename.
+/// One speaker as a `VoiceChip`, coloured by the meeting's `VoiceCast`.
+/// Click to rename.
 struct SpeakerPill: View {
     @Environment(\.colorScheme) private var colorScheme
     let speaker: Speaker?
-    /// The meeting's cast — hue assignment for unnamed speakers follows
-    /// their order of appearance within it.
-    var cast: [Speaker] = []
+    let cast: VoiceCast
     var accessibilityIdentifier: String?
     let onRename: (Speaker) -> Void
 
@@ -44,11 +43,11 @@ struct SpeakerPill: View {
     }
 
     static func voice(
-        for speaker: Speaker?, in cast: [Speaker], colorScheme: ColorScheme
+        for speaker: Speaker?, in cast: VoiceCast, colorScheme: ColorScheme
     ) -> VoiceChip.Voice {
         guard let speaker else { return .unnamed(VoicePalette.unnamed) }
         if speaker.isMe { return .you }
-        let hue = VoicePalette.color(for: speaker, in: cast, colorScheme: colorScheme)
-        return speaker.displayName == nil ? .unnamed(hue) : .named(hue)
+        let colour = VoicePalette.color(cast.tint(for: speaker), colorScheme: colorScheme)
+        return speaker.displayName == nil ? .unnamed(colour) : .named(colour)
     }
 }

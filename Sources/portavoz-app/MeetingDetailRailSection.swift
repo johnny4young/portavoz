@@ -32,6 +32,7 @@ struct MeetingDetailRailValues {
     let hasHealth: Bool
     let speakers: [Speaker]
     let segments: [TranscriptSegment]
+    let voiceCast: VoiceCast
     let chapters: [MeetingTranscriptContent.Chapter]
     let companionCards: [CompanionCard]
     let companionFreshness: [UUID: DerivedArtifactFreshness]
@@ -129,7 +130,8 @@ struct MeetingDetailRailSection: View {
             if values.hasHealth {
                 MeetingHealthView(
                     speakers: values.speakers,
-                    segments: values.segments)
+                    segments: values.segments,
+                    voiceCast: values.voiceCast)
             } else {
                 emptyLens("No one has been identified yet.", id: "detail-rail-empty-people")
             }

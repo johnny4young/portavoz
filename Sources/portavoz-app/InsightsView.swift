@@ -7,6 +7,7 @@ import SwiftUI
 struct InsightsView: View {
     let model: InsightsModel
     @Binding var route: Route?
+    @Environment(\.colorScheme) private var colorScheme
 
     @AppStorage("insightsScope") private var scopeRaw = InsightsScope.week.rawValue
 
@@ -279,10 +280,13 @@ struct InsightsView: View {
             Text("Who you talk with, and how")
                 .pvDisplay(.section)
                 .accessibilityIdentifier("insights-participants")
+            let cast = balance.voiceCast
             ForEach(balance.participants) { person in
-                participantRow(person)
+                participantRow(
+                    person,
+                    colour: VoicePalette.color(cast.tint(for: person.id), colorScheme: colorScheme))
             }
-            Text("violet = they speak · amber = you. The bar is your share of talk with them.")
+            Text("Amber is you, their color is them. The bar is your share of talk with them.")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 .padding(.top, 2)
@@ -292,10 +296,10 @@ struct InsightsView: View {
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
     }
 
-    private func participantRow(_ person: InsightsParticipantVoice) -> some View {
+    private func participantRow(_ person: InsightsParticipantVoice, colour: Color) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 8) {
-                avatar(person.name)
+                avatar(person.name, colour: colour)
                 Text(person.name)
                     .font(.callout.weight(.medium))
                     .accessibilityIdentifier("insights-participant-\(person.id)")
@@ -310,30 +314,29 @@ struct InsightsView: View {
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
             }
-            participationBar(share: person.myShareWithThem)
+            participationBar(share: person.myShareWithThem, them: colour)
         }
     }
 
-    /// The amber/violet split bar: amber (you) grows from the left to
-    /// `share`, violet (them) fills the rest.
-    private func participationBar(share: Double) -> some View {
+    /// Amber (you) grows from the left to `share`; their colour fills the rest.
+    private func participationBar(share: Double, them: Color) -> some View {
         GeometryReader { geometry in
             let clamped = min(max(share, 0), 1)
             HStack(spacing: 0) {
                 Rectangle().fill(VoicePalette.me)
                     .frame(width: geometry.size.width * clamped)
-                Rectangle().fill(VoicePalette.unnamed)
+                Rectangle().fill(them)
             }
         }
         .frame(height: 7)
         .clipShape(Capsule())
     }
 
-    private func avatar(_ name: String) -> some View {
+    private func avatar(_ name: String, colour: Color) -> some View {
         Text(String(name.prefix(1)).uppercased())
             .font(.caption2.weight(.bold))
             .frame(width: 22, height: 22)
-            .background(VoicePalette.unnamed.opacity(0.25), in: Circle())
+            .background(colour.opacity(0.25), in: Circle())
     }
 
     // MARK: - Formatting

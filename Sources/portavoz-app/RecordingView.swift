@@ -231,7 +231,6 @@ struct RecordingView: View {
 /// meter updates and capture-health counters can now refresh the toolbar or a
 /// banner without rebuilding the bounded transcript carousel.
 private struct LiveRecordingCaptionsView: View {
-    @Environment(\.colorScheme) private var colorScheme
     @Bindable var controller: RecordingController
 
     var body: some View {
@@ -343,10 +342,8 @@ private struct LiveRecordingCaptionsView: View {
         guard voice.label != L10n.text("Them") else {
             return Color(nsColor: .quaternarySystemFill)
         }
-        return VoicePalette.color(
-            index: VoiceHue.index(name: voice.label, fallbackOrder: 0),
-            colorScheme: colorScheme)
-            .opacity(0.22)
+        // Live labels are S1, S2…: unnamed voices stay grey until named.
+        return VoicePalette.unnamed.opacity(0.22)
     }
 
     private func liveVoice(

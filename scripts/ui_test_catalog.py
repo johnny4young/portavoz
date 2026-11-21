@@ -99,6 +99,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("MeetingDetailUITests", "testAConfidentVoiceMatchNamesTheSpeakerAndCanBeUndone"),
         test_id("MeetingDetailUITests", "testNamedSpeakerCanBeRememberedAsCanonicalPerson"),
         test_id("MeetingDetailUITests", "testFamilyControlsShapeCastSuggestionsTabsAndCommitmentCards"),
+        test_id("MeetingDetailUITests", "testManyVoicesKeepSixInTheCastAndFoldTheRestIntoOthers"),
     ),
     "meeting-processing": (
         test_id("MeetingDetailUITests", "testFailedDurableProcessingOffersOneRecoveryAction"),

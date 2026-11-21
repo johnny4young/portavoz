@@ -8,6 +8,7 @@ import SwiftUI
 struct TranscriptSegmentsView: View {
     let content: MeetingTranscriptContent
     let speakers: [Speaker]
+    let voiceCast: VoiceCast
     let player: MeetingPlaybackSession?
     let focusedRowID: UUID?
     var performanceScrollEnabled = false
@@ -107,7 +108,7 @@ struct TranscriptSegmentsView: View {
         MeetingTranscriptRowView(
             row: row,
             speaker: speakers.first { $0.id == row.speakerID },
-            cast: speakers,
+            cast: voiceCast,
             isActive: isActive,
             canSeek: player != nil,
             onSeek: onSeek,
@@ -167,7 +168,7 @@ struct TranscriptSegmentsView: View {
 private struct MeetingTranscriptRowView: View {
     let row: MeetingTranscriptContent.Row
     let speaker: Speaker?
-    let cast: [Speaker]
+    let cast: VoiceCast
     let isActive: Bool
     let canSeek: Bool
     let onSeek: (TimeInterval) -> Void

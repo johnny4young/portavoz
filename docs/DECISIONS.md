@@ -23088,3 +23088,21 @@ records such as commitments and `pvCard(.generated)` for text Portavoz wrote,
 outline, so transcript rows still tell unnamed voices apart. Native pickers
 stay in Settings forms, the Ask source picker and pop-up menus, where macOS
 conventions matter more than the family shape.
+
+## D647 — Six colours at a time
+
+A meeting shows at most six voices in colour: you in amber and five others.
+`VoiceCast` (ApplicationKit) is the one rule every surface uses, so the cast,
+transcript rows, Meeting health, the sidebar voice mix and Insights agree.
+After Stop the five voices with most talk keep a place; live, the current
+speaker leads and the rest follow by recency. Everyone else folds into
+"Others · n", which opens to their pills by talk share.
+
+Only named voices hold a hue. An unnamed voice is grey on an open dot until
+someone names it, which supersedes the cast-order hue of D646; rows still tell
+unnamed voices apart by label. A name keeps the hue it hashes to
+(`VoiceHue.index(name:)`); when two names in the cast hash to the same hue, the
+one heard first keeps it and the other takes the next free hue, so five named
+voices always show five different colours. A cast built with the previous one
+keeps each name's hue, so a live re-ranking or an S-label relabel never
+recolours someone on screen.

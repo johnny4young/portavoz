@@ -41,6 +41,7 @@ extension AppServices {
             companionQuestionID: companionQuestionID)
         try? await store.save(seedSegments)
         await seedVoiceMatchSpeechIfRequested(meetingID: meeting.id, speakerID: ana.id)
+        await seedManyVoicesIfRequested(meetingID: meeting.id)
         await seedSummaryIfRequested(
             meetingID: meeting.id,
             ownerID: ana.id,
@@ -83,6 +84,30 @@ extension AppServices {
     private static var seedsUnnamedRemoteSpeaker: Bool {
         let arguments = ProcessInfo.processInfo.arguments
         return arguments.contains("-seed-unnamed-speaker") || arguments.contains(MeetingVoiceMatchFixture.argument)
+    }
+
+    /// Ten more remote voices (two unnamed) so the meeting has twelve and the
+    /// cast folds six of them into "Others · 6".
+    private func seedManyVoicesIfRequested(meetingID: MeetingID) async {
+        guard ProcessInfo.processInfo.arguments.contains("-seed-many-voices") else { return }
+        let voices: [(name: String?, seconds: TimeInterval)] = [
+            ("Marta", 30), ("Diego", 26), ("Ilarion", 22), ("Nora", 18), ("Carla", 14),
+            ("Elena", 4.5), ("Bruno", 4), (nil, 3.5), ("Pablo", 3), (nil, 2.5)
+        ]
+        var start: TimeInterval = 230
+        var speakers: [Speaker] = []
+        var segments: [TranscriptSegment] = []
+        for (index, voice) in voices.enumerated() {
+            let speaker = Speaker(meetingID: meetingID, label: "S\(index + 2)", displayName: voice.name)
+            speakers.append(speaker)
+            segments.append(TranscriptSegment(
+                meetingID: meetingID, speakerID: speaker.id, channel: .system,
+                text: "Turno de prueba \(index + 2).",
+                startTime: start, endTime: start + voice.seconds, isFinal: true))
+            start += voice.seconds + 1
+        }
+        try? await store.save(speakers)
+        try? await store.save(segments)
     }
 
     /// Enough remote speech for the voice auto-assign bar.

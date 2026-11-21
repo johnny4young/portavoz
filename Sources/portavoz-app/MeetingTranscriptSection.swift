@@ -5,6 +5,7 @@ import SwiftUI
 struct MeetingTranscriptValues {
     let content: MeetingTranscriptContent
     let speakers: [Speaker]
+    let voiceCast: VoiceCast
     let correctionContext: @MainActor (
         MeetingTranscriptContent.Row
     ) -> TranscriptCorrectionEditorContext?
@@ -111,6 +112,7 @@ struct MeetingTranscriptSection: View {
             content: MeetingTranscriptTranslationState.display(
                 values.content, translation: values.translation.translation(language)),
             speakers: values.speakers,
+            voiceCast: values.voiceCast,
             player: values.player,
             focusedRowID: values.focusedRowID,
             performanceScrollEnabled: values.performanceScrollEnabled,

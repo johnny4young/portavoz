@@ -562,7 +562,7 @@ def app_features(filename: str) -> set[str]:
             "meeting-processing",
             "settings-intelligence",
         }
-    if any(token in lowered for token in ("speaker", "meetingname", "voicememory")):
+    if any(token in lowered for token in ("speaker", "meetingname", "voicememory", "voicecast")):
         return {"meeting-naming", "meeting-health", "settings-voice"}
     if any(token in lowered for token in ("meetingdetail", "meetinghealth", "mirrorcard", "refine")):
         return {"meeting-processing"}
