@@ -51,9 +51,9 @@ final class HomeBriefCardTests: XCTestCase {
 
     func testSourceFactsGiveTheDayAndLength() {
         let meeting = Meeting(title: "Sync", startedAt: now, endedAt: now.addingTimeInterval(31 * 60))
-        XCTAssertTrue(HomeBriefCard.sourceFacts(meeting).hasSuffix(" · \(L10n.format("%d min", 31))"))
+        XCTAssertTrue(meeting.dayAndLength.hasSuffix(" · \(L10n.format("%d min", 31))"))
         let open = Meeting(title: "Sync", startedAt: now)
-        XCTAssertFalse(HomeBriefCard.sourceFacts(open).contains("·"))
+        XCTAssertFalse(open.dayAndLength.contains("·"))
     }
 
     private func line(

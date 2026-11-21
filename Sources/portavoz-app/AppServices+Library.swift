@@ -165,6 +165,15 @@ extension AppServices: LibraryModelClient {
         try await LoadTodayVoices(store: store).execute(.init(now: now, events: events))
     }
 
+    func libraryTodayWork(_ request: LoadTodayWork.Request) async throws -> TodayWork {
+        try await LoadTodayWork(store: store).execute(request)
+    }
+
+    func librarySuggestionsToReview() async -> Int? {
+        try? await LoadCommitmentReviewQueue(repository: store)
+            .execute(LoadCommitmentReviewQueueRequest(itemLimit: 1, evidenceLimitPerItem: 1)).totalCount
+    }
+
     func pendingLibraryAutomations() async -> Int {
         (try? await loadSkillOfferReview())?.offers.count ?? 0
     }

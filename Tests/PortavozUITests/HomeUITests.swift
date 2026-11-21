@@ -48,7 +48,7 @@ final class HomeUITests: PortavozUITestCase {
             XCTAssertGreaterThan(emptyBrief.frame.minX, countdown.frame.maxX, "an empty brief must not cost the fold")
         }
         XCTAssertTrue(app.staticTexts["Presupuesto rollout"].exists)
-        XCTAssertTrue(app.staticTexts["Prepare the rollout"].exists)
+        XCTAssertTrue(todo.label.contains("Prepare the rollout"), todo.label)
         attachScreenshot(of: app, named: "home-today")
         attachScreenshot(of: app, named: "pr-home-countdown-hero")
 
@@ -84,8 +84,8 @@ final class HomeUITests: PortavozUITestCase {
         XCTAssertTrue(close.waitForStableFrame(timeout: 5))
         close.click()
 
-        // Checking a to-do here is the same durable action as in the sidebar:
-        // the open row leaves Today once the Library observation confirms it.
+        // Checking a to-do is the same durable action as in Radar: the open
+        // row leaves Today once the Library observation confirms it.
         let toggle = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'home-todo-toggle-'"))
             .firstMatch
@@ -96,7 +96,7 @@ final class HomeUITests: PortavozUITestCase {
         XCTAssertTrue(toggle.waitForStableFrame(timeout: 5))
         toggle.click()
         XCTAssertTrue(
-            waitForUITestCondition(timeout: 10) { !app.staticTexts["Prepare the rollout"].exists },
+            waitForUITestCondition(timeout: 10) { !todo.exists },
             "a completed to-do must leave the open list")
 
         // A recent meeting opens its detail; Today remains one click away.
@@ -223,6 +223,47 @@ final class HomeUITests: PortavozUITestCase {
             "the axis opens that meeting")
         XCTAssertFalse(section.exists)
         setSidebar(visible: true, in: app)
+    }
+
+    @MainActor
+    func testWorkRowsSayWhoSaidItAndWhereListeningStopped() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
+        app.launchArguments += ["-seed-pick-up", "-seed-wide-window", "-AppleInterfaceStyle", "Light"]
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        let todo = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'home-todo-' AND NOT identifier BEGINSWITH 'home-todo-toggle-'"))
+            .firstMatch
+        XCTAssertTrue(todo.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 10) { todo.label.contains("Ana said it") },
+            "the to-do names who said it: \(todo.label)")
+        XCTAssertTrue(todo.label.contains("Test meeting · 00:03"), todo.label)
+        let recent = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'home-recent-'"))
+            .firstMatch
+        XCTAssertTrue(recent.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 10) { recent.label.contains("stopped at 03:20") },
+            "the row shows where listening stopped: \(recent.label)")
+        XCTAssertTrue(recent.label.contains("1 open"), recent.label)
+        XCTAssertFalse(
+            app.descendants(matching: .any)
+                .matching(NSPredicate(format: "identifier BEGINSWITH 'library-upcoming-'")).firstMatch.exists,
+            "the sidebar lists past meetings only")
+
+        // A 1024 pt screen only has room for the wide layout without the sidebar.
+        setSidebar(visible: false, in: app)
+        let scroll = app.scrollViews.containing(.staticText, identifier: "home-title").element
+        XCTAssertTrue(recent.revealVertically(in: scroll))
+        XCTAssertTrue(recent.waitForStableFrame(timeout: 5))
+        attachScreenshot(of: app, named: "pr-home-pick-up-and-todos")
+        setSidebar(visible: true, in: app)
+
+        recent.click()
+        XCTAssertTrue(app.control(withIdentifier: "player-current-time").waitForExistenceFast(timeout: 15))
     }
 
     @MainActor

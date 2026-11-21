@@ -3,9 +3,17 @@ import PortavozCore
 
 extension AppServices {
     /// Today's opt-in fixtures: the brief's previous occurrence and today's meetings.
-    func seedTodayFixturesIfRequested() async {
+    func seedTodayFixturesIfRequested(demoMeetingID: MeetingID) async {
         await seedPreviousBriefOccurrenceIfRequested()
         await seedTodayVoicesIfRequested()
+        await seedPickUpPositionIfRequested(meetingID: demoMeetingID)
+    }
+
+    /// `-seed-pick-up`: listening to the demo meeting stopped at 3:20.
+    private func seedPickUpPositionIfRequested(meetingID: MeetingID) async {
+        guard ProcessInfo.processInfo.arguments.contains("-seed-pick-up") else { return }
+        try? await store.savePlaybackPosition(MeetingPlaybackPosition(
+            meetingID: meetingID, seconds: 200, isHeard: false, updatedAt: Self.fixtureAgendaStart))
     }
 
     /// `-seed-today-voices`: two meetings earlier today, relative to the clock,

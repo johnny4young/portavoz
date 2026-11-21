@@ -70,6 +70,6 @@ extension VoiceStripColumns {
     /// A stored strip with its cast and the tint of every voice index.
     public init(columns: MeetingVoiceColumns) {
         let cast = VoiceCast(columns: columns)
-        self.init(columns: columns.columns, tints: cast.tints(for: columns), cast: cast)
+        self.init(columns: columns.columns, tints: cast.tints(for: columns), cast: cast, duration: columns.duration)
     }
 }

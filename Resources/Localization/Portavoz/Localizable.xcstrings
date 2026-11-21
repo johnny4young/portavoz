@@ -6839,16 +6839,6 @@
         }
       }
     },
-    "Last week": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Semana pasada"
-          }
-        }
-      }
-    },
     "Launch at login": {
       "localizations": {
         "es": {
@@ -9185,16 +9175,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Abre esta entrada junto a su evento de calendario en la barra de menús."
-          }
-        }
-      }
-    },
-    "Open to-dos": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pendientes abiertos"
           }
         }
       }
@@ -15341,16 +15321,6 @@
         }
       }
     },
-    "To-dos": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pendientes"
-          }
-        }
-      }
-    },
     "To-dos · %d/%d": {
       "localizations": {
         "es": {
@@ -18443,6 +18413,116 @@
           "stringUnit": {
             "state": "translated",
             "value": "%d h %d min"
+          }
+        }
+      }
+    },
+    "Yours to do": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo tuyo por hacer"
+          }
+        }
+      }
+    },
+    "1 suggestion to review in Radar": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 sugerencia por revisar en Radar"
+          }
+        }
+      }
+    },
+    "%d suggestions to review in Radar": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d sugerencias por revisar en Radar"
+          }
+        }
+      }
+    },
+    "You said it": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo dijiste tú"
+          }
+        }
+      }
+    },
+    "You asked": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo pediste tú"
+          }
+        }
+      }
+    },
+    "%@ said it": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo dijo %@"
+          }
+        }
+      }
+    },
+    "%@ asked": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo pidió %@"
+          }
+        }
+      }
+    },
+    "stopped at %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "te quedaste en %@"
+          }
+        }
+      }
+    },
+    "unheard": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sin escuchar"
+          }
+        }
+      }
+    },
+    "Review what Portavoz suggested in Radar": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa en Radar lo que Portavoz sugirió"
+          }
+        }
+      }
+    },
+    "Open this meeting where you stopped listening": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre esta reunión donde dejaste de escuchar"
           }
         }
       }

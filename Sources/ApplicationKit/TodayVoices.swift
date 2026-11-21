@@ -220,7 +220,7 @@ extension TodayVoices {
         return VoiceStripColumns(
             columns: columns.columns,
             tints: columns.voices.map { meetingCast.tint(for: identity(of: $0, name: name(of: $0)).key) },
-            cast: meetingCast)
+            cast: meetingCast, duration: columns.duration)
     }
 
     /// Starts today and has not ended; one already under way is dropped when a

@@ -218,20 +218,63 @@ final class LibraryModelTests: XCTestCase {
         XCTAssertEqual(model.state.todayVoices, loaded, "a failed re-read keeps what is shown")
     }
 
+    func testTodayWorkReadsShownRowsAndKeepsWhatFailed() async {
+        let fixture = LibraryModelFixture()
+        let client = LibraryModelClientFake(fixture: fixture)
+        let model = LibraryModel(client: client, searchDelay: .zero)
+        _ = await model.send(.observeLibrary)
+        XCTAssertNil(model.state.playbackPositions, "nothing reads unheard before positions load")
+
+        let id = fixture.meeting.id
+        let position = MeetingPlaybackPosition(meetingID: id, seconds: 30, isHeard: false, updatedAt: Date())
+        let source = OpenItemSource(saidBy: nil, time: 12, owner: nil, dueAt: nil)
+        client.todayWork = TodayWork(positions: [id: position], sources: [fixture.actionItem.id: source])
+        _ = await model.send(.loadTodayWork)
+        XCTAssertEqual(client.calls.last, .todayWork([id], [fixture.actionItem.id]))
+        XCTAssertEqual(model.state.playbackPositions?[id], position)
+        XCTAssertEqual(model.state.openItemSources[fixture.actionItem.id], source)
+
+        client.todayWork = TodayWork(positions: nil, sources: nil)
+        _ = await model.send(.loadTodayWork)
+        XCTAssertEqual(model.state.playbackPositions?[id], position, "a failed part keeps what is shown")
+        XCTAssertEqual(model.state.openItemSources[fixture.actionItem.id], source)
+
+        client.failures = [.todayWork]
+        _ = await model.send(.loadTodayWork)
+        XCTAssertEqual(model.state.playbackPositions?[id], position)
+    }
+
+    func testTodayWorkWaitsForTheLibrary() async {
+        let fixture = LibraryModelFixture()
+        let client = LibraryModelClientFake(fixture: fixture)
+        let model = LibraryModel(client: client, searchDelay: .zero)
+        _ = await model.send(.loadTodayWork)
+        XCTAssertFalse(client.calls.contains { if case .todayWork = $0 { true } else { false } })
+        XCTAssertNil(model.state.playbackPositions)
+    }
+
     func testPendingAutomationsAreReadOnRefreshOnly() async {
         let fixture = LibraryModelFixture()
         let client = LibraryModelClientFake(fixture: fixture)
         client.pendingAutomations = 2
+        client.suggestionsToReview = 4
         let model = LibraryModel(client: client, searchDelay: .zero)
 
         _ = await model.send(.observeLibrary)
         XCTAssertEqual(model.state.pendingAutomations, 0, "the library observation never waits on the count")
         _ = await model.send(.refreshAutomations)
         XCTAssertEqual(model.state.pendingAutomations, 2)
+        XCTAssertEqual(model.state.suggestionsToReview, 4)
 
         client.pendingAutomations = 0
+        client.suggestionsToReview = nil
         _ = await model.send(.refreshAutomations)
         XCTAssertEqual(model.state.pendingAutomations, 0)
+        XCTAssertEqual(model.state.suggestionsToReview, 4, "an unreadable count keeps what is shown")
+
+        client.suggestionsToReview = 1
+        _ = await model.send(.refreshSuggestions)
+        XCTAssertEqual(model.state.suggestionsToReview, 1, "library changes re-read the count alone")
     }
 
     func testMutationsFlowThroughActionsAndReturnNavigationEffects() async {
@@ -373,7 +416,8 @@ private struct LibraryModelFixture {
     init() {
         let meeting = Meeting(
             title: "Reunión",
-            startedAt: Date(timeIntervalSince1970: 1_789_000_000))
+            startedAt: Date(timeIntervalSince1970: 1_789_000_000),
+            endedAt: Date(timeIntervalSince1970: 1_789_001_800))
         self.meeting = meeting
         actionItem = ActionItem(text: "Enviar presupuesto")
         importedID = MeetingID()
@@ -456,6 +500,7 @@ private enum LibraryModelFailure: String, Error, Hashable, LocalizedError, Senda
     case purge
     case briefLines
     case todayVoices
+    case todayWork
 
     var errorDescription: String? { "library-model-\(rawValue)" }
 }
@@ -475,6 +520,7 @@ private enum LibraryModelCall: Equatable {
     case brief(String)
     case briefLines(String)
     case todayVoices([String])
+    case todayWork([MeetingID], [UUID])
 }
 
 @MainActor
@@ -485,6 +531,8 @@ private final class LibraryModelClientFake: LibraryModelClient {
     var agenda: LibraryModel.Agenda?
     var brief: MeetingBrief?
     var pendingAutomations = 0
+    var todayWork = TodayWork(positions: [:], sources: [:])
+    var suggestionsToReview: Int? = 0
     var briefLines: MeetingBriefLines?
     var failures: Set<LibraryModelFailure> = []
     var calls: [LibraryModelCall] = []
@@ -584,8 +632,18 @@ private final class LibraryModelClientFake: LibraryModelClient {
             now: now, meetings: [], events: events, people: [:])
     }
 
+    func libraryTodayWork(_ request: LoadTodayWork.Request) throws -> TodayWork {
+        calls.append(.todayWork(request.meetingIDs, request.itemIDs))
+        try fail(.todayWork)
+        return todayWork
+    }
+
     func pendingLibraryAutomations() -> Int {
         pendingAutomations
+    }
+
+    func librarySuggestionsToReview() -> Int? {
+        suggestionsToReview
     }
 
     private func fail(_ failure: LibraryModelFailure) throws {

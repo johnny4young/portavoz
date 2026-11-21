@@ -8,11 +8,14 @@ public struct VoiceStripColumns: Sendable, Equatable {
     public let columns: [UInt8]
     public let tints: [VoiceCast.Tint]
     public let cast: VoiceCast
+    /// Seconds the columns span; zero when unknown.
+    public let duration: TimeInterval
 
-    public init(columns: [UInt8], tints: [VoiceCast.Tint], cast: VoiceCast) {
+    public init(columns: [UInt8], tints: [VoiceCast.Tint], cast: VoiceCast, duration: TimeInterval = 0) {
         self.columns = columns
         self.tints = tints
         self.cast = cast
+        self.duration = duration
     }
 
     /// Nobody attributed yet: the strip draws only its track.

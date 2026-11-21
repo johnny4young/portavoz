@@ -64,7 +64,7 @@ extension AppServices {
         }
         // Fictional transcript prose reads better unwrapped.
         // swiftlint:disable line_length
-        try? await store.save([
+        let segments = [
             // Keep one system turn and one microphone turn inside the short
             // synthetic audio fixture. Later rows remain minutes apart so the
             // public detail still demonstrates chapters.
@@ -77,9 +77,15 @@ extension AppServices {
             line(marta, "Genial. Propongo congelar el scope del sprint 15 hoy: Zephyr beta, dashboards Kepler y las docs de Aurora.", 4.6),
             line(s3, "Desde infraestructura sin novedades: el failover de la región secundaria pasó el drill sin downtime.", 5.5),
             line(me, "Entonces decidido: beta de Zephyr sale el lunes y Marta lidera la demo con el cliente.", 6.3, seconds: 9)
-        ])
+        ]
         // swiftlint:enable line_length
+        try? await store.save(segments)
 
+        let actionItems = [
+            ActionItem(text: "Migrar los dashboards de Kepler antes del viernes", ownerSpeakerID: me.id),
+            ActionItem(text: "Review the Aurora Suite English docs draft", ownerSpeakerID: marta.id),
+            ActionItem(text: "Preparar la demo del cliente para el lunes", ownerSpeakerID: marta.id)
+        ]
         _ = try? await store.saveSummary(SummaryDraft(
             meetingID: meeting.id, recipeID: Recipe.general.id, language: "es",
             markdown: """
@@ -95,11 +101,13 @@ extension AppServices {
                 ## Preguntas abiertas
                 - ¿El presupuesto de transcripción del Q3 cubre el crecimiento del lab?
                 """,
-            actionItems: [
-                ActionItem(text: "Migrar los dashboards de Kepler antes del viernes", ownerSpeakerID: me.id),
-                ActionItem(text: "Review the Aurora Suite English docs draft", ownerSpeakerID: marta.id),
-                ActionItem(text: "Preparar la demo del cliente para el lunes", ownerSpeakerID: marta.id)
-            ]))
+            actionItems: actionItems,
+            actionItemEvidence: zip(actionItems, [segments[4], segments[5], segments[8]]).map {
+                SummaryActionItemEvidence(actionItemID: $0.id, evidenceSegmentIDs: [$1.id])
+            }))
+        // Listening stopped part way, so Today offers to pick it back up.
+        try? await store.savePlaybackPosition(MeetingPlaybackPosition(
+            meetingID: meeting.id, seconds: 4 * 60 + 40, isHeard: false, updatedAt: base.addingTimeInterval(day)))
         try? await store.save([
             ContextItem(
                 meetingID: meeting.id, kind: .note,

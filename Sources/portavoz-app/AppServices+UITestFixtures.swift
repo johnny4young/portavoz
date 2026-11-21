@@ -56,7 +56,7 @@ extension AppServices {
             citedSegmentID: citedSegmentID,
             audioDirectory: audioDirectory)
         await seedDemoContext(for: meeting.id)
-        await seedTodayFixturesIfRequested()
+        await seedTodayFixturesIfRequested(demoMeetingID: meeting.id)
         await seedCompanionCards(
             meetingID: meeting.id,
             questionSegmentID: companionQuestionID,

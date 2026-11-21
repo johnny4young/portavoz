@@ -2365,3 +2365,16 @@ restoring a meeting from the trash brings its position back and purging it
 cascades. The row is user state of this Mac: it is neither synced nor backed up
 and is outside every observed region, so a save never reloads the library or
 Meeting Detail.
+
+### Open to-do sources
+
+`openItemSources(for:)` returns, for each live action item asked about, an
+`OpenItemSource`: the speaker of its first evidence segment and that segment's
+start, read through the same corrected transcript the voice strip and brief
+lines use (`readableTranscript`, so a reassigned line names its new speaker),
+the owner speaker, and the due date of the confirmed commitment the item became
+(none for a commitment done, dismissed or not confirmed). Speakers come back
+with `isMe`, label and display name; a deleted speaker reads as unknown. It is a
+read on demand for the few rows Today shows, never observed: attribution needs
+the whole corrected transcript, which an observation would rebuild on every
+caption.
