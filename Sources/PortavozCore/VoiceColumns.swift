@@ -48,8 +48,9 @@ public enum VoiceColumns {
         var indexes: [Key: Int] = [:]
         var voices: [Voice<Key>] = []
         var binned: [Turn] = []
-        for turn in turns.sorted(by: { ($0.start, $0.end) < ($1.start, $1.end) })
-        where turn.start.isFinite && turn.end.isFinite && turn.end > turn.start {
+        // NaN breaks the sort's ordering, so invalid turns go before sorting.
+        let valid = turns.filter { $0.start.isFinite && $0.end.isFinite && $0.end > $0.start }
+        for turn in valid.sorted(by: { ($0.start, $0.end) < ($1.start, $1.end) }) {
             let index: Int
             if let known = indexes[turn.key] {
                 index = known
@@ -126,6 +127,7 @@ public enum VoiceColumns {
     ) -> [(key: SpeakerID, start: TimeInterval, end: TimeInterval)] {
         var speakers = Dictionary(
             lines.map { ($0.id, $0.speaker) }, uniquingKeysWith: { first, _ in first })
+        let accepted = Set(lines.map(\.id))
         var removed = Set<UUID>()
         var turns: [(key: SpeakerID, start: TimeInterval, end: TimeInterval)] = []
         for correction in corrections {
@@ -136,6 +138,8 @@ public enum VoiceColumns {
                 removed.formUnion(correction.targetSegmentIDs)
             case .split(let parts):
                 removed.formUnion(correction.targetSegmentIDs)
+                // A split of a tombstoned line must not bring its speech back.
+                guard correction.targetSegmentIDs.allSatisfy(accepted.contains) else { break }
                 turns += parts.compactMap { part in
                     part.speakerID.map { (key: $0, start: part.startTime, end: part.endTime) }
                 }

@@ -100,6 +100,21 @@ final class VoiceColumnsStorageTests: XCTestCase {
         XCTAssertEqual(strip.columns[120], 1)
     }
 
+    func testSpeakerSavedAfterItsSegmentsRedrawsTheStrip() async throws {
+        let fixture = try await seed()
+        let late = SpeakerID()
+        try await store.save([TranscriptSegment(
+            meetingID: fixture.meeting.id, speakerID: late, channel: .system,
+            text: "tarde", startTime: 100, endTime: 150, isFinal: true)])
+        let before = try await strip(fixture.meeting.id)
+        XCTAssertEqual(before.columns[120], silence)
+
+        try await store.save([Speaker(id: late, meetingID: fixture.meeting.id, label: "S2")])
+        let after = try await strip(fixture.meeting.id)
+        XCTAssertEqual(after.voices.map(\.speakerID), [fixture.marta.id, fixture.me.id, late])
+        XCTAssertEqual(after.columns[120], 2)
+    }
+
     func testRenameShowsWithoutRebuilding() async throws {
         let fixture = try await seed()
         _ = try await store.voiceColumns(for: [fixture.meeting.id])
@@ -265,5 +280,47 @@ final class VoiceColumnsStorageTests: XCTestCase {
         let strips = try await upgraded.voiceColumns(for: [meetingID])
         XCTAssertEqual(strips[meetingID]?.voices.map(\.speakerID), [speakerID])
         XCTAssertEqual(Set(strips[meetingID]?.columns ?? []), [0])
+    }
+
+    func testALaterMigrationThatTouchesSegmentsLeavesNoOrphanVoices() throws {
+        let database = try DatabaseQueue()
+        try StorageSchema.migrator().migrate(database)
+        try database.write { db in
+            let now = Date()
+            let meeting = UUID().uuidString
+            let speaker = UUID().uuidString
+            try db.execute(
+                sql: """
+                    INSERT INTO meeting (id, title, startedAt, retention, createdAt, updatedAt)
+                    VALUES (?, 'Cached', ?, 'keep', ?, ?)
+                    """,
+                arguments: [meeting, now, now, now])
+            try db.execute(
+                sql: """
+                    INSERT INTO speaker (id, meetingID, label, isMe, createdAt, updatedAt)
+                    VALUES (?, ?, 'Me', 1, ?, ?)
+                    """,
+                arguments: [speaker, meeting, now, now])
+            try db.execute(
+                sql: """
+                    INSERT INTO segment
+                        (id, meetingID, speakerID, channel, text, startTime, endTime, isFinal,
+                         createdAt, updatedAt)
+                    VALUES (?, ?, ?, 'microphone', 'hi', 0, 10, 1, ?, ?)
+                    """,
+                arguments: [UUID().uuidString, meeting, speaker, now, now])
+            try MeetingStore.refreshVoiceColumns(
+                in: db, for: [MeetingID(rawValue: try XCTUnwrap(UUID(uuidString: meeting)))])
+        }
+        var later = StorageSchema.migrator()
+        later.registerMigration("later") { db in
+            try db.execute(sql: "UPDATE segment SET endTime = endTime + 1")
+        }
+
+        XCTAssertNoThrow(try later.migrate(database))
+        let orphans = try database.read { db in
+            try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM meetingVoiceColumnsVoice")
+        }
+        XCTAssertEqual(orphans, 0)
     }
 }

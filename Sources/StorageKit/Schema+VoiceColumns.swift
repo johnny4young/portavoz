@@ -32,18 +32,25 @@ extension StorageSchema {
         func change(_ table: String, _ columns: [String]) -> String {
             "AFTER UPDATE OF \(columns.joined(separator: ", ")) ON \(table) WHEN \(valuesChanged(columns))"
         }
-        let new = "DELETE FROM meetingVoiceColumns WHERE meetingID = NEW.meetingID;"
-        let old = "DELETE FROM meetingVoiceColumns WHERE meetingID = OLD.meetingID;"
-        let both = "DELETE FROM meetingVoiceColumns WHERE meetingID IN (OLD.meetingID, NEW.meetingID);"
+        // Migrations run with foreign keys off, so the child rows cannot rely on the cascade.
+        func drop(_ meetings: String) -> String {
+            ["meetingVoiceColumnsVoice", "meetingVoiceColumns"]
+                .map { "DELETE FROM \($0) WHERE meetingID IN (\(meetings));" }
+                .joined(separator: "\n")
+        }
+        let new = drop("NEW.meetingID")
+        let old = drop("OLD.meetingID")
+        let both = drop("OLD.meetingID, NEW.meetingID")
         let triggers: [(name: String, event: String, body: String)] = [
             ("segment_insert", "AFTER INSERT ON segment", new),
             ("segment_delete", "AFTER DELETE ON segment", old),
             ("segment_update", change(
-                "segment", ["meetingID", "speakerID", "startTime", "endTime", "deletedAt"]), both),
+                "segment", ["meetingID", "speakerID", "startTime", "endTime", "isFinal", "deletedAt"]), both),
+            ("speaker_insert", "AFTER INSERT ON speaker", new),
             ("speaker_update", change("speaker", ["meetingID", "deletedAt"]), both),
             ("speaker_delete", "AFTER DELETE ON speaker", old),
             ("meeting_revision", change("meeting", ["transcriptRevision"]),
-             "DELETE FROM meetingVoiceColumns WHERE meetingID = NEW.id;"),
+             drop("NEW.id")),
             ("correction_insert", "AFTER INSERT ON transcriptCorrection", new),
             ("correction_delete", "AFTER DELETE ON transcriptCorrection", old),
             ("correction_update", change(

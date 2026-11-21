@@ -87,4 +87,19 @@ final class VoiceColumnsTests: XCTestCase {
         XCTAssertEqual(strip.voices, [])
         XCTAssertEqual(strip.duration, 30)
     }
+
+    func testSplitOfAMissingLineAddsNoSpeech() {
+        let meetingID = MeetingID()
+        let speaker = SpeakerID()
+        let split = TranscriptCorrectionEvent(
+            meetingID: meetingID, baseTranscriptRevision: 0, targetSegmentIDs: [UUID()],
+            kind: .split([
+                TranscriptCorrectionPart(text: "a", speakerID: speaker, language: nil, startTime: 0, endTime: 1),
+                TranscriptCorrectionPart(text: "b", speakerID: speaker, language: nil, startTime: 1, endTime: 2),
+            ]),
+            sourceDeviceID: UUID(), createdAt: Date())
+        let line = VoiceColumns.Line(id: UUID(), speaker: speaker, start: 5, end: 6)
+        let turns = VoiceColumns.attributedTurns(lines: [line], corrections: [split])
+        XCTAssertEqual(turns.map(\.start), [5])
+    }
 }

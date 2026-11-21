@@ -6,7 +6,7 @@ extension VoiceColumns {
     /// One column per 2 pt of strip width, at most `maximumCount`.
     public static func count(forWidth width: Double) -> Int {
         guard width.isFinite, width > 0 else { return 0 }
-        return min(maximumCount, max(1, Int(width / 2)))
+        return max(1, Int(min(Double(maximumCount), width / 2)))
     }
 
     /// For small sizes: a column whose two neighbours agree takes their value.

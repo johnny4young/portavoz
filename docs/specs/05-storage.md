@@ -2241,11 +2241,13 @@ transcript. The turns are the readable attribution: accepted segments of live
 speakers with `TranscriptCorrectionPolicy.effectiveCorrections` applied
 (`changeSpeaker` reassigns, `suppress` removes, `split` parts carry their own
 speaker and times); a malformed correction history fails the rebuild, as it
-fails the other correction-aware projections. The timeline is
+fails the other correction-aware projections, and `voiceColumns(for:)` then
+leaves only that meeting absent. The timeline is
 the longest live audio asset or the last turn, whichever is later.
 
 Triggers delete a meeting's row on segment insert/delete or a change to its
-meeting, speaker, times or tombstone; a speaker tombstone or deletion; a
+meeting, speaker, times, finality or tombstone; a speaker insert, tombstone or
+deletion; a
 `transcriptRevision` bump; any correction insert, delete or update; and an audio
 asset insert, delete or change to duration, supersession or tombstone.
 `refreshTranscriptCorrectionSearchProjection`, the hook every correction,

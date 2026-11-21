@@ -41,7 +41,8 @@ public struct MeetingVoiceColumns: Sendable, Equatable {
 extension MeetingStore {
     /// The voice strips for a set of meetings, rebuilding any whose cache a
     /// transcript, correction or audio change dropped. Tombstoned meetings and
-    /// meetings without attributed speech are absent.
+    /// meetings without attributed speech are absent. A meeting whose rebuild
+    /// fails is absent too, so it cannot hide every other strip in the batch.
     public func voiceColumns(
         for meetingIDs: [MeetingID]
     ) async throws -> [MeetingID: MeetingVoiceColumns] {
@@ -51,7 +52,12 @@ extension MeetingStore {
         }
         guard !stored.missing.isEmpty else { return stored.columns }
         let rebuilt = try await database.write { db in
-            try Self.refreshVoiceColumns(in: db, for: stored.missing)
+            for id in stored.missing {
+                try? db.inSavepoint {
+                    try Self.refreshVoiceColumns(in: db, for: [id])
+                    return .commit
+                }
+            }
             return try Self.fetchVoiceColumns(in: db, for: stored.missing)
         }
         return stored.columns.merging(rebuilt.columns) { _, new in new }
@@ -137,10 +143,7 @@ extension MeetingStore {
                 """,
             arguments: StatementArguments(ids))
         let lines = try fetchVoiceColumnLines(in: db, placeholders: placeholders, ids: ids)
-        let liveSpeakers = try Set(String.fetchAll(
-            db,
-            sql: "SELECT id FROM speaker WHERE deletedAt IS NULL AND meetingID IN (\(placeholders))",
-            arguments: StatementArguments(ids)))
+        let liveSpeakers = try fetchLiveSpeakers(in: db, placeholders: placeholders, ids: ids)
 
         // Migrations run with foreign keys off, so the child rows cannot rely on the cascade.
         for table in ["meetingVoiceColumnsVoice", "meetingVoiceColumns"] {
@@ -168,7 +171,7 @@ extension MeetingStore {
                 : []
             let turns = VoiceColumns.attributedTurns(
                 lines: lines[key] ?? [], corrections: corrections
-            ).filter { liveSpeakers.contains($0.key.rawValue.uuidString) }
+            ).filter { liveSpeakers[key]?.contains($0.key.rawValue.uuidString) == true }
             let audio: Double? = row["audio"]
             let strip = VoiceColumns.strip(turns, duration: audio ?? 0, count: VoiceColumns.storedCount)
             try insertStrip.execute(arguments: [key, strip.duration, Data(strip.columns), timestamp])
@@ -188,7 +191,7 @@ extension MeetingStore {
             db,
             sql: """
                 SELECT id, meetingID, speakerID, startTime, endTime FROM segment
-                WHERE deletedAt IS NULL AND meetingID IN (\(placeholders))
+                WHERE deletedAt IS NULL AND isFinal = 1 AND meetingID IN (\(placeholders))
                 """,
             arguments: StatementArguments(ids)) {
             let speaker = try PersistedIdentity.optional(
@@ -199,5 +202,18 @@ extension MeetingStore {
                 start: row["startTime"], end: row["endTime"]))
         }
         return lines
+    }
+
+    private static func fetchLiveSpeakers(
+        in db: Database, placeholders: String, ids: [String]
+    ) throws -> [String: Set<String>] {
+        var speakers: [String: Set<String>] = [:]
+        for row in try Row.fetchAll(
+            db,
+            sql: "SELECT id, meetingID FROM speaker WHERE deletedAt IS NULL AND meetingID IN (\(placeholders))",
+            arguments: StatementArguments(ids)) {
+            speakers[row["meetingID"], default: []].insert(row["id"])
+        }
+        return speakers
     }
 }
