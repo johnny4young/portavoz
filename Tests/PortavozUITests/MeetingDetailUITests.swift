@@ -767,6 +767,13 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(folded.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(app.control(withIdentifier: "cast-speaker-S1").exists)
         attachScreenshot(of: app, named: "pr-many-voices-others-open")
+
+        app.buttons["voice-only-S11"].click()
+        others.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "cast-speaker-S1").waitForDisappearance(timeout: 5),
+            "collapsing folds the quiet voices again")
+        XCTAssertTrue(folded.exists, "a folded voice playing alone keeps its row and its Only control")
     }
 
     @MainActor

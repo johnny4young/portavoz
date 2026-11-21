@@ -13,8 +13,8 @@ final class MeetingVoiceTableTests: XCTestCase {
         let segments = [
             segment(marta.id, 0, 4),
             segment(me.id, 14.1, 14.3),
+            segment(me.id, 40, 42),
             segment(marta.id, 30, 36),
-            segment(me.id, 18.8, 21),
             segment(nil, 40, 41)
         ]
         let cast = VoiceCast(speakers: [me, marta, silent], segments: segments)
@@ -23,7 +23,7 @@ final class MeetingVoiceTableTests: XCTestCase {
 
         XCTAssertEqual(table.rows.map(\.speakerID), [marta.id, me.id], "a voice that never spoke has no row")
         XCTAssertTrue(table.others.isEmpty)
-        XCTAssertEqual(table.rows.last?.turns, [14.1...14.3, 18.8...21], "turns come sorted by start")
+        XCTAssertEqual(table.rows.last?.turns, [14.1...14.3, 40...42], "turns come sorted by start")
         XCTAssertEqual(table.rows.first?.voice.talkSeconds, 10)
         XCTAssertEqual(table.duration, 60)
     }
@@ -52,17 +52,36 @@ final class MeetingVoiceTableTests: XCTestCase {
 
     func testSteppingWalksTheTurnsAndWrapsToTheFirst() throws {
         let speaker = Speaker(meetingID: meeting, label: "S1", displayName: "Nora")
-        let segments = [segment(speaker.id, 5, 8), segment(speaker.id, 20, 25), segment(speaker.id, 40, 42)]
+        let other = Speaker(meetingID: meeting, label: "S2", displayName: "Ilarion")
+        let segments = [
+            segment(speaker.id, 5, 8), segment(other.id, 10, 12), segment(speaker.id, 20, 25),
+            segment(other.id, 30, 32), segment(speaker.id, 40, 42)
+        ]
         let table = MeetingVoiceTable(
-            cast: VoiceCast(speakers: [speaker], segments: segments), segments: segments)
-        let row = try XCTUnwrap(table.rows.first)
+            cast: VoiceCast(speakers: [speaker, other], segments: segments), segments: segments)
+        let row = try XCTUnwrap(table.rows.first { $0.speakerID == speaker.id })
 
         XCTAssertEqual(row.nextTurn(after: -.infinity), 5)
         XCTAssertEqual(row.nextTurn(after: 5), 20, "standing on a turn moves to the next one")
-        XCTAssertEqual(row.nextTurn(after: 19), 20)
-        XCTAssertEqual(row.nextTurn(after: 19.8), 40, "a seek that landed just short of a turn is on it")
+        XCTAssertEqual(row.nextTurn(after: 19.6), 20, "paused just before a turn, the click plays it")
+        XCTAssertEqual(row.nextTurn(after: 19.95), 40, "a seek that landed a frame short of a turn is on it")
         XCTAssertEqual(row.nextTurn(after: 20.2), 40)
         XCTAssertEqual(row.nextTurn(after: 41), 5, "after the last turn it wraps")
+    }
+
+    func testConsecutiveSegmentsOfOneVoiceAreOneTurnUntilSomeoneElseSpeaks() throws {
+        let marta = Speaker(meetingID: meeting, label: "S1", displayName: "Marta")
+        let bruno = Speaker(meetingID: meeting, label: "S2", displayName: "Bruno")
+        let segments = [
+            segment(marta.id, 0, 5), segment(marta.id, 5.5, 9), segment(nil, 9, 10), segment(marta.id, 10, 12),
+            segment(bruno.id, 12, 15), segment(marta.id, 15, 18)
+        ]
+        let table = MeetingVoiceTable(
+            cast: VoiceCast(speakers: [marta, bruno], segments: segments), segments: segments)
+        let row = try XCTUnwrap(table.rows.first { $0.speakerID == marta.id })
+
+        XCTAssertEqual(row.turns, [0...12, 15...18], "a monologue split into sentences is one turn")
+        XCTAssertEqual(row.nextTurn(after: 1), 15, "the next click skips to after Bruno")
     }
 
     func testAMeetingWithoutAttributedSpeechHasNoRows() {

@@ -41,9 +41,11 @@ struct MeetingVoicesTable<Trailing: View>: View {
             ForEach(table.rows) { row($0, speaker: byID[$0.speakerID], suggestions: suggestions) }
             if !table.others.isEmpty {
                 othersRow(names: table.others.compactMap { byID[$0.speakerID].map(VoiceName.of(_:)) })
-                if showsOthers {
-                    ForEach(table.others) { row($0, speaker: byID[$0.speakerID], suggestions: suggestions) }
-                }
+                // Collapsed, a folded voice still shows while it offers a name or plays alone.
+                ForEach(table.others.filter { other in
+                    showsOthers || other.speakerID == playback?.focus
+                        || byID[other.speakerID].map { suggestions[$0.label] != nil } == true
+                }) { row($0, speaker: byID[$0.speakerID], suggestions: suggestions) }
             }
         }
         .onGeometryChange(for: Bool.self) { $0.size.width < VoicesTableFormat.narrowWidth } action: {
@@ -152,7 +154,6 @@ struct MeetingVoicesTable<Trailing: View>: View {
             dismissAccessibilityIdentifier: "detail-voice-suggestion-dismiss-\(suggestion.speakerLabel)",
             accept: { actions.acceptVoiceSuggestion(suggestion) },
             dismiss: { actions.dismissVoiceSuggestion(suggestion.speakerLabel) })
-            .fixedSize()
             .help(L10n.format("Matches “%@” from your remembered voices", suggestion.name))
     }
 
@@ -224,7 +225,7 @@ enum VoicesTableFormat {
 }
 
 /// One voice's turns on the meeting's time axis, each at least a point wide
-/// so a short turn still shows; the row describes it to VoiceOver.
+/// so a short turn still shows; hidden from VoiceOver, which reads the row's name and share.
 struct VoiceTurnsStrip: View {
     let turns: [ClosedRange<TimeInterval>]
     let duration: TimeInterval
