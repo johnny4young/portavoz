@@ -81,6 +81,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 21, 2026
 
+- **🎛️ Player menus in narrow windows** — when the meeting column is tight, speed, voice and playback options drop to a second row instead of hiding under the side panel.
 - **⏯️ Pick up where you left off** — reopen a meeting and the player is back where you stopped listening; following a quote or search result still jumps straight to that moment.
 - **🗓️ Who spoke today** — Today now adds up how long you and each person talked across today's meetings, then lays the day out on an hour ruler: every recorded meeting as its voice strip at its real time and length, the meetings still ahead as outlined pills with who's invited, and a red line at now. Click a meeting to open it, or an upcoming one for its brief.
 - **🗣️ What they said last time** — beside the countdown, Today shows what each person said the last time this meeting met: a quote, a promise or a question still open, with who talked how much; click a line to jump to that moment, or the card to open the full brief. Meetings you record from the calendar now find last week's recording too.
