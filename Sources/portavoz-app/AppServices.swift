@@ -349,10 +349,12 @@ final class AppServices {
             usesTemporaryStore
                 ? UITestMeetingBriefSynthesizer()
                 : AppOnDeviceMeetingBriefSynthesizer()
+        let meetingBriefLibrary = AppMeetingBriefLibraryReader(store: store)
         let meetingBriefUseCase = PrepareMeetingBrief(
             ask: askUseCase,
-            library: AppMeetingBriefLibraryReader(store: store),
-            synthesizer: meetingBriefSynthesizer)
+            library: meetingBriefLibrary,
+            synthesizer: meetingBriefSynthesizer,
+            sources: meetingBriefLibrary)
         self.meetingBriefUseCase = meetingBriefUseCase
         let standingBriefPreparer: any StandingPreMeetingBriefPreparing =
             usesTemporaryStore

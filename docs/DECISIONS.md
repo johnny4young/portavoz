@@ -23150,3 +23150,21 @@ rewriting the asset's recorded duration.
 The raw-segment voice-mix query is retired with the bar: the talk-share
 mirror's recent average reads `talkSeconds` from the same strips, so every
 surface counts talk after speaker corrections.
+
+## D650 — Brief lines are a disposable cache keyed by the upcoming event
+
+A brief preview shows what each person said last time, so preparing a brief
+records which past meeting is the upcoming event's previous occurrence: the most
+recent ended meeting with the same title, else the best related meeting in the
+brief. The record is keyed by the calendar event, not by the meeting, because
+the choice belongs to the event and several events can continue one meeting.
+
+The two or three lines per person are derived, never authoritative. They are
+built from the same readable attribution as the voice strip (D648), in the
+order commitments, questions, quotes. SQL triggers clear them on any change to
+the source meeting's transcript, corrections, speakers, summary, action items,
+questions or commitments, and the next read rebuilds them; preparation
+builds them eagerly so Today reads stored rows; a rename or
+tombstone drops the choice itself, since it was made by title. Speaker names
+resolve at read time. Rows of past events are pruned on the next preparation,
+and the cache is neither synced nor backed up.

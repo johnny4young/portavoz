@@ -204,7 +204,7 @@ hidden stage. A main-file or WAL size/modification change across the private
 copy also fails closed rather than publishing a mixed point in time. The source is never opened through `MeetingStore`, so no
 migration/configuration write can occur, and it is never renamed or deleted.
 
-### Schema (`v1`–`v61` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v62` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
@@ -248,6 +248,8 @@ Singular camelCase tables, 1:1 with Codable records:
 | `transcriptCorrectionSearchState` (v36) | meetingID (TEXT PK, FK cascade), baseTranscriptRevision, 64-character effective correctionRevision; sparse content-free lineage for active overlays only, rebuilt in the same transaction as corrected text and used to fence Spotlight summaries/text (D329) |
 | `meetingVoiceColumns` (v61) | meetingID (TEXT PK, FK cascade), duration (seconds, ≥ 0), columns BLOB (one byte per column, ≤ 2 000), updatedAt; disposable voice strip cache, see Voice strip columns (D648) |
 | `meetingVoiceColumnsVoice` (v61) | meetingID FK cascade to `meetingVoiceColumns`, voiceIndex (0–254), speakerID, talkSeconds, firstHeard; primary key meeting + index; the strip's voice index map in first-heard order |
+| `meetingBriefSource` (v62) | eventID (TEXT PK, 1–2 000 bytes), eventStartAt, sourceMeetingID (FK cascade, indexed), preparedAt, linesBuiltAt (NULL = lines need a rebuild); the previous occurrence chosen for an upcoming event, see Brief lines (D650) |
+| `meetingBriefLine` (v62) | eventID FK cascade to `meetingBriefSource`, ordinal (≥ 0), speakerID, kind (`quote`, `commitment`, `question`), text (nonblank), segmentID (nullable), time (seconds, ≥ 0), status (`said`, `unresolved`, `open`, `closed`, checked against kind), dueAt (only when `open`); primary key event + ordinal; disposable cache |
 | `transcriptStructuralSearchRow` (v38) | resultID (TEXT PK), indexed meetingID/correctionID FK cascade, baseTranscriptRevision, checked split/merge kind, non-empty text, optional language, start/end time, updatedAt, optional embedding BLOB and embeddingFingerprint; disposable current structural retrieval units keyed by split-part UUID or merge-correction UUID (D334) |
 | `transcriptStructuralSearchSource` (v38) | resultID (FK cascade), ordered accepted segmentID (indexed FK cascade), composite PK and unique result+source; exact immutable provenance for each structural retrieval unit |
 | `transcriptStructuralSearch` (v38) | FTS5 external-content over transcriptStructuralSearchRow.text, synchronized by GRDB triggers |
@@ -2275,3 +2277,60 @@ without writing and is never listed, because each segment drops its row again.
 Tracking `meetingVoiceColumns` covers correction and audio changes, whose
 triggers drop the row before the correction hook rebuilds it, and each store
 (D649).
+
+### Brief lines (schema v62, D650)
+
+`meetingBriefSource` remembers, per upcoming calendar event, which past meeting
+is its previous occurrence; `meetingBriefLine` caches what each person said in
+it. `recordMeetingBriefSource(eventID:eventStartAt:sourceMeetingID:at:)` upserts
+the choice and, unless the same source's lines are already built, builds them
+in the same write (a failed build leaves them pending for the next read); a nil, missing, tombstoned or later-starting
+source clears the event instead. The same write prunes every source whose event
+started more than one day before `at`.
+`previousMeetingOccurrence(title:before:)` returns the most recent live, ended
+meeting started in the 180 days before the date whose title equals the event's
+under `MeetingBriefLines.titleKey` (case, diacritics and spacing folded in
+Swift, because SQLite cannot fold diacritics).
+
+The builder reads the same readable attribution as the voice strip:
+`VoiceColumns.attributedLines` over accepted segments of live speakers with the
+effective corrections applied, with `SegmentCorrectedTextProjection` text and
+split parts carrying their own. People are the live speakers with attributed
+speech, most talk seconds first, at most six. Each keeps at most three lines:
+
+1. owned action items of each recipe's latest live snapshot (the open-items
+   rule, repeated texts stated once). A commitment confirmed from the item
+   decides the status: `confirmed` is open with its due date, `done` is closed
+   and `dismissed` is skipped; otherwise the checkbox decides. Time and segment
+   come from the first evidence segment still readable, else segment NULL and
+   time 0;
+2. confirmed questions whose primary segment reads as that person: `open` is
+   unresolved, `resolved` is closed, `dismissed` is skipped;
+3. verbatim quotes while the person has fewer than two lines: the longest
+   unused lines of at least four words, earlier first on ties, cut at a word
+   boundary near 160 characters.
+
+Pending lines win the cap inside a kind, and each person's lines are stored in
+time order. The selection is the pure `MeetingBriefLines.select` in
+PortavozCore; StorageKit only fetches its inputs, reading the source meeting's
+questions through `meetingQuestion_on_sourceMeeting` (v62).
+
+`meetingBriefLines(forEventID:)` and `meetingBriefLines(forEventIDs:)` read the
+cache and rebuild, in one write with a savepoint per event, every source whose
+`linesBuiltAt` is NULL. A built source may hold no lines and is not rebuilt
+again. An event without a source, with a tombstoned one or whose rebuild fails
+is absent. Names, `isMe`, labels and the canonical person resolve from
+`speaker` at read time.
+
+Triggers clear the lines and set `linesBuiltAt` to NULL when the source
+meeting changes: a segment insert, delete or change to its meeting, speaker,
+text, times, finality or tombstone; a speaker insert, delete or change to its
+meeting, name, `isMe`, person or tombstone; a `transcriptRevision` bump; any
+correction insert, delete or update; a summary insert, delete or tombstone; an
+action item insert, delete or change to its meeting, text, owner, completion or
+tombstone; a question insert, delete or change to its meeting, status or
+tombstone; a commitment source insert or delete; and a commitment change to
+status, due date or tombstone, mapped through `commitmentSource`. A change to
+the meeting's title or tombstone deletes the source row, because the occurrence
+was chosen by title; a hard delete cascades. The cache is not synced or backed
+up.
