@@ -11,7 +11,7 @@ extension MeetingStore {
     /// Every path that changes correction state or the accepted transcript
     /// revision calls this: append, tombstone, replica merge, sync replay,
     /// refine, and re-transcription. The projection stays disposable — deleted
-    /// rows converge on the next call.
+    /// rows converge on the next call. The voice strip cache rebuilds here too.
     static func refreshTranscriptCorrectionSearchProjection(
         meetingID: MeetingID,
         in database: Database
@@ -63,6 +63,9 @@ extension MeetingStore {
             hasEmbeddingColumns: hasEmbeddingColumns,
             existingEmbeddings: existingEmbeddings,
             in: database)
+        if try database.tableExists("meetingVoiceColumns") {
+            try refreshVoiceColumns(in: database, for: [meetingID])
+        }
         guard hasStructuralProjection else { return }
         try refreshStructuralSearchProjection(
             history: history,

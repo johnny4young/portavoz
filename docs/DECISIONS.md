@@ -23106,3 +23106,20 @@ one heard first keeps it and the other takes the next free hue, so five named
 voices always show five different colours. A cast built with the previous one
 keeps each name's hue, so a live re-ranking or an S-label relabel never
 recolours someone on screen.
+
+## D648 — The voice strip is a disposable cache
+
+Library rows and Today draw who spoke when without loading transcripts, so each
+meeting keeps 200 voice columns and its voice index map in an additive table.
+The binning lives in PortavozCore because StorageKit, which cannot import
+ApplicationKit, builds the cache inside the same transactions that write
+transcripts; ApplicationKit uses the same function for strips it draws from a
+loaded transcript.
+
+The cache is derived, never authoritative. SQL triggers drop a meeting's row on
+any change to its attribution, corrections or audio length, and the batched
+read rebuilds missing rows, so every write path (finalize, re-transcribe,
+corrections, import, sync replay, restore) stays correct without calling it and
+existing libraries fill in lazily without a migration backfill. The voice map
+stores speaker IDs, not names: names resolve at read time, so a rename costs
+nothing. The cache is neither synced nor backed up.
