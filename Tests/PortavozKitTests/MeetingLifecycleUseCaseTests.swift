@@ -58,14 +58,14 @@ final class MeetingLifecycleUseCaseTests: XCTestCase {
 
         let beforeDetailValue = try await store.detail(meeting.id)
         let beforeDetail = try XCTUnwrap(beforeDetailValue)
-        let beforeMix = try await store.voiceMixes(for: [meeting.id])
+        let beforeMix = try await store.voiceColumns(for: [meeting.id])
 
         try await DeleteMeeting(store: store)(meeting.id)
 
         let liveAfterDelete = try await store.meetings()
         let detailAfterDelete = try await store.detail(meeting.id)
         let trashAfterDelete = try await store.deletedMeetings()
-        let mixAfterDelete = try await store.voiceMixes(for: [meeting.id])
+        let mixAfterDelete = try await store.voiceColumns(for: [meeting.id])
         XCTAssertTrue(liveAfterDelete.isEmpty)
         XCTAssertNil(detailAfterDelete)
         XCTAssertEqual(trashAfterDelete.map(\.meeting.id), [meeting.id])
@@ -75,7 +75,7 @@ final class MeetingLifecycleUseCaseTests: XCTestCase {
 
         let restoredDetailValue = try await store.detail(meeting.id)
         let restoredDetail = try XCTUnwrap(restoredDetailValue)
-        let restoredMix = try await store.voiceMixes(for: [meeting.id])
+        let restoredMix = try await store.voiceColumns(for: [meeting.id])
         let trashAfterRestore = try await store.deletedMeetings()
         XCTAssertEqual(restoredDetail.meeting.id, beforeDetail.meeting.id)
         XCTAssertEqual(restoredDetail.meeting.title, beforeDetail.meeting.title)

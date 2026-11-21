@@ -2,7 +2,7 @@ import PortavozCore
 import StorageKit
 import XCTest
 
-final class VoiceMixTests: XCTestCase {
+final class VoiceBalanceTests: XCTestCase {
     private var store: MeetingStore!
 
     override func setUpWithError() throws {
@@ -32,28 +32,6 @@ final class VoiceMixTests: XCTestCase {
         return meeting
     }
 
-    func testMixFractionsSumToOneOrderedByTalkTime() async throws {
-        let meeting = try await seed()
-        let mixes = try await store.voiceMixes(for: [meeting.id])
-        let slices = try XCTUnwrap(mixes[meeting.id])
-
-        XCTAssertEqual(slices.count, 3)
-        XCTAssertEqual(slices.map(\.order), [0, 1, 2])
-        XCTAssertEqual(slices.map(\.firstHeard), [0, 6, 9])
-        // Largest first: Me (6/10), Marta (3/10), S1 (1/10).
-        XCTAssertTrue(slices[0].isMe)
-        XCTAssertEqual(slices[0].fraction, 0.6, accuracy: 0.0001)
-        XCTAssertEqual(slices[1].displayName, "Marta")
-        XCTAssertEqual(slices[1].fraction, 0.3, accuracy: 0.0001)
-        XCTAssertNil(slices[2].displayName)
-        XCTAssertEqual(slices.reduce(0) { $0 + $1.fraction }, 1.0, accuracy: 0.0001)
-    }
-
-    func testEmptyInputReturnsEmpty() async throws {
-        let mixes = try await store.voiceMixes(for: [])
-        XCTAssertTrue(mixes.isEmpty)
-    }
-
     func testVoiceBalanceSplitsYouVsNamedPeople() async throws {
         _ = try await seed()  // Me 6 s, Marta 3 s (named), S1 1 s (unnamed)
         let balance = try await store.voiceBalance()
@@ -73,21 +51,15 @@ final class VoiceMixTests: XCTestCase {
 
     func testDeleteAndRestoreRemoveAndReturnVoiceAggregates() async throws {
         let meeting = try await seed()
-        let beforeMixes = try await store.voiceMixes(for: [meeting.id])
-        let beforeMix = try XCTUnwrap(beforeMixes[meeting.id])
         let beforeBalance = try await store.voiceBalance()
 
         try await store.delete(meeting.id)
-        let deletedMixes = try await store.voiceMixes(for: [meeting.id])
-        XCTAssertNil(deletedMixes[meeting.id])
         let deletedBalance = try await store.voiceBalance()
         XCTAssertFalse(deletedBalance.hasData)
         XCTAssertTrue(deletedBalance.participants.isEmpty)
 
         try await store.restore(meeting.id)
-        let restoredMixes = try await store.voiceMixes(for: [meeting.id])
         let restoredBalance = try await store.voiceBalance()
-        XCTAssertEqual(restoredMixes[meeting.id], beforeMix)
         XCTAssertEqual(restoredBalance, beforeBalance)
     }
 
@@ -95,18 +67,5 @@ final class VoiceMixTests: XCTestCase {
         let balance = try await store.voiceBalance()
         XCTAssertFalse(balance.hasData)
         XCTAssertTrue(balance.participants.isEmpty)
-    }
-
-    func testMeetingWithNoAttributedSpeechIsAbsent() async throws {
-        // A meeting whose only segment has no speaker contributes nothing.
-        let meeting = Meeting(title: "Silent", startedAt: Date())
-        try await store.save(meeting)
-        try await store.save([
-            TranscriptSegment(
-                meetingID: meeting.id, speakerID: nil, channel: .system,
-                text: "…", startTime: 0, endTime: 5, isFinal: true)
-        ])
-        let mixes = try await store.voiceMixes(for: [meeting.id])
-        XCTAssertNil(mixes[meeting.id])
     }
 }

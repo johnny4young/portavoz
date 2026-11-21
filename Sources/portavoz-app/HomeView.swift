@@ -17,8 +17,6 @@ struct HomeView: View {
     let onRecord: () -> Void
     let onAsk: (String?) -> Void
 
-    @Environment(\.colorScheme) private var colorScheme
-
     private var state: LibraryModel.State { model.state }
 
     // Sized so the agenda, open work, recent meetings and the question chips
@@ -272,8 +270,10 @@ struct HomeView: View {
             route = .meeting(meeting.id)
         } label: {
             HStack(alignment: .firstTextBaseline, spacing: PVDesign.space3) {
-                VoiceMixBar(slices: state.voiceMixes[meeting.id] ?? [], colorScheme: colorScheme)
+                // The row button would read the strip's label before the title.
+                VoiceStrip(state.voiceStrips[meeting.id] ?? .empty)
                     .frame(width: 44)
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(MeetingRowTitle.display(meeting.title))
                         .font(.body.weight(.medium))

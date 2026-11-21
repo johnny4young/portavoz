@@ -18116,6 +18116,16 @@
           }
         }
       }
+    },
+    "Who spoke when": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quién habló cuándo"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

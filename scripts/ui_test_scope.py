@@ -440,7 +440,10 @@ def app_features(filename: str) -> set[str]:
         "livetranslation", "livesummary"
     )):
         return {"library", "recording-interview", "recording-recovery"}
-    if any(token in lowered for token in ("library", "trash", "voicemix")):
+    if lowered == "voicestrip.swift":
+        # Drawn under every sidebar row and in Today's recent meetings.
+        return {"home", "library"}
+    if any(token in lowered for token in ("library", "trash")):
         return {"library"}
     if "menubar" in lowered:
         return {"menu-bar-brief"}

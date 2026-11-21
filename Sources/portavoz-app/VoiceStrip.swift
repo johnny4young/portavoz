@@ -1,0 +1,151 @@
+import ApplicationKit
+import PortavozCore
+import SwiftUI
+
+/// The meeting's time axis as one flat strip: each column takes the colour of
+/// whoever spoke then, and silence shows the track.
+struct VoiceStrip: View {
+    enum Size {
+        case row
+        case player
+        case live
+
+        var height: CGFloat {
+            switch self {
+            case .row: 6
+            case .player: 16
+            case .live: 12
+            }
+        }
+
+        var radius: CGFloat {
+            switch self {
+            case .row: 3
+            case .player, .live: 5
+            }
+        }
+    }
+
+    /// How far the playhead and chapter ticks reach past the strip.
+    private static let overhang: CGFloat = 4
+    private static let unplayedOpacity = 0.45
+    private static var percent: FloatingPointFormatStyle<Double>.Percent {
+        .percent.precision(.fractionLength(0)).locale(AppLanguage.current.locale)
+    }
+
+    let strip: VoiceStripColumns
+    let size: Size
+    /// Draws one voice and leaves the rest as track.
+    let only: UInt8?
+    /// Played fraction, 0…1; nil draws everything as played.
+    let progress: Double?
+    /// Chapter starts as fractions, 0…1.
+    let ticks: [Double]
+    @Environment(\.colorScheme) private var colorScheme
+
+    init(
+        _ strip: VoiceStripColumns, size: Size = .row, only: UInt8? = nil,
+        progress: Double? = nil, ticks: [Double] = []
+    ) {
+        self.strip = strip
+        self.size = size
+        self.only = only
+        self.progress = progress.map { $0.isFinite ? min(1, max(0, $0)) : 0 }
+        self.ticks = ticks.filter { $0.isFinite && (0...1).contains($0) }
+    }
+
+    var body: some View {
+        Canvas { context, canvas in
+            drawRuns(in: &context, size: canvas)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: size.radius, style: .continuous))
+        .frame(height: size.height)
+        .overlay {
+            if playhead != nil || !ticks.isEmpty {
+                Canvas { context, canvas in
+                    drawMarks(in: &context, size: canvas)
+                }
+                .padding(.vertical, -Self.overhang)
+                .allowsHitTesting(false)
+            }
+        }
+        .accessibilityElement()
+        .accessibilityLabel(L10n.text("Who spoke when"))
+        .accessibilityValue(spokenCast)
+        .accessibilityAddTraits(.isImage)
+    }
+
+    private var playhead: Double? {
+        size == .row ? nil : progress
+    }
+
+    /// The cast in order, "You 25%, Marta 30%, Others · 2"; unnamed and
+    /// folded voices are counted. Empty when the strip has nothing attributed.
+    var spokenCast: String {
+        guard !strip.columns.isEmpty else { return "" }
+        var parts: [String] = []
+        var unnamed = strip.cast.others.count
+        for voice in strip.cast.voices {
+            guard let name = voice.isMe ? L10n.text("You") : voice.name else {
+                unnamed += 1
+                continue
+            }
+            parts.append("\(name) \(voice.share.formatted(Self.percent))")
+        }
+        if unnamed > 0 { parts.append(L10n.format("Others · %d", unnamed)) }
+        return parts.joined(separator: ", ")
+    }
+
+    private func drawRuns(in context: inout GraphicsContext, size canvas: CGSize) {
+        context.fill(Path(CGRect(origin: .zero, size: canvas)), with: .color(PVDesign.line))
+        let count = VoiceColumns.count(forWidth: canvas.width)
+        var columns = VoiceColumns.resampled(strip.columns, count: count)
+        if size == .row { columns = VoiceColumns.calmed(columns) }
+        guard !columns.isEmpty else { return }
+        // Resolved once per draw: dynamic voice colours are costly per run.
+        let shadings = strip.tints.map {
+            context.resolve(
+                GraphicsContext.Shading.color(VoicePalette.color($0, colorScheme: colorScheme)))
+        }
+        var ahead = context
+        ahead.opacity = Self.unplayedOpacity
+        let column = canvas.width / CGFloat(columns.count)
+        let split = ((progress ?? 1) * canvas.width).rounded()
+        for run in VoiceColumns.runs(columns) where Int(run.voice) < shadings.count {
+            guard only == nil || only == run.voice else { continue }
+            // Whole points, so neighbouring runs meet without a seam.
+            let left = (CGFloat(run.start) * column).rounded()
+            let right = (CGFloat(run.end) * column).rounded()
+            let shading = shadings[Int(run.voice)]
+            if left < min(right, split) {
+                context.fill(
+                    Path(CGRect(x: left, y: 0, width: min(right, split) - left, height: canvas.height)),
+                    with: shading)
+            }
+            if max(left, split) < right {
+                ahead.fill(
+                    Path(CGRect(
+                        x: max(left, split), y: 0, width: right - max(left, split),
+                        height: canvas.height)),
+                    with: shading)
+            }
+        }
+    }
+
+    private func drawMarks(in context: inout GraphicsContext, size canvas: CGSize) {
+        let ink = context.resolve(GraphicsContext.Shading.color(PVDesign.ink))
+        for tick in ticks {
+            var path = Path()
+            path.move(to: CGPoint(x: tick * canvas.width, y: 0))
+            path.addLine(to: CGPoint(x: tick * canvas.width, y: canvas.height - Self.overhang))
+            context.stroke(path, with: ink, lineWidth: 1)
+        }
+        guard let playhead else { return }
+        let width: CGFloat = 2.2
+        // Inset by the round cap so the line ends exactly at the overhang.
+        var path = Path()
+        path.move(to: CGPoint(x: playhead * canvas.width, y: width / 2))
+        path.addLine(to: CGPoint(x: playhead * canvas.width, y: canvas.height - width / 2))
+        context.stroke(path, with: ink, style: StrokeStyle(lineWidth: width, lineCap: .round))
+    }
+}

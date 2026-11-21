@@ -108,5 +108,5 @@
   "TranscriptTranslationPersistenceTests": 2.3,
   "TranscriptTranslationWorkerTests": 2.2,
   "VoiceIdentityConcurrencyTests": 2.2,
-  "VoiceMixTests": 2.3
+  "VoiceBalanceTests": 2.3
 }

@@ -62,8 +62,6 @@ public struct VoiceCast: Sendable, Equatable {
     public let others: [Voice]
     private let tints: [String: Tint]
 
-    public var othersShare: Double { others.reduce(0) { $0 + $1.share } }
-
     public func tint(for key: String) -> Tint {
         tints[key] ?? .grey
     }
@@ -182,17 +180,6 @@ extension VoiceCast {
                 Member(
                     key: Self.key($0.id), isMe: $0.isMe, name: $0.displayName,
                     talkSeconds: seconds[$0.id, default: 0])
-            },
-            ordering: .talkShare)
-    }
-
-    /// A library row's cast from its voice mix, in first-heard order like the detail.
-    public init(mix: [LibraryVoiceMixSlice]) {
-        self.init(
-            members: mix.sorted { ($0.firstHeard, $0.order) < ($1.firstHeard, $1.order) }.map {
-                Member(
-                    key: String($0.order), isMe: $0.isMe, name: $0.displayName,
-                    talkSeconds: $0.fraction)
             },
             ordering: .talkShare)
     }

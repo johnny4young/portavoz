@@ -16,10 +16,17 @@ extension AppServices {
 
 extension AppServices: LibraryModelClient {
     func observeLibrary() -> AsyncStream<LibraryUpdate> {
-        makeApplicationLibraryStream(
+        let store = store
+        return makeApplicationLibraryStream(
             meetings: store.observeLibraryMeetings(),
             openItems: store.observeLibraryOpenItems(),
-            trash: store.observeLibraryTrash())
+            trash: store.observeLibraryTrash(),
+            storeVoiceColumns: { ids in
+                // Chunked so filling an upgraded library never holds the writer for long.
+                for start in stride(from: 0, to: ids.count, by: 50) {
+                    _ = try? await store.voiceColumns(for: Array(ids[start..<min(ids.count, start + 50)]))
+                }
+            })
     }
 
     func observeLibrarySearch(
@@ -154,17 +161,22 @@ extension AppServices: LibraryModelClient {
 private func makeApplicationLibraryStream(
     meetings: AsyncThrowingStream<MeetingStore.LibraryMeetingRows, Error>,
     openItems: AsyncThrowingStream<[MeetingStore.OpenActionItem], Error>,
-    trash: AsyncThrowingStream<[MeetingStore.DeletedMeeting], Error>
+    trash: AsyncThrowingStream<[MeetingStore.DeletedMeeting], Error>,
+    storeVoiceColumns: @escaping @Sendable ([MeetingID]) async -> Void
 ) -> AsyncStream<LibraryUpdate> {
     AsyncStream { continuation in
         let task = Task {
             await withTaskGroup(of: Void.self) { group in
                 group.addTask {
                     do {
+                        // Once per meeting, so a rebuild that fails is not retried on every refresh.
+                        var stored = Set<MeetingID>()
                         for try await value in meetings {
                             continuation.yield(.meetings(
                                 makeApplicationMeetingRows(value.rows),
                                 failures: value.failures))
+                            let uncached = value.uncachedVoiceColumns.filter { stored.insert($0).inserted }
+                            if !uncached.isEmpty { await storeVoiceColumns(uncached) }
                         }
                     } catch is CancellationError {
                         // Parent cancellation ends the complete merged stream.
@@ -209,14 +221,7 @@ private func makeApplicationMeetingRows(
     rows.map { row in
         LibraryMeetingRow(
             meeting: row.meeting,
-            voiceMix: row.voiceMix.map {
-                LibraryVoiceMixSlice(
-                    isMe: $0.isMe,
-                    displayName: $0.displayName,
-                    fraction: $0.fraction,
-                    order: $0.order,
-                    firstHeard: $0.firstHeard)
-            })
+            voiceStrip: row.voiceColumns.map(VoiceStripColumns.init(columns:)) ?? .empty)
     }
 }
 

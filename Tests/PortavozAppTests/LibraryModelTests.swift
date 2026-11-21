@@ -58,7 +58,7 @@ final class LibraryModelTests: XCTestCase {
 
         XCTAssertEqual(model.state.loadPhase, .loaded)
         XCTAssertEqual(model.state.meetings.map(\.id), [fixture.meeting.id])
-        XCTAssertEqual(model.state.voiceMixes[fixture.meeting.id], fixture.voiceMix)
+        XCTAssertEqual(model.state.voiceStrips[fixture.meeting.id], fixture.voiceStrip)
         XCTAssertEqual(model.state.openItems.map(\.item.id), [fixture.actionItem.id])
         XCTAssertEqual(model.state.trashed.map(\.meeting.id), [fixture.deleted.meeting.id])
         XCTAssertEqual(model.state.upcomingToday, fixture.agenda.today)
@@ -313,13 +313,11 @@ private struct LibraryModelFixture {
             startTime: 12)
     }
 
-    var voiceMix: [LibraryVoiceMixSlice] {
-        [LibraryVoiceMixSlice(
-            isMe: true,
-            displayName: "Me",
-            fraction: 1,
-            order: 0,
-            firstHeard: 0)]
+    var voiceStrip: VoiceStripColumns {
+        let cast = VoiceCast(
+            members: [VoiceCast.Member(key: "me", isMe: true, name: "Me", talkSeconds: 1)],
+            ordering: .talkShare)
+        return VoiceStripColumns(columns: [0, VoiceColumns.silence], tints: [.you], cast: cast)
     }
 
     var openItem: LibraryOpenItem {
@@ -351,7 +349,7 @@ private struct LibraryModelFixture {
         [
             .meetings(
                 includeContent
-                    ? [LibraryMeetingRow(meeting: meeting, voiceMix: voiceMix)]
+                    ? [LibraryMeetingRow(meeting: meeting, voiceStrip: voiceStrip)]
                     : [],
                 failures: meetingFailures),
             .openItems(includeContent ? [openItem] : []),

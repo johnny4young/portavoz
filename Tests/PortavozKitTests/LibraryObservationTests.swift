@@ -75,7 +75,7 @@ final class LibraryObservationTests: XCTestCase {
         let afterMeeting = try await nextMeetingRows(&meetingRows) {
             $0.rows.map(\.meeting.id) == [meeting.id]
         }
-        XCTAssertTrue(afterMeeting.rows.first?.voiceMix.isEmpty == true)
+        XCTAssertNil(afterMeeting.rows.first?.voiceColumns)
 
         let me = Speaker(meetingID: meeting.id, label: "Me", isMe: true)
         try await store.save([me])
@@ -90,9 +90,10 @@ final class LibraryObservationTests: XCTestCase {
                 isFinal: true)
         ])
         let afterTranscript = try await nextMeetingRows(&meetingRows) {
-            $0.rows.first?.voiceMix.count == 1
+            $0.rows.first?.voiceColumns?.voices.count == 1
         }
-        XCTAssertEqual(afterTranscript.rows.first?.voiceMix.first?.fraction, 1)
+        XCTAssertEqual(afterTranscript.rows.first?.voiceColumns?.voices.first?.isMe, true)
+        XCTAssertEqual(afterTranscript.uncachedVoiceColumns, [meeting.id])
 
         let action = ActionItem(text: "Enviar propuesta")
         _ = try await store.saveSummary(SummaryDraft(
@@ -122,9 +123,68 @@ final class LibraryObservationTests: XCTestCase {
         let afterRestore = try await nextMeetingRows(&meetingRows) {
             $0.rows.map(\.meeting.id) == [meeting.id]
         }
-        XCTAssertEqual(afterRestore.rows.first?.voiceMix.count, 1)
+        XCTAssertEqual(afterRestore.rows.first?.voiceColumns?.voices.count, 1)
         let trashAfterRestore = try await nextTrash(&trash) { $0.isEmpty }
         XCTAssertTrue(trashAfterRestore.isEmpty)
+    }
+
+    func testVoiceStripsDrawWithoutTheirCacheAndFollowCorrections() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Planning", startedAt: Date())
+        try await store.save(meeting)
+        let me = Speaker(meetingID: meeting.id, label: "Me", isMe: true)
+        let other = Speaker(meetingID: meeting.id, label: "S1")
+        try await store.save([me, other])
+        let segments = [
+            TranscriptSegment(
+                meetingID: meeting.id, speakerID: other.id, channel: .system,
+                text: "hola", startTime: 0, endTime: 50, isFinal: true),
+            TranscriptSegment(
+                meetingID: meeting.id, speakerID: me.id, channel: .microphone,
+                text: "vale", startTime: 50, endTime: 100, isFinal: true)
+        ]
+        try await store.save(segments)
+        var rows = store.observeLibraryMeetings().makeAsyncIterator()
+
+        let uncached = try await nextMeetingRows(&rows)
+        let drawn = try XCTUnwrap(uncached.rows.first?.voiceColumns)
+        XCTAssertEqual(uncached.uncachedVoiceColumns, [meeting.id])
+        let cachedCount = try await store.database.read { db in
+            try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM meetingVoiceColumns")
+        }
+        XCTAssertEqual(cachedCount, 0, "the observation never writes")
+
+        let stored = try await store.voiceColumns(for: [meeting.id])
+        XCTAssertEqual(stored[meeting.id], drawn, "the drawn strip is the one storage keeps")
+        let cached = try await nextMeetingRows(&rows) { $0.uncachedVoiceColumns.isEmpty }
+        XCTAssertEqual(cached.rows.first?.voiceColumns, drawn)
+
+        _ = try await store.appendTranscriptCorrections([
+            TranscriptCorrectionEvent(
+                meetingID: meeting.id, baseTranscriptRevision: meeting.transcriptRevision,
+                targetSegmentIDs: [segments[0].id], kind: .changeSpeaker(me.id),
+                sourceDeviceID: UUID(), createdAt: Date(timeIntervalSince1970: 10))
+        ])
+        let corrected = try await nextMeetingRows(&rows) {
+            $0.rows.first?.voiceColumns?.voices.map(\.isMe) == [true]
+        }
+        XCTAssertEqual(Set(corrected.rows.first?.voiceColumns?.columns ?? []), [0])
+    }
+
+    func testARecordingDrawsItsStripWithoutAskingToStoreIt() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Live", startedAt: Date(), lifecycleState: .recording)
+        try await store.save(meeting)
+        let me = Speaker(meetingID: meeting.id, label: "Me", isMe: true)
+        try await store.save([me])
+        try await store.save([TranscriptSegment(
+            meetingID: meeting.id, speakerID: me.id, channel: .microphone,
+            text: "en vivo", startTime: 0, endTime: 5, isFinal: true)])
+        var rows = store.observeLibraryMeetings().makeAsyncIterator()
+
+        let live = try await nextMeetingRows(&rows)
+        XCTAssertEqual(live.rows.first?.voiceColumns?.voices.first?.isMe, true)
+        XCTAssertTrue(live.uncachedVoiceColumns.isEmpty, "each new segment would drop the row again")
     }
 
     func testOpenItemsClampNonpositiveLimitsInsteadOfStreamingEverything() async throws {

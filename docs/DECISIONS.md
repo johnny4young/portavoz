@@ -23123,3 +23123,24 @@ corrections, import, sync replay, restore) stays correct without calling it and
 existing libraries fill in lazily without a migration backfill. The voice map
 stores speaker IDs, not names: names resolve at read time, so a rename costs
 nothing. The cache is neither synced nor backed up.
+
+## D649 — Library rows draw the stored voice strip
+
+The sidebar and Today's recent meetings draw who spoke when from the stored
+voice columns instead of a proportional voice mix. The library observation
+tracks the strip cache table next to `meeting`, `speaker` and the scoped
+`segment` columns: correction and audio triggers drop the cache row and the
+shared correction hook rebuilds it, so one table stands in for every strip
+input without observing corrections or audio directly.
+
+The observation stays read-only. A meeting without a cached row is binned in
+memory from the same readable attribution, so a row never waits for a write,
+and the app's Library adapter then asks `voiceColumns(for:)` to store it in
+chunks of 50, once per meeting per stream. A meeting still recording is never
+stored this way: each segment would drop the row again, and the finalize hook
+rebuilds it. A meeting with nothing attributed draws
+only the track.
+
+The raw-segment voice-mix query is retired with the bar: the talk-share
+mirror's recent average reads `talkSeconds` from the same strips, so every
+surface counts talk after speaker corrections.
