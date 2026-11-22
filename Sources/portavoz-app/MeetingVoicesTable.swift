@@ -28,6 +28,8 @@ struct MeetingVoicesTable<Trailing: View>: View {
     @ViewBuilder let trailing: Trailing
     @State private var showsOthers = false
     @State private var isNarrow = false
+    /// The widest row's trailing controls, so every strip ends on one edge.
+    @State private var trailingWidth: CGFloat = 0
 
     private var columnSpacing: CGFloat { isNarrow ? 8 : 12 }
     private var nameWidth: CGFloat { isNarrow ? 92 : 104 }
@@ -50,6 +52,9 @@ struct MeetingVoicesTable<Trailing: View>: View {
         }
         .onGeometryChange(for: Bool.self) { $0.size.width < VoicesTableFormat.narrowWidth } action: {
             isNarrow = $0
+        }
+        .onPreferenceChange(TrailingWidthKey.self) { width in
+            MainActor.assumeIsolated { trailingWidth = width }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-voices")
@@ -80,14 +85,22 @@ struct MeetingVoicesTable<Trailing: View>: View {
                 shareText(row.voice.share)
                 if !isNarrow { timeText(row.voice.talkSeconds) }
                 VoiceTurnsStrip(turns: row.turns, duration: table.duration, tint: row.voice.tint)
-                    .frame(minWidth: 48, maxWidth: VoicesTableFormat.stripWidth)
-                Spacer(minLength: 0)
-                if let suggestion = suggestions[speaker.label] {
-                    suggestionChip(suggestion)
+                    .frame(minWidth: 48, maxWidth: .infinity)
+                    .layoutPriority(-1)
+                    .accessibilityIdentifier("voice-turns-\(speaker.label)")
+                HStack(spacing: columnSpacing) {
+                    if let suggestion = suggestions[speaker.label] {
+                        suggestionChip(suggestion)
+                    }
+                    if playback != nil && table.count > 1 {
+                        onlyButton(row, speaker: speaker)
+                    }
                 }
-                if playback != nil && table.count > 1 {
-                    onlyButton(row, speaker: speaker)
+                // The strip yields first; a long chip truncates only once the strip is at its minimum.
+                .background {
+                    GeometryReader { Color.clear.preference(key: TrailingWidthKey.self, value: $0.size.width) }
                 }
+                .frame(minWidth: trailingWidth, alignment: .trailing)
             }
             .modifier(VoicesTableRowShape())
             .contextMenu {
@@ -212,7 +225,6 @@ struct MeetingVoicesTable<Trailing: View>: View {
 
 enum VoicesTableFormat {
     static let narrowWidth: CGFloat = 620
-    static let stripWidth: CGFloat = 430
 
     /// "Elena, Bruno, S9 +3": the first three folded voices by talk share.
     static func summary(_ names: [String]) -> String {
@@ -222,7 +234,7 @@ enum VoicesTableFormat {
 }
 
 /// One voice's turns on the meeting's time axis, each at least a point wide
-/// so a short turn still shows; hidden from VoiceOver, which reads the row's name and share.
+/// so a short turn still shows.
 struct VoiceTurnsStrip: View {
     let turns: [ClosedRange<TimeInterval>]
     let duration: TimeInterval
@@ -246,8 +258,15 @@ struct VoiceTurnsStrip: View {
         }
         .frame(height: 6)
         .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
-        .accessibilityHidden(true)
+        .accessibilityElement()
+        .accessibilityLabel(L10n.text("Turns"))
+        .accessibilityValue(turns.count.formatted())
     }
+}
+
+private struct TrailingWidthKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
 /// A 28 pt table row under a hairline.

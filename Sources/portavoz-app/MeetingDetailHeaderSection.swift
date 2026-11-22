@@ -99,7 +99,7 @@ struct MeetingDetailHeaderSection<Receipt: View>: View {
     }
 
     private var titleRow: some View {
-        HStack(spacing: 14) {
+        HStack(alignment: .firstTextBaseline, spacing: 14) {
             Text(values.title)
                 .pvDisplay(.title)
                 .contextMenu {

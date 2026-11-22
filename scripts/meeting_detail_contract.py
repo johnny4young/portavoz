@@ -173,6 +173,7 @@ DEFAULT_FEATURE_OWNERSHIP = (
         "tests": [
             "testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix",
             "testSummaryFeedbackIsExplicitReversibleAndLocal",
+            "testStandfirstControlsStayWholeInTheNarrowestWindow",
         ],
         "sourceAnchors": [
             {
@@ -189,6 +190,7 @@ DEFAULT_FEATURE_OWNERSHIP = (
         "feature": "many-voices",
         "tests": [
             "testManyVoicesKeepSixInTheCastAndFoldTheRestIntoOthers",
+            "testVoiceStripsRunUpToTheirRowControls",
         ],
         "sourceAnchors": [
             {

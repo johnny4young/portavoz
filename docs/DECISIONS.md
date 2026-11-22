@@ -23360,3 +23360,21 @@ digit cells: red stays reserved for live status (recording, Today's now
 marker), so the player no longer uses `StatusPill`. The page scroll ends at the player's top edge rather than
 running under an inset, so no row can sit beneath it.
 
+## D660 — The reading column keeps every control whole
+
+At a 900-point window the summary's claim review row ("Review · Add
+correction… · Mark unsupported") broke "Review" letter by letter and truncated
+both buttons, the privacy note under it truncated, the "Summarize as …?" chip
+straddled the closing hairline, chapter titles stopped at two lines, and each
+voice's turn strip stopped at 430 points, leaving a hole before Only. Claim
+review is now a menu among the summary's gutter menus (beside copy and
+regenerate, D656): Add/Edit correction and a checkable Mark unsupported, with
+the privacy note as help text. The assessment and its Clear button appear
+under the overview only once one is set, so D88's visible, reversible state
+stays without a permanent row of controls. Suggestion chips sit in the flow
+under the lede and wrap before they truncate; the scrolling page
+(D658) removed the reason they rode the hairline. Chapter titles wrap fully,
+and in the narrow transcript the chapter time follows the title the way a
+turn's time follows its speaker. Turn strips fill their row up to a trailing
+column sized to the widest row's controls, so strips still end on one edge
+when one row offers a name. Rows stay 28 points, as the board draws them.

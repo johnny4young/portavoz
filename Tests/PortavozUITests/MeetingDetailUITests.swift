@@ -722,6 +722,65 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testStandfirstControlsStayWholeInTheNarrowestWindow() throws {
+        let app = try launchOnSeededMeeting(aiSuggestions: true, extraArguments: ["-seed-narrow-window"])
+        defer { finishUITestApplication(app) }
+
+        XCTAssertTrue(app.revealMeetingDetailSection(.summary))
+        let standfirst = app.control(withIdentifier: "detail-standfirst")
+        let generated = app.control(withIdentifier: "detail-generated-document")
+        let recipe = app.buttons["detail-recipe-suggestion"]
+        XCTAssertTrue(recipe.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(generated.waitForStableFrame(timeout: 5))
+        XCTAssertGreaterThanOrEqual(recipe.frame.minY, standfirst.frame.maxY, "the suggestion follows the lede")
+        XCTAssertLessThanOrEqual(
+            recipe.frame.maxY, generated.frame.maxY - 6, "the suggestion sits above the closing rule, not on it")
+        let source = app.control(withIdentifier: "summary-evidence-0")
+        let dismiss = app.buttons["detail-recipe-suggestion-dismiss"]
+        for control in [recipe, dismiss, source] {
+            XCTAssertLessThanOrEqual(control.frame.maxX, generated.frame.maxX + 1, "\(control) stays in the column")
+        }
+        XCTAssertFalse(
+            app.staticTexts["Stays on this Mac. Included only when you export a .portavoz file."].exists,
+            "the privacy note lives in the review menu's help")
+
+        let reviewMenu = app.control(withIdentifier: "summary-feedback-menu")
+        XCTAssertTrue(reviewMenu.waitForHittable(timeout: 5), "claim review is reachable in the summary margin")
+        reviewMenu.click()
+        let unsupported = app.menuItems["summary-feedback-unsupported"]
+        XCTAssertTrue(unsupported.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(app.menuItems["summary-feedback-correction"].exists)
+        unsupported.click()
+        let status = app.control(withIdentifier: "summary-feedback-status")
+        XCTAssertTrue(status.waitForExistenceFast(timeout: 5))
+        let clear = app.buttons["summary-feedback-clear"]
+        XCTAssertTrue(clear.waitForHittable(timeout: 5))
+        XCTAssertLessThanOrEqual(clear.frame.maxX, generated.frame.maxX + 1)
+        attachScreenshot(of: app, named: "pr-meeting-standfirst-narrow")
+        clear.click()
+        XCTAssertTrue(status.waitForDisappearance(timeout: 5))
+    }
+
+    @MainActor
+    func testVoiceStripsRunUpToTheirRowControls() throws {
+        let app = try launchOnSeededMeeting()
+        defer { finishUITestApplication(app) }
+
+        let strips = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'voice-turns-'"))
+        XCTAssertTrue(waitForUITestCondition(timeout: 10) { strips.count >= 2 })
+        XCTAssertTrue(app.control(withIdentifier: "detail-voices").waitForStableFrame(timeout: 5))
+        for strip in strips.allElementsBoundByIndex {
+            let label = strip.identifier.replacingOccurrences(of: "voice-turns-", with: "")
+            let only = app.buttons["voice-only-\(label)"]
+            XCTAssertTrue(only.exists, label)
+            let gap = only.frame.minX - strip.frame.maxX
+            XCTAssertTrue((0...24).contains(gap), "\(label)'s strip ends \(gap) pt before Only")
+        }
+        attachScreenshot(of: app, named: "pr-meeting-voices-strips")
+    }
+
+    @MainActor
     func testManyVoicesKeepSixInTheCastAndFoldTheRestIntoOthers() throws {
         let app = try launchOnSeededMeeting(extraArguments: ["-seed-many-voices"])
         defer { finishUITestApplication(app) }
@@ -865,6 +924,12 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(ana.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { ana.frame.maxY <= line.frame.minY + 1 },
                       "a narrow column moves the speaker above the line")
+        let opening = app.control(withIdentifier: "transcript-chapter-0")
+        XCTAssertTrue(opening.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(
+            renderedText(of: opening).hasPrefix("Revisemos"),
+            "a narrow chapter leads with its title so it shares the turn text's edge: \(renderedText(of: opening))")
+        XCTAssertEqual(opening.frame.minX, ana.frame.minX, accuracy: 2, "chapter and turn share one edge")
         attachScreenshot(of: app, named: "pr-meeting-transcript-narrow")
     }
 
@@ -1935,20 +2000,31 @@ final class MeetingDetailUITests: PortavozUITestCase {
         defer { finishUITestApplication(app) }
         XCTAssertTrue(app.revealMeetingDetailSection(.summary))
 
-        let unsupported = app.control(withIdentifier: "summary-feedback-unsupported")
+        let reviewMenu = app.control(withIdentifier: "summary-feedback-menu")
         XCTAssertTrue(
-            unsupported.waitForExistenceFast(timeout: 10),
+            reviewMenu.waitForExistenceFast(timeout: 10),
             "an evidenced overview must expose explicit review controls")
         XCTAssertTrue(
-            unsupported.waitForStableFrame(),
+            reviewMenu.waitForStableFrame(),
             "the localized feedback control must finish layout before activation")
-        unsupported.click()
-        XCTAssertTrue(unsupported.waitForSelection(timeout: 5))
-        XCTAssertTrue(
+        XCTAssertFalse(
             app.control(withIdentifier: "summary-feedback-status").exists,
+            "nothing describes an assessment before one is set")
+        reviewMenu.click()
+        let unsupported = app.menuItems["summary-feedback-unsupported"]
+        XCTAssertTrue(unsupported.waitForExistenceFast(timeout: 5))
+        unsupported.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "summary-feedback-status").waitForExistenceFast(timeout: 5),
             "the unsupported assessment must stay visibly attached to the claim")
 
-        app.control(withIdentifier: "summary-feedback-correction").click()
+        reviewMenu.click()
+        let correctionItem = app.menuItems["summary-feedback-correction"]
+        XCTAssertTrue(correctionItem.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(
+            app.menuItems["summary-feedback-clear-menu"].exists,
+            "a set assessment can be cleared from the review menu")
+        correctionItem.click()
         let sheet = app.sheets.firstMatch
         XCTAssertTrue(
             sheet.waitForExistenceFast(timeout: 5),
@@ -1974,6 +2050,11 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let feedbackStatus = app.control(withIdentifier: "summary-feedback-status")
         app.control(withIdentifier: "summary-feedback-clear").click()
         XCTAssertTrue(feedbackStatus.waitForDisappearance(timeout: 5))
+
+        app.control(withIdentifier: "summary-tab-todos").click()
+        XCTAssertTrue(
+            reviewMenu.waitForDisappearance(timeout: 5),
+            "the overview's review menu leaves with the overview, so it never acts on a hidden claim")
     }
 
     @MainActor

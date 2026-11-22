@@ -59,6 +59,9 @@ struct MeetingGeneratedDocumentSection: View {
     let actions: MeetingGeneratedDocumentActions
 
     @State private var tabSelection = 0
+    @State private var savingClaimFeedback = false
+    /// Owned here, not by the gutter menu, so a layout switch never dismisses the sheet.
+    @State private var showingCorrection = false
     @State private var isNarrow = false
 
     private var document: MeetingGeneratedDocumentPresentation {
@@ -84,10 +87,14 @@ struct MeetingGeneratedDocumentSection: View {
                     gutter
                         .frame(width: Self.gutterWidth, alignment: .trailing)
                 }
-                documentContent
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 12) {
+                    documentContent
+                    suggestionRow
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            closingRule
+            Divider()
+                .padding(.top, 6)
         }
         .onGeometryChange(for: Bool.self) { proxy in
             MeetingDetailPageMetrics.usesInlineGutter(width: proxy.size.width)
@@ -96,6 +103,13 @@ struct MeetingGeneratedDocumentSection: View {
         .accessibilityIdentifier("detail-generated-document")
         .onChange(of: values.summary.version) { _, _ in
             tabSelection = 0
+        }
+        .sheet(isPresented: $showingCorrection) {
+            if let claim = overviewClaim {
+                SummaryCorrectionSheet(
+                    initialText: claim.feedback?.correctionText ?? "",
+                    save: saveFeedback(claim))
+            }
         }
     }
 
@@ -258,6 +272,10 @@ struct MeetingGeneratedDocumentSection: View {
         return segments
     }
 
+    private var showsOverview: Bool {
+        tabSelection != 1000 && !(tabSelection >= 1 && tabSelection - 1 < document.sections.count)
+    }
+
     @ViewBuilder
     private var documentContent: some View {
         if tabSelection == 1000 {
@@ -393,7 +411,7 @@ struct MeetingGeneratedDocumentSection: View {
 
     @ViewBuilder
     private var overviewEvidence: some View {
-        if let claim = values.summary.draft.claims.first(where: { $0.kind == .overview }) {
+        if let claim = overviewClaim {
             let resolution = currentResolution(claim.resolveEvidence(
                 currentTranscriptRevision: values.transcriptRevision,
                 segments: values.segments))
@@ -403,11 +421,28 @@ struct MeetingGeneratedDocumentSection: View {
                     sourceIdentifier: "summary-evidence",
                     staleIdentifier: "summary-evidence-stale",
                     unavailableIdentifier: "summary-evidence-unavailable")
-                SummaryClaimFeedbackView(claim: claim) { feedback in
-                    await actions.setClaimFeedback(claim.id, feedback)
-                }
+                SummaryClaimFeedbackStatus(
+                    claim: claim, saving: $savingClaimFeedback, save: saveFeedback(claim))
             }
         }
+    }
+
+    private var overviewClaim: SummaryClaim? {
+        values.summary.draft.claims.first { $0.kind == .overview }
+    }
+
+    @ViewBuilder
+    private var claimReviewMenu: some View {
+        // Only beside the overview, where its assessment shows.
+        if showsOverview, let claim = overviewClaim {
+            SummaryClaimFeedbackMenu(
+                claim: claim, saving: $savingClaimFeedback, save: saveFeedback(claim),
+                editCorrection: { showingCorrection = true })
+        }
+    }
+
+    private func saveFeedback(_ claim: SummaryClaim) -> (SummaryClaimFeedback?) async -> Bool {
+        { feedback in await actions.setClaimFeedback(claim.id, feedback) }
     }
 
     @ViewBuilder
@@ -464,9 +499,12 @@ private extension MeetingGeneratedDocumentSection {
             ForEach(documentSegments) { segment in
                 gutterButton(segment)
             }
-            summaryBadge
-                .padding(.top, 4)
-            documentMenus
+            // Badge and menus share a line when it fits, so the gutter stays near the lede's height.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 6) { summaryBadge; documentMenus }
+                VStack(alignment: .trailing, spacing: 3) { summaryBadge; documentMenus }
+            }
+            .padding(.top, 4)
         }
         .padding(.top, 5)
     }
@@ -497,6 +535,7 @@ private extension MeetingGeneratedDocumentSection {
     var documentMenus: some View {
         HStack(spacing: 2) {
             copyMenu
+            claimReviewMenu
             regenerateMenu
         }
         .foregroundStyle(PVDesign.ink3)
@@ -525,26 +564,11 @@ private extension MeetingGeneratedDocumentSection {
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
-    /// Suggestions ride on the closing rule instead of taking a row of their
-    /// own, so one that arrives late never moves the material below it.
-    var closingRule: some View {
-        HStack(spacing: 8) {
-            VStack { Divider() }
-            suggestionRow
-        }
-        .frame(height: 1)
-        // The chip overhangs the rule; keep its lower half off the next block.
-        .padding(.bottom, showsSuggestion ? 11 : 0)
-    }
-
-    var showsSuggestion: Bool {
-        !values.regenerating && (values.suggestedRecipe != nil || values.showThinSuggestion)
-    }
-
+    /// Suggestions sit in the flow under the lede and wrap rather than truncate.
     @ViewBuilder
     var suggestionRow: some View {
-        if showsSuggestion {
-            HStack(spacing: 8) {
+        if !values.regenerating && (values.suggestedRecipe != nil || values.showThinSuggestion) {
+            FlowLayout(spacing: 8, rowSpacing: 6) {
                 recipeSuggestion
                 thinSummarySuggestion
             }

@@ -105,6 +105,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("MeetingDetailUITests", "testNamedSpeakerCanBeRememberedAsCanonicalPerson"),
         test_id("MeetingDetailUITests", "testFamilyControlsShapeCastSuggestionsTabsAndCommitmentCards"),
         test_id("MeetingDetailUITests", "testManyVoicesKeepSixInTheCastAndFoldTheRestIntoOthers"),
+        test_id("MeetingDetailUITests", "testVoiceStripsRunUpToTheirRowControls"),
     ),
     "meeting-processing": (
         test_id("MeetingDetailUITests", "testFailedDurableProcessingOffersOneRecoveryAction"),
@@ -117,6 +118,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("MeetingDetailUITests", "testFamilyControlsShapeCastSuggestionsTabsAndCommitmentCards"),
         test_id("MeetingDetailUITests", "testNarrowMeetingPageReadsAsOneColumn"),
         test_id("MeetingDetailUITests", "testWideMeetingPagePutsTheMarginBesideTheReadingColumn"),
+        test_id("MeetingDetailUITests", "testStandfirstControlsStayWholeInTheNarrowestWindow"),
     ),
     "meeting-evidence": (
         test_id("MeetingDetailUITests", "testEvidenceSourcesJumpToTheirExactTranscriptAndAudio"),
