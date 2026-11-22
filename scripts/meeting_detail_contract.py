@@ -201,6 +201,26 @@ DEFAULT_FEATURE_OWNERSHIP = (
         ],
     },
     {
+        "feature": "document-header",
+        "tests": [
+            "testMeetingPageReadsLikeADocument",
+        ],
+        "sourceAnchors": [
+            {
+                "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+                "anchor": '"detail-kicker"',
+            },
+            {
+                "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+                "anchor": '"detail-more-menu"',
+            },
+            {
+                "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+                "anchor": '"detail-standfirst"',
+            },
+        ],
+    },
+    {
         "feature": "family-controls",
         "tests": [
             "testFamilyControlsShapeCastSuggestionsTabsAndCommitmentCards",

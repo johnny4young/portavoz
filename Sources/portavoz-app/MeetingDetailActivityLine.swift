@@ -10,10 +10,10 @@ struct MeetingDetailActivityValues {
     var hasContent: Bool { privacyReceipt != nil || !skillReceipts.isEmpty }
 }
 
-/// One line under the meeting title: what Portavoz did on the user's behalf
-/// here and whether any content left this Mac. The chip states the outcome;
-/// the popover carries the auditable detail (remote attempts, private iCloud
-/// copy, every confirmed action) without taking rail space.
+/// The privacy receipt beside the meeting's date line: whether any content
+/// left this Mac. The label states the outcome; the popover carries the
+/// auditable detail (remote attempts, private iCloud copy, every confirmed
+/// action) without taking page space.
 struct MeetingDetailActivityLine: View {
     let values: MeetingDetailActivityValues
 
@@ -21,22 +21,18 @@ struct MeetingDetailActivityLine: View {
 
     var body: some View {
         if values.hasContent {
-            // The popover anchors on a one-point sibling beside the chip, never
-            // on the button or over it: anything attached to the chip's own
-            // bounds surfaced as an unmappable element under hit tests on the
-            // hosted runner.
+            // The popover anchors on a one-point sibling, never on the button:
+            // anything attached to the button's own bounds surfaced as an
+            // unmappable element under hit tests on the hosted runner.
             HStack(spacing: 0) {
-                // A bordered control, not a plain text button: the runner's
-                // hit test maps a bordered button reliably in every locale.
                 Button {
                     showsActivity.toggle()
                 } label: {
                     Label(chipTitle, systemImage: chipSymbol)
-                        .font(.caption.weight(.medium))
+                        .font(.caption.weight(isQuiet ? .regular : .semibold))
+                        .foregroundStyle(isQuiet ? PVDesign.ink3 : PVDesign.caution)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .tint(chipTint)
+                .buttonStyle(.borderless)
                 .fixedSize()
                 .accessibilityLabel(chipTitle)
                 .accessibilityIdentifier("detail-privacy-receipt")
@@ -49,6 +45,11 @@ struct MeetingDetailActivityLine: View {
                     }
             }
         }
+    }
+
+    /// Everything stayed here: the receipt reads as a quiet fact, not an alert.
+    private var isQuiet: Bool {
+        values.privacyReceipt.map { $0.status == .allContentStayedOnDevice } ?? true
     }
 
     private var activityPopover: some View {
@@ -76,10 +77,6 @@ struct MeetingDetailActivityLine: View {
 
     private var chipSymbol: String {
         values.privacyReceipt.map { privacyReceiptIcon($0.status) } ?? PVSymbol.history
-    }
-
-    private var chipTint: Color {
-        values.privacyReceipt.map { privacyReceiptTint($0.status) } ?? .secondary
     }
 
     /// Q12/D316: every durable skill execution for this meeting — the

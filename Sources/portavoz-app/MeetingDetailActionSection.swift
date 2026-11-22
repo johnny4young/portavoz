@@ -31,6 +31,10 @@ enum MeetingDetailExportAction {
 struct MeetingDetailActionValues {
     let isRefining: Bool
     let hasAudio: Bool
+    /// Removable silent tail; nil hides the action.
+    let trailingSilence: TimeInterval?
+    let canCompressAudio: Bool
+    let isCompressingAudio: Bool
     let hasSummary: Bool
     let hasCorrections: Bool
     let includeCorrectionProvenance: Bool
@@ -45,13 +49,16 @@ struct MeetingDetailActionActions {
     let cancelRefine: @MainActor () -> Void
     let setIncludeCorrectionProvenance: @MainActor (Bool) -> Void
     let export: @MainActor (MeetingDetailExportAction) -> Void
+    let renameMeeting: @MainActor () -> Void
+    let askToTrimSilence: @MainActor () -> Void
+    let compressAudio: @MainActor () -> Void
     let deleteMeeting: @MainActor () -> Void
     let openSkillOffer: @MainActor (MeetingSkillOffer) -> Void
     let dismissSkillOffer: @MainActor (MeetingSkillOffer) -> Void
     let loadSkillOffers: @MainActor () -> Void
 }
 
-/// Refine, export, publishing, and deletion controls for one reviewed meeting.
+/// The meeting's window toolbar: automations, re-transcribe, share and More.
 ///
 /// The section renders capabilities only. Route mutation and application work
 /// remain explicit actions owned above this presentation boundary.
@@ -60,16 +67,17 @@ struct MeetingDetailActionSection: View {
     let actions: MeetingDetailActionActions
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 4) {
             SkillOfferMenu(
                 offers: values.skillOffers,
                 hasSummary: values.hasSummary,
                 open: actions.openSkillOffer,
                 dismiss: actions.dismissSkillOffer,
                 load: actions.loadSkillOffers)
+                .padding(.trailing, 4)
             refineControl
             exportMenu
-            deleteButton
+            moreMenu
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-actions")
@@ -85,7 +93,7 @@ struct MeetingDetailActionSection: View {
     private var refineControl: some View {
         if values.isRefining {
             Button(role: .destructive, action: actions.cancelRefine) {
-                refineLabel(isRefining: true)
+                toolbarGlyph("xmark")
             }
             .buttonStyle(.plain)
             .fixedSize()
@@ -97,7 +105,7 @@ struct MeetingDetailActionSection: View {
                 Button("Re-transcribe in Spanish", action: actions.startSpanishRefine)
                 Button("Re-transcribe in English", action: actions.startEnglishRefine)
             } label: {
-                refineLabel(isRefining: false)
+                toolbarGlyph(PVSymbol.retry)
             } primaryAction: {
                 actions.startRefine()
             }
@@ -105,6 +113,7 @@ struct MeetingDetailActionSection: View {
             .menuIndicator(.hidden)
             .fixedSize()
             .disabled(!values.hasAudio)
+            .accessibilityLabel(L10n.text("Re-transcribe"))
             .accessibilityIdentifier("detail-refine")
             .accessibilityValue("refine")
             .help(L10n.text(
@@ -151,15 +160,12 @@ struct MeetingDetailActionSection: View {
             Divider()
             Button("Publish as Gist…") { actions.export(.gist) }
         } label: {
-            Image(systemName: "square.and.arrow.up")
-                .font(.system(size: 13))
-                .foregroundStyle(PVDesign.accent)
-                .frame(width: 30, height: 30)
-                .background(Circle().fill(PVDesign.accent.opacity(0.16)))
+            toolbarGlyph("square.and.arrow.up")
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
+        .accessibilityLabel(L10n.text("Share"))
         .accessibilityIdentifier("detail-export-menu")
         .help(L10n.text("Export or share this meeting"))
     }
@@ -190,28 +196,44 @@ struct MeetingDetailActionSection: View {
         .accessibilityIdentifier(identifier)
     }
 
-    private var deleteButton: some View {
-        Button(role: .destructive, action: actions.deleteMeeting) {
-            Image(systemName: "trash")
-                .font(.system(size: 13))
-                .foregroundStyle(PVDesign.caution)
-                .frame(width: 30, height: 30)
-                .background(Circle().fill(.quaternary.opacity(0.5)))
+    private var moreMenu: some View {
+        Menu {
+            Button("Rename…", action: actions.renameMeeting)
+                .accessibilityIdentifier("detail-rename")
+            if let trailingSilence = values.trailingSilence {
+                Button(L10n.format(
+                    "Remove %@ of silence at the end…",
+                    MeetingDetailAudioTrimState.formatted(trailingSilence)),
+                    action: actions.askToTrimSilence)
+                .accessibilityIdentifier("detail-trim-silence")
+            }
+            if values.canCompressAudio || values.isCompressingAudio {
+                Button(
+                    values.isCompressingAudio ? "Compressing…" : "Compress audio (AAC)",
+                    action: actions.compressAudio)
+                    .disabled(!values.canCompressAudio)
+                    .help("Converts audio to AAC to save disk space, with no audible loss for speech")
+                    .accessibilityIdentifier("detail-compress-audio")
+            }
+            Divider()
+            Button("Move to Recently deleted", role: .destructive, action: actions.deleteMeeting)
+                .accessibilityIdentifier("detail-delete")
+        } label: {
+            toolbarGlyph("ellipsis")
         }
-        .buttonStyle(.plain)
-        .help(L10n.text("Move this meeting to Recently deleted"))
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .accessibilityLabel(L10n.text("More"))
+        .accessibilityIdentifier("detail-more-menu")
+        .help(L10n.text("More"))
     }
 
-    private func refineLabel(isRefining: Bool) -> some View {
-        Group {
-            if isRefining {
-                Image(systemName: "xmark").font(.system(size: 13, weight: .semibold))
-            } else {
-                Image(systemName: PVSymbol.generate).font(.system(size: 13))
-            }
-        }
-        .foregroundStyle(.secondary)
-        .frame(width: 30, height: 30)
-        .background(Circle().fill(.quaternary.opacity(0.5)))
+    private func toolbarGlyph(_ systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: 14))
+            .foregroundStyle(PVDesign.ink2)
+            .frame(width: 28, height: 28)
+            .contentShape(Rectangle())
     }
 }

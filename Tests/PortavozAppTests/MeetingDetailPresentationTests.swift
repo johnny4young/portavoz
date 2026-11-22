@@ -34,12 +34,16 @@ final class MeetingDetailPresentationTests: XCTestCase {
                 startedAt: start,
                 endedAt: start.addingTimeInterval(-10)),
             "0 min")
-        XCTAssertEqual(presentation.segmentCount(-1), "0 segments")
-        XCTAssertEqual(presentation.segmentCount(1), "1 segment")
-        XCTAssertEqual(presentation.segmentCount(42), "42 segments")
     }
 
-    func testMeetingDateUsesTheInjectedLocaleAndTimeZone() {
+    func testSpokenLanguageUsesItsOwnNameAndSkipsUnknownCodes() {
+        XCTAssertEqual(MeetingDetailPresentation.spokenLanguageName("es"), "Español")
+        XCTAssertEqual(MeetingDetailPresentation.spokenLanguageName("en"), "English")
+        XCTAssertNil(MeetingDetailPresentation.spokenLanguageName(nil))
+        XCTAssertNil(MeetingDetailPresentation.spokenLanguageName(""))
+    }
+
+    func testMeetingKickerUsesTheInjectedLocaleAndTimeZone() {
         let date = Date(timeIntervalSince1970: 1_704_072_600)
         let english = MeetingDetailPresentation(
             locale: Locale(identifier: "en_US"),
@@ -50,15 +54,20 @@ final class MeetingDetailPresentationTests: XCTestCase {
 
         XCTAssertEqual(english.languageIdentifier, "en")
         XCTAssertEqual(spanish.languageIdentifier, "es")
-        XCTAssertNotEqual(english.meetingDate(date), spanish.meetingDate(date))
-        XCTAssertTrue(english.meetingDate(date).contains("2024"))
-        XCTAssertTrue(spanish.meetingDate(date).contains("2024"))
+        let end = date.addingTimeInterval(42 * 60)
+        XCTAssertEqual(
+            english.meetingKicker(startedAt: date, endedAt: end, language: "es"),
+            "Mon, Jan 1, 2024 · 1:30\u{202F}AM · 42 min · Español")
+        XCTAssertNotEqual(
+            english.meetingKicker(startedAt: date, endedAt: end, language: "es"),
+            spanish.meetingKicker(startedAt: date, endedAt: end, language: "es"))
+        XCTAssertTrue(spanish.meetingKicker(startedAt: date, endedAt: nil, language: nil).contains("2024"))
 
         let losAngeles = MeetingDetailPresentation(
             locale: Locale(identifier: "en_US"),
             timeZone: TimeZone(identifier: "America/Los_Angeles")!)
-        XCTAssertNotEqual(english.meetingDate(date), losAngeles.meetingDate(date))
-        XCTAssertTrue(losAngeles.meetingDate(date).contains("2023"))
+        XCTAssertTrue(
+            losAngeles.meetingKicker(startedAt: date, endedAt: nil, language: nil).contains("2023"))
         XCTAssertNotEqual(english.shortDate(date), losAngeles.shortDate(date))
     }
 }

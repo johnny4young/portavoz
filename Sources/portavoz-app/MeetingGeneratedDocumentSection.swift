@@ -66,15 +66,23 @@ struct MeetingGeneratedDocumentSection: View {
             hasTypedCommitments: !values.summary.draft.actionItems.isEmpty)
     }
 
+    /// The board's left margin: the kicker and counts sit beside the lede.
+    private static let gutterWidth: CGFloat = 118
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            documentHeader
+        VStack(alignment: .leading, spacing: 10) {
             staleSummaryNotice
-            documentTabs
-            documentContent
-                .pvCard(.generated)
+            HStack(alignment: .top, spacing: 22) {
+                gutter
+                    .frame(width: Self.gutterWidth, alignment: .trailing)
+                VStack(alignment: .leading, spacing: 10) {
+                    documentContent
+                    suggestionRow
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            Divider()
         }
-        .pvCard(.outlined, padding: 14)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-generated-document")
         .onChange(of: values.summary.version) { _, _ in
@@ -103,22 +111,9 @@ struct MeetingGeneratedDocumentSection: View {
         }
     }
 
-    private var documentHeader: some View {
-        HStack {
-            Text("Summary")
-                .font(.headline)
-            summaryBadge
-            Spacer()
-            recipeSuggestion
-            thinSummarySuggestion
-            copyMenu
-            regenerateMenu
-        }
-    }
-
     @ViewBuilder
     private var recipeSuggestion: some View {
-        if let suggested = values.suggestedRecipe, !values.regenerating {
+        if let suggested = values.suggestedRecipe {
             DismissibleSuggestionChip(
                 kind: .ai,
                 text: L10n.format(
@@ -137,7 +132,7 @@ struct MeetingGeneratedDocumentSection: View {
 
     @ViewBuilder
     private var thinSummarySuggestion: some View {
-        if values.showThinSuggestion, !values.regenerating {
+        if values.showThinSuggestion {
             DismissibleSuggestionChip(
                 kind: .ai,
                 text: L10n.text("Summary looks thin — make it detailed?"),
@@ -164,7 +159,9 @@ struct MeetingGeneratedDocumentSection: View {
             Image(systemName: "doc.on.doc")
         }
         .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
         .fixedSize()
+        .accessibilityLabel(L10n.text("Copy summary"))
         .help("Copy the summary to the clipboard")
     }
 
@@ -197,7 +194,9 @@ struct MeetingGeneratedDocumentSection: View {
                 Image(systemName: PVSymbol.retry)
             }
             .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
             .fixedSize()
+            .accessibilityLabel(L10n.text("Regenerate"))
             .accessibilityIdentifier("detail-regenerate-menu")
         }
     }
@@ -227,10 +226,6 @@ struct MeetingGeneratedDocumentSection: View {
             }
         }
         .accessibilityIdentifier("detail-summary-detail-menu")
-    }
-
-    private var documentTabs: some View {
-        PVSegmentedControl(segments: documentSegments, selection: $tabSelection)
     }
 
     private var documentSegments: [PVSegment<Int>] {
@@ -266,6 +261,9 @@ struct MeetingGeneratedDocumentSection: View {
         } else {
             VStack(alignment: .leading, spacing: 8) {
                 MarkdownText(text: document.overviewMarkdown)
+                    .pvDisplay(.standfirst)
+                    .lineSpacing(4)
+                    .accessibilityIdentifier("detail-standfirst")
                 overviewEvidence
             }
         }
@@ -430,8 +428,8 @@ struct MeetingGeneratedDocumentSection: View {
     private var summaryBadge: some View {
         let badge = summaryBadgeText
         return Text(badge)
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            .font(.caption2)
+            .foregroundStyle(PVDesign.ink3)
             .accessibilityLabel(badge)
             .accessibilityValue(badge)
             .accessibilityIdentifier("summary-badge")
@@ -446,6 +444,60 @@ struct MeetingGeneratedDocumentSection: View {
             badge += " · \(recipe.displayName)"
         }
         return badge
+    }
+}
+
+private extension MeetingGeneratedDocumentSection {
+    /// "✦ Summary" and one count per section stand in for tabs: each selects
+    /// what the lede column shows.
+    var gutter: some View {
+        VStack(alignment: .trailing, spacing: 3) {
+            ForEach(documentSegments) { segment in
+                gutterButton(segment)
+            }
+            summaryBadge
+                .padding(.top, 4)
+            HStack(spacing: 2) {
+                copyMenu
+                regenerateMenu
+            }
+            .foregroundStyle(PVDesign.ink3)
+        }
+        .padding(.top, 5)
+    }
+
+    func gutterButton(_ segment: PVSegment<Int>) -> some View {
+        let selected = segment.value == tabSelection
+        return Button {
+            tabSelection = segment.value
+        } label: {
+            if segment.value == 0 {
+                PVCardCaption(
+                    text: segment.title,
+                    systemImage: ChipLabel.generatedSymbol,
+                    tint: selected ? PVDesign.green : PVDesign.ink3)
+                    .padding(.bottom, 2)
+            } else {
+                Text(segment.title)
+                    .font(.subheadline.weight(selected ? .semibold : .regular))
+                    .foregroundStyle(selected ? PVDesign.ink : PVDesign.ink3)
+                    .multilineTextAlignment(.trailing)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(segment.accessibilityIdentifier)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    @ViewBuilder
+    var suggestionRow: some View {
+        if !values.regenerating,
+           values.suggestedRecipe != nil || values.showThinSuggestion {
+            HStack(spacing: 8) {
+                recipeSuggestion
+                thinSummarySuggestion
+            }
+        }
     }
 }
 

@@ -1147,10 +1147,10 @@ and imports Foundation only. The composition root is not an allowed dependency
 of child presentation types; scoped action values are their mutation boundary.
 
 The child is itself a composition surface rather than the owner of every visual
-section. `MeetingDetailHeaderSection` renders identity, facts, participants,
-and optional suggestions. `MeetingDetailTrustSection` renders processing and
+section. `MeetingDetailHeaderSection` renders the date line, identity,
+participants, and optional suggestions. `MeetingDetailTrustSection` renders processing and
 recovery; `MeetingDetailActivityLine` renders the privacy receipt and action
-history as one chip under the title with a popover for the detail. `MeetingGeneratedDocumentSection` renders
+history as one label at the end of the date line with a popover for the detail. `MeetingGeneratedDocumentSection` renders
 the summary overview, decision/open-question sections, typed commitments, and
 claim-adjacent proof controls. Each receives only explicit values and actions;
 none can reach the route model, services, stores, or global preferences. The
@@ -3350,8 +3350,9 @@ pending seek coordination remain above the section in the route model and
 ApplicationKit workflows.
 
 Secondary Meeting Detail flows use the same rule. `MeetingDetailActionSection`
-renders Refine, recap, export, Gist, and delete capabilities from immutable
-values and explicit intents. `MeetingDetailRailSection` owns the always-present
+renders the meeting's window toolbar (automations, Re-transcribe, Share, and
+More with rename, trim, compression and delete) from immutable values and
+explicit intents. `MeetingDetailRailSection` owns the always-present
 recovery card and the three lenses (people, Apuntador, chapters) shown one at
 a time; the composition owns the selected lens and passes it in as a value,
 so the rail reaches neither state nor the composition root; the coordinator

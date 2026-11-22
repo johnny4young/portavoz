@@ -98,6 +98,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "meeting-recap": (
         test_id("MeetingDetailUITests", "testRecapSheetDraftsFromTheSummaryWithoutTheTranscript"),
+        test_id("MeetingDetailUITests", "testMeetingPageReadsLikeADocument"),
     ),
     "meeting-naming": (
         test_id("MeetingDetailUITests", "testAConfidentVoiceMatchNamesTheSpeakerAndCanBeUndone"),
@@ -112,6 +113,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "meeting-summary": (
         test_id("MeetingDetailUITests", "testMeetingReviewSurfacesRemainCompleteAndActionable"),
+        test_id("MeetingDetailUITests", "testMeetingPageReadsLikeADocument"),
         test_id("MeetingDetailUITests", "testFamilyControlsShapeCastSuggestionsTabsAndCommitmentCards"),
     ),
     "meeting-evidence": (

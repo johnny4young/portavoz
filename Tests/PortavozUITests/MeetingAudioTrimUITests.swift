@@ -31,11 +31,11 @@ final class MeetingAudioTrimUITests: PortavozUITestCase {
 
         openTrimConfirmation(in: app)
         attachScreenshot(of: app, named: "audio-trim-confirmation")
-        let cancel = app.buttons["player-trim-silence-cancel"]
+        let cancel = app.buttons["detail-trim-silence-cancel"]
         XCTAssertTrue(cancel.waitForHittable(timeout: 5))
         cancel.click()
         XCTAssertTrue(waitForUITestCondition(timeout: 5) {
-            !app.buttons["player-trim-silence-confirm"].exists
+            !app.buttons["detail-trim-silence-confirm"].exists
         })
         XCTAssertEqual(try hashes(of: files), originalHashes)
         try assertDurations(of: files, equalTo: 600)
@@ -44,7 +44,7 @@ final class MeetingAudioTrimUITests: PortavozUITestCase {
         assertTranscript(in: app)
 
         openTrimConfirmation(in: app)
-        app.buttons["player-trim-silence-confirm"].click()
+        app.buttons["detail-trim-silence-confirm"].click()
         XCTAssertTrue(app.control(withIdentifier: "detail-trim-progress")
             .waitForExistenceFast(timeout: 5))
         XCTAssertEqual(try hashes(of: files), originalHashes,
@@ -70,8 +70,8 @@ final class MeetingAudioTrimUITests: PortavozUITestCase {
         XCTAssertNotEqual(try hashes(of: files), originalHashes)
         XCTAssertTrue(app.staticTexts["/ 3:35"].waitForExistenceFast(timeout: 5))
         assertTranscript(in: app)
-        app.control(withIdentifier: "player-options").click()
-        XCTAssertFalse(app.menuItems["player-trim-silence"].exists,
+        app.control(withIdentifier: "detail-more-menu").click()
+        XCTAssertFalse(app.menuItems["detail-trim-silence"].exists,
                        "the shortened recording must no longer offer a long-tail cut")
         typeKey(.escape, modifierFlags: [], in: app)
         attachScreenshot(of: app, named: "audio-trim-after")
@@ -79,13 +79,13 @@ final class MeetingAudioTrimUITests: PortavozUITestCase {
 
     @MainActor
     private func openTrimConfirmation(in app: XCUIApplication) {
-        let options = app.control(withIdentifier: "player-options")
-        XCTAssertTrue(options.waitForHittable(timeout: 5))
-        options.click()
-        let trim = app.menuItems["player-trim-silence"]
+        let more = app.control(withIdentifier: "detail-more-menu")
+        XCTAssertTrue(more.waitForHittable(timeout: 5))
+        more.click()
+        let trim = app.menuItems["detail-trim-silence"]
         XCTAssertTrue(trim.waitForExistenceFast(timeout: 5))
         trim.click()
-        XCTAssertTrue(app.buttons["player-trim-silence-confirm"].waitForHittable(timeout: 5))
+        XCTAssertTrue(app.buttons["detail-trim-silence-confirm"].waitForHittable(timeout: 5))
         XCTAssertTrue(app.staticTexts[
             "The audio after the last phrase is deleted for good, and transcript edits are reset."].exists)
     }

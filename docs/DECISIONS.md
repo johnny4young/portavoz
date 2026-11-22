@@ -23283,3 +23283,24 @@ cast, so a header render never regroups turns. Each row draws that voice's
 turns exactly rather than the meeting strip with `only:`: binned columns go to
 whoever dominates each one, which hides short or overlapping turns of quieter
 voices, the very turns a per-voice row exists to show.
+
+## D656 — A meeting page reads like a document, its actions in the toolbar
+
+The header used to stack the title, a row of round action buttons, a facts row
+with the segment count and a privacy chip before the summary card. The page now
+reads top to bottom like a document: a date line (day · time · duration ·
+spoken language) with the privacy receipt at its end, the title with its ✦
+suggestion, the Voices table, then the summary as a serif standfirst whose
+section counts replace the tabs in a left gutter, and the transcript right
+below. The segment count is dropped; it described the transcript's storage,
+not the meeting.
+
+Every meeting action moved to the window toolbar: the automations pill,
+Re-transcribe, Share, and a More menu with Rename, the silent-tail trim,
+Compress audio and Move to Recently deleted. Trim and compression left the
+player, which keeps only their progress and results, so the dock no longer
+grows a button row. Renaming leaves the pencil for the More menu and the
+title's context menu. Copy, regenerate and the version badge stay with the
+summary in its gutter, because they act on that document rather than on the
+meeting.
+
