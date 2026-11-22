@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 140
+    "expectedCaseCount": 141
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -72,6 +72,7 @@
     "LibraryUITests/testRecordingWarnsWhenRemoteAudioCallbacksStop()": 20.0,
     "LibraryUITests/testSeededMeetingsGroupByRecency()": 20.0,
     "LibraryUITests/testSidebarSecondaryTextReadsInInkInBothAppearances()": 25.0,
+    "LibraryUITests/testSidebarShowsThisWeekAndEarlierHeadersAtLaunch()": 25.0,
     "LibraryUITests/testUnansweredCallEndedQuestionStopsTheRecording()": 20.0,
     "LibraryUITests/testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment()": 20.0,
     "MeetingAudioTrimUITests/testSilentTailRequiresConfirmationAndCutsOnlyAfterConfirmation()": 30.0,

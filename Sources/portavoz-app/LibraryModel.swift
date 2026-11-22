@@ -87,6 +87,7 @@ final class LibraryModel {
     struct State {
         fileprivate(set) var loadPhase: LoadPhase = .idle
         fileprivate(set) var meetings: [Meeting] = []
+        fileprivate(set) var meetingsRead = false
         fileprivate(set) var voiceStrips: [MeetingID: VoiceStripColumns] = [:]
         fileprivate(set) var voiceSources: [MeetingID: VoiceStripSource] = [:]
         fileprivate(set) var openItems: [LibraryOpenItem] = []
@@ -123,6 +124,10 @@ final class LibraryModel {
         fileprivate(set) var openItemSources: [UUID: OpenItemSource] = [:]
         /// Generated suggestions waiting in Radar's review queue.
         fileprivate(set) var suggestionsToReview = 0
+
+        /// Only once the meetings read succeeds, so launch does not flash it
+        /// and an unreadable store is not worded as an empty one.
+        var showsNoMeetings: Bool { meetingsRead && meetings.isEmpty }
 
         /// The open to-dos Today lists.
         var shownOpenItems: ArraySlice<LibraryOpenItem> { openItems.prefix(TodayPickUp.maximumOpenItems) }
@@ -326,6 +331,7 @@ private extension LibraryModel {
         switch update {
         case .meetings(let rows, let failures):
             state.meetings = rows.map(\.meeting)
+            state.meetingsRead = true
             state.voiceStrips = Dictionary(uniqueKeysWithValues: rows.map {
                 ($0.meeting.id, $0.voiceStrip)
             })

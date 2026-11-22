@@ -206,6 +206,38 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testSidebarShowsThisWeekAndEarlierHeadersAtLaunch() throws {
+        let variants = [
+            ("standard", [String]()),
+            ("min", ["-seed-narrow-window"]),
+            ("wide", ["-seed-wide-window"])
+        ]
+        for (name, arguments) in variants {
+            let app = try XCUIApplication.portavoz(seedDemo: true)
+            app.launchArguments += ["-seed-today-voices", "-reset-sidebar"] + arguments
+                + XCUIApplication.appearanceArguments(dark: false)
+            app.launchPortavoz()
+            XCTAssertTrue(app.waitForSeededLibraryToSettle())
+            let thisWeek = app.control(withIdentifier: "library-section-thisweek")
+            XCTAssertTrue(thisWeek.waitForExistenceFast(timeout: 10), "\(name): today's meetings sit under This week")
+            XCTAssertTrue(
+                app.control(withIdentifier: "library-section-earlier").exists, "\(name): older meetings sit under Earlier")
+
+            let snapshot = try app.snapshot()
+            let search = try uiSnapshotElement("library-search-field", type: .textField, in: snapshot).frame
+            let header = try uiSnapshotElement("library-section-thisweek", in: snapshot).frame
+            let list = app.outlines.firstMatch.frame
+            XCTAssertGreaterThanOrEqual(header.minY, list.minY, "\(name): the first header is inside the list at launch")
+            XCTAssertGreaterThanOrEqual(header.minY - search.maxY, 18, "\(name): air between search and the first section")
+            let window = app.windows.firstMatch.frame
+            let sidebar = list.maxX - window.minX
+            XCTAssertLessThanOrEqual(sidebar, 250, "\(name): the sidebar keeps the board's narrow column (\(sidebar) pt)")
+            attachScreenshot(of: app, named: "pr-library-sections-\(name)")
+            finishUITestApplication(app)
+        }
+    }
+
+    @MainActor
     func testPrivacyChipOpensTheActivityLogInYourData() throws {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
