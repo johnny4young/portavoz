@@ -45,8 +45,8 @@ function PVMenubar() {
         <span style={{ fontVariantNumeric: "tabular-nums" }}>16:04</span>
       </div>
 
-      <div style={{ width: 340, marginTop: 6, borderRadius: 16, overflow: "hidden", background: "rgba(30,30,36,0.92)", backdropFilter: "blur(30px)", border: "0.5px solid rgba(255,255,255,0.14)", boxShadow: "0 18px 50px rgba(0,0,0,0.5)", color: "rgba(255,255,255,0.88)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: "radial-gradient(280px 120px at 85% -30%, rgba(82,38,191,0.5), transparent 70%)" }}>
+      <div data-theme="dark" style={{ width: 340, marginTop: 6, borderRadius: 16, overflow: "hidden", background: "rgba(30,30,36,0.92)", backdropFilter: "blur(30px)", border: "0.5px solid rgba(255,255,255,0.14)", boxShadow: "0 18px 50px rgba(0,0,0,0.5)", color: "rgba(255,255,255,0.88)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px" }}>
           <PVMiniWave bars={panelWave} />
           <div style={{ display: "flex", flexDirection: "column", gap: 1, flex: 1 }}>
             <span style={{ font: "600 12px/1.2 var(--font-app)" }}>Portavoz en reposo</span>
@@ -59,11 +59,11 @@ function PVMenubar() {
           <PVQuick icon="bubble.left.and.text.bubble.right" label="Preguntar" tint="rgba(255,255,255,0.08)" ink="rgba(255,255,255,0.85)" />
         </div>
 
-        <div style={{ margin: "0 14px 10px", padding: "11px 13px", borderRadius: 12, background: "rgba(253,191,71,0.09)", border: "1px solid rgba(253,191,71,0.25)" }}>
-          <span style={{ display: "block", font: "600 10px/1 var(--font-app)", letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--brand-amber)", marginBottom: 5 }}>Próxima reunión · mañana 10:00</span>
+        <div style={{ margin: "0 14px 10px", padding: "11px 13px", borderRadius: 12, background: "color-mix(in srgb, var(--you) 9%, transparent)", border: "1px solid color-mix(in srgb, var(--you) 25%, transparent)" }}>
+          <span style={{ display: "block", font: "600 10px/1 var(--font-app)", letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--you-ink)", marginBottom: 5 }}>Próxima reunión · mañana 10:00</span>
           <span style={{ display: "block", font: "500 13px/1.3 var(--font-app)", marginBottom: 6 }}>Retro sprint 15</span>
           <div style={{ display: "flex", gap: 6 }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, font: "600 10px/1 var(--font-app)", color: "#cfc9ff", background: "rgba(109,92,230,0.25)", borderRadius: 999, padding: "5px 9px", cursor: "pointer" }}><SFIcon name="sparkles" size={9} color="var(--chip-ai-spark)" />Ver brief</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, font: "600 10px/1 var(--font-app)", color: "var(--chip-ai-ink)", background: "var(--chip-ai-bg)", borderRadius: 999, padding: "5px 9px", cursor: "pointer" }}><SFIcon name="sparkles" size={9} color="var(--chip-ai-spark)" />Ver brief</span>
             <span style={{ font: "600 10px/1 var(--font-app)", color: "rgba(255,255,255,0.7)", background: "rgba(255,255,255,0.08)", borderRadius: 999, padding: "5px 9px", cursor: "pointer" }}>Grabar al empezar</span>
           </div>
         </div>

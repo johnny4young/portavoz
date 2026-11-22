@@ -1,19 +1,20 @@
 /* Portavoz landing — the app icon's world as an editorial dark page.
-   Palette: deep slate → violet ground, warm paper text, a single amber
-   accent (the waveform's peak). Type: Fraunces (display serif, SOFT axis),
+   Palette: the Night values of docs/design/ds/tokens/colors.css
+   (checked by scripts/check-site.sh): ink, amber (you), voice hues. Type: Fraunces (display serif, SOFT axis),
    Instrument Sans (body), IBM Plex Mono (commands & measured numbers).
    The hero is the "constelación de voces": each voice orbits the breathing
    P, and the amber one is you. */
 
 :root {
-  --ink: #f3f1ec;
-  --ink-dim: #b9b6c4;
-  --ground-0: #0e1120;
-  --ground-1: #171b31;
-  --violet: #5226bf;
-  --amber: #fdbf47;
-  --voice-1: #8b7cf0;
-  --line: rgba(243, 241, 236, 0.14);
+  color-scheme: dark;
+  --ink: #eeebe2;
+  --ink-3: #8d9692;
+  --paper: #121615;
+  --card: #191e1c;
+  --amber: #f2b33d;
+  --cobalt: #7da1f6;
+  --madder: #ee7dad;
+  --line: color-mix(in srgb, var(--ink) 14%, transparent);
   --radius: 14px;
 }
 
@@ -22,10 +23,7 @@
 html { scroll-behavior: smooth; }
 
 body {
-  background:
-    radial-gradient(1200px 700px at 85% -10%, rgba(82, 38, 191, 0.55), transparent 60%),
-    radial-gradient(900px 600px at -10% 30%, rgba(82, 38, 191, 0.25), transparent 55%),
-    var(--ground-0);
+  background: var(--paper);
   color: var(--ink);
   font-family: "Instrument Sans", system-ui, sans-serif;
   font-size: 17px;
@@ -71,7 +69,7 @@ a { color: inherit; }
 }
 
 .top-links a {
-  color: var(--ink-dim);
+  color: var(--ink-3);
   text-decoration: none;
   transition: color 0.15s ease;
 }
@@ -88,7 +86,7 @@ a { color: inherit; }
 .lang-toggle button {
   background: none;
   border: none;
-  color: var(--ink-dim);
+  color: var(--ink-3);
   font: 600 12px/1 "Instrument Sans", sans-serif;
   letter-spacing: 0.06em;
   padding: 8px 12px;
@@ -98,7 +96,7 @@ a { color: inherit; }
 [data-lang="es"] .lang-toggle button[data-lang-val="es"],
 [data-lang="en"] .lang-toggle button[data-lang-val="en"] {
   background: var(--ink);
-  color: var(--ground-0);
+  color: var(--paper);
 }
 
 /* ── Hero ───────────────────────────────────────────────────────────── */
@@ -122,9 +120,9 @@ a { color: inherit; }
 .release-kicker {
   align-self: flex-start;
   padding: 7px 12px;
-  border: 1px solid rgba(253, 191, 71, 0.35);
+  border: 1px solid color-mix(in srgb, var(--amber) 35%, transparent);
   border-radius: 999px;
-  background: rgba(253, 191, 71, 0.08);
+  background: color-mix(in srgb, var(--amber) 8%, transparent);
   color: var(--amber);
   font: 500 12.5px/1.3 "IBM Plex Mono", monospace;
   letter-spacing: 0.01em;
@@ -134,7 +132,7 @@ a { color: inherit; }
 
 .release-kicker:hover {
   border-color: var(--amber);
-  background: rgba(253, 191, 71, 0.13);
+  background: color-mix(in srgb, var(--amber) 13%, transparent);
 }
 
 .hero h1 {
@@ -155,7 +153,7 @@ a { color: inherit; }
   max-width: 46ch;
   font-size: 19px;
   line-height: 1.6;
-  color: var(--ink-dim);
+  color: var(--ink-3);
   text-wrap: pretty;
 }
 
@@ -172,7 +170,7 @@ a { color: inherit; }
   border: 1px solid var(--amber);
   border-radius: var(--radius);
   background: var(--amber);
-  color: var(--ground-0);
+  color: var(--paper);
   font-weight: 600;
   text-decoration: none;
 }
@@ -183,7 +181,7 @@ a { color: inherit; }
 .install-hint {
   margin-top: 12px;
   font-size: 14px;
-  color: var(--ink-dim);
+  color: var(--ink-3);
 }
 
 .brew {
@@ -192,7 +190,7 @@ a { color: inherit; }
   display: flex;
   align-items: baseline;
   gap: 14px;
-  background: var(--ground-1);
+  background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 15px 20px;
@@ -216,7 +214,7 @@ a { color: inherit; }
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--ink-dim);
+  color: var(--ink-3);
 }
 
 .stats {
@@ -224,7 +222,7 @@ a { color: inherit; }
   gap: 26px;
   font-family: "IBM Plex Mono", monospace;
   font-size: 13px;
-  color: var(--ink-dim);
+  color: var(--ink-3);
   font-variant-numeric: tabular-nums;
 }
 
@@ -235,7 +233,7 @@ a { color: inherit; }
 
 .platform {
   font-size: 13.5px;
-  color: var(--ink-dim);
+  color: var(--ink-3);
   letter-spacing: 0.02em;
 }
 
@@ -251,7 +249,7 @@ a { color: inherit; }
 .ring {
   position: absolute;
   border-radius: 999px;
-  border: 1px dashed rgba(243, 241, 236, 0.11);
+  border: 1px dashed color-mix(in srgb, var(--ink) 11%, transparent);
 }
 
 .ring-1 { inset: 40px; }
@@ -301,7 +299,7 @@ a { color: inherit; }
   width: 78px;
   height: 78px;
   border-radius: 999px;
-  border: 1px solid rgba(253, 191, 71, 0.4);
+  border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent);
   animation: pv-halo 3.6s ease-in-out infinite;
 }
 
@@ -342,20 +340,32 @@ a { color: inherit; }
 .orbit-c { animation: pv-orbit-c 44s linear infinite; }
 
 .voice-chip {
+  --hue: var(--ink-3);
   display: flex;
   align-items: center;
+  gap: 7px;
   transform: translate(-50%, -50%);
-  background: rgba(23, 27, 49, 0.9);
-  border: 1px solid var(--line);
+  background: var(--card);
+  border: 1px solid color-mix(in srgb, var(--hue) 45%, transparent);
   border-radius: 999px;
   padding: 6px 12px;
+  color: var(--ink);
   font: 600 12px/1 "Instrument Sans", sans-serif;
   white-space: nowrap;
 }
 
-.voice-chip.violet { color: #cfc9ff; border-color: rgba(139, 124, 240, 0.5); }
-.voice-chip.dim { color: var(--ink-dim); border-color: rgba(139, 124, 240, 0.35); }
-.voice-chip.me { color: var(--amber); border-color: rgba(253, 191, 71, 0.55); }
+/* Voice hues are fills; the name stays ink, as in the app. */
+.voice-chip::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--hue);
+}
+
+.voice-chip.cobalt { --hue: var(--cobalt); }
+.voice-chip.madder { --hue: var(--madder); }
+.voice-chip.me { --hue: var(--amber); background: color-mix(in srgb, var(--amber) 16%, var(--card)); }
 
 /* ── Sections ───────────────────────────────────────────────────────── */
 
@@ -369,9 +379,9 @@ section#privacy {
 
 .thumbs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  max-width: 1120px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  max-width: 960px;
   margin: 42px auto 0;
 }
 .thumb {
@@ -383,7 +393,7 @@ section#privacy {
   background: none;
   cursor: zoom-in;
   font: inherit;
-  color: var(--ink-dim);
+  color: var(--ink-3);
   text-align: center;
 }
 .thumb img {
@@ -399,7 +409,7 @@ section#privacy {
 .thumb:focus-visible img {
   transform: translateY(-4px);
   box-shadow: 0 30px 64px -24px rgba(0, 0, 0, 0.82);
-  border-color: rgba(253, 191, 71, 0.45);
+  border-color: color-mix(in srgb, var(--amber) 45%, transparent);
 }
 .thumb-cap {
   font-size: 14.5px;
@@ -423,7 +433,7 @@ section#privacy {
   align-items: center;
   justify-content: center;
   padding: 40px;
-  background: rgba(6, 7, 14, 0.86);
+  background: rgba(8, 11, 10, 0.86);
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
   cursor: zoom-out;
@@ -450,13 +460,13 @@ body:has(.lightbox[open]) { overflow: hidden; }
   height: 42px;
   border-radius: 999px;
   border: 1px solid var(--line);
-  background: rgba(23, 27, 49, 0.85);
+  background: color-mix(in srgb, var(--card) 85%, transparent);
   color: var(--ink);
   font-size: 17px;
   line-height: 1;
   cursor: pointer;
 }
-.lb-close:hover { background: rgba(23, 27, 49, 1); }
+.lb-close:hover { background: var(--card); }
 .lb-close:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
 .lb-label {
   position: absolute;
@@ -479,7 +489,7 @@ section h2 {
 
 .section-lede {
   text-align: center;
-  color: var(--ink-dim);
+  color: var(--ink-3);
   margin: 0 0 40px;
 }
 
@@ -492,7 +502,7 @@ section h2 {
 }
 
 .cards article {
-  background: rgba(23, 27, 49, 0.72);
+  background: color-mix(in srgb, var(--card) 72%, transparent);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 26px 24px;
@@ -507,7 +517,7 @@ section h2 {
 
 .cards p {
   font-size: 15.5px;
-  color: var(--ink-dim);
+  color: var(--ink-3);
 }
 
 .ledger {
@@ -524,7 +534,7 @@ section h2 {
   border-bottom: 1px dashed var(--line);
 }
 
-.ledger dt { color: var(--ink-dim); }
+.ledger dt { color: var(--ink-3); }
 
 .ledger dd {
   font-family: "IBM Plex Mono", monospace;
@@ -541,7 +551,7 @@ section#privacy { text-align: center; }
   max-width: 68ch;
   margin: 0 auto;
   font-size: 18px;
-  color: var(--ink-dim);
+  color: var(--ink-3);
   text-wrap: pretty;
 }
 
@@ -567,7 +577,7 @@ footer nav {
 }
 
 footer nav a {
-  color: var(--ink-dim);
+  color: var(--ink-3);
   text-decoration: none;
   transition: color 0.15s ease;
 }
@@ -582,8 +592,8 @@ footer nav a:hover { color: var(--ink); }
 }
 
 @keyframes pv-stem {
-  0%, 100% { transform: scaleY(1); box-shadow: 0 0 18px rgba(253, 191, 71, 0.5); }
-  50% { transform: scaleY(0.82); box-shadow: 0 0 36px rgba(253, 191, 71, 0.85); }
+  0%, 100% { transform: scaleY(1); box-shadow: 0 0 18px color-mix(in srgb, var(--amber) 50%, transparent); }
+  50% { transform: scaleY(0.82); box-shadow: 0 0 36px color-mix(in srgb, var(--amber) 85%, transparent); }
 }
 
 @keyframes pv-p {
@@ -627,14 +637,17 @@ footer nav a:hover { color: var(--ink); }
     padding-bottom: 48px;
   }
   .hero h1 { font-size: 44px; }
+  /* Scaling keeps the layout box, so the margins trim the unused height. */
   .constellation {
     width: 340px;
     height: 340px;
     transform: scale(0.72);
     transform-origin: top center;
-    margin-top: -20px;
+    margin: 28px auto -95px;
   }
+  .constellation .voice-chip { font-size: 15px; }
   .top-links { display: none; }
+  .lang-toggle { margin-left: auto; }
 }
 
 @media (max-width: 560px) {

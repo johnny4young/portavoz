@@ -132,7 +132,7 @@ function PVPeople() {
           </div>
         </div>
       ))}
-      <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>violeta = hablan ellos · ámbar = hablas tú. Con Nora dominas el 65% — ✦ ¿1:1 con más escucha?</span>
+      <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>azul = hablan ellos · ámbar = hablas tú. Con Nora dominas el 65% — ✦ ¿1:1 con más escucha?</span>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-// Library sidebar — Aurora: deep glass, violet radial crown, and the
+// Library sidebar — sunk paper with ink chrome, and the
 // signature detail: every meeting row carries its VOICE MIX bar (who spoke,
 // in voice colors; amber = you). The library becomes a shelf of
 // conversations you can read at a glance — no other meeting app has this.
@@ -27,10 +27,10 @@ function PVActionChip({ icon, label, onClick, active }) {
       display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
       flex: 1, padding: "9px 4px", borderRadius: 11, border: "none", cursor: "pointer",
       font: "600 9.5px/1 var(--font-app)",
-      background: active ? "rgba(109,92,230,0.3)" : "rgba(255,255,255,0.06)",
-      color: active ? "#cfc9ff" : "rgba(255,255,255,0.72)",
+      background: active ? "var(--selection)" : "rgba(255,255,255,0.06)",
+      color: active ? "var(--ink)" : "rgba(255,255,255,0.72)",
     }}>
-      <SFIcon name={icon} size={14} color={active ? "#cfc9ff" : "rgba(255,255,255,0.72)"} />
+      <SFIcon name={icon} size={14} color={active ? "var(--ink)" : "rgba(255,255,255,0.72)"} />
       {label}
     </button>
   );
@@ -42,8 +42,7 @@ function PVSidebar({ route, onRoute, todos, onToggleTodo }) {
   return (
     <div style={{
       width: 256, flexShrink: 0, display: "flex", flexDirection: "column",
-      background: "radial-gradient(340px 220px at 50% -80px, rgba(82,38,191,0.55), transparent 70%), var(--aurora-sidebar)",
-      backdropFilter: "blur(30px)",
+      background: "var(--paper-2)",
       borderRight: "0.5px solid rgba(255,255,255,0.09)",
     }}>
       <div style={{ display: "flex", gap: 8, padding: "12px 14px 0" }}>
@@ -57,14 +56,13 @@ function PVSidebar({ route, onRoute, todos, onToggleTodo }) {
           position: "relative", overflow: "hidden",
           display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
           font: "500 13px/1 var(--font-app)", padding: "10px 14px", borderRadius: 10,
-          border: "none", cursor: "pointer", color: "#fff",
-          background: "linear-gradient(135deg, #6d5ce6, #5226bf)",
-          boxShadow: "0 4px 16px rgba(82,38,191,0.5), inset 0 0.5px 0 rgba(255,255,255,0.3)",
+          border: "none", cursor: "pointer", color: "var(--on-accent)",
+          background: "var(--accent)",
         }}>
           <span style={{ display: "flex", alignItems: "flex-end", gap: 1.5, height: 13 }}>
-            <i style={{ width: 2.5, height: "45%", borderRadius: 99, background: "rgba(255,255,255,0.75)" }}></i>
+            <i style={{ width: 2.5, height: "45%", borderRadius: 99, background: "var(--on-accent)" }}></i>
             <i style={{ width: 2.5, height: "100%", borderRadius: 99, background: "var(--voice-me)" }}></i>
-            <i style={{ width: 2.5, height: "60%", borderRadius: 99, background: "rgba(255,255,255,0.75)" }}></i>
+            <i style={{ width: 2.5, height: "60%", borderRadius: 99, background: "var(--on-accent)" }}></i>
           </span>
           Nueva grabación
         </button>
@@ -94,7 +92,7 @@ function PVSidebar({ route, onRoute, todos, onToggleTodo }) {
         {todos.map((t) => (
           <div key={t.id} style={{ display: "flex", gap: 7, padding: "5px 10px", alignItems: "flex-start" }}>
             <input type="checkbox" checked={!!t.done} onChange={() => onToggleTodo(t.id)}
-              style={{ accentColor: "#6d5ce6", marginTop: 2, cursor: "pointer" }} />
+              style={{ accentColor: "var(--ink)", marginTop: 2, cursor: "pointer" }} />
             <span onClick={() => onRoute("m1")} style={{
               font: "400 12px/1.4 var(--font-app)", cursor: "pointer",
               color: "rgba(255,255,255,0.82)",
@@ -109,10 +107,10 @@ function PVSidebar({ route, onRoute, todos, onToggleTodo }) {
           return (
             <div key={m.id} onClick={() => onRoute(m.id)} style={{
               display: "flex", flexDirection: "column", padding: "7px 10px 8px", borderRadius: 9, cursor: "pointer",
-              background: selected ? "var(--aurora-selection)" : "transparent",
-              boxShadow: selected ? "0 4px 14px rgba(82,38,191,0.35)" : "none",
+              background: selected ? "var(--card)" : "transparent",
+              boxShadow: selected ? "0 0 0 0.5px var(--line-2), 0 1px 3px rgba(0,0,0,0.25)" : "none",
             }}>
-              <span style={{ font: selected ? "500 12.5px/1.35 var(--font-app)" : "400 12.5px/1.35 var(--font-app)", color: selected ? "#fff" : "rgba(255,255,255,0.85)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.title}</span>
+              <span style={{ font: selected ? "500 12.5px/1.35 var(--font-app)" : "400 12.5px/1.35 var(--font-app)", color: selected ? "var(--ink)" : "rgba(255,255,255,0.85)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.title}</span>
               <span style={{ font: "400 9.5px/1.4 var(--font-app)", fontVariantNumeric: "tabular-nums", color: selected ? "rgba(255,255,255,0.72)" : "rgba(255,255,255,0.38)" }}>{m.date} · {m.min} min</span>
               <PVMixBar mix={m.mix} />
             </div>
@@ -126,7 +124,7 @@ function PVSidebar({ route, onRoute, todos, onToggleTodo }) {
               <span style={{ font: "400 12px/1.35 var(--font-app)", color: "rgba(255,255,255,0.45)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.title}</span>
               <span style={{ font: "400 9.5px/1.4 var(--font-app)", color: "rgba(255,255,255,0.32)" }}>Borrado, no perdido — {d.caption}</span>
             </div>
-            <SFIcon name="arrow.uturn.backward" size={12} color="#9d8cff" />
+            <SFIcon name="arrow.uturn.backward" size={12} color="var(--ink-3)" />
           </div>
         ))}
       </div>

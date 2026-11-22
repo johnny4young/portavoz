@@ -1,5 +1,5 @@
-// Meeting detail — consolidated with the canonical Aurora template
-// (templates/macos-app): radial header with Fraunces title, ✦ chips,
+// Meeting detail — ink on paper
+// (templates/macos-app): plain header with Fraunces title, ✦ chips,
 // summary tabs + ↗ citations, voice-colored health, lyrics transcript,
 // Spotify-style player, and the Capítulos ✦ rail.
 const { SpeakerPill, SuggestionChip } = window.PortavozDesignSystem_fd5562;
@@ -7,8 +7,8 @@ const pvDetail = window.PV_DATA;
 
 const PV_TAB = (active) => ({
   font: "600 10px/1 var(--font-app)", padding: "5px 10px", borderRadius: 999,
-  background: active ? "#6d5ce6" : "rgba(255,255,255,0.08)",
-  color: active ? "#fff" : "rgba(255,255,255,0.6)", cursor: "pointer",
+  background: active ? "var(--accent)" : "rgba(255,255,255,0.08)",
+  color: active ? "var(--on-accent)" : "rgba(255,255,255,0.6)", cursor: "pointer",
 });
 
 function PVMeetingDetail({ todos, onToggleTodo }) {
@@ -18,7 +18,7 @@ function PVMeetingDetail({ todos, onToggleTodo }) {
 
   return (
     <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", minWidth: 0 }}>
-      <div style={{ padding: "22px 30px 16px", background: "var(--aurora-header)", borderBottom: "0.5px solid rgba(255,255,255,0.08)" }}>
+      <div style={{ padding: "22px 30px 16px", borderBottom: "0.5px solid rgba(255,255,255,0.08)" }}>
         <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 28, marginBottom: 10 }}>
           {[["30%", "rgba(255,255,255,0.25)"], ["55%", "rgba(255,255,255,0.3)"], ["80%", "rgba(255,255,255,0.4)"], ["100%", "var(--voice-me)"], ["62%", "rgba(255,255,255,0.35)"], ["40%", "rgba(255,255,255,0.28)"]].map(([h, c], i) => (
             <span key={i} style={{ width: 5, height: h, borderRadius: 99, background: c }}></span>
@@ -66,7 +66,7 @@ function PVMeetingDetail({ todos, onToggleTodo }) {
             <div style={{ display: "flex", gap: 8, font: "400 13px/1.5 var(--font-app)" }}>
               <span style={{ color: "rgba(255,255,255,0.3)" }}>·</span>
               <span>La beta sale el lunes; Marta lidera la demo con el cliente.</span>
-              <span style={{ font: "400 10px/1.8 var(--font-mono)", color: "#9d8cff", cursor: "pointer" }}>↗ 06:18</span>
+              <span style={{ font: "400 10px/1.8 var(--font-mono)", color: "var(--ink-3)", cursor: "pointer" }}>↗ 06:18</span>
             </div>
             <div style={{ display: "flex", gap: 8, font: "400 13px/1.5 var(--font-app)" }}>
               <span style={{ color: "var(--voice-me)" }}>▸</span>
@@ -76,7 +76,7 @@ function PVMeetingDetail({ todos, onToggleTodo }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               {todos.map((t) => (
                 <label key={t.id} style={{ display: "flex", gap: 8, alignItems: "flex-start", font: "400 13px/1.5 var(--font-app)", cursor: "pointer" }}>
-                  <input type="checkbox" checked={!!t.done} onChange={() => onToggleTodo(t.id)} style={{ accentColor: "#6d5ce6", marginTop: 3 }} />
+                  <input type="checkbox" checked={!!t.done} onChange={() => onToggleTodo(t.id)} style={{ accentColor: "var(--ink)", marginTop: 3 }} />
                   <span style={{ textDecoration: t.done ? "line-through" : "none", opacity: t.done ? 0.5 : 1 }}>{t.text}</span>
                 </label>
               ))}
@@ -93,10 +93,10 @@ function PVMeetingDetail({ todos, onToggleTodo }) {
               <SpeakerPill name="Marta" voice={1} editable={false} />
               <span style={{ font: "400 13px/1.5 var(--font-app)", color: "rgba(255,255,255,0.75)" }}>Arranquemos con el estado de Zephyr: el cluster ya corre la build 214…</span>
             </div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 9, padding: "8px 12px", borderRadius: 10, background: "linear-gradient(90deg, color-mix(in srgb, var(--voice-me) 14%, transparent), transparent 85%)", boxShadow: "inset 2px 0 0 var(--voice-me)" }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 9, padding: "8px 12px", borderRadius: 10, background: "color-mix(in srgb, var(--voice-me) 14%, transparent)" }}>
               <span style={{ font: "400 10px/1.6 var(--font-mono)", color: "var(--voice-me)" }}>00:54</span>
               <SpeakerPill name="Me" me editable={false} />
-              <span style={{ font: "500 14px/1.5 var(--font-app)" }}>Perfecto. ¿Cerramos entonces el <span style={{ color: "#9d8cff" }}>bug del device-ID duplicado</span> en QVTL?</span>
+              <span style={{ font: "500 14px/1.5 var(--font-app)" }}>Perfecto. ¿Cerramos entonces el <span style={{ fontWeight: 600 }}>bug del device-ID duplicado</span> en QVTL?</span>
             </div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 9, padding: "3px 10px", opacity: 0.35, filter: "blur(1.2px)" }}>
               <span style={{ font: "400 10px/1.4 var(--font-mono)", color: "rgba(255,255,255,0.3)" }}>01:24</span>
@@ -105,14 +105,14 @@ function PVMeetingDetail({ todos, onToggleTodo }) {
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 16px", background: "rgba(14,17,32,0.75)", borderRadius: 999, boxShadow: "0 0 0 0.5px rgba(255,255,255,0.12)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 16px", background: "var(--card)", borderRadius: 999, boxShadow: "0 0 0 0.5px rgba(255,255,255,0.12)" }}>
             <span style={{ fontSize: 14, cursor: "pointer" }}>▶</span>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 20, flex: 1 }}>
               {[["35%", "var(--voice-1)"], ["70%", "var(--voice-1)"], ["45%", "var(--voice-1)"], ["90%", "var(--voice-me)"], ["60%", "var(--voice-me)"], ["38%", "var(--voice-2)"], ["75%", "rgba(255,255,255,0.3)"], ["50%", "rgba(255,255,255,0.25)"], ["28%", "rgba(255,255,255,0.2)"], ["64%", "rgba(255,255,255,0.28)"], ["42%", "rgba(255,255,255,0.22)"], ["80%", "rgba(255,255,255,0.3)"]].map(([h, c], i) => (
                 <span key={i} style={{ width: 3, height: h, borderRadius: 99, background: c }}></span>
               ))}
             </div>
-            <span style={{ font: "600 10px/1 var(--font-app)", color: "#cfc9ff", background: "rgba(109,92,230,0.22)", borderRadius: 999, padding: "5px 10px", cursor: "pointer" }}>⏭ Silencios</span>
+            <span style={{ font: "600 10px/1 var(--font-app)", color: "var(--ink)", background: "var(--chip-offer-bg)", borderRadius: 999, padding: "5px 10px", cursor: "pointer" }}>⏭ Silencios</span>
             <span style={{ font: "600 10px/1 var(--font-app)", color: "var(--voice-me)", background: "color-mix(in srgb, var(--voice-me) 18%, transparent)", borderRadius: 999, padding: "5px 10px", cursor: "pointer" }}>solo mi voz</span>
             <span style={{ font: "500 11px/1 var(--font-mono)", fontVariantNumeric: "tabular-nums", color: "rgba(255,255,255,0.6)" }}>00:54 / 42:10</span>
           </div>

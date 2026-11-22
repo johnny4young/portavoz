@@ -14,8 +14,8 @@ https://github.com/johnny4young/portavoz and the reference screenshot at
 - `Menubar.jsx` — the 2b rich menu-bar panel: live-waveform bar icon (amber peak), status, quick actions, next meeting, recents (its own `menubar.card.html`).
 - `data.js` — demo data mirroring the repo's showcase seed.
 
-Interactions that work: sidebar navigation, meeting selection (indigo, the DS
-stance), to-do checkboxes (shared state sidebar↔summary), ✦ title & name chips
+Interactions that work: sidebar navigation, meeting selection (a raised card,
+ink on paper), to-do checkboxes (shared state sidebar↔summary), ✦ title & name chips
 (click applies, then the "Remember voice?" offer appears), HUD toggle from the
 recording view. Only the 2026-07-10 Sprint Demo is seeded in full — the DS
 stance on demo honesty.

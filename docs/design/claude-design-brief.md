@@ -1,5 +1,8 @@
 # Portavoz Design System — brief for Claude Design
 
+> Historical: this brief predates ink on paper (D643). The current tokens for
+> the app and portavoz.app live in `docs/design/ds/tokens/colors.css`.
+
 > Paste this brief as the first message in a **Design system** project on
 > claude.ai/design. It describes the real product, the de facto tokens currently
 > in the code, the surface inventory, and the structural conventions that the
