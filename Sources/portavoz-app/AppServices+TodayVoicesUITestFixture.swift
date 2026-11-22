@@ -23,8 +23,10 @@ extension AppServices {
         let now = Self.fixtureAgendaStart
         let justEnded = ProcessInfo.processInfo.arguments.contains("-seed-just-ended")
         // Room on the axis for the just-ended meeting's title, even on a 1024 pt screen.
-        let quiet: TimeInterval = justEnded ? 90 * 60 : 0
-        let span = max(0, min(now.timeIntervalSince(Calendar.current.startOfDay(for: now)) - quiet, 4 * 3_600))
+        let dayStart = Calendar.current.startOfDay(for: now)
+        let sinceMidnight = now.timeIntervalSince(dayStart)
+        let quiet: TimeInterval = justEnded ? min(90 * 60, sinceMidnight) : 0
+        let span = max(0, min(sinceMidnight - quiet, 4 * 3_600))
         let base = now.addingTimeInterval(-quiet - span)
         await seedTodayMeeting(
             "Sprint demo", start: base.addingTimeInterval(span * 0.05), length: span * 0.3,
@@ -36,8 +38,9 @@ extension AppServices {
             turns: [1, 0, 1, 1, 0, 1])
         // `-seed-just-ended`: a meeting that ended two minutes ago, under the now pill.
         guard justEnded else { return }
+        let checkIn = max(dayStart, now.addingTimeInterval(-12 * 60))
         await seedTodayMeeting(
-            "Roadmap check-in", start: now.addingTimeInterval(-12 * 60), length: 10 * 60,
+            "Roadmap check-in", start: checkIn, length: min(10 * 60, now.timeIntervalSince(checkIn)),
             voices: [nil, "Ilarion"],
             turns: [0, 1, 0, 1])
     }

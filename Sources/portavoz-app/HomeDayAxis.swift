@@ -125,7 +125,8 @@ struct DayAxisLayout: Sendable, Equatable {
 
         let widths = recorded.map { max(Self.minimumRecordedWidth, position($0.end) - position($0.start)) }
         let extents = recorded.indices.map { max(widths[$0], recorded[$0].markWidth) }
-        let marks = Self.spread(recorded.map { position($0.start) }, extents: extents, limit: nowX ?? total)
+        let marks = Self.spread(
+            recorded.map { position($0.start) }, widths: widths, extents: extents, limit: nowX ?? total)
         let ahead = upcoming.map { position($0.start) }
         let aheadWidths = upcoming.map { max(Self.minimumUpcomingWidth, position($0.end) - position($0.start)) }
         let aheadExtents = upcoming.indices.map { max(aheadWidths[$0], upcoming[$0].markWidth) }
@@ -155,9 +156,11 @@ struct DayAxisLayout: Sendable, Equatable {
     }
 
     /// Recorded marks keep a gap so neighbouring strips and dot groups never read as one;
-    /// crowded ones give way to the left first, so nothing slides past `limit`.
-    private static func spread(_ natural: [CGFloat], extents: [CGFloat], limit: CGFloat) -> [CGFloat] {
-        let rightmost = zip(natural, extents).map(+).max() ?? 0
+    /// crowded ones give way to the left first, so only a strip that runs past `limit` crosses it.
+    private static func spread(
+        _ natural: [CGFloat], widths: [CGFloat], extents: [CGFloat], limit: CGFloat
+    ) -> [CGFloat] {
+        let rightmost = zip(natural, widths).map(+).max() ?? 0
         let byStart = natural.indices.sorted { natural[$0] < natural[$1] }
         var lefts = byStart.map { natural[$0] }
         var ceiling = max(limit, rightmost)
@@ -183,8 +186,11 @@ struct DayAxisLayout: Sendable, Equatable {
     ) -> [TitleSlot] {
         let byAnchor = items.indices.sorted { anchors[$0] < anchors[$1] }
         var lows = Array(repeating: CGFloat(0), count: items.count)
+        var reach = -CGFloat.infinity
         for (previous, index) in zip(byAnchor, byAnchor.dropFirst()) {
-            lows[index] = min(anchors[index], markEnds[previous] + titleGap)
+            // An earlier, longer mark can still run past the one just before.
+            reach = max(reach, markEnds[previous])
+            lows[index] = min(anchors[index], reach + titleGap)
         }
         let groups: [(members: [Int], bounds: ClosedRange<CGFloat>)]
         if let pill {
@@ -382,7 +388,7 @@ struct HomeDayAxis: View {
                 .init(
                     start: $0.startedAt, duration: $0.duration,
                     title: Self.measure($0.title, detail: TalkDuration.text($0.duration)),
-                    markWidth: Self.dotsWidth($0.strip.cast.voices.count + ($0.strip.cast.others.isEmpty ? 0 : 1)))
+                    markWidth: Self.dotsWidth(Self.dotTints($0.strip.cast).count))
             },
             upcoming: voices.upcoming.map {
                 .init(
@@ -575,11 +581,10 @@ struct HomeDayAxis: View {
 
     /// The widths `titleLine` draws at.
     private static func measure(_ title: String, detail: String?) -> DayAxisLayout.Title {
-        let name = width(title, titleFont)
-        let word = title.split(separator: " ").first.map { width("\($0)…", titleFont) } ?? name
+        let full = width(title, titleFont) + (detail.map { width("  \($0)", minutesFont) } ?? 0)
         return DayAxisLayout.Title(
-            full: name + (detail.map { width("  \($0)", minutesFont) } ?? 0),
-            word: word,
+            full: full,
+            word: title.split(separator: " ").first.map { width("\($0)…", titleFont) } ?? full,
             minutes: detail.map { width($0, minutesFont) } ?? 0)
     }
 

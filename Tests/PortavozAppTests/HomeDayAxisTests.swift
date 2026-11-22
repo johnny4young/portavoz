@@ -172,6 +172,27 @@ final class HomeDayAxisTests: XCTestCase {
         assertApart(axis.recorded)
     }
 
+    func testDotsWiderThanAJustEndedStripStayBeforeNow() throws {
+        let axis = layout(
+            now: at(11), recorded: [.init(start: at(10, 50), end: at(10, 58), title: title(100), markWidth: 47)])
+        let frame = axis.recorded[0]
+        XCTAssertLessThanOrEqual(frame.x + frame.markWidth, try XCTUnwrap(axis.nowX) + 0.001)
+    }
+
+    func testATitleInsideALongerEventDoesNotReachBackOverIt() {
+        let axis = layout(
+            now: at(8),
+            upcoming: [
+                .init(start: at(13), end: at(15), title: title(60)),
+                .init(start: at(13, 15), end: at(13, 30), title: title(60)),
+                .init(start: at(14), end: at(14, 5), title: title(120)),
+                .init(start: at(14, 5), end: at(14, 30), title: title(60))
+            ])
+        let crowded = axis.upcoming[2]
+        XCTAssertGreaterThanOrEqual(
+            crowded.titleX, crowded.x - 0.001, "the long event still under it keeps the space to its left")
+    }
+
     func testTightTitlesAreCutToAWordThenFallBackToMinutes() {
         let titles = [title(100), title(100)]
         func place(upper: CGFloat) -> [(x: CGFloat, width: CGFloat, fit: DayAxisLayout.Fit)] {
