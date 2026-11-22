@@ -23408,5 +23408,7 @@ that require the flag as an argument. Under Reduce Motion the change is applied 
 transaction, so state and scroll positions match the animated path. Transitions
 need no wrapper because they only animate inside an animated transaction. An
 architecture test rejects `withAnimation`, `withTransaction`, `.animation(`,
-per-frame timelines and phase or keyframe animators outside the helper, and a
-file that passes the flag without reading it from the environment.
+per-frame timelines, transactions, symbol effects and phase or keyframe
+animators outside the helper, a literal flag, and a file that passes the flag
+without reading it from the environment. Live captions keep their distance
+fade under Reduce Motion but drop the shrink and blur that read as zoom.

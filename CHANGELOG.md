@@ -81,7 +81,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 22, 2026
 
-- **🧘 Calmer with Reduce Motion** — with Reduce Motion on, the recording dot stays solid, the mic meter and onboarding bars follow your voice without easing, and Ask jumps to the newest answer instead of gliding.
+- **🧘 Calmer with Reduce Motion** — with Reduce Motion on, the recording dot stays solid, the mic meter follows your voice without easing, the idle onboarding bars stop rippling, live captions stop shrinking and blurring, and Ask jumps to the newest answer instead of gliding.
 - **🔎 Easier-to-read secondary text** — dates, hints, section headers and footnotes across the app use a darker ink that stays readable on paper, and switches keep a visible knob in dark mode.
 - **🧾 A summary that fits any window** — reviewing the summary lives in a menu beside copy and regenerate, suggestions sit under the summary instead of on its rule, chapter titles show in full, and each voice's turns run the full width of its row.
 - **🎧 A player that stays out of the way** — the meeting player now docks along the bottom of the whole page with its controls on one line at any window size and the time in plain ink instead of a red pill.
