@@ -983,12 +983,13 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(selection.locales, ("en",))
 
     def test_meeting_detail_scene_and_presentation_select_the_processing_journeys(self):
-        for path in [
-            "Sources/portavoz-app/MeetingDetailScene.swift",
-            "Sources/portavoz-app/MeetingDetailPresentation.swift",
+        chrome = set(FEATURE_TESTS["meeting-chrome"])
+        for path, extra in [
+            ("Sources/portavoz-app/MeetingDetailScene.swift", chrome),
+            ("Sources/portavoz-app/MeetingDetailPresentation.swift", set()),
         ]:
             selection = select_paths([path])
-            self.assertEqual(set(selection.tests), set(FEATURE_TESTS["meeting-processing"]), path)
+            self.assertEqual(set(selection.tests), set(FEATURE_TESTS["meeting-processing"]) | extra, path)
             self.assertEqual(selection.locales, ("en",), path)
 
     def test_meeting_detail_sections_select_only_owned_journeys(self):
@@ -1083,6 +1084,7 @@ class UITestScopeTests(unittest.TestCase):
         expected = set(FEATURE_TESTS["main-shell"])
         expected.update(FEATURE_TESTS["background-work"])
         expected.update(FEATURE_TESTS["dictation"])
+        expected.update(FEATURE_TESTS["meeting-chrome"])
         self.assertEqual(set(selection.tests), expected)
         self.assertEqual(selection.locales, ("en",))
         self.assertLess(len(selection.tests), len(ALL_TESTS))

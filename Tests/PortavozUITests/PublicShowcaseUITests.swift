@@ -21,7 +21,7 @@ final class PublicShowcaseUITests: PortavozUITestCase {
         meeting.click()
 
         XCTAssertTrue(
-            app.staticTexts["2026-07-10 Sprint Demo · Zephyr"]
+            app.staticTexts["Sprint Demo · Zephyr"]
                 .waitForExistenceFast(timeout: 10))
         XCTAssertTrue(
             app.buttons["detail-title-suggestion-dismiss"]

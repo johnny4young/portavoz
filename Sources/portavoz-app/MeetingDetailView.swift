@@ -16,6 +16,7 @@ struct MeetingDetailView: View {
     let presentation: MeetingDetailPresentation
     let sceneValues: MeetingDetailSceneValues
     let sceneActions: MeetingDetailSceneActions
+    let navigation: DetailNavigation
 
     @State private var playbackNavigation = MeetingDetailPlaybackNavigation()
     @State private var railTab = MeetingDetailRailTab.people
@@ -56,26 +57,27 @@ private extension MeetingDetailView {
         _ detail: MeetingReviewReadModel,
         transcriptPresentation: MeetingDetailTranscriptPresentation
     ) -> some View {
-        MeetingDetailFlowHost(
+        let title = MeetingRowTitle.page(detail.meeting.title)
+        return MeetingDetailFlowHost(
             flow: flow,
             values: flowValues(detail),
             actions: flowActions(detail)
         ) {
-            loadedBody(detail, transcriptPresentation: transcriptPresentation)
+            loadedBody(detail, title: title, transcriptPresentation: transcriptPresentation)
         }
         .onAppear { model.firstContentDidAppear() }
-        .navigationTitle("Portavoz")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                MeetingDetailScopedContent { actionToolbar(detail) }
-            }
-            .sharedBackgroundVisibility(.hidden)
+        .meetingTitleBar(
+            title: title, current: .meeting(meetingID), navigation: navigation,
+            open: sceneActions.openRoute, step: sceneActions.stepHistory
+        ) {
+            MeetingDetailScopedContent { actionToolbar(detail) }
         }
         .task(id: mirrorTaskID) { await loadMirrorAverageIfNeeded() }
     }
 
     private func loadedBody(
         _ detail: MeetingReviewReadModel,
+        title: String,
         transcriptPresentation: MeetingDetailTranscriptPresentation
     ) -> some View {
         let transcript = transcriptPresentation.current
@@ -83,7 +85,7 @@ private extension MeetingDetailView {
         return VStack(spacing: 0) {
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 12) {
-                    headerSection(detail, transcript: transcript)
+                    headerSection(detail, title: title, transcript: transcript)
                     if let report = detail.meeting.captureReport, report.requiresAttention {
                         CaptureReportNotice(report: report)
                     }
@@ -270,9 +272,11 @@ private extension MeetingDetailView {
                 deferUntil: coordinator.deferCommitment))
     }
 
-    private func headerSection(_ detail: MeetingReviewReadModel, transcript: MeetingTranscriptContent) -> some View {
+    private func headerSection(
+        _ detail: MeetingReviewReadModel, title: String, transcript: MeetingTranscriptContent
+    ) -> some View {
         MeetingDetailHeaderSection(
-            values: headerValues(detail),
+            values: headerValues(detail, title: title),
             actions: MeetingDetailHeaderActions(
                 renameMeeting: { flow.presentRenameMeeting(title: detail.meeting.title) },
                 acceptTitleSuggestion: { coordinator.acceptSuggestedTitle($0, meeting: detail.meeting) },
@@ -299,9 +303,9 @@ private extension MeetingDetailView {
             })
     }
 
-    private func headerValues(_ detail: MeetingReviewReadModel) -> MeetingDetailHeaderValues {
+    private func headerValues(_ detail: MeetingReviewReadModel, title: String) -> MeetingDetailHeaderValues {
         MeetingDetailHeaderValues(
-            title: detail.meeting.title,
+            title: title,
             kicker: presentation.meetingKicker(
                 startedAt: detail.meeting.startedAt,
                 endedAt: detail.meeting.endedAt,

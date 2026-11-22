@@ -81,6 +81,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 22, 2026
 
+- **🧭 Back, forward and where you came from** — a meeting's title bar now shows "Today › Meeting name" with back and forward arrows (⌘[ and ⌘]), its title drops the date and time the kicker already gives, and the selected meeting in the sidebar is a light card instead of an accent fill.
 - **📚 Both weeks in the sidebar** — "This week" now shows above your newest meetings at launch instead of hiding under the search field, and rows get more room to breathe.
 - **⏳ The brief beside the countdown in a standard window** — from about a 1,000 pt window the countdown steps down a size so what each person said last time stays beside it, and your to-dos start higher on the page.
 - **🪟 Today lives in the title bar** — the day, Ask and your automations now sit level with the window buttons instead of under an extra "Portavoz" row, so the countdown starts higher; in a narrow window Ask folds into its glyph and opens the full field.

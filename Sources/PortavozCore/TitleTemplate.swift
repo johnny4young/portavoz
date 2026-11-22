@@ -57,13 +57,26 @@ extension TitleTemplate {
     /// "2026-07-10 Sprint Demo" → "Sprint Demo". A title without a leading
     /// ISO date, or one that is only a date, is returned unchanged.
     public static func withoutDatePrefix(_ title: String) -> String {
-        let scalars = Array(title.unicodeScalars)
-        guard scalars.count > 11,
-              scalars[4] == "-", scalars[7] == "-", scalars[10] == " ",
-              [0, 1, 2, 3, 5, 6, 8, 9].allSatisfy({ CharacterSet.decimalDigits.contains(scalars[$0]) })
-        else { return title }
-        let rest = String(String.UnicodeScalarView(scalars[11...]))
+        dropLeading("dddd-dd-dd", from: title) ?? title
+    }
+
+    /// "2026-07-10 10.47 Meeting" → "Meeting": also drops the `{time}` the
+    /// default template puts after the date. Display only; keys still use
+    /// `withoutDatePrefix` so default titles never fold into one meeting.
+    public static func withoutDateTimePrefix(_ title: String) -> String {
+        guard let rest = dropLeading("dddd-dd-dd", from: title) else { return title }
+        return dropLeading("dd.dd", from: rest) ?? rest
+    }
+
+    /// The text after a leading token shaped like `shape` ("d" is a digit) and
+    /// a space; nil when there is no such token or nothing follows it.
+    private static func dropLeading(_ shape: String, from title: String) -> String? {
+        let scalars = Array(title.unicodeScalars), pattern = Array(shape.unicodeScalars)
+        guard scalars.count > pattern.count, scalars[pattern.count] == " ",
+              zip(scalars, pattern).allSatisfy({ $1 == "d" ? CharacterSet.decimalDigits.contains($0) : $0 == $1 })
+        else { return nil }
+        let rest = String(String.UnicodeScalarView(scalars[(pattern.count + 1)...]))
             .trimmingCharacters(in: .whitespaces)
-        return rest.isEmpty ? title : rest
+        return rest.isEmpty ? nil : rest
     }
 }

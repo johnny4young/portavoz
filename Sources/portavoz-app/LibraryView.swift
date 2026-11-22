@@ -283,20 +283,24 @@ extension LibraryView {
         return (state.showsNoMeetings ? ["meetings"] : []) + groups.map(\.key)
     }
 
-    /// Native sidebar selection owns contrast, focus and inactive-window styling.
-    /// The voice strip remains a separate, meaningful recording cue.
+    /// The selected meeting is a raised card over the native highlight; explicit
+    /// ink keeps the text from inverting the way it does on an accent fill.
     private func meetingRow(_ meeting: Meeting) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+        let isSelected = route == .meeting(meeting.id)
+        return VStack(alignment: .leading, spacing: 2) {
             Text(MeetingRowTitle.display(meeting.title))
                 .fontWeight(.semibold)
+                .foregroundStyle(PVDesign.ink)
                 .lineLimit(1)
             Text(meeting.dayAndLength)
                 .font(.caption.monospacedDigit())
-                .foregroundStyle(.ink3)
+                .foregroundStyle(PVDesign.ink3)
             VoiceStrip(state.voiceStrips[meeting.id] ?? .empty)
                 .padding(.top, 6)
         }
         .padding(.vertical, 5)
+        .listRowBackground(
+            isSelected ? PVRaisedSurface(cornerRadius: PVDesign.radiusSmall).padding(.horizontal, 7) : nil)
         .tag(Route.meeting(meeting.id))
         .accessibilityIdentifier("library-meeting-\(meeting.id.rawValue.uuidString)")
         .contextMenu {

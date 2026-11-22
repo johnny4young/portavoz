@@ -63,10 +63,6 @@ struct HomeToolbarLayout: Equatable {
     static let pillGlyph: CGFloat = 20
     static let titleInset: CGFloat = 16
     static let trailingInset: CGFloat = 12
-    /// The window toolbar's own margins and the background-work indicator.
-    static let chrome: CGFloat = 60
-    /// Traffic lights and the sidebar toggle, when the sidebar is hidden.
-    static let windowControls: CGFloat = 140
 
     let title: String
     let date: String
@@ -86,8 +82,7 @@ struct HomeToolbarLayout: Equatable {
     static func reserved(title: String, date: String, automations: String?, sidebarVisible: Bool) -> CGFloat {
         titleWidth(title: title, date: date)
             + (automations.map { pillWidth($0) + spacing } ?? 0)
-            + chrome + titleInset + trailingInset
-            + (sidebarVisible ? 0 : windowControls)
+            + titleInset + trailingInset + PVTitleBar.reserved(sidebarVisible: sidebarVisible)
     }
 
     /// The field's width, or nil when even its minimum does not fit.

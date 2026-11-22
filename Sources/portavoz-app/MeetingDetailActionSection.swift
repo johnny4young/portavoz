@@ -231,10 +231,20 @@ struct MeetingDetailActionSection: View {
     }
 
     private func toolbarGlyph(_ systemName: String) -> some View {
+        MeetingToolbarGlyph(systemName: systemName)
+    }
+}
+
+/// A 28 pt ink-2 glyph, the meeting toolbar's button face.
+struct MeetingToolbarGlyph: View {
+    nonisolated static let side: CGFloat = 28
+    let systemName: String
+
+    var body: some View {
         Image(systemName: systemName)
             .font(.system(size: 14))
             .foregroundStyle(PVDesign.ink2)
-            .frame(width: 28, height: 28)
+            .frame(width: Self.side, height: Self.side)
             .contentShape(Rectangle())
     }
 }

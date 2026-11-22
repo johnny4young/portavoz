@@ -14,6 +14,7 @@ struct MeetingDetailScene: View {
     let services: AppServices
     let meetingID: MeetingID
     @Binding var route: Route?
+    let navigation: DetailNavigation
 
     @Environment(\.locale) private var locale
     @Environment(\.openSettings) private var openSettings
@@ -25,11 +26,13 @@ struct MeetingDetailScene: View {
     init(
         services: AppServices,
         meetingID: MeetingID,
-        route: Binding<Route?>
+        route: Binding<Route?>,
+        navigation: DetailNavigation
     ) {
         self.services = services
         self.meetingID = meetingID
         _route = route
+        self.navigation = navigation
         _model = State(initialValue: services.makeMeetingDetailModel(meetingID))
     }
 
@@ -42,7 +45,8 @@ struct MeetingDetailScene: View {
                 locale: locale,
                 timeZone: timeZone),
             sceneValues: sceneValues,
-            sceneActions: sceneActions)
+            sceneActions: sceneActions,
+            navigation: navigation)
     }
 
     private var sceneValues: MeetingDetailSceneValues {
@@ -109,6 +113,8 @@ struct MeetingDetailScene: View {
             closeDetail: {
                 route = nil
             },
+            openRoute: { route = $0 },
+            stepHistory: { navigation.step($0, route: &route) },
             showInsights: {
                 route = .insights
             },
@@ -159,6 +165,8 @@ struct MeetingDetailSceneActions {
     let acknowledgePendingSeek: @MainActor (UUID) -> Void
     let clearJustRecorded: @MainActor () -> Void
     let closeDetail: @MainActor () -> Void
+    let openRoute: @MainActor (Route) -> Void
+    let stepHistory: @MainActor (DetailNavigationHistory.Direction) -> Void
     let showInsights: @MainActor () -> Void
     let disableMirrorAfterMeeting: @MainActor () -> Void
     let translateTranscript: @MainActor (MeetingReviewCore, String) -> Void

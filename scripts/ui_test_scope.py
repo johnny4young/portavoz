@@ -340,12 +340,21 @@ def app_features(filename: str) -> set[str]:
         # disposable shell. Its safe real-app canary is the existing explicit
         # sync opt-in/existing-library Settings journey.
         return {"production-sync"}
+    if lowered in {"meetingdetailbreadcrumbbar.swift", "detailnavigationhistory.swift"}:
+        return {"meeting-chrome"}
+    if lowered == "pvtitlebar.swift":
+        # Title-bar metrics shared by Today and the meeting page.
+        return {"home", "meeting-chrome"}
+    if lowered == "meetingrowtitle.swift":
+        return {"meeting-chrome", "library", "home"}
+    if lowered in {"meetingdetailview.swift", "meetingdetailscene.swift"}:
+        return {"meeting-chrome", "meeting-processing"}
     if lowered == "contentview.swift":
         # Root composition changes can affect every destination, but one
         # deterministic canary per route is sufficient; do not rerun all
         # feature permutations merely because a route was added or wired.
         # It also presents the legacy dictation notice.
-        return {"background-work", "main-shell", "dictation"}
+        return {"background-work", "main-shell", "dictation", "meeting-chrome"}
     if lowered == "settingsview.swift":
         # Hosts the legacy dictation data section.
         return {"settings-navigation", "dictation"}

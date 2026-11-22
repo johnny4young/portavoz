@@ -23497,3 +23497,39 @@ above the strip, 5 pt extra padding). The column is
 about 15% of a wide window and 26% of the 900 pt minimum; narrower would
 truncate ordinary meeting titles. A width the person already dragged to is
 restored by AppKit and kept.
+
+## D668 — A meeting's title bar is a breadcrumb over a window history
+
+The meeting toolbar said "Portavoz" while the page's title repeated the date the
+kicker already gave ("2026-07-27 Meeting" under "TUE, NOV 14, 2023"), and the
+selected sidebar row was the system accent fill. The toolbar's navigation item
+now holds back and forward chevrons (⌘[ and ⌘]) and "Today › title", where the
+first crumb is the section the meeting was opened from and opens it. The window
+keeps the meeting's title for the Window menu and `toolbar(removing: .title)`
+hides the drawn one, as on Today (D665); the actions follow a flexible spacer.
+`DetailNavigationHistory` records every change of the detail route, except the
+ones back and forward make, keeps the latest 50, and skips a meeting that no
+longer exists; the first crumb is the nearest earlier Today, Ask, Insights or
+Radar, else Today. `ContentView` owns it inside an observable `DetailNavigation`
+passed by reference, so a history or library change re-renders only the title
+bar, and a modifier owns the measured detail frame, so a resize does not
+re-render the page. Only the meeting draws the chevrons, because the board puts
+them there; the history spans every destination so back from a meeting returns
+to Ask or Radar. Toolbar items overflow instead of shrinking,
+so `MeetingDetailBreadcrumbLayout` measures the crumb in AppKit metrics, with
+the window's share of the row in `PVTitleBar` shared with Today, and gives the
+title what the actions leave, truncating its tail. The page keeps the
+default soft scroll edge, so the title bar is the page's own paper; the hard
+style kept a solid row but made every layout pass of the long page slower.
+The page title, the breadcrumb and the window title drop the leading date like
+the sidebar and also the `{time}` the default template writes after it
+(`MeetingRowTitle.page`, `TitleTemplate.withoutDateTimePrefix`), because the
+kicker shows both. Rows keep the time, since their second line has no time of
+day and same-day default titles would all read "Meeting"; recurring-meeting
+keys keep using `withoutDatePrefix`, and rename still edits the stored title. The selected meeting row draws the board's raised
+card (`PVRaisedSurface`, the selected segment's surface: raise fill, 0.5 pt
+`line2` ring, soft shadow, 8 pt radius) as its
+`listRowBackground`, which covers the native highlight, and its text is explicit
+ink and ink 3 so it does not invert as it does on an accent fill; keyboard
+selection and VoiceOver's selected state stay native.
+

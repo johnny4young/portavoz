@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 141
+    "expectedCaseCount": 143
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -162,6 +162,8 @@
     "MeetingDetailUITests/testPlayerDocksAcrossTheDetailUnderThePage()": 20.0,
     "MeetingDetailUITests/testNarrowTranscriptPutsTheSpeakerAboveTheLine()": 20.0,
     "MeetingDetailUITests/testTranscriptReadsAsChaptersAndTurns()": 20.0,
+    "MeetingChromeUITests/testMeetingToolbarFitsTheNarrowDarkWindow()": 20.0,
+    "MeetingChromeUITests/testMeetingToolbarWalksHistoryUnderABreadcrumb()": 30.0,
     "MeetingDetailUITests/testWideMeetingPagePutsTheMarginBesideTheReadingColumn()": 20.0,
     "MeetingDetailUITests/testStandfirstControlsStayWholeInTheNarrowestWindow()": 20.0,
     "MeetingDetailUITests/testVoiceStripsRunUpToTheirRowControls()": 20.0

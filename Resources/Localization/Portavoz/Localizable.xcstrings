@@ -18636,6 +18636,16 @@
           }
         }
       }
+    },
+    "Forward": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adelante"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
