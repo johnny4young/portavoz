@@ -274,7 +274,7 @@ final class HomeUITests: PortavozUITestCase {
         for dark in [false, true] {
             let app = try XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
             app.launchArguments += ["-seed-brief-previous", "-seed-pick-up", "-seed-today-voices", "-seed-wide-window"]
-            app.launchArguments += dark ? ["-seed-dark-appearance"] : ["-AppleInterfaceStyle", "Light"]
+            app.launchArguments += XCUIApplication.appearanceArguments(dark: dark)
             app.launchPortavoz()
 
             XCTAssertTrue(app.waitForSeededLibraryToSettle())

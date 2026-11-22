@@ -3084,8 +3084,8 @@ is recording, an event shown has started or ended since the read, or the day
 has turned, so captions never trigger a read. A failed read keeps what is
 shown. **One page cast (D663)**: `State.pageCast` builds a `TodayPageCast`
 (ApplicationKit) per render: the day cast first, then the hero's invitees (the
-day read's cast for a today event, otherwise its attendees keyed by folded
-name), then the brief source, the shown to-dos' meetings and the pick-up rows,
+day read's cast, which also resolves tomorrow's hero passed as `later`; before
+that read lands, its attendees keyed by folded name), then the brief source, the shown to-dos' meetings and the pick-up rows,
 each recast from its `VoiceStripSource` (the stored strip with every voice's
 day identity key) with `page:` set to the tints claimed so far. The hero, the
 brief strip, legend and person dots, the to-do provenance dots and the pick-up

@@ -91,6 +91,23 @@ final class TodayPageCastTests: XCTestCase {
         XCTAssertEqual(page.tint(for: brief.speaker, isMe: false, in: brief.id), heroTint)
     }
 
+    func testAConfirmedPersonKeepsTheirDayHueInTomorrowsHero() throws {
+        let rival = self.rival
+        let tomorrow = UpcomingEvent(
+            id: "tomorrow", title: "Sync", startDate: at(34), attendees: ["Marta"], endDate: at(35))
+        let day = TodayVoices(
+            day: day, now: at(9),
+            meetings: [MeetingStore.LibraryMeetingRow(
+                meeting: Meeting(title: "Today", startedAt: at(8), endedAt: at(8.5), lifecycleState: .ready),
+                voiceColumns: columns([voice(rival), voice("Marta G.", person: marta.id)]))],
+            events: [], later: [tomorrow], people: ["Marta": [marta]])
+        let dayTint = day.cast.tint(for: TodayVoices.Identity.person(marta.id).key)
+        XCTAssertNotEqual(dayTint, .grey)
+
+        let hero = try XCTUnwrap(TodayPageCast(day: day, hero: tomorrow, meetings: []).hero)
+        XCTAssertEqual(hero.voices.first?.tint, dayTint, "the invitee resolves to the person heard today")
+    }
+
     func testTomorrowsInviteesKeepCalendarOrderWithYouLast() throws {
         let event = UpcomingEvent(
             id: "tomorrow", title: "Sync", startDate: at(34), attendees: ["Marta", "Ilarion"], endDate: at(35))

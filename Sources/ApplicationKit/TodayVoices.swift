@@ -81,6 +81,8 @@ public struct TodayVoices: Sendable, Equatable {
     public let recorded: [RecordedMeeting]
     /// Today's events that have not ended and were not recorded, earliest first.
     public let upcoming: [UpcomingMeeting]
+    /// The `later` events with their invitees, coloured by the day cast.
+    public let later: [UpcomingMeeting]
     /// Upcoming events that have not started yet.
     public let toGo: Int
     public let cast: VoiceCast
@@ -98,6 +100,7 @@ extension TodayVoices {
         now: Date,
         meetings: [MeetingStore.LibraryMeetingRow],
         events: [UpcomingEvent],
+        later: [UpcomingEvent] = [],
         people: [String: [Person]]
     ) {
         let meetings = meetings.sorted { $0.meeting.startedAt < $1.meeting.startedAt }
@@ -113,14 +116,14 @@ extension TodayVoices {
         let recorded = meetings.map {
             Self.recorded($0.row, source: $0.source, now: now, page: cast.page, names: names)
         }
+        func meeting(_ event: UpcomingEvent) -> UpcomingMeeting {
+            let invitees = Self.invitees(event.attendees, people: people, names: names)
+            return UpcomingMeeting(event: event, invitees: invitees, cast: Self.inviteeCast(invitees, page: cast.page))
+        }
         let upcoming = events
             .filter { Self.isStillAhead($0, day: day, now: now, recorded: recorded) }
             .sorted { $0.startDate < $1.startDate }
-            .map { event in
-                let invitees = Self.invitees(event.attendees, people: people, names: names)
-                return UpcomingMeeting(
-                    event: event, invitees: invitees, cast: Self.inviteeCast(invitees, page: cast.page))
-            }
+            .map(meeting)
         let mine = totals.filter { $0.identity == .me }
         let others = totals.filter { $0.identity != .me }.sorted { $0.talkSeconds > $1.talkSeconds }
         self.init(
@@ -128,6 +131,7 @@ extension TodayVoices {
             talkers: (mine + others).map { $0.talker(tint: cast.tint(for: $0.identity.key)) },
             recorded: recorded,
             upcoming: upcoming,
+            later: later.map(meeting),
             toGo: upcoming.count { $0.event.startDate > now },
             cast: cast)
     }

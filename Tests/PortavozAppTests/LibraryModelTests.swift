@@ -59,6 +59,10 @@ final class LibraryModelTests: XCTestCase {
         XCTAssertEqual(model.state.loadPhase, .loaded)
         XCTAssertEqual(model.state.meetings.map(\.id), [fixture.meeting.id])
         XCTAssertEqual(model.state.voiceStrips[fixture.meeting.id], fixture.voiceStrip)
+        XCTAssertEqual(model.state.voiceSources[fixture.meeting.id], fixture.voiceSource)
+        let page = model.state.pageCast(pickUp: [])
+        XCTAssertNotNil(page.strip(for: fixture.meeting.id), "a shown to-do's meeting is recast on the page")
+        XCTAssertNotEqual(page.tint(for: fixture.marta, isMe: false, in: fixture.meeting.id), .grey)
         XCTAssertEqual(model.state.openItems.map(\.item.id), [fixture.actionItem.id])
         XCTAssertEqual(model.state.trashed.map(\.meeting.id), [fixture.deleted.meeting.id])
         XCTAssertEqual(model.state.upcomingToday, fixture.agenda.today)
@@ -412,6 +416,7 @@ private struct LibraryModelFixture {
     let eventTomorrow: UpcomingEvent
     let deleted: LibraryTrashItem
     let hit: LibrarySearchHit
+    let marta = SpeakerID()
 
     init() {
         let meeting = Meeting(
@@ -451,6 +456,16 @@ private struct LibraryModelFixture {
         return VoiceStripColumns(columns: [0, VoiceColumns.silence], tints: [.you], cast: cast)
     }
 
+    var voiceSource: VoiceStripSource {
+        VoiceStripSource(columns: MeetingVoiceColumns(
+            duration: 60, columns: [0, VoiceColumns.silence],
+            voices: [
+                MeetingVoiceColumns.Voice(
+                    speakerID: marta, isMe: false, label: "S1", displayName: "Marta", personID: nil,
+                    talkSeconds: 30, firstHeard: 0)
+            ]))
+    }
+
     var openItem: LibraryOpenItem {
         LibraryOpenItem(
             meetingID: meeting.id,
@@ -480,7 +495,7 @@ private struct LibraryModelFixture {
         [
             .meetings(
                 includeContent
-                    ? [LibraryMeetingRow(meeting: meeting, voiceStrip: voiceStrip)]
+                    ? [LibraryMeetingRow(meeting: meeting, voiceStrip: voiceStrip, voiceSource: voiceSource)]
                     : [],
                 failures: meetingFailures),
             .openItems(includeContent ? [openItem] : []),
@@ -624,12 +639,12 @@ private final class LibraryModelClientFake: LibraryModelClient {
         return briefLines
     }
 
-    func libraryTodayVoices(at now: Date, events: [UpcomingEvent]) throws -> TodayVoices {
+    func libraryTodayVoices(at now: Date, events: [UpcomingEvent], later: [UpcomingEvent]) throws -> TodayVoices {
         calls.append(.todayVoices(events.map(\.id)))
         try fail(.todayVoices)
         return TodayVoices(
             day: DateInterval(start: now.addingTimeInterval(-3_600), duration: 86_400),
-            now: now, meetings: [], events: events, people: [:])
+            now: now, meetings: [], events: events, later: later, people: [:])
     }
 
     func libraryTodayWork(_ request: LoadTodayWork.Request) throws -> TodayWork {

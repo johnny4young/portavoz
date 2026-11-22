@@ -23421,7 +23421,9 @@ wear two hues on the page and two people one. `TodayPageCast` now claims tints
 in page order: the day cast, the hero's invitees, the brief source, the shown
 to-dos' meetings, then the pick-up rows. Each meeting is recast with `page:` set
 to the tints claimed so far, keyed by the day identities of D652, so a known
-voice keeps its tint, grey included, and a newcomer takes a free hue. Library
+voice keeps its tint, grey included, and a newcomer takes a free hue. The day
+read also resolves tomorrow's hero invitees by exact alias, so a confirmed
+person heard today keeps their hue when tomorrow's meeting leads the page. Library
 rows carry a `VoiceStripSource` (the stored strip with identity keys) because
 the Library model and read models stay free of StorageKit. The sidebar keeps
 per-meeting casts because it spans several days. A resume or player strip dims

@@ -161,8 +161,10 @@ extension AppServices: LibraryModelClient {
         try await meetingBriefLinesUseCase.execute(event)
     }
 
-    func libraryTodayVoices(at now: Date, events: [UpcomingEvent]) async throws -> TodayVoices {
-        try await LoadTodayVoices(store: store).execute(.init(now: now, events: events))
+    func libraryTodayVoices(
+        at now: Date, events: [UpcomingEvent], later: [UpcomingEvent]
+    ) async throws -> TodayVoices {
+        try await LoadTodayVoices(store: store).execute(.init(now: now, events: events, later: later))
     }
 
     func libraryTodayWork(_ request: LoadTodayWork.Request) async throws -> TodayWork {

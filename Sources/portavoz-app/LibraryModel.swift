@@ -27,7 +27,7 @@ protocol LibraryModelClient: AnyObject {
     func requestLibraryCalendarAccess() async
     func buildLibraryBrief(for event: UpcomingEvent) async -> MeetingBrief?
     func libraryBriefLines(for event: UpcomingEvent) async throws -> MeetingBriefLines?
-    func libraryTodayVoices(at now: Date, events: [UpcomingEvent]) async throws -> TodayVoices
+    func libraryTodayVoices(at now: Date, events: [UpcomingEvent], later: [UpcomingEvent]) async throws -> TodayVoices
     func libraryTodayWork(_ request: LoadTodayWork.Request) async throws -> TodayWork
     /// Skill offers waiting for review; zero when they cannot be read.
     func pendingLibraryAutomations() async -> Int
@@ -130,6 +130,11 @@ final class LibraryModel {
         /// Pick up where you left off; rows carry no progress until positions load.
         var pickUpRows: [TodayPickUp.Row] {
             TodayPickUp.rows(meetings: meetings, positions: playbackPositions)
+        }
+
+        /// Tomorrow's hero, whose invitees the day read also resolves.
+        var laterHero: [UpcomingEvent] {
+            heroEvent.flatMap { $0.isToday ? nil : [$0.event] } ?? []
         }
 
         /// The first event of today, else the first of tomorrow.
@@ -471,7 +476,7 @@ private extension LibraryModel {
         let signature = TodaySignature(
             meetings: today.map(MeetingSignature.init),
             strips: today.filter { $0.lifecycleState != .recording }.map { state.voiceStrips[$0.id] ?? .empty },
-            events: state.upcomingToday)
+            events: state.upcomingToday + state.laterHero)
         guard signature != todaySignature else { return }
         todaySignature = signature
         state.todayVoicesRevision &+= 1
@@ -527,7 +532,8 @@ private extension LibraryModel {
         let request = todayVoicesRequest
         let voices: TodayVoices
         do {
-            voices = try await client.libraryTodayVoices(at: Date(), events: state.upcomingToday)
+            voices = try await client.libraryTodayVoices(
+                at: Date(), events: state.upcomingToday, later: state.laterHero)
         } catch {
             return
         }

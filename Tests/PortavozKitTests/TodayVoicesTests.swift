@@ -214,12 +214,18 @@ final class TodayVoicesTests: XCTestCase {
                     id: "b", title: "b", startDate: expectedDay.end.addingTimeInterval(3600),
                     attendees: ["Ilarion"])
             ],
+            later: [UpcomingEvent(
+                id: "hero", title: "hero", startDate: expectedDay.end.addingTimeInterval(7200),
+                attendees: ["Marta", "Nora"])],
             calendar: calendar))
 
         let calls = await store.calls
         XCTAssertEqual(calls.intervals, [expectedDay])
-        XCTAssertEqual(calls.aliases, [["Marta"]], "tomorrow's invitees are not looked up")
+        XCTAssertEqual(calls.aliases, [["Marta", "Nora"]], "only today's and the later hero's invitees")
         XCTAssertEqual(today.upcoming.map(\.id), ["a"])
+        XCTAssertEqual(
+            today.later.first?.invitees,
+            [TodayVoices.Invitee(name: "Marta", personID: marta.id), TodayVoices.Invitee(name: "Nora", personID: nil)])
         XCTAssertEqual(
             today.upcoming.first?.invitees, [TodayVoices.Invitee(name: "Marta", personID: marta.id)],
             "nobody spoke today, so the person's own name")
