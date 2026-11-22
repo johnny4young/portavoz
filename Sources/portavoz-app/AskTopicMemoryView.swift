@@ -293,8 +293,7 @@ extension AskTopicMemoryView {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "arrow.turn.down.right")
-                        Text(
-                            "\(citation.meetingTitle) · \(AskMarkdown.clock(citation.timestamp))")
+                        Text(PVFont.timeCoded(citation.meetingTitle, at: AskMarkdown.clock(citation.timestamp)))
                             .lineLimit(1)
                     }
                     .font(.caption)
@@ -332,8 +331,8 @@ extension AskTopicMemoryView {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.turn.down.right")
-                    Text(
-                        "\(discussion.meetingTitle) · \(AskMarkdown.clock(discussion.citation.timestamp))")
+                    Text(PVFont.timeCoded(
+                        discussion.meetingTitle, at: AskMarkdown.clock(discussion.citation.timestamp)))
                         .lineLimit(1)
                 }
                 .font(.caption)

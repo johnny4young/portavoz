@@ -26,7 +26,9 @@ struct HomePickUp: View {
     private func row(_ row: TodayPickUp.Row) -> some View {
         let meeting = row.meeting
         let strip = strips[meeting.id] ?? .empty
-        let progress = row.progress.map(Self.progressText)
+        let progress = row.progress.map {
+            PVFont.timeCoded(Self.progressText($0), time: Self.stoppedAt($0), weight: .semibold)
+        }
         let openCount = openItems.count { $0.meetingID == meeting.id }
         return Button {
             onOpen(meeting.id)
@@ -53,7 +55,7 @@ struct HomePickUp: View {
                     lifecycleBadge(meeting.lifecycleState)
                     if let progress {
                         Text(progress)
-                            .font(.caption.weight(.semibold).monospacedDigit())
+                            .font(.caption.weight(.semibold))
                             .foregroundStyle(PVDesign.ink2)
                             .lineLimit(1)
                             .fixedSize()
@@ -105,9 +107,18 @@ struct HomePickUp: View {
     nonisolated static func progressText(_ progress: TodayPickUp.Progress) -> String {
         switch progress {
         case .stopped(let seconds):
-            L10n.format("stopped at %@", ClockFormat.mmss(seconds, locale: AppLanguage.current.locale))
+            L10n.format("stopped at %@", clock(seconds))
         case .unheard:
             L10n.text("unheard")
         }
+    }
+
+    nonisolated static func stoppedAt(_ progress: TodayPickUp.Progress) -> String? {
+        guard case .stopped(let seconds) = progress else { return nil }
+        return clock(seconds)
+    }
+
+    nonisolated private static func clock(_ seconds: TimeInterval) -> String {
+        ClockFormat.mmss(seconds, locale: AppLanguage.current.locale)
     }
 }

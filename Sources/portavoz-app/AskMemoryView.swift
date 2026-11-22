@@ -178,8 +178,7 @@ struct AskMemoryView: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "arrow.turn.down.right")
-                        Text(
-                            "\(citation.meetingTitle) · \(AskMarkdown.clock(citation.timestamp))")
+                        Text(PVFont.timeCoded(citation.meetingTitle, at: AskMarkdown.clock(citation.timestamp)))
                             .lineLimit(1)
                     }
                     .font(.caption)

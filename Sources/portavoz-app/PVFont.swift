@@ -106,6 +106,33 @@ enum PVFont {
         }
     }
 
+    /// A position on a recording's time axis (m:ss): SF Mono. Clock-of-day
+    /// labels stay SF with monospaced digits.
+    static func timeCode(_ style: Font.TextStyle = .caption, weight: Font.Weight = .regular) -> Font {
+        .system(style, design: .monospaced, weight: weight)
+    }
+
+    /// `text` with its last run reading `time` set as a time code; the rest
+    /// keeps the surrounding font. For localized formats that place the time.
+    static func timeCoded(
+        _ text: String, time: String?, style: Font.TextStyle = .caption, weight: Font.Weight = .regular
+    ) -> AttributedString {
+        var result = AttributedString(text)
+        if let time, let range = result.range(of: time, options: .backwards) {
+            result[range].font = timeCode(style, weight: weight)
+        }
+        return result
+    }
+
+    /// "Sprint Demo · 02:18" with the time set as a time code.
+    static func timeCoded(
+        _ prefix: String, at time: String, style: Font.TextStyle = .caption, weight: Font.Weight = .regular
+    ) -> AttributedString {
+        var code = AttributedString(time)
+        code.font = timeCode(style, weight: weight)
+        return AttributedString("\(prefix) · ") + code
+    }
+
     private enum Axis {
         static let weight = tag("wght")
         static let softness = tag("SOFT")

@@ -194,7 +194,13 @@ final class LibraryUITests: PortavozUITestCase {
             XCTAssertTrue(
                 app.control(withIdentifier: "library-section-earlier").exists,
                 "past meetings keep their native section under an ink-3 header")
-            attachScreenshot(of: app, named: "pr-library-sidebar-\(name)")
+            let record = app.buttons["library-new-recording-button"]
+            XCTAssertTrue(record.isHittable, "New recording leads the sidebar with the mark")
+            XCTAssertEqual(
+                record.label, UITestLocale.environmentLocale == "es" ? "Nueva grabación" : "New recording",
+                "the mark is decoration; the label stays the name")
+            XCTAssertTrue(app.control(withIdentifier: "library-record-menu").exists)
+            attachScreenshot(of: app, names: ["pr-library-sidebar-\(name)", "pr-system-mark-\(name)"])
             finishUITestApplication(app)
         }
     }

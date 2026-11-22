@@ -242,7 +242,7 @@ private struct TranscriptChapterRow: View {
 
     private var time: some View {
         Text(ClockFormat.mmss(chapter.startTime))
-            .font(.system(.caption, design: .monospaced))
+            .font(PVFont.timeCode(.caption))
             .foregroundStyle(PVDesign.ink3)
             .fixedSize()
     }
@@ -302,7 +302,7 @@ private struct MeetingTranscriptRowView: View {
             onSeek(row.startTime)
         } label: {
             Text(ClockFormat.mmss(row.startTime))
-                .font(.system(.caption2, design: .monospaced))
+                .font(PVFont.timeCode(.caption2))
                 .foregroundStyle(PVDesign.ink3)
         }
         .buttonStyle(.plain)

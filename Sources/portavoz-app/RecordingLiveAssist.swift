@@ -198,7 +198,7 @@ struct RecordingProactiveAssistView: View {
                 .font(.callout)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
-            Text(source(for: suggestion))
+            Text(PVFont.timeCoded(source(for: suggestion), time: range(suggestion.evidence), style: .caption2))
                 .font(.caption2)
                 .foregroundStyle(.ink3)
                 .accessibilityIdentifier(
@@ -243,17 +243,20 @@ struct RecordingProactiveAssistView: View {
 
     private func source(for suggestion: ProactiveAssistSuggestion) -> String {
         let evidence = suggestion.evidence
-        let range = "\(ClockFormat.mmss(evidence.startTime))–\(ClockFormat.mmss(evidence.endTime))"
         if suggestion.objective != nil {
             return L10n.format(
                 "Source: your open objective + %d closed turns · %@",
                 evidence.segmentIDs.count,
-                range)
+                range(evidence))
         }
         return L10n.format(
             "Source: %d recent closed turns · %@",
             evidence.segmentIDs.count,
-            range)
+            range(evidence))
+    }
+
+    private func range(_ evidence: ProactiveAssistEvidence) -> String {
+        "\(ClockFormat.mmss(evidence.startTime))–\(ClockFormat.mmss(evidence.endTime))"
     }
 
 }

@@ -128,8 +128,8 @@ struct HomeBriefCard: View {
                             .foregroundStyle(PVDesign.ink)
                     }
                     if let meta = Self.meta(line) {
-                        Text(meta)
-                            .font(.caption.monospacedDigit())
+                        Text(PVFont.timeCoded(meta, time: Self.time(line)))
+                            .font(.caption)
                             .foregroundStyle(PVDesign.ink3)
                     }
                 }
@@ -157,10 +157,12 @@ struct HomeBriefCard: View {
     nonisolated static func meta(
         _ line: MeetingBriefLines.Line, now: Date = Date(), calendar: Calendar = .current
     ) -> String? {
-        let time = line.segmentID == nil
-            ? nil : ClockFormat.mmss(line.time, locale: AppLanguage.current.locale)
-        let parts = [time, status(line.status, now: now, calendar: calendar)].compactMap(\.self)
+        let parts = [time(line), status(line.status, now: now, calendar: calendar)].compactMap(\.self)
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    nonisolated static func time(_ line: MeetingBriefLines.Line) -> String? {
+        line.segmentID == nil ? nil : ClockFormat.mmss(line.time, locale: AppLanguage.current.locale)
     }
 
     nonisolated static func status(

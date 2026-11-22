@@ -54,7 +54,7 @@ struct RecordingNotesPanel: View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text("▸").foregroundStyle(PVDesign.accent)
             Text(ClockFormat.mmss(item.timestamp))
-                .font(.caption2.monospacedDigit())
+                .font(PVFont.timeCode(.caption2))
                 .foregroundStyle(.ink3)
             Text(item.content)
                 .font(.callout)

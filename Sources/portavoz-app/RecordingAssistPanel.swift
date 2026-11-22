@@ -127,7 +127,7 @@ private extension RecordingAssistPanel {
                     .foregroundStyle(PVDesign.youInk)
                 Spacer()
                 Text(ClockFormat.mmss(card.askedAt))
-                    .font(.caption2.monospacedDigit())
+                    .font(PVFont.timeCode(.caption2))
                     .foregroundStyle(.ink3)
                 Button {
                     controller.dismissCompanionCard(card.id)

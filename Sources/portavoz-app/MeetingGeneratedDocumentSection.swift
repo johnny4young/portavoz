@@ -596,8 +596,10 @@ struct MeetingEvidenceSources: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.ink3)
                 ForEach(Array(resolution.segments.enumerated()), id: \.element.id) { index, segment in
-                    Button(clock(segment.startTime)) {
+                    Button {
                         focus(segment)
+                    } label: {
+                        Text(clock(segment.startTime)).font(PVFont.timeCode(.caption2))
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.mini)

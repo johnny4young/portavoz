@@ -156,8 +156,9 @@ struct TranscriptStructuralCorrectionControls: View {
                     .accessibilityLabel("Split time")
                     .accessibilityValue(ClockFormat.mmss(splitTime))
                     .accessibilityIdentifier("transcript-structure-split-time")
-                Text(L10n.format("Split at %@", ClockFormat.mmss(splitTime)))
-                    .font(.caption.monospacedDigit())
+                Text(PVFont.timeCoded(
+                    L10n.format("Split at %@", ClockFormat.mmss(splitTime)), time: ClockFormat.mmss(splitTime)))
+                    .font(.caption)
                     .foregroundStyle(.ink3)
             }
             confirmationActions(

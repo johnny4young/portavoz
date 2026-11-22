@@ -101,7 +101,7 @@ struct LibraryView: View {
                             } label: {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(hit.snippet).lineLimit(2)
-                                    Text("\(hit.meetingTitle) · \(ClockFormat.mmss(hit.startTime))")
+                                    Text(PVFont.timeCoded(hit.meetingTitle, at: ClockFormat.mmss(hit.startTime)))
                                         .font(.caption)
                                         .foregroundStyle(.ink3)
                                 }
@@ -294,9 +294,8 @@ extension LibraryView {
         }
     }
 
-    /// The primary action, an ink pill led by a mini-waveform with your amber
-    /// peak, plus a ▾ menu for the rare ones (Import), so the navigation list
-    /// stays destinations only.
+    /// The primary action, an ink pill led by the Portavoz mark, plus a ▾ menu
+    /// for the rare ones (Import), so the navigation list stays destinations only.
     private var recordButton: some View {
         HStack(spacing: 4) {
             recordAction
@@ -336,13 +335,7 @@ extension LibraryView {
                 if recordingActive {
                     RecordLabel("Return to recording")
                 } else {
-                    HStack(alignment: .bottom, spacing: 2) {
-                        Capsule().fill(PVDesign.onInk.opacity(0.75)).frame(width: 2.5, height: 6)
-                        Capsule().fill(VoicePalette.me).frame(width: 2.5, height: 13)
-                        Capsule().fill(PVDesign.onInk.opacity(0.75)).frame(width: 2.5, height: 8)
-                    }
-                    .frame(height: 13)
-                    .accessibilityHidden(true)
+                    PortavozMarkGlyph(color: PVDesign.onInk)
                     Text("New recording")
                 }
             }
