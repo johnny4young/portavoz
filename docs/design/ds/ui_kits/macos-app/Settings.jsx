@@ -42,13 +42,13 @@ function PVSeg({ options, value, onPick }) {
   return (
     <span style={{ display: "flex", borderRadius: 8, overflow: "hidden", font: "500 11px/1 var(--font-app)", background: "rgba(255,255,255,0.08)", flexShrink: 0 }}>
       {options.map((o) => (
-        <span key={o} onClick={() => onPick && onPick(o)} style={{ padding: "7px 12px", cursor: "pointer", background: o === value ? "#5e5ce6" : "transparent", color: o === value ? "#fff" : "rgba(255,255,255,0.6)" }}>{o}</span>
+        <span key={o} onClick={() => onPick && onPick(o)} style={{ padding: "7px 12px", cursor: "pointer", background: o === value ? "var(--accent)" : "transparent", color: o === value ? "var(--on-accent)" : "rgba(255,255,255,0.6)" }}>{o}</span>
       ))}
     </span>
   );
 }
 function PVRadio({ on }) {
-  return <span style={{ width: 15, height: 15, borderRadius: 999, border: on ? "4px solid #5e5ce6" : "1.5px solid rgba(255,255,255,0.35)", background: on ? "#fff" : "transparent", flexShrink: 0, boxSizing: "border-box" }}></span>;
+  return <span style={{ width: 15, height: 15, borderRadius: 999, border: on ? "4px solid var(--ink)" : "1.5px solid rgba(255,255,255,0.35)", background: on ? "var(--paper)" : "transparent", flexShrink: 0, boxSizing: "border-box" }}></span>;
 }
 function PVGhostBtn({ children, danger }) {
   return <button type="button" style={{ font: "600 11px/1 var(--font-app)", color: danger ? "var(--destructive)" : "rgba(255,255,255,0.8)", background: danger ? "rgba(255,69,58,0.12)" : "rgba(255,255,255,0.08)", border: "none", borderRadius: 8, padding: "7px 12px", cursor: "pointer", flexShrink: 0 }}>{children}</button>;
@@ -85,13 +85,13 @@ function PVPaneIntel() {
     <>
       <span style={{ display: "flex", alignItems: "center", gap: 8, font: "700 22px/1.2 var(--font-app)" }}><SFIcon name="sparkles" size={19} color="var(--accent)" />Inteligencia</span>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 18px", borderRadius: 14, background: "linear-gradient(135deg, rgba(109,92,230,0.25), rgba(82,38,191,0.15))", border: "1px solid rgba(109,92,230,0.4)" }}>
-        <div style={{ width: 40, height: 40, borderRadius: 999, background: "rgba(109,92,230,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><SFIcon name="wand.and.stars" size={20} color="#cfc9ff" /></div>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 18px", borderRadius: 14, background: "var(--chip-ai-bg)", border: "1px solid var(--line)" }}>
+        <div style={{ width: 40, height: 40, borderRadius: 999, background: "var(--paper)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><SFIcon name="wand.and.stars" size={20} color="var(--green)" /></div>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
           <span style={{ font: "600 13px/1.3 var(--font-app)" }}>Tu Mac tiene Apple Intelligence — resumen en el Neural Engine, gratis y sin descargas.</span>
           <span style={{ font: "400 11px/1.4 var(--font-app)", color: "rgba(255,255,255,0.55)" }}>Recomendación medida en TU hardware, no una promesa.</span>
         </div>
-        <button type="button" style={{ font: "600 12px/1 var(--font-app)", color: "#fff", background: "#5e5ce6", border: "none", borderRadius: 999, padding: "9px 16px", cursor: "pointer" }}>Aplicar</button>
+        <button type="button" style={{ font: "600 12px/1 var(--font-app)", color: "var(--on-accent)", background: "var(--accent)", border: "none", borderRadius: 999, padding: "9px 16px", cursor: "pointer" }}>Aplicar</button>
       </div>
 
       <PVSecTitle>Motor de resúmenes</PVSecTitle>
@@ -114,7 +114,7 @@ function PVPaneIntel() {
           <span key={v} style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "500 11px/1 var(--font-app)", color: "rgba(255,255,255,0.85)", background: "rgba(255,255,255,0.07)", borderRadius: 999, padding: "6px 10px" }}>{v}<SFIcon name="xmark" size={8} color="rgba(255,255,255,0.4)" /></span>
         ))}
       </div>
-      <span style={{ display: "flex", alignItems: "center", gap: 6, font: "400 11px/1.4 var(--font-app)", color: "#9d8cff" }}><SFIcon name="sparkles" size={11} color="var(--chip-ai-spark)" />8 sugeridos desde tus reuniones — clic para revisar antes de agregar</span>
+      <span style={{ display: "flex", alignItems: "center", gap: 6, font: "400 11px/1.4 var(--font-app)", color: "var(--green)" }}><SFIcon name="sparkles" size={11} color="var(--chip-ai-spark)" />8 sugeridos desde tus reuniones — clic para revisar antes de agregar</span>
     </>
   );
 }
@@ -192,7 +192,7 @@ function PVSettings() {
       width: 1000, height: 780, display: "flex", background: "var(--bg-window)",
       color: "rgba(255,255,255,0.87)", fontFamily: "var(--font-app)", overflow: "hidden",
     }}>
-      <div style={{ width: 224, flexShrink: 0, display: "flex", flexDirection: "column", background: "rgba(14,17,32,0.55)", borderRight: "0.5px solid rgba(255,255,255,0.09)", padding: "12px 10px" }}>
+      <div style={{ width: 224, flexShrink: 0, display: "flex", flexDirection: "column", background: "var(--paper-2)", borderRight: "0.5px solid rgba(255,255,255,0.09)", padding: "12px 10px" }}>
         <div style={{ display: "flex", gap: 8, padding: "2px 4px 12px" }}>
           <span style={{ width: 11, height: 11, borderRadius: 999, background: "#ff5f57" }}></span>
           <span style={{ width: 11, height: 11, borderRadius: 999, background: "#febc2e" }}></span>
@@ -210,11 +210,11 @@ function PVSettings() {
                 onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)} style={{
                 display: "flex", flexDirection: "column", gap: 2, padding: "7px 10px", borderRadius: 7,
                 border: "none", cursor: "pointer", textAlign: "left", transition: "background 0.12s ease",
-                background: on ? "linear-gradient(135deg, rgba(109,92,230,0.9), rgba(82,38,191,0.9))" : (hover === n.id ? "rgba(255,255,255,0.06)" : "transparent"),
-                color: on ? "#fff" : "rgba(255,255,255,0.87)",
+                background: on ? "var(--selection)" : (hover === n.id ? "rgba(255,255,255,0.06)" : "transparent"),
+                color: on ? "var(--ink)" : "rgba(255,255,255,0.87)",
               }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 8, font: on ? "500 13px/1.2 var(--font-app)" : "400 13px/1.2 var(--font-app)" }}>
-                  <SFIcon name={n.icon} size={13} color={on ? "#fff" : "rgba(255,255,255,0.7)"} />{n.label}
+                  <SFIcon name={n.icon} size={13} color={on ? "var(--ink)" : "rgba(255,255,255,0.7)"} />{n.label}
                 </span>
                 <span style={{ font: "400 9.5px/1.3 var(--font-app)", color: on ? "rgba(255,255,255,0.65)" : "rgba(255,255,255,0.4)", paddingLeft: 21 }}>{n.sub}</span>
               </button>

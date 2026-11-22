@@ -3,7 +3,7 @@
 Portavoz is a **privacy-first, local-first meeting assistant for macOS** (Swift 6 + SwiftUI, iOS next). It records meetings, transcribes live on the Neural Engine, separates voices on-device, and summarizes locally by default; remote providers and private iCloud sync require explicit opt-in. Two products share one identity:
 
 1. **The macOS app** — native, ink on paper, quiet; Fraunces for titles and display numerals, SF for everything else.
-2. **portavoz.app** — the marketing site, "the icon's world": dark slate, violet radials, one amber accent, Fraunces display serif.
+2. **portavoz.app** — the marketing site, "the icon's world": the app's Night surfaces (`#121615` / `#191e1c`), ink `#eeebe2`, the shared amber and the dark voice hues, Fraunces display serif.
 
 **Sources** (explore these to design better against the real product):
 - GitHub: https://github.com/johnny4young/portavoz — SwiftUI app in `Sources/portavoz-app/`, real site in `site/`, design brief in `docs/design/claude-design-brief.md`, product docs in `docs/`.
@@ -28,7 +28,7 @@ Brand personality: **serious but warm, technical without being cold, honest**. B
 
 ## VISUAL FOUNDATIONS
 
-- **Ink on paper (app).** Paper `#fbf7f2` / Night `#121615` surfaces with ink `#14201e` / `#eeebe2`. Chrome carries no hue: primary buttons, selection and focus are ink (`--accent: var(--ink)`). The web keeps its own slate ground and violet radials in `site/styles.css`; the Aurora shell doses are retired.
+- **Ink on paper (app).** Paper `#fbf7f2` / Night `#121615` surfaces with ink `#14201e` / `#eeebe2`. Chrome carries no hue: primary buttons, selection and focus are ink (`--accent: var(--ink)`). The web wears the Night values in `site/styles.css`; the violet brand and the Aurora gradients are retired.
 - **Shared with Secreteo:** amber `#f2b33d`, paper `#fbf7f2` / `#f4ece3`, green `#1f6f5c` / `#7fd1b9` and the light red `#b93a22`.
 - **Voices («color IS voice»):** you are ALWAYS amber (`--you`, `--you-ink` for amber text); up to five others get a stable hue (`--voice-1`…`--voice-5`: Cobalt, Madder, Moss, Clay, Lagoon), assigned by order of appearance and persistent per named person; `--voice-unnamed` is grey. Voice hues are fills; names stay ink on the tint.
 - **Semantics:** red (`--now`) = the present only (Record, Stop, live edge, now line), never a warning · green (`--green`) = Portavoz speaking (✦ chips, summaries, answers, translations) · `--ok` = success · warnings and errors = ink plus a glyph.
@@ -57,7 +57,7 @@ No font binaries in the repo; the site loads **Fraunces, Instrument Sans, IBM Pl
 ## Index
 
 - `styles.css` — global entry; imports everything in `tokens/`.
-- `tokens/` — `colors.css` (app light/dark via `[data-theme="dark"]` + brand), `typography.css`, `spacing.css`, `motion.css`, `fonts.css`.
+- `tokens/` — `colors.css` (light, and Night via `[data-theme="dark"]` for the dark app, the site and the brand cards), `typography.css`, `spacing.css`, `motion.css`, `fonts.css`.
 - `guidelines/` — specimen cards for the brand icon, the logo and voice & tone.
 - `assets/` — `portavoz-icon.svg`, `portavoz-icon-light.svg`, `portavoz-mark-menubar.svg` (generated), `portavoz-mark.svg` (legacy).
 - Components live in the app, not here: `Sources/portavoz-app/PVComponents.swift` holds the family shapes shared with Secreteo (D646):

@@ -48,19 +48,7 @@
   --chip-ai-bg: var(--green-bg);
   --chip-offer-ink: var(--ink-3);
   --chip-offer-bg: rgba(20, 32, 30, 0.07);
-
-  /* ---- brand (portavoz.app web and brand guidelines; always dark) ---- */
-  --brand-ink: #f3f1ec;
-  --brand-ink-dim: #b9b6c4;
-  --brand-ground-0: #0e1120;
-  --brand-ground-1: #171b31;
-  --brand-violet: #5226bf;
-  --brand-amber: #fdbf47;
-  --brand-line: rgba(243, 241, 236, 0.14);
-  --brand-radial:
-    radial-gradient(1200px 700px at 85% -10%, rgba(82, 38, 191, 0.55), transparent 60%),
-    radial-gradient(900px 600px at -10% 30%, rgba(82, 38, 191, 0.25), transparent 55%),
-    #0e1120; /* @kind other */
+  --selection: rgba(20, 32, 30, 0.07);
 
   /* ---- pre-v6 names, kept so the UI kit renders in the new palette ---- */
   --bg-window: var(--paper);
@@ -80,13 +68,10 @@
   --chip-ai-spark: var(--green);
   --voice-me: var(--you);
   --voice-me-contrast: var(--on-you);
-  --aurora-window: var(--paper); /* @kind other */
-  --aurora-sidebar: var(--paper-2);
-  --aurora-header: none; /* @kind other */
-  --aurora-selection: var(--chip-offer-bg); /* @kind other */
 }
 
-/* Dark: Night, a green-black. Scope any subtree with data-theme="dark". */
+/* Dark: Night, a green-black. Scope any subtree with data-theme="dark".
+   portavoz.app and the brand cards use these values (site/styles.css). */
 [data-theme="dark"] {
   --paper: #121615;
   --paper-2: #0e1211;
@@ -112,4 +97,5 @@
   --voice-5: #5cc4d6;
   --voice-unnamed: #99a4b2;
   --chip-offer-bg: rgba(238, 235, 226, 0.07);
+  --selection: rgba(238, 235, 226, 0.14);
 }

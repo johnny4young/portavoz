@@ -81,6 +81,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 22, 2026
 
+- **🌐 The website wears the new palette** — portavoz.app now uses the app's green-black night, its ink and the amber it shares with Secreteo, with each voice in the hero in its own colour.
 - **🪶 The Portavoz mark on New recording** — the New recording button now leads with the three-strand mark, times like 02:18 read in one mono face across Today, summaries and Ask, and the "Dictation moved to Secreteo" notice is a compact card with Secreteo's mark.
 - **🧘 Calmer with Reduce Motion** — with Reduce Motion on, the recording dot stays solid, the mic meter follows your voice without easing, the idle onboarding bars stop rippling, live captions stop shrinking and blurring, and Ask jumps to the newest answer instead of gliding.
 - **🔎 Easier-to-read secondary text** — dates, hints, section headers and footnotes across the app use a darker ink that stays readable on paper, and switches keep a visible knob in dark mode.
