@@ -61,11 +61,7 @@ enum TranscriptFollowOwnershipPolicy {
 /// A transcript that follows its active line, kept centered. Live
 /// recording follows the newest caption until the user scrolls, then yields
 /// ownership until they explicitly choose "Jump to live".
-struct FocusedTranscriptView<
-    Item: Identifiable,
-    Row: View,
-    Accessory: View
->: View where Item.ID: Hashable {
+struct FocusedTranscriptView<Item: Identifiable, Row: View>: View where Item.ID: Hashable {
     let segments: [Item]
     let activeID: Item.ID?
     var height: CGFloat
@@ -78,9 +74,6 @@ struct FocusedTranscriptView<
     var mode: FocusedTranscriptMode
     var scrollAccessibilityIdentifier: String?
     @ViewBuilder var row: (Item, Bool) -> Row
-    /// Interactive row chrome stays outside the presentation-only focus
-    /// transform so hit testing continues to use the control's real frame.
-    @ViewBuilder var accessory: (Item, Bool) -> Accessory
 
     @State private var isFollowing = true
 
@@ -92,8 +85,7 @@ struct FocusedTranscriptView<
         followSignal: Double = 0,
         mode: FocusedTranscriptMode = .playback,
         scrollAccessibilityIdentifier: String? = nil,
-        @ViewBuilder row: @escaping (Item, Bool) -> Row,
-        @ViewBuilder accessory: @escaping (Item, Bool) -> Accessory
+        @ViewBuilder row: @escaping (Item, Bool) -> Row
     ) {
         self.segments = segments
         self.activeID = activeID
@@ -103,7 +95,6 @@ struct FocusedTranscriptView<
         self.mode = mode
         self.scrollAccessibilityIdentifier = scrollAccessibilityIdentifier
         self.row = row
-        self.accessory = accessory
     }
 
     var body: some View {
@@ -118,7 +109,7 @@ struct FocusedTranscriptView<
                         LazyVStack(spacing: 6) {
                             ForEach(segments) { segment in
                                 let isActive = segment.id == activeID
-                                ZStack(alignment: .trailing) {
+                                Group {
                                     if visualMode == .live {
                                         row(segment, isActive)
                                             .visualEffect { content, geometry in
@@ -138,7 +129,6 @@ struct FocusedTranscriptView<
                                     } else {
                                         row(segment, isActive)
                                     }
-                                    accessory(segment, isActive)
                                 }
                                 .id(segment.id)
                             }
@@ -217,29 +207,5 @@ struct FocusedTranscriptView<
         } else {
             proxy.scrollTo(id, anchor: anchor)
         }
-    }
-}
-
-extension FocusedTranscriptView where Accessory == EmptyView {
-    init(
-        segments: [Item],
-        activeID: Item.ID?,
-        height: CGFloat = 440,
-        anchor: UnitPoint = .center,
-        followSignal: Double = 0,
-        mode: FocusedTranscriptMode = .playback,
-        scrollAccessibilityIdentifier: String? = nil,
-        @ViewBuilder row: @escaping (Item, Bool) -> Row
-    ) {
-        self.init(
-            segments: segments,
-            activeID: activeID,
-            height: height,
-            anchor: anchor,
-            followSignal: followSignal,
-            mode: mode,
-            scrollAccessibilityIdentifier: scrollAccessibilityIdentifier,
-            row: row,
-            accessory: { _, _ in EmptyView() })
     }
 }

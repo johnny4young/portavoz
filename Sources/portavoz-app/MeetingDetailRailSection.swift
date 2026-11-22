@@ -55,13 +55,13 @@ struct MeetingDetailRailActions {
     let selectTab: @MainActor (MeetingDetailRailTab) -> Void
 }
 
-/// The always-present review rail beside the transcript.
+/// The always-present review margin beside the summary and transcript, or
+/// above the transcript when the page reads as one column.
 ///
 /// Processing that needs attention sits on top; below it one of three lenses
-/// (People, Apuntador, Chapters) fills the column height and scrolls on its
-/// own. The rail never disappears, so the page keeps one shape; a lens
-/// without material says so in one line. Selection is owned by the
-/// composition, not by this view.
+/// (People, Apuntador, Chapters) grows with the page instead of scrolling on
+/// its own. A lens without material says so in one line. Selection is owned
+/// by the composition, not by this view.
 struct MeetingDetailRailSection: View {
     let values: MeetingDetailRailValues
     let actions: MeetingDetailRailActions
@@ -77,15 +77,9 @@ struct MeetingDetailRailSection: View {
                         openSupportDiagnostics: actions.openSupportDiagnostics))
             }
             tabBar
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    lens
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            lens
         }
-        .frame(width: 260)
-        .frame(maxHeight: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-secondary-rail")
     }
@@ -98,14 +92,13 @@ struct MeetingDetailRailSection: View {
                     actions.selectTab(tab)
                 } label: {
                     // The selected lens names itself; the others show their
-                    // mark only, so three lenses fit the 260-point column.
+                    // mark only, so three lenses fit the narrowest margin.
                     Label(tab.title, systemImage: tab.symbol)
                         .labelStyle(RailTabLabelStyle(showsTitle: selected))
                         .font(.caption.weight(selected ? .semibold : .regular))
                         .lineLimit(1)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 5)
-                        .frame(maxWidth: selected ? .infinity : nil)
                         .background(
                             selected ? PVDesign.accent.opacity(PVDesign.chipTint) : .clear,
                             in: RoundedRectangle(cornerRadius: PVDesign.radiusSmall))
@@ -118,6 +111,7 @@ struct MeetingDetailRailSection: View {
                 .accessibilityAddTraits(selected ? .isSelected : [])
                 .accessibilityIdentifier("detail-rail-tab-\(tab.rawValue)")
             }
+            Spacer(minLength: 0)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-rail-tabs")

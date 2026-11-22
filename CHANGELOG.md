@@ -79,6 +79,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## November 22, 2026
+
+- **📜 One page per meeting** — summary, commitments, notes and transcript scroll as one page with nothing cut off in a small box, and a wide window keeps People, Apuntador and Chapters in a margin beside the text.
+
 ## November 21, 2026
 
 - **📖 Transcripts with chapters** — the transcript now breaks into chapters with their time and title right in the text, each turn shows who spoke and when in the margin (click the name to rename them), and the line playing now is outlined instead of everything else fading.

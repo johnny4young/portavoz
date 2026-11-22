@@ -18,6 +18,7 @@ final class MeetingDetailPlaybackNavigation {
     @ObservationIgnored private var voiceStep: (speaker: SpeakerID, time: TimeInterval)?
 
     var focusedRowID: UUID? { transcript.focusedRowID }
+    var revealCount: Int { transcript.revealCount }
 
     func focusEvidence(
         _ segment: TranscriptSegment,

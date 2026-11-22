@@ -23324,3 +23324,27 @@ playback follows the heading instead, so the title stays with its first line.
 Names stay in ink beside the voice dot (D643's tones-as-fills rule), so the
 board's coloured names become ink with a coloured dot. The rail's Chapters lens
 stays as a second way to jump.
+
+## D658 — A meeting is one scrolling page
+
+Meeting Detail split its height between a capped summary area, a transcript
+viewport and a short-window Summary | Transcript selector, so commitment cards
+were cut mid-card, the transcript opened on an empty band of viewport padding
+and narrow windows hid the summary behind a pane. The header, Voices table,
+summary, commitments, notes and transcript now share one page `ScrollView`
+(`detail-page-scroll`); the transcript rows are a lazy section of that page and
+the player docks below it across the detail. `MeetingDetailPageLayout` puts a
+260–300 point margin (the rail) beside the summary and transcript, level with
+the standfirst, only while the reading column keeps at least 540 points;
+otherwise the page is one column with the margin between the summary and the
+transcript. Below 640 points of column the summary's kicker and counts move
+above the lede, and the transcript's speaker margin moves above each turn
+(D657 used 520, which a one-column page at the minimum window never reached).
+Playback follows the active row only while audio plays and the transcript
+reaches the upper half of the page, so it never pulls the reader away from the
+header or summary; an explicit seek, citation or turn step brings its row into
+view even when asked twice; opening a meeting never scrolls past the header,
+and Reduce Motion drops the animation. This supersedes the pane
+selection of D549 and D657's viewport padding: the page itself gives the first
+line room, so no padding is needed for the centred scroll target.
+

@@ -12,6 +12,7 @@ struct MeetingTranscriptValues {
     let structureProjection: MeetingTranscriptStructureProjection
     let player: MeetingPlaybackSession?
     let focusedRowID: UUID?
+    let revealCount: Int
     let performanceScrollEnabled: Bool
     let translation: MeetingTranscriptTranslationState
 }
@@ -28,9 +29,10 @@ struct MeetingTranscriptActions {
     let openTranslationSettings: @MainActor () -> Void
 }
 
-/// The synchronized transcript reading surface. It consumes a neutral reading
-/// value, so a later correction composer can replace the accepted projection
-/// without introducing correction or evidence policy into SwiftUI.
+/// The synchronized transcript, read as a section of the meeting page rather
+/// than its own viewport. It consumes a neutral reading value, so a later
+/// correction composer can replace the accepted projection without
+/// introducing correction or evidence policy into SwiftUI.
 struct MeetingTranscriptSection: View {
     let values: MeetingTranscriptValues
     let actions: MeetingTranscriptActions
@@ -42,9 +44,7 @@ struct MeetingTranscriptSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             transcriptHeader
-            transcriptArea
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .clipped()
+            transcriptRows
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-transcript-section")
@@ -91,18 +91,7 @@ struct MeetingTranscriptSection: View {
         }
     }
 
-    @ViewBuilder
-    private var transcriptArea: some View {
-        if values.player != nil {
-            GeometryReader { geometry in
-                transcriptViewport(carouselHeight: max(1, geometry.size.height))
-            }
-        } else {
-            transcriptViewport(carouselHeight: 440)
-        }
-    }
-
-    private func transcriptViewport(carouselHeight: CGFloat) -> some View {
+    private var transcriptRows: some View {
         TranscriptSegmentsView(
             content: MeetingTranscriptTranslationState.display(
                 values.content, translation: values.translation.translation(language)),
@@ -110,6 +99,7 @@ struct MeetingTranscriptSection: View {
             voiceCast: values.voiceCast,
             player: values.player,
             focusedRowID: values.focusedRowID,
+            revealCount: values.revealCount,
             performanceScrollEnabled: values.performanceScrollEnabled,
             onSeek: actions.seekAndPlay,
             onRenameTap: actions.renameSpeaker,
@@ -118,8 +108,7 @@ struct MeetingTranscriptSection: View {
                 language == nil && (values.correctionContext($0) != nil
                     || values.structureProjection.context(for: $0) != nil)
             },
-            onCorrect: actions.presentCorrection,
-            carouselHeight: carouselHeight)
+            onCorrect: actions.presentCorrection)
     }
 }
 

@@ -59,6 +59,7 @@ struct MeetingGeneratedDocumentSection: View {
     let actions: MeetingGeneratedDocumentActions
 
     @State private var tabSelection = 0
+    @State private var isNarrow = false
 
     private var document: MeetingGeneratedDocumentPresentation {
         MeetingGeneratedDocumentPresentation(
@@ -66,20 +67,31 @@ struct MeetingGeneratedDocumentSection: View {
             hasTypedCommitments: !values.summary.draft.actionItems.isEmpty)
     }
 
-    /// The board's left margin: the kicker and counts sit beside the lede.
+    /// The board's left margin: the kicker and counts sit beside the lede,
+    /// or above it once the column is too narrow for that margin.
     private static let gutterWidth: CGFloat = 118
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             staleSummaryNotice
-            HStack(alignment: .top, spacing: 22) {
-                gutter
-                    .frame(width: Self.gutterWidth, alignment: .trailing)
+            let layout = isNarrow
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+                : AnyLayout(HStackLayout(alignment: .top, spacing: 22))
+            layout {
+                if isNarrow {
+                    gutterRow
+                } else {
+                    gutter
+                        .frame(width: Self.gutterWidth, alignment: .trailing)
+                }
                 documentContent
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             closingRule
         }
+        .onGeometryChange(for: Bool.self) { proxy in
+            MeetingDetailPageMetrics.usesInlineGutter(width: proxy.size.width)
+        } action: { isNarrow = $0 }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-generated-document")
         .onChange(of: values.summary.version) { _, _ in
@@ -454,13 +466,40 @@ private extension MeetingGeneratedDocumentSection {
             }
             summaryBadge
                 .padding(.top, 4)
-            HStack(spacing: 2) {
-                copyMenu
-                regenerateMenu
-            }
-            .foregroundStyle(PVDesign.ink3)
+            documentMenus
         }
         .padding(.top, 5)
+    }
+
+    /// The same gutter on one line above the lede, wrapping its counts onto
+    /// a second line before anything truncates.
+    var gutterRow: some View {
+        let counts = ForEach(documentSegments) { segment in
+            gutterButton(segment)
+        }
+        let trailing = HStack(spacing: 8) {
+            summaryBadge
+            documentMenus
+        }
+        return ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: 14) {
+                counts
+                Spacer(minLength: 8)
+                trailing
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline, spacing: 14) { counts }
+                trailing
+            }
+        }
+    }
+
+    var documentMenus: some View {
+        HStack(spacing: 2) {
+            copyMenu
+            regenerateMenu
+        }
+        .foregroundStyle(PVDesign.ink3)
     }
 
     func gutterButton(_ segment: PVSegment<Int>) -> some View {
@@ -494,12 +533,17 @@ private extension MeetingGeneratedDocumentSection {
             suggestionRow
         }
         .frame(height: 1)
+        // The chip overhangs the rule; keep its lower half off the next block.
+        .padding(.bottom, showsSuggestion ? 11 : 0)
+    }
+
+    var showsSuggestion: Bool {
+        !values.regenerating && (values.suggestedRecipe != nil || values.showThinSuggestion)
     }
 
     @ViewBuilder
     var suggestionRow: some View {
-        if !values.regenerating,
-           values.suggestedRecipe != nil || values.showThinSuggestion {
+        if showsSuggestion {
             HStack(spacing: 8) {
                 recipeSuggestion
                 thinSummarySuggestion

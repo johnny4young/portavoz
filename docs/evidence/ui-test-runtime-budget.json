@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 129
+    "expectedCaseCount": 131
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -74,19 +74,19 @@
     "MeetingDetailUITests/testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix()": 20.0,
     "MeetingDetailUITests/testPlayerMarksAClipJumpsFromALineAndPlaysOneVoice()": 60.0,
     "MeetingDetailUITests/testReopeningAMeetingResumesWhereListeningStopped()": 25.0,
-    "MeetingDetailUITests/testCompactTranscriptCorrectionCanReachItsOwnAction()": 30.0,
+    "MeetingDetailUITests/testShortWindowPageReachesSummaryAndTranscriptCorrection()": 30.0,
     "MeetingDetailUITests/testCommitmentInboxRequiresEvidenceReviewBeforeConfirmation()": 26.784,
     "MeetingDetailUITests/testCorrectedTranscriptMarksDerivedArtifactsStale()": 20.0,
     "MeetingDetailUITests/testDecisionCanBeConfirmedAboutATopic()": 20.0,
     "MeetingDetailUITests/testEmailRecapSkillPreviewsAndHandsOffWithoutSending()": 24.27,
-    "MeetingDetailUITests/testEvidenceSourcesJumpToTheirExactTranscriptAndAudio()": 20.0,
+    "MeetingDetailUITests/testEvidenceSourcesJumpToTheirExactTranscriptAndAudio()": 28.0,
     "MeetingDetailUITests/testExplicitApuntadorRefreshUsesCorrectedTranscript()": 20.0,
     "MeetingDetailUITests/testExportMenuOffersSubtitleFormats()": 20.0,
     "MeetingDetailUITests/testFailedDurableProcessingOffersOneRecoveryAction()": 20.0,
     "MeetingDetailUITests/testFailedSkillEffectRetriesItsOriginalProposal()": 20.524,
     "MeetingDetailUITests/testFiveThousandSegmentDetailRendersFromDisposableScaleFixture()": 20.0,
     "MeetingDetailUITests/testFreshQualifyingMeetingShowsThePostMeetingMirror()": 20.0,
-    "MeetingDetailUITests/testMeetingReviewSurfacesRemainCompleteAndActionable()": 20.0,
+    "MeetingDetailUITests/testMeetingReviewSurfacesRemainCompleteAndActionable()": 28.0,
     "MeetingDetailUITests/testMostRecentRecipeRemainsVisibleAfterReload()": 20.0,
     "MeetingDetailUITests/testAConfidentVoiceMatchNamesTheSpeakerAndCanBeUndone()": 20.0,
     "MeetingDetailUITests/testNamedSpeakerCanBeRememberedAsCanonicalPerson()": 20.0,
@@ -151,7 +151,9 @@
     "MeetingDetailUITests/testFamilyControlsShapeCastSuggestionsTabsAndCommitmentCards()": 20.0,
     "MeetingDetailUITests/testMeetingPageReadsLikeADocument()": 20.0,
     "MeetingDetailUITests/testManyVoicesKeepSixInTheCastAndFoldTheRestIntoOthers()": 20.0,
+    "MeetingDetailUITests/testNarrowMeetingPageReadsAsOneColumn()": 20.0,
     "MeetingDetailUITests/testNarrowTranscriptPutsTheSpeakerAboveTheLine()": 20.0,
-    "MeetingDetailUITests/testTranscriptReadsAsChaptersAndTurns()": 20.0
+    "MeetingDetailUITests/testTranscriptReadsAsChaptersAndTurns()": 20.0,
+    "MeetingDetailUITests/testWideMeetingPagePutsTheMarginBesideTheReadingColumn()": 20.0
   }
 }

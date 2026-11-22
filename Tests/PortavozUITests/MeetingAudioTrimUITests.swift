@@ -25,7 +25,7 @@ final class MeetingAudioTrimUITests: PortavozUITestCase {
         meeting.click()
         XCTAssertTrue(app.buttons["player-play-pause"].waitForExistenceFast(timeout: 10))
         XCTAssertTrue(app.staticTexts["/ 10:00"].exists)
-        XCTAssertTrue(app.openMeetingDetailReadingPane("transcript"))
+        XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
         assertTranscript(in: app)
         attachScreenshot(of: app, named: "audio-trim-before")
 
@@ -92,7 +92,7 @@ final class MeetingAudioTrimUITests: PortavozUITestCase {
 
     @MainActor
     private func assertTranscript(in app: XCUIApplication) {
-        let viewport = app.control(withIdentifier: "detail-transcript-scroll")
+        let viewport = app.control(withIdentifier: "detail-page-scroll")
         XCTAssertTrue(viewport.waitForExistenceFast(timeout: 5))
         let lines = [
             "Revisemos el presupuesto de transcripción.",

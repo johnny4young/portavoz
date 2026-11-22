@@ -57,7 +57,7 @@ final class MeetingTranscriptTranslationUITests: PortavozUITestCase {
 
     @MainActor
     private func requestTranslation(into language: String, in app: XCUIApplication) {
-        XCTAssertTrue(app.openMeetingDetailReadingPane("transcript"))
+        XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
         let menu = app.control(withIdentifier: "detail-transcript-translate")
         XCTAssertTrue(menu.waitForHittable(timeout: 10))
         menu.click()
