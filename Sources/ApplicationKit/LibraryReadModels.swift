@@ -4,12 +4,16 @@ import PortavozCore
 /// Query-specific row for the Library's recency-grouped meeting shelf.
 public struct LibraryMeetingRow: Sendable, Identifiable {
     public let meeting: Meeting
+    /// Drawn with the meeting's own cast; the sidebar spans several days.
     public let voiceStrip: VoiceStripColumns
+    /// The same strip for a page cast to recolour.
+    public let voiceSource: VoiceStripSource?
     public var id: MeetingID { meeting.id }
 
-    public init(meeting: Meeting, voiceStrip: VoiceStripColumns) {
+    public init(meeting: Meeting, voiceStrip: VoiceStripColumns, voiceSource: VoiceStripSource? = nil) {
         self.meeting = meeting
         self.voiceStrip = voiceStrip
+        self.voiceSource = voiceSource
     }
 }
 

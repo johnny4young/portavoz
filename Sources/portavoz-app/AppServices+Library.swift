@@ -250,7 +250,8 @@ private func makeApplicationMeetingRows(
     rows.map { row in
         LibraryMeetingRow(
             meeting: row.meeting,
-            voiceStrip: row.voiceColumns.map(VoiceStripColumns.init(columns:)) ?? .empty)
+            voiceStrip: row.voiceColumns.map(VoiceStripColumns.init(columns:)) ?? .empty,
+            voiceSource: row.voiceColumns.map(VoiceStripSource.init(columns:)))
     }
 }
 

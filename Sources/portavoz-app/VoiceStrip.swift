@@ -37,7 +37,11 @@ struct VoiceStrip: View {
         /// Compact strips calm short runs and draw no playhead.
         var isCompact: Bool { self == .row || self == .card || self == .axis }
 
-        var unplayedOpacity: Double { self == .resume ? 0.3 : 0.45 }
+        /// Dark keeps 3:1 between every dimmed tint and the track.
+        func unplayedOpacity(_ colorScheme: ColorScheme) -> Double {
+            if colorScheme == .dark { return 0.7 }
+            return self == .resume ? 0.3 : 0.45
+        }
     }
 
     /// How far the playhead and chapter ticks reach past the strip.
@@ -125,7 +129,7 @@ struct VoiceStrip: View {
                 GraphicsContext.Shading.color(VoicePalette.color($0, colorScheme: colorScheme)))
         }
         var ahead = context
-        ahead.opacity = size.unplayedOpacity
+        ahead.opacity = size.unplayedOpacity(colorScheme)
         let column = canvas.width / CGFloat(columns.count)
         let split = ((progress ?? 1) * canvas.width).rounded()
         for run in VoiceColumns.runs(columns) where Int(run.voice) < shadings.count {

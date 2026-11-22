@@ -23412,3 +23412,18 @@ per-frame timelines, transactions, symbol effects and phase or keyframe
 animators outside the helper, a literal flag, and a file that passes the flag
 without reading it from the environment. Live captions keep their distance
 fade under Reduce Motion but drop the shrink and blur that read as zoom.
+
+## D663 — Today draws every voice from one page cast
+
+The hero and the day axis used the day cast, but the brief card, the to-do
+provenance dots and Pick up used each meeting's own cast, so one person could
+wear two hues on the page and two people one. `TodayPageCast` now claims tints
+in page order: the day cast, the hero's invitees, the brief source, the shown
+to-dos' meetings, then the pick-up rows. Each meeting is recast with `page:` set
+to the tints claimed so far, keyed by the day identities of D652, so a known
+voice keeps its tint, grey included, and a newcomer takes a free hue. Library
+rows carry a `VoiceStripSource` (the stored strip with identity keys) because
+the Library model and read models stay free of StorageKit. The sidebar keeps
+per-meeting casts because it spans several days. A resume or player strip dims
+its unplayed part to 0.7 in dark instead of 0.45/0.3, the lowest level that
+keeps every tint at 3:1 against the dark track.

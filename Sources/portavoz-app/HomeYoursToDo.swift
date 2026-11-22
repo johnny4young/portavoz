@@ -8,7 +8,8 @@ struct HomeYoursToDo: View {
     let items: ArraySlice<LibraryOpenItem>
     let totalOpen: Int
     let sources: [UUID: OpenItemSource]
-    let strips: [MeetingID: VoiceStripColumns]
+    /// Colours who said it as the rest of Today does.
+    let page: TodayPageCast
     let suggestionsToReview: Int
     let onToggle: (UUID, Bool) -> Void
     let onOpen: (MeetingID, TimeInterval?) -> Void
@@ -85,7 +86,7 @@ struct HomeYoursToDo: View {
     private func provenance(_ open: LibraryOpenItem, source: OpenItemSource?) -> some View {
         HStack(spacing: 6) {
             if let saidBy = source?.saidBy {
-                VoiceDot(tint: tint(saidBy, in: open.meetingID))
+                VoiceDot(tint: page.tint(for: saidBy.speakerID, isMe: saidBy.isMe, in: open.meetingID))
                 Text(Self.whoSaid(saidBy, ownerSaidIt: source?.ownerSaidIt ?? true))
                     .fontWeight(.semibold)
                     .foregroundStyle(PVDesign.ink2)
@@ -97,12 +98,6 @@ struct HomeYoursToDo: View {
         .font(.caption)
         .foregroundStyle(PVDesign.ink3)
         .lineLimit(1)
-    }
-
-    private func tint(_ voice: OpenItemSource.Voice, in meetingID: MeetingID) -> VoiceCast.Tint {
-        if voice.isMe { return .you }
-        guard let speakerID = voice.speakerID, let cast = strips[meetingID]?.cast else { return .grey }
-        return cast.tint(for: speakerID)
     }
 
     nonisolated static func name(_ voice: OpenItemSource.Voice) -> String {

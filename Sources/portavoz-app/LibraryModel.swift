@@ -88,6 +88,7 @@ final class LibraryModel {
         fileprivate(set) var loadPhase: LoadPhase = .idle
         fileprivate(set) var meetings: [Meeting] = []
         fileprivate(set) var voiceStrips: [MeetingID: VoiceStripColumns] = [:]
+        fileprivate(set) var voiceSources: [MeetingID: VoiceStripSource] = [:]
         fileprivate(set) var openItems: [LibraryOpenItem] = []
         fileprivate(set) var trashed: [LibraryTrashItem] = []
 
@@ -137,9 +138,21 @@ final class LibraryModel {
             return upcomingTomorrow.first.map { ($0, false) }
         }
 
-        /// Invitees in the hues the day axis gives them, once today's read has the event.
-        func inviteeCast(for event: UpcomingEvent) -> VoiceCast {
-            todayVoices?.upcoming.first { $0.event == event }?.cast ?? VoiceCast(invitees: event.attendees)
+        /// The brief of the hero's own occurrence, once it has loaded.
+        var heroBriefPreview: BriefPreview? {
+            guard let event = heroEvent?.event, let briefPreview, briefPreview.isFor(event) else { return nil }
+            return briefPreview
+        }
+
+        /// One cast for all of Today: the day's voices, then the hero's
+        /// invitees, the brief source, to-do sources and pick-up rows.
+        func pageCast(pickUp: [TodayPickUp.Row]) -> TodayPageCast {
+            let ids = [heroBriefPreview?.lines?.sourceMeetingID].compactMap(\.self)
+                + shownOpenItems.map(\.meetingID)
+                + pickUp.map(\.meeting.id)
+            return TodayPageCast(
+                day: todayVoices, hero: heroEvent?.event,
+                meetings: ids.compactMap { id in voiceSources[id].map { (id, $0) } })
         }
     }
 
@@ -310,6 +323,9 @@ private extension LibraryModel {
             state.meetings = rows.map(\.meeting)
             state.voiceStrips = Dictionary(uniqueKeysWithValues: rows.map {
                 ($0.meeting.id, $0.voiceStrip)
+            })
+            state.voiceSources = Dictionary(uniqueKeysWithValues: rows.compactMap { row in
+                row.voiceSource.map { (row.meeting.id, $0) }
             })
             markObserved(.meetings, inlineFailureCount: failures)
             bumpRevision(meetings: rows.map { MeetingSignature($0.meeting) })

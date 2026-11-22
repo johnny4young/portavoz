@@ -91,6 +91,17 @@ final class PVDesignPaletteTests: XCTestCase {
         }
     }
 
+    func testUnplayedVoicesStayApartFromTheDarkTrack() {
+        let track = Self.blend(Tone.ink.dark, alpha: 0.1, over: Tone.paper.dark)
+        for size in [VoiceStrip.Size.resume, .player] {
+            let alpha = size.unplayedOpacity(.dark)
+            for tone in VoicePalette.hues + [VoicePalette.unnamedTone, Tone.you] {
+                let run = Self.blend(tone.dark, alpha: alpha, over: track)
+                XCTAssertGreaterThanOrEqual(Self.contrast(run, track), 3, "\(size) \(String(tone.dark, radix: 16))")
+            }
+        }
+    }
+
     func testVoicePaletteMatchesTheSharedHueCount() {
         XCTAssertEqual(VoicePalette.hues.count, VoiceHue.paletteSize)
     }
