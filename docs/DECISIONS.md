@@ -23476,5 +23476,5 @@ countdown stays at 120 pt. The size is one of two discrete display roles picked
 from the proposed width, never `ViewThatFits`, so the ticking view is measured
 once; a unit test renders both numerals and checks each fits the narrowest hero
 that carries it. The compact side tops out at the wide side's minimum, so
-crossing 940 pt only grows the numeral. A brief row too narrow for the 84 pt
+crossing 940 pt keeps the side in place. A brief row too narrow for the 84 pt
 name column plus a 200 pt line puts the name above the line.

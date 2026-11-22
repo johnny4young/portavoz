@@ -328,7 +328,7 @@ struct HomeHeroLayout: Layout {
         var minimumWidth: CGFloat { hero + spacing + side.lowerBound }
     }
 
-    // Compact tops out at the wide side's minimum, so crossing into wide only grows the numeral.
+    // Compact tops out at the wide side's minimum, so crossing into wide keeps the side where it is.
     private static let wide = Columns(hero: 536, side: 360...552, spacing: 44)
     private static let compact = Columns(hero: 324, side: 284...360, spacing: 32)
     private static let stackedSpacing = PVDesign.space6
