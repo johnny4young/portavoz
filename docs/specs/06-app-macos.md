@@ -2111,7 +2111,7 @@ never wrap, overlap bars or each other, or clip at the edge. Without a
 transcript the scrubber stays linear and skipping falls back to waveform
 silence. Under the scrubber, the one-row transport is play/pause (an ink disc), back/forward 15 s (`player-skip-back`, `player-skip-forward`),
 current time in ink with equal digit cells (`DisplayTimeText`, never the red
-`now` tone, which is reserved for live recording) over the total in ink 3,
+`now` tone, which is reserved for live status) over the total in ink 3,
 speed 1×–2× with preserved pitch (`player-speed`) and an options menu
 (`player-options`) holding Skip silence (`player-skip-silence`), Reduce echo
 (`player-clear-playback`) and Mark clip start/end (`clip-mark-start`,

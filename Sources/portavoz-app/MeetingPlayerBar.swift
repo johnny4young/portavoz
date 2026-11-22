@@ -4,7 +4,7 @@ import PortavozCore
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The transport bar (M11): a waveform scrubber over the mixed timeline and
+/// The transport bar: a waveform scrubber over the mixed timeline and
 /// one row of controls under it. Its own View so the scrubber's 5 fps updates
 /// don't re-render the whole detail. Falls back to a plain slider until the
 /// waveform is generated (or if the audio was unreadable).
@@ -221,7 +221,7 @@ private struct PlayerScrubber: View {
     }
 }
 
-/// The current time in ink with equal digit cells; red stays with live recording.
+/// The current time in ink with equal digit cells; red stays with live status.
 private struct PlayerClock: View {
     let player: MeetingPlaybackSession
     let size: CGFloat

@@ -23356,7 +23356,7 @@ docks under the page scroll across the whole detail width on the paper surface,
 separated by a hairline, with its content aligned to the page column; the
 scrubber sits above one control row that never wraps (a tight column shrinks
 the clock and turns speed into a glyph). The current time is ink with equal
-digit cells: red stays reserved for live recording, so the player no longer
-uses `StatusPill`. The page scroll ends at the player's top edge rather than
+digit cells: red stays reserved for live status (recording, Today's now
+marker), so the player no longer uses `StatusPill`. The page scroll ends at the player's top edge rather than
 running under an inset, so no row can sit beneath it.
 
