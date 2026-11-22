@@ -111,10 +111,7 @@ struct MeetingVoicesTable<Trailing: View>: View {
         .buttonStyle(.plain)
         .help("Step through their turns · right-click to rename")
         .accessibilityLabel(name)
-        .accessibilityValue(
-            speaker.personID == nil
-                ? L10n.text("Meeting-only name")
-                : L10n.text("Linked to a remembered person"))
+        .accessibilityValue(VoiceName.linkState(speaker))
         .accessibilityAction(named: L10n.text("Rename…")) { actions.rename(speaker) }
         .accessibilityIdentifier("cast-speaker-\(speaker.label)")
     }

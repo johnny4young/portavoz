@@ -56,7 +56,6 @@ INTERACTION_SOURCE_PATHS = (
     "Sources/portavoz-app/MeetingTranscriptSection.swift",
     "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
     "Sources/portavoz-app/MirrorCard.swift",
-    "Sources/portavoz-app/SpeakerPill.swift",
     "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
     "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
     "Sources/portavoz-app/TranscriptSegmentsView.swift",
@@ -226,10 +225,6 @@ DEFAULT_FEATURE_OWNERSHIP = (
             "testFamilyControlsShapeCastSuggestionsTabsAndCommitmentCards",
         ],
         "sourceAnchors": [
-            {
-                "path": "Sources/portavoz-app/SpeakerPill.swift",
-                "anchor": "VoiceChip(",
-            },
             {
                 "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
                 "anchor": '"summary-tab-0"',
@@ -504,6 +499,23 @@ DEFAULT_FEATURE_OWNERSHIP = (
             {
                 "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
                 "anchor": '"transcript-structure-original-evidence"',
+            },
+        ],
+    },
+    {
+        "feature": "transcript-document",
+        "tests": [
+            "testNarrowTranscriptPutsTheSpeakerAboveTheLine",
+            "testTranscriptReadsAsChaptersAndTurns",
+        ],
+        "sourceAnchors": [
+            {
+                "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+                "anchor": '"transcript-chapter-\\(Int(chapter.startTime))"',
+            },
+            {
+                "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+                "anchor": '"transcript-speaker-\\(row.id.uuidString)"',
             },
         ],
     },

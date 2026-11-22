@@ -35,8 +35,7 @@ public struct VoiceCast: Sendable, Equatable {
         ) {
             self.key = key
             self.isMe = isMe
-            let trimmed = name?.trimmingCharacters(in: .whitespaces)
-            self.name = trimmed?.isEmpty == false ? trimmed : nil
+            self.name = VoiceCast.name(name)
             self.talkSeconds = max(0, talkSeconds)
             self.lastHeard = lastHeard
         }
@@ -222,6 +221,12 @@ extension VoiceCast {
     }
 
     public static func key(_ id: SpeakerID) -> String { id.rawValue.uuidString }
+
+    /// A display name as the cast reads it: trimmed, and nil when blank.
+    public static func name(_ displayName: String?) -> String? {
+        let trimmed = displayName?.trimmingCharacters(in: .whitespaces)
+        return trimmed?.isEmpty == false ? trimmed : nil
+    }
 
     public func tint(for speaker: Speaker) -> Tint {
         speaker.isMe ? .you : tint(for: speaker.id)

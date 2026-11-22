@@ -40,6 +40,20 @@ enum AutomationEntityUITestRoute: String {
 }
 
 extension XCUIApplication {
+    /// The split view's own toggle carries only a localized label, so it is
+    /// addressed as the window toolbar's leading button and checked by its effect.
+    @MainActor
+    func setSidebar(visible: Bool) {
+        let today = buttons["library-home-button"]
+        guard today.exists != visible else { return }
+        let toggle = windows.firstMatch.toolbars.buttons.firstMatch
+        XCTAssertTrue(toggle.waitForStableFrame(timeout: 5))
+        toggle.click()
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 5) { today.exists == visible },
+            "the sidebar must end \(visible ? "shown" : "hidden")")
+    }
+
     /// Normal windows show both reading regions; compact windows require an
     /// explicit pane choice before asserting controls in the other region.
     @MainActor

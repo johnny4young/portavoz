@@ -212,6 +212,51 @@ final class MeetingTranscriptContentTests: XCTestCase {
         XCTAssertEqual(content.activeRowID(at: 39_998.5), id(20_000))
     }
 
+    func testReadingItemsPlaceChaptersBeforeTheirRowsAndOpenTurnsOnVoiceChange() {
+        let ana = SpeakerID()
+        let marta = SpeakerID()
+        let content = MeetingTranscriptContent(
+            baseTranscriptRevision: 1,
+            rows: [
+                row(id: id(1), sourceIDs: [id(1)], start: 0, end: 3, speakerID: ana),
+                row(id: id(2), sourceIDs: [id(2)], start: 3, end: 6, speakerID: marta),
+                row(id: id(3), sourceIDs: [id(3)], start: 6, end: 8, speakerID: marta),
+                row(id: id(4), sourceIDs: [id(4)], start: 200, end: 205, speakerID: marta),
+                row(id: id(5), sourceIDs: [id(5)], start: 206, end: 208),
+                row(id: id(6), sourceIDs: [id(6)], start: 209, end: 210, channel: .microphone),
+            ],
+            chapters: [
+                .init(startTime: 199, title: "Later"),
+                .init(startTime: 0, title: "Opening"),
+                .init(startTime: 900, title: "After every row"),
+            ])
+
+        let rows = content.rows
+        let chapters = content.chapters
+        XCTAssertEqual(content.readingItems, [
+            .chapter(chapters[0]),
+            .row(rows[0], startsTurn: true),
+            .row(rows[1], startsTurn: true),
+            .row(rows[2], startsTurn: false),
+            .chapter(chapters[1]),
+            .row(rows[3], startsTurn: true),
+            .row(rows[4], startsTurn: true),
+            .row(rows[5], startsTurn: true)
+        ], "a heading reopens a continuing voice; unattributed rows change turn with the channel")
+        XCTAssertEqual(content.readingItems.first?.id, .chapter(0))
+        XCTAssertEqual(content.readingItems[1].id, .row(id(1)))
+        XCTAssertEqual(content.readingKey(following: id(1)), .chapter(0), "a row that opens a chapter keeps its title in view")
+        XCTAssertEqual(content.readingKey(following: id(4)), .chapter(199))
+        XCTAssertEqual(content.readingKey(following: id(2)), .row(id(2)))
+    }
+
+    func testReadingItemsWithoutChaptersKeepOneItemPerRow() {
+        let rows = (0..<4).map { row(id: id($0 + 1), sourceIDs: [id($0 + 1)], start: Double($0), end: Double($0) + 1) }
+        let content = MeetingTranscriptContent(baseTranscriptRevision: 1, rows: rows, chapters: [])
+
+        XCTAssertEqual(content.readingItems, rows.enumerated().map { .row($1, startsTurn: $0 == 0) })
+    }
+
     private func segment(
         id: UUID,
         start: TimeInterval,
@@ -235,13 +280,15 @@ final class MeetingTranscriptContentTests: XCTestCase {
         id: UUID,
         sourceIDs: [UUID],
         start: TimeInterval,
-        end: TimeInterval
+        end: TimeInterval,
+        speakerID: SpeakerID? = nil,
+        channel: AudioChannel = .system
     ) -> MeetingTranscriptContent.Row {
         MeetingTranscriptContent.Row(
             id: id,
             sourceSegmentIDs: sourceIDs,
-            speakerID: nil,
-            channel: .system,
+            speakerID: speakerID,
+            channel: channel,
             text: "Row \(id.uuidString)",
             language: "en",
             startTime: start,

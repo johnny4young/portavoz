@@ -840,6 +840,61 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testTranscriptReadsAsChaptersAndTurns() throws {
+        let app = try launchOnSeededMeeting(
+            aiSuggestions: true, extraArguments: ["-seed-wide-window", "-AppleInterfaceStyle", "Light"])
+        defer { finishUITestApplication(app) }
+
+        // A 1024 pt screen only has room for the speaker margin without the sidebar.
+        app.setSidebar(visible: false)
+        XCTAssertTrue(app.openMeetingDetailReadingPane("transcript"))
+        let line = app.staticTexts["El rollout del modelo queda para el viernes."]
+        XCTAssertTrue(line.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(app.control(withIdentifier: "detail-transcript-section").waitForStableFrame(timeout: 5))
+
+        let opening = app.control(withIdentifier: "transcript-chapter-0")
+        XCTAssertTrue(opening.waitForExistenceFast(timeout: 10), "the first chapter heads the transcript")
+        let later = app.control(withIdentifier: "transcript-chapter-200")
+        XCTAssertTrue(later.exists, "the later turn opens its own chapter inside the transcript")
+        XCTAssertTrue(
+            renderedText(of: later).contains("Cerremos con los próximos pasos del rollout")
+                || later.staticTexts["Cerremos con los próximos pasos del rollout"].exists,
+            "a chapter heading carries its title")
+        // You, Ana, then You again after the chapter break; Ana's second line continues her turn.
+        let speakers = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'transcript-speaker-'"))
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { speakers.count == 3 },
+                      "a name opens each turn, not each line")
+        attachScreenshot(of: app, named: "pr-meeting-transcript-chapters")
+
+        let ana = speakers.matching(NSPredicate(format: "label == 'Ana'")).firstMatch
+        XCTAssertTrue(ana.waitForHittable(timeout: 5))
+        XCTAssertLessThan(ana.frame.maxX, line.frame.minX, "a wide column keeps the speaker in the left margin")
+        ana.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "speaker-rename-save").waitForExistenceFast(timeout: 5),
+            "the name in the margin renames that voice")
+        typeKey(.escape, modifierFlags: [], in: app, modalAnchor: "speaker-rename-save")
+    }
+
+    @MainActor
+    func testNarrowTranscriptPutsTheSpeakerAboveTheLine() throws {
+        let app = try launchOnSeededMeeting(aiSuggestions: true, extraArguments: ["-seed-narrow-window"])
+        defer { finishUITestApplication(app) }
+
+        XCTAssertTrue(app.openMeetingDetailReadingPane("transcript"))
+        let line = app.staticTexts["El rollout del modelo queda para el viernes."]
+        XCTAssertTrue(line.waitForExistenceFast(timeout: 10))
+        let ana = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'transcript-speaker-' AND label == 'Ana'"))
+            .firstMatch
+        XCTAssertTrue(ana.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { ana.frame.maxY <= line.frame.minY + 1 },
+                      "a narrow column moves the speaker above the line")
+        attachScreenshot(of: app, named: "pr-meeting-transcript-narrow")
+    }
+
+    @MainActor
     func testFailedDurableProcessingOffersOneRecoveryAction() throws {
         let app = try launchOnSeededMeeting(processingFailure: true)
         defer { finishUITestApplication(app) }

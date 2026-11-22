@@ -139,7 +139,7 @@ final class HomeUITests: PortavozUITestCase {
         let countdown = app.descendants(matching: .any)["home-upcoming-countdown"]
         XCTAssertTrue(countdown.waitForExistenceFast(timeout: 5))
         // A 1024 pt screen only has room for the wide layout without the sidebar.
-        setSidebar(visible: false, in: app)
+        app.setSidebar(visible: false)
         XCTAssertTrue(card.waitForStableFrame(timeout: 5))
         XCTAssertGreaterThan(card.frame.minX, countdown.frame.maxX, "the brief sits beside the countdown")
         attachScreenshot(of: app, named: "pr-home-brief-card")
@@ -155,7 +155,7 @@ final class HomeUITests: PortavozUITestCase {
         XCTAssertFalse(card.exists)
 
         // Back on Today, the card opens the full brief.
-        setSidebar(visible: true, in: app)
+        app.setSidebar(visible: true)
         let today = app.buttons["library-home-button"]
         XCTAssertTrue(today.waitForStableFrame(timeout: 5))
         today.click()
@@ -210,7 +210,7 @@ final class HomeUITests: PortavozUITestCase {
         XCTAssertGreaterThan(axis.frame.minY, marta.frame.maxY, "talk time leads, the axis follows")
 
         // A 1024 pt screen only has room for the wide layout without the sidebar.
-        setSidebar(visible: false, in: app)
+        app.setSidebar(visible: false)
         let scroll = app.scrollViews.containing(.staticText, identifier: "home-title").element
         XCTAssertTrue(axis.revealVertically(in: scroll))
         XCTAssertTrue(axis.waitForStableFrame(timeout: 5))
@@ -225,7 +225,7 @@ final class HomeUITests: PortavozUITestCase {
                 .firstMatch.waitForExistenceFast(timeout: 10),
             "the axis opens that meeting")
         XCTAssertFalse(section.exists)
-        setSidebar(visible: true, in: app)
+        app.setSidebar(visible: true)
     }
 
     @MainActor
@@ -258,12 +258,12 @@ final class HomeUITests: PortavozUITestCase {
             "the sidebar lists past meetings only")
 
         // A 1024 pt screen only has room for the wide layout without the sidebar.
-        setSidebar(visible: false, in: app)
+        app.setSidebar(visible: false)
         let scroll = app.scrollViews.containing(.staticText, identifier: "home-title").element
         XCTAssertTrue(recent.revealVertically(in: scroll))
         XCTAssertTrue(recent.waitForStableFrame(timeout: 5))
         attachScreenshot(of: app, named: "pr-home-pick-up-and-todos")
-        setSidebar(visible: true, in: app)
+        app.setSidebar(visible: true)
 
         recent.click()
         XCTAssertTrue(app.control(withIdentifier: "player-current-time").waitForExistenceFast(timeout: 15))
@@ -294,7 +294,7 @@ final class HomeUITests: PortavozUITestCase {
             "the countdown leads the hero, the actions close it")
         // Without an earlier occurrence the brief card says so, beside the countdown.
         // A 1024 pt screen only has room for the wide layout without the sidebar.
-        setSidebar(visible: false, in: app)
+        app.setSidebar(visible: false)
         let empty = app.descendants(matching: .any)["home-brief-empty"]
         XCTAssertTrue(empty.waitForExistenceFast(timeout: 10), "a first meeting has nothing said last time")
         XCTAssertTrue(empty.waitForStableFrame(timeout: 5))
@@ -304,19 +304,5 @@ final class HomeUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "settings-skills-pause-all").waitForExistenceFast(timeout: 10),
             "the pill opens Settings on Automations")
-    }
-
-    /// The split view's own toggle carries only a localized label, so it is
-    /// addressed as the window toolbar's leading button and checked by its effect.
-    @MainActor
-    private func setSidebar(visible: Bool, in app: XCUIApplication) {
-        let today = app.buttons["library-home-button"]
-        guard today.exists != visible else { return }
-        let toggle = app.windows.firstMatch.toolbars.buttons.firstMatch
-        XCTAssertTrue(toggle.waitForStableFrame(timeout: 5))
-        toggle.click()
-        XCTAssertTrue(
-            waitForUITestCondition(timeout: 5) { today.exists == visible },
-            "the sidebar must end \(visible ? "shown" : "hidden")")
     }
 }

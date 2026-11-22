@@ -88,11 +88,6 @@ struct MeetingTranscriptSection: View {
                     actions.translate(target)
                 },
                 cancel: actions.cancelTranslation, openSettings: actions.openTranslationSettings)
-            if values.player != nil {
-                Text("Click a line to jump there")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
         }
     }
 

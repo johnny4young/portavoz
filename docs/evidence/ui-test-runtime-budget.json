@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 127
+    "expectedCaseCount": 129
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -150,6 +150,8 @@
     "CommandLineToolUITests/testABuildWithoutTheToolSaysSo()": 25.0,
     "MeetingDetailUITests/testFamilyControlsShapeCastSuggestionsTabsAndCommitmentCards()": 20.0,
     "MeetingDetailUITests/testMeetingPageReadsLikeADocument()": 20.0,
-    "MeetingDetailUITests/testManyVoicesKeepSixInTheCastAndFoldTheRestIntoOthers()": 20.0
+    "MeetingDetailUITests/testManyVoicesKeepSixInTheCastAndFoldTheRestIntoOthers()": 20.0,
+    "MeetingDetailUITests/testNarrowTranscriptPutsTheSpeakerAboveTheLine()": 20.0,
+    "MeetingDetailUITests/testTranscriptReadsAsChaptersAndTurns()": 20.0
   }
 }

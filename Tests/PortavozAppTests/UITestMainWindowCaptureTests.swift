@@ -106,8 +106,12 @@ final class UITestMainWindowCaptureTests: XCTestCase {
             XCTAssertTrue(visible.contains(minimum))
             XCTAssertGreaterThanOrEqual(compact.width, 900)
             let wide = UITestWindowPlacement.mainWindowFrame(
-                in: visible, preferredHeight: nil, fullWidth: true)
+                in: visible, preferredHeight: nil, width: .full)
             XCTAssertEqual(wide, visible)
+            let narrow = UITestWindowPlacement.mainWindowFrame(
+                in: visible, preferredHeight: nil, width: .minimum)
+            XCTAssertEqual(narrow.width, min(visible.width, 900))
+            XCTAssertTrue(visible.contains(narrow))
         }
     }
 

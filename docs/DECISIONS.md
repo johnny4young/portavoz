@@ -23304,3 +23304,23 @@ title's context menu. Copy, regenerate and the version badge stay with the
 summary in its gutter, because they act on that document rather than on the
 meeting.
 
+
+## D657 — The transcript reads as chapters and turns
+
+Chapters used to live only in the side rail, and every transcript row repeated
+a speaker pill while playback faded, shrank and blurred the rows away from the
+centre. The transcript now carries the chapter headings itself (hairline, time
+code, Fraunces title), and the speaker's dot, name and time sit in a left
+margin on the first row of each turn. A turn lasts until another voice speaks
+or a chapter starts, so consecutive lines from one voice read as a paragraph
+rather than a list of labels. Below 520 points the margin moves above the text.
+
+The row under the playhead is outlined on the raised surface, and playback no
+longer fades, shrinks or blurs distant rows; live captions keep that treatment.
+Playback keeps its padding so the first line can reach the centre: without it
+the centred scroll target is clamped and the rows' accessibility frames drift
+from where they are drawn, so clicks miss. When the active row opens a chapter,
+playback follows the heading instead, so the title stays with its first line.
+Names stay in ink beside the voice dot (D643's tones-as-fills rule), so the
+board's coloured names become ink with a coloured dot. The rail's Chapters lens
+stays as a second way to jump.
