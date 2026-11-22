@@ -3076,7 +3076,18 @@ with its title, minutes and voice dots (`home-day-meeting-<uuid>`, opens the
 meeting), each upcoming event as an outlined pill with invitee dots and either
 "in 44 min" for the next one or its start time (`home-day-upcoming-<id>`,
 opens its brief), and the red now line with its `Now 3:15` pill
-(`home-day-now`). `LibraryModel.Action.loadTodayVoices` reads
+(`home-day-now`). `DayAxisLayout` keeps every title on one row with
+the pill (measured, like the titles, in the fonts the axis draws them in): titles of meetings that started before now end before it, the rest
+start after it. A title sits at its meeting when there is room; when the next
+title or the pill is closer than its measured width, it ends just before them
+and extends left into free axis space, but never back over the previous
+meeting's mark. Titles that still collide are cut to one shared width, never
+below the first word and an ellipsis, and each cut title then takes back what
+still fits; next a title falls back to its minutes alone, and only then
+disappears (its tooltip and VoiceOver label keep the full title). Recorded marks (strip or voice dots, whichever is wider) keep a
+6 pt gap; a crowded one gives way to the left so nothing slides past now. Each
+item hit-tests only its title row and its mark band, so a title set over a
+neighbour's strip never steals that strip's click (D664). `LibraryModel.Action.loadTodayVoices` reads
 `LoadTodayVoices` with today's agenda; HomeView sends it when the model bumps
 `todayVoicesRevision` (today's meeting rows, their finished strips or today's
 agenda changed) and, from the axis's minute tick, only while a meeting of today
@@ -3147,7 +3158,9 @@ event-linked occurrence of its weekly sync with three voices and two to-dos, so
 the public Today screenshot reads lived-in without touching the operator's
 calendar; `-seed-brief-previous` adds an earlier occurrence of the
 `-seed-brief` event for the brief card's journey; `-seed-today-voices` adds two
-meetings earlier today, relative to the clock, for the talk totals and day axis; `-seed-pick-up`
+meetings earlier today, relative to the clock, for the talk totals and day axis,
+and with `-seed-just-ended` a third that ended two minutes ago, under the now pill,
+after 90 quiet minutes so its title has room on a 1024 pt screen; `-seed-pick-up`
 saves a position at 3:20 in the demo meeting for the pick-up row's journey; the
 showcase's sprint demo carries evidence for its three to-dos and a position at
 4:40, inside its transcript; `-seed-wide-window` (disposable store only)

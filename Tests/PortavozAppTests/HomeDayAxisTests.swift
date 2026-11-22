@@ -83,43 +83,183 @@ final class HomeDayAxisTests: XCTestCase {
         XCTAssertEqual(labeled(11 * 27), stride(from: 8, through: 18, by: 3).map { at($0) })
     }
 
-    func testTitleStopsBeforeTheNextMeeting() {
+    private func title(_ full: CGFloat, word: CGFloat = 40, minutes: CGFloat = 30) -> DayAxisLayout.Title {
+        DayAxisLayout.Title(full: full, word: word, minutes: minutes)
+    }
+
+    private func assertApart(_ frames: [DayAxisLayout.Frame], file: StaticString = #filePath, line: UInt = #line) {
+        let shown = frames.filter { $0.fit != .hidden }.sorted { $0.titleX < $1.titleX }
+        for (left, right) in zip(shown, shown.dropFirst()) {
+            XCTAssertLessThanOrEqual(
+                left.titleX + left.titleWidth, right.titleX - DayAxisLayout.titleGap + 0.001, file: file, line: line)
+        }
+    }
+
+    func testTitlesSitAtTheirMeetingsWhenThereIsRoom() {
         let axis = layout(
             now: at(8),
-            upcoming: [.init(start: at(9), end: at(9, 30)), .init(start: at(10), end: at(11))])
+            upcoming: [
+                .init(start: at(9), end: at(9, 30), title: title(100)),
+                .init(start: at(10), end: at(11), title: title(100))
+            ])
+        for frame in axis.upcoming {
+            XCTAssertEqual(frame.fit, .full)
+            XCTAssertEqual(frame.titleX, frame.x, accuracy: 0.001)
+            XCTAssertEqual(frame.titleWidth, 100)
+        }
+    }
+
+    func testACrowdedTitleEndsBeforeTheNextAndExtendsLeft() {
+        let axis = layout(
+            now: at(8),
+            upcoming: [
+                .init(start: at(9), end: at(9, 10), title: title(120)),
+                .init(start: at(9, 10), end: at(9, 40), title: title(120))
+            ])
+        XCTAssertEqual(axis.upcoming.map(\.fit), [.full, .full])
+        XCTAssertEqual(axis.upcoming[1].titleX, axis.upcoming[1].x, accuracy: 0.001, "the later title keeps its start")
         XCTAssertEqual(
-            axis.upcoming[0].titleWidth,
-            axis.upcoming[1].x - DayAxisLayout.titleGap - axis.upcoming[0].x, accuracy: 0.001)
-        XCTAssertEqual(axis.upcoming[1].titleWidth, 1_200 - axis.upcoming[1].x, accuracy: 0.001)
+            axis.upcoming[0].titleX + 120, axis.upcoming[1].x - DayAxisLayout.titleGap, accuracy: 0.001,
+            "the earlier title ends before it and takes the free space to its left")
+        XCTAssertLessThan(axis.upcoming[0].titleX, axis.upcoming[0].x)
     }
 
-    func testMeetingsSharingAStartShowOneTitle() {
-        let axis = layout(
-            now: at(8),
-            upcoming: [.init(start: at(15), end: at(16)), .init(start: at(15), end: at(15, 30))])
-        XCTAssertGreaterThan(axis.upcoming[0].titleWidth, 0)
-        XCTAssertEqual(axis.upcoming[1].titleWidth, 0, "a second title on the same start would overprint")
+    func testAMeetingThatJustEndedKeepsItsWholeTitleBeforeTheNowPill() throws {
+        for endedAgo in [2, 10] {
+            let end = at(11).addingTimeInterval(TimeInterval(-endedAgo * 60))
+            let axis = layout(
+                now: at(11),
+                recorded: [.init(start: end.addingTimeInterval(-10 * 60), end: end, title: title(150), markWidth: 17)])
+            let nowX = try XCTUnwrap(axis.nowX)
+            let frame = axis.recorded[0]
+            XCTAssertEqual(frame.fit, .full, "ended \(endedAgo) min ago")
+            XCTAssertEqual(frame.titleWidth, 150)
+            XCTAssertLessThanOrEqual(
+                frame.titleX + frame.titleWidth, nowX - DayAxisLayout.nowPillWidth / 2 - DayAxisLayout.titleGap + 0.001,
+                "ended \(endedAgo) min ago: the title ends before the pill")
+            XCTAssertGreaterThanOrEqual(frame.titleX, 0)
+            XCTAssertEqual(frame.x, axis.x(end.addingTimeInterval(-10 * 60)), accuracy: 0.001, "alone, the mark keeps its time")
+        }
     }
 
-    func testTitleStopsBeforeTheNowPill() throws {
+    func testAWiderNowPillPushesTheTitlesFurtherOut() throws {
+        let item = DayAxisLayout.Item(start: at(10, 40), duration: 10 * 60, title: title(150))
+        let ahead = DayAxisLayout.Item(start: at(11, 5), end: at(12), title: title(100))
+        let axis = DayAxisLayout(
+            day: day, now: at(11), recorded: [item], upcoming: [ahead], width: 1_200, nowPillWidth: 140,
+            calendar: calendar)
+        let nowX = try XCTUnwrap(axis.nowX)
+        XCTAssertLessThanOrEqual(
+            axis.recorded[0].titleX + axis.recorded[0].titleWidth, nowX - 70 - DayAxisLayout.titleGap + 0.001)
+        XCTAssertGreaterThanOrEqual(axis.upcoming[0].titleX, nowX + 70 + DayAxisLayout.titleGap - 0.001)
+    }
+
+    func testBackToBackShortMeetingsKeepTheirMarksApartAndBothTitles() throws {
         let axis = layout(
             now: at(11),
-            recorded: [.init(start: at(9), duration: 1_800), .init(start: at(10, 30), duration: 300)],
-            upcoming: [.init(start: at(14), end: at(15))])
-        let nowX = try XCTUnwrap(axis.nowX)
-        XCTAssertEqual(
-            axis.recorded[0].titleWidth,
-            axis.recorded[1].x - DayAxisLayout.titleGap - axis.recorded[0].x, accuracy: 0.001,
-            "the next meeting is nearer than now")
-        XCTAssertEqual(
-            axis.recorded[1].titleWidth,
-            nowX - DayAxisLayout.nowClearance - axis.recorded[1].x, accuracy: 0.001)
-        XCTAssertEqual(
-            axis.upcoming[0].titleWidth, 1_200 - axis.upcoming[0].x, accuracy: 0.001,
-            "a meeting ahead of now is not held back by the pill")
+            recorded: [
+                .init(start: at(10, 30), duration: 5 * 60, title: title(110), markWidth: 40),
+                .init(start: at(10, 35), duration: 5 * 60, title: title(110), markWidth: 40)
+            ])
+        let first = axis.recorded[0]
+        let second = axis.recorded[1]
+        XCTAssertEqual(first.markWidth, 40, "the dots outgrow a five-minute strip")
+        XCTAssertGreaterThanOrEqual(second.x - (first.x + first.markWidth), DayAxisLayout.markGap - 0.001)
+        XCTAssertEqual(second.x, axis.x(at(10, 35)), accuracy: 0.001, "the earlier mark gives way, not the later")
+        XCTAssertLessThanOrEqual(second.x + second.width, try XCTUnwrap(axis.nowX))
+        XCTAssertEqual(second.titleX, second.x, accuracy: 0.001, "each title starts over its own meeting")
+        XCTAssertEqual(axis.recorded.map(\.fit), [.full, .truncated])
+        assertApart(axis.recorded)
+    }
 
-        let underThePill = layout(now: at(11), recorded: [.init(start: at(10, 55), duration: 300)])
-        XCTAssertEqual(underThePill.recorded[0].titleWidth, 0)
+    func testDotsWiderThanAJustEndedStripStayBeforeNow() throws {
+        let axis = layout(
+            now: at(11), recorded: [.init(start: at(10, 50), end: at(10, 58), title: title(100), markWidth: 47)])
+        let frame = axis.recorded[0]
+        XCTAssertLessThanOrEqual(frame.x + frame.markWidth, try XCTUnwrap(axis.nowX) + 0.001)
+    }
+
+    func testATitleInsideALongerEventDoesNotReachBackOverIt() {
+        let axis = layout(
+            now: at(8),
+            upcoming: [
+                .init(start: at(13), end: at(15), title: title(60)),
+                .init(start: at(13, 15), end: at(13, 30), title: title(60)),
+                .init(start: at(14), end: at(14, 5), title: title(120)),
+                .init(start: at(14, 5), end: at(14, 30), title: title(60))
+            ])
+        let crowded = axis.upcoming[2]
+        XCTAssertGreaterThanOrEqual(
+            crowded.titleX, crowded.x - 0.001, "the long event still under it keeps the space to its left")
+    }
+
+    func testTightTitlesAreCutToAWordThenFallBackToMinutes() {
+        let titles = [title(100), title(100)]
+        func place(upper: CGFloat) -> [(x: CGFloat, width: CGFloat, fit: DayAxisLayout.Fit)] {
+            DayAxisLayout.place(titles, anchors: [0, 60], lows: [0, 50], upper: upper)
+        }
+        let cut = place(upper: 150)
+        XCTAssertEqual(cut.map(\.fit), [.truncated, .truncated])
+        XCTAssertEqual(cut[1].x, 60, accuracy: 0.01, "the later title keeps its start")
+        XCTAssertEqual(cut[1].x + cut[1].width, 150, accuracy: 0.01, "and every point to the end")
+        XCTAssertEqual(cut[0].x, 0, accuracy: 0.01)
+        XCTAssertEqual(cut[0].x + cut[0].width, cut[1].x - DayAxisLayout.titleGap, accuracy: 0.01)
+
+        XCTAssertEqual(place(upper: 90).map(\.width), [40, 40], "never narrower than one word and an ellipsis")
+        XCTAssertEqual(place(upper: 80).map(\.fit), [.minutes, .minutes])
+        XCTAssertEqual(place(upper: 20).map(\.fit), [.hidden, .hidden])
+        XCTAssertEqual(
+            DayAxisLayout.place([title(100, minutes: 0)], anchors: [0], lows: [0], upper: 30).map(\.fit), [.hidden],
+            "an event without minutes has nothing to fall back to")
+    }
+
+    func testATitleNeverReachesBackOverThePreviousMeeting() {
+        let axis = layout(
+            now: at(11),
+            recorded: [
+                .init(start: at(9), end: at(10, 30), title: title(120), markWidth: 30),
+                .init(start: at(10, 40), duration: 5 * 60, title: title(150), markWidth: 17)
+            ])
+        let long = axis.recorded[0]
+        let short = axis.recorded[1]
+        XCTAssertGreaterThanOrEqual(short.titleX, long.x + long.markWidth + DayAxisLayout.titleGap - 0.001)
+        XCTAssertNotEqual(short.fit, .full, "cut rather than set over the meeting before")
+        XCTAssertNotEqual(short.fit, .hidden)
+        XCTAssertEqual(long.fit, .full)
+        XCTAssertEqual(long.titleX, long.x, accuracy: 0.001)
+    }
+
+    func testANarrowAxisDropsATitleRatherThanDrawUnderThePill() {
+        let axis = layout(now: at(9, 35), recorded: [.init(start: at(9, 20), duration: 600, title: title(150))], width: 300)
+        XCTAssertEqual(axis.recorded[0].fit, .hidden)
+        XCTAssertEqual(axis.recorded[0].titleWidth, 0)
+    }
+
+    func testMeetingsSharingAStartShowBothTitlesApart() {
+        let axis = layout(
+            now: at(8),
+            upcoming: [
+                .init(start: at(15), end: at(16), title: title(100)),
+                .init(start: at(15), end: at(15, 30), title: title(100))
+            ])
+        XCTAssertEqual(axis.upcoming.map(\.fit), [.full, .full])
+        assertApart(axis.upcoming)
+    }
+
+    func testAMeetingAheadOfNowStartsAfterThePill() throws {
+        let axis = layout(
+            now: at(11),
+            recorded: [.init(start: at(9), duration: 1_800, title: title(120))],
+            upcoming: [
+                .init(start: at(11, 5), end: at(12), title: title(120)),
+                .init(start: at(14), end: at(15), title: title(200))
+            ])
+        let nowX = try XCTUnwrap(axis.nowX)
+        XCTAssertGreaterThanOrEqual(
+            axis.upcoming[0].titleX, nowX + DayAxisLayout.nowPillWidth / 2 + DayAxisLayout.titleGap - 0.001,
+            "a title starting under the pill moves past it")
+        XCTAssertEqual(axis.upcoming[1].titleX, axis.upcoming[1].x, accuracy: 0.001)
+        XCTAssertEqual(axis.recorded[0].titleX, axis.recorded[0].x, accuracy: 0.001)
     }
 
     func testNowSitsOnTheAxisOnlyInsideTheRange() throws {
@@ -134,9 +274,10 @@ final class HomeDayAxisTests: XCTestCase {
     }
 
     func testAZeroWidthAxisStaysFinite() {
-        let axis = layout(now: at(11), recorded: [.init(start: at(9), duration: 1_800)], width: 0)
+        let axis = layout(now: at(11), recorded: [.init(start: at(9), duration: 1_800, title: title(100))], width: 0)
         XCTAssertEqual(axis.recorded[0].x, 0)
         XCTAssertEqual(axis.recorded[0].titleWidth, 0)
+        XCTAssertEqual(axis.recorded[0].fit, .hidden)
         XCTAssertEqual(axis.nowX, 0)
     }
 
