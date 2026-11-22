@@ -820,7 +820,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(app.buttons["detail-title-suggestion"].waitForExistenceFast(timeout: 10))
 
         for identifier in ["skill-offer-menu", "detail-refine", "detail-export-menu", "detail-more-menu"] {
-            XCTAssertTrue(app.control(withIdentifier: identifier).exists, "\(identifier) lives in the toolbar")
+            XCTAssertTrue(
+                app.control(withIdentifier: identifier).waitForExistenceFast(timeout: 10),
+                "\(identifier) lives in the toolbar")
         }
         let standfirst = app.control(withIdentifier: "detail-standfirst")
         XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))

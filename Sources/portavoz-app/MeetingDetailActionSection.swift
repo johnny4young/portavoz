@@ -97,6 +97,7 @@ struct MeetingDetailActionSection: View {
             }
             .buttonStyle(.plain)
             .fixedSize()
+            .accessibilityLabel(L10n.text("Cancel refine"))
             .accessibilityIdentifier("detail-refine")
             .accessibilityValue("cancel")
             .help(L10n.text("Cancel refine"))
