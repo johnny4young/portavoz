@@ -845,6 +845,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
             aiSuggestions: true, extraArguments: ["-seed-wide-window", "-AppleInterfaceStyle", "Light"])
         defer { finishUITestApplication(app) }
 
+        // A 1024 pt screen only has room for the speaker margin without the sidebar.
+        app.setSidebar(visible: false)
         XCTAssertTrue(app.openMeetingDetailReadingPane("transcript"))
         let line = app.staticTexts["El rollout del modelo queda para el viernes."]
         XCTAssertTrue(line.waitForExistenceFast(timeout: 10))
