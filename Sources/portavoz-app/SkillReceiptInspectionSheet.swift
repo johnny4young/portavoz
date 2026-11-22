@@ -45,7 +45,7 @@ struct SkillReceiptInspectionSheet: View {
                 "This history contains only execution state, attempt, and time — never meeting content.",
                 systemImage: PVSymbol.privacy)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("skill-receipt-inspection-privacy")
         }
@@ -67,7 +67,7 @@ struct SkillReceiptInspectionSheet: View {
                     .font(.headline)
                 Text(currentStatus)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             }
             Spacer()
             Button {
@@ -113,7 +113,7 @@ struct SkillReceiptInspectionSheet: View {
                     Text(
                         "Open the source of this entry. Nothing runs or changes.")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                     Button("Review source in context") {
                         Task { await resolveContext() }
                     }
@@ -128,7 +128,7 @@ struct SkillReceiptInspectionSheet: View {
                 "Open this entry beside its calendar event in the menu bar.",
                 systemImage: "menubar.rectangle")
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier("skill-receipt-context-resident")
         case .unavailable:
             EmptyView()
@@ -163,7 +163,7 @@ struct SkillReceiptInspectionSheet: View {
                     Text(
                         "Return to the original context and review a fresh suggestion. This does not run the action.")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                     Button("Review recovery in context") {
                         Task { await resolveRecovery() }
                     }
@@ -177,7 +177,7 @@ struct SkillReceiptInspectionSheet: View {
                 "Review this recovery from the menu bar beside the calendar event. Nothing runs automatically.",
                 systemImage: "menubar.rectangle")
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier("skill-receipt-recovery-resident")
         case .verifyExternally:
             Label(
@@ -191,7 +191,7 @@ struct SkillReceiptInspectionSheet: View {
                 "No safe recovery is available. This entry stays here for review.",
                 systemImage: "exclamationmark.shield")
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier("skill-receipt-recovery-unavailable")
         }
     }
@@ -223,7 +223,7 @@ struct SkillReceiptInspectionSheet: View {
                 Text(
                     "This approval can be revoked only while execution has not started.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                 Button("Revoke approval", role: .destructive) {
                     Task { await revokeApproval() }
                 }
@@ -255,7 +255,7 @@ struct SkillReceiptInspectionSheet: View {
                 Text(
                     "Portavoz could not verify this entry. Nothing runs or retries from here.")
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                 Button("Try again") {
                     Task { await load() }
                 }
@@ -294,12 +294,12 @@ struct SkillReceiptInspectionSheet: View {
                     }
                 }
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 Text(
                     event.occurredAt,
                     format: .dateTime.year().month(.abbreviated).day().hour().minute().second())
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             }
             Spacer(minLength: 0)
         }
@@ -485,10 +485,10 @@ private extension SkillReceiptInspectionSheet {
         _ kind: SkillControlCenterReceiptEventKind
     ) -> Color {
         switch kind {
-        case .confirmed, .started: .secondary
+        case .confirmed, .started: PVDesign.ink3
         case .succeeded: PVDesign.ok
         case .failed: PVDesign.caution
-        case .cancelled: .secondary
+        case .cancelled: PVDesign.ink3
         }
     }
 

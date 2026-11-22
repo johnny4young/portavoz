@@ -14,7 +14,7 @@ struct MLXModelRow: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: downloaded ? PVSymbol.success : "arrow.down.circle")
-                .foregroundStyle(downloaded ? PVDesign.ok : Color.secondary)
+                .foregroundStyle(downloaded ? PVDesign.ok : PVDesign.ink3)
             if downloaded {
                 Text("Qwen3.5 4B · downloaded · 3 GB").font(.caption)
                 Spacer()
@@ -35,10 +35,10 @@ struct MLXModelRow: View {
                 ProgressView().controlSize(.small)
                 Text("Verifying model integrity…")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             } else if downloading {
                 ProgressView().controlSize(.small)
-                Text(status ?? "").font(.caption).foregroundStyle(.secondary)
+                Text(status ?? "").font(.caption).foregroundStyle(.ink3)
             } else {
                 Button("Download model (3 GB)") { download() }
                     .controlSize(.small)

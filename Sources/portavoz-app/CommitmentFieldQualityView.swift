@@ -16,7 +16,7 @@ struct CommitmentFieldQualityView: View {
             HStack(spacing: 10) {
                 ProgressView().controlSize(.small)
                 Text("Loading private quality signals…")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             }
             .frame(maxWidth: .infinity, minHeight: 180)
         case .failed:
@@ -88,7 +88,7 @@ private extension CommitmentFieldQualityView {
             Label("Private quality check", systemImage: PVSymbol.privacy)
                 .font(.headline)
             Text("Last 90 days of suggestions you reviewed.")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             Label("Advisory only — no threshold or automation uses these numbers.",
                   systemImage: "info.circle")
                 .font(.caption)
@@ -112,13 +112,13 @@ private extension CommitmentFieldQualityView {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             Text(verbatim: value)
                 .font(.title2.bold())
                 .monospacedDigit()
             Text(verbatim: detail)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -150,7 +150,7 @@ private extension CommitmentFieldQualityView {
             }
         }
         .font(.caption)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(.ink3)
     }
 
     func languageBreakdown(
@@ -174,7 +174,7 @@ private extension CommitmentFieldQualityView {
                         .frame(minWidth: 88, alignment: .trailing)
                 }
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .padding(.vertical, 2)
                 .accessibilityIdentifier(
                     "commitment-quality-language-\(breakdown.language.rawValue)")

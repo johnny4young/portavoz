@@ -19,7 +19,7 @@ extension AskView {
                 .accessibilityIdentifier("\(identifierPrefix)-\(index)")
                 Text(webDateDisclosure(citation))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .lineLimit(1)
                     .accessibilityIdentifier(
                         "\(identifierPrefix)-\(index)-freshness")
@@ -34,7 +34,7 @@ extension AskView {
                 "One web source could not be read.",
                 systemImage: PVSymbol.warning)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier("ask-web-source-failure")
         }
     }
@@ -63,7 +63,7 @@ extension AskView {
                 webPrivacyDisclosure,
                 systemImage: PVSymbol.privacy)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier("ask-web-disclosure")
         }
     }

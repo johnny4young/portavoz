@@ -10,7 +10,7 @@ struct ModelsOnThisMacSection: View {
         Section("Models on this Mac") {
             if models.isEmpty {
                 Text("No models on this Mac yet")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .accessibilityIdentifier("settings-installed-models-empty")
             }
             ForEach(models) { model in
@@ -18,7 +18,7 @@ struct ModelsOnThisMacSection: View {
                     Text(model.name)
                     Text(Self.detail(of: model))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                         .accessibilityIdentifier("settings-installed-model-\(model.id)-detail")
                 }
             }

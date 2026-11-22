@@ -30,7 +30,7 @@ struct CommitmentRadarDueDateSheet: View {
                 .font(.title3.weight(.semibold))
             Text(verbatim: item.commitment.title)
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
 
             Toggle("Add due date", isOn: $includesDueDate)
                 .accessibilityIdentifier("commitment-radar-due-toggle")

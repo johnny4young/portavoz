@@ -50,7 +50,7 @@ struct RecordingView: View {
                 Spacer()
                 ProgressView()
                 Text(preparingText)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                 Spacer()
 
             case .recording:
@@ -65,7 +65,7 @@ struct RecordingView: View {
             case .processing(let step):
                 Spacer()
                 ProgressView()
-                Text(step).foregroundStyle(.secondary)
+                Text(step).foregroundStyle(.ink3)
                 Spacer()
 
             case .done(let meetingID):
@@ -90,7 +90,7 @@ struct RecordingView: View {
                         if let context = controller.failureContext {
                             Text(L10n.format("Error reference: %@", context.code))
                                 .font(.caption.monospaced())
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.ink3)
                                 .textSelection(.enabled)
                                 .accessibilityIdentifier("recording-failure-reference")
                         }
@@ -274,7 +274,7 @@ private struct LiveRecordingCaptionsView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(segment.text)
                     .font(active ? .title3.weight(.medium) : .body)
-                    .foregroundStyle(segment.isFinal ? .primary : .secondary)
+                    .foregroundStyle(segment.isFinal ? PVDesign.ink : PVDesign.ink3)
                     .accessibilityIdentifier(
                         (segment.liveUpdateMode == .rangeRevision || segment.liveUpdateMode == .tokenPreview)
                         ? "recording-live-preview-\(segment.channel.rawValue)"

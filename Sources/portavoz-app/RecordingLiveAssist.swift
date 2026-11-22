@@ -32,7 +32,7 @@ struct RecordingObjectivesPanel: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(
                     isDraftEmpty
-                        ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.tint))
+                        ? AnyShapeStyle(.ink3) : AnyShapeStyle(.tint))
                 .disabled(isDraftEmpty)
                 .accessibilityLabel(L10n.text("Add objective (⏎)"))
                 .accessibilityIdentifier("recording-objective-add")
@@ -53,7 +53,7 @@ struct RecordingObjectivesPanel: View {
                     controller.objectives.objectives.count,
                     RecordingObjectivesModel.maximumObjectives))
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .accessibilityIdentifier("recording-interview-objective-count")
             }
             if controller.objectives.objectives.isEmpty {
@@ -61,7 +61,7 @@ struct RecordingObjectivesPanel: View {
                 // swiftlint:disable:next line_length
                 Text("What should this meeting achieve? Objectives get checked off as the conversation covers them, and the summary reports what stayed open.")
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             }
         }
         .disabled(controller.inputPersistence.isSaving || controller.inputPersistence.hasFailure)
@@ -80,7 +80,7 @@ struct RecordingObjectivesPanel: View {
                 Image(systemName: objective.checkedAt == nil
                     ? "circle" : PVSymbol.success)
                     .foregroundStyle(objective.checkedAt == nil
-                        ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.tint))
+                        ? AnyShapeStyle(.ink3) : AnyShapeStyle(.tint))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(L10n.text("Toggle objective"))
@@ -89,7 +89,7 @@ struct RecordingObjectivesPanel: View {
                 .font(.callout)
                 .strikethrough(objective.checkedAt != nil)
                 .foregroundStyle(objective.checkedAt == nil
-                    ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+                    ? AnyShapeStyle(.primary) : AnyShapeStyle(.ink3))
             if objective.checkedByModel {
                 Image(systemName: PVSymbol.generate)
                     .font(.caption2)
@@ -101,7 +101,7 @@ struct RecordingObjectivesPanel: View {
                 controller.removeObjective(objective.id)
             } label: {
                 Image(systemName: "xmark.circle.fill")
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.ink3)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(L10n.text("Remove objective"))
@@ -151,13 +151,13 @@ struct RecordingProactiveAssistView: View {
                 Text(controller.proactiveAssist.isPaused
                     ? L10n.text("Paused") : L10n.text("Watching local signals"))
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .accessibilityIdentifier("recording-proactive-status")
             }
             if controller.proactiveAssist.suggestions.isEmpty {
                 Text("Suggestions appear only from open objectives or measured recent talk balance.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
                 ForEach(controller.proactiveAssist.suggestions.reversed()) { suggestion in
@@ -168,7 +168,7 @@ struct RecordingProactiveAssistView: View {
                 L10n.text("Local signals only · no model, Web request, or automatic action"),
                 systemImage: PVSymbol.privacy)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -187,7 +187,7 @@ struct RecordingProactiveAssistView: View {
                     controller.dismissProactiveSuggestion(suggestion.id)
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.ink3)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(L10n.text("Dismiss suggestion"))
@@ -200,7 +200,7 @@ struct RecordingProactiveAssistView: View {
                 .fixedSize(horizontal: false, vertical: true)
             Text(source(for: suggestion))
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier(
                     "recording-proactive-source-\(suggestion.id.uuidString)")
         }
@@ -273,7 +273,7 @@ struct RecordingNextQuestionCard: View {
                 Spacer()
                 Button(action: dismiss) {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(L10n.text("Dismiss suggestion"))
@@ -284,7 +284,7 @@ struct RecordingNextQuestionCard: View {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
                     Text(L10n.text("Thinking of a good question…"))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                 }
             case .ready(let suggestion):
                 MarkdownText(text: suggestion)
@@ -292,7 +292,7 @@ struct RecordingNextQuestionCard: View {
             case .unavailable(let reason):
                 Text(reason)
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

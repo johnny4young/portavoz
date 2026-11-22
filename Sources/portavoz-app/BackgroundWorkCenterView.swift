@@ -11,7 +11,7 @@ struct BackgroundWorkCenterSection: View {
                 // swiftlint:disable:next line_length
                 "Recovery and local indexing continue safely in the background. Recording always comes first; Portavoz never invents progress."))
             .font(.callout)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
             .accessibilityIdentifier("background-work-overview")
 
             ForEach(model.items) { snapshot in
@@ -81,7 +81,7 @@ private struct BackgroundWorkRow: View {
 
                 Text(detailText)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityLabel(Text(verbatim: detailText))
                     .accessibilityIdentifier(
@@ -90,7 +90,7 @@ private struct BackgroundWorkRow: View {
                 if let attemptText {
                     Text(attemptText)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                         .accessibilityIdentifier(
                             "background-work-attempt-\(snapshot.owner.rawValue)")
                 }
@@ -98,7 +98,7 @@ private struct BackgroundWorkRow: View {
                 if let retryText {
                     Text(retryText)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                         .accessibilityIdentifier(
                             "background-work-retry-\(snapshot.owner.rawValue)")
                 }
@@ -106,7 +106,7 @@ private struct BackgroundWorkRow: View {
                 if let failureText {
                     Text(L10n.format("Reason: %@", failureText))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                         .accessibilityIdentifier(
                             "background-work-failure-\(snapshot.owner.rawValue)")
                 }
@@ -267,9 +267,9 @@ private struct BackgroundWorkRow: View {
     private var tint: Color {
         switch snapshot.phase {
         case .failed, .retryScheduled: PVDesign.caution
-        case .waitingForRecording: .secondary
+        case .waitingForRecording: PVDesign.ink3
         case .running: PVDesign.accent
-        case .idle: snapshot.lastOutcome == nil ? .secondary : PVDesign.ok
+        case .idle: snapshot.lastOutcome == nil ? PVDesign.ink3 : PVDesign.ok
         }
     }
 }

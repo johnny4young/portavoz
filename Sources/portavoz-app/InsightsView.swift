@@ -102,10 +102,10 @@ struct InsightsView: View {
                         "you %d%% · listen %d%%",
                         Int((share * 100).rounded()), Int(((1 - share) * 100).rounded())))
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                     Text(balanceHint(share))
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.ink3)
                 }
                 Spacer(minLength: 0)
             }
@@ -147,7 +147,7 @@ struct InsightsView: View {
                         ? L10n.format("%d open — review", facts.openActionItems)
                         : L10n.text("action items"))
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                 }
                 Spacer(minLength: 0)
             }
@@ -187,12 +187,12 @@ struct InsightsView: View {
                     if let delta, delta != 0 {
                         Text(delta > 0 ? "▲ +\(delta)" : "▼ \(delta)")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(delta > 0 ? PVDesign.ok : .secondary)
+                            .foregroundStyle(delta > 0 ? PVDesign.ok : PVDesign.ink3)
                     }
                 }
                 Text(label)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             }
             Spacer(minLength: 0)
         }
@@ -224,14 +224,14 @@ struct InsightsView: View {
                     .accessibilityIdentifier("insights-heatmap")
                 Text("column = week · row = weekday · more intense = more meetings")
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.ink3)
             }
             HStack(spacing: 7) {
                 VStack(alignment: .trailing, spacing: 4) {
                     ForEach(weekdayInitials, id: \.self) { day in
                         Text(day)
                             .font(.system(size: 9, design: .monospaced))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(.ink3)
                             .frame(height: 13)
                     }
                 }
@@ -288,7 +288,7 @@ struct InsightsView: View {
             }
             Text("Amber is you, their color is them. The bar is your share of talk with them.")
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.ink3)
                 .padding(.top, 2)
         }
         .frame(width: 320, alignment: .leading)
@@ -311,7 +311,7 @@ struct InsightsView: View {
                         person.meetings,
                         minutes(person.theirSeconds)))
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .monospacedDigit()
             }
             participationBar(share: person.myShareWithThem, them: colour)
@@ -369,7 +369,7 @@ extension InsightsView {
                         .accessibilityIdentifier("insights-findings")
                     Text("detected locally in your transcripts — each with an action")
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.ink3)
                 }
                 HStack(alignment: .top, spacing: 12) {
                     if let noDecision {
@@ -407,7 +407,7 @@ extension InsightsView {
                     .fixedSize(horizontal: false, vertical: true)
                 Text(detail)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)

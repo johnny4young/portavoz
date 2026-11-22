@@ -112,7 +112,7 @@ struct RecordingHUDView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(controller.captions.last?.text ?? "…")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     // Grow with the current utterance, but keep the NEWEST words
                     // visible: past the cap, truncate the head (what was said
                     // earliest), never the tail (what's being said now).

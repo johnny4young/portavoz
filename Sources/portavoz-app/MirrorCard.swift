@@ -28,7 +28,7 @@ struct MirrorCard: View {
                 Button {
                     onDismiss()
                 } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.ink3)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(L10n.text("Close"))
@@ -53,7 +53,7 @@ struct MirrorCard: View {
                     myShare: myShare, average: averageShare,
                     questions: myQuestions, language: language))
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             }
 
             HStack(spacing: 10) {
@@ -69,12 +69,12 @@ struct MirrorCard: View {
                 }
                 .buttonStyle(.plain)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             }
 
             Text("Measured, not judged — computed on your Mac from this meeting and your library.")
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.ink3)
         }
         .padding(20)
         .frame(width: 460)
@@ -88,7 +88,7 @@ struct MirrorCard: View {
                 .foregroundStyle(highlight ? PVDesign.youInk : .primary)
             Text(label)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, minHeight: 62, alignment: .topLeading)

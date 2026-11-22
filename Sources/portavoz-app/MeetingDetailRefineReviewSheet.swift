@@ -40,7 +40,7 @@ struct MeetingDetailRefineReviewSheet: View {
             comparisonGrid
             Text("Sample")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             sample
             HStack {
                 Spacer()
@@ -64,17 +64,17 @@ struct MeetingDetailRefineReviewSheet: View {
                 Text("Improved").font(.caption.weight(.semibold))
             }
             GridRow {
-                Text("Segments").foregroundStyle(.secondary)
+                Text("Segments").foregroundStyle(.ink3)
                 Text("\(draft.oldSegmentCount)")
                 Text("\(draft.segments.count)")
             }
             GridRow {
-                Text("Speakers").foregroundStyle(.secondary)
+                Text("Speakers").foregroundStyle(.ink3)
                 Text("\(draft.oldSpeakerCount)")
                 Text("\(draft.speakers.count)")
             }
             GridRow {
-                Text("Covered speech").foregroundStyle(.secondary)
+                Text("Covered speech").foregroundStyle(.ink3)
                 Text(values.presentation.refinedDuration(draft.oldSpeechSeconds))
                 Text(values.presentation.refinedDuration(draft.newSpeechSeconds))
             }

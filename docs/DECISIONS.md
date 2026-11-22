@@ -23378,3 +23378,22 @@ and in the narrow transcript the chapter time follows the title the way a
 turn's time follows its speaker. Turn strips fill their row up to a trailing
 column sized to the widest row's controls, so strips still end on one edge
 when one row offers a name. Rows stay 28 points, as the board draws them.
+
+## D661 — Secondary text is ink 3 and native controls tint with ink 3 in dark
+
+Secondary text came from the system greys, which read near 2:1 for the
+sidebar section headers and 3.2–3.8:1 for the privacy chip and Settings
+footnotes on paper. Every `.secondary`/`.tertiary` text now uses the `.ink3`
+shape style: ink 3, half strength when its control is disabled, and the
+system's adaptive secondary on an emphasized selection, so native list
+selection keeps its contrast. Increase Contrast still lifts it to ink 2
+through the tone resolver (D643). An architecture test rejects system greys as
+text outside `PVDesign.swift`. Where ink 3 sits on an ink tint over sunk paper
+it drops just under 4.5:1, so the offer-chip ink and the selected Settings
+category subtitle are ink 2. The root `.tint` is a control tint, ink in light
+and ink 3 in dark: native switches, checkboxes and sliders draw a white knob or
+tick on it, and the dark ink left the knob near 1.5:1. The native default
+button would put its white label on that tint, so every Return button is
+`.pvPrimary`. `PVDesign.accent` stays the ink for everything Portavoz draws
+itself. List sections, the Settings form and segmented pickers stay native
+(D646); only their text colour changes.

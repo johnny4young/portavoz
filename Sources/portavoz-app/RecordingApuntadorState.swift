@@ -50,7 +50,7 @@ enum RecordingApuntadorState: Equatable {
         switch self {
         case .listening: PVDesign.accent
         case .questionsOnly, .unavailable: PVDesign.caution
-        case .off: .secondary
+        case .off: PVDesign.ink3
         }
     }
 }

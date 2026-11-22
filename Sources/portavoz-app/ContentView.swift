@@ -199,7 +199,8 @@ struct ContentView: View {
             OnboardingView(onFinish: services.firstRun.finish)
                 .portavozLocalized()
                 .environment(services)
-                .tint(PVDesign.accent)
+                .tint(PVDesign.controlTint)
+                .presentationBackground(PVDesign.paper)
         }
         .onAppear { services.legacyDictation.register(hostID: firstRunHostID) }
         .task { await services.legacyDictation.claimNotice(in: firstRunHostID) }
@@ -215,7 +216,8 @@ struct ContentView: View {
                 model: services.legacyDictation, dismiss: services.legacyDictation.dismissNotice)
                 .onAppear { services.legacyDictation.noticeDidAppear() }
                 .portavozLocalized()
-                .tint(PVDesign.accent)
+                .tint(PVDesign.controlTint)
+                .presentationBackground(PVDesign.paper)
         }
         .onChange(of: services.pendingRoute) { _, pending in
             if let pending {

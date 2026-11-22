@@ -44,7 +44,7 @@ struct DecisionConfirmSheet: View {
                 }
                 Text("The decision is saved with its exact source. A topic groups it for later questions.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             }
             HStack {
                 Spacer()
@@ -68,6 +68,7 @@ struct DecisionConfirmSheet: View {
                     }
                 }
                 .keyboardShortcut(.defaultAction)
+                .buttonStyle(.pvPrimary)
                 .disabled(confirming)
                 .accessibilityIdentifier("decision-confirm-submit")
             }

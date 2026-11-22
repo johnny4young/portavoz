@@ -35,7 +35,7 @@ struct AskMemoryView: View {
                 // swiftlint:disable:next line_length
                 "Choose one confirmed person. Portavoz uses the exact identity you select and never guesses from question text.")
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -84,7 +84,7 @@ struct AskMemoryView: View {
                             Text(person.name)
                             Spacer()
                             Image(systemName: "chevron.right")
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(.ink3)
                         }
                         .contentShape(Rectangle())
                     }
@@ -98,7 +98,7 @@ struct AskMemoryView: View {
                         "More people match. Refine the name to choose the right one.",
                         systemImage: "magnifyingglass")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                         .accessibilityIdentifier("ask-memory-person-overflow")
                 }
             }
@@ -164,14 +164,14 @@ struct AskMemoryView: View {
                     "ask-memory-commitment-\(commitment.id.rawValue.uuidString)")
             Text(L10n.format("Confirmed for %@", commitment.personName))
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             Text(commitment.occurredAt.formatted(date: .abbreviated, time: .shortened))
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.ink3)
             Divider()
             Text("Sources")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             ForEach(Array(orderedCitations(commitment).enumerated()), id: \.offset) { index, citation in
                 Button {
                     onOpenCitation(citation)
@@ -261,7 +261,7 @@ struct AskMemoryView: View {
             Text(L10n.text(message))
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .foregroundStyle(.secondary)
+        .foregroundStyle(.ink3)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(identifier)
     }

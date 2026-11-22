@@ -102,7 +102,7 @@ struct MeetingDetailRailSection: View {
                         .background(
                             selected ? PVDesign.accent.opacity(PVDesign.chipTint) : .clear,
                             in: RoundedRectangle(cornerRadius: PVDesign.radiusSmall))
-                        .foregroundStyle(selected ? PVDesign.accent : .secondary)
+                        .foregroundStyle(selected ? PVDesign.accent : PVDesign.ink3)
                         .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
@@ -169,7 +169,7 @@ struct MeetingDetailRailSection: View {
     private func emptyLens(_ text: LocalizedStringKey, id: String) -> some View {
         Text(text)
             .font(.callout)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(14)
             .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
@@ -280,7 +280,7 @@ struct MeetingDetailCompanionSection: View {
             HStack {
                 Text(tag(card))
                     .font(.caption2)
-                    .foregroundStyle(card.directed ? tint : Color.secondary)
+                    .foregroundStyle(card.directed ? tint : PVDesign.ink3)
                 Spacer()
                 if !card.answer.isEmpty {
                     Button { actions.copyAnswer(card.answer) } label: {
@@ -349,7 +349,7 @@ struct MeetingDetailCompanionSection: View {
         VStack(alignment: .leading, spacing: 3) {
             Text(label)
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             MeetingEvidenceSources(
                 resolution: resolution,
                 sourceIdentifier: "\(identifier)-evidence",

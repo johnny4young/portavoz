@@ -124,7 +124,7 @@ enum SkillReceiptPresentation {
         switch state {
         case .succeeded: PVDesign.ok
         case .failed, .executing: PVDesign.caution
-        case .dismissed, .confirmed, .proposed, .previewed: .secondary
+        case .dismissed, .confirmed, .proposed, .previewed: PVDesign.ink3
         }
     }
 }

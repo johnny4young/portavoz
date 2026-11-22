@@ -65,7 +65,7 @@ struct MeetingCommitmentInboxSection: View {
                 .accessibilityIdentifier("detail-commitment-inbox-title")
             Text("Check the source before adding anything to your commitments.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
         }
     }
 
@@ -115,7 +115,7 @@ struct MeetingCommitmentInboxSection: View {
             }
         }
         .font(.caption)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(.ink3)
     }
 
     private func actionRow(_ candidate: CommitmentInboxCandidate) -> some View {
@@ -221,7 +221,7 @@ private struct MeetingCommitmentConfirmationSheet: View {
                 .font(.title3.weight(.semibold))
             Text("Edit the proposed wording and add only the owner and deadline you know are true.")
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
 
             TextField("Commitment", text: $title)
                 .textFieldStyle(.roundedBorder)

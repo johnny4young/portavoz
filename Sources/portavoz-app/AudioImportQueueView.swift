@@ -18,7 +18,7 @@ struct AudioImportQueueView: View {
             }
             Text("Imports continue when you close this panel. Your original files stay unchanged.")
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             if let error = model.error {
                 HStack {
                     Text(error).font(.callout).accessibilityIdentifier("import-queue-error")
@@ -32,7 +32,7 @@ struct AudioImportQueueView: View {
                 // The SQLite projection is capped at twenty rows; build all AX rows.
                 VStack(alignment: .leading, spacing: 0) {
                     if model.page.entries.isEmpty {
-                        Text("No audio imports").foregroundStyle(.secondary).padding(.vertical, 24)
+                        Text("No audio imports").foregroundStyle(.ink3).padding(.vertical, 24)
                             .accessibilityIdentifier("import-queue-empty")
                     }
                     ForEach(model.page.entries) { entry in
@@ -43,7 +43,7 @@ struct AudioImportQueueView: View {
             }
             HStack {
                 Text(L10n.format("%lld imports · %lld unfinished", model.page.total, model.page.unfinished))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.ink3)
                     .accessibilityIdentifier("import-queue-count")
                 Spacer()
                 Button("Previous") { model.showPage(max(0, model.offset - 20)) }
@@ -67,7 +67,7 @@ struct AudioImportQueueView: View {
                 Text(entry.title).font(.body.weight(.medium)).lineLimit(2)
                 Text(AudioImportQueuePresentation.status(
                     entry.job, phase: model.currentID == entry.id ? model.phase : nil, canRetry: entry.canRetry))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.ink3)
                     .accessibilityIdentifier("import-queue-state-\(id)")
             }
             Spacer()

@@ -67,10 +67,10 @@ struct RecordingCompanionCardsView: View {
             HStack(spacing: 8) {
                 Image(systemName: "chevron.right")
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.ink3)
                 Text(ClockFormat.mmss(row.card.askedAt))
                     .font(.caption2.monospacedDigit())
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.ink3)
                 Text(row.card.question)
                     .font(.callout)
                     .lineLimit(1)
@@ -122,14 +122,14 @@ struct RecordingCompanionCardsView: View {
                 Image(systemName: "chevron.down").font(.caption2)
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(.ink3)
             .help(L10n.text("Fold this card"))
             .accessibilityIdentifier("recording-companion-fold-\(identity)")
             Button {
                 controller.dismissCompanionCard(row.card.id)
                 presentations[row.card.id] = nil
             } label: {
-                Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
+                Image(systemName: "xmark.circle.fill").foregroundStyle(.ink3)
             }
             .buttonStyle(.plain)
             .help(L10n.text("Dismiss this card"))
@@ -159,7 +159,7 @@ struct RecordingCompanionCardsView: View {
         HStack(spacing: 8) {
             Text(RecordingCompanionCardsView.tag(row.card))
                 .font(.caption2)
-                .foregroundStyle(row.card.directed ? tint : Color.secondary)
+                .foregroundStyle(row.card.directed ? tint : PVDesign.ink3)
             if row.canOpenFully {
                 Button(L10n.text("Show all")) {
                     presentations[row.card.id] = .full
@@ -218,10 +218,10 @@ struct RecordingAssistEmptyState: View {
         VStack(spacing: 6) {
             Image(systemName: symbol)
                 .font(.title3)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.ink3)
             Text(message)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
         }

@@ -286,7 +286,7 @@ extension SettingsView {
                 "This changes the Portavoz interface only. Transcript and summary language policies stay in Intelligence settings and each meeting's overrides."
             )
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
         }
     }
 
@@ -323,7 +323,7 @@ extension SettingsView {
                 "A floating banner appears before your next calendar meeting — one click starts a recording linked to it. Needs calendar access."
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
         }
     }
 
@@ -336,7 +336,7 @@ extension SettingsView {
                     Text(recordingStorage.currentRoot.path)
                         .lineLimit(1)
                         .truncationMode(.middle)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                         .help(recordingStorage.currentRoot.path)
                 } else {
                     ProgressView().controlSize(.small)
@@ -363,9 +363,9 @@ extension SettingsView {
                 "Meeting audio lives in Audio/ inside this folder. When you change it, existing recordings move to the new location; the database and transcripts stay where they are."
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
             if let migrationStatus {
-                Text(migrationStatus).font(.caption).foregroundStyle(.secondary)
+                Text(migrationStatus).font(.caption).foregroundStyle(.ink3)
             }
         }
     }
@@ -494,7 +494,7 @@ extension SettingsView {
                         Text(item.hint)
                         Text("e.g. \(item.example)")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.ink3)
                     }
                 }
             }
@@ -505,7 +505,7 @@ extension SettingsView {
                 "The rest of the text is preserved as written. Putting the ISO date first makes the library sort meetings automatically."
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
             .fixedSize(horizontal: false, vertical: true)
         }
         .padding(14)
@@ -534,7 +534,7 @@ extension SettingsView {
                             .joined(separator: ", ")
                     } label: {
                         Image(systemName: "minus.circle.fill")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.ink3)
                     }
                     .buttonStyle(.plain)
                     .help("Remove \"\(term)\"")
@@ -551,7 +551,7 @@ extension SettingsView {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Suggested from your meetings — click to review before adding")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                     HStack(spacing: 6) {
                         ForEach(suggestedTerms, id: \.self) { term in
                             suggestionChip(term)
@@ -565,7 +565,7 @@ extension SettingsView {
                 "Acronyms, products, and proper names from your meetings. They guide quality transcription and summaries so “QVTL” does not become something else."
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
         }
     }
 
@@ -585,7 +585,7 @@ extension SettingsView {
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.ink3)
             }
             .buttonStyle(.plain)
             .help("Don't suggest \"\(term)\" again")
@@ -646,7 +646,7 @@ extension SettingsView {
                         systemImage: PVSymbol.generate)
                         .font(.callout.weight(.medium))
                     ForEach(providerRecommendation.localizedReasons, id: \.self) { reason in
-                        Text("• \(reason)").font(.caption).foregroundStyle(.secondary)
+                        Text("• \(reason)").font(.caption).foregroundStyle(.ink3)
                     }
                     if providerRecommendation.selection != nil {
                         Button("Apply recommendation") {
@@ -688,7 +688,7 @@ extension SettingsView {
                     .controlSize(.small)
                     .disabled(detectingOllama)
                     if let ollamaStatus {
-                        Text(ollamaStatus).font(.caption).foregroundStyle(.secondary)
+                        Text(ollamaStatus).font(.caption).foregroundStyle(.ink3)
                     }
                 }
                 if !ollamaModels.isEmpty {
@@ -712,7 +712,7 @@ extension SettingsView {
                 "Apple requires Apple Intelligence. Ollama and the built-in model run locally after setup. Live summaries keep a transcript-based checkpoint; your selected local engine can refine it when ready."
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
             .accessibilityIdentifier("settings-summary-provider-help")
 
             Divider()
@@ -723,7 +723,7 @@ extension SettingsView {
                     ProgressView().controlSize(.small)
                     Text("Verifying model integrity…")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                 }
                 .accessibilityIdentifier("settings-whisper-verifying")
             }
@@ -747,7 +747,7 @@ extension SettingsView {
                 "Download Whisper before your first improvement. Turbo is the default; Compact saves about 1 GB."
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
         }
     }
 

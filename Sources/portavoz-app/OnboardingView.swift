@@ -64,7 +64,7 @@ struct OnboardingView: View {
                 .accessibilityIdentifier("onboarding-during-meeting")
             Text("Three things Portavoz does while you talk. Nothing runs without you.")
                 .font(.title3)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             featureRow(
                 symbol: PVSymbol.apuntador,
                 title: L10n.text("Apuntador"),
@@ -107,7 +107,7 @@ struct OnboardingView: View {
             Image(systemName: symbol).foregroundStyle(PVDesign.accent).frame(width: 22)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.callout.weight(.medium))
-                Text(detail).font(.caption).foregroundStyle(.secondary)
+                Text(detail).font(.caption).foregroundStyle(.ink3)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
@@ -128,7 +128,7 @@ struct OnboardingView: View {
                 .font(.callout.weight(.semibold))
             Text("Friday, after the review — said at 12:40.")
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -155,7 +155,7 @@ struct OnboardingView: View {
                 .accessibilityIdentifier("onboarding-first-listen")
             Text("Say a sentence, anything about your day. Portavoz transcribes it live.")
                 .font(.title3)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
 
             FirstListenWaveform(level: listen.level, active: listen.phase == .listening)
                 .frame(height: 56)
@@ -179,12 +179,12 @@ struct OnboardingView: View {
         case .preparing:
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text("Warming up the on-device listener…").foregroundStyle(.secondary)
+                Text("Warming up the on-device listener…").foregroundStyle(.ink3)
             }
         case .listening:
             VStack(alignment: .leading, spacing: 8) {
                 Text(L10n.format("Listening… %d s", listen.secondsLeft))
-                    .font(.callout).foregroundStyle(.secondary)
+                    .font(.callout).foregroundStyle(.ink3)
                 captionCard(listen.hasCaption ? listen.caption : L10n.text("Go ahead, speak…"))
             }
         case .done:
@@ -194,11 +194,11 @@ struct OnboardingView: View {
                 Label("Got it.", systemImage: PVSymbol.success)
                     .foregroundStyle(PVDesign.ok)
                 Text("Live captions are unavailable right now. Recording still works.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.ink3)
             }
         case .failed(let message):
             VStack(alignment: .leading, spacing: 8) {
-                Text(message).font(.callout).foregroundStyle(.secondary)
+                Text(message).font(.callout).foregroundStyle(.ink3)
                 Button("Try again") { listen.start() }
             }
         }
@@ -209,10 +209,10 @@ struct OnboardingView: View {
             if listen.hasCaption {
                 captionCard(listen.caption)
                 Label(L10n.format("%d words heard.", listen.wordCount), systemImage: PVSymbol.success)
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.ink3)
             } else {
                 Label("Got it.", systemImage: PVSymbol.success)
-                    .font(.callout).foregroundStyle(.secondary)
+                    .font(.callout).foregroundStyle(.ink3)
             }
             Button("Listen again") { listen.start() }
                 .buttonStyle(.plain)
@@ -241,7 +241,7 @@ struct OnboardingView: View {
             Text("Permissions").pvDisplay(.title)
                 .lineLimit(1).minimumScaleFactor(0.6)
             Text("Portavoz records locally; macOS asks for each permission once.")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             permissionRow(
                 icon: "mic", title: L10n.text("Microphone"),
                 detail: L10n.text("Your side of the meeting."),
@@ -269,7 +269,7 @@ struct OnboardingView: View {
                 Text("On-device models").pvDisplay(.title)
                     .lineLimit(1).minimumScaleFactor(0.6)
                 Text("Models download once (about 1 GB) and work offline.")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                 modelPreparationStatus
                 if let providerRecommendation {
                     Divider()
@@ -278,10 +278,10 @@ struct OnboardingView: View {
                         systemImage: PVSymbol.generate)
                         .font(.callout.weight(.medium))
                     ForEach(providerRecommendation.localizedReasons, id: \.self) { reason in
-                        Text("• \(reason)").font(.caption).foregroundStyle(.secondary)
+                        Text("• \(reason)").font(.caption).foregroundStyle(.ink3)
                     }
                     Text("You can change the summary engine anytime in Settings.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(.ink3)
                 }
             }
         }
@@ -303,7 +303,7 @@ struct OnboardingView: View {
             // Two-sentence explainer.
             // swiftlint:disable:next line_length
             Text("A short voice sample lets Portavoz tag your interventions as “Me” on any microphone or channel. You can enroll or redo it later in Settings.")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             if enrolled {
                 HStack(spacing: 10) {
                     Image(systemName: PVSymbol.success).foregroundStyle(PVDesign.ok)
@@ -312,7 +312,7 @@ struct OnboardingView: View {
             } else if enrolling {
                 HStack(spacing: 10) {
                     ProgressView().controlSize(.small)
-                    Text("One moment…").font(.callout).foregroundStyle(.secondary)
+                    Text("One moment…").font(.callout).foregroundStyle(.ink3)
                 }
             } else {
                 VStack(alignment: .leading, spacing: 8) {
@@ -321,7 +321,7 @@ struct OnboardingView: View {
                             .buttonStyle(.pvPrimary)
                             .accessibilityIdentifier("onboarding-voice-reuse")
                         Text("Reuses what you just said — no need to speak again.")
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(.ink3)
                         Button("Record a fresh 12 seconds") { enrollVoice(reusingFirstListen: false) }
                             .buttonStyle(.bordered)
                             .accessibilityIdentifier("onboarding-voice-record-fresh")
@@ -333,7 +333,7 @@ struct OnboardingView: View {
                 }
             }
             if let enrollMessage {
-                Text(enrollMessage).font(.caption).foregroundStyle(.secondary)
+                Text(enrollMessage).font(.caption).foregroundStyle(.ink3)
             }
         }
     }
@@ -344,7 +344,7 @@ struct OnboardingView: View {
         HStack {
             Button("Skip setup") { finish() }
                 .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier("onboarding-skip")
             Spacer()
             if step > 0 {
@@ -355,11 +355,12 @@ struct OnboardingView: View {
                 if step == lastStep { finish() } else { step += 1 }
             }
             .keyboardShortcut(.defaultAction)
+            .buttonStyle(.pvPrimary)
             .disabled(enrolling)
             .accessibilityIdentifier("onboarding-continue")
         }
         .padding(20)
-        .background(.bar)
+        .overlay(alignment: .top) { HomeSectionRule() }
     }
 
     private func permissionRow(
@@ -370,7 +371,7 @@ struct OnboardingView: View {
             Image(systemName: icon).foregroundStyle(PVDesign.accent).frame(width: 22)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.callout.weight(.medium))
-                Text(detail).font(.caption).foregroundStyle(.secondary)
+                Text(detail).font(.caption).foregroundStyle(.ink3)
             }
             Spacer()
             if done {
@@ -451,21 +452,23 @@ struct OnboardingView: View {
 /// A row of bars that breathe with the microphone level — the onboarding
 /// first-listen's visual heartbeat. Idle bars pulse gently; while listening
 /// they rise with the captured level and glow in the user's amber.
-private struct FirstListenWaveform: View {
+struct FirstListenWaveform: View {
+    /// Keeps idle bars at 3:1 against paper in both appearances.
+    static let idleOpacity = 0.75
+
     let level: Double
     let active: Bool
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let barCount = 27
 
     var body: some View {
-        TimelineView(.animation) { timeline in
+        TimelineView(.animation(minimumInterval: nil, paused: reduceMotion)) { timeline in
             let phase = timeline.date.timeIntervalSinceReferenceDate
             HStack(alignment: .center, spacing: 4) {
                 ForEach(0..<barCount, id: \.self) { index in
                     Capsule()
-                        .fill(active
-                            ? AnyShapeStyle(VoicePalette.me)
-                            : AnyShapeStyle(Color.secondary.opacity(0.35)))
+                        .fill(active ? VoicePalette.me : PVDesign.ink3.opacity(Self.idleOpacity))
                         .frame(width: 4, height: height(index, phase: phase))
                 }
             }
@@ -496,7 +499,7 @@ private extension OnboardingView {
                 ProgressView().controlSize(.small)
                 // On the text, not the container: a container identifier
                 // stamps every descendant on macOS.
-                Text(modelsStatus).font(.callout).foregroundStyle(.secondary)
+                Text(modelsStatus).font(.callout).foregroundStyle(.ink3)
                     .accessibilityIdentifier("onboarding-models-preparing")
             }
         case .failed(let failure):
@@ -512,7 +515,7 @@ private extension OnboardingView {
                         .accessibilityIdentifier("onboarding-models-continue-without")
                 }
                 Text("You can still record audio. Transcription will be available after the models are ready.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.ink3)
                     .fixedSize(horizontal: false, vertical: true)
             }
         case .idle:
@@ -520,7 +523,7 @@ private extension OnboardingView {
                 Button("Download now") { downloadModels() }
                     .accessibilityIdentifier("onboarding-models-download")
                 Text("Or skip — they download on your first recording.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.ink3)
             }
         }
     }

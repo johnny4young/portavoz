@@ -51,7 +51,7 @@ struct BYOKSettingsSection: View {
             HStack(spacing: 10) {
                 Text("Sends only the detected question, never audio or meeting text.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                 HowItWorksLink(
                     text: L10n.text(
                         // swiftlint:disable:next line_length
@@ -59,7 +59,7 @@ struct BYOKSettingsSection: View {
                     identifier: "settings-byok-how-it-works")
             }
             if let message {
-                Text(message).font(.caption).foregroundStyle(.secondary)
+                Text(message).font(.caption).foregroundStyle(.ink3)
             }
         }
     }

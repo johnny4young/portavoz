@@ -38,6 +38,7 @@ struct DictationMovedNoticeSheet: View {
             if model.deleteFailed {
                 Text("Could not delete them. Try again.")
                     .font(.caption)
+                    .cautionText()
                     .accessibilityIdentifier("dictation-moved-delete-failed")
             }
             HStack {
@@ -48,6 +49,7 @@ struct DictationMovedNoticeSheet: View {
                 Spacer()
                 Button("OK", action: dismiss)
                     .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.pvPrimary)
                     .accessibilityIdentifier("dictation-moved-dismiss")
             }
         }

@@ -28,7 +28,7 @@ struct MeetingDetailSummaryPlaceholder: View {
         if let cancelled = Self.latestCancelledSummary(in: processingJobs) {
             Label(explanation(cancelled.errorCode), systemImage: "sparkles.slash")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("detail-summary-abandoned")
         }

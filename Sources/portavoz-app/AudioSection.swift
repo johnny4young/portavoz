@@ -36,7 +36,7 @@ struct AudioSection: View {
                 "What to record besides your mic: Automatic picks system audio or the meeting app; Nothing records only your microphone."
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
 
             HStack {
                 Label("Call-safe capture", systemImage: "checkmark.shield")
@@ -52,7 +52,7 @@ struct AudioSection: View {
                 "Portavoz leaves macOS voice processing to your meeting app and never enables call-audio ducking while it records. Duplicate speaker bleed is removed from the transcript after capture."
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
         }
         .task { inputs = await services.audioInputOptions() }
     }

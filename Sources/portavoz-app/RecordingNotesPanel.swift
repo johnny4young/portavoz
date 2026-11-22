@@ -23,7 +23,7 @@ struct RecordingNotesPanel: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(
-                    isDraftEmpty ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.tint))
+                    isDraftEmpty ? AnyShapeStyle(.ink3) : AnyShapeStyle(.tint))
                 .disabled(isDraftEmpty)
                 .help(L10n.text("Add note (⏎)"))
                 .accessibilityLabel(L10n.text("Add note (⏎)"))
@@ -55,7 +55,7 @@ struct RecordingNotesPanel: View {
             Text("▸").foregroundStyle(.tint)
             Text(ClockFormat.mmss(item.timestamp))
                 .font(.caption2.monospacedDigit())
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.ink3)
             Text(item.content)
                 .font(.callout)
                 .textSelection(.enabled)
@@ -64,7 +64,7 @@ struct RecordingNotesPanel: View {
                 controller.removeContextItem(item.id)
             } label: {
                 Image(systemName: "xmark.circle.fill")
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.ink3)
             }
             .buttonStyle(.plain)
             .help(L10n.text("Remove note"))

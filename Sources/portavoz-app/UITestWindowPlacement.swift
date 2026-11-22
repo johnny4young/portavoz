@@ -68,7 +68,14 @@ enum UITestWindowPlacement {
         }
     }
 
+    /// `-seed-dark-appearance` draws the disposable app dark on a light host.
+    static func applyAppearanceOverride(arguments: [String] = ProcessInfo.processInfo.arguments) {
+        guard arguments.contains("-use-temp-store"), arguments.contains("-seed-dark-appearance") else { return }
+        NSApp.appearance = NSAppearance(named: .darkAqua)
+    }
+
     static func positionMainWindow(_ window: NSWindow) {
+        applyAppearanceOverride()
         guard let visibleFrame = zeroScreenVisibleFrame else { return }
         let arguments = ProcessInfo.processInfo.arguments
         let preferredHeight: CGFloat?
@@ -112,6 +119,7 @@ enum UITestWindowPlacement {
     }
 
     static func positionSettingsWindow(_ window: NSWindow) {
+        applyAppearanceOverride()
         guard let screen = zeroScreen else { return }
 
         let visibleFrame = screen.visibleFrame

@@ -40,7 +40,7 @@ extension SettingsView {
                     }
                     Text(semanticSearchStatusDetail(model.phase))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
@@ -81,7 +81,7 @@ extension SettingsView {
                 "Auto-detect preserves each speaker's language in mixed meetings. Pin one language only when quiet or noisy audio was detected incorrectly."
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
         }
     }
 
@@ -101,7 +101,7 @@ extension SettingsView {
                 "This changes generated summaries only. Transcript language is controlled separately above and is never changed by this setting."
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
         }
     }
 
@@ -114,7 +114,7 @@ extension SettingsView {
                     "Create your own summary shapes — a Hangout, a Brainstorm — beyond the five built-ins. They appear in a meeting's Structure menu."
                 )
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             }
             ForEach(customStructures) { recipe in
                 HStack(spacing: 8) {
@@ -122,7 +122,7 @@ extension SettingsView {
                         Text(recipe.displayName)
                         Text(recipe.sections.joined(separator: " · "))
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.ink3)
                             .lineLimit(1)
                     }
                     Spacer()
@@ -194,7 +194,7 @@ extension SettingsView {
         switch phase {
         case .ready: PVDesign.ok
         case .blockedByCapture, .failed: PVDesign.caution
-        case .checking, .needsPreparation, .preparing, .unsupported: .secondary
+        case .checking, .needsPreparation, .preparing, .unsupported: PVDesign.ink3
         }
     }
 

@@ -43,6 +43,20 @@ final class OnboardingUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testFirstListenSitsOnPaperInBothAppearances() throws {
+        for style in ["Light", "Dark"] {
+            let app = try XCUIApplication.portavoz(showOnboarding: true)
+            app.launchArguments += XCUIApplication.appearanceArguments(dark: style == "Dark")
+            app.launchPortavoz()
+            XCTAssertTrue(
+                app.control(withIdentifier: "onboarding-first-listen").waitForExistenceFast(timeout: 15))
+            XCTAssertTrue(app.control(withIdentifier: "onboarding-skip").exists)
+            attachScreenshot(of: app, named: "pr-onboarding-first-listen-\(style.lowercased())")
+            finishUITestApplication(app)
+        }
+    }
+
+    @MainActor
     func testModelFailureCanContinueBackAndRetryWithoutDownloading() throws {
         let app = try XCUIApplication.portavoz(showOnboarding: true)
         app.launchArguments.append("-simulate-onboarding-model-recovery")

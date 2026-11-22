@@ -13,16 +13,16 @@ struct ModelMemorySettingsSection: View {
                 .accessibilityIdentifier("settings-model-memory-lightweight")
             Text("Frees idle models after about a minute. Models in use stay loaded; the next start may be slower.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier("settings-model-memory-help")
             Text("Model choices and downloaded files are unchanged. This is not a RAM usage limit.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             Text(L10n.text(services.modelMemoryPreferences.recommendedProfile == .lightweight
                 ? "Suggested for this Mac: lightweight memory."
                 : "Balanced memory keeps models ready for back-to-back work."))
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier("settings-model-memory-recommendation")
         }
     }

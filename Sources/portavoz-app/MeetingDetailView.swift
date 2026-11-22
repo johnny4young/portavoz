@@ -202,7 +202,7 @@ private extension MeetingDetailView {
         } else if flow.isRegenerating {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text("Generating summary…").foregroundStyle(.secondary)
+                Text("Generating summary…").foregroundStyle(.ink3)
             }
         } else if !detail.segments.isEmpty {
             MeetingDetailSummaryPlaceholder(

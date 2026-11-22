@@ -13,7 +13,7 @@ struct SkillActivityPeriodFilter: View {
         VStack(alignment: .leading, spacing: 3) {
             Text("Updated")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             Menu {
                 periodButton(.anytime, identifier: "anytime")
                 periodButton(.pastDay, identifier: "past-day")

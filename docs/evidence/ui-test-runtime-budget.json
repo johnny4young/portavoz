@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 134
+    "expectedCaseCount": 137
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -68,6 +68,7 @@
     "LibraryUITests/testRecordingWarnsWhenIncomingAudioClips()": 20.0,
     "LibraryUITests/testRecordingWarnsWhenRemoteAudioCallbacksStop()": 20.0,
     "LibraryUITests/testSeededMeetingsGroupByRecency()": 20.0,
+    "LibraryUITests/testSidebarSecondaryTextReadsInInkInBothAppearances()": 25.0,
     "LibraryUITests/testUnansweredCallEndedQuestionStopsTheRecording()": 20.0,
     "LibraryUITests/testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment()": 20.0,
     "MeetingAudioTrimUITests/testSilentTailRequiresConfirmationAndCutsOnlyAfterConfirmation()": 30.0,
@@ -104,6 +105,7 @@
     "MeetingDetailUITests/testUnnamedSpeakerOffersExplicitNameSuggestions()": 20.0,
     "MenuBarUITests/testPreMeetingBriefMovesFromExactProposalToDurableReceipt()": 20.0,
     "OnboardingUITests/testAdvancesFromFirstListenToLocalVoiceEnrollment()": 20.0,
+    "OnboardingUITests/testFirstListenSitsOnPaperInBothAppearances()": 20.0,
     "RecordingAssistUITests/testCompanionActionsKeepIdentityAndSeenStateAfterReentry()": 25.0,
     "RecordingAssistUITests/testLatestManualAssistRequestOwnsTheFocusSlot()": 25.0,
     "RecordingAssistUITests/testLiveAssistKeepsOnePanelOpenAndABoundedCardList()": 25.0,
@@ -121,6 +123,7 @@
     "LegacyDictationUITests/testTheDataPaneDeletesLegacyDictationHistory()": 25.0,
     "SettingsUITests/testCategoryNavigationRevealsEachPane()": 24.352,
     "SettingsUITests/testDataPaneExportsARedactedSupportFileAndAReadableBackup()": 40.0,
+    "SettingsUITests/testGeneralPaneSwitchesAndFootnotesReadInBothAppearances()": 20.0,
     "ModelsOnThisMacUITests/testTheDataPaneListsAModelAnotherAppAlsoUses()": 30.0,
     "SettingsUITests/testIntelligencePaneCreatesACustomStructure()": 20.0,
     "SettingsUITests/testIntelligencePaneExplicitlyPreparesSemanticSearch()": 20.0,

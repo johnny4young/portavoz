@@ -52,15 +52,15 @@ struct AskMemoryBlockersView: View {
                     "ask-memory-blocker-\(blocker.id.rawValue.uuidString)")
             Text(L10n.format("Blocks: %@", blocker.commitmentTitle))
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier(
                     "ask-memory-blocker-commitment-\(blocker.id.rawValue.uuidString)")
             Text(blocker.occurredAt.formatted(date: .abbreviated, time: .shortened))
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.ink3)
             Text("Sources")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             ForEach(Array(orderedCitations(blocker).enumerated()), id: \.offset) { index, citation in
                 Button {
                     onOpenCitation(citation)
@@ -133,7 +133,7 @@ struct AskMemoryBlockersView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .font(.caption)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(.ink3)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(identifier)
     }

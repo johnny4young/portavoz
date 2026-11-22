@@ -47,7 +47,7 @@ struct StandingSkillRulesSection: View {
                 """
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
             .accessibilityIdentifier("settings-standing-explanation")
 
             if isLoading, snapshot == nil {
@@ -115,7 +115,7 @@ private extension StandingSkillRulesSection {
                 .accessibilityIdentifier("settings-standing-load-error")
             Text("Loading your automations…")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             Button("Try again") { Task { await load() } }
                 .accessibilityIdentifier("settings-standing-load-retry")
         }
@@ -135,7 +135,7 @@ private extension StandingSkillRulesSection {
                 """
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
             .fixedSize(horizontal: false, vertical: true)
             Stepper(
                 L10n.format("Up to %d briefs per day", dailyLimit),
@@ -179,7 +179,7 @@ private extension StandingSkillRulesSection {
                         "Up to %d briefs per day",
                         item.rule.maximumDailyExecutions))
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                 }
                 Spacer(minLength: 12)
                 Toggle(
@@ -196,7 +196,7 @@ private extension StandingSkillRulesSection {
                     "Delete this rule? Its history and prepared briefs stay available."
                 )
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 HStack {
                     Button("Keep rule") { deleteConfirmationID = nil }
                         .accessibilityIdentifier(
@@ -249,7 +249,7 @@ private extension StandingSkillRulesSection {
             if snapshot.history.isEmpty {
                 Text("No automatic briefs have run on this Mac.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .accessibilityIdentifier("settings-standing-history-empty")
             } else {
                 ForEach(snapshot.history) { receipt in
@@ -287,7 +287,7 @@ private extension StandingSkillRulesSection {
                 Text(receipt.record.updatedAt, format: .dateTime
                     .month(.abbreviated).day().hour().minute())
                     .font(.caption2.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             }
             if receipt.hasArtifact {
                 Button("Review prepared brief") {
@@ -369,7 +369,7 @@ private extension StandingSkillRulesSection {
         controls: StandingSkillRuleControlSnapshot
     ) -> Color {
         item.isEffectivelyEnabled ? PVDesign.ok
-            : controls.isPaused || item.rule.isEnabled ? PVDesign.caution : .secondary
+            : controls.isPaused || item.rule.isEnabled ? PVDesign.caution : PVDesign.ink3
     }
 
     private func historyStatus(
@@ -497,7 +497,7 @@ private struct StandingSkillBriefSheet: View {
                 "This brief stays in Portavoz on this Mac. Nothing was sent or shared.",
                 systemImage: PVSymbol.privacy)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier("standing-brief-privacy")
             HStack {
                 Spacer()

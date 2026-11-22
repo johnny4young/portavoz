@@ -38,7 +38,7 @@ struct SkillsSettingsSection: View {
                     "Portavoz suggests actions from your meetings. Nothing runs until you confirm it."
                 )
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier("settings-actions-explanation")
                 controlContent
             }
@@ -131,12 +131,12 @@ struct SkillsSettingsSection: View {
                     .font(.callout.weight(.semibold))
                 Text(skillDescription(skill.id))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .fixedSize(horizontal: false, vertical: true)
                 skillDisclosure(skill)
                 Text(lastRunText(skill))
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.ink3)
                     .accessibilityIdentifier("settings-skill-\(skill.id)-last-run")
             }
             Spacer(minLength: 12)
@@ -200,7 +200,7 @@ struct SkillsSettingsSection: View {
                 Label(
                     "Approval required every time",
                     systemImage: "person.crop.circle.badge.checkmark")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .accessibilityIdentifier(
                         "settings-skill-\(skill.id)-confirmation")
                     .accessibilityLabel("Approval required every time")
@@ -484,7 +484,7 @@ private extension SkillsSettingsSection {
                     .accessibilityIdentifier("settings-skills-load-error")
                 Text("Nothing can be changed until Portavoz reads the durable policy.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                 Button("Try again") {
                     Task { await load() }
                 }
@@ -501,7 +501,7 @@ private extension SkillsSettingsSection {
                 "Paused actions are no longer suggested and are blocked again immediately before they run. Your individual choices stay saved."
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
             if snapshot?.isPaused == true {
                 Label("All actions are paused", systemImage: "pause.circle.fill")
                     .font(.caption.weight(.semibold))

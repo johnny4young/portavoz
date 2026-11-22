@@ -39,7 +39,7 @@ struct CustomStructureSheet: View {
                 .accessibilityIdentifier("structure-name")
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Sections — one per line").font(.caption).foregroundStyle(.secondary)
+                Text("Sections — one per line").font(.caption).foregroundStyle(.ink3)
                 TextEditor(text: $sectionsText)
                     .font(.body.monospaced())
                     .frame(height: 92)
@@ -50,7 +50,7 @@ struct CustomStructureSheet: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Extra instructions (optional)").font(.caption).foregroundStyle(.secondary)
+                Text("Extra instructions (optional)").font(.caption).foregroundStyle(.ink3)
                 TextField(
                     "How this summary should be shaped…", text: $instructions, axis: .vertical
                 )

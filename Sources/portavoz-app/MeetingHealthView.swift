@@ -73,7 +73,7 @@ struct MeetingHealthView: View {
             Text(value).monospacedDigit()
         }
         .font(.caption2)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(.ink3)
         .padding(.horizontal, 6)
         .padding(.vertical, 2)
         .background(.quaternary.opacity(0.6), in: Capsule())

@@ -81,6 +81,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 22, 2026
 
+- **🔎 Easier-to-read secondary text** — dates, hints, section headers and footnotes across the app use a darker ink that stays readable on paper, and switches keep a visible knob in dark mode.
 - **🧾 A summary that fits any window** — reviewing the summary lives in a menu beside copy and regenerate, suggestions sit under the summary instead of on its rule, chapter titles show in full, and each voice's turns run the full width of its row.
 - **🎧 A player that stays out of the way** — the meeting player now docks along the bottom of the whole page with its controls on one line at any window size and the time in plain ink instead of a red pill.
 - **📜 One page per meeting** — summary, commitments, notes and transcript scroll as one page with nothing cut off in a small box, and a wide window keeps People, Apuntador and Chapters in a margin beside the text.

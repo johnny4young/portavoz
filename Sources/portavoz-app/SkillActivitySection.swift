@@ -159,7 +159,7 @@ struct SkillActivitySection: View {
                     "Each view shows up to %d matching runs on this Mac.",
                     historyWindow.requestedLimit))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .accessibilityIdentifier(
                         "settings-skills-receipt-history-limit")
             }
@@ -194,7 +194,7 @@ struct SkillActivitySection: View {
         VStack(alignment: .leading, spacing: 3) {
             Text("Action")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             Menu {
                 Button("All actions") {
                     receiptSkillID = nil
@@ -277,7 +277,7 @@ struct SkillActivitySection: View {
                     .foregroundStyle(PVDesign.caution)
                 Text("The selected activity view could not be verified. No runs are shown.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("settings-skills-receipt-scope-error")
@@ -292,7 +292,7 @@ struct SkillActivitySection: View {
             Label(emptyTitle, systemImage: PVSymbol.success)
             Text(emptyDetail)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(
@@ -366,17 +366,17 @@ struct SkillActivitySection: View {
                         .font(.callout.weight(.medium))
                     Text(receiptStatus(receipt))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                 }
                 Spacer()
                 Text(
                     receipt.updatedAt,
                     format: .dateTime.month(.abbreviated).day().hour().minute())
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.ink3)
                     .accessibilityHidden(true)
             }
             .contentShape(Rectangle())

@@ -9,7 +9,7 @@ struct AppLaunchRecoveryView: View {
         VStack(spacing: 22) {
             Image(systemName: "externaldrive.badge.exclamationmark")
                 .font(.system(size: 44, weight: .regular))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityHidden(true)
 
             VStack(spacing: 8) {
@@ -23,7 +23,7 @@ struct AppLaunchRecoveryView: View {
                     Portavoz stopped before starting background work. \
                     Your original library has not been changed or deleted.
                     """)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 560)
                     .fixedSize(horizontal: false, vertical: true)
@@ -39,7 +39,7 @@ struct AppLaunchRecoveryView: View {
                           ? "checkmark.circle"
                           : "questionmark.circle")
                 }
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier("launch-recovery-file-evidence")
             }
 
@@ -99,7 +99,7 @@ struct AppLaunchRecoveryView: View {
                 existing copy.
                 """)
                 .font(.footnote)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.ink3)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 600)
                 .fixedSize(horizontal: false, vertical: true)
@@ -155,7 +155,7 @@ struct AppLaunchOpeningView: View {
         VStack(spacing: 12) {
             ProgressView()
             Text("Opening your library…")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityIdentifier("launch-recovery-opening")

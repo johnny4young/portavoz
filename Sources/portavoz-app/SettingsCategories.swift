@@ -134,7 +134,7 @@ struct LedgerSection: View {
                 "Nothing is sent unless you ask for it. Every transfer is logged here."
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
         } header: {
             Text("Your data, on this Mac")
         }
@@ -156,7 +156,7 @@ struct LedgerSection: View {
                 .accessibilityIdentifier(identifier)
             Text(label)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, minHeight: 56, alignment: .topLeading)

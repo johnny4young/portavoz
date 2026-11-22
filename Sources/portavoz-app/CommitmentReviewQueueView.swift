@@ -18,7 +18,7 @@ struct CommitmentReviewQueueView: View {
             HStack(spacing: 10) {
                 ProgressView().controlSize(.small)
                 Text("Loading suggestions to review…")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             }
             .frame(maxWidth: .infinity, minHeight: 180)
         case .failed:
@@ -56,12 +56,12 @@ private extension CommitmentReviewQueueView {
                     page.items.count,
                     page.totalCount))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                 Spacer()
                 if page.hasMore {
                     Text("Only the newest suggestions are shown.")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                 }
             }
 
@@ -116,7 +116,7 @@ private extension CommitmentReviewQueueView {
             Text(verbatim: meetingDate(item.meetingStartedAt))
         }
         .font(.caption)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(.ink3)
     }
 
     @ViewBuilder
@@ -126,7 +126,7 @@ private extension CommitmentReviewQueueView {
                 L10n.format("Suggested owner: %@", owner.displayName),
                 systemImage: "person.crop.circle.badge.questionmark")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier(
                     "commitment-review-owner-\(item.id.uuidString)")
         }
@@ -197,7 +197,7 @@ private extension CommitmentReviewQueueView {
                 item.evidence.segments.count,
                 item.evidenceCount))
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier(
                     "commitment-review-evidence-truncated-\(item.id.uuidString)")
         }

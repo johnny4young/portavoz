@@ -39,7 +39,7 @@ private extension ReminderDraftSheet {
         VStack(alignment: .leading, spacing: 6) {
             Text("Reminder")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             Text(verbatim: confirmation?.offer.draft.title ?? "")
                 .font(.title3.weight(.semibold))
                 .accessibilityLabel(Text(
@@ -56,7 +56,7 @@ private extension ReminderDraftSheet {
                 }
             }
             .font(.callout)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
             .accessibilityIdentifier("reminder-draft-preview-due")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -91,7 +91,7 @@ private extension ReminderDraftSheet {
             Label(
                 "Portavoz will ask only when you choose Allow Reminders Access.",
                 systemImage: "hand.raised.fill")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier("reminder-draft-access-needed")
         case .denied:
             VStack(alignment: .leading, spacing: 8) {
@@ -120,7 +120,7 @@ private extension ReminderDraftSheet {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Reminders list")
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.ink3)
                             Text(verbatim: target.title)
                                 .font(.callout.weight(.semibold))
                                 .accessibilityLabel(Text(verbatim: target.title))

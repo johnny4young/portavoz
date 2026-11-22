@@ -2117,6 +2117,24 @@ extension ArchitectureDependencyTests {
             codeOnly: true)
         XCTAssertEqual(rawColours.filter { $0 != "PVDesign.swift" }, [], "chrome is ink; hues live in PVDesign")
 
+        let systemGreys = try Self.sourceMatches(
+            under: "Sources/portavoz-app",
+            pattern: #"(?m)foregroundStyle\([^)\n]*\.(secondary|tertiary)\b|AnyShapeStyle\(\.(secondary|tertiary)\)"#
+                + #"|Color\.(secondary|tertiary)\b|tint(: |\()\.secondary\b|: \.secondary$"#,
+            codeOnly: true)
+        XCTAssertEqual(
+            systemGreys.filter { $0 != "PVDesign.swift" }, [],
+            "secondary text is ink 3 (.ink3); system greys fall under 4.5:1 on paper")
+
+        let nativeDefaultButtons = try Self.sourceMatches(
+            under: "Sources/portavoz-app",
+            pattern: #"keyboardShortcut\(\.defaultAction\)(?!\s*\.buttonStyle\(\.pvPrimary\))"#
+                + #"(?<!buttonStyle\(\.pvPrimary\)\s{1,40}\.keyboardShortcut\(\.defaultAction\))"#,
+            codeOnly: true)
+        XCTAssertEqual(
+            nativeDefaultButtons, [],
+            "a default button is .pvPrimary: the native bezel puts a white label on the control tint")
+
         let presentOwners = try Self.sourceMatches(
             under: "Sources/portavoz-app", pattern: #"PVDesign\.(Tone\.)?now\b"#, codeOnly: true)
         XCTAssertEqual(

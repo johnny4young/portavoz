@@ -60,7 +60,7 @@ struct LibraryView: View {
             if let importStatus = state.importStatus {
                 Text(importStatus)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 20)
                     .padding(.top, 6)
@@ -91,9 +91,9 @@ struct LibraryView: View {
 
             List(selection: meetingSelection) {
                 if !state.query.isEmpty {
-                    Section("Results") {
+                    Section {
                         if state.hits.isEmpty {
-                            Text("No matches").foregroundStyle(.secondary)
+                            Text("No matches").foregroundStyle(.ink3)
                         }
                         ForEach(state.hits, id: \.segmentID) { hit in
                             Button {
@@ -103,7 +103,7 @@ struct LibraryView: View {
                                     Text(hit.snippet).lineLimit(2)
                                     Text("\(hit.meetingTitle) · \(ClockFormat.mmss(hit.startTime))")
                                         .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(.ink3)
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             }
@@ -112,19 +112,25 @@ struct LibraryView: View {
                             .accessibilityIdentifier(
                                 "library-search-hit-\(hit.segmentID.uuidString)")
                         }
+                    } header: {
+                        LibrarySectionHeader("Results", id: "results")
                     }
                 } else {
                     // Past meetings only: the agenda and open to-dos live on Today.
                     if state.meetings.isEmpty {
-                        Section("Meetings") {
-                            Text("No meetings yet").foregroundStyle(.secondary)
+                        Section {
+                            Text("No meetings yet").foregroundStyle(.ink3)
+                        } header: {
+                            LibrarySectionHeader("Meetings", id: "meetings")
                         }
                     }
                     ForEach(meetingGroups, id: \.key) { group in
-                        Section(group.title) {
+                        Section {
                             ForEach(group.meetings) { meeting in
                                 meetingRow(meeting)
                             }
+                        } header: {
+                            LibrarySectionHeader(group.title, id: group.key)
                         }
                     }
                     TrashSection(
@@ -272,7 +278,7 @@ extension LibraryView {
             Text(MeetingRowTitle.display(meeting.title)).lineLimit(1)
             Text(meeting.dayAndLength)
                 .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             VoiceStrip(state.voiceStrips[meeting.id] ?? .empty)
         }
         .tag(Route.meeting(meeting.id))
@@ -379,7 +385,7 @@ extension LibraryView {
         HStack(spacing: 7) {
             Image(systemName: "magnifyingglass")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             TextField("Search all meetings…", text: Binding(
                 get: { state.query },
                 set: { perform(.queryChanged($0)) }))
@@ -397,17 +403,13 @@ extension LibraryView {
     /// the detail lives one click away, in Settings ▸ Your data.
     private var localFooter: some View {
         HStack {
-            // Bordered, not plain: the hosted runner's hit test maps a
-            // bordered button reliably in every locale.
             Button {
                 showsPrivacyNote.toggle()
             } label: {
                 Label("On your Mac", systemImage: PVSymbol.privacy)
-                    .font(.caption2)
+                    .font(.caption2.weight(.semibold))
             }
-            .buttonStyle(.bordered)
-            .controlSize(.mini)
-            .tint(.secondary)
+            .buttonStyle(.pvOfferChip)
             .fixedSize()
             .accessibilityIdentifier("library-privacy-chip")
             // A one-point sibling anchors the note: anything attached to the
@@ -423,5 +425,24 @@ extension LibraryView {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 9)
+    }
+}
+
+/// A native sidebar section header in ink 3 semibold: the system header
+/// grey reads near 2:1 on paper.
+struct LibrarySectionHeader: View {
+    let title: LocalizedStringKey
+    let id: String
+
+    init(_ title: LocalizedStringKey, id: String) {
+        self.title = title
+        self.id = id
+    }
+
+    var body: some View {
+        Text(title)
+            .fontWeight(.semibold)
+            .foregroundStyle(.ink3)
+            .accessibilityIdentifier("library-section-\(id)")
     }
 }

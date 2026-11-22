@@ -43,7 +43,7 @@ struct CompanionSettingsSection: View {
             HStack(spacing: 10) {
                 Text("Detects questions during a recording and suggests answers.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                 HowItWorksLink(
                     text: L10n.text(
                         // swiftlint:disable:next line_length
@@ -61,13 +61,13 @@ struct CompanionSettingsSection: View {
                 "Cards addressed to “%@” are marked as asked to you.",
                 companionUserName.isEmpty ? NSFullUserName() : companionUserName))
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
 
             Toggle("Your talk time after each meeting", isOn: $mirrorAfterMeeting)
                 .accessibilityIdentifier("settings-mirror-after-meeting")
             Text("After meetings of five minutes or more, next to your average.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
         }
     }
 
@@ -79,7 +79,7 @@ struct CompanionSettingsSection: View {
                 .accessibilityIdentifier("settings-apuntador-status")
             Text(statusCause)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("settings-apuntador-status-cause")
         }

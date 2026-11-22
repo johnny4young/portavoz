@@ -87,7 +87,7 @@ struct MeetingDetailActivityLine: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Action history")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                 ForEach(values.skillReceipts) { receipt in
                     HStack(spacing: 6) {
                         Image(systemName: receipt.state == .succeeded
@@ -100,7 +100,7 @@ struct MeetingDetailActivityLine: View {
                         Spacer(minLength: 4)
                         Text(receipt.updatedAt, style: .time)
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.ink3)
                     }
                     // One element, explicit label: the row announces skill and
                     // outcome instead of an unreachable icon+text container.
@@ -142,7 +142,7 @@ struct MeetingDetailActivityLine: View {
                     .font(.callout.weight(.semibold))
                 Text(privacyReceiptExplanation(receipt))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .fixedSize(horizontal: false, vertical: true)
 
                 privacyReceiptSyncLine(receipt.syncDisclosure)
@@ -153,10 +153,10 @@ struct MeetingDetailActivityLine: View {
                             .font(.caption.weight(.semibold))
                         Text(event.destinationHost)
                             .font(.caption2.monospaced())
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.ink3)
                         Text(values.presentation.shortDate(event.attemptedAt))
                             .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(.ink3)
                     }
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("privacy-remote-event-\(index)")
@@ -168,7 +168,7 @@ struct MeetingDetailActivityLine: View {
                         receipt.generation.count,
                         receipt.localDeviceEvents.count))
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                 }
             }
             .padding(14)
@@ -190,7 +190,7 @@ struct MeetingDetailActivityLine: View {
                 Text(L10n.text(
                     "This meeting's text was stored in encrypted fields in your private iCloud database."))
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .combine)

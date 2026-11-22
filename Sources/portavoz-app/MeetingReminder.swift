@@ -106,7 +106,7 @@ struct ReminderBannerView: View {
                     .lineLimit(1)
                 Text("Starts in \(minutesLeft) min")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             }
             Spacer(minLength: 8)
             Button(action: onRecord) {
@@ -117,7 +117,7 @@ struct ReminderBannerView: View {
             .controlSize(.small)
             Button(action: onDismiss) {
                 Image(systemName: "xmark.circle.fill")
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.ink3)
             }
             .buttonStyle(.plain)
             .help("Dismiss this reminder for this meeting")
