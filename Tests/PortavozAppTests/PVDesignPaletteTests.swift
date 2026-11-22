@@ -31,7 +31,9 @@ final class PVDesignPaletteTests: XCTestCase {
         ("ok on paper", Tone.ok, Tone.paper),
         ("you as text on paper", Tone.youInk, Tone.paper),
         ("you as text on its tint", Tone.youInk, Tone.youBg),
-        ("text on an amber fill", Tone.onYou, Tone.you)
+        ("text on an amber fill", Tone.onYou, Tone.you),
+        ("sidebar section header", Tone.ink3, Tone.paperSunk),
+        ("secondary text on a raised row", Tone.ink3, Tone.raise)
     ]
 
     func testEveryBoardTextPairMeetsAAInBothAppearances() {
@@ -47,6 +49,39 @@ final class PVDesignPaletteTests: XCTestCase {
                             + "(\(dark ? "dark" : "light")\(increased ? ", increased contrast" : ""))")
                 }
             }
+        }
+    }
+
+    /// Text on ink tints over sunk paper, the darkest surface they sit on:
+    /// offer chips and the selected Settings category's subtitle.
+    func testSidebarTintedLabelsMeetAA() {
+        let pairs: [(name: String, text: PVTone, alpha: Double)] = [
+            ("offer chip", Tone.ink2, PVDesign.chipOfferAlpha),
+            ("selected settings subtitle", Tone.ink2, PVDesign.chipTint)
+        ]
+        for dark in [false, true] {
+            for pair in pairs {
+                let tint = Self.blend(Tone.ink.hex(dark: dark), alpha: pair.alpha, over: Tone.paperSunk.hex(dark: dark))
+                XCTAssertGreaterThanOrEqual(
+                    Self.contrast(pair.text.hex(dark: dark), tint), 4.5, "\(pair.name) (\(dark ? "dark" : "light"))")
+            }
+        }
+    }
+
+    /// Native switches and checkboxes draw a white knob or tick on the tint.
+    func testControlTintKeepsTheWhiteKnobAndTheTrackVisible() {
+        for dark in [false, true] {
+            let track = Tone.control.hex(dark: dark)
+            XCTAssertGreaterThanOrEqual(Self.contrast(0xFFFFFF, track), 3, dark ? "dark knob" : "light knob")
+            XCTAssertGreaterThanOrEqual(Self.contrast(track, Tone.paper.hex(dark: dark)), 3)
+        }
+    }
+
+    func testIdleOnboardingBarsKeepNonTextContrast() {
+        for dark in [false, true] {
+            let paper = Tone.paper.hex(dark: dark)
+            let bar = Self.blend(Tone.ink3.hex(dark: dark), alpha: FirstListenWaveform.idleOpacity, over: paper)
+            XCTAssertGreaterThanOrEqual(Self.contrast(bar, paper), 3)
         }
     }
 
@@ -82,6 +117,14 @@ final class PVDesignPaletteTests: XCTestCase {
         let g = UInt32((resolved.greenComponent * 255).rounded())
         let b = UInt32((resolved.blueComponent * 255).rounded())
         return r << 16 | g << 8 | b
+    }
+
+    private static func blend(_ top: UInt32, alpha: Double, over bottom: UInt32) -> UInt32 {
+        func channel(_ shift: UInt32) -> UInt32 {
+            let mixed = alpha * Double((top >> shift) & 0xFF) + (1 - alpha) * Double((bottom >> shift) & 0xFF)
+            return UInt32(mixed.rounded()) << shift
+        }
+        return channel(16) | channel(8) | channel(0)
     }
 
     private static func contrast(_ a: UInt32, _ b: UInt32) -> Double {

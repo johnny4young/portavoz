@@ -61,7 +61,7 @@ struct PortavozApp: App {
                 AppLaunchRootView(model: launch)
                     .portavozLocalized()
                     .windowMinimumSize(width: 900, height: 560)
-                    .tint(PVDesign.accent)
+                    .tint(PVDesign.controlTint)
                     .background {
                         if usesDisposableStore {
                             UITestMainWindowCapture()
@@ -90,7 +90,7 @@ struct PortavozApp: App {
         ) {
             AppLaunchMenuBarContent(model: launch)
                 .portavozLocalized()
-                .tint(PVDesign.accent)
+                .tint(PVDesign.controlTint)
         } label: {
             let isRecording = launch.services?.recording.phase == .recording
             Image(nsImage: isRecording ? MenuBarIcon.recording : MenuBarIcon.idle)
@@ -103,7 +103,7 @@ struct PortavozApp: App {
             } else {
                 AppLaunchSettingsRoot(model: launch)
                     .portavozLocalized()
-                    .tint(PVDesign.accent)
+                    .tint(PVDesign.controlTint)
             }
         }
     }

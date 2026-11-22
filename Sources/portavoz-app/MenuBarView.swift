@@ -93,7 +93,7 @@ struct MenuBarContent: View {
 
     private func peakColor(_ index: Int) -> Color {
         if recording { return index == 2 ? PVDesign.now : PVDesign.now.opacity(0.5) }
-        return index == 2 ? VoicePalette.me : .secondary
+        return index == 2 ? VoicePalette.me : PVDesign.ink3
     }
 
     // MARK: Quick actions
@@ -111,7 +111,7 @@ struct MenuBarContent: View {
                     services.pendingRoute = .recording(nil)
                 }
             }
-            quickAction("Ask", PVSymbol.ask, tint: .secondary) {
+            quickAction("Ask", PVSymbol.ask, tint: PVDesign.ink3) {
                 openMainWindow()
                 services.pendingRoute = .ask
             }
@@ -221,7 +221,7 @@ struct MenuBarContent: View {
             Text("Recent")
                 .font(.caption2.weight(.semibold))
                 .textCase(.uppercase)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.ink3)
                 .padding(.horizontal, 4)
             ForEach(model.state.meetings) { meeting in
                 Button {
@@ -238,7 +238,7 @@ struct MenuBarContent: View {
                         }
                         Text(relative(meeting.startedAt))
                             .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(.ink3)
                     }
                     .contentShape(Rectangle())
                 }
@@ -261,7 +261,7 @@ struct MenuBarContent: View {
         }
         .buttonStyle(.plain)
         .font(.caption)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(.ink3)
     }
 
     private func relative(_ date: Date) -> String {

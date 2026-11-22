@@ -44,7 +44,7 @@ struct LibraryNavigationControls: View {
             HStack(spacing: 10) {
                 Image(systemName: symbol)
                     .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(selected ? PVDesign.accent : .secondary)
+                    .foregroundStyle(selected ? PVDesign.accent : PVDesign.ink3)
                     .frame(width: 20)
                     .accessibilityHidden(true)
                 Text(title)

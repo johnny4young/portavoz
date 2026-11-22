@@ -12,7 +12,7 @@ struct CommandLineToolSection: View {
         Section("Command-line tool & MCP") {
             Text(L10n.text(Self.explanationKey))
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .onAppear { model.refresh() }
             if model.toolAvailable {
                 installRow
@@ -80,7 +80,7 @@ struct CommandLineToolSection: View {
             }
             Text(value)
                 .font(.caption.monospaced())
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .textSelection(.enabled)
                 .lineLimit(6)
         }

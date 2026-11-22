@@ -177,6 +177,29 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testSidebarSecondaryTextReadsInInkInBothAppearances() throws {
+        let variants = [
+            ("light", XCUIApplication.appearanceArguments(dark: false)),
+            ("dark", XCUIApplication.appearanceArguments(dark: true)),
+            ("light-min", XCUIApplication.appearanceArguments(dark: false) + ["-seed-narrow-window"])
+        ]
+        for (name, arguments) in variants {
+            let app = try XCUIApplication.portavoz(seedDemo: true)
+            app.launchArguments += arguments
+            app.launchPortavoz()
+            XCTAssertTrue(app.waitForSeededLibraryToSettle())
+            let chip = app.buttons["library-privacy-chip"]
+            XCTAssertTrue(chip.waitForExistenceFast(timeout: 10))
+            XCTAssertTrue(chip.isHittable, "the privacy chip stays a reachable button")
+            XCTAssertTrue(
+                app.control(withIdentifier: "library-section-earlier").exists,
+                "past meetings keep their native section under an ink-3 header")
+            attachScreenshot(of: app, named: "pr-library-sidebar-\(name)")
+            finishUITestApplication(app)
+        }
+    }
+
+    @MainActor
     func testPrivacyChipOpensTheActivityLogInYourData() throws {
         let app = try XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()

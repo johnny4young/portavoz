@@ -11,7 +11,7 @@ struct MeetingDetailOperationStatus: View {
         if let progress {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text(progress).foregroundStyle(.secondary)
+                Text(progress).foregroundStyle(.ink3)
             }
         }
         if let error {
@@ -93,7 +93,7 @@ struct MeetingDetailTrustSection: View {
                 .accessibilityIdentifier("detail-processing-status")
             Text(failedProcessingExplanation(jobs))
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .fixedSize(horizontal: false, vertical: true)
             retryProcessingButton
         }
@@ -127,7 +127,7 @@ struct MeetingDetailTrustSection: View {
                 .accessibilityIdentifier("detail-processing-status")
             Text(activeProcessingExplanation(jobs))
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .fixedSize(horizontal: false, vertical: true)
             Text("Keep Portavoz open; recovery continues automatically.")
                 .font(.caption.weight(.semibold))
@@ -144,7 +144,7 @@ struct MeetingDetailTrustSection: View {
                 .accessibilityIdentifier("detail-processing-status")
             Text(recoveryExplanation(values.lastProcessingError))
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .fixedSize(horizontal: false, vertical: true)
             processingRecoveryAction
         }

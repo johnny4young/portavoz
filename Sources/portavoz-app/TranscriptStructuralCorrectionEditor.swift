@@ -47,7 +47,7 @@ struct TranscriptStructuralCorrectionControls: View {
                     "Undo the text or speaker correction before changing this line's structure.",
                     systemImage: "info.circle")
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .accessibilityIdentifier("transcript-structure-guidance")
             } else if let draft {
                 draftEditor(draft)
@@ -71,7 +71,7 @@ struct TranscriptStructuralCorrectionControls: View {
     private func activeCorrection(_ event: TranscriptCorrectionEvent) -> some View {
         Label(activeLabel(event), systemImage: activeIcon(event))
             .font(.callout)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
         originalRows
         Button("Undo structural correction", role: .destructive) {
             run(.restore(correctionID: event.id))
@@ -85,7 +85,7 @@ struct TranscriptStructuralCorrectionControls: View {
         VStack(alignment: .leading, spacing: 9) {
             Text("Change how this line is grouped. The recording stays as it is.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             HStack(spacing: 8) {
                 if context.canSplit {
                     Button("Split line…") { draft = .split }
@@ -106,7 +106,7 @@ struct TranscriptStructuralCorrectionControls: View {
                             : "Merge with next line…")
                         Text(neighborText(candidate))
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.ink3)
                             .lineLimit(2)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -158,7 +158,7 @@ struct TranscriptStructuralCorrectionControls: View {
                     .accessibilityIdentifier("transcript-structure-split-time")
                 Text(L10n.format("Split at %@", ClockFormat.mmss(splitTime)))
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             }
             confirmationActions(
                 confirmTitle: "Split line",
@@ -182,7 +182,7 @@ struct TranscriptStructuralCorrectionControls: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 9) {
             Text(title).font(.headline)
-            Text(explanation).font(.caption).foregroundStyle(.secondary)
+            Text(explanation).font(.caption).foregroundStyle(.ink3)
             ForEach(rows) { row in
                 Text(row.text)
                     .font(.callout)
@@ -300,7 +300,7 @@ struct TranscriptStructuralCorrectionEditor: View {
                 .font(.title2.bold())
             Text("The accepted recording and transcript lines remain unchanged.")
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             TranscriptStructuralCorrectionControls(
                 context: context,
                 perform: perform)
@@ -333,7 +333,7 @@ struct SuppressedTranscriptCorrectionsSheet: View {
                 .font(.title2.bold())
             Text("Noise is hidden from the reading. The recording stays as it is.")
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
                     ForEach(contexts) { context in
@@ -365,7 +365,7 @@ struct SuppressedTranscriptCorrectionsSheet: View {
                     .textSelection(.enabled)
                 Text("Hidden as noise · original preserved")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             }
             Spacer()
             if restoringID == context.id {

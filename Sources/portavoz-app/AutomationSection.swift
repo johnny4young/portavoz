@@ -14,7 +14,7 @@ struct AutomationSection: View {
                 "Type a Shortcut name. It receives the finished meeting as Markdown. Any tool can also open portavoz://record."
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
         }
     }
 }
@@ -32,7 +32,7 @@ struct MenuBarSection: View {
                 "Recording state at a glance and one-click start/stop — Portavoz keeps working with the window closed."
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
         }
     }
 }

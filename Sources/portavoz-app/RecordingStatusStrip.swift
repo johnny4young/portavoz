@@ -20,7 +20,7 @@ struct RecordingNotice: Identifiable {
 
         var tint: Color {
             switch self {
-            case .info: .secondary
+            case .info: PVDesign.ink3
             case .success: PVDesign.ok
             case .warning, .error: PVDesign.caution
             }
@@ -89,7 +89,7 @@ struct RecordingStatusStrip: View {
                 .font(.caption2.weight(.medium))
         }
         .buttonStyle(.plain)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(.ink3)
         .accessibilityIdentifier("recording-status-more")
         .popover(isPresented: $showsSecondary, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: 10) {
@@ -130,7 +130,7 @@ struct RecordingStatusStrip: View {
                     .buttonStyle(.plain)
                     .fixedSize()
                     .font(.caption2.weight(action.prominent ? .semibold : .medium))
-                    .foregroundStyle(action.prominent ? notice.severity.tint : Color.secondary)
+                    .foregroundStyle(action.prominent ? notice.severity.tint : PVDesign.ink3)
                     .accessibilityIdentifier(action.identifier)
             }
         }

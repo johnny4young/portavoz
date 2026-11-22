@@ -63,7 +63,7 @@ struct MeetingRecapSheet: View {
                 .accessibilityIdentifier("recap-title")
             Text("Read it, edit anything, then choose where it goes.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
         }
     }
 
@@ -92,7 +92,7 @@ struct MeetingRecapSheet: View {
         HStack(spacing: 8) {
             Text("Your edits are kept — the new choices are not applied yet.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             Button("Redraft") { redraft(force: true) }
                 .controlSize(.small)
                 .accessibilityIdentifier("recap-redraft")
@@ -119,7 +119,7 @@ struct MeetingRecapSheet: View {
         HStack(spacing: 10) {
             Text("Portavoz sends nothing. The transcript is never included.")
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier("recap-privacy-note")
             Spacer()
             Button("Copy") {
@@ -133,6 +133,7 @@ struct MeetingRecapSheet: View {
             .accessibilityIdentifier("recap-share")
             Button("Done", action: dismiss)
                 .keyboardShortcut(.defaultAction)
+                .buttonStyle(.pvPrimary)
                 .accessibilityIdentifier("recap-done")
         }
     }

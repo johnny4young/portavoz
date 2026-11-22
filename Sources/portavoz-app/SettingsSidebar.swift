@@ -34,7 +34,7 @@ struct SettingsSidebar: View {
         HStack(spacing: 7) {
             Image(systemName: "magnifyingglass")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             TextField("Search settings", text: $query)
                 .textFieldStyle(.plain)
                 .font(.callout)
@@ -55,15 +55,16 @@ struct SettingsSidebar: View {
             HStack(spacing: 8) {
                 Image(systemName: item.icon)
                     .font(.system(size: 13))
-                    .foregroundStyle(on ? PVDesign.accent : .secondary)
+                    .foregroundStyle(on ? PVDesign.accent : PVDesign.ink3)
                     .frame(width: 20)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(L10n.text(item.titleKey, language: language))
                         .font(.body.weight(on ? .semibold : .regular))
+                    // Ink 3 drops under 4.5:1 on the selected tint.
                     Text(L10n.text(item.subtitleKey, language: language))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(on ? PVDesign.ink2 : PVDesign.ink3)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }

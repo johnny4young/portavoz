@@ -342,7 +342,7 @@ struct HomeView: View {
     private func emptyLine(_ key: LocalizedStringKey) -> some View {
         Text(key)
             .font(.callout)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
     }
 
     private func perform(_ action: LibraryModel.Action) {

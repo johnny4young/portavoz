@@ -14,13 +14,15 @@ struct TrashSection: View {
 
     var body: some View {
         if !items.isEmpty {
-            Section("Recently deleted", isExpanded: $expanded) {
+            Section(isExpanded: $expanded) {
                 ForEach(items) { entry in
                     row(entry)
                 }
                 Text("Kept for 30 days, then removed for good.")
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
+            } header: {
+                LibrarySectionHeader("Recently deleted", id: "trash")
             }
         }
     }
@@ -33,7 +35,7 @@ struct TrashSection: View {
                     "Deleted %@",
                     entry.deletedAt.formatted(.relative(presentation: .named))))
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             }
             Spacer()
             Button {

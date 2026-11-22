@@ -124,7 +124,7 @@ private extension CommitmentRadarView {
                     .pvDisplay(.title)
                     .accessibilityIdentifier("commitment-radar-title")
                 Text(headerDescription)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             }
             Spacer()
             if state.mode == .confirmed {
@@ -257,7 +257,7 @@ private extension CommitmentRadarView {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             Menu(content: content) {
                 Text(value)
                     .lineLimit(1)
@@ -282,7 +282,7 @@ private extension CommitmentRadarView {
             HStack(spacing: 10) {
                 ProgressView().controlSize(.small)
                 Text("Loading confirmed commitments…")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             }
             .frame(maxWidth: .infinity, minHeight: 180)
         case .failed:
@@ -319,7 +319,7 @@ private extension CommitmentRadarView {
                         "%d more not shown — refine the filters to see them.",
                         page.totalCount - page.items.count))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                 }
             }
 
@@ -354,7 +354,7 @@ private extension CommitmentRadarView {
                             + (item.commitment.dueAt == nil ? "none" : "scheduled"))
             }
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
 
             HStack(spacing: 8) {
                 firstSourceLink(item)
@@ -439,7 +439,7 @@ private extension CommitmentRadarView {
                 "commitment-radar-source-\(source.id.rawValue.uuidString)")
         } else {
             Label("Source unavailable", systemImage: "exclamationmark.circle")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
         }
     }
 
@@ -456,7 +456,7 @@ private extension CommitmentRadarView {
                         "%d more sources not shown",
                         item.sourceCount - item.sources.count))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -472,7 +472,7 @@ private extension CommitmentRadarView {
                         "%d earlier changes not shown",
                         item.historyCount - item.history.count))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -491,7 +491,7 @@ private extension CommitmentRadarView {
             }
             Text(L10n.format("First seen %@", shortDate(source.firstSeenAt)))
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
         }
     }
 
@@ -511,7 +511,7 @@ private extension CommitmentRadarView {
                 }
             }
             .font(.caption2)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
         }
     }
 

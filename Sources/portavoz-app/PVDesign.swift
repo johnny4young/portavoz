@@ -82,6 +82,9 @@ enum PVDesign {
         static let youInk = PVTone(0x8A5600, 0xF2B33D)
         static let youBg = PVTone(0xFCEBC2, 0x3A2C0C)
         static let onYou = PVTone(0x14201E)
+        /// Native switch, checkbox and slider fills: the dark ink would sit
+        /// under the system's white knob, so dark uses ink 3.
+        static let control = PVTone(ink.light, ink3.dark)
     }
 
     // MARK: Surfaces
@@ -103,6 +106,8 @@ enum PVDesign {
     /// `PVDesign.accent`; macOS still paints native list selection and
     /// focus rings with the user's system accent.
     static let accent = ink
+    /// The root `.tint`: native controls draw a white knob or tick on it.
+    static let controlTint = Tone.control.color
 
     // MARK: Meaning
 
@@ -156,8 +161,10 @@ enum PVDesign {
 
     // MARK: Offer chips
 
-    static let chipOfferInk = ink3
-    static let chipOfferBg = Tone.ink.color(alpha: 0.07)
+    /// Ink 2: ink 3 on the offer tint over sunk paper is just under 4.5:1.
+    static let chipOfferInk = ink2
+    static let chipOfferAlpha = 0.07
+    static let chipOfferBg = Tone.ink.color(alpha: chipOfferAlpha)
 }
 
 /// «The colour is the voice»: you are always amber; up to five named
@@ -191,6 +198,19 @@ enum VoicePalette {
             return colors[((index % colors.count) + colors.count) % colors.count]
         }
     }
+}
+
+/// Secondary text: ink 3, never a system grey. It keeps the system's
+/// adaptive secondary on an emphasized selection and dims when disabled.
+struct PVInk3Style: ShapeStyle {
+    func resolve(in environment: EnvironmentValues) -> AnyShapeStyle {
+        if environment.backgroundProminence == .increased { return AnyShapeStyle(.secondary) }
+        return AnyShapeStyle(PVDesign.ink3.opacity(environment.isEnabled ? 1 : 0.5))
+    }
+}
+
+extension ShapeStyle where Self == PVInk3Style {
+    static var ink3: PVInk3Style { PVInk3Style() }
 }
 
 extension View {

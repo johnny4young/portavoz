@@ -21,7 +21,7 @@ struct MeetingSyncSettingsSection: View {
                     "Encrypted meeting text and portable metadata sync through your private iCloud database. Audio, local file paths, voiceprints, secrets, and embeddings never sync."
                 )
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             }
 
             Section("Controls") {
@@ -52,7 +52,7 @@ struct MeetingSyncSettingsSection: View {
                         "This clears only this Mac's protected sync queue and consent. Local meetings stay here, and encrypted records already in iCloud are not deleted."
                     )
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                 }
             }
         }
@@ -103,12 +103,12 @@ struct MeetingSyncSettingsSection: View {
                 }
                 Text(statusDetail)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .fixedSize(horizontal: false, vertical: true)
                 if status.isEnabled {
                     Text(progressText)
                         .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                 }
             }
             Spacer()

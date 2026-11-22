@@ -35,7 +35,7 @@ struct AskTopicMemoryView: View {
                 // swiftlint:disable:next line_length
                 "Choose one confirmed topic and a memory view. Portavoz uses the exact identity you select and only shows source-backed facts you explicitly confirmed.")
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -84,7 +84,7 @@ struct AskTopicMemoryView: View {
                             Text(topic.label)
                             Spacer()
                             Image(systemName: "chevron.right")
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(.ink3)
                         }
                         .contentShape(Rectangle())
                     }
@@ -98,7 +98,7 @@ struct AskTopicMemoryView: View {
                         "More topics match. Refine the name to choose the right one.",
                         systemImage: "magnifyingglass")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                         .accessibilityIdentifier("ask-topic-overflow")
                 }
             }
@@ -279,14 +279,14 @@ extension AskTopicMemoryView {
                     "ask-topic-decision-\(decision.id.rawValue.uuidString)")
             Text(L10n.format("Confirmed about %@", decision.topicLabel))
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             Text(decision.occurredAt.formatted(date: .abbreviated, time: .shortened))
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.ink3)
             Divider()
             Text("Sources")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             ForEach(Array(orderedCitations(decision).enumerated()), id: \.offset) { index, citation in
                 Button {
                     onOpenCitation(citation)
@@ -322,10 +322,10 @@ extension AskTopicMemoryView {
                     "ask-topic-first-discussion-\(discussion.id.rawValue.uuidString)")
             Text(L10n.format("Confirmed topic: %@", discussion.topicLabel))
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             Text(discussion.occurredAt.formatted(date: .abbreviated, time: .shortened))
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.ink3)
             Divider()
             Button {
                 onOpenCitation(discussion.citation)
@@ -412,7 +412,7 @@ extension AskTopicMemoryView {
             Text(L10n.text(message))
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .foregroundStyle(.secondary)
+        .foregroundStyle(.ink3)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(identifier)
     }

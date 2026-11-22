@@ -128,11 +128,11 @@ private extension RecordingAssistPanel {
                 Spacer()
                 Text(ClockFormat.mmss(card.askedAt))
                     .font(.caption2.monospacedDigit())
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.ink3)
                 Button {
                     controller.dismissCompanionCard(card.id)
                 } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.ink3)
                 }
                 .buttonStyle(.plain)
                 .help(L10n.text("Dismiss this card"))
@@ -203,12 +203,12 @@ private extension RecordingAssistPanel {
             .padding(.horizontal, 9)
             .padding(.vertical, 5)
             .background(
-                isActive ? AnyShapeStyle(.tint.opacity(0.16)) : AnyShapeStyle(.clear),
+                isActive ? AnyShapeStyle(PVDesign.accent.opacity(0.16)) : AnyShapeStyle(.clear),
                 in: Capsule())
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .foregroundStyle(isActive ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+        .foregroundStyle(isActive ? AnyShapeStyle(PVDesign.accent) : AnyShapeStyle(.ink3))
         .accessibilityIdentifier("recording-assist-tab-\(candidate.rawValue)")
         .accessibilityAddTraits(isActive ? .isSelected : [])
     }
@@ -284,7 +284,7 @@ struct RecordingCatchUpCard: View {
                 Spacer()
                 Button(action: dismiss) {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(L10n.text("Dismiss catch-up"))
@@ -306,7 +306,7 @@ struct RecordingCatchUpCard: View {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
                 Text(L10n.text("Catching you up…"))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             }
         case .ready(let recap):
             // The recap is why the user pressed the button, but it must not
@@ -318,7 +318,7 @@ struct RecordingCatchUpCard: View {
         case .unavailable(let reason):
             Text(reason)
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }

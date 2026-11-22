@@ -152,7 +152,7 @@ struct MeetingPlayerBar: View {
                     L10n.format("Clip %@", ClockFormat.mmss(range.upperBound - range.lowerBound, paddedMinutes: false)),
                     systemImage: "scissors")
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                 Button {
                     exportClip(range)
                 } label: {
@@ -327,11 +327,11 @@ struct WaveformView: View {
             edges.move(to: CGPoint(x: x, y: 6))
             edges.addLine(to: CGPoint(x: x, y: size.height - 6))
         }
-        context.stroke(edges, with: .color(.secondary.opacity(0.5)), style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
+        context.stroke(edges, with: .color(PVDesign.ink3.opacity(0.5)), style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
         let label = Text(Duration.seconds(gap.upperBound - gap.lowerBound)
             .formatted(.units(allowed: [.hours, .minutes, .seconds], width: .narrow, maximumUnitCount: 2)))
             .font(.caption2.monospacedDigit())
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
         let resolved = context.resolve(label)
         // Measured unconstrained: a bounded measure wraps to fit and never says no.
         let measured = resolved.measure(in: CGSize(width: CGFloat.infinity, height: size.height))

@@ -241,6 +241,24 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testGeneralPaneSwitchesAndFootnotesReadInBothAppearances() throws {
+        for style in ["Light", "Dark"] {
+            let app = try XCUIApplication.portavoz(openSettings: true)
+            app.launchArguments += XCUIApplication.appearanceArguments(dark: style == "Dark")
+            app.launchPortavoz()
+            openCategory(
+                "settings-category-general",
+                revealing: "settings-language-system-toggle",
+                in: app)
+            let window = app.windows.containing(
+                .any, identifier: "settings-language-system-toggle").firstMatch
+            XCTAssertTrue(window.exists)
+            attachElementScreenshot(of: window, named: "pr-settings-general-\(style.lowercased())")
+            finishUITestApplication(app)
+        }
+    }
+
+    @MainActor
     func testSyncPaneKeepsOptInAndExistingLibrarySeparate() throws {
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()

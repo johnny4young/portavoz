@@ -199,7 +199,7 @@ private struct RecordingLevelMeter: View {
                         ? "mic.slash.fill" : (controller.micLevelLow ? "mic.fill" : "mic")
                 )
                 .foregroundStyle(
-                    controller.micMuted || controller.micLevelLow ? PVDesign.caution : .secondary)
+                    controller.micMuted || controller.micLevelLow ? PVDesign.caution : PVDesign.ink3)
                 .font(.caption)
             }
             .buttonStyle(.plain)

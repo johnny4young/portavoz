@@ -18,7 +18,7 @@ struct WhisperModelRow: View {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: active ? "largecircle.fill.circle" : "circle")
                         .foregroundStyle(
-                            active ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                            active ? AnyShapeStyle(PVDesign.accent) : AnyShapeStyle(.ink3))
                     VStack(alignment: .leading, spacing: 3) {
                         Text(L10n.text(
                             variant.compact
@@ -27,11 +27,11 @@ struct WhisperModelRow: View {
                         status
                         Text(L10n.format("Catalog RAM guidance: %d GB or more.", variant.minimumRAMGB))
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.ink3)
                         if belowCatalogRAM {
                             Text("This Mac is below the catalog guidance; performance may be limited.")
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.ink3)
                         }
                     }
                 }
@@ -60,7 +60,7 @@ struct WhisperModelRow: View {
                     : L10n.text("Checking files already on this Mac…"))
                     .frame(width: 150)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             }
             .accessibilityIdentifier(
                 "settings-whisper-progress-\(variant.accessibilitySuffix)")
@@ -79,7 +79,7 @@ struct WhisperModelRow: View {
                     countStyle: .file))
             }
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
         }
     }
 

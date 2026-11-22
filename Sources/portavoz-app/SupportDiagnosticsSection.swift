@@ -27,7 +27,7 @@ struct SupportDiagnosticsSection: View {
             if let status {
                 Text(status)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .accessibilityIdentifier("settings-diagnostics-status")
             }
             Text(
@@ -35,10 +35,10 @@ struct SupportDiagnosticsSection: View {
                 "App, macOS, model, audio health and processing status. Never meeting text, prompts, secrets or paths."
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
             Text("Host snapshot: RAM, CPU time, thermal state and runtime-family residency. Not a benchmark.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier("settings-diagnostics-host-disclosure")
         }
     }

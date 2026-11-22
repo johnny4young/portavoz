@@ -76,7 +76,7 @@ struct SkillProposalSection: View {
                         "settings-skills-proposals-error")
                 Text("No suggestion is shown until Portavoz verifies its saved explanation.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                 Button("Try again", action: retry)
                     .accessibilityIdentifier(
                         "settings-skills-proposals-retry")
@@ -90,7 +90,7 @@ struct SkillProposalSection: View {
                     "Suggestions appear when a meeting, commitment or calendar event calls for an action."
                 )
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("settings-skills-proposals-empty")
@@ -105,7 +105,7 @@ struct SkillProposalSection: View {
             }
             Text("This review stores no title, transcript, preview, destination, or recipient.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier("settings-skills-proposals-privacy")
             Text(
                 // One-line UI copy.
@@ -113,7 +113,7 @@ struct SkillProposalSection: View {
                 "Review meeting and commitment offers in their original context. Calendar briefs stay in the Portavoz menu bar. Nothing runs here."
             )
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
         }
     }
 
@@ -158,14 +158,14 @@ struct SkillProposalSection: View {
                         .font(.callout.weight(.medium))
                     Text(reasonText(offer.reason))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                         .accessibilityIdentifier(
                             "settings-skill-proposal-why-\(offer.skillID)-\(offer.id.uuidString)")
                     Text(L10n.format(
                         "Uses: %@",
                         inputDataText(offer.inputDataClasses)))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                         .accessibilityIdentifier(
                             "settings-skill-proposal-data-\(offer.skillID)-\(offer.id.uuidString)")
                 }
@@ -197,7 +197,7 @@ struct SkillProposalSection: View {
                 offer.lastObservedAt,
                 format: .dateTime.month(.abbreviated).day().hour().minute())
                 .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             HStack(spacing: 8) {
                 offerReviewControl(offer, position: position)
                 offerDismissalControl(offer, position: position)
@@ -213,7 +213,7 @@ struct SkillProposalSection: View {
         if offer.reason == .upcomingCalendarEvent {
             Label("Review in menu bar", systemImage: "menubar.rectangle")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityLabel(positionedAccessibilityLabel(
                     L10n.text("Review in menu bar"),
                     position: position))

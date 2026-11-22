@@ -33,11 +33,11 @@ struct SettingsTransferSection: View {
             }
             Text("Move language and vocabulary preferences. Review every change before applying it.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             Text(
                 "Files may include private vocabulary. Permissions, secrets and feature activation never transfer.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
         }
         .sheet(isPresented: Binding(
             get: { model.review != nil },
@@ -65,18 +65,18 @@ private struct SettingsTransferReviewSheet: View {
                 .font(.title2.bold())
                 .accessibilityIdentifier("settings-preferences-review")
             Text("Vocabulary is merged. Other listed values replace your current preferences.")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     ForEach(PortableSettingsKey.allCases, id: \.self) { key in
                         if let value = review.changes[key] {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(key.transferLabel).font(.headline)
-                                Text("Current value").font(.caption).foregroundStyle(.secondary)
+                                Text("Current value").font(.caption).foregroundStyle(.ink3)
                                 Text(display(review.before[key]))
                                     .textSelection(.enabled)
                                     .accessibilityIdentifier("settings-preferences-before-" + key.rawValue)
-                                Text("After import").font(.caption).foregroundStyle(.secondary)
+                                Text("After import").font(.caption).foregroundStyle(.ink3)
                                 Text(display(value))
                                     .textSelection(.enabled)
                                     .accessibilityIdentifier("settings-preferences-change-" + key.rawValue)
@@ -89,7 +89,7 @@ private struct SettingsTransferReviewSheet: View {
             }
             if let status {
                 Text(status)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .accessibilityIdentifier("settings-preferences-review-status")
             }
             HStack {
@@ -99,6 +99,7 @@ private struct SettingsTransferReviewSheet: View {
                     .accessibilityIdentifier("settings-preferences-cancel")
                 Button("Apply preferences", action: apply)
                     .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.pvPrimary)
                     .accessibilityIdentifier("settings-preferences-apply")
             }
         }

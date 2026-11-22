@@ -11,7 +11,7 @@ struct TypefaceCreditsSection: View {
                     .accessibilityIdentifier("settings-typeface-credit")
                 Text(verbatim: "The Fraunces Project Authors · SIL Open Font License 1.1")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .accessibilityIdentifier("settings-typeface-credit-license")
                 Link("Third-party notices", destination: Self.noticesURL)
                     .font(.caption)

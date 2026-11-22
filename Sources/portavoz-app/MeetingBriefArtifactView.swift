@@ -15,7 +15,7 @@ struct MeetingBriefArtifactView: View {
             if !brief.event.attendees.isEmpty {
                 Text(brief.event.attendees.joined(separator: " · "))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             }
             knowledge
             relatedMeetings
@@ -34,7 +34,7 @@ struct MeetingBriefArtifactView: View {
                 date: .omitted,
                 time: .shortened))
                 .font(.headline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
         }
     }
 
@@ -116,7 +116,7 @@ struct MeetingBriefArtifactView: View {
             if let overview, !overview.isEmpty {
                 Text(overview)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .lineLimit(2)
             }
         }
@@ -126,7 +126,7 @@ struct MeetingBriefArtifactView: View {
     private func sectionTitle(_ title: LocalizedStringKey) -> some View {
         Text(title)
             .font(.caption.weight(.semibold))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
     }
 
     private func reasonText(_ related: MeetingBrief.RelatedMeeting) -> String {

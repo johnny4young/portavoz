@@ -26,7 +26,7 @@ struct BackupSection: View {
             if let statusText {
                 Text(statusText)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .accessibilityIdentifier("settings-backup-status")
             }
             Text(
@@ -35,7 +35,7 @@ struct BackupSection: View {
                 "Writes one Markdown file per meeting — summary, action items and full transcript — into a folder you choose. Plain files you can read, grep and back up without Portavoz."
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
         }
     }
 

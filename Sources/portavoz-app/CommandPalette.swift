@@ -94,7 +94,7 @@ private final class CommandPalettePanelController {
                 controller: controller,
                 model: model)
                 .portavozLocalized()
-                .tint(PVDesign.accent))
+                .tint(PVDesign.controlTint))
         if let screen = NSScreen.main {
             let frame = screen.visibleFrame
             panel.setFrameOrigin(NSPoint(
@@ -135,7 +135,7 @@ private struct CommandPaletteView: View {
                 Divider()
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
-                    Text("Searching your meetings…").foregroundStyle(.secondary)
+                    Text("Searching your meetings…").foregroundStyle(.ink3)
                 }
                 .padding(12)
                 .accessibilityIdentifier("palette-progress")
@@ -168,7 +168,7 @@ private struct CommandPaletteView: View {
                 .accessibilityIdentifier("palette-query-field")
             Label("Library", systemImage: "books.vertical")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .help(L10n.text(
                     "Searches only your meeting library"))
                 .accessibilityLabel(L10n.text("Answer source: Library"))
@@ -180,7 +180,7 @@ private struct CommandPaletteView: View {
                     Image(systemName: "doc.on.doc")
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .keyboardShortcut("c", modifiers: .command)
                 .help(L10n.text("Copy answer with citations (Markdown)"))
                 .accessibilityIdentifier("palette-copy-answer")
@@ -199,7 +199,7 @@ private struct CommandPaletteView: View {
                         Text(hit.snippet).lineLimit(1)
                         Text("\(hit.meetingTitle) · \(AskMarkdown.clock(hit.timestamp))")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.ink3)
                             .monospacedDigit()
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -212,7 +212,7 @@ private struct CommandPaletteView: View {
             }
             Text("Enter for a full answer with sources.")
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.ink3)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 6)
         }
@@ -231,7 +231,7 @@ private struct CommandPaletteView: View {
             ) {
                 Label(status, systemImage: "cpu")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .accessibilityIdentifier(
                         "palette-generation-\(answer.generationOutcome.rawValue)")
             }

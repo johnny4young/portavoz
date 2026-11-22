@@ -59,6 +59,7 @@ struct SkillConfirmSheet: View {
                 }
             }
             .keyboardShortcut(.defaultAction)
+            .buttonStyle(.pvPrimary)
             .disabled(running)
             .accessibilityIdentifier("skill-confirm-submit")
         }
@@ -119,6 +120,7 @@ struct SkillConfirmSheet: View {
             Spacer()
             Button(L10n.text("Done"), action: dismiss)
                 .keyboardShortcut(.defaultAction)
+                .buttonStyle(.pvPrimary)
                 .accessibilityIdentifier("gist-result-dismiss")
         }
     }
@@ -163,7 +165,7 @@ struct SkillConfirmSheet: View {
                         emailRecipientPolicy,
                         systemImage: "person.crop.circle.badge.questionmark")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                         .accessibilityLabel(emailRecipientPolicy)
                         .accessibilityIdentifier("skill-confirm-email-recipient-policy")
                     Label(
@@ -187,7 +189,7 @@ struct SkillConfirmSheet: View {
                     Text(SecretGistDraft.destinationHost)
                 }
                 .font(.caption.monospaced())
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("skill-confirm-gist-destination")
                 ReadOnlySkillDocumentText(text: draft.markdown)
@@ -210,12 +212,12 @@ struct SkillConfirmSheet: View {
                 Text(meetingTitle).font(.callout.weight(.semibold))
                 Text(destination)
                     .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .lineLimit(2)
                     .accessibilityIdentifier("skill-confirm-preview-destination")
                 Text("Text only — audio never enters the package.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(10)
@@ -255,7 +257,7 @@ struct SkillConfirmSheet: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 2)
             .background(PVDesign.accent.opacity(0.12), in: Capsule())
-            .foregroundStyle(.tint)
+            .foregroundStyle(PVDesign.accent)
     }
 
     private var title: String {

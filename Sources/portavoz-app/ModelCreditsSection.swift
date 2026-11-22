@@ -11,7 +11,7 @@ struct ModelCreditsSection: View {
                         .accessibilityIdentifier("settings-model-credit-\(credit.id)")
                     Text(verbatim: "\(credit.creator) · \(credit.license)")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                         .accessibilityIdentifier("settings-model-credit-\(credit.id)-license")
                     Link(credit.source.host().map { $0 + credit.source.path() } ?? credit.source.absoluteString,
                          destination: credit.source)

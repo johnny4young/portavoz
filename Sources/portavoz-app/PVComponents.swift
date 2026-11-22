@@ -121,6 +121,21 @@ extension View {
     }
 }
 
+/// A neutral offer chip that is itself a button.
+struct PVOfferChipButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(PVDesign.chipOfferInk)
+            .pvPill(PVDesign.chipOfferBg)
+            .contentShape(Capsule())
+            .opacity(configuration.isPressed ? 0.82 : 1)
+    }
+}
+
+extension ButtonStyle where Self == PVOfferChipButtonStyle {
+    static var pvOfferChip: PVOfferChipButtonStyle { PVOfferChipButtonStyle() }
+}
+
 /// Live state in red, the only red text in the app: "Recording 12:04" on the
 /// red tint, or the solid "Now 3:15" playhead label.
 struct StatusPill: View {

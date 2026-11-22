@@ -45,7 +45,7 @@ extension CommitmentRadarView {
     func activityColor(_ activity: CommitmentRadarActivity) -> Color {
         switch activity {
         case .new: PVDesign.accent
-        case .unchanged: .secondary
+        case .unchanged: PVDesign.ink3
         case .completed: PVDesign.ok
         case .reopened: PVDesign.caution
         }

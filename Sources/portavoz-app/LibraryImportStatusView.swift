@@ -20,7 +20,7 @@ struct LibraryImportStatusView: View {
             if let actionError {
                 Text(actionError)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .accessibilityIdentifier("library-action-error")
                 Button("Dismiss", action: onDismissError)
                     .accessibilityIdentifier("library-action-error-dismiss")

@@ -29,7 +29,7 @@ struct MarkdownText: View {
                 } else if line.hasPrefix("- [x] ") || line.hasPrefix("- [ ] ") {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Image(systemName: line.hasPrefix("- [x] ") ? "checkmark.square" : "square")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.ink3)
                             .imageScale(.small)
                         Text(inline(String(line.dropFirst(6))))
                             .strikethrough(line.hasPrefix("- [x] "))
@@ -39,19 +39,19 @@ struct MarkdownText: View {
                     // Granola-style: the marker distinguishes it from a pure
                     // AI summary ("this came from what YOU flagged").
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text("▸").foregroundStyle(.tint)
+                        Text("▸").foregroundStyle(PVDesign.accent)
                         Text(inline(String(line.dropFirst(4))))
                             .fontWeight(.medium)
                     }
                 } else if line.hasPrefix("- ") {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text("•").foregroundStyle(.secondary)
+                        Text("•").foregroundStyle(.ink3)
                         Text(inline(String(line.dropFirst(2))))
                     }
                 } else if line.hasPrefix("> ") {
                     Text(inline(String(line.dropFirst(2))))
                         .font(.callout)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                 } else if !line.isEmpty {
                     Text(inline(line))
                 }

@@ -37,7 +37,7 @@ struct MeetingDetailNotesSection: View {
                     if let notice = values.notice {
                         Text(notice)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.ink3)
                     }
                 }
                 .padding(14)
@@ -94,7 +94,7 @@ struct MeetingDetailNotesSection: View {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(values.presentation.clock(item.timestamp))
                             .font(.caption.monospacedDigit())
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(.ink3)
                         Text(item.content)
                             .font(.callout)
                             .textSelection(.enabled)

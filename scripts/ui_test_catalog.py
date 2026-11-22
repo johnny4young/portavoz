@@ -38,6 +38,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
         test_id("LibraryUITests", "testActiveRecordingRemainsReachableAfterBrowsingTheLibrary"),
         test_id("LibraryUITests", "testSeededMeetingsGroupByRecency"),
+        test_id("LibraryUITests", "testSidebarSecondaryTextReadsInInkInBothAppearances"),
     ),
     "audio-imports": (
         test_id("AudioImportUITests", "testSingleMeetingBundleReachesDetailWithoutChangingTheOriginal"),
@@ -89,6 +90,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     "onboarding": (
         test_id("OnboardingUITests", "testAdvancesFromFirstListenToLocalVoiceEnrollment"),
         test_id("OnboardingUITests", "testModelFailureCanContinueBackAndRetryWithoutDownloading"),
+        test_id("OnboardingUITests", "testFirstListenSitsOnPaperInBothAppearances"),
     ),
     "meeting-performance": (
         test_id("MeetingDetailUITests", "testTwentyThousandSegmentDetailRendersFromDisposableScaleFixture"),
@@ -151,6 +153,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     "settings-navigation": (
         test_id("SettingsUITests", "testLanguageToggleSwitchesVisibleTextWithoutRelaunch"),
         test_id("SettingsUITests", "testCategoryNavigationRevealsEachPane"),
+        test_id("SettingsUITests", "testGeneralPaneSwitchesAndFootnotesReadInBothAppearances"),
     ),
     "settings-integrations": (
         test_id("CommandLineToolUITests", "testIntegrationsInstallsAndRemovesTheCommandLineToolLink"),

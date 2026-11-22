@@ -365,7 +365,7 @@ struct MeetingGeneratedDocumentSection: View {
                     confirmed.topicLabels.joined(separator: ", "))
             let badgeLabel = Label(badge, systemImage: PVSymbol.success)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             if confirmed.topicLinks.isEmpty {
                 badgeLabel
                     // One element with an explicit label: the badge announces
@@ -404,7 +404,7 @@ struct MeetingGeneratedDocumentSection: View {
             }
             .buttonStyle(.plain)
             .font(.caption)
-            .foregroundStyle(.tint)
+            .foregroundStyle(PVDesign.accent)
             .accessibilityIdentifier("\(identifier)-confirm")
         }
     }
@@ -594,7 +594,7 @@ struct MeetingEvidenceSources: View {
             HStack(spacing: 6) {
                 Label("Sources", systemImage: "quote.bubble")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                 ForEach(Array(resolution.segments.enumerated()), id: \.element.id) { index, segment in
                     Button(clock(segment.startTime)) {
                         focus(segment)
@@ -611,14 +611,14 @@ struct MeetingEvidenceSources: View {
                 "Sources are out of date after transcript changes.",
                 systemImage: PVSymbol.history)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier(staleIdentifier)
         case .unavailable:
             Label(
                 "Sources are no longer available.",
                 systemImage: PVSymbol.warning)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier(unavailableIdentifier)
         }
     }

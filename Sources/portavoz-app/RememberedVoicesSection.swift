@@ -61,7 +61,7 @@ struct RememberedVoicesSection: View {
                             "Voices you chose to remember, used to suggest names. Right-click a name to forget it."
                         )
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                     }
                 }
             }

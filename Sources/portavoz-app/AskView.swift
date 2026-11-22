@@ -131,7 +131,7 @@ struct AskView: View {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
                     Text(progressText(for: phase))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                         .accessibilityIdentifier(progressIdentifier(for: phase))
                     Spacer()
                     Button("Cancel") {
@@ -144,7 +144,7 @@ struct AskView: View {
                 if !model.state.pendingCitations.isEmpty {
                     Text("Sources found")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                     citationButtons(
                         model.state.pendingCitations,
                         identifierPrefix: "ask-pending-citation")
@@ -152,7 +152,7 @@ struct AskView: View {
                 if !model.state.pendingNoteCitations.isEmpty {
                     Text("From your notes")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                     noteCitationButtons(
                         model.state.pendingNoteCitations,
                         identifierPrefix: "ask-pending-note-citation")
@@ -160,7 +160,7 @@ struct AskView: View {
                 if !model.state.pendingWebCitations.isEmpty {
                     Text("Web sources available now")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                     webCitationLinks(
                         model.state.pendingWebCitations,
                         identifierPrefix: "ask-pending-web-citation")
@@ -191,7 +191,7 @@ struct AskView: View {
             ) {
                 Label(status, systemImage: "cpu")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .accessibilityIdentifier(
                         "ask-generation-\(exchange.generationOutcome.rawValue)")
             }
@@ -202,7 +202,7 @@ struct AskView: View {
                 FlowLayout(spacing: 10, rowSpacing: 4) {
                     Text("Sources")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                     citationButtons(
                         exchange.citations,
                         identifierPrefix: "ask-citation-\(exchange.id.uuidString)")
@@ -423,22 +423,22 @@ extension AskView {
         case .library:
             Label("Source: Library", systemImage: "books.vertical")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier("\(identifier)-library")
         case .meeting(_, let title):
             Label("Source: \(title)", systemImage: "person.2")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier("\(identifier)-meeting")
         case .notes:
             Label("Source: Notes", systemImage: "note.text")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier("\(identifier)-notes")
         case .web(let host):
             Label("Source: \(host)", systemImage: "globe")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier("\(identifier)-web")
         }
     }

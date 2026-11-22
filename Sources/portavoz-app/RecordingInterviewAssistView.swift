@@ -15,7 +15,7 @@ struct RecordingInterviewAssistView: View {
             Text(L10n.text(
                 "Uses only earlier finalized captions. It never starts, stops, or speaks for you."))
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             if let context = controller.interviewAssist.context {
                 currentQuestion(context.question)
                 answerAction
@@ -25,7 +25,7 @@ struct RecordingInterviewAssistView: View {
                     L10n.text("Waiting for a question from the other participants."),
                     systemImage: "waveform.badge.magnifyingglass")
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .accessibilityIdentifier("recording-interview-waiting")
             }
         }
@@ -52,7 +52,7 @@ struct RecordingInterviewAssistView: View {
                     controller.interviewAssist.dismissAnswer()
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(L10n.text("Dismiss interview answer"))
@@ -99,13 +99,13 @@ struct RecordingInterviewAssistView: View {
             Text(L10n.text(
                 "Answers only from what was said earlier. Otherwise Portavoz stays quiet."))
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
         case .generating:
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
                 Text(L10n.text("Checking the cited conversation…"))
             }
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
             .accessibilityIdentifier("recording-interview-generating")
         case .answered(let answer):
             groundedAnswer(answer)
@@ -145,7 +145,7 @@ struct RecordingInterviewAssistView: View {
                         .foregroundStyle(PVDesign.accent)
                     Text(source.text)
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                         .textSelection(.enabled)
                 }
                 .accessibilityElement(children: .combine)
@@ -161,7 +161,7 @@ struct RecordingInterviewAssistView: View {
     ) -> some View {
         Text(L10n.text(key))
             .font(.callout)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier(identifier)
     }

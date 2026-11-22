@@ -59,13 +59,13 @@ struct GitHubIssueSkillSheet: View {
                     .accessibilityIdentifier("github-issue-repository")
                 Text("Portavoz never guesses a repository.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             }
             Label(
                 "Nothing is sent until you confirm the issue.",
                 systemImage: PVSymbol.privacy)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .fixedSize(horizontal: false, vertical: true)
             failureView
             HStack {
@@ -119,7 +119,7 @@ struct GitHubIssueSkillSheet: View {
                 Text(GitHubIssueDraft.destinationHost)
             }
             .font(.caption.monospaced())
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("github-issue-preview-repository")
         }
@@ -187,7 +187,7 @@ struct GitHubIssueSkillSheet: View {
             ForEach(Array(citations.enumerated()), id: \.element.id) { index, citation in
                 Text("\(time(citation.timestamp)) · \(citation.speaker): \(citation.excerpt)")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .lineLimit(2)
                     .accessibilityIdentifier("github-issue-citation-\(index)")
             }
@@ -251,6 +251,7 @@ struct GitHubIssueSkillSheet: View {
             Spacer()
             Button(L10n.text("Done"), action: dismiss)
                 .keyboardShortcut(.defaultAction)
+                .buttonStyle(.pvPrimary)
                 .accessibilityIdentifier("github-issue-result-dismiss")
         }
     }

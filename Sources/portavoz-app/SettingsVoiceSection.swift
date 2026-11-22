@@ -54,9 +54,9 @@ struct SettingsVoiceSection: View {
                 "Lets Portavoz tag you as “Me” on any microphone. Only an encrypted voiceprint is kept; delete it any time."
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
             if let message {
-                Text(message).font(.caption).foregroundStyle(.secondary)
+                Text(message).font(.caption).foregroundStyle(.ink3)
             }
         }
         .task { await loadStatus() }

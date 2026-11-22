@@ -132,7 +132,7 @@ struct SummaryCorrectionSheet: View {
                 .font(.title2.weight(.semibold))
             Text(L10n.text(
                 "Your correction stays separate, on this Mac, and only in explicit .portavoz exports."))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             TextEditor(text: $text)
                 .font(.body)
                 .frame(minHeight: 120)
@@ -150,7 +150,7 @@ struct SummaryCorrectionSheet: View {
                     "\(text.unicodeScalars.count)/"
                         + "\(SummaryClaimFeedback.maximumCorrectionLength)")
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                 if let errorMessage {
                     Text(errorMessage).font(.caption).cautionText()
                 }
@@ -159,6 +159,7 @@ struct SummaryCorrectionSheet: View {
                     .keyboardShortcut(.cancelAction)
                 Button("Save correction") { persist() }
                     .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.pvPrimary)
                     .disabled(feedback == nil || saving)
                     .accessibilityIdentifier("summary-feedback-save")
             }

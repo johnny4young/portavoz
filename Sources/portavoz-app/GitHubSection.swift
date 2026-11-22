@@ -40,9 +40,9 @@ struct GitHubSection: View {
             }
             Text(tokenExplanation)
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.ink3)
             if let tokenMessage {
-                Text(tokenMessage).font(.caption).foregroundStyle(.secondary)
+                Text(tokenMessage).font(.caption).foregroundStyle(.ink3)
             }
         }
         .onAppear {

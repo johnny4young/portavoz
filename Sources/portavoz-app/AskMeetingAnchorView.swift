@@ -65,7 +65,7 @@ struct AskMeetingAnchorView: View {
                         "More meetings match. Refine the title to choose the right one.",
                         systemImage: "magnifyingglass")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                         .accessibilityIdentifier("ask-topic-anchor-overflow")
                 }
             }
@@ -85,11 +85,11 @@ struct AskMeetingAnchorView: View {
                     Text(meeting.title)
                     Text(boundaryText(meeting))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.ink3)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.ink3)
             }
             .contentShape(Rectangle())
         }
@@ -112,7 +112,7 @@ struct AskMeetingAnchorView: View {
                     .accessibilityIdentifier("ask-topic-anchor-selected")
                 Text(boundaryText(meeting))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
             }
             Spacer()
             Button("Change") { topicModel.clearMeetingAnchorSelection() }
@@ -167,7 +167,7 @@ struct AskMeetingAnchorView: View {
             Text(L10n.text(message))
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .foregroundStyle(.secondary)
+        .foregroundStyle(.ink3)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("ask-topic-anchor-status")
     }

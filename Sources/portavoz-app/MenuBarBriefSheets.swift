@@ -48,6 +48,7 @@ struct MenuBarBriefConfirmSheet: View {
                     }
                 }
                 .keyboardShortcut(.defaultAction)
+                .buttonStyle(.pvPrimary)
                 .disabled(running)
                 .accessibilityIdentifier("menu-bar-brief-confirm-submit")
             }
@@ -85,7 +86,7 @@ struct MenuBarBriefConfirmSheet: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 2)
             .background(PVDesign.accent.opacity(0.12), in: Capsule())
-            .foregroundStyle(.tint)
+            .foregroundStyle(PVDesign.accent)
             .accessibilityIdentifier("menu-bar-brief-capability-\(id)")
     }
 }

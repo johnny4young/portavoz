@@ -44,7 +44,7 @@ struct TranscriptCorrectionEditor: View {
                     "This row already has a split, merge, or suppression correction. Text and speaker editing is unavailable.",
                     systemImage: "info.circle")
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                     .accessibilityIdentifier("transcript-correction-mode-guidance")
             }
             textEditor
@@ -79,7 +79,7 @@ struct TranscriptCorrectionEditor: View {
             Text(
                 "The original text stays available. Summaries and search results are not regenerated.")
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
         }
     }
 
@@ -118,7 +118,7 @@ struct TranscriptCorrectionEditor: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(speakerName(context.original.speakerID))
                     .font(.caption.bold())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.ink3)
                 Text(context.original.text)
                     .textSelection(.enabled)
             }
@@ -169,6 +169,7 @@ struct TranscriptCorrectionEditor: View {
                 perform { await save(submittedText, speakerID) }
             }
             .keyboardShortcut(.defaultAction)
+            .buttonStyle(.pvPrimary)
             .disabled(!canSave || isSaving)
             .accessibilityIdentifier("transcript-correction-save")
         }

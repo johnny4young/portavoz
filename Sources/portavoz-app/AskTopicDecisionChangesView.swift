@@ -41,28 +41,28 @@ struct AskTopicDecisionChangesView: View {
                 .font(.headline)
             Text("Changed to")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             Text(change.successorStatement)
                 .font(.title3.weight(.semibold))
                 .accessibilityIdentifier(
                     "\(context.identifierPrefix)-\(change.id.rawValue.uuidString)")
             Text("Replaced")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .padding(.top, 2)
             Text(change.replacedStatement)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
                 .accessibilityIdentifier(
                     "\(context.identifierPrefix)-replaced-\(change.id.rawValue.uuidString)")
             Text(change.occurredAt.formatted(
                 date: .abbreviated,
                 time: .shortened))
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.ink3)
             Divider()
             Text("Sources")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.ink3)
             ForEach(
                 Array(orderedCitations(change).enumerated()),
                 id: \.offset
