@@ -451,7 +451,8 @@ struct OnboardingView: View {
 
 /// A row of bars that breathe with the microphone level — the onboarding
 /// first-listen's visual heartbeat. Idle bars pulse gently; while listening
-/// they rise with the captured level and glow in the user's amber.
+/// they rise with the captured level and glow in the user's amber. Under
+/// Reduce Motion idle bars hold still and live bars move only on samples.
 struct FirstListenWaveform: View {
     /// Keeps idle bars at 3:1 against paper in both appearances.
     nonisolated static let idleOpacity = 0.75
@@ -459,28 +460,29 @@ struct FirstListenWaveform: View {
     let level: Double
     let active: Bool
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    private let barCount = 27
+    nonisolated static let barCount = 27
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: nil, paused: reduceMotion)) { timeline in
-            let phase = timeline.date.timeIntervalSinceReferenceDate
-            HStack(alignment: .center, spacing: 4) {
-                ForEach(0..<barCount, id: \.self) { index in
-                    Capsule()
-                        .fill(active ? VoicePalette.me : PVDesign.ink3.opacity(Self.idleOpacity))
-                        .frame(width: 4, height: height(index, phase: phase))
-                }
-            }
-            .frame(maxWidth: .infinity)
-        }
-        .accessibilityHidden(true)
+        // Live bars follow the level, so only the idle ripple needs frames.
+        PVAnimationTimeline(paused: active) { phase in bars(phase: phase) }
+            .accessibilityHidden(true)
     }
 
-    private func height(_ index: Int, phase: Double) -> CGFloat {
-        // A gentle idle ripple, plus the live level shaped into a soft hill so
-        // the middle bars react most.
-        let idle = 0.5 + 0.5 * sin(phase * 2 + Double(index) * 0.5)
+    private func bars(phase: Double?) -> some View {
+        HStack(alignment: .center, spacing: 4) {
+            ForEach(0..<Self.barCount, id: \.self) { index in
+                Capsule()
+                    .fill(active ? VoicePalette.me : PVDesign.ink3.opacity(Self.idleOpacity))
+                    .frame(width: 4, height: Self.height(index, level: level, active: active, phase: phase))
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// A gentle idle ripple (flat without a `phase`), plus the live level
+    /// shaped into a soft hill so the middle bars react most.
+    nonisolated static func height(_ index: Int, level: Double, active: Bool, phase: Double?) -> CGFloat {
+        let idle = phase.map { 0.5 + 0.5 * sin($0 * 2 + Double(index) * 0.5) } ?? 0.5
         let bell = sin(Double(index) / Double(barCount - 1) * .pi)
         let amplitude = active ? (0.2 + level * bell) : (0.10 + 0.06 * idle)
         return CGFloat(8 + amplitude * 40)

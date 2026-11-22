@@ -14,13 +14,15 @@ struct TranscriptFocusVisualStyle: Equatable, Sendable {
 /// Pure visual policy shared by the view and characterization tests. Playback
 /// reads as a flat document and outlines its active turn instead; live
 /// captions fade gently toward the edges and become completely sharp while
-/// the user browses history.
+/// the user browses history. Reduce Motion keeps the fade but drops the
+/// shrink and blur, which read as zoom while captions scroll.
 enum TranscriptFocusVisualPolicy {
     static func style(
         distance: CGFloat,
         reach: CGFloat,
         mode: FocusedTranscriptMode,
-        isFollowing: Bool
+        isFollowing: Bool,
+        reduceMotion: Bool
     ) -> TranscriptFocusVisualStyle {
         guard mode == .live, isFollowing else {
             return TranscriptFocusVisualStyle(opacity: 1, scale: 1, blurRadius: 0)
@@ -31,8 +33,8 @@ enum TranscriptFocusVisualPolicy {
         let progress = min(1, max(0, (distance - deadzone) / far))
         return TranscriptFocusVisualStyle(
             opacity: 1 - (0.48 * Double(progress)),
-            scale: 1 - (0.05 * progress),
-            blurRadius: 0.65 * progress)
+            scale: reduceMotion ? 1 : 1 - (0.05 * progress),
+            blurRadius: reduceMotion ? 0 : 0.65 * progress)
     }
 }
 
@@ -75,6 +77,7 @@ struct FocusedTranscriptView<Item: Identifiable, Row: View>: View where Item.ID:
     var scrollAccessibilityIdentifier: String?
     @ViewBuilder var row: (Item, Bool) -> Row
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isFollowing = true
 
     init(
@@ -101,6 +104,7 @@ struct FocusedTranscriptView<Item: Identifiable, Row: View>: View where Item.ID:
         let focusY = anchor.y * height
         let reach = max(focusY, height - focusY, 1)
         let visualMode = mode
+        let reduceMotion = reduceMotion
         let following = isFollowing
         return ScrollViewReader { proxy in
             trackedScroll(
@@ -120,7 +124,8 @@ struct FocusedTranscriptView<Item: Identifiable, Row: View>: View where Item.ID:
                                                     distance: abs(midY - focusY),
                                                     reach: reach,
                                                     mode: visualMode,
-                                                    isFollowing: following)
+                                                    isFollowing: following,
+                                                    reduceMotion: reduceMotion)
                                                 return content
                                                     .opacity(style.opacity)
                                                     .scaleEffect(style.scale, anchor: .center)
@@ -200,12 +205,8 @@ struct FocusedTranscriptView<Item: Identifiable, Row: View>: View where Item.ID:
         animated: Bool = true
     ) {
         guard let id else { return }
-        if animated {
-            withAnimation(.easeInOut(duration: 0.35)) {
-                proxy.scrollTo(id, anchor: anchor)
-            }
-        } else {
-            proxy.scrollTo(id, anchor: anchor)
-        }
+        proxy.pvScrollTo(
+            id, anchor: anchor, animation: animated ? .easeInOut(duration: 0.35) : nil,
+            reduceMotion: reduceMotion)
     }
 }

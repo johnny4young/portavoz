@@ -82,15 +82,7 @@ struct TranscriptSegmentsView: View {
 
     private func scroll(_ proxy: ScrollViewProxy, to id: TranscriptReadingItem.Key) {
         let interval = MeetingDetailPerformanceTrace.beginTranscriptScroll()
-        guard !reduceMotion else {
-            proxy.scrollTo(id, anchor: .center)
-            MeetingDetailPerformanceTrace.endTranscriptScroll(interval)
-            return
-        }
-        withAnimation(
-            .easeInOut(duration: 0.25),
-            completionCriteria: .logicallyComplete
-        ) {
+        PVMotion.perform(.easeInOut(duration: 0.25), reduceMotion: reduceMotion) {
             proxy.scrollTo(id, anchor: .center)
         } completion: {
             MeetingDetailPerformanceTrace.endTranscriptScroll(interval)

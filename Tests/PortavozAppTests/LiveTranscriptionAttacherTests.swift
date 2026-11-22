@@ -917,7 +917,8 @@ final class TranscriptFocusVisualPolicyTests: XCTestCase {
             distance: 100,
             reach: 400,
             mode: .live,
-            isFollowing: true)
+            isFollowing: true,
+            reduceMotion: false)
 
         XCTAssertEqual(style.opacity, 1, accuracy: 0.001)
         XCTAssertEqual(style.scale, 1, accuracy: 0.001)
@@ -929,7 +930,8 @@ final class TranscriptFocusVisualPolicyTests: XCTestCase {
             distance: 390,
             reach: 400,
             mode: .live,
-            isFollowing: false)
+            isFollowing: false,
+            reduceMotion: false)
 
         XCTAssertEqual(style.opacity, 1, accuracy: 0.001)
         XCTAssertEqual(style.scale, 1, accuracy: 0.001)
@@ -941,7 +943,8 @@ final class TranscriptFocusVisualPolicyTests: XCTestCase {
             distance: 400,
             reach: 400,
             mode: .playback,
-            isFollowing: true)
+            isFollowing: true,
+            reduceMotion: false)
 
         XCTAssertEqual(style, TranscriptFocusVisualStyle(opacity: 1, scale: 1, blurRadius: 0))
     }
@@ -951,11 +954,25 @@ final class TranscriptFocusVisualPolicyTests: XCTestCase {
             distance: 400,
             reach: 400,
             mode: .live,
-            isFollowing: true)
+            isFollowing: true,
+            reduceMotion: false)
 
         XCTAssertGreaterThanOrEqual(style.opacity, 0.52)
         XCTAssertGreaterThanOrEqual(style.scale, 0.95)
         XCTAssertLessThanOrEqual(style.blurRadius, 0.65)
+    }
+
+    func testReduceMotionKeepsTheLiveFadeWithoutShrinkOrBlur() {
+        let style = TranscriptFocusVisualPolicy.style(
+            distance: 400,
+            reach: 400,
+            mode: .live,
+            isFollowing: true,
+            reduceMotion: true)
+
+        XCTAssertLessThan(style.opacity, 1, "distance still reads through the fade")
+        XCTAssertEqual(style.scale, 1)
+        XCTAssertEqual(style.blurRadius, 0)
     }
 
     func testRollingSummaryIdentityCursorAdmitsNewDiarizationSplitPiece() {

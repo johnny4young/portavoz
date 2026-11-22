@@ -101,10 +101,7 @@ struct RecordingHUDView: View {
             TimelineView(.periodic(from: controller.startedAt, by: 1)) { context in
                 let elapsed = Int(context.date.timeIntervalSince(controller.startedAt))
                 HStack(spacing: 6) {
-                    Circle()
-                        .fill(PVDesign.now)
-                        .frame(width: 8, height: 8)
-                        .opacity(elapsed.isMultiple(of: 2) ? 1 : 0.35)
+                    RecordingLiveDot(elapsed: elapsed, diameter: 8)
                     Text(ClockFormat.mmss(TimeInterval(elapsed)))
                         .font(.callout.monospacedDigit().weight(.medium))
                 }

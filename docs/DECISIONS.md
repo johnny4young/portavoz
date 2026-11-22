@@ -23397,3 +23397,18 @@ button would put its white label on that tint, so every Return button is
 `.pvPrimary`. `PVDesign.accent` stays the ink for everything Portavoz draws
 itself, so active or emphasized text never reads the tint. List sections, the Settings form and segmented pickers stay native
 (D646); only their text colour changes.
+
+## D662 — Every animation goes through one Reduce Motion helper
+
+Only two views read Reduce Motion; the recording dot pulsed every second, the
+mic meter eased on each sample and Ask glided to new answers regardless of the
+setting. `PVMotion` is now the single path to animation: a view modifier and a
+per-frame timeline that read the environment, and imperative and scroll helpers
+that require the flag as an argument. Under Reduce Motion the change is applied in a non-animated
+transaction, so state and scroll positions match the animated path. Transitions
+need no wrapper because they only animate inside an animated transaction. An
+architecture test rejects `withAnimation`, `withTransaction`, `.animation(`,
+per-frame timelines, transactions, symbol effects and phase or keyframe
+animators outside the helper, a literal flag, and a file that passes the flag
+without reading it from the environment. Live captions keep their distance
+fade under Reduce Motion but drop the shrink and blur that read as zoom.

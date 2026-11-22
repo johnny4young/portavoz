@@ -160,11 +160,7 @@ private struct RecordingElapsedClock: View {
                 let elapsed = Int(context.date.timeIntervalSince(startedAt))
                 let clock = ClockFormat.mmss(TimeInterval(elapsed))
                 HStack(spacing: 8) {
-                    Circle()
-                        .fill(PVDesign.now)
-                        .frame(width: 10, height: 10)
-                        .opacity(elapsed.isMultiple(of: 2) ? 1 : 0.35)
-                        .animation(.easeInOut(duration: 0.6), value: elapsed)
+                    RecordingLiveDot(elapsed: elapsed, diameter: 10, easing: .easeInOut(duration: 0.6))
                     clockText(clock)
                         .accessibilityIdentifier("recording-elapsed-time")
                 }
@@ -181,6 +177,27 @@ private struct RecordingElapsedClock: View {
         DisplayTimeText(text, style: .clock(size: 24))
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
+    }
+}
+
+/// The live recording dot: it blinks each second and holds solid under Reduce Motion.
+struct RecordingLiveDot: View {
+    let elapsed: Int
+    let diameter: CGFloat
+    var easing: Animation?
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Circle()
+            .fill(PVDesign.now)
+            .frame(width: diameter, height: diameter)
+            .opacity(Self.opacity(elapsed: elapsed, reduceMotion: reduceMotion))
+            .pvAnimation(easing, value: elapsed)
+    }
+
+    nonisolated static func opacity(elapsed: Int, reduceMotion: Bool) -> Double {
+        reduceMotion || elapsed.isMultiple(of: 2) ? 1 : 0.35
     }
 }
 
@@ -225,7 +242,7 @@ private struct RecordingLevelMeterFill: View {
             fraction: controller.micMuted
                 ? 0 : LevelBarFill.fraction(forLevel: controller.micLevel))
             .fill(controller.micLevelLow ? PVDesign.ink3 : VoicePalette.me)
-            .animation(.easeOut(duration: 0.15), value: controller.micLevel)
+            .pvAnimation(.easeOut(duration: 0.15), value: controller.micLevel)
     }
 }
 

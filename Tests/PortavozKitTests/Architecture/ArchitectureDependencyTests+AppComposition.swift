@@ -2153,4 +2153,27 @@ extension ArchitectureDependencyTests {
             ],
             "red marks only the present: Record, Stop, the live dot, the Now label and line, a meeting under way")
     }
+
+    func testMotionGoesThroughTheReduceMotionHelper() throws {
+        let rawMotion = try Self.sourceMatches(
+            under: "Sources/portavoz-app",
+            pattern: #"\bwith(Animation|Transaction)\b|\.animation\s*\(|TimelineView\(\.animation\b"#
+                + #"|\.(phaseAnimator|keyframeAnimator|symbolEffect)\b|\.transaction\s*[({]"#,
+            codeOnly: true)
+        XCTAssertEqual(
+            rawMotion.filter { $0 != "PVMotion.swift" }, [],
+            "animate through PVMotion (.pvAnimation, PVMotion.perform, pvScrollTo, PVAnimationTimeline)")
+
+        let flagCallers = try Self.sourceMatches(
+            under: "Sources/portavoz-app", pattern: #"PVMotion\.perform\(|\.pvScrollTo\("#, codeOnly: true)
+        let reduceMotionReaders = try Self.sourceMatches(
+            under: "Sources/portavoz-app", pattern: #"\.accessibilityReduceMotion\b"#, codeOnly: true)
+        XCTAssertEqual(
+            Set(flagCallers).subtracting(reduceMotionReaders).subtracting(["PVMotion.swift"]), [],
+            "a view that passes reduceMotion: must read it from the environment")
+        XCTAssertEqual(
+            try Self.sourceMatches(
+                under: "Sources/portavoz-app", pattern: #"reduceMotion:\s*(true|false)\b"#, codeOnly: true),
+            [], "pass the environment's Reduce Motion, never a literal")
+    }
 }
