@@ -42,6 +42,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("LibraryUITests", "testActiveRecordingRemainsReachableAfterBrowsingTheLibrary"),
         test_id("LibraryUITests", "testSeededMeetingsGroupByRecency"),
         test_id("LibraryUITests", "testSidebarSecondaryTextReadsInInkInBothAppearances"),
+        test_id("LibraryUITests", "testSidebarShowsThisWeekAndEarlierHeadersAtLaunch"),
     ),
     "audio-imports": (
         test_id("AudioImportUITests", "testSingleMeetingBundleReachesDetailWithoutChangingTheOriginal"),

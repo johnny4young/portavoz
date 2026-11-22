@@ -45,6 +45,7 @@ struct LibraryView: View {
     }
 
     var body: some View {
+        let groups = meetingGroups
         VStack(spacing: 0) {
             recordButton
                 .padding(.horizontal, 12)
@@ -117,14 +118,14 @@ struct LibraryView: View {
                     }
                 } else {
                     // Past meetings only: the agenda and open to-dos live on Today.
-                    if state.meetings.isEmpty {
+                    if state.showsNoMeetings {
                         Section {
                             Text("No meetings yet").foregroundStyle(.ink3)
                         } header: {
                             LibrarySectionHeader("Meetings", id: "meetings")
                         }
                     }
-                    ForEach(meetingGroups, id: \.key) { group in
+                    ForEach(groups, id: \.key) { group in
                         Section {
                             ForEach(group.meetings) { meeting in
                                 meetingRow(meeting)
@@ -140,6 +141,10 @@ struct LibraryView: View {
                 }
             }
             .listStyle(.sidebar)
+            .contentMargins(.top, 16, for: .scrollContent)
+            // AppKit keeps the scroll offset when a section lands above drawn
+            // rows, which hid the first header; a new section set starts at the top.
+            .id(sectionKeys(groups))
             .tint(PVDesign.accent)
             localFooter
         }
@@ -259,7 +264,9 @@ struct LibraryView: View {
 
 extension LibraryView {
     /// This week (today included) and Earlier, newest first; empty groups drop.
-    private var meetingGroups: [(key: String, title: LocalizedStringKey, meetings: [Meeting])] {
+    typealias MeetingGroup = (key: String, title: LocalizedStringKey, meetings: [Meeting])
+
+    private var meetingGroups: [MeetingGroup] {
         let now = Date()
         let startOfWeek = Calendar.current.dateInterval(of: .weekOfYear, for: now)?.start
             ?? Calendar.current.startOfDay(for: now)
@@ -271,16 +278,25 @@ extension LibraryView {
         ].filter { !$0.meetings.isEmpty }
     }
 
+    private func sectionKeys(_ groups: [MeetingGroup]) -> [String] {
+        guard state.query.isEmpty else { return ["results"] }
+        return (state.showsNoMeetings ? ["meetings"] : []) + groups.map(\.key)
+    }
+
     /// Native sidebar selection owns contrast, focus and inactive-window styling.
     /// The voice strip remains a separate, meaningful recording cue.
     private func meetingRow(_ meeting: Meeting) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(MeetingRowTitle.display(meeting.title)).lineLimit(1)
+        VStack(alignment: .leading, spacing: 2) {
+            Text(MeetingRowTitle.display(meeting.title))
+                .fontWeight(.semibold)
+                .lineLimit(1)
             Text(meeting.dayAndLength)
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.ink3)
             VoiceStrip(state.voiceStrips[meeting.id] ?? .empty)
+                .padding(.top, 6)
         }
+        .padding(.vertical, 5)
         .tag(Route.meeting(meeting.id))
         .accessibilityIdentifier("library-meeting-\(meeting.id.rawValue.uuidString)")
         .contextMenu {

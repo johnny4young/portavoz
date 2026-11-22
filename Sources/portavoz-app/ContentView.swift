@@ -67,7 +67,7 @@ struct ContentView: View {
                     services.pendingSettingsCategory = .data
                     openSettings()
                 })
-                .navigationSplitViewColumnWidth(min: 260, ideal: 300)
+                .navigationSplitViewColumnWidth(min: 200, ideal: 232, max: 360)
                 .background { PVDesign.paperSunk.ignoresSafeArea() }
         } detail: {
             Group {

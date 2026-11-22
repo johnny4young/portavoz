@@ -77,8 +77,10 @@ final class LibraryModelTests: XCTestCase {
         let emptyClient = LibraryModelClientFake(fixture: fixture)
         emptyClient.updates = fixture.updates(includeContent: false)
         let emptyModel = LibraryModel(client: emptyClient, searchDelay: .zero)
+        XCTAssertFalse(emptyModel.state.showsNoMeetings, "no empty placeholder before the first read")
         _ = await emptyModel.send(.observeLibrary)
         XCTAssertEqual(emptyModel.state.loadPhase, .empty)
+        XCTAssertTrue(emptyModel.state.showsNoMeetings)
 
         let degradedClient = LibraryModelClientFake(fixture: fixture)
         degradedClient.updates = fixture.updates(meetingFailures: 1)
@@ -86,6 +88,7 @@ final class LibraryModelTests: XCTestCase {
         _ = await degradedModel.send(.observeLibrary)
         XCTAssertEqual(degradedModel.state.loadPhase, .degraded(failures: 1))
         XCTAssertEqual(degradedModel.state.meetings.map(\.id), [fixture.meeting.id])
+        XCTAssertFalse(degradedModel.state.showsNoMeetings)
 
         let unavailableClient = LibraryModelClientFake(fixture: fixture)
         unavailableClient.updates = LibrarySection.allCases.map(LibraryUpdate.failed)

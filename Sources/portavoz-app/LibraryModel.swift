@@ -124,6 +124,11 @@ final class LibraryModel {
         /// Generated suggestions waiting in Radar's review queue.
         fileprivate(set) var suggestionsToReview = 0
 
+        /// Not while the first read is pending, so launch does not flash it.
+        var showsNoMeetings: Bool {
+            meetings.isEmpty && loadPhase != .idle && loadPhase != .loading
+        }
+
         /// The open to-dos Today lists.
         var shownOpenItems: ArraySlice<LibraryOpenItem> { openItems.prefix(TodayPickUp.maximumOpenItems) }
 
