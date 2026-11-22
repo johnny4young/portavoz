@@ -17,7 +17,7 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 
 <table>
 <tr>
-<td width="50%"><img alt="A current Portavoz recording: multilingual source captions remain visible while English translations render in a separate labeled indigo rail" src="assets/screenshots/recording-live-translation.png"></td>
+<td width="50%"><img alt="A current Portavoz recording: multilingual source captions remain visible while English translations render in a separate labeled rail" src="assets/screenshots/recording-live-translation.png"></td>
 <td width="50%"><img alt="Insights: meetings, talk time, decisions and questions with month-over-month deltas; a two-tone bar per person for who you talk with; ✦ findings; and a 12-week rhythm heatmap" src="assets/screenshots/insights.png"></td>
 </tr>
 <tr>

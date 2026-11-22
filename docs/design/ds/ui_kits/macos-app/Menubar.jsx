@@ -45,7 +45,7 @@ function PVMenubar() {
         <span style={{ fontVariantNumeric: "tabular-nums" }}>16:04</span>
       </div>
 
-      <div style={{ width: 340, marginTop: 6, borderRadius: 16, overflow: "hidden", background: "rgba(30,30,36,0.92)", backdropFilter: "blur(30px)", border: "0.5px solid rgba(255,255,255,0.14)", boxShadow: "0 18px 50px rgba(0,0,0,0.5)", color: "rgba(255,255,255,0.88)" }}>
+      <div data-theme="dark" style={{ width: 340, marginTop: 6, borderRadius: 16, overflow: "hidden", background: "rgba(30,30,36,0.92)", backdropFilter: "blur(30px)", border: "0.5px solid rgba(255,255,255,0.14)", boxShadow: "0 18px 50px rgba(0,0,0,0.5)", color: "rgba(255,255,255,0.88)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px" }}>
           <PVMiniWave bars={panelWave} />
           <div style={{ display: "flex", flexDirection: "column", gap: 1, flex: 1 }}>
@@ -59,7 +59,7 @@ function PVMenubar() {
           <PVQuick icon="bubble.left.and.text.bubble.right" label="Preguntar" tint="rgba(255,255,255,0.08)" ink="rgba(255,255,255,0.85)" />
         </div>
 
-        <div style={{ margin: "0 14px 10px", padding: "11px 13px", borderRadius: 12, background: "rgba(253,191,71,0.09)", border: "1px solid rgba(253,191,71,0.25)" }}>
+        <div style={{ margin: "0 14px 10px", padding: "11px 13px", borderRadius: 12, background: "color-mix(in srgb, var(--you) 9%, transparent)", border: "1px solid color-mix(in srgb, var(--you) 25%, transparent)" }}>
           <span style={{ display: "block", font: "600 10px/1 var(--font-app)", letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--you-ink)", marginBottom: 5 }}>Próxima reunión · mañana 10:00</span>
           <span style={{ display: "block", font: "500 13px/1.3 var(--font-app)", marginBottom: 6 }}>Retro sprint 15</span>
           <div style={{ display: "flex", gap: 6 }}>
