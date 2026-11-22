@@ -15,6 +15,9 @@ final class LegacyDictationUITests: PortavozUITestCase {
         XCTAssertTrue(title.waitForExistenceFast(timeout: 15))
         let delete = app.buttons["dictation-moved-delete"]
         XCTAssertTrue(delete.waitForExistenceFast(timeout: 5), "kept rows can be deleted from the notice")
+        let dismiss = app.buttons["dictation-moved-dismiss"]
+        XCTAssertTrue(dismiss.isHittable)
+        XCTAssertLessThan(dismiss.frame.midY, delete.frame.midY, "OK sits beside the title; delete stays below the text")
         attachScreenshot(of: app, named: "pr-dictation-moved-notice")
         let confirm = app.buttons["dictation-moved-delete-confirm"]
         delete.click()
@@ -29,7 +32,7 @@ final class LegacyDictationUITests: PortavozUITestCase {
         confirm.click()
         XCTAssertTrue(delete.waitForDisappearance(timeout: 5), "nothing is left to delete")
         XCTAssertFalse(app.staticTexts["dictation-moved-delete-failed"].exists)
-        app.buttons["dictation-moved-dismiss"].click()
+        dismiss.click()
         XCTAssertTrue(title.waitForDisappearance(timeout: 5))
     }
 

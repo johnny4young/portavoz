@@ -144,7 +144,7 @@ struct MeetingTranscriptChaptersSection: View {
         } label: {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(presentation.clock(chapter.startTime, paddedMinutes: true))
-                    .font(.caption.monospacedDigit())
+                    .font(PVFont.timeCode(.caption))
                     .foregroundStyle(PVDesign.accent)
                     .frame(width: 44, alignment: .leading)
                 Text(chapter.title)

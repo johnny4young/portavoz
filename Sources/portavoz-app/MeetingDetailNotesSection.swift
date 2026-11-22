@@ -93,7 +93,7 @@ struct MeetingDetailNotesSection: View {
                 ForEach(values.notes.contextItems) { item in
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(values.presentation.clock(item.timestamp))
-                            .font(.caption.monospacedDigit())
+                            .font(PVFont.timeCode(.caption))
                             .foregroundStyle(.ink3)
                         Text(item.content)
                             .font(.callout)

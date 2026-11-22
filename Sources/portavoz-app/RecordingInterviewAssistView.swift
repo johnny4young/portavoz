@@ -140,7 +140,9 @@ struct RecordingInterviewAssistView: View {
             ForEach(answer.citations) { citation in
                 let source = citation.evidence
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("[\(citation.number)] \(speakerLabel(source.channel)) · \(ClockFormat.mmss(source.timestamp))")
+                    Text(PVFont.timeCoded(
+                        "[\(citation.number)] \(speakerLabel(source.channel))",
+                        at: ClockFormat.mmss(source.timestamp), style: .caption2, weight: .semibold))
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(PVDesign.accent)
                     Text(source.text)

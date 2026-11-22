@@ -69,7 +69,7 @@ struct RecordingCompanionCardsView: View {
                     .font(.caption2)
                     .foregroundStyle(.ink3)
                 Text(ClockFormat.mmss(row.card.askedAt))
-                    .font(.caption2.monospacedDigit())
+                    .font(PVFont.timeCode(.caption2))
                     .foregroundStyle(.ink3)
                 Text(row.card.question)
                     .font(.callout)

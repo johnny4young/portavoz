@@ -260,7 +260,7 @@ struct MeetingDetailCompanionSection: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Button { actions.seekAndPlay(card.askedAt) } label: {
                     Text(values.presentation.clock(card.askedAt, paddedMinutes: true))
-                        .font(.caption.monospacedDigit())
+                        .font(PVFont.timeCode(.caption))
                         .foregroundStyle(tint)
                 }
                 .buttonStyle(.plain)

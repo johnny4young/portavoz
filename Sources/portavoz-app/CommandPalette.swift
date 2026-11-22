@@ -197,10 +197,9 @@ private struct CommandPaletteView: View {
                 } label: {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(hit.snippet).lineLimit(1)
-                        Text("\(hit.meetingTitle) · \(AskMarkdown.clock(hit.timestamp))")
+                        Text(PVFont.timeCoded(hit.meetingTitle, at: AskMarkdown.clock(hit.timestamp)))
                             .font(.caption)
                             .foregroundStyle(.ink3)
-                            .monospacedDigit()
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
@@ -259,9 +258,9 @@ private struct FlowCitations: View {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.up.right")
                             .font(.caption2)
-                        Text("\(citation.meetingTitle) · \(AskMarkdown.clock(citation.timestamp))")
+                        Text(PVFont.timeCoded(
+                            citation.meetingTitle, at: AskMarkdown.clock(citation.timestamp), weight: .semibold))
                             .lineLimit(1)
-                            .monospacedDigit()
                     }
                     .font(.caption.weight(.semibold))
                     .padding(.horizontal, 8)

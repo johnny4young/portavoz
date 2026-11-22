@@ -90,8 +90,9 @@ struct HomeYoursToDo: View {
                     .fontWeight(.semibold)
                     .foregroundStyle(PVDesign.ink2)
             }
-            Text(Self.whereSaid(open, time: source?.time, led: source?.saidBy != nil))
-                .monospacedDigit()
+            Text(PVFont.timeCoded(
+                Self.whereSaid(open, time: source?.time, led: source?.saidBy != nil),
+                time: source?.time.map(Self.clock)))
         }
         .font(.caption)
         .foregroundStyle(PVDesign.ink3)
@@ -119,8 +120,12 @@ struct HomeYoursToDo: View {
 
     nonisolated static func whereSaid(_ open: LibraryOpenItem, time: TimeInterval?, led: Bool) -> String {
         var parts = [MeetingRowTitle.display(open.meetingTitle)]
-        if let time { parts.append(ClockFormat.mmss(time, locale: AppLanguage.current.locale)) }
+        if let time { parts.append(clock(time)) }
         return (led ? "· " : "") + parts.joined(separator: " · ")
+    }
+
+    nonisolated static func clock(_ time: TimeInterval) -> String {
+        ClockFormat.mmss(time, locale: AppLanguage.current.locale)
     }
 
     /// "You · Fri"; the owner alone without a confirmed due day. A past due

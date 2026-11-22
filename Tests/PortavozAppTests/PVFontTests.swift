@@ -76,4 +76,17 @@ final class PVFontTests: XCTestCase {
         XCTAssertEqual(PVFont.fallbackWeight(480), .medium)
         XCTAssertEqual(PVFont.fallbackWeight(520), .medium)
     }
+
+    func testTimeCodesSetOnlyThePositionInSFMono() throws {
+        let line = PVFont.timeCoded("Sprint 02:18 · Demo", at: "02:18")
+        XCTAssertEqual(String(line.characters), "Sprint 02:18 · Demo · 02:18")
+        let mono = PVFont.timeCode()
+        XCTAssertEqual(mono, Font.system(.caption, design: .monospaced, weight: .regular))
+        let monoRuns = line.runs.filter { $0.font == mono }.map { String(line[$0.range].characters) }
+        XCTAssertEqual(monoRuns, ["02:18"], "only the trailing position, not a title that quotes one")
+        XCTAssertTrue(line.runs.contains { $0.font == nil }, "the rest keeps the surrounding font")
+
+        let untimed = PVFont.timeCoded("unheard", time: nil)
+        XCTAssertFalse(untimed.runs.contains { $0.font != nil })
+    }
 }
