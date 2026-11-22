@@ -82,21 +82,27 @@ enum UITestWindowPlacement {
         let frame = mainWindowFrame(
             in: visibleFrame,
             preferredHeight: preferredHeight,
-            fullWidth: arguments.contains("-seed-wide-window"))
+            width: arguments.contains("-seed-wide-window") ? .full
+                : arguments.contains("-seed-narrow-window") ? .minimum : .standard)
         applyAcceptedNotificationCenterIsolation(to: window)
         window.setFrame(frame, display: true, animate: false)
     }
 
-    /// `fullWidth` gives up the left clearance so wide layouts can be seen.
+    /// `.full` gives up the left clearance so wide layouts can be seen;
+    /// `.minimum` keeps the narrowest window so narrow layouts can.
+    enum Width { case standard, full, minimum }
+
     static func mainWindowFrame(
         in visibleFrame: NSRect,
         preferredHeight: CGFloat?,
-        fullWidth: Bool = false
+        width: Width = .standard
     ) -> NSRect {
-        let minimumWidth: CGFloat = 900
-        let leftClearance = fullWidth ? 0 : min(
-            400,
-            max(0, visibleFrame.width - minimumWidth))
+        let spare = max(0, visibleFrame.width - 900)
+        let leftClearance: CGFloat = switch width {
+        case .standard: min(400, spare)
+        case .full: 0
+        case .minimum: spare
+        }
         let height = min(visibleFrame.height, preferredHeight ?? visibleFrame.height)
         return NSRect(
             x: visibleFrame.minX + leftClearance,

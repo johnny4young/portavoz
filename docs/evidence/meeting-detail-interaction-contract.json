@@ -42,7 +42,6 @@
     "Sources/portavoz-app/MeetingTranscriptSection.swift",
     "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
     "Sources/portavoz-app/MirrorCard.swift",
-    "Sources/portavoz-app/SpeakerPill.swift",
     "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
     "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
     "Sources/portavoz-app/TranscriptSegmentsView.swift",
@@ -2799,24 +2798,6 @@
       "occurrences": 1
     },
     {
-      "path": "Sources/portavoz-app/SpeakerPill.swift",
-      "category": "control",
-      "source": "Button {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/SpeakerPill.swift",
-      "category": "control",
-      "source": "struct SpeakerPill: View {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/SpeakerPill.swift",
-      "category": "identifier",
-      "source": "pill.accessibilityIdentifier(accessibilityIdentifier)",
-      "occurrences": 1
-    },
-    {
       "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
       "category": "control",
       "source": "Button(\"Cancel\", role: .cancel) { dismiss() }",
@@ -3078,12 +3059,12 @@
       "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
       "category": "control",
       "source": "Button {",
-      "occurrences": 2
+      "occurrences": 3
     },
     {
       "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
       "category": "control",
-      "source": "SpeakerPill(",
+      "source": "return Button {",
       "occurrences": 1
     },
     {
@@ -3095,7 +3076,19 @@
     {
       "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
       "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-chapter-\\(Int(chapter.startTime))\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+      "category": "identifier",
       "source": ".accessibilityIdentifier(\"transcript-segment-\\(row.id.uuidString)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-speaker-\\(row.id.uuidString)\")",
       "occurrences": 1
     },
     {
@@ -3108,7 +3101,13 @@
       "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
       "category": "navigation",
       "source": "let onSeek: (TimeInterval) -> Void",
-      "occurrences": 2
+      "occurrences": 3
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+      "category": "navigation",
+      "source": "onSeek: onSeek)",
+      "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
@@ -3120,6 +3119,12 @@
       "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
       "category": "state",
       "source": "@State private var didStartPerformanceScroll = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+      "category": "state",
+      "source": "@State private var isNarrow = false",
       "occurrences": 1
     },
     {
@@ -3527,10 +3532,6 @@
         {
           "path": "Sources/portavoz-app/MeetingTranscriptTranslationControls.swift",
           "anchor": "\"detail-transcript-language-original\""
-        },
-        {
-          "path": "Sources/portavoz-app/SpeakerPill.swift",
-          "anchor": "VoiceChip("
         }
       ],
       "screenshots": [
@@ -3806,6 +3807,27 @@
         "transcript-correction-original-evidence",
         "transcript-structural-correction-evidence",
         "transcript-structural-split-evidence"
+      ]
+    },
+    {
+      "feature": "transcript-document",
+      "tests": [
+        "testNarrowTranscriptPutsTheSpeakerAboveTheLine",
+        "testTranscriptReadsAsChaptersAndTurns"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+          "anchor": "\"transcript-chapter-\\(Int(chapter.startTime))\""
+        },
+        {
+          "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+          "anchor": "\"transcript-speaker-\\(row.id.uuidString)\""
+        }
+      ],
+      "screenshots": [
+        "pr-meeting-transcript-chapters",
+        "pr-meeting-transcript-narrow"
       ]
     }
   ],

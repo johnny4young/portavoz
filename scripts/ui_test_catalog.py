@@ -118,6 +118,8 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "meeting-evidence": (
         test_id("MeetingDetailUITests", "testEvidenceSourcesJumpToTheirExactTranscriptAndAudio"),
+        test_id("MeetingDetailUITests", "testTranscriptReadsAsChaptersAndTurns"),
+        test_id("MeetingDetailUITests", "testNarrowTranscriptPutsTheSpeakerAboveTheLine"),
     ),
     "meeting-commitments": (
         test_id("MeetingDetailUITests", "testCommitmentInboxRequiresEvidenceReviewBeforeConfirmation"),

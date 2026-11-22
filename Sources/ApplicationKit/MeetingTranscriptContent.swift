@@ -97,6 +97,9 @@ public struct MeetingTranscriptContent: Sendable, Equatable {
     public let rows: [Row]
     public let chapters: [Chapter]
     public let lineage: MeetingTranscriptLineage
+    /// Rows with their chapter headings, in reading order.
+    public let readingItems: [TranscriptReadingItem]
+    private let chapterOpenedBy: [UUID: TimeInterval]
 
     private let sourceMap: MeetingTranscriptSourceMap
     private let maximumEndTree: [TimeInterval]
@@ -116,6 +119,8 @@ public struct MeetingTranscriptContent: Sendable, Equatable {
             return $0.title < $1.title
         }
         self.lineage = lineage
+        self.readingItems = TranscriptReadingItem.items(rows: self.rows, chapters: self.chapters)
+        self.chapterOpenedBy = TranscriptReadingItem.chapterOpenings(in: self.readingItems)
 
         self.sourceMap = MeetingTranscriptSourceMap(rows: self.rows)
 
@@ -169,6 +174,12 @@ public struct MeetingTranscriptContent: Sendable, Equatable {
             rows: rows,
             chapters: chapters,
             lineage: MeetingTranscriptLineage(baseMaterial: baseMaterial))
+    }
+
+    /// What a reader following `rowID` should keep in view: the chapter
+    /// heading when that row opens a chapter, so the title stays with it.
+    public func readingKey(following rowID: UUID) -> TranscriptReadingItem.Key {
+        chapterOpenedBy[rowID].map { .chapter($0) } ?? .row(rowID)
     }
 
     /// Resolves persisted evidence coordinates to the row currently shown.

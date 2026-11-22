@@ -230,4 +230,11 @@ enum VoiceName {
     nonisolated static func of(_ speaker: Speaker) -> String {
         of(isMe: speaker.isMe, name: speaker.displayName, label: speaker.label)
     }
+
+    /// VoiceOver value: whether the name belongs to this meeting or a remembered person.
+    static func linkState(_ speaker: Speaker) -> String {
+        speaker.personID == nil
+            ? L10n.text("Meeting-only name")
+            : L10n.text("Linked to a remembered person")
+    }
 }

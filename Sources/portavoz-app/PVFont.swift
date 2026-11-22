@@ -149,6 +149,7 @@ struct PVDisplayStyle: Equatable, Sendable {
     /// Page and meeting titles.
     static let title = PVDisplayStyle(size: 40, weight: 480, relativeTo: .largeTitle)
     static let section = PVDisplayStyle(size: 21, weight: 520, relativeTo: .title2)
+    static let sectionCompact = PVDisplayStyle(size: 19, weight: 520, relativeTo: .title3)
     /// The summary lede that opens a meeting page.
     static let standfirst = PVDisplayStyle(size: 19.5, weight: 400, tracking: 0, relativeTo: .title3)
     /// Words quoted as they were heard.

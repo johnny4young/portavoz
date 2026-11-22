@@ -12,8 +12,9 @@ struct TranscriptFocusVisualStyle: Equatable, Sendable {
 }
 
 /// Pure visual policy shared by the view and characterization tests. Playback
-/// keeps the released cylinder treatment; live captions keep a much wider
-/// readable zone and become completely sharp while the user browses history.
+/// reads as a flat document and outlines its active turn instead; live
+/// captions fade gently toward the edges and become completely sharp while
+/// the user browses history.
 enum TranscriptFocusVisualPolicy {
     static func style(
         distance: CGFloat,
@@ -21,33 +22,17 @@ enum TranscriptFocusVisualPolicy {
         mode: FocusedTranscriptMode,
         isFollowing: Bool
     ) -> TranscriptFocusVisualStyle {
-        guard mode != .live || isFollowing else {
+        guard mode == .live, isFollowing else {
             return TranscriptFocusVisualStyle(opacity: 1, scale: 1, blurRadius: 0)
         }
-
         let safeReach = max(reach, 1)
-        let deadzone: CGFloat
-        let maximumFade: Double
-        let maximumShrink: CGFloat
-        let maximumBlur: CGFloat
-        switch mode {
-        case .playback:
-            deadzone = 58
-            maximumFade = 0.72
-            maximumShrink = 0.10
-            maximumBlur = 2
-        case .live:
-            deadzone = max(110, min(180, safeReach * 0.32))
-            maximumFade = 0.48
-            maximumShrink = 0.05
-            maximumBlur = 0.65
-        }
+        let deadzone = max(110, min(180, safeReach * 0.32))
         let far = max(1, safeReach - deadzone)
         let progress = min(1, max(0, (distance - deadzone) / far))
         return TranscriptFocusVisualStyle(
-            opacity: 1 - (maximumFade * Double(progress)),
-            scale: 1 - (maximumShrink * progress),
-            blurRadius: maximumBlur * progress)
+            opacity: 1 - (0.48 * Double(progress)),
+            scale: 1 - (0.05 * progress),
+            blurRadius: 0.65 * progress)
     }
 }
 
@@ -73,8 +58,7 @@ enum TranscriptFollowOwnershipPolicy {
     }
 }
 
-/// A Spotify-lyrics-style transcript: the active line stays centered while
-/// the others carousel past. Playback always follows its active line. Live
+/// A transcript that follows its active line, kept centered. Live
 /// recording follows the newest caption until the user scrolls, then yields
 /// ownership until they explicitly choose "Jump to live".
 struct FocusedTranscriptView<
@@ -135,21 +119,25 @@ struct FocusedTranscriptView<
                             ForEach(segments) { segment in
                                 let isActive = segment.id == activeID
                                 ZStack(alignment: .trailing) {
-                                    row(segment, isActive)
-                                        .visualEffect { content, geometry in
-                                            let midY = geometry.frame(
-                                                in: .scrollView(axis: .vertical)
-                                            ).midY
-                                            let style = TranscriptFocusVisualPolicy.style(
-                                                distance: abs(midY - focusY),
-                                                reach: reach,
-                                                mode: visualMode,
-                                                isFollowing: following)
-                                            return content
-                                                .opacity(style.opacity)
-                                                .scaleEffect(style.scale, anchor: .center)
-                                                .blur(radius: style.blurRadius)
-                                        }
+                                    if visualMode == .live {
+                                        row(segment, isActive)
+                                            .visualEffect { content, geometry in
+                                                let midY = geometry.frame(
+                                                    in: .scrollView(axis: .vertical)
+                                                ).midY
+                                                let style = TranscriptFocusVisualPolicy.style(
+                                                    distance: abs(midY - focusY),
+                                                    reach: reach,
+                                                    mode: visualMode,
+                                                    isFollowing: following)
+                                                return content
+                                                    .opacity(style.opacity)
+                                                    .scaleEffect(style.scale, anchor: .center)
+                                                    .blur(radius: style.blurRadius)
+                                            }
+                                    } else {
+                                        row(segment, isActive)
+                                    }
                                     accessory(segment, isActive)
                                 }
                                 .id(segment.id)

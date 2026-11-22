@@ -81,6 +81,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 21, 2026
 
+- **📖 Transcripts with chapters** — the transcript now breaks into chapters with their time and title right in the text, each turn shows who spoke and when in the margin (click the name to rename them), and the line playing now is outlined instead of everything else fading.
 - **📰 Meetings read like a document** — each meeting opens with its date, length and language above a serif title, the summary as a lede with its decision and to-do counts beside it, and the transcript right below; automations, Re-transcribe, Share and More (rename, trim, compress, delete) now live in the toolbar.
 - **🎚️ Voices table** — under each meeting's title, every voice gets a row with its share, talk time and its turns on its own strip: click a name to jump to their next turn, press Only to hear just them, and an unnamed voice that sounds like someone you know offers the name right there. Big meetings keep you and five voices in colour and fold the rest into Others.
 - **📌 Your to-dos say who said them** — on Today each open to-do now tells you who said it ("You said it", "Marta asked"), in which meeting and when, with the owner and due day on a chip; click it to land on that moment. Below, the meetings to pick back up show where you stopped listening on their voice strip, which ones you never played, their open to-dos and who spoke; the sidebar now lists just your past meetings, and Radar shows how many suggestions wait for review.

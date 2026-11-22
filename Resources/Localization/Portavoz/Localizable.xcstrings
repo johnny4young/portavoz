@@ -2881,16 +2881,6 @@
         }
       }
     },
-    "Click a line to jump there": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Haz clic en una línea para saltar allí"
-          }
-        }
-      }
-    },
     "Close": {
       "localizations": {
         "es": {

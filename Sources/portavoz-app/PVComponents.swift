@@ -121,65 +121,6 @@ extension View {
     }
 }
 
-/// A voice: dot, name and optional talk share. You wear the amber tint; an
-/// unnamed voice has an open dot on a dashed outline until it is named.
-struct VoiceChip: View {
-    enum Voice: Equatable {
-        case you
-        case named(Color)
-        case unnamed(Color)
-    }
-
-    let voice: Voice
-    let name: String
-    var share: Double?
-    var isLinked = false
-
-    var body: some View {
-        HStack(spacing: 6) {
-            dot
-            Text(label)
-            if isLinked {
-                Image(systemName: PVSymbol.success)
-                    .font(.system(size: 9, weight: .semibold))
-                    .accessibilityHidden(true)
-            }
-        }
-        .foregroundStyle(voice == .you ? PVDesign.youInk : PVDesign.ink)
-        .pvPill(background)
-        .overlay {
-            if case .unnamed = voice {
-                Capsule().strokeBorder(PVDesign.line2, style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
-            }
-        }
-    }
-
-    private var label: String {
-        guard let share else { return name }
-        return "\(name) · \(share.formatted(.percent.precision(.fractionLength(0))))"
-    }
-
-    @ViewBuilder
-    private var dot: some View {
-        switch voice {
-        case .you:
-            Circle().fill(PVDesign.you).frame(width: 8, height: 8)
-        case .named(let hue):
-            Circle().fill(hue).frame(width: 8, height: 8)
-        case .unnamed(let hue):
-            Circle().strokeBorder(hue, lineWidth: 1.6).frame(width: 8, height: 8)
-        }
-    }
-
-    private var background: Color {
-        switch voice {
-        case .you: PVDesign.youBg
-        case .named: PVDesign.line
-        case .unnamed: .clear
-        }
-    }
-}
-
 /// Live state in red, the only red text in the app: "Recording 12:04" on the
 /// red tint, or the solid "Now 3:15" playhead label.
 struct StatusPill: View {
