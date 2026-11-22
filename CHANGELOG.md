@@ -81,6 +81,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 22, 2026
 
+- **🪟 Today lives in the title bar** — the day, Ask and your automations now sit level with the window buttons instead of under an extra "Portavoz" row, so the countdown starts higher; in a narrow window Ask folds into its glyph and opens the full field.
 - **🏷️ Every meeting named on Today's timeline** — a meeting that just ended keeps its title and minutes beside the Now marker, back-to-back meetings no longer run together, and tight titles shorten to a word instead of vanishing.
 - **🎨 One colour per person on Today** — each person now keeps the same colour in the next meeting, the brief, your to-dos, Pick up and Who spoke today, and in dark mode the voices you have not heard yet stay easy to tell apart.
 - **🌐 The website wears the new palette** — portavoz.app now uses the app's green-black night, its ink and the amber it shares with Secreteo, with each voice in the hero in its own colour.

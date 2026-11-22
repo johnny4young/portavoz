@@ -34,6 +34,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("HomeUITests", "testWhoSpokeTodayLeadsTheDayAxisAndOpensItsMeetings"),
         test_id("HomeUITests", "testWorkRowsSayWhoSaidItAndWhereListeningStopped"),
         test_id("HomeUITests", "testEveryTodaySurfaceDrawsTheSamePeople"),
+        test_id("HomeUITests", "testNarrowToolbarFoldsAskIntoItsGlyph"),
     ),
     "library": (
         test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),

@@ -23447,3 +23447,20 @@ keeping the full title in the tooltip and VoiceOver label. Recorded marks keep a
 6 pt gap, giving way to the left so nothing passes now. Each meeting stays one
 button whose hit shape is its title row and its mark band, so a title set above
 a neighbour's strip cannot take that strip's clicks.
+
+## D665 — Today's header is the window's title-bar row
+
+Today drew its own "Today · date" row about 50 pt under a toolbar that only
+said "Portavoz". The day now sits in the toolbar's navigation item and Ask with
+the automations pill in a trailing item behind a flexible spacer (a Mac toolbar
+puts primary actions on the leading edge), both without the shared glass
+background. The window keeps the title "Today" for the Window menu, and
+`toolbar(removing: .title)` hides the drawn title so the day is not shown
+twice. Toolbar items take their ideal size and overflow instead of shrinking,
+so `HomeToolbarLayout` measures the day and the pill in AppKit metrics, as the
+day axis does (D664), and gives Ask 240–330 pt of what remains; a detail pane
+at the window's leading edge means the hidden sidebar's traffic lights and
+toggle share the row. Below 240 pt Ask folds into its glyph, which opens the
+same field in a popover, so nothing in the row truncates. With no text field in
+the content, the window's first key view is the sidebar toggle; under keyboard
+navigation the system focus ring shows there and stays native (D643).

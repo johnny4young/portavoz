@@ -2984,16 +2984,22 @@ The transient range marker is excluded from `TranscriptSegment` coding.
 ## Today (home) — the default destination (D495, Sep 2026)
 
 `Route.library` and the empty route render `HomeView`, the screen a daily
-caller lands on. The header row holds `Today` with the date, then the Ask field
-(`HomeAskField`: `home-ask-field`, submit `home-ask`; its leading glyph
-`home-ask-suggestions` is a menu of three ready questions, `home-ask-chip-<n>`,
-that submit through `AskModel` before routing to Ask) and, when skill offers
-await review, the green `Automations · n to review` pill (`home-automations`)
-that opens Settings on Automations. `LibraryModel.State.pendingAutomations`
+caller lands on. Its header is the window's title-bar row (`HomeToolbar`,
+D665): `Today` (`home-title`) with the date on the leading edge, then on the
+trailing edge the Ask field (`HomeAskField`: `home-ask-field`, submit
+`home-ask`; its leading glyph `home-ask-suggestions` is a plain ink-3 menu of
+three ready questions, `home-ask-chip-<n>`, that submit through `AskModel`
+before routing to Ask) and, when skill offers await review, the green
+`Automations · n to review` pill (`home-automations`) that opens Settings on
+Automations. The window keeps the title "Today" for the Window menu, but the
+toolbar draws the day instead of it. `HomeToolbarLayout` measures the day and
+the pill and gives Ask 240–330 pt; when even 240 pt does not fit, Ask folds
+into its glyph (`home-ask-open`), which opens the same field in a popover, so
+nothing in the row truncates. The page below scrolls as `home-scroll`. `LibraryModel.State.pendingAutomations`
 holds the count (`LibraryModelClient.pendingLibraryAutomations()`, backed by
 `loadSkillOfferReview()`), re-read on the agenda timer, when Today
 appears and when its window becomes key again; the library observation never waits on it. It counts the same
-validated page Settings lists. The header falls back to two rows when narrow.
+validated page Settings lists.
 
 **Next meeting hero** (`HomeNextMeetingHero`, `home-upcoming-<id>`): the first
 event of today, else the first of tomorrow. For today a `TimelineView` on

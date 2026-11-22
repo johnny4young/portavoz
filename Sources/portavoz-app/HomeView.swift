@@ -17,6 +17,7 @@ struct HomeView: View {
     /// Opens a meeting, at a moment when one is given.
     let onOpenMeeting: (MeetingID, TimeInterval?) -> Void
     @Environment(\.controlActiveState) private var controlActiveState
+    @Environment(\.locale) private var locale
 
     private var state: LibraryModel.State { model.state }
 
@@ -39,8 +40,20 @@ struct HomeView: View {
                     .frame(maxWidth: 1240, alignment: .topLeading)
                     .frame(maxWidth: .infinity, minHeight: geometry.size.height, alignment: .top)
             }
+            .accessibilityIdentifier("home-scroll")
+            .toolbar {
+                HomeToolbar(
+                    // A detail pane at the window's leading edge means the sidebar is hidden.
+                    layout: toolbarLayout(
+                        width: geometry.size.width, sidebarVisible: geometry.frame(in: .global).minX > 1),
+                    suggestions: Self.suggestedQuestions,
+                    onAsk: onAsk,
+                    onOpenAutomations: onOpenAutomations)
+            }
         }
-        .navigationTitle("Portavoz")
+        // The window keeps its title for the Window menu; the toolbar draws the day.
+        .navigationTitle("Today")
+        .toolbar(removing: .title)
         .onAppear { perform(.refreshAutomations) }
         // Re-read when the window regains focus, e.g. after reviewing in Settings.
         .onChange(of: controlActiveState) { _, state in
@@ -69,13 +82,12 @@ struct HomeView: View {
         .onChange(of: state.todayVoicesRevision, initial: true) { perform(.loadTodayVoices) }
     }
 
-    /// Header, the hero beside the rest of the agenda, the to-dos beside the
+    /// The hero beside the rest of the agenda, the to-dos beside the
     /// meetings to pick up, then who spoke today.
     private var content: some View {
         let rows = state.pickUpRows
         let page = state.pageCast(pickUp: rows)
         return VStack(alignment: .leading, spacing: PVDesign.space4) {
-            header
             agendaSection(page)
             Divider()
             ViewThatFits(in: .horizontal) {
@@ -100,58 +112,16 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Header
+    // MARK: - Toolbar
 
-    private var header: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 14) {
-                headerTitle
-                Spacer(minLength: PVDesign.space4)
-                headerTools
-            }
-            VStack(alignment: .leading, spacing: PVDesign.space3) {
-                headerTitle
-                headerTools
-            }
-        }
-    }
-
-    private var headerTitle: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 14) {
-            Text("Today")
-                .font(.body.weight(.bold))
-                .accessibilityAddTraits(.isHeader)
-                .accessibilityIdentifier("home-title")
-            Text(Date.now, format: .dateTime.weekday(.wide).month(.wide).day())
-                .foregroundStyle(PVDesign.ink3)
-        }
-        .lineLimit(1)
-        .fixedSize()
-    }
-
-    private var headerTools: some View {
-        HStack(spacing: 14) {
-            HomeAskField(suggestions: Self.suggestedQuestions, onAsk: onAsk)
-                .frame(minWidth: 240, maxWidth: 330)
-            if state.pendingAutomations > 0 {
-                Button(action: onOpenAutomations) {
-                    Label(
-                        L10n.format("Automations · %d to review", state.pendingAutomations),
-                        systemImage: PVSymbol.automations)
-                        .font(.subheadline.weight(.semibold))
-                        .lineLimit(1)
-                        .foregroundStyle(PVDesign.green)
-                        .padding(.horizontal, 11)
-                        .frame(height: 26)
-                        .background(PVDesign.greenBg, in: Capsule())
-                        .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .fixedSize()
-                .help("Review the automations Portavoz suggested from your meetings")
-                .accessibilityIdentifier("home-automations")
-            }
-        }
+    private func toolbarLayout(width: CGFloat, sidebarVisible: Bool) -> HomeToolbarLayout {
+        HomeToolbarLayout(
+            width: width,
+            sidebarVisible: sidebarVisible,
+            title: L10n.text("Today"),
+            date: Date.now.formatted(.dateTime.weekday(.wide).month(.wide).day().locale(locale)),
+            automations: state.pendingAutomations > 0
+                ? L10n.format("Automations · %d to review", state.pendingAutomations) : nil)
     }
 
     // MARK: - Agenda
