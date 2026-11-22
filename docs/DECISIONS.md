@@ -23488,10 +23488,12 @@ meeting of a week, or the seed writing today's meetings after older ones) and
 when a placeholder section is replaced; `ScrollPosition(edge: .top)` does not
 correct it because SwiftUI already reports the top. The `List` now takes its
 identity from the visible section keys, so a new section set starts at the top,
-and "No meetings yet" waits for the first read instead of flashing at launch.
+and "No meetings yet" waits for a successful meetings read instead of flashing at
+launch or describing an unreadable store as empty.
 The sidebar style's top content margin is replaced by 16 pt, the board's gap
 under the search field, and rows gain the board's air (semibold title, 6 pt
 above the strip, 5 pt extra padding). The column is
 `min: 200, ideal: 232, max: 360`: 232 pt is the board's absolute sidebar width,
 about 15% of a wide window and 26% of the 900 pt minimum; narrower would
-truncate ordinary meeting titles.
+truncate ordinary meeting titles. A width the person already dragged to is
+restored by AppKit and kept.

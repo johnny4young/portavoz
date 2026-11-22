@@ -96,6 +96,7 @@ final class LibraryModelTests: XCTestCase {
         _ = await unavailableModel.send(.observeLibrary)
         XCTAssertEqual(unavailableModel.state.loadPhase, .failed)
         XCTAssertTrue(unavailableModel.state.meetings.isEmpty)
+        XCTAssertFalse(unavailableModel.state.showsNoMeetings, "an unreadable store is not an empty library")
     }
 
     func testLaterObservedSnapshotReplacesEarlierState() async {
