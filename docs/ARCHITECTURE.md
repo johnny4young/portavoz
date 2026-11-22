@@ -3339,8 +3339,8 @@ rendering or correction-heavy search cost. Replacement text now has FTS and
 background-maintained semantic lanes, while structural composed output remains
 excluded until it has a shared result-identity contract.
 
-The complete docked playback surface enters SwiftUI through
-`MeetingDetailPlayerSection`. The section receives the current application-
+The complete docked playback surface, which spans the detail width under the
+page scroll, enters SwiftUI through `MeetingDetailPlayerSection`. The section receives the current application-
 prepared playback session, immutable waveform buckets, compression state, and
 explicit clip-export and compression actions. It owns no model, service,
 storage, audio adapter, or local state. `MeetingPlayerBar` retains only focused

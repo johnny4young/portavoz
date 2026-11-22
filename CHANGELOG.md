@@ -81,6 +81,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 22, 2026
 
+- **🎧 A player that stays out of the way** — the meeting player now docks along the bottom of the whole page with its controls on one line at any window size and the time in plain ink instead of a red pill.
 - **📜 One page per meeting** — summary, commitments, notes and transcript scroll as one page with nothing cut off in a small box, and a wide window keeps People, Apuntador and Chapters in a margin beside the text.
 
 ## November 21, 2026

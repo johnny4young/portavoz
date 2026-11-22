@@ -28,15 +28,22 @@ struct MeetingDetailPlayerSection: View {
     var body: some View {
         Group {
             if let player = values.player {
-                VStack(alignment: .leading, spacing: 10) {
-                    Divider()
-                    MeetingPlayerBar(
-                        player: player,
-                        waveform: values.waveform,
-                        exportClip: actions.exportClip)
-                    compressionRow
-                    trimRow
+                VStack(spacing: 0) {
+                    Rectangle()
+                        .fill(PVDesign.line)
+                        .frame(height: 1)
+                    VStack(alignment: .leading, spacing: 8) {
+                        MeetingPlayerBar(
+                            player: player,
+                            waveform: values.waveform,
+                            exportClip: actions.exportClip)
+                        compressionRow
+                        trimRow
+                    }
+                    .padding(.vertical, 10)
+                    .meetingPageColumn()
                 }
+                .background(PVDesign.paper)
             }
         }
         .accessibilityElement(children: .contain)
@@ -55,7 +62,7 @@ struct MeetingDetailPlayerSection: View {
         } else if let trimMessage = values.trimMessage {
             Text(trimMessage)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(PVDesign.ink3)
                 .accessibilityIdentifier("detail-trim-message")
         }
     }
@@ -72,7 +79,7 @@ struct MeetingDetailPlayerSection: View {
         } else if let compressionMessage = values.compressionMessage {
             Text(compressionMessage)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(PVDesign.ink3)
                 .accessibilityIdentifier("detail-compress-message")
         }
     }

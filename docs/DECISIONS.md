@@ -23348,3 +23348,15 @@ and Reduce Motion drops the animation. This supersedes the pane
 selection of D549 and D657's viewport padding: the page itself gives the first
 line room, so no padding is needed for the centred scroll target.
 
+## D659 — The player docks under the page as a strip, not a card
+
+The meeting player was a raised grey card whose controls wrapped onto a second
+row in a tight column, with the current time in the red "Now" pill. It now
+docks under the page scroll across the whole detail width on the paper surface,
+separated by a hairline, with its content aligned to the page column; the
+scrubber sits above one control row that never wraps (a tight column shrinks
+the clock and turns speed into a glyph). The current time is ink with equal
+digit cells: red stays reserved for live status (recording, Today's now
+marker), so the player no longer uses `StatusPill`. The page scroll ends at the player's top edge rather than
+running under an inset, so no row can sit beneath it.
+
