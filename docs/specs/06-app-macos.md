@@ -3007,7 +3007,8 @@ event of today, else the first of tomorrow. For today a `TimelineView` on
 second in the last hour, and none after the start) redraws only the kicker and
 the numeral: `NEXT MEETING · STARTS
 <time> · IN` (ink; red is kept for a meeting under way) above a 172 pt Fraunces countdown (`.countdown`, lead unit in ink,
-`.countdownTrail` smaller unit in ink 3, `MIN` or `H` beside it) whose digits
+`.countdownTrail` smaller unit in ink 3, `MIN` or `H` beside it; 120 pt
+`.countdownCompact`/`.countdownTrailCompact` below the wide arrangement) whose digits
 sit in equal cells (`DisplayTimeText`), so it keeps its width and nothing
 around it moves; `NextMeetingCountdown` gives mm:ss up to an hour and whole
 h:mm beyond it, and switches to a red `Now` (`NOW · STARTED <time>`) at the start
@@ -3057,14 +3058,21 @@ The rest of today and up to three of tomorrow's events sit in a **Later today**
 card (titled `Tomorrow` when the hero is tomorrow's; compact rows with
 icon-only Brief and Record, same identifiers) under the brief card. That side
 column, present whenever there is a hero so the card arriving never moves the
-countdown, sits beside the hero when the section is at least 940 pt wide, growing
-from 360 to 552 pt while the hero keeps at least 536 pt, and below it
-otherwise; `HomeHeroLayout` decides from the proposed width alone, so the
-ticking hero is never measured against alternative layouts. `HomeAgendaSection`
-reads that same rule (`HomeHeroLayout.isWide(width:)`) from its own width and
-tells the side column, which leaves out a brief card with no lines while
-stacked: beside the hero the empty state holds the column, under it the card
-would only push open work below the fold.
+countdown, has three arrangements chosen by `HomeHeroLayout.arrangement(width:)`
+from the proposed width alone, so the ticking hero is never measured against
+alternative layouts: **wide** from 940 pt (a hero of at least 536 pt with the
+172 pt countdown, a 44 pt gutter, the side growing from 360 to 552 pt),
+**compact** from 640 pt, about a 1,000 pt window (a hero of at least 324 pt with
+the 120 pt countdown, a 32 pt gutter, the side growing from 284 to 360 pt, so
+crossing into wide only grows the numeral), and **stacked** below that, which
+covers the 900 pt minimum window (the side under the hero, the countdown still
+at 120 pt). `HomeAgendaSection` reads that same rule from its own width and
+passes the arrangement to the hero (the countdown size) and the side column,
+which leaves out a brief card with no lines while stacked: beside the hero the
+empty state holds the column, under it the card would only push open work below
+the fold. In a brief card narrower than the name column plus a 200 pt line
+(`HomeBriefRowLayout`), each person's name moves above their line. Stacked, the
+invitees wrap onto more rows instead of truncating.
 
 When anything was recorded today or is still ahead, **Who spoke today**
 (`home-who-spoke`, `HomeWhoSpokeToday`) closes the page under a line, after

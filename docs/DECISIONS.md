@@ -23464,3 +23464,17 @@ toggle share the row. Below 240 pt Ask folds into its glyph, which opens the
 same field in a popover, so nothing in the row truncates. With no text field in
 the content, the window's first key view is the sidebar toggle; under keyboard
 navigation the system focus ring shows there and stays native (D643).
+
+## D666 — Today's countdown steps down a size to keep the brief beside it
+
+The brief card sat beside the countdown only from a 940 pt section, so a
+standard ~1,040 pt window stacked it under Record and open work started far down
+the page. `HomeHeroLayout` now has a compact arrangement between 640 and 940 pt
+in which the countdown drops from 172 to 120 pt and the side column narrows to
+284–360 pt; below 640 pt (the 900 pt minimum window) the side stacks and the
+countdown stays at 120 pt. The size is one of two discrete display roles picked
+from the proposed width, never `ViewThatFits`, so the ticking view is measured
+once; a unit test renders both numerals and checks each fits the narrowest hero
+that carries it. The compact side tops out at the wide side's minimum, so
+crossing 940 pt only grows the numeral. A brief row too narrow for the 84 pt
+name column plus a 200 pt line puts the name above the line.

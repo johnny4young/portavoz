@@ -18,11 +18,7 @@ struct HomeBriefCard: View {
 
     private static let radius: CGFloat = 16
     private static let nameWidth: CGFloat = 84
-    private static let quote: PVDisplayStyle = {
-        var style = PVDisplayStyle.heard
-        style.size = 17.5
-        return style
-    }()
+    private static let quote = PVDisplayStyle.heard.sized(17.5)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -65,17 +61,16 @@ struct HomeBriefCard: View {
 
     private var header: some View {
         Button(action: onBrief) {
-            HStack(spacing: 7) {
-                PVCardCaption(
-                    text: L10n.text("Brief · what they said last time"),
-                    systemImage: ChipLabel.generatedSymbol, tint: PVDesign.green)
-                    .lineLimit(1)
-                Spacer(minLength: PVDesign.space2)
-                if let source {
-                    Text(source.dayAndLength)
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(PVDesign.ink3)
-                        .lineLimit(1)
+            // The source's day moves under the kicker before either truncates.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 7) {
+                    caption.lineLimit(1)
+                    Spacer(minLength: PVDesign.space2)
+                    sourceDay
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    caption.lineLimit(2)
+                    sourceDay
                 }
             }
             .contentShape(.rect)
@@ -84,6 +79,22 @@ struct HomeBriefCard: View {
         .disabled(briefDisabled)
         .help("See who's coming, related meetings and open to-dos")
         .accessibilityIdentifier("home-brief-open")
+    }
+
+    private var caption: some View {
+        PVCardCaption(
+            text: L10n.text("Brief · what they said last time"),
+            systemImage: ChipLabel.generatedSymbol, tint: PVDesign.green)
+    }
+
+    @ViewBuilder
+    private var sourceDay: some View {
+        if let source {
+            Text(source.dayAndLength)
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(PVDesign.ink3)
+                .lineLimit(1)
+        }
     }
 
     /// The strip beside its shares when they fit, above them otherwise.
@@ -106,7 +117,7 @@ struct HomeBriefCard: View {
         Button {
             onOpenLine(meetingID, line.segmentID == nil ? nil : line.time)
         } label: {
-            HStack(alignment: .top, spacing: 12) {
+            HomeBriefRowLayout(nameWidth: Self.nameWidth) {
                 HStack(spacing: 7) {
                     Circle()
                         .fill(VoicePalette.color(
@@ -118,7 +129,6 @@ struct HomeBriefCard: View {
                         .foregroundStyle(PVDesign.ink)
                         .lineLimit(1)
                 }
-                .frame(width: Self.nameWidth, alignment: .leading)
                 .padding(.top, 2)
                 VStack(alignment: .leading, spacing: 3) {
                     if line.kind == .quote {
@@ -138,7 +148,6 @@ struct HomeBriefCard: View {
                 }
                 .lineLimit(3)
                 .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.vertical, 10)
             .contentShape(.rect)
@@ -181,5 +190,53 @@ struct HomeBriefCard: View {
             if due < now { return L10n.text("open, overdue") }
             return L10n.format("open, due %@", due.formatted(Meeting.dayStyle))
         }
+    }
+}
+
+/// A brief row: the name in its own column beside the line while the line keeps
+/// a readable measure, above the line in a narrower card. Expects two subviews.
+struct HomeBriefRowLayout: Layout {
+    let nameWidth: CGFloat
+    private static let spacing: CGFloat = 12
+    private static let stackedSpacing: CGFloat = 4
+    private static let minimumLineWidth: CGFloat = 200
+
+    func isBeside(width: CGFloat) -> Bool {
+        width - nameWidth - Self.spacing >= Self.minimumLineWidth
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? nameWidth + Self.spacing + Self.minimumLineWidth
+        return CGSize(width: width, height: frames(width: width, subviews: subviews).map(\.maxY).max() ?? 0)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        for (subview, frame) in zip(subviews, frames(width: bounds.width, subviews: subviews)) {
+            subview.place(
+                at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY),
+                proposal: ProposedViewSize(frame.size))
+        }
+    }
+
+    private func frames(width: CGFloat, subviews: Subviews) -> [CGRect] {
+        guard subviews.count == 2 else { return [] }
+        if isBeside(width: width) {
+            let lineX = nameWidth + Self.spacing
+            return [
+                CGRect(x: 0, y: 0, width: nameWidth, height: height(subviews[0], width: nameWidth)),
+                CGRect(x: lineX, y: 0, width: width - lineX, height: height(subviews[1], width: width - lineX))
+            ]
+        }
+        let nameHeight = height(subviews[0], width: width)
+        return [
+            CGRect(x: 0, y: 0, width: width, height: nameHeight),
+            CGRect(
+                x: 0, y: nameHeight + Self.stackedSpacing,
+                width: width, height: height(subviews[1], width: width))
+        ]
+    }
+
+    private func height(_ subview: LayoutSubview, width: CGFloat) -> CGFloat {
+        subview.sizeThatFits(ProposedViewSize(width: width, height: nil)).height
     }
 }

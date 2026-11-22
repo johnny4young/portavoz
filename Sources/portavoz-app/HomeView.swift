@@ -143,12 +143,13 @@ struct HomeView: View {
         if state.heroEvent == nil, !hasLater {
             hero(page)
         } else {
-            HomeAgendaSection {
-                hero(page)
-            } side: { isWide in
+            HomeAgendaSection { arrangement in
+                // Only the full width keeps the full numeral.
+                hero(page, compact: arrangement != .wide)
+            } side: { arrangement in
                 VStack(alignment: .leading, spacing: PVDesign.space4) {
                     // Stacked, an empty brief only pushes open work below the fold.
-                    if let briefPreview = state.heroBriefPreview, isWide || briefPreview.hasLines {
+                    if let briefPreview = state.heroBriefPreview, arrangement.isBeside || briefPreview.hasLines {
                         briefCard(briefPreview, page: page)
                     }
                     if hasLater { laterCard }
@@ -158,13 +159,14 @@ struct HomeView: View {
     }
 
     @ViewBuilder
-    private func hero(_ page: TodayPageCast) -> some View {
+    private func hero(_ page: TodayPageCast, compact: Bool = false) -> some View {
         if let next = state.heroEvent, let cast = page.hero {
             let event = next.event
             HomeNextMeetingHero(
                 event: event,
                 cast: cast,
                 isToday: next.isToday,
+                compact: compact,
                 recordingActive: recordingActive,
                 briefLoading: state.briefLoading,
                 onRecord: { route = .recording(event) },

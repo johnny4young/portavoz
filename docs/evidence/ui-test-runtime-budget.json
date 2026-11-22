@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 139
+    "expectedCaseCount": 140
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -43,6 +43,7 @@
     "HomeUITests/testEveryTodaySurfaceDrawsTheSamePeople()": 35.0,
     "HomeUITests/testNarrowToolbarFoldsAskIntoItsGlyph()": 25.0,
     "HomeUITests/testPendingAutomationsOpenTheirSettings()": 25.0,
+    "HomeUITests/testTodayKeepsEverythingAboveTheFoldAtTheMinimumWindow()": 20.0,
     "HomeUITests/testTodayShowsEverythingAboveTheFoldAndActsWithoutTyping()": 50.0,
     "HomeUITests/testWhoSpokeTodayLeadsTheDayAxisAndOpensItsMeetings()": 25.0,
     "HomeUITests/testWorkRowsSayWhoSaidItAndWhereListeningStopped()": 25.0,
