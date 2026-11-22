@@ -5,9 +5,8 @@ import SwiftUI
 /// suggestion does.
 struct HomeAskField: View {
     let suggestions: [String]
+    @Binding var question: String
     let onAsk: (String?) -> Void
-
-    @State private var question = ""
 
     var body: some View {
         HStack(spacing: PVDesign.space2) {

@@ -28,12 +28,7 @@ struct HomeToolbar: ToolbarContent {
         ToolbarSpacer(.flexible)
         ToolbarItem(placement: .automatic) {
             HStack(spacing: HomeToolbarLayout.spacing) {
-                if let width = layout.askWidth {
-                    HomeAskField(suggestions: suggestions, onAsk: onAsk)
-                        .frame(width: width)
-                } else {
-                    HomeAskButton(suggestions: suggestions, onAsk: onAsk)
-                }
+                HomeAsk(width: layout.askWidth, suggestions: suggestions, onAsk: onAsk)
                 if let automations = layout.automations {
                     Button(action: onOpenAutomations) {
                         Label(automations, systemImage: PVSymbol.automations)
@@ -110,9 +105,29 @@ struct HomeToolbarLayout: Equatable {
     }
 }
 
+/// Ask at the width the row leaves it, or folded into its glyph. One draft
+/// serves both, so folding or closing the popover keeps what was typed.
+private struct HomeAsk: View {
+    let width: CGFloat?
+    let suggestions: [String]
+    let onAsk: (String?) -> Void
+
+    @State private var question = ""
+
+    var body: some View {
+        if let width {
+            HomeAskField(suggestions: suggestions, question: $question, onAsk: onAsk)
+                .frame(width: width)
+        } else {
+            HomeAskButton(suggestions: suggestions, question: $question, onAsk: onAsk)
+        }
+    }
+}
+
 /// Ask folded into its glyph: the whole field opens in a popover.
 private struct HomeAskButton: View {
     let suggestions: [String]
+    @Binding var question: String
     let onAsk: (String?) -> Void
 
     @State private var isPresented = false
@@ -131,7 +146,7 @@ private struct HomeAskButton: View {
         .accessibilityLabel(L10n.text("Ask"))
         .accessibilityIdentifier("home-ask-open")
         .popover(isPresented: $isPresented, arrowEdge: .bottom) {
-            HomeAskField(suggestions: suggestions) { question in
+            HomeAskField(suggestions: suggestions, question: $question) { question in
                 isPresented = false
                 onAsk(question)
             }

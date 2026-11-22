@@ -384,7 +384,16 @@ final class HomeUITests: PortavozUITestCase {
         XCTAssertTrue(app.descendants(matching: .any)["home-ask-suggestions"].exists)
         attachScreenshot(of: app, named: "pr-home-narrow-ask")
         field.click()
-        field.typeText("What is still open?\n")
+        field.typeText("What is still")
+        // Closing the popover keeps the draft for the next time it opens.
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { !field.exists })
+        open.click()
+        XCTAssertTrue(field.waitForExistenceFast(timeout: 5))
+        XCTAssertEqual(field.value as? String, "What is still", "the draft survives the popover closing")
+        field.click()
+        field.typeKey(.rightArrow, modifierFlags: .command)
+        field.typeText(" open?\n")
         XCTAssertTrue(app.control(withIdentifier: "ask-question-field").waitForExistenceFast(timeout: 10))
         XCTAssertTrue(app.buttons["library-ask-button"].isSelected)
     }
