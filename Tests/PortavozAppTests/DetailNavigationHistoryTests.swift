@@ -44,12 +44,14 @@ final class DetailNavigationHistoryTests: XCTestCase {
 
     func testOriginIsTheNearestSectionBeforeTheMeeting() {
         var history = DetailNavigationHistory()
-        XCTAssertEqual(history.origin, .today, "a meeting opened at launch comes from Today")
-        history.record(from: nil, to: .ask)
-        history.record(from: .ask, to: first)
+        XCTAssertEqual(history.origin.section, .today, "a meeting opened at launch comes from Today")
+        let focused = Route.commitments(.person(PersonID(rawValue: UUID())))
+        history.record(from: nil, to: focused)
+        history.record(from: focused, to: first)
         history.record(from: first, to: second)
 
-        XCTAssertEqual(history.origin, .ask, "another meeting is not a section")
+        XCTAssertEqual(history.origin.section, .radar, "another meeting is not a section")
+        XCTAssertEqual(history.origin.route, focused, "the crumb reopens Radar with its focus")
         XCTAssertEqual(Route.commitments(nil).section, .radar)
         XCTAssertNil(Route.recording(nil).section)
     }
@@ -87,6 +89,8 @@ final class DetailNavigationHistoryTests: XCTestCase {
         XCTAssertEqual(wide.titleWidth, PVTextMetrics.width(title, PVTextMetrics.font(.body, .semibold)))
         XCTAssertLessThan(narrow.titleWidth, wide.titleWidth)
         XCTAssertEqual(hidden.titleWidth, MeetingDetailBreadcrumbLayout.minimumTitle, "traffic lights take the row")
+        let unmeasured = MeetingDetailBreadcrumbLayout(frame: PVTitleBar.Frame(), origin: "Today", title: title)
+        XCTAssertEqual(unmeasured.titleWidth, wide.titleWidth, "no truncated flash before the first measurement")
     }
 
     private func frame(_ width: CGFloat, sidebar: Bool) -> PVTitleBar.Frame {

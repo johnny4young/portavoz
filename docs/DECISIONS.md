@@ -23521,11 +23521,12 @@ the window's share of the row in `PVTitleBar` shared with Today, and gives the
 title what the actions leave, truncating its tail. The page keeps the
 default soft scroll edge, so the title bar is the page's own paper; the hard
 style kept a solid row but made every layout pass of the long page slower.
-The page title, the breadcrumb and the window title use the sidebar's display
-rule, which also drops the `{time}` the default template writes after the date
-(`TitleTemplate.withoutDateTimePrefix`); recurring-meeting keys keep using
-`withoutDatePrefix`, so default titles never fold into one meeting, and rename
-still edits the stored title. The selected meeting row draws the board's raised
+The page title, the breadcrumb and the window title drop the leading date like
+the sidebar and also the `{time}` the default template writes after it
+(`MeetingRowTitle.page`, `TitleTemplate.withoutDateTimePrefix`), because the
+kicker shows both. Rows keep the time, since their second line has no time of
+day and same-day default titles would all read "Meeting"; recurring-meeting
+keys keep using `withoutDatePrefix`, and rename still edits the stored title. The selected meeting row draws the board's raised
 card (`PVRaisedSurface`, the selected segment's surface: raise fill, 0.5 pt
 `line2` ring, soft shadow, 8 pt radius) as its
 `listRowBackground`, which covers the native highlight, and its text is explicit

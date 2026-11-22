@@ -72,12 +72,12 @@ struct MeetingDetailBreadcrumbBar: View {
 
     var body: some View {
         let origin = navigation.history.origin
-        let layout = MeetingDetailBreadcrumbLayout(frame: measured, origin: origin.title, title: title)
+        let layout = MeetingDetailBreadcrumbLayout(frame: measured, origin: origin.section.title, title: title)
         HStack(spacing: 2) {
             chevron(.back, symbol: "chevron.left", label: "Back", id: "detail-back", key: "[")
             chevron(.forward, symbol: "chevron.right", label: "Forward", id: "detail-forward", key: "]")
             HStack(spacing: MeetingDetailBreadcrumbLayout.separatorSpacing) {
-                Button(origin.title) { open(origin.route) }
+                Button(origin.section.title) { open(origin.route) }
                     .buttonStyle(.plain)
                     .foregroundStyle(PVDesign.ink3)
                     .accessibilityIdentifier("detail-breadcrumb-origin")
@@ -137,6 +137,7 @@ struct MeetingDetailBreadcrumbLayout: Equatable {
         let reserved = 2 * MeetingToolbarGlyph.side + Self.leadingGap
             + PVTextMetrics.width(origin, PVTextMetrics.font(.body)) + Self.separatorWidth
             + 2 * Self.separatorSpacing + Self.actions + PVTitleBar.reserved(sidebarVisible: frame.sidebarVisible)
-        titleWidth = min(ideal, max(Self.minimumTitle, frame.width - reserved))
+        // Until the first measurement the title keeps its ideal width instead of flashing truncated.
+        titleWidth = frame.width == 0 ? ideal : min(ideal, max(Self.minimumTitle, frame.width - reserved))
     }
 }

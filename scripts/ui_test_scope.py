@@ -346,7 +346,7 @@ def app_features(filename: str) -> set[str]:
         # Title-bar metrics shared by Today and the meeting page.
         return {"home", "meeting-chrome"}
     if lowered == "meetingrowtitle.swift":
-        return {"meeting-chrome", "library"}
+        return {"meeting-chrome", "library", "home"}
     if lowered in {"meetingdetailview.swift", "meetingdetailscene.swift"}:
         return {"meeting-chrome", "meeting-processing"}
     if lowered == "contentview.swift":

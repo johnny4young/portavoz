@@ -5,15 +5,6 @@ import Observation
 enum DetailSection: Equatable {
     case today, ask, insights, radar
 
-    var route: Route {
-        switch self {
-        case .today: .library
-        case .ask: .ask
-        case .insights: .insights
-        case .radar: .commitments(nil)
-        }
-    }
-
     var title: String {
         switch self {
         case .today: L10n.text("Today")
@@ -67,10 +58,10 @@ struct DetailNavigationHistory: Equatable {
         return stepping
     }
 
-    /// The section a meeting was opened from: the nearest earlier destination
-    /// that is not another meeting or a recording, else Today.
-    var origin: DetailSection {
-        back.reversed().lazy.compactMap(\.section).first ?? .today
+    /// Where a meeting was opened from: the nearest earlier destination that
+    /// is not another meeting or a recording, with its focus, else Today.
+    var origin: (section: DetailSection, route: Route) {
+        back.reversed().lazy.compactMap { route in route.section.map { ($0, route) } }.first ?? (.today, .library)
     }
 
     private static func step(

@@ -46,10 +46,18 @@ struct ContentView: View {
         self.services = services
         let libraryModel = services.makeLibraryModel()
         _libraryModel = State(initialValue: libraryModel)
-        // A deleted meeting drops out of back and forward.
+        // A deleted meeting drops out of back and forward, and a recording route
+        // returns only to a live session: on an idle one it would start capture.
         _navigation = State(initialValue: DetailNavigation { route in
-            guard case .meeting(let id) = route, libraryModel.state.meetingsRead else { return true }
-            return libraryModel.state.meetings.contains { $0.id == id }
+            switch route {
+            case .recording:
+                return services.recording.canReturnToLiveSession
+            case .meeting(let id):
+                guard libraryModel.state.meetingsRead else { return true }
+                return libraryModel.state.meetings.contains { $0.id == id }
+            default:
+                return true
+            }
         })
         _insightsModel = State(initialValue: services.makeInsightsModel())
         _askModel = State(initialValue: services.makeAskModel())

@@ -57,7 +57,7 @@ private extension MeetingDetailView {
         _ detail: MeetingReviewReadModel,
         transcriptPresentation: MeetingDetailTranscriptPresentation
     ) -> some View {
-        let title = MeetingRowTitle.display(detail.meeting.title)
+        let title = MeetingRowTitle.page(detail.meeting.title)
         return MeetingDetailFlowHost(
             flow: flow,
             values: flowValues(detail),
