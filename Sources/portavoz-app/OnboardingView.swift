@@ -454,7 +454,7 @@ struct OnboardingView: View {
 /// they rise with the captured level and glow in the user's amber.
 struct FirstListenWaveform: View {
     /// Keeps idle bars at 3:1 against paper in both appearances.
-    static let idleOpacity = 0.75
+    nonisolated static let idleOpacity = 0.75
 
     let level: Double
     let active: Bool
