@@ -2126,6 +2126,14 @@ extension ArchitectureDependencyTests {
             systemGreys.filter { $0 != "PVDesign.swift" }, [],
             "secondary text is ink 3 (.ink3); system greys fall under 4.5:1 on paper")
 
+        let tintAsInk = try Self.sourceMatches(
+            under: "Sources/portavoz-app",
+            pattern: #"foregroundStyle\(\.tint\b|AnyShapeStyle\(\.tint\b"#,
+            codeOnly: true)
+        XCTAssertEqual(
+            tintAsInk, [],
+            "what Portavoz draws uses PVDesign.accent; the root tint is ink 3 in dark for native controls")
+
         let nativeDefaultButtons = try Self.sourceMatches(
             under: "Sources/portavoz-app",
             pattern: #"keyboardShortcut\(\.defaultAction\)(?!\s*\.buttonStyle\(\.pvPrimary\))"#

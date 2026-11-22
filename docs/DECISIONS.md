@@ -23395,5 +23395,5 @@ and ink 3 in dark: native switches, checkboxes and sliders draw a white knob or
 tick on it, and the dark ink left the knob near 1.5:1. The native default
 button would put its white label on that tint, so every Return button is
 `.pvPrimary`. `PVDesign.accent` stays the ink for everything Portavoz draws
-itself. List sections, the Settings form and segmented pickers stay native
+itself, so active or emphasized text never reads the tint. List sections, the Settings form and segmented pickers stay native
 (D646); only their text colour changes.

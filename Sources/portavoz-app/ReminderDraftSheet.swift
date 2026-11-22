@@ -153,7 +153,7 @@ private extension ReminderDraftSheet {
             .padding(.horizontal, 8)
             .padding(.vertical, 2)
             .background(PVDesign.accent.opacity(0.12), in: Capsule())
-            .foregroundStyle(.tint)
+            .foregroundStyle(PVDesign.accent)
     }
 
     var controls: some View {

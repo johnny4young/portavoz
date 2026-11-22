@@ -404,7 +404,7 @@ struct MeetingGeneratedDocumentSection: View {
             }
             .buttonStyle(.plain)
             .font(.caption)
-            .foregroundStyle(.tint)
+            .foregroundStyle(PVDesign.accent)
             .accessibilityIdentifier("\(identifier)-confirm")
         }
     }

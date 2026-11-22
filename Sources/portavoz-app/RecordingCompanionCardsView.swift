@@ -166,7 +166,7 @@ struct RecordingCompanionCardsView: View {
                 }
                 .buttonStyle(.plain)
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(.tint)
+                .foregroundStyle(PVDesign.accent)
                 .accessibilityIdentifier("recording-companion-show-all-\(identity)")
             } else if row.presentation == .full {
                 Button(L10n.text("Show less")) {
@@ -174,7 +174,7 @@ struct RecordingCompanionCardsView: View {
                 }
                 .buttonStyle(.plain)
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(.tint)
+                .foregroundStyle(PVDesign.accent)
                 .accessibilityIdentifier("recording-companion-show-less-\(identity)")
             }
             Spacer()

@@ -18,7 +18,7 @@ struct WhisperModelRow: View {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: active ? "largecircle.fill.circle" : "circle")
                         .foregroundStyle(
-                            active ? AnyShapeStyle(.tint) : AnyShapeStyle(.ink3))
+                            active ? AnyShapeStyle(PVDesign.accent) : AnyShapeStyle(.ink3))
                     VStack(alignment: .leading, spacing: 3) {
                         Text(L10n.text(
                             variant.compact

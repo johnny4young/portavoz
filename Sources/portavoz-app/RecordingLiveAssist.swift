@@ -32,7 +32,7 @@ struct RecordingObjectivesPanel: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(
                     isDraftEmpty
-                        ? AnyShapeStyle(.ink3) : AnyShapeStyle(.tint))
+                        ? AnyShapeStyle(.ink3) : AnyShapeStyle(PVDesign.accent))
                 .disabled(isDraftEmpty)
                 .accessibilityLabel(L10n.text("Add objective (⏎)"))
                 .accessibilityIdentifier("recording-objective-add")
@@ -80,7 +80,7 @@ struct RecordingObjectivesPanel: View {
                 Image(systemName: objective.checkedAt == nil
                     ? "circle" : PVSymbol.success)
                     .foregroundStyle(objective.checkedAt == nil
-                        ? AnyShapeStyle(.ink3) : AnyShapeStyle(.tint))
+                        ? AnyShapeStyle(.ink3) : AnyShapeStyle(PVDesign.accent))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(L10n.text("Toggle objective"))

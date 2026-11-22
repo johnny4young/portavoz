@@ -407,7 +407,7 @@ extension InsightsView {
                     .fixedSize(horizontal: false, vertical: true)
                 Text(detail)
                     .font(.caption)
-                    .foregroundStyle(.ink3)
+                    .foregroundStyle(PVDesign.ink2)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)

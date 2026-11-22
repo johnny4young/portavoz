@@ -23,7 +23,7 @@ struct RecordingNotesPanel: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(
-                    isDraftEmpty ? AnyShapeStyle(.ink3) : AnyShapeStyle(.tint))
+                    isDraftEmpty ? AnyShapeStyle(.ink3) : AnyShapeStyle(PVDesign.accent))
                 .disabled(isDraftEmpty)
                 .help(L10n.text("Add note (⏎)"))
                 .accessibilityLabel(L10n.text("Add note (⏎)"))
@@ -52,7 +52,7 @@ struct RecordingNotesPanel: View {
 
     private func note(_ item: ContextItem) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Text("▸").foregroundStyle(.tint)
+            Text("▸").foregroundStyle(PVDesign.accent)
             Text(ClockFormat.mmss(item.timestamp))
                 .font(.caption2.monospacedDigit())
                 .foregroundStyle(.ink3)

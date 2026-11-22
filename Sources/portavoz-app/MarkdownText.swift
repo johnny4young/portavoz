@@ -39,7 +39,7 @@ struct MarkdownText: View {
                     // Granola-style: the marker distinguishes it from a pure
                     // AI summary ("this came from what YOU flagged").
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text("▸").foregroundStyle(.tint)
+                        Text("▸").foregroundStyle(PVDesign.accent)
                         Text(inline(String(line.dropFirst(4))))
                             .fontWeight(.medium)
                     }

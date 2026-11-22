@@ -203,12 +203,12 @@ private extension RecordingAssistPanel {
             .padding(.horizontal, 9)
             .padding(.vertical, 5)
             .background(
-                isActive ? AnyShapeStyle(.tint.opacity(0.16)) : AnyShapeStyle(.clear),
+                isActive ? AnyShapeStyle(PVDesign.accent.opacity(0.16)) : AnyShapeStyle(.clear),
                 in: Capsule())
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .foregroundStyle(isActive ? AnyShapeStyle(.tint) : AnyShapeStyle(.ink3))
+        .foregroundStyle(isActive ? AnyShapeStyle(PVDesign.accent) : AnyShapeStyle(.ink3))
         .accessibilityIdentifier("recording-assist-tab-\(candidate.rawValue)")
         .accessibilityAddTraits(isActive ? .isSelected : [])
     }
