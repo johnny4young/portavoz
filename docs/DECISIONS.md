@@ -23339,11 +23339,12 @@ the standfirst, only while the reading column keeps at least 540 points;
 otherwise the page is one column with the margin between the summary and the
 transcript. Below 640 points of column the summary's kicker and counts move
 above the lede, and the transcript's speaker margin moves above each turn
-(D657 used 520, which a one-column page at the minimum window never reached). Playback follows the active row only while audio plays and the transcript is
-on screen, so it never pulls the reader away from the header or summary; an
-explicit seek, citation or turn step brings its row into view even when asked
-twice; opening a meeting never scrolls past the header, and Reduce Motion
-drops the animation. This supersedes the pane
+(D657 used 520, which a one-column page at the minimum window never reached).
+Playback follows the active row only while audio plays and the transcript
+reaches the upper half of the page, so it never pulls the reader away from the
+header or summary; an explicit seek, citation or turn step brings its row into
+view even when asked twice; opening a meeting never scrolls past the header,
+and Reduce Motion drops the animation. This supersedes the pane
 selection of D549 and D657's viewport padding: the page itself gives the first
 line room, so no padding is needed for the centred scroll target.
 

@@ -53,13 +53,22 @@ struct TranscriptSegmentsView: View {
             .onGeometryChange(for: Bool.self) { proxy in
                 MeetingDetailPageMetrics.usesInlineGutter(width: proxy.size.width)
             } action: { isNarrow = $0 }
+            // A sliver under the summary is not reading the transcript; follow
+            // only once it reaches the upper half of the page.
             .onGeometryChange(for: Bool.self) { proxy in
-                proxy.bounds(of: .scrollView(axis: .vertical))
-                    .map { proxy.frame(in: .local).intersects($0) } ?? true
+                proxy.bounds(of: .scrollView(axis: .vertical)).map { visible in
+                    let frame = proxy.frame(in: .local)
+                    return frame.minY <= visible.midY && frame.maxY >= visible.minY
+                } ?? true
             } action: { isOnScreen = $0 }
             .onChange(of: activeRowID) { _, id in
                 guard player?.isPlaying == true, isOnScreen, let id else { return }
                 scroll(proxy, to: content.readingKey(following: id))
+            }
+            // Switching layouts changes row heights, so recenter the active row.
+            .onChange(of: isNarrow) { _, _ in
+                guard player?.isPlaying == true, isOnScreen, let activeRowID else { return }
+                scroll(proxy, to: content.readingKey(following: activeRowID))
             }
             .onChange(of: revealCount) { _, _ in
                 guard let focusedRowID else { return }

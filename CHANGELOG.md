@@ -81,7 +81,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 22, 2026
 
-- **📜 One page per meeting** — a meeting now scrolls as a single page: the summary, commitments to confirm, notes and transcript follow each other at full height, with nothing cut off in a small box, the first chapter starts right under the summary, and a wide window keeps People, Apuntador and Chapters in a margin beside the text while a narrow one moves them below the summary.
+- **📜 One page per meeting** — summary, commitments, notes and transcript scroll as one page with nothing cut off in a small box, and a wide window keeps People, Apuntador and Chapters in a margin beside the text.
 
 ## November 21, 2026
 

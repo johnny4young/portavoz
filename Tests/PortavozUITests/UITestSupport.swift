@@ -74,6 +74,10 @@ extension XCUIApplication {
             page.scroll(byDeltaX: 0, deltaY: delta)
         }
         guard target.waitForStableFrame(timeout: 2) else { return false }
+        // A header with many voices can be taller than the page; its top is enough.
+        if section == .summary {
+            return target.frame.minY >= page.frame.minY - 1 && target.frame.minY < page.frame.maxY
+        }
         return page.frame.contains(target.frame)
             || target.revealVertically(in: page, maxScrolls: 12, maximumStep: 800)
     }

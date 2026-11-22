@@ -512,8 +512,8 @@ outlined on the raised surface instead of tinted, and playback no longer fades,
 shrinks or blurs distant rows; the live caption viewport keeps that treatment.
 When the active row opens a chapter, playback follows its heading
 (`readingKey(following:)`) so the title stays in view. The page follows the
-active row only while audio plays and the transcript is on screen; an explicit
-seek, citation or turn step scrolls its row into view (a reveal counter in
+active row only while audio plays and the transcript reaches the upper half of
+the page; an explicit seek, citation or turn step scrolls its row into view (a reveal counter in
 `MeetingTranscriptNavigationState` makes a repeated request scroll again),
 opening a meeting never scrolls past the header, and Reduce Motion drops the
 animation (D658).
