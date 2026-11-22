@@ -936,6 +936,16 @@ final class TranscriptFocusVisualPolicyTests: XCTestCase {
         XCTAssertEqual(style.blurRadius, 0, accuracy: 0.001)
     }
 
+    func testPlaybackStaysFlatAtEveryDistance() {
+        let style = TranscriptFocusVisualPolicy.style(
+            distance: 400,
+            reach: 400,
+            mode: .playback,
+            isFollowing: true)
+
+        XCTAssertEqual(style, TranscriptFocusVisualStyle(opacity: 1, scale: 1, blurRadius: 0))
+    }
+
     func testLiveEdgeTreatmentRemainsReadable() {
         let style = TranscriptFocusVisualPolicy.style(
             distance: 400,

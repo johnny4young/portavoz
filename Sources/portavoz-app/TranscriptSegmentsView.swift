@@ -45,6 +45,8 @@ struct TranscriptSegmentsView: View {
                 segments: content.readingItems,
                 activeID: activeRowID.map(content.readingKey(following:)),
                 height: carouselHeight,
+                // Switching layouts changes row heights, so recenter the active row.
+                followSignal: isNarrow ? 1 : 0,
                 scrollAccessibilityIdentifier: "detail-transcript-scroll"
             ) { item, _ in
                 itemView(item, isActive: item.id == activeRowID.map { .row($0) })
@@ -126,7 +128,7 @@ struct TranscriptSegmentsView: View {
                 MeetingTranscriptRowView(
                     row: row,
                     startsTurn: startsTurn,
-                    speaker: startsTurn ? speakers.first { $0.id == row.speakerID } : nil,
+                    speaker: speakers.first { $0.id == row.speakerID },
                     cast: voiceCast,
                     isActive: isActive,
                     isNarrow: isNarrow,
@@ -193,36 +195,47 @@ private struct TranscriptChapterRow: View {
     let onSeek: (TimeInterval) -> Void
 
     var body: some View {
-        Button {
-            onSeek(chapter.startTime)
-        } label: {
-            HStack(alignment: .firstTextBaseline, spacing: isNarrow ? 12 : TranscriptReadingLayout.marginGap) {
-                Text(ClockFormat.mmss(chapter.startTime))
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(PVDesign.ink3)
-                    .frame(width: isNarrow ? nil : TranscriptReadingLayout.marginWidth, alignment: .trailing)
-                Text(chapter.title)
-                    .pvDisplay(isNarrow ? .sectionCompact : .section)
-                    .foregroundStyle(PVDesign.ink)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                Spacer(minLength: 0)
+        // Without audio the heading is plain text: a disabled button would dim the title.
+        Group {
+            if canSeek {
+                Button {
+                    onSeek(chapter.startTime)
+                } label: {
+                    heading
+                }
+                .buttonStyle(.plain)
+            } else {
+                heading
             }
-            .padding(.top, 11)
-            .padding(.bottom, 4)
-            .overlay(alignment: .top) {
-                Rectangle().fill(PVDesign.line2).frame(height: 1)
-            }
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .disabled(!canSeek)
         .padding(.top, 10)
         .help(canSeek
             ? L10n.text("Jump to this moment")
             : L10n.text("Jumping needs audio, and this meeting has none"))
         .accessibilityAddTraits(.isHeader)
         .accessibilityIdentifier("transcript-chapter-\(Int(chapter.startTime))")
+    }
+
+    private var heading: some View {
+        HStack(alignment: .firstTextBaseline, spacing: isNarrow ? 12 : TranscriptReadingLayout.marginGap) {
+            Text(ClockFormat.mmss(chapter.startTime))
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(PVDesign.ink3)
+                .frame(width: isNarrow ? nil : TranscriptReadingLayout.marginWidth, alignment: .trailing)
+            Text(chapter.title)
+                .pvDisplay(isNarrow ? .sectionCompact : .section)
+                .foregroundStyle(PVDesign.ink)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+            Spacer(minLength: 0)
+        }
+        .padding(.top, 11)
+        .padding(.bottom, 4)
+        .overlay(alignment: .top) {
+            Rectangle().fill(PVDesign.line2).frame(height: 1)
+        }
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -263,8 +276,14 @@ private struct MeetingTranscriptRowView: View {
         .contentShape(Rectangle())
         .onTapGesture { if canSeek { onSeek(row.startTime) } }
         .accessibilityElement(children: .contain)
+        // Continuation lines show no name, so VoiceOver still hears whose line it is.
+        .accessibilityLabel(voiceName)
         .accessibilityIdentifier("transcript-segment-\(row.id.uuidString)")
         .accessibilityAddTraits(isActive ? .isSelected : [])
+    }
+
+    private var voiceName: String {
+        speaker.map { VoiceName.of(isMe: $0.isMe, name: VoiceCast.name($0.displayName), label: $0.label) } ?? "?"
     }
 
     @ViewBuilder
@@ -286,7 +305,7 @@ private struct MeetingTranscriptRowView: View {
     /// read in amber ink.
     private var speakerButton: some View {
         let isNamed = speaker.map { $0.isMe || VoiceCast.name($0.displayName) != nil } ?? false
-        let name = speaker.map(VoiceName.of) ?? "?"
+        let name = voiceName
         return Button {
             if let speaker { onRenameTap(speaker) }
         } label: {
