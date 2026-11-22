@@ -2,11 +2,10 @@ import ApplicationKit
 import PortavozCore
 import SwiftUI
 
-/// Q12/D316 — the proposal moment, at zero vertical cost. Meeting Detail's
-/// column is deliberately packed (the artifacts viewport is height-ratcheted),
-/// so proposals surface as a badged menu beside the document actions instead
-/// of a banner: nothing here executes anything, opening an offer is the only
-/// road to the confirmation sheet, and dismissing is durable and terminal.
+/// Q12/D316 — the proposal moment, at zero vertical cost: proposals surface
+/// as a counted pill in the meeting toolbar instead of a banner. Nothing here
+/// executes anything, opening an offer is the only road to the confirmation
+/// sheet, and dismissing is durable and terminal.
 struct SkillOfferMenu: View {
     let offers: [MeetingSkillOffer]
     let hasSummary: Bool
@@ -43,20 +42,15 @@ struct SkillOfferMenu: View {
                             "skill-offer-dismiss-\(offer.kind.rawValue)")
                 }
             } label: {
-                Image(systemName: PVSymbol.automations)
-                    .font(.system(size: 13))
-                    .foregroundStyle(PVDesign.accent)
-                    .frame(width: 30, height: 30)
-                    .background(Circle().fill(PVDesign.accent.opacity(0.16)))
-                    .overlay(alignment: .topTrailing) {
-                        Text("\(offers.count)")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(PVDesign.onInk)
-                            .padding(.horizontal, 4)
-                            .background(Capsule().fill(PVDesign.accent))
-                    }
+                Label(countTitle, systemImage: PVSymbol.automations)
+                    .labelStyle(.titleAndIcon)
+                    .foregroundStyle(PVDesign.green)
+                    .pvPill(PVDesign.greenBg)
+                    .contentShape(Capsule())
             }
-            .menuStyle(.borderlessButton)
+            // A plain button menu keeps the pill; the toolbar strips a borderless one.
+            .menuStyle(.button)
+            .buttonStyle(.plain)
             .menuIndicator(.hidden)
             .fixedSize()
             .accessibilityLabel(L10n.text("Automations"))
@@ -66,6 +60,12 @@ struct SkillOfferMenu: View {
                 // scans call-site prose rather than evaluating Swift concatenation.
                 "See what Portavoz can prepare from this meeting. You confirm each one."))
         }
+    }
+
+    private var countTitle: String {
+        offers.count == 1
+            ? L10n.text("1 automation")
+            : L10n.format("%d automations", offers.count)
     }
 
     private func openTitle(for offer: MeetingSkillOffer) -> String {

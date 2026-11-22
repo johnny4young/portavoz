@@ -33,6 +33,7 @@ struct MeetingDetailArtifactsSection<Content: View>: View {
                 content()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, MeetingDetailPrimaryColumnLayout.materialBottomInset)
             .onGeometryChange(for: CGFloat.self) { proxy in
                 proxy.size.height
             } action: { height in

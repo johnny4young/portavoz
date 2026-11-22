@@ -806,6 +806,40 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testMeetingPageReadsLikeADocument() throws {
+        let app = try launchOnSeededMeeting(aiSuggestions: true)
+        defer { finishUITestApplication(app) }
+
+        let kicker = app.control(withIdentifier: "detail-kicker")
+        XCTAssertTrue(kicker.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(
+            renderedText(of: kicker).localizedCaseInsensitiveContains("30 min")
+                && renderedText(of: kicker).localizedCaseInsensitiveContains("Español"),
+            "the line above the title carries duration and spoken language")
+        XCTAssertTrue(app.buttons["detail-privacy-receipt"].exists, "the privacy receipt sits on the date line")
+        XCTAssertTrue(app.buttons["detail-title-suggestion"].waitForExistenceFast(timeout: 10))
+
+        for identifier in ["skill-offer-menu", "detail-refine", "detail-export-menu", "detail-more-menu"] {
+            XCTAssertTrue(
+                app.control(withIdentifier: identifier).waitForExistenceFast(timeout: 10),
+                "\(identifier) lives in the toolbar")
+        }
+        let standfirst = app.control(withIdentifier: "detail-standfirst")
+        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
+        XCTAssertTrue(standfirst.waitForExistenceFast(timeout: 10), "the summary opens the page as its lede")
+        XCTAssertTrue(app.control(withIdentifier: "summary-tab-0").isSelected)
+        XCTAssertTrue(app.control(withIdentifier: "summary-tab-todos").waitForLabelContaining("0/1", timeout: 5))
+        XCTAssertTrue(app.control(withIdentifier: "detail-header-section").waitForStableFrame(timeout: 5))
+        attachScreenshot(of: app, named: "pr-meeting-document-header")
+
+        let more = app.control(withIdentifier: "detail-more-menu")
+        more.click()
+        XCTAssertTrue(app.menuItems["detail-rename"].waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(app.menuItems["detail-delete"].exists, "deleting moves behind More")
+        typeKey(.escape, modifierFlags: [], in: app)
+    }
+
+    @MainActor
     func testFailedDurableProcessingOffersOneRecoveryAction() throws {
         let app = try launchOnSeededMeeting(processingFailure: true)
         defer { finishUITestApplication(app) }
@@ -2019,13 +2053,17 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.menuItems["player-skip-silence"].waitForExistenceFast(timeout: 5),
             "the player must offer skipping dead time")
+        typeKey(.escape, modifierFlags: [], in: app)
+        let more = app.control(withIdentifier: "detail-more-menu")
+        XCTAssertTrue(more.waitForHittable(timeout: 5))
+        more.click()
+        XCTAssertTrue(
+            app.menuItems["detail-compress-audio"].waitForExistenceFast(timeout: 5),
+            "raw seeded meeting audio must keep its compression action")
         XCTAssertFalse(
-            app.menuItems["player-trim-silence"].exists,
+            app.menuItems["detail-trim-silence"].exists,
             "a meeting without a long silent tail must not offer to trim it")
         typeKey(.escape, modifierFlags: [], in: app)
-        XCTAssertTrue(
-            app.control(withIdentifier: "detail-compress-audio").exists,
-            "raw seeded meeting audio must keep its compression action")
         XCTAssertTrue(play.exists)
         let onlyMe = app.buttons["voice-only-Me"]
         XCTAssertTrue(onlyMe.waitForHittable(timeout: 5), "a meeting with two voices offers per-voice playback")

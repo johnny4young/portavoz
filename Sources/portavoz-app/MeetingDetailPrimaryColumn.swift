@@ -28,6 +28,7 @@ struct MeetingDetailPrimaryColumn<Material: View, Transcript: View, Player: View
                                 material()
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.bottom, MeetingDetailPrimaryColumnLayout.materialBottomInset)
                         }
                         .accessibilityElement(children: .contain)
                         .accessibilityIdentifier("detail-artifacts-section")
@@ -80,6 +81,9 @@ enum MeetingDetailPrimaryColumnLayout {
     private static let minimumMaterialHeight: CGFloat = 180
     private static let minimumTranscriptHeight: CGFloat = 160
     private static let sectionSpacing: CGFloat = 10
+
+    /// Room under the last block for a chip that straddles its closing rule.
+    static let materialBottomInset: CGFloat = 11
 
     /// Measured docked player height, reserved until the asynchronous player
     /// renders so the layout does not switch panes when playback arrives.

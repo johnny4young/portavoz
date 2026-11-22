@@ -1482,10 +1482,10 @@ extension ArchitectureDependencyTests {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            540)
+            548)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
-            18)
+            19)
 
         let detailZero = try Self.jsonObject(
             at: "docs/evidence/meeting-detail-performance-baseline-20260801.json")

@@ -101,11 +101,13 @@ final class MeetingDetailFlowState {
     enum DialogRoute: Identifiable {
         case publishGist
         case choosePerson(PersonRememberOffer, candidates: [Person])
+        case trimSilence
 
         var id: String {
             switch self {
             case .publishGist: "publish-gist"
             case .choosePerson: "choose-person"
+            case .trimSilence: "trim-silence"
             }
         }
     }

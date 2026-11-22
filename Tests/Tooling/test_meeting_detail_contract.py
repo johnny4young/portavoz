@@ -44,10 +44,10 @@ class MeetingDetailContractTests(unittest.TestCase):
             validated["interactionSources"],
             list(contract.INTERACTION_SOURCE_PATHS),
         )
-        self.assertEqual(len(validated["featureOwnership"]), 18)
+        self.assertEqual(len(validated["featureOwnership"]), 19)
         self.assertEqual(
             sum(len(owner["tests"]) for owner in validated["featureOwnership"]),
-            33,
+            34,
         )
         self.assertEqual(
             validated["performanceMeasurementLimitations"],
@@ -220,7 +220,7 @@ class MeetingDetailContractTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertRegex(
             result.stdout,
-            r"\d+ signals, 18 owners, 33 UI tests",
+            r"\d+ signals, 19 owners, 34 UI tests",
         )
 
 

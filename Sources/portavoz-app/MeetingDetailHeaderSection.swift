@@ -4,9 +4,8 @@ import SwiftUI
 
 struct MeetingDetailHeaderValues {
     let title: String
-    let date: String
-    let duration: String?
-    let segmentCount: String
+    /// Day · time · duration · spoken language.
+    let kicker: String
     let titleSuggestion: String?
     let speakers: [Speaker]
     let voiceTable: MeetingVoiceTable
@@ -63,26 +62,25 @@ struct MeetingDetailHeaderActions {
 ///
 /// The section renders immutable values and emits explicit gestures. It has no
 /// meeting model, application service, persistence, or provider dependency.
-struct MeetingDetailHeaderSection<ActionContent: View>: View {
+struct MeetingDetailHeaderSection<Receipt: View>: View {
     let values: MeetingDetailHeaderValues
     let actions: MeetingDetailHeaderActions
-    private let actionContent: ActionContent
+    private let receipt: Receipt
 
     init(
         values: MeetingDetailHeaderValues,
         actions: MeetingDetailHeaderActions,
-        @ViewBuilder actionContent: () -> ActionContent
+        @ViewBuilder receipt: () -> Receipt
     ) {
         self.values = values
         self.actions = actions
-        self.actionContent = actionContent()
+        self.receipt = receipt()
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            kickerRow
             titleRow
-            actionContent
-            factsRow
             voicesTable
             suggestionsRow
         }
@@ -90,14 +88,25 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
         .accessibilityIdentifier("detail-header-section")
     }
 
+    private var kickerRow: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            PVCardCaption(text: values.kicker, tint: PVDesign.ink3)
+                .lineLimit(1)
+                .accessibilityIdentifier("detail-kicker")
+            Spacer(minLength: 8)
+            receipt
+        }
+    }
+
     private var titleRow: some View {
-        HStack(spacing: 8) {
-            Text(values.title).pvDisplay(.title)
-            Button(action: actions.renameMeeting) {
-                Image(systemName: "pencil").foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
-            .help("Rename the meeting")
+        HStack(spacing: 14) {
+            Text(values.title)
+                .pvDisplay(.title)
+                .contextMenu {
+                    Button("Rename…", action: actions.renameMeeting)
+                }
+                .accessibilityAction(named: L10n.text("Rename…")) { actions.renameMeeting() }
+                .accessibilityIdentifier("detail-title")
             if let suggestion = values.titleSuggestion {
                 DismissibleSuggestionChip(
                     kind: .ai,
@@ -111,18 +120,6 @@ struct MeetingDetailHeaderSection<ActionContent: View>: View {
             }
             Spacer(minLength: 0)
         }
-    }
-
-    private var factsRow: some View {
-        HStack(spacing: 12) {
-            Text(values.date)
-            if let duration = values.duration {
-                Text(duration)
-            }
-            Text(values.segmentCount)
-        }
-        .font(.callout)
-        .foregroundStyle(.secondary)
     }
 
     @ViewBuilder

@@ -63,6 +63,7 @@ struct MeetingDetailFlowActions {
     let renameSpeaker: @MainActor (Speaker, String) -> Void
     let createStructure: @MainActor (Recipe) -> Void
     let publishGist: @MainActor () -> Void
+    let trimSilence: @MainActor () -> Void
     let linkPerson: @MainActor (PersonRememberOffer, CanonicalPersonSelection) -> Void
     let clearRefine: @MainActor () -> Void
     let applyRefine: @MainActor (RefineDraft) -> Void
@@ -302,15 +303,24 @@ struct MeetingDetailFlowHost<Content: View>: View {
                 "The full transcript will leave your Mac for GitHub as a SECRET (unlisted) gist.")
         case .choosePerson(let offer, _):
             L10n.format("Who is %@?", offer.speaker.displayName ?? "")
+        case .trimSilence:
+            L10n.text("Remove the silence at the end?")
         case nil:
             ""
         }
     }
 
     private var dialogMessage: String? {
-        guard case .choosePerson = flow.dialog else { return nil }
-        return L10n.text(
-            "Choose an existing person or keep this as a separate person. Portavoz never merges people automatically.")
+        switch flow.dialog {
+        case .choosePerson:
+            L10n.text(
+                // swiftlint:disable:next line_length
+                "Choose an existing person or keep this as a separate person. Portavoz never merges people automatically.")
+        case .trimSilence:
+            L10n.text("The audio after the last phrase is deleted for good, and transcript edits are reset.")
+        case .publishGist, nil:
+            nil
+        }
     }
 
     @ViewBuilder
@@ -321,6 +331,11 @@ struct MeetingDetailFlowHost<Content: View>: View {
             Button("Cancel", role: .cancel) {}
         case .choosePerson:
             personChoiceButtons
+        case .trimSilence:
+            Button("Remove", role: .destructive, action: actions.trimSilence)
+                .accessibilityIdentifier("detail-trim-silence-confirm")
+            Button("Cancel", role: .cancel) {}
+                .accessibilityIdentifier("detail-trim-silence-cancel")
         case nil:
             EmptyView()
         }

@@ -311,16 +311,6 @@
         }
       }
     },
-    "%d segments": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%d segmentos"
-          }
-        }
-      }
-    },
     "%d sources": {
       "localizations": {
         "es": {
@@ -387,16 +377,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Se registró 1 intento de transferencia remota. Es posible que el contenido haya salido de este Mac."
-          }
-        }
-      }
-    },
-    "1 segment": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "1 segmento"
           }
         }
       }
@@ -7809,16 +7789,6 @@
         }
       }
     },
-    "Move this meeting to Recently deleted": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mover esta reunión a Eliminadas recientemente"
-          }
-        }
-      }
-    },
     "Moving recording %d of %d…": {
       "localizations": {
         "es": {
@@ -11515,16 +11485,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Renombrar hablante"
-          }
-        }
-      }
-    },
-    "Rename the meeting": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Renombrar la reunión"
           }
         }
       }
@@ -18623,6 +18583,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cuenta las preguntas que hizo esta persona"
+          }
+        }
+      }
+    },
+    "Copy summary": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar resumen"
+          }
+        }
+      }
+    },
+    "Share": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compartir"
+          }
+        }
+      }
+    },
+    "Re-transcribe": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a transcribir"
+          }
+        }
+      }
+    },
+    "Move to Recently deleted": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover a Eliminadas recientemente"
+          }
+        }
+      }
+    },
+    "1 automation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 automatización"
+          }
+        }
+      }
+    },
+    "%d automations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d automatizaciones"
           }
         }
       }

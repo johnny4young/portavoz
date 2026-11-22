@@ -4,11 +4,8 @@ import SwiftUI
 struct MeetingDetailPlayerValues {
     let player: MeetingPlaybackSession?
     let waveform: [MeetingWaveformBucket]
-    let canCompressAudio: Bool
     let isCompressingAudio: Bool
     let compressionMessage: String?
-    /// Removable silent tail; nil hides the action.
-    let trailingSilence: TimeInterval?
     let isTrimmingAudio: Bool
     let trimMessage: String?
 }
@@ -17,15 +14,13 @@ struct MeetingDetailPlayerActions {
     let exportClip: @MainActor @Sendable (
         ClosedRange<TimeInterval>, URL
     ) async -> String?
-    let compressAudio: @MainActor () -> Void
-    let trimSilence: @MainActor () -> Void
 }
 
 /// The complete docked playback surface for one reviewed meeting.
 ///
 /// Playback state remains owned by the route model and audio operations remain
-/// in ApplicationKit. This section owns only playback presentation and emits
-/// explicit clip-export or compression intents.
+/// in ApplicationKit. This section owns only playback presentation, the clip
+/// export intent and the progress of audio changes started from the toolbar.
 struct MeetingDetailPlayerSection: View {
     let values: MeetingDetailPlayerValues
     let actions: MeetingDetailPlayerActions
@@ -38,9 +33,7 @@ struct MeetingDetailPlayerSection: View {
                     MeetingPlayerBar(
                         player: player,
                         waveform: values.waveform,
-                        exportClip: actions.exportClip,
-                        trailingSilence: values.trailingSilence,
-                        trimSilence: actions.trimSilence)
+                        exportClip: actions.exportClip)
                     compressionRow
                     trimRow
                 }
@@ -69,32 +62,18 @@ struct MeetingDetailPlayerSection: View {
 
     @ViewBuilder
     private var compressionRow: some View {
-        if values.canCompressAudio
-            || values.isCompressingAudio
-            || values.compressionMessage != nil {
-            HStack(spacing: 8) {
-                Button(action: actions.compressAudio) {
-                    if values.isCompressingAudio {
-                        HStack(spacing: 6) {
-                            ProgressView().controlSize(.small)
-                            Text("Compressing…")
-                        }
-                    } else {
-                        Label("Compress audio (AAC)", systemImage: "arrow.down.circle")
-                    }
-                }
-                .controlSize(.small)
-                .accessibilityIdentifier("detail-compress-audio")
-                .disabled(!values.canCompressAudio)
-                .help(
-                    "Converts audio to AAC to save disk space, with no audible loss for speech")
-                if let compressionMessage = values.compressionMessage {
-                    Text(compressionMessage)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
+        if values.isCompressingAudio {
+            HStack(spacing: 6) {
+                ProgressView().controlSize(.small)
+                Text("Compressing…")
             }
+            .font(.caption)
+            .accessibilityIdentifier("detail-compress-progress")
+        } else if let compressionMessage = values.compressionMessage {
+            Text(compressionMessage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("detail-compress-message")
         }
     }
 }

@@ -66,6 +66,12 @@ private extension MeetingDetailView {
         }
         .onAppear { model.firstContentDidAppear() }
         .navigationTitle("Portavoz")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                MeetingDetailScopedContent { actionToolbar(detail) }
+            }
+            .sharedBackgroundVisibility(.hidden)
+        }
         .task(id: mirrorTaskID) { await loadMirrorAverageIfNeeded() }
     }
 
@@ -77,10 +83,6 @@ private extension MeetingDetailView {
         let structureProjection = transcriptPresentation.structure
         return VStack(alignment: .leading, spacing: 12) {
             headerSection(detail, transcript: transcript)
-            MeetingDetailActivityLine(values: MeetingDetailActivityValues(
-                privacyReceipt: detail.privacyReceipt,
-                skillReceipts: model.state.skillReceipts,
-                presentation: presentation))
             if let report = detail.meeting.captureReport, report.requiresAttention {
                 CaptureReportNotice(report: report)
             }
@@ -160,16 +162,11 @@ private extension MeetingDetailView {
             values: MeetingDetailPlayerValues(
                 player: player,
                 waveform: waveform,
-                canCompressAudio: MeetingDetailAudioCompressionState.canCompress(model.state),
                 isCompressingAudio: model.state.isCompressingAudio,
                 compressionMessage: model.state.audioCompressionMessage,
-                trailingSilence: MeetingDetailAudioTrimState.trailingSilence(for: model.state),
                 isTrimmingAudio: model.state.isTrimmingAudio,
                 trimMessage: model.state.audioTrimMessage),
-            actions: MeetingDetailPlayerActions(
-                exportClip: coordinator.exportClip,
-                compressAudio: { changeAudio(coordinator.compressAudio) },
-                trimSilence: { changeAudio(coordinator.trimTrailingSilence) }))
+            actions: MeetingDetailPlayerActions(exportClip: coordinator.exportClip))
     }
 
     private func detailRail(
@@ -301,21 +298,25 @@ private extension MeetingDetailView {
                 dismissVoiceSuggestion: coordinator.dismissVoiceSuggestion,
                 undoVoiceAutoAssign: coordinator.undoVoiceAutoAssign,
                 keepVoiceAutoAssign: coordinator.keepVoiceAutoAssign,
-                acceptPersonOffer: acceptPersonOffer,
+                acceptPersonOffer: { flow.personOffer.map(coordinator.findOrCreatePerson(for:)) },
                 dismissPersonOffer: { flow.personOffer = nil },
-                acceptVoiceOffer: acceptVoiceOffer,
+                acceptVoiceOffer: { flow.rememberedVoiceOffer.map(coordinator.rememberVoice(of:)) },
                 dismissVoiceOffer: { flow.rememberedVoiceOffer = nil }),
-            actionContent: { actionRow(detail) })
+            receipt: {
+                MeetingDetailActivityLine(values: MeetingDetailActivityValues(
+                    privacyReceipt: detail.privacyReceipt,
+                    skillReceipts: model.state.skillReceipts,
+                    presentation: presentation))
+            })
     }
 
     private func headerValues(_ detail: MeetingReviewReadModel) -> MeetingDetailHeaderValues {
         MeetingDetailHeaderValues(
             title: detail.meeting.title,
-            date: presentation.meetingDate(detail.meeting.startedAt),
-            duration: presentation.meetingDuration(
+            kicker: presentation.meetingKicker(
                 startedAt: detail.meeting.startedAt,
-                endedAt: detail.meeting.endedAt),
-            segmentCount: presentation.segmentCount(detail.segments.count),
+                endedAt: detail.meeting.endedAt,
+                language: detail.meeting.language),
             titleSuggestion: model.state.suggestedTitle,
             speakers: detail.speakers,
             voiceTable: detail.core.voiceTable,
@@ -334,11 +335,14 @@ private extension MeetingDetailView {
             })
     }
 
-    private func actionRow(_ detail: MeetingReviewReadModel) -> some View {
+    private func actionToolbar(_ detail: MeetingReviewReadModel) -> some View {
         MeetingDetailActionSection(
             values: MeetingDetailActionValues(
                 isRefining: refine.status != nil,
                 hasAudio: detail.meeting.audioDirectory != nil,
+                trailingSilence: MeetingDetailAudioTrimState.trailingSilence(for: model.state),
+                canCompressAudio: MeetingDetailAudioCompressionState.canCompress(model.state),
+                isCompressingAudio: model.state.isCompressingAudio,
                 hasSummary: summary != nil,
                 hasCorrections: !detail.correctionRevision.isAccepted,
                 includeCorrectionProvenance: flow.includeCorrectionProvenance,
@@ -351,20 +355,13 @@ private extension MeetingDetailView {
                 cancelRefine: sceneActions.cancelRefine,
                 setIncludeCorrectionProvenance: { flow.includeCorrectionProvenance = $0 },
                 export: { coordinator.handleExportAction($0, detail: detail) },
+                renameMeeting: { flow.presentRenameMeeting(title: detail.meeting.title) },
+                askToTrimSilence: { flow.dialog = .trimSilence },
+                compressAudio: { changeAudio(coordinator.compressAudio) },
                 deleteMeeting: { Task { await deleteMeeting() } },
                 openSkillOffer: { coordinator.openSkillOffer($0, detail: detail) },
                 dismissSkillOffer: coordinator.dismissSkillOffer,
                 loadSkillOffers: coordinator.loadSkillOffers))
-    }
-
-    private func acceptPersonOffer() {
-        guard let offer = flow.personOffer else { return }
-        coordinator.findOrCreatePerson(for: offer)
-    }
-
-    private func acceptVoiceOffer() {
-        guard let offer = flow.rememberedVoiceOffer else { return }
-        coordinator.rememberVoice(of: offer)
     }
 
     private func deleteMeeting() async {
@@ -393,6 +390,7 @@ private extension MeetingDetailView {
             renameSpeaker: coordinator.renameSpeaker,
             createStructure: { coordinator.createStructure($0, detail: detail, summary: summary) },
             publishGist: coordinator.publishGist,
+            trimSilence: { changeAudio(coordinator.trimTrailingSilence) },
             linkPerson: coordinator.linkPerson,
             clearRefine: sceneActions.clearRefine,
             applyRefine: {

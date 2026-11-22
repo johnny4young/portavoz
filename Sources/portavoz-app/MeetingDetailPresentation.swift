@@ -10,8 +10,24 @@ struct MeetingDetailPresentation {
     let locale: Locale
     let timeZone: TimeZone
 
-    func meetingDate(_ date: Date) -> String {
-        formatted(date, dateStyle: .long)
+    /// Day · time · duration · spoken language, the line above the title.
+    func meetingKicker(startedAt: Date, endedAt: Date?, language: String?) -> String {
+        [
+            startedAt.formatted(localized(
+                Date.FormatStyle().weekday(.abbreviated).day().month(.abbreviated).year())),
+            startedAt.formatted(localized(Date.FormatStyle(date: .omitted, time: .shortened))),
+            meetingDuration(startedAt: startedAt, endedAt: endedAt),
+            Self.spokenLanguageName(language)
+        ]
+        .compactMap { $0 }
+        .joined(separator: " · ")
+    }
+
+    /// The language named in itself, as the people in the meeting say it.
+    static func spokenLanguageName(_ code: String?) -> String? {
+        guard let code, !code.isEmpty else { return nil }
+        let own = Locale(identifier: code)
+        return own.localizedString(forLanguageCode: code)?.capitalized(with: own)
     }
 
     func shortDate(_ date: Date) -> String {
@@ -22,13 +38,6 @@ struct MeetingDetailPresentation {
         guard let endedAt else { return nil }
         let minutes = max(0, Int(endedAt.timeIntervalSince(startedAt) / 60))
         return L10n.format("%d min", minutes)
-    }
-
-    func segmentCount(_ count: Int) -> String {
-        let count = max(0, count)
-        return count == 1
-            ? L10n.text("1 segment")
-            : L10n.format("%d segments", count)
     }
 
     func clock(_ seconds: TimeInterval, paddedMinutes: Bool = false) -> String {
@@ -47,9 +56,13 @@ struct MeetingDetailPresentation {
         _ date: Date,
         dateStyle: Date.FormatStyle.DateStyle
     ) -> String {
-        var style = Date.FormatStyle(date: dateStyle, time: .shortened)
+        date.formatted(localized(Date.FormatStyle(date: dateStyle, time: .shortened)))
+    }
+
+    private func localized(_ style: Date.FormatStyle) -> Date.FormatStyle {
+        var style = style
         style.locale = locale
         style.timeZone = timeZone
-        return date.formatted(style)
+        return style
     }
 }
