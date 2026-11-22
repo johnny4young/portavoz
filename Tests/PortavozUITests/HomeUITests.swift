@@ -171,7 +171,7 @@ final class HomeUITests: PortavozUITestCase {
     @MainActor
     func testWhoSpokeTodayLeadsTheDayAxisAndOpensItsMeetings() throws {
         let app = try XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
-        app.launchArguments += ["-seed-today-voices", "-seed-wide-window", "-AppleInterfaceStyle", "Light"]
+        app.launchArguments += ["-seed-today-voices", "-seed-just-ended", "-seed-wide-window", "-AppleInterfaceStyle", "Light"]
         app.launchPortavoz()
         defer { finishUITestApplication(app) }
 
@@ -183,7 +183,7 @@ final class HomeUITests: PortavozUITestCase {
         XCTAssertTrue(
             waitForUITestCondition(timeout: 10) {
                 let text = renderedText(of: summary)
-                return text.hasPrefix("2 meetings recorded · ") && text.hasSuffix(" · 1 to go")
+                return text.hasPrefix("3 meetings recorded · ") && text.hasSuffix(" · 1 to go")
             },
             "recorded meetings, their length and what is still ahead")
         let you = app.descendants(matching: .any)["home-talker-me"]
@@ -203,7 +203,7 @@ final class HomeUITests: PortavozUITestCase {
         let upcoming = app.descendants(matching: .any)["home-day-upcoming-ui-test-upcoming-rollout"]
         let now = app.descendants(matching: .any)["home-day-now"]
         XCTAssertTrue(axis.waitForExistenceFast(timeout: 5))
-        XCTAssertEqual(meetings.count, 2, "each recorded meeting sits on the axis")
+        XCTAssertEqual(meetings.count, 3, "each recorded meeting sits on the axis")
         XCTAssertTrue(upcoming.exists, "the next meeting waits on the axis")
         XCTAssertTrue(now.exists)
         XCTAssertGreaterThan(upcoming.frame.minX, now.frame.minX, "what is ahead sits after the now line")
@@ -216,12 +216,17 @@ final class HomeUITests: PortavozUITestCase {
         XCTAssertTrue(axis.waitForStableFrame(timeout: 5))
         attachScreenshot(of: app, named: "pr-home-who-spoke-today")
 
-        // A meeting on the axis opens its detail.
-        let demo = meetings.matching(NSPredicate(format: "label BEGINSWITH 'Sprint demo'")).firstMatch
-        XCTAssertTrue(demo.waitForStableFrame(timeout: 5))
-        demo.click()
+        // A meeting that ended two minutes ago keeps its title, set before the now pill.
+        let justEnded = meetings.matching(NSPredicate(format: "label BEGINSWITH 'Roadmap check-in'")).firstMatch
+        XCTAssertTrue(justEnded.waitForStableFrame(timeout: 5))
+        XCTAssertLessThan(
+            justEnded.frame.minX, now.frame.minX - 40,
+            "the button reaches back to a title before the pill, not just the strip under it")
+
+        // Its title opens the meeting.
+        justEnded.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.25)).click()
         XCTAssertTrue(
-            app.staticTexts.matching(NSPredicate(format: "value CONTAINS 'Turn 1 of Sprint demo' OR label CONTAINS 'Turn 1 of Sprint demo'"))
+            app.staticTexts.matching(NSPredicate(format: "value CONTAINS 'Turn 1 of Roadmap check-in' OR label CONTAINS 'Turn 1 of Roadmap check-in'"))
                 .firstMatch.waitForExistenceFast(timeout: 10),
             "the axis opens that meeting")
         XCTAssertFalse(section.exists)

@@ -81,6 +81,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 22, 2026
 
+- **🏷️ Every meeting named on Today's timeline** — a meeting that just ended keeps its title and minutes beside the Now marker, back-to-back meetings no longer run together, and tight titles shorten to a word instead of vanishing.
 - **🎨 One colour per person on Today** — each person now keeps the same colour in the next meeting, the brief, your to-dos, Pick up and Who spoke today, and in dark mode the voices you have not heard yet stay easy to tell apart.
 - **🌐 The website wears the new palette** — portavoz.app now uses the app's green-black night, its ink and the amber it shares with Secreteo, with each voice in the hero in its own colour.
 - **🪶 The Portavoz mark on New recording** — the New recording button now leads with the three-strand mark, times like 02:18 read in one mono face across Today, summaries and Ask, and the "Dictation moved to Secreteo" notice is a compact card with Secreteo's mark.

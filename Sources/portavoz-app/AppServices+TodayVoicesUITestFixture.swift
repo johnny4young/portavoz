@@ -21,8 +21,11 @@ extension AppServices {
     func seedTodayVoicesIfRequested() async {
         guard ProcessInfo.processInfo.arguments.contains("-seed-today-voices") else { return }
         let now = Self.fixtureAgendaStart
-        let span = min(now.timeIntervalSince(Calendar.current.startOfDay(for: now)), 4 * 3_600)
-        let base = now.addingTimeInterval(-span)
+        let justEnded = ProcessInfo.processInfo.arguments.contains("-seed-just-ended")
+        // Room on the axis for the just-ended meeting's title, even on a 1024 pt screen.
+        let quiet: TimeInterval = justEnded ? 90 * 60 : 0
+        let span = max(0, min(now.timeIntervalSince(Calendar.current.startOfDay(for: now)) - quiet, 4 * 3_600))
+        let base = now.addingTimeInterval(-quiet - span)
         await seedTodayMeeting(
             "Sprint demo", start: base.addingTimeInterval(span * 0.05), length: span * 0.3,
             voices: [nil, "Marta", "Ilarion", nil],
@@ -31,6 +34,12 @@ extension AppServices {
             "Design review", start: base.addingTimeInterval(span * 0.5), length: span * 0.3,
             voices: [nil, "Marta"],
             turns: [1, 0, 1, 1, 0, 1])
+        // `-seed-just-ended`: a meeting that ended two minutes ago, under the now pill.
+        guard justEnded else { return }
+        await seedTodayMeeting(
+            "Roadmap check-in", start: now.addingTimeInterval(-12 * 60), length: 10 * 60,
+            voices: [nil, "Ilarion"],
+            turns: [0, 1, 0, 1])
     }
 
     /// Voice 0 is you; `turns` split the meeting into equal turns by voice.

@@ -23429,3 +23429,21 @@ the Library model and read models stay free of StorageKit. The sidebar keeps
 per-meeting casts because it spans several days. A resume or player strip dims
 its unplayed part to 0.7 in dark instead of 0.45/0.3, the lowest level that
 keeps every tint at 3:1 against the dark track.
+
+## D664 — Day-axis titles stay over their meetings and give way before they vanish
+
+The day axis cut a past meeting's title at a fixed clearance before the now
+pill, so the meeting that had just ended (the usual case) showed "S…", a bare
+ellipsis or nothing, and back-to-back meetings merged into one strip and one row
+of dots. `DayAxisLayout` now measures each title, its first word with an
+ellipsis, its minutes and the now pill in the fonts the axis draws them in
+(AppKit metrics mirroring the SwiftUI text styles), and places the titles on the
+pill's row: a title sits at its meeting when it fits, otherwise it ends before
+the next title or the pill and extends left into free space, but never back
+over the previous meeting's mark, so it never reads as another meeting's label.
+Colliding titles are cut to one shared width, never below a word, each taking
+back what still fits; then they fall back to their minutes, and only then go,
+keeping the full title in the tooltip and VoiceOver label. Recorded marks keep a
+6 pt gap, giving way to the left so nothing passes now. Each meeting stays one
+button whose hit shape is its title row and its mark band, so a title set above
+a neighbour's strip cannot take that strip's clicks.
