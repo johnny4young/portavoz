@@ -1636,6 +1636,12 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailScene.swift",
       "category": "navigation",
+      "source": "openRoute: { route = $0 },",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailScene.swift",
+      "category": "navigation",
       "source": "openSettings()",
       "occurrences": 1
     },

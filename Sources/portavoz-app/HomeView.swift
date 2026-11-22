@@ -43,9 +43,9 @@ struct HomeView: View {
             .accessibilityIdentifier("home-scroll")
             .toolbar {
                 HomeToolbar(
-                    // A detail pane at the window's leading edge means the sidebar is hidden.
                     layout: toolbarLayout(
-                        width: geometry.size.width, sidebarVisible: geometry.frame(in: .global).minX > 1),
+                        width: geometry.size.width,
+                        sidebarVisible: PVTitleBar.Frame(geometry.frame(in: .global)).sidebarVisible),
                     suggestions: Self.suggestedQuestions,
                     onAsk: onAsk,
                     onOpenAutomations: onOpenAutomations)

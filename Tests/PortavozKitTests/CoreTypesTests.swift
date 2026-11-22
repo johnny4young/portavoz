@@ -341,6 +341,12 @@ final class TitleTemplateTests: XCTestCase {
         XCTAssertEqual(MeetingBriefLines.titleKey(title), MeetingBriefLines.titleKey("sprint  demo"))
     }
 
+    func testDefaultTitlesShowOnlyTheirName() {
+        let title = TitleTemplate.render(TitleTemplate.defaultTemplate, date: sample, sequence: 1)
+        XCTAssertEqual(TitleTemplate.withoutDateTimePrefix(title), "Meeting")
+        XCTAssertEqual(TitleTemplate.withoutDatePrefix(title), "10.47 Meeting", "keys keep the time")
+    }
+
     func testWeekdayUsesLocale() {
         let title = TitleTemplate.render(
             "{weekday}", date: sample, sequence: 1, locale: Locale(identifier: "es_CO"))

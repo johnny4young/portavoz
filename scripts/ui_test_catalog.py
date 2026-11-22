@@ -96,6 +96,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("OnboardingUITests", "testModelFailureCanContinueBackAndRetryWithoutDownloading"),
         test_id("OnboardingUITests", "testFirstListenSitsOnPaperInBothAppearances"),
     ),
+    "meeting-chrome": (
+        test_id("MeetingChromeUITests", "testMeetingToolbarWalksHistoryUnderABreadcrumb"),
+        test_id("MeetingChromeUITests", "testMeetingToolbarFitsTheNarrowDarkWindow"),
+    ),
     "meeting-performance": (
         test_id("MeetingDetailUITests", "testTwentyThousandSegmentDetailRendersFromDisposableScaleFixture"),
     ),
@@ -336,6 +340,7 @@ FEATURE_TIERS: dict[str, int] = {
     "main-shell": 1,
     "meeting-audio": 1,
     "meeting-brief": 2,
+    "meeting-chrome": 1,
     "meeting-commitments": 1,
     "meeting-correction": 0,
     "meeting-evidence": 1,
@@ -439,6 +444,7 @@ FEATURE_SOURCE_SENTINELS: dict[str, str] = {
     "onboarding": "Sources/portavoz-app/OnboardingView.swift",
     "meeting-performance": "Sources/portavoz-app/MeetingDetailPerformanceTrace.swift",
     "meeting-export": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+    "meeting-chrome": "Sources/portavoz-app/MeetingDetailBreadcrumbBar.swift",
     "meeting-recap": "Sources/portavoz-app/MeetingDetailActionSection.swift",
     "meeting-naming": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
     "meeting-processing": "Sources/portavoz-app/MeetingDetailRefineReviewSheet.swift",

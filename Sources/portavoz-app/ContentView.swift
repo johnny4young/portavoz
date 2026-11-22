@@ -33,6 +33,7 @@ struct ContentView: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
     @State private var route: Route?
+    @State private var navigation: DetailNavigation
     @State private var libraryModel: LibraryModel
     @State private var insightsModel: InsightsModel
     @State private var askModel: AskModel
@@ -43,7 +44,13 @@ struct ContentView: View {
 
     init(services: AppServices) {
         self.services = services
-        _libraryModel = State(initialValue: services.makeLibraryModel())
+        let libraryModel = services.makeLibraryModel()
+        _libraryModel = State(initialValue: libraryModel)
+        // A deleted meeting drops out of back and forward.
+        _navigation = State(initialValue: DetailNavigation { route in
+            guard case .meeting(let id) = route, libraryModel.state.meetingsRead else { return true }
+            return libraryModel.state.meetings.contains { $0.id == id }
+        })
         _insightsModel = State(initialValue: services.makeInsightsModel())
         _askModel = State(initialValue: services.makeAskModel())
         _commitmentRadarModel = State(
@@ -86,7 +93,8 @@ struct ContentView: View {
                     MeetingDetailScene(
                         services: services,
                         meetingID: id,
-                        route: $route)
+                        route: $route,
+                        navigation: navigation)
                         .id(id)  // Reset route-owned state when switching meetings.
                 case .ask:
                     AskView(
@@ -219,6 +227,7 @@ struct ContentView: View {
                 .tint(PVDesign.controlTint)
                 .presentationBackground(PVDesign.paper)
         }
+        .onChange(of: route) { old, new in navigation.record(from: old, to: new) }
         .onChange(of: services.pendingRoute) { _, pending in
             if let pending {
                 route = pending

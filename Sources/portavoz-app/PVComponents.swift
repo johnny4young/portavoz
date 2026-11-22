@@ -253,11 +253,7 @@ struct PVSegmentedControl<Value: Hashable>: View {
                 .padding(.horizontal, 11)
                 .frame(minHeight: 24)
                 .background {
-                    if selected {
-                        shape.fill(PVDesign.raise)
-                            .overlay { shape.strokeBorder(PVDesign.line2, lineWidth: 0.5) }
-                            .shadow(color: .black.opacity(0.08), radius: 1, y: 1)
-                    }
+                    if selected { PVRaisedSurface(cornerRadius: 6) }
                 }
                 .contentShape(shape)
         }
@@ -305,4 +301,16 @@ struct PVCheckboxToggleStyle: ToggleStyle {
 
 extension ToggleStyle where Self == PVCheckboxToggleStyle {
     static var pvCheckbox: PVCheckboxToggleStyle { PVCheckboxToggleStyle() }
+}
+
+/// The selected-item surface: raised paper, a hairline ring and a soft shadow.
+struct PVRaisedSurface: View {
+    let cornerRadius: CGFloat
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        shape.fill(PVDesign.raise)
+            .overlay { shape.strokeBorder(PVDesign.line2, lineWidth: 0.5) }
+            .shadow(color: .black.opacity(0.08), radius: 1, y: 1)
+    }
 }
