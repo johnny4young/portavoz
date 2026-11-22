@@ -105,11 +105,19 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     /// The rail shows one lens at a time; tests name the lens they need.
+    /// In one column the rail sits below the material, so lift its tabs near
+    /// the page top, leaving the lens below them in view.
     @MainActor
     private func selectRailTab(_ tab: String, in app: XCUIApplication) {
         let button = app.buttons["detail-rail-tab-\(tab)"]
+        let page = app.control(withIdentifier: "detail-page-scroll")
+        if button.waitForExistenceFast(timeout: 10), page.exists {
+            let delta = page.frame.minY + 16 - button.frame.minY
+            if abs(delta) >= 1 { page.scroll(byDeltaX: 0, deltaY: delta) }
+        }
         XCTAssertTrue(
-            button.waitForHittable(timeout: 10),
+            button.waitForStableFrame(timeout: 5)
+                || button.revealVertically(in: page, maxScrolls: 12, maximumStep: 800),
             "the rail must offer the \(tab) lens")
         button.click()
     }
@@ -1076,6 +1084,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             ])
 
         // The transcript rendered (this line is unique to the transcript).
+        XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
         XCTAssertTrue(
             app.staticTexts["Revisemos el presupuesto de transcripción."]
                 .waitForExistenceFast(timeout: 10),
