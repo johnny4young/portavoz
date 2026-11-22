@@ -2,79 +2,68 @@ import ApplicationKit
 import PortavozCore
 import SwiftUI
 
-/// A lazy, synchronized viewport over an already composed transcript value.
-/// Playhead updates invalidate only this subtree, and active-row lookup stays
-/// logarithmic instead of scanning every row at the playback refresh cadence.
+/// Lazy, synchronized transcript rows inside the meeting page's scroll. While
+/// audio plays and the transcript is on screen, the page follows the active
+/// row; an explicit seek or citation brings its row into view. Playback never
+/// pulls the page away from the header or summary the reader is on.
+/// Active-row lookup stays logarithmic instead of scanning every row at the
+/// playback refresh cadence.
 struct TranscriptSegmentsView: View {
     let content: MeetingTranscriptContent
     let speakers: [Speaker]
     let voiceCast: VoiceCast
     let player: MeetingPlaybackSession?
     let focusedRowID: UUID?
+    let revealCount: Int
     var performanceScrollEnabled = false
     let onSeek: (TimeInterval) -> Void
     let onRenameTap: (Speaker) -> Void
     let canCorrect: (MeetingTranscriptContent.Row) -> Bool
     let onCorrect: (MeetingTranscriptContent.Row) -> Void
-    /// Height of the lyrics carousel when there's audio — the detail sizes it
-    /// to the available space so the docked player is never pushed off.
-    var carouselHeight: CGFloat = 440
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var didStartPerformanceScroll = false
     @State private var isNarrow = false
+    @State private var isOnScreen = false
 
     private var activeRowID: UUID? {
-        guard let player else { return nil }
+        guard let player else { return focusedRowID }
         return content.activeRowID(at: player.currentTime)
     }
 
     var body: some View {
-        transcript
-            .onGeometryChange(for: Bool.self) { proxy in
-                TranscriptReadingLayout.isNarrow(width: proxy.size.width)
-            } action: { isNarrow = $0 }
-    }
-
-    @ViewBuilder
-    private var transcript: some View {
-        if player != nil {
-            // Playback always follows the synchronized row inside this
-            // viewport; it never moves the surrounding Meeting Detail chrome.
-            let activeRowID = activeRowID
-            FocusedTranscriptView(
-                segments: content.readingItems,
-                activeID: activeRowID.map(content.readingKey(following:)),
-                height: carouselHeight,
-                // Switching layouts changes row heights, so recenter the active row.
-                followSignal: isNarrow ? 1 : 0,
-                scrollAccessibilityIdentifier: "detail-transcript-scroll"
-            ) { item, _ in
-                itemView(item, isActive: item.id == activeRowID.map { .row($0) })
-            } accessory: { item, _ in
-                correctionAction(for: item)
-            }
-        } else {
-            textOnlyTranscript
-        }
-    }
-
-    private var textOnlyTranscript: some View {
+        let activeRowID = activeRowID
         ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 3) {
-                    ForEach(content.readingItems) { item in
-                        ZStack(alignment: .trailing) {
-                            itemView(item, isActive: item.id == focusedRowID.map { .row($0) })
-                            correctionAction(for: item)
-                        }
-                        .id(item.id)
+            LazyVStack(alignment: .leading, spacing: 6) {
+                ForEach(content.readingItems) { item in
+                    let correctableRow = correctableRow(item)
+                    ZStack(alignment: .trailing) {
+                        itemView(
+                            item,
+                            isActive: item.id == activeRowID.map { .row($0) },
+                            reservesCorrectionSpace: correctableRow != nil)
+                        if let correctableRow { correctionAction(for: correctableRow) }
                     }
+                    .id(item.id)
                 }
             }
-            .accessibilityIdentifier("detail-transcript-scroll")
-            .onChange(of: focusedRowID) { _, id in
-                guard let id else { return }
-                scroll(proxy, to: .row(id))
+            // Rows inset for the active outline; the stack gives that back so
+            // turn text shares the standfirst's edge.
+            .padding(.horizontal, -TranscriptReadingLayout.outlineOverhang)
+            .onGeometryChange(for: Bool.self) { proxy in
+                MeetingDetailPageMetrics.usesInlineGutter(width: proxy.size.width)
+            } action: { isNarrow = $0 }
+            .onGeometryChange(for: Bool.self) { proxy in
+                proxy.bounds(of: .scrollView(axis: .vertical))
+                    .map { proxy.frame(in: .local).intersects($0) } ?? true
+            } action: { isOnScreen = $0 }
+            .onChange(of: activeRowID) { _, id in
+                guard player?.isPlaying == true, isOnScreen, let id else { return }
+                scroll(proxy, to: content.readingKey(following: id))
+            }
+            .onChange(of: revealCount) { _, _ in
+                guard let focusedRowID else { return }
+                scroll(proxy, to: content.readingKey(following: focusedRowID))
             }
             .task(id: performanceScrollEnabled ? content.rows.count : 0) {
                 runPerformanceScrollIfRequested(proxy)
@@ -84,6 +73,11 @@ struct TranscriptSegmentsView: View {
 
     private func scroll(_ proxy: ScrollViewProxy, to id: TranscriptReadingItem.Key) {
         let interval = MeetingDetailPerformanceTrace.beginTranscriptScroll()
+        guard !reduceMotion else {
+            proxy.scrollTo(id, anchor: .center)
+            MeetingDetailPerformanceTrace.endTranscriptScroll(interval)
+            return
+        }
         withAnimation(
             .easeInOut(duration: 0.25),
             completionCriteria: .logicallyComplete
@@ -115,7 +109,11 @@ struct TranscriptSegmentsView: View {
     }
 
     /// The inset leaves room for the active outline, which overhangs its row.
-    private func itemView(_ item: TranscriptReadingItem, isActive: Bool) -> some View {
+    private func itemView(
+        _ item: TranscriptReadingItem,
+        isActive: Bool,
+        reservesCorrectionSpace: Bool
+    ) -> some View {
         Group {
             switch item {
             case .chapter(let chapter):
@@ -135,29 +133,31 @@ struct TranscriptSegmentsView: View {
                     canSeek: player != nil,
                     onSeek: onSeek,
                     onRenameTap: onRenameTap,
-                    reservesCorrectionSpace: canCorrect(row))
+                    reservesCorrectionSpace: reservesCorrectionSpace)
             }
         }
         .padding(.horizontal, TranscriptReadingLayout.outlineOverhang)
     }
 
-    @ViewBuilder
-    private func correctionAction(for item: TranscriptReadingItem) -> some View {
-        if case .row(let row, _) = item, canCorrect(row) {
-            Button {
-                onCorrect(row)
-            } label: {
-                Image(systemName: "pencil")
-                    .imageScale(.small)
-                    .frame(width: 28, height: 28)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.borderless)
-            .help("Correct transcript line")
-            .accessibilityLabel("Correct transcript row")
-            .accessibilityIdentifier(correctionIdentifier(for: row))
-            .padding(.trailing, 8)
+    private func correctableRow(_ item: TranscriptReadingItem) -> MeetingTranscriptContent.Row? {
+        guard case .row(let row, _) = item, canCorrect(row) else { return nil }
+        return row
+    }
+
+    private func correctionAction(for row: MeetingTranscriptContent.Row) -> some View {
+        Button {
+            onCorrect(row)
+        } label: {
+            Image(systemName: "pencil")
+                .imageScale(.small)
+                .frame(width: 28, height: 28)
+                .contentShape(Rectangle())
         }
+        .buttonStyle(.borderless)
+        .help("Correct transcript line")
+        .accessibilityLabel("Correct transcript row")
+        .accessibilityIdentifier(correctionIdentifier(for: row))
+        .padding(.trailing, 8)
     }
 
     private func correctionIdentifier(
@@ -180,11 +180,9 @@ struct TranscriptSegmentsView: View {
 /// above each turn once the column is too narrow for that margin.
 private enum TranscriptReadingLayout {
     static let marginWidth: CGFloat = 118
-    static let marginGap: CGFloat = 26
+    /// The summary's gutter and gap, so turn text and the standfirst align.
+    static let marginGap: CGFloat = 22
     static let outlineOverhang: CGFloat = 12
-    static let narrowBelow: CGFloat = 520
-
-    static func isNarrow(width: CGFloat) -> Bool { width > 0 && width < narrowBelow }
 }
 
 /// A chapter heading inside the transcript: its time code and its title.

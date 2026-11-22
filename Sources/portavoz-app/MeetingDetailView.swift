@@ -18,7 +18,6 @@ struct MeetingDetailView: View {
     let sceneActions: MeetingDetailSceneActions
 
     @State private var playbackNavigation = MeetingDetailPlaybackNavigation()
-    @State private var readingPane = MeetingDetailReadingPane.transcript
     @State private var railTab = MeetingDetailRailTab.people
     private var detail: MeetingReviewReadModel? { model.state.readModel }
     private var summary: MeetingReviewSummary? { detail?.summary }
@@ -81,39 +80,36 @@ private extension MeetingDetailView {
     ) -> some View {
         let transcript = transcriptPresentation.current
         let structureProjection = transcriptPresentation.structure
-        return VStack(alignment: .leading, spacing: 12) {
-            headerSection(detail, transcript: transcript)
-            if let report = detail.meeting.captureReport, report.requiresAttention {
-                CaptureReportNotice(report: report)
-            }
-            MeetingDetailOperationStatus(
-                progress: refine.status ?? flow.applyingStatus,
-                error: refine.error ?? flow.operationError ?? model.state.lastActionError)
-            HStack(alignment: .top, spacing: 16) {
-                GeometryReader { column in
-                    MeetingDetailPrimaryColumn(
-                        columnHeight: column.size.height,
-                        expectsPlayer: detail.meeting.audioDirectory?.isEmpty == false,
-                        selectedPane: $readingPane
-                    ) {
-                        summaryOrGenerate(detail)
-                        commitmentInboxSection(detail)
-                        notesSection(detail)
-                    } transcript: {
-                        transcriptSection(
-                            detail,
-                            content: transcript,
-                            structureProjection: structureProjection)
-                    } player: {
-                        playerSection
+        return VStack(spacing: 0) {
+            ScrollView(.vertical) {
+                VStack(alignment: .leading, spacing: 12) {
+                    headerSection(detail, transcript: transcript)
+                    if let report = detail.meeting.captureReport, report.requiresAttention {
+                        CaptureReportNotice(report: report)
+                    }
+                    MeetingDetailOperationStatus(
+                        progress: refine.status ?? flow.applyingStatus,
+                        error: refine.error ?? flow.operationError ?? model.state.lastActionError)
+                    MeetingDetailPageLayout {
+                        VStack(alignment: .leading, spacing: 10) {
+                            summaryOrGenerate(detail)
+                            commitmentInboxSection(detail)
+                            notesSection(detail)
+                        }
+                        detailRail(detail, transcript: transcript)
+                        transcriptSection(detail, content: transcript, structureProjection: structureProjection)
                     }
                 }
-                detailRail(detail, transcript: transcript)
+                .padding(.horizontal, MeetingDetailPageMetrics.sideGutter)
+                .padding(.vertical, 16)
+                .frame(maxWidth: MeetingDetailPageMetrics.maximumPageWidth, alignment: .topLeading)
+                .frame(maxWidth: .infinity)
             }
-            .frame(maxHeight: .infinity)
+            .accessibilityIdentifier("detail-page-scroll")
+            playerSection
+                .padding(.horizontal, MeetingDetailPageMetrics.sideGutter)
+                .padding(.vertical, 10)
         }
-        .padding(16)
-        .frame(maxWidth: 1060, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private func transcriptSection(
@@ -132,6 +128,7 @@ private extension MeetingDetailView {
                 structureProjection: structureProjection,
                 player: player,
                 focusedRowID: playbackNavigation.focusedRowID,
+                revealCount: playbackNavigation.revealCount,
                 performanceScrollEnabled: sceneValues.performanceProfile
                     .shouldExerciseTranscriptScroll,
                 translation: MeetingTranscriptTranslationState(detail)),
@@ -154,7 +151,6 @@ private extension MeetingDetailView {
                 translate: { sceneActions.translateTranscript(detail.core, $0) },
                 cancelTranslation: sceneActions.cancelTranscriptTranslation,
                 openTranslationSettings: { sceneActions.openSettings(.audio) }))
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var playerSection: some View {
@@ -286,10 +282,7 @@ private extension MeetingDetailView {
                 acceptTitleSuggestion: { coordinator.acceptSuggestedTitle($0, meeting: detail.meeting) },
                 dismissTitleSuggestion: coordinator.dismissSuggestedTitle,
                 renameSpeaker: flow.presentRenameSpeaker,
-                stepThroughTurns: {
-                    readingPane = .transcript
-                    playbackNavigation.stepThroughTurns(of: $0, content: transcript, player: player)
-                },
+                stepThroughTurns: { playbackNavigation.stepThroughTurns(of: $0, content: transcript, player: player) },
                 toggleOnly: { player?.toggleFocus(on: $0.speakerID, turns: $0.turns) },
                 suggestNames: coordinator.suggestNames,
                 acceptNameSuggestion: { coordinator.acceptNameSuggestion($0, in: detail) },
@@ -426,7 +419,6 @@ private extension MeetingDetailView {
 
     private func focusEvidence(_ segment: TranscriptSegment) {
         guard let transcript = model.state.transcriptPresentation?.current else { return }
-        readingPane = .transcript
         playbackNavigation.focusEvidence(
             segment,
             content: transcript,
@@ -444,12 +436,7 @@ private extension MeetingDetailView {
               let request = sceneValues.pendingSeek,
               request.meetingID == meetingID
         else { return }
-        let didApply = playbackNavigation.requestSeek(
-            to: request.timestamp,
-            content: transcript,
-            player: player)
-        if didApply {
-            readingPane = .transcript
+        if playbackNavigation.requestSeek(to: request.timestamp, content: transcript, player: player) {
             sceneActions.acknowledgePendingSeek(request.id)
         }
     }
@@ -469,7 +456,6 @@ private extension MeetingDetailView {
 
     private func seekAndPlay(_ seconds: TimeInterval) {
         guard let transcript = model.state.transcriptPresentation?.current else { return }
-        readingPane = .transcript
         playbackNavigation.seekAndPlay(
             seconds,
             content: transcript,

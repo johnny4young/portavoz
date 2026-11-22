@@ -85,6 +85,10 @@ final class MeetingTranscriptContentTests: XCTestCase {
         XCTAssertEqual(navigation.pendingSeek, 0)
         XCTAssertEqual(navigation.consumePendingSeek(), 0)
         XCTAssertNil(navigation.consumePendingSeek())
+
+        navigation.reveal(sourceSegmentID: secondSource, at: -3, in: content)
+        XCTAssertEqual(navigation.focusedRowID, composedID)
+        XCTAssertEqual(navigation.revealCount, 2, "asking for the same row again is a new request")
     }
 
     func testSplitSourceMapUsesEvidenceTimestampAndRetainsReverseEvidence() {

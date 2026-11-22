@@ -275,6 +275,9 @@ public struct MeetingTranscriptContent: Sendable, Equatable {
 public struct MeetingTranscriptNavigationState: Sendable, Equatable {
     public private(set) var focusedRowID: UUID?
     public private(set) var pendingSeek: TimeInterval?
+    /// Counts reveal and seek requests, so asking for the same row again still
+    /// brings it back into view.
+    public private(set) var revealCount = 0
 
     public init(focusedRowID: UUID? = nil, pendingSeek: TimeInterval? = nil) {
         self.focusedRowID = focusedRowID
@@ -290,6 +293,7 @@ public struct MeetingTranscriptNavigationState: Sendable, Equatable {
             containingSourceSegmentID: sourceSegmentID,
             at: timestamp)
         pendingSeek = max(0, timestamp)
+        revealCount += 1
     }
 
     public mutating func requestSeek(
@@ -299,6 +303,7 @@ public struct MeetingTranscriptNavigationState: Sendable, Equatable {
         let timestamp = max(0, timestamp)
         focusedRowID = content.rowID(at: timestamp)
         pendingSeek = timestamp
+        revealCount += 1
     }
 
     public mutating func consumePendingSeek() -> TimeInterval? {

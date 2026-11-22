@@ -28,15 +28,18 @@ final class MeetingDetailUITests: PortavozUITestCase {
             transcriptTitle.waitForExistenceFast(timeout: 10),
             "Meeting Detail must render first content for 5,000 segments")
         XCTAssertTrue(
-            waitForSummaryText(
-                app.staticTexts["Scale baseline summary revision 1."],
-                in: app),
+            app.staticTexts["Scale baseline summary revision 1."].waitForExistenceFast(timeout: 15),
             "the 5,000-segment detail must render its initial summary")
         selectRailTab("chapters", in: app)
         XCTAssertTrue(
             app.control(withIdentifier: "detail-chapters").waitForExistenceFast(timeout: 10),
             "the scale detail must complete its chapter projection")
         attachScreenshot(of: app, named: "meeting-detail-scale-5000-segments")
+        XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
+        let rows = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'transcript-segment-'"))
+        XCTAssertTrue(rows.firstMatch.waitForExistenceFast(timeout: 10), "the page scrolls to the first rows")
+        XCTAssertLessThan(rows.count, 400, "rows stay lazy inside the page scroll")
     }
 
     @MainActor
@@ -66,12 +69,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "Meeting Detail must render first content for 20,000 segments")
         let generatedDocument = app.control(withIdentifier: "detail-generated-document")
         XCTAssertTrue(
-            waitForSummaryText(generatedDocument, in: app),
+            generatedDocument.waitForExistenceFast(timeout: 15),
             "the scale detail must expose one bounded generated-document surface")
         XCTAssertTrue(
-            waitForSummaryText(
-                generatedDocument.staticTexts["Scale baseline summary revision 1."],
-                in: app),
+            generatedDocument.staticTexts["Scale baseline summary revision 1."].waitForExistenceFast(timeout: 15),
             "the first subscribed summary must render before the fixture updates it")
         XCTAssertTrue(
             app.continueFeatureUITestHandshake(
@@ -84,9 +85,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             app.control(withIdentifier: "detail-chapters").waitForExistenceFast(timeout: 15),
             "the 20,000-segment detail must complete its chapter projection")
         XCTAssertTrue(
-            waitForSummaryText(
-                generatedDocument.staticTexts["Scale baseline summary revision 2."],
-                in: app),
+            generatedDocument.staticTexts["Scale baseline summary revision 2."].waitForExistenceFast(timeout: 15),
             "the 20,000-segment detail must stay subscribed to scoped summary updates")
     }
 
@@ -103,22 +102,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             try waitForEvidenceNavigation(in: app, selected: false),
             "reset must leave the cited timestamp AND deselect the source row")
-    }
-
-    /// A short window keeps the summary behind its pane, and the detail can
-    /// switch to that layout after first content; the full layout shows both.
-    @MainActor
-    private func waitForSummaryText(
-        _ text: XCUIElement,
-        in app: XCUIApplication,
-        timeout: TimeInterval = 15
-    ) -> Bool {
-        let summaryPane = app.buttons["detail-compact-summary"]
-        return waitForUITestCondition(timeout: timeout) {
-            if text.exists { return true }
-            if summaryPane.exists, !summaryPane.isSelected { summaryPane.click() }
-            return false
-        }
     }
 
     /// The rail shows one lens at a time; tests name the lens they need.
@@ -259,7 +242,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
     func testCorrectedTranscriptMarksDerivedArtifactsStale() throws {
         let app = try launchOnSeededMeeting(staleDerived: true)
         defer { finishUITestApplication(app) }
-        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
+        XCTAssertTrue(app.revealMeetingDetailSection(.summary))
 
         XCTAssertTrue(
             app.control(withIdentifier: "detail-stale-summary")
@@ -361,13 +344,14 @@ final class MeetingDetailUITests: PortavozUITestCase {
     func testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo() throws {
         let app = try launchOnSeededMeeting()
         defer { finishUITestApplication(app) }
+        XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
 
         let correct = app.buttons[
             "transcript-correct-B5B00000-0000-4000-8000-000000000002"]
         XCTAssertTrue(
             correct.waitForExistenceFast(timeout: 10),
             "a stable accepted source row must expose its correction action")
-        let transcriptScroll = app.control(withIdentifier: "detail-transcript-scroll")
+        let transcriptScroll = app.control(withIdentifier: "detail-page-scroll")
         guard correct.revealVertically(in: transcriptScroll, maxScrolls: 4) else {
             XCTFail("the correction action must be fully visible before activation")
             return
@@ -448,16 +432,18 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testCompactTranscriptCorrectionCanReachItsOwnAction() throws {
-        let compactHeight = try assertCompactTranscriptCorrection(minimumWindow: false)
-        let minimumHeight = try assertCompactTranscriptCorrection(minimumWindow: true)
+    func testShortWindowPageReachesSummaryAndTranscriptCorrection() throws {
+        let compactHeight = try assertShortWindowPage(minimumWindow: false)
+        let minimumHeight = try assertShortWindowPage(minimumWindow: true)
         XCTAssertLessThan(
             minimumHeight, compactHeight,
             "native minimum content height includes titlebar chrome but stays below 620pt")
     }
 
+    /// A short window has no separate panes: the summary, a cited source and
+    /// a transcript correction are all reached by scrolling one page.
     @MainActor
-    private func assertCompactTranscriptCorrection(minimumWindow: Bool) throws -> CGFloat {
+    private func assertShortWindowPage(minimumWindow: Bool) throws -> CGFloat {
         let app = try launchOnSeededMeeting(
             compactWindow: !minimumWindow,
             minimumWindow: minimumWindow)
@@ -468,68 +454,47 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertLessThanOrEqual(
             window.frame.height, 640,
             "the disposable fixture must actually use a compact window")
+        let page = app.control(withIdentifier: "detail-page-scroll")
+        XCTAssertTrue(page.waitForExistenceFast(timeout: 10), "the meeting reads as one scrolling page")
+        XCTAssertFalse(app.buttons["detail-compact-summary"].exists, "no pane selector splits the page")
+        XCTAssertTrue(app.buttons["player-play-pause"].waitForExistenceFast(timeout: 10))
 
-        let transcriptPane = app.buttons["detail-compact-transcript"]
-        let summaryPane = app.buttons["detail-compact-summary"]
-        guard transcriptPane.waitForExistenceFast(timeout: 10), summaryPane.exists else {
-            attachScreenshot(of: app, named: "compact-pane-selector-absent")
-            XCTFail("both compact reading panes must remain independently accessible")
-            return window.frame.height
-        }
-        XCTAssertTrue(app.buttons["player-play-pause"].exists)
-
-        summaryPane.click()
         XCTAssertTrue(
-            app.control(withIdentifier: "detail-generated-document")
-                .waitForExistenceFast(timeout: 5),
-            "compact layout must keep the generated summary reachable")
-        XCTAssertTrue(app.buttons["player-play-pause"].exists)
+            app.control(withIdentifier: "detail-generated-document").waitForExistenceFast(timeout: 5),
+            "the generated summary opens the page")
         if !minimumWindow {
             let source = app.control(withIdentifier: "summary-evidence-0")
-            let material = app.control(withIdentifier: "detail-artifacts-section")
             XCTAssertTrue(source.waitForExistenceFast(timeout: 5))
-            XCTAssertTrue(source.revealVertically(in: material, maxScrolls: 4))
+            XCTAssertTrue(source.revealVertically(in: page, maxScrolls: 8))
             source.click()
             XCTAssertTrue(
-                transcriptPane.waitForSelection(timeout: 5),
-                "a cited source must reveal the transcript rather than seek a hidden pane")
-            summaryPane.click()
-            XCTAssertTrue(summaryPane.waitForSelection(timeout: 5))
+                try waitForEvidenceNavigation(in: app, selected: true),
+                "a cited source scrolls the page to its transcript row")
         }
-        transcriptPane.click()
 
-        let correct = app.buttons[
-            "transcript-correct-B5B00000-0000-4000-8000-000000000002"]
-        let viewport = app.control(withIdentifier: "detail-transcript-scroll")
-        XCTAssertTrue(
-            viewport.waitForExistenceFast(timeout: 10),
-            "the transcript must expose its own scroll boundary")
-        let targetExists = correct.waitForExistenceFast(timeout: 10)
-        guard targetExists else {
-            attachScreenshot(of: app, named: "compact-transcript-target-absent")
-            let section = app.control(withIdentifier: "detail-transcript-section")
-            let artifacts = app.control(withIdentifier: "detail-artifacts-section")
-            let player = app.control(withIdentifier: "detail-player-section")
-            XCTFail(
-                "compact correction action absent; "
-                    + "viewport=\(viewport.frame) section=\(section.frame) "
-                    + "artifacts=\(artifacts.frame) player=\(player.frame) "
-                    + "window=\(window.frame)")
+        XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
+        let correct = app.buttons["transcript-correct-B5B00000-0000-4000-8000-000000000002"]
+        guard correct.waitForExistenceFast(timeout: 10) else {
+            attachScreenshot(of: app, named: "short-window-transcript-target-absent")
+            XCTFail("correction action absent; page=\(page.frame) window=\(window.frame)")
             return window.frame.height
         }
-        guard correct.revealVertically(in: viewport, maxScrolls: 4) else {
-            attachScreenshot(of: app, named: "compact-transcript-reveal-failure")
+        guard correct.revealVertically(in: page, maxScrolls: 8) else {
+            attachScreenshot(of: app, named: "short-window-transcript-reveal-failure")
             XCTFail(
-                "compact correction action unreachable; "
-                    + "target=\(correct.frame) viewport=\(viewport.frame) "
+                "correction action unreachable; target=\(correct.frame) page=\(page.frame) "
                     + "window=\(window.frame) hittable=\(correct.isHittable)")
             return window.frame.height
+        }
+        let player = app.control(withIdentifier: "detail-player-section")
+        if player.exists {
+            XCTAssertLessThanOrEqual(correct.frame.maxY, player.frame.minY, "the docked player never covers a row")
         }
         correct.click()
         XCTAssertTrue(
             app.control(withIdentifier: "transcript-correction-editor")
                 .waitForExistenceFast(timeout: 5),
-            "the compact action must open the real correction editor")
+            "the action must open the real correction editor")
         return window.frame.height
     }
 
@@ -537,12 +502,13 @@ final class MeetingDetailUITests: PortavozUITestCase {
     func testTranscriptStructuralCorrectionsSplitMergeHideAndRestoreEvidence() throws {
         let app = try launchOnSeededMeeting()
         defer { finishUITestApplication(app) }
+        XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
 
         let sourceID = "B5B00000-0000-4000-8000-000000000002"
         let neighborID = "B5F00000-0000-4000-8000-000000000001"
         let correct = app.buttons["transcript-correct-\(sourceID)"]
         XCTAssertTrue(correct.waitForExistenceFast(timeout: 10))
-        let transcriptScroll = app.control(withIdentifier: "detail-transcript-scroll")
+        let transcriptScroll = app.control(withIdentifier: "detail-page-scroll")
         guard correct.revealVertically(in: transcriptScroll, maxScrolls: 4) else {
             XCTFail("the structural correction action must be fully visible before activation")
             return
@@ -723,7 +689,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         titleDismiss.click()
         XCTAssertFalse(app.buttons["detail-title-suggestion"].exists)
 
-        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
+        XCTAssertTrue(app.revealMeetingDetailSection(.summary))
         let recipeDismiss = app.buttons["detail-recipe-suggestion-dismiss"]
         XCTAssertTrue(recipeDismiss.waitForExistenceFast(timeout: 10))
         recipeDismiss.click()
@@ -791,7 +757,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(header.waitForStableFrame(timeout: 5))
         attachScreenshot(of: app, named: "pr-family-cast-and-suggestions")
 
-        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
+        XCTAssertTrue(app.revealMeetingDetailSection(.summary))
         let summaryTab = app.control(withIdentifier: "summary-tab-0")
         XCTAssertTrue(summaryTab.waitForExistenceFast(timeout: 10))
         let inbox = app.control(withIdentifier: "detail-commitment-inbox")
@@ -825,7 +791,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 "\(identifier) lives in the toolbar")
         }
         let standfirst = app.control(withIdentifier: "detail-standfirst")
-        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
+        XCTAssertTrue(app.revealMeetingDetailSection(.summary))
         XCTAssertTrue(standfirst.waitForExistenceFast(timeout: 10), "the summary opens the page as its lede")
         XCTAssertTrue(app.control(withIdentifier: "summary-tab-0").isSelected)
         XCTAssertTrue(app.control(withIdentifier: "summary-tab-todos").waitForLabelContaining("0/1", timeout: 5))
@@ -847,7 +813,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
 
         // A 1024 pt screen only has room for the speaker margin without the sidebar.
         app.setSidebar(visible: false)
-        XCTAssertTrue(app.openMeetingDetailReadingPane("transcript"))
+        XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
         let line = app.staticTexts["El rollout del modelo queda para el viernes."]
         XCTAssertTrue(line.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(app.control(withIdentifier: "detail-transcript-section").waitForStableFrame(timeout: 5))
@@ -882,7 +848,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let app = try launchOnSeededMeeting(aiSuggestions: true, extraArguments: ["-seed-narrow-window"])
         defer { finishUITestApplication(app) }
 
-        XCTAssertTrue(app.openMeetingDetailReadingPane("transcript"))
+        XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
         let line = app.staticTexts["El rollout del modelo queda para el viernes."]
         XCTAssertTrue(line.waitForExistenceFast(timeout: 10))
         let ana = app.descendants(matching: .any)
@@ -892,6 +858,63 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { ana.frame.maxY <= line.frame.minY + 1 },
                       "a narrow column moves the speaker above the line")
         attachScreenshot(of: app, named: "pr-meeting-transcript-narrow")
+    }
+
+    @MainActor
+    func testNarrowMeetingPageReadsAsOneColumn() throws {
+        let app = try launchOnSeededMeeting(
+            commitmentInbox: true, extraArguments: ["-seed-narrow-window", "-AppleInterfaceStyle", "Light"])
+        defer { finishUITestApplication(app) }
+
+        let standfirst = app.control(withIdentifier: "detail-standfirst")
+        XCTAssertTrue(standfirst.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(app.control(withIdentifier: "detail-header-section").waitForStableFrame(timeout: 5))
+        XCTAssertFalse(app.buttons["detail-compact-transcript"].exists, "no pane selector hides the standfirst")
+        let generated = app.control(withIdentifier: "detail-generated-document")
+        XCTAssertEqual(standfirst.frame.minX, generated.frame.minX, accuracy: 2, "the counts move above the lede")
+        XCTAssertGreaterThanOrEqual(generated.frame.width, 480, "the standfirst keeps a readable measure")
+        let rail = app.control(withIdentifier: "detail-secondary-rail")
+        XCTAssertTrue(rail.exists)
+        XCTAssertGreaterThan(rail.frame.minY, standfirst.frame.maxY, "the margin moves below the summary")
+        XCTAssertEqual(rail.frame.minX, standfirst.frame.minX, accuracy: 2, "one column, no margin beside it")
+        attachScreenshot(of: app, named: "pr-meeting-page-scroll-narrow")
+
+        let page = app.control(withIdentifier: "detail-page-scroll")
+        let commitment = { (action: String) in
+            app.buttons.matching(NSPredicate(
+                format: "identifier BEGINSWITH 'commitment-' AND identifier ENDSWITH %@", "-\(action)")).firstMatch
+        }
+        let review = commitment("review")
+        let dismiss = commitment("dismiss")
+        XCTAssertTrue(review.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(review.revealVertically(in: page, maxScrolls: 12, maximumStep: 120))
+        XCTAssertTrue(review.isHittable && dismiss.isHittable, "the commitment card renders whole, its buttons reachable")
+
+        XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
+        let title = app.control(withIdentifier: "detail-transcript-title")
+        let opening = app.control(withIdentifier: "transcript-chapter-0")
+        XCTAssertTrue(opening.waitForExistenceFast(timeout: 5))
+        XCTAssertLessThan(opening.frame.minY - title.frame.maxY, 40, "the first chapter sits under the transcript title")
+    }
+
+    @MainActor
+    func testWideMeetingPagePutsTheMarginBesideTheReadingColumn() throws {
+        let app = try launchOnSeededMeeting(extraArguments: ["-seed-wide-window", "-AppleInterfaceStyle", "Light"])
+        defer { finishUITestApplication(app) }
+
+        app.setSidebar(visible: false)
+        let standfirst = app.control(withIdentifier: "detail-standfirst")
+        XCTAssertTrue(standfirst.waitForExistenceFast(timeout: 10))
+        let rail = app.control(withIdentifier: "detail-secondary-rail")
+        XCTAssertTrue(rail.waitForStableFrame(timeout: 5))
+        XCTAssertGreaterThan(rail.frame.minX, standfirst.frame.maxX, "the margin sits beside the summary")
+        XCTAssertEqual(rail.frame.width, 300, accuracy: 41, "the margin is about 300 points")
+        let generated = app.control(withIdentifier: "detail-generated-document")
+        XCTAssertEqual(rail.frame.minY, generated.frame.minY, accuracy: 2, "the margin starts level with the standfirst")
+        XCTAssertGreaterThanOrEqual(rail.frame.minX - standfirst.frame.minX, 480, "the standfirst keeps a readable measure")
+        let title = app.control(withIdentifier: "detail-transcript-title")
+        XCTAssertLessThan(title.frame.maxX, rail.frame.minX, "the transcript keeps the reading column")
+        attachScreenshot(of: app, named: "pr-meeting-page-scroll")
     }
 
     @MainActor
@@ -922,7 +945,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             simulateNoAppleIntelligence: true,
             summaryEngine: "appleOnDevice")
         defer { finishUITestApplication(app) }
-        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
+        XCTAssertTrue(app.revealMeetingDetailSection(.summary))
 
         let generate = app.buttons["detail-generate-summary"]
         XCTAssertTrue(
@@ -986,7 +1009,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
     func testMeetingReviewSurfacesRemainCompleteAndActionable() throws {
         let app = try launchOnSeededMeeting()
         defer { finishUITestApplication(app) }
-        XCTAssertTrue(app.openMeetingDetailReadingPane("transcript"))
+        XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
 
         // Start in the default transcript pane, then visit the summary once.
         // The notes, right rail, and generated document remain independently
@@ -1057,7 +1080,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             app.staticTexts["Revisemos el presupuesto de transcripción."]
                 .waitForExistenceFast(timeout: 10),
             "the detail view must render the seeded transcript")
-        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
+        XCTAssertTrue(app.revealMeetingDetailSection(.summary))
         let notesSection = app.control(withIdentifier: "detail-notes-section")
         XCTAssertTrue(
             notesSection.waitForExistenceFast(timeout: 10),
@@ -1126,7 +1149,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
     func testEvidenceSourcesJumpToTheirExactTranscriptAndAudio() throws {
         let app = try launchOnSeededMeeting()
         defer { finishUITestApplication(app) }
-        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
+        XCTAssertTrue(app.revealMeetingDetailSection(.summary))
 
         let source = app.control(withIdentifier: "summary-evidence-0")
         guard source.waitForExistenceFast(timeout: 10) else {
@@ -1143,12 +1166,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
             source.waitForStableFrame(),
             "the localized source control must finish layout before activation")
         source.click()
-        let compactTranscript = app.buttons["detail-compact-transcript"]
-        if compactTranscript.exists {
-            XCTAssertTrue(
-                compactTranscript.waitForSelection(timeout: 5),
-                "a summary citation must reveal its transcript pane")
-        }
 
         let citedRow = app.control(
             withIdentifier: "transcript-segment-B5B00000-0000-4000-8000-000000000002")
@@ -1166,7 +1183,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             playbackToggle: playbackToggle,
             in: app)
 
-        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
+        XCTAssertTrue(app.revealMeetingDetailSection(.summary))
         let decisions = app.control(withIdentifier: "summary-tab-1")
         XCTAssertTrue(decisions.waitForExistenceFast(timeout: 10))
         decisions.click()
@@ -1188,7 +1205,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             playbackToggle: playbackToggle,
             in: app)
 
-        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
+        XCTAssertTrue(app.revealMeetingDetailSection(.summary))
         let todos = app.control(withIdentifier: "summary-tab-todos")
         XCTAssertTrue(todos.waitForExistenceFast(timeout: 10))
         todos.click()
@@ -1239,7 +1256,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
     func testDecisionCanBeConfirmedAboutATopic() throws {
         let app = try launchOnSeededMeeting()
         defer { finishUITestApplication(app) }
-        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
+        XCTAssertTrue(app.revealMeetingDetailSection(.summary))
 
         let decisions = app.control(withIdentifier: "summary-tab-1")
         XCTAssertTrue(decisions.waitForExistenceFast(timeout: 10))
@@ -1578,7 +1595,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(dismissResult.exists)
         dismissResult.click()
 
-        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
+        XCTAssertTrue(app.revealMeetingDetailSection(.summary))
         let todos = app.control(withIdentifier: "summary-tab-todos")
         XCTAssertTrue(todos.waitForHittable(timeout: 5))
         todos.click()
@@ -1790,7 +1807,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
     func testCommitmentInboxRequiresEvidenceReviewBeforeConfirmation() throws {
         let app = try launchOnSeededMeeting(commitmentInbox: true)
         defer { finishUITestApplication(app) }
-        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
+        XCTAssertTrue(app.revealMeetingDetailSection(.summary))
 
         let candidateID = "B5E00000-0000-4000-8000-000000000001"
         let inbox = app.control(withIdentifier: "detail-commitment-inbox")
@@ -1816,8 +1833,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
             app.control(withIdentifier: "commitment-\(candidateID)-defer").exists)
         attachScreenshot(of: app, named: "meeting-detail-commitment-inbox")
 
-        let artifacts = app.control(withIdentifier: "detail-artifacts-section")
-        XCTAssertTrue(artifacts.waitForExistenceFast(timeout: 5))
         let review = app.control(withIdentifier: "commitment-\(candidateID)-review")
         XCTAssertTrue(
             review.waitForExistenceFast(timeout: 5),
@@ -1860,7 +1875,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
     func testSummaryFeedbackIsExplicitReversibleAndLocal() throws {
         let app = try launchOnSeededMeeting()
         defer { finishUITestApplication(app) }
-        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
+        XCTAssertTrue(app.revealMeetingDetailSection(.summary))
 
         let unsupported = app.control(withIdentifier: "summary-feedback-unsupported")
         XCTAssertTrue(
@@ -1957,7 +1972,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
     func testMostRecentRecipeRemainsVisibleAfterReload() throws {
         let app = try launchOnSeededMeeting(latestRecipe: true)
         defer { finishUITestApplication(app) }
-        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
+        XCTAssertTrue(app.revealMeetingDetailSection(.summary))
 
         let badge = app.control(withIdentifier: "summary-badge")
         XCTAssertTrue(
@@ -2000,6 +2015,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         refine.click()
 
         XCTAssertTrue(refine.waitForValue("refine", timeout: 5))
+        XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
         XCTAssertTrue(
             app.staticTexts["Revisemos el presupuesto de transcripción."].exists,
             "canceling a quality pass must leave the current transcript visible")
@@ -2079,6 +2095,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "marking a valid in/out range must reveal the export button")
         attachScreenshot(of: app, named: "clip-paused-export")
 
+        XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
         let line = app.staticTexts["El rollout del modelo queda para el viernes."]
         XCTAssertTrue(line.waitForExistenceFast(timeout: 10))
         line.click()
@@ -2120,6 +2137,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "a meeting without a long silent tail must not offer to trim it")
         typeKey(.escape, modifierFlags: [], in: app)
         XCTAssertTrue(play.exists)
+        XCTAssertTrue(app.revealMeetingDetailSection(.summary), "the Voices table sits above the transcript")
         let onlyMe = app.buttons["voice-only-Me"]
         XCTAssertTrue(onlyMe.waitForHittable(timeout: 5), "a meeting with two voices offers per-voice playback")
         let initialTime = String(describing: currentTime.value)
@@ -2211,7 +2229,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
     func testRegenerateMenuOffersEveryDetailLevel() throws {
         let app = try launchOnSeededMeeting()
         defer { finishUITestApplication(app) }
-        XCTAssertTrue(app.openMeetingDetailReadingPane("summary"))
+        XCTAssertTrue(app.revealMeetingDetailSection(.summary))
 
         let menu = app.control(withIdentifier: "detail-regenerate-menu")
         XCTAssertTrue(menu.waitForExistenceFast(timeout: 10))

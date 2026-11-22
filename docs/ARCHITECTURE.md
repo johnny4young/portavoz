@@ -3381,16 +3381,15 @@ storage, model, or provider capabilities. Architecture tests cap the root at
 500 lines and reject model effects or broad composition dependencies in these
 presentation children.
 
-`MeetingDetailPrimaryColumn` owns only vertical presentation allocation. It
-observes the actual player-dock height, reserving the measured dock for a
-meeting with audio until playback renders, and keeps the established simultaneous
-summary/transcript layout where both retain useful reading space. In a shorter
-window it offers explicit Summary and Transcript panes while retaining the
-same docked player and the existing content/actions. This avoids placing
-window-size policy in the route model or a transcript scroll helper. The
-Meeting Detail root owns only the selected reading pane so its existing
-evidence/seek navigation can reveal a transcript target from Summary. The
-primary column still owns the measured layout, not the navigation effect.
+Meeting Detail is one scrolling page. The root owns a single vertical
+`ScrollView` (`detail-page-scroll`) for the header, Voices table, generated
+material, rail and transcript, with the player docked below it.
+`MeetingDetailPageLayout` is a stateless custom `Layout`: from the width it is
+offered it puts the rail beside material and transcript, or stacks all three
+in one column, so the reading column never starves for the margin. Transcript
+rows are a lazy section of that page and follow playback through the page's
+scroll; no view measures heights to allocate panes, and no route or storage
+state knows about layout.
 
 Transcript correction follows the same modal boundary. The flow captures the
 editor context, structural context, accepted reading, and revision as one
@@ -3399,8 +3398,8 @@ that target from a later view snapshot, and an impossible missing target renders
 an explicit unavailable surface rather than an empty sheet that disables the
 meeting window.
 
-Compact review activation is also viewport-bound. The focused transcript
-exposes one stable `detail-transcript-scroll` boundary, and real-app journeys
+Compact review activation is also viewport-bound. The meeting page
+exposes one stable `detail-page-scroll` boundary, and real-app journeys
 require a target's complete nonempty frame to be inside its identified viewport
 as well as reported hittable before activation. Every reveal is bounded and
 state-driven; no sleep or click retry can turn a missed activation green.

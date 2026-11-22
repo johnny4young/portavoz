@@ -492,9 +492,10 @@ synchronization performs a start-time upper-bound
 search plus a maximum-end segment-tree lookup, retaining the released overlap
 and gap behavior without scanning up to 20,000 rows every 200 ms. The extracted
 transcript and chapter sections receive only immutable values and explicit seek
-or rename actions. Row rendering remains a stable-ID `LazyVStack`, while the
-generic focused viewport keeps live reader ownership and playback following in
-a separately tested pure policy.
+or rename actions. Row rendering remains a stable-ID `LazyVStack`, now a
+section of the meeting page's scroll rather than its own viewport (D658); the
+generic focused viewport serves only live captions and keeps reader ownership
+in a separately tested pure policy.
 
 The transcript reads as a document (D657). `MeetingTranscriptContent.readingItems`
 (ApplicationKit) is built once with the content: each chapter heading sits
@@ -504,14 +505,18 @@ voice changes (unattributed rows compare channels) or a heading precedes it.
 title in Fraunces (`transcript-chapter-<seconds>`, a header that seeks when
 audio exists). A row puts its time, and on the first row of a turn the voice
 dot and name (`transcript-speaker-<rowID>`, click to rename), in a 118-point
-right-aligned margin; below 520 points of width the margin moves above the
-text. Names read in ink, you in amber ink and an unnamed voice in ink 2 with an
+right-aligned margin; below 640 points of width (the same threshold as the
+summary's gutter) the margin moves above the text. Names read in ink, you in amber ink and an unnamed voice in ink 2 with an
 open dot, because voice tones are fills. The row under the playhead is
 outlined on the raised surface instead of tinted, and playback no longer fades,
 shrinks or blurs distant rows; the live caption viewport keeps that treatment.
 When the active row opens a chapter, playback follows its heading
-(`readingKey(following:)`) so the title stays in view and opening a meeting at
-its first line does not scroll.
+(`readingKey(following:)`) so the title stays in view. The page follows the
+active row only while audio plays and the transcript is on screen; an explicit
+seek, citation or turn step scrolls its row into view (a reveal counter in
+`MeetingTranscriptNavigationState` makes a repeated request scroll again),
+opening a meeting never scrolls past the header, and Reduce Motion drops the
+animation (D658).
 The rail's Chapters lens stays as a second way to jump.
 
 D226 composes the docked player through `MeetingDetailPlayerSection`. It
@@ -529,12 +534,13 @@ resolution, and pending seeks.
 (`detail-refine`), Share (`detail-export-menu`: recap, exports, Gist) and More
 (`detail-more-menu`: Rename… `detail-rename`, the silent-tail trim, Compress
 audio (AAC) `detail-compress-audio`, and Move to Recently deleted
-`detail-delete`). `MeetingDetailRailSection` is the always-present 260-point column beside the
-transcript: processing that needs attention sits on top, then three lenses,
-People (`detail-rail-tab-people`, meeting health), Apuntador
+`detail-delete`). `MeetingDetailRailSection` is the always-present margin beside the summary
+and transcript, or above the transcript in one column (D658): processing that
+needs attention sits on top, then three lenses, People
+(`detail-rail-tab-people`, meeting health), Apuntador
 (`detail-rail-tab-apuntador`, persisted cards) and Chapters
-(`detail-rail-tab-chapters`), of which exactly one fills the remaining height
-and scrolls on its own; a lens without material shows one sentence
+(`detail-rail-tab-chapters`), of which exactly one shows at its full height
+in the page scroll; a lens without material shows one sentence
 (`detail-rail-empty-*`). The selected lens is composition state passed in as a
 value with a `selectTab` action, so the rail itself stays stateless.
 `MeetingDetailActivityLine` renders the privacy receipt and the action history
@@ -565,40 +571,27 @@ already prepared session and cannot resolve audio or storage. Architecture
 tests keep the root at 500 lines or fewer and reject model effects or broad
 composition dependencies in presentation children.
 
-Where both reading surfaces fit, the composed primary column lets generated
-material take the height its content needs, capped at half of the column
-(never below 180 points):
-`MeetingDetailArtifactsSection` measures its material (`onGeometryChange`)
-and takes exactly that height up to the cap, scrolling inside its own area
-only beyond it, so a short summary leaves the transcript most of the window
-and a long one still cannot collapse it. Notes render at content height inside
-that area instead of nesting a second scroll view. The transcript receives the
-remaining flexible height, clips its focused viewport to that exact
-allocation, and the player stays as a separate dock below it. Transcript correction buttons are
-28-point accessories outside focus blur and scale effects. Long summaries,
-notes, or commitment review can therefore scroll without collapsing their own
-controls, covering transcript corrections, or allowing the player to intercept
-transcript input. The measured material includes an 11-point bottom inset, the
-room a suggestion chip needs when it straddles the last block's closing rule.
-
-`MeetingDetailPrimaryColumn` measures the docked player's actual height. When
-180 points of generated material, 160 points of transcript, the player, and
-their spacing cannot fit together, it exposes distinct Summary and Transcript
-buttons instead of squeezing the transcript viewport to zero. Both panes
-render the existing material and commands, and the player remains docked.
-Playback loads asynchronously, so a meeting with an audio directory reserves
-the measured 166-point dock until the player renders; a larger measured dock
-still wins. The first frame therefore already uses the final layout instead
-of showing both regions and then switching to Transcript. If that audio later
-proves unreadable, the reservation keeps the chosen layout stable.
-The root's existing evidence and playback navigation also owns the selected
-pane: a citation from Summary, an incoming scene seek, or a chapter seek
-reveals Transcript before focusing its row. No storage or route service owns
-this presentation-only choice.
-The regular taller layout is unchanged. Disposable XCUITest launches request
-620-point and minimum-content-height windows; AppKit may clamp the latter's
-outer frame above 560 points to accommodate the titlebar. The test asserts
-the actual frame and reaches the correction editor in both layouts.
+The meeting reads as one page (D658). One vertical `ScrollView`
+(`detail-page-scroll`) holds the header and Voices table, notices, and then
+`MeetingDetailPageLayout`, a custom `Layout` over three sections in order:
+generated material (summary, commitment inbox and notes, each at its full
+height), the rail (`detail-secondary-rail`) and the
+transcript (`detail-transcript-section`). When the page is wide enough for a
+260–300 point margin (30% of the width) while the reading column keeps 540
+points, the rail sits beside material and transcript, its top level with the
+standfirst; otherwise all three stack in one column with the rail between the
+material and the transcript, so the rail never narrows the reading column. The
+page keeps 28-point side gutters, caps at 1,240 points and centres beyond
+that. Transcript turn text shares the standfirst's left edge (the same 118-point
+gutter and 22-point gap; the rows' outline inset is given back by the stack),
+and the rail's tabs sit compact at the leading edge. The rail's lenses grow with
+the page instead of scrolling on their own. The generated document keeps its
+118-point gutter of kicker, counts, version and menus beside the lede from 640
+points of width and moves it onto a row above the lede below that, wrapping
+onto two lines before anything truncates. The docked player sits below the
+page scroll across the detail width, so it never covers a row. There is no
+pane selection and no measured height policy: commitment cards, notes and the
+first chapter all render in the flow, and a short window simply scrolls.
 
 D231 adds the first correction adopter without reopening that composition
 boundary. Meeting Detail observes correction history and asks an ApplicationKit
@@ -656,11 +649,10 @@ keeping correction controls reachable in compact supported macOS windows.
 
 D408 closes the remaining cross-version compact-window activation gap. SwiftUI
 can expose a descendant clipped below a `ScrollView` as hittable even though a
-synthesized click lands outside the viewport. The playback and text-only
-transcript readers therefore expose the same stable
-`detail-transcript-scroll` boundary, and XCUITest reveals correction and
-commitment actions until their complete frames are contained by the exact
-viewport. The traversal is bounded and still requires a stable hittable frame.
+synthesized click lands outside the viewport. The meeting page therefore
+exposes one stable `detail-page-scroll` boundary (D658), and XCUITest reveals
+correction and commitment actions until their complete frames are contained by
+the exact viewport. The traversal is bounded and still requires a stable hittable frame.
 Saved live objectives attach their UUID identifier and exact text label to the
 containing accessibility row rather than a leaf `Text`, whose representation
 varies across supported macOS versions; its toggle and removal actions remain
@@ -3483,9 +3475,10 @@ call-safe capture, pending the explicit cross-OS A/B in `docs/GAPS.md`.
 ## Additional as-built note
 
 **Audio-first Meeting Detail:** the synchronized player drives the
-**focused transcript** (`FocusedTranscriptView`: the spoken line stays
-centered in a fixed-height viewport; since D657 only live captions fade,
-shrink, and blur surrounding lines, while playback stays flat; its explicit vertical/no-indicator initializer and built-in
+**page transcript** (since D658 the spoken line scrolls the meeting page while
+audio plays; `FocusedTranscriptView` remains the live caption viewport, where
+the newest line stays near the bottom and surrounding lines fade, shrink and
+blur; its explicit vertical/no-indicator initializer and built-in
 vertical scroll-view coordinate space preserve the same behavior across the
 current and next SwiftUI SDK signatures without sharing a generic
 named key with the visual-effect closure, and its fade/scale/blur values cross

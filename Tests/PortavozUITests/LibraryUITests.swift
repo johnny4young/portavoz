@@ -304,11 +304,6 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(app.control(withIdentifier: "player-play-pause").waitForExistenceFast(timeout: 10))
         XCTAssertTrue(app.control(withIdentifier: "player-play-pause").isEnabled)
         XCTAssertFalse(app.control(withIdentifier: "detail-capture-report").exists)
-        // A compact window keeps the summary behind its pane; the full layout shows both.
-        let summaryPane = app.buttons["detail-compact-summary"]
-        if summaryPane.waitForExistenceFast(timeout: 3) {
-            summaryPane.click()
-        }
         XCTAssertTrue(
             app.staticTexts["Durable processing finished."].waitForExistenceFast(timeout: 30),
             "a clean Stop must finish post-capture work without a recovery path")

@@ -914,7 +914,7 @@ def select_paths(
             reasons.append(f"{path}: canaries and harness self-test")
             continue
 
-        if path == "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift":
+        if path == "Sources/portavoz-app/MeetingDetailPageLayout.swift":
             selected.update(feature_tests(MEETING_DETAIL_LAYOUT_FEATURES))
             selected.update(test for test in MEETING_DETAIL_EXTRA_JOURNEYS if test in PR_TESTS)
             reasons.append(f"{path}: journeys that open a meeting")

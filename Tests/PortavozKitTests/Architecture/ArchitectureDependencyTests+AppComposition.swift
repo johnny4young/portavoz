@@ -1810,8 +1810,6 @@ extension ArchitectureDependencyTests {
             XCTAssertFalse(transcriptContent.contains(forbidden), forbidden)
         }
         XCTAssertTrue(focusedTranscript.contains("struct FocusedTranscriptView<"))
-        XCTAssertTrue(focusedTranscript.contains("Accessory: View"))
-        XCTAssertTrue(focusedTranscript.contains("accessory(segment, isActive)"))
         XCTAssertTrue(focusedTranscript.contains("TranscriptFollowOwnershipPolicy"))
         XCTAssertFalse(focusedTranscript.contains("import PortavozCore"))
 
@@ -1847,10 +1845,7 @@ extension ArchitectureDependencyTests {
             of: "Tests/PortavozUITests/LibraryUITests.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
-        XCTAssertTrue(transcript.contains(
-            "scrollAccessibilityIdentifier: \"detail-transcript-scroll\""))
-        XCTAssertTrue(transcript.contains(
-            ".accessibilityIdentifier(\"detail-transcript-scroll\")"))
+        XCTAssertFalse(transcript.contains("ScrollView {"), "transcript rows scroll with the meeting page")
         XCTAssertGreaterThanOrEqual(
             uiTests.components(
                 separatedBy: "correct.revealVertically(in: transcriptScroll").count - 1,
@@ -1996,10 +1991,8 @@ extension ArchitectureDependencyTests {
 
     func testMeetingDetailCompositionKeepsEffectsOutOfPresentationChildren() throws {
         let view = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
-        let artifacts = try Self.contents(
-            of: "Sources/portavoz-app/MeetingDetailArtifactsSection.swift")
-        let primaryColumn = try Self.contents(
-            of: "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift")
+        let pageLayout = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailPageLayout.swift")
         let flowHost = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailFlowHost.swift")
         let playbackNavigation = try Self.contents(
@@ -2015,23 +2008,12 @@ extension ArchitectureDependencyTests {
 
         XCTAssertTrue(view.contains("MeetingDetailFlowHost("))
         XCTAssertTrue(view.contains("MeetingDetailPlaybackNavigation()"))
-        XCTAssertTrue(view.contains("MeetingDetailPrimaryColumn("))
-        XCTAssertTrue(artifacts.contains(".onGeometryChange(for: CGFloat.self)"))
-        XCTAssertTrue(artifacts.contains(".frame(height: resolvedHeight)"))
-        XCTAssertFalse(artifacts.contains("maxHeight: 240"), "content decides the height (D536)")
-        XCTAssertTrue(view.contains("GeometryReader { column in"))
-        XCTAssertTrue(view.contains("selectedPane: $readingPane"))
-        for route in [
-            "func focusEvidence(", "func deliverPendingMeetingSeekIfPossible(", "func seekAndPlay(",
-        ] {
-            let body = try XCTUnwrap(view.components(separatedBy: route).dropFirst().first)
-                .components(separatedBy: "\n    }\n").first ?? ""
-            XCTAssertTrue(
-                body.contains("readingPane = .transcript"),
-                "\(route) must reveal Transcript before targeting a row (D549)")
+        XCTAssertTrue(view.contains("MeetingDetailPageLayout {"))
+        XCTAssertTrue(view.contains(".accessibilityIdentifier(\"detail-page-scroll\")"))
+        XCTAssertTrue(pageLayout.contains("struct MeetingDetailPageLayout: Layout"))
+        for paneSplit in ["GeometryReader", "readingPane", "MeetingDetailPrimaryColumn"] {
+            XCTAssertFalse(view.contains(paneSplit), "the meeting reads as one page, not panes: \(paneSplit)")
         }
-        XCTAssertTrue(primaryColumn.contains("MeetingDetailArtifactsSection(columnHeight: columnHeight)"))
-        XCTAssertTrue(primaryColumn.contains(".layoutPriority(1)"))
         XCTAssertTrue(flowHost.contains("MeetingDetailRefineReviewSheet("))
         XCTAssertTrue(flowHost.contains("TranscriptCorrectionEditor("))
         XCTAssertTrue(flowHost.contains("TranscriptStructuralCorrectionEditor("))
@@ -2063,7 +2045,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(playbackNavigation.contains("@Observable"))
         XCTAssertTrue(playbackNavigation.contains("MeetingTranscriptNavigationState"))
         XCTAssertTrue(view.contains("deliverPendingMeetingSeekIfPossible()"))
-        XCTAssertTrue(view.contains("if didApply"))
+        XCTAssertTrue(view.contains("if playbackNavigation.requestSeek(to: request.timestamp"))
         XCTAssertTrue(view.contains("sceneActions.acknowledgePendingSeek(request.id)"))
         XCTAssertTrue(scene.contains("services.pendingMeetingSeek?.id == requestID"))
         XCTAssertFalse(scene.contains("consumePendingSeek:"))

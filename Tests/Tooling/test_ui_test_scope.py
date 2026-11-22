@@ -41,8 +41,8 @@ QUOTES_LIVE_CAPTIONS = "PortavozUITests/LibraryUITests/testColdRecordingStartsLi
 
 
 class UITestScopeTests(unittest.TestCase):
-    def test_compact_detail_column_selects_every_journey_that_opens_a_meeting(self):
-        path = "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift"
+    def test_meeting_page_layout_selects_every_journey_that_opens_a_meeting(self):
+        path = "Sources/portavoz-app/MeetingDetailPageLayout.swift"
         selection = select_paths([path])
         self.assertLess(len(selection.tests), len(ALL_TESTS))
         self.assertEqual(selection.locales, ("en",))
@@ -135,8 +135,8 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(selection.locales, ("en",))
 
     def test_a_layout_change_selects_every_journey_that_opens_meeting_detail(self):
-        selected = set(select_paths(["Sources/portavoz-app/MeetingDetailPrimaryColumn.swift"]).tests)
-        opens_detail = re.compile(r'openMeetingDetail|"detail-|detail-compact|detail-transcript|detail-artifacts')
+        selected = set(select_paths(["Sources/portavoz-app/MeetingDetailPageLayout.swift"]).tests)
+        opens_detail = re.compile(r'revealMeetingDetailSection|"detail-|detail-page|detail-transcript|detail-artifacts')
         missed = []
         for source in sorted((ROOT / "Tests/PortavozUITests").glob("*UITests.swift")):
             text = source.read_text(encoding="utf-8")
@@ -152,7 +152,7 @@ class UITestScopeTests(unittest.TestCase):
         every_kind = [
             "Package.swift", "Package.resolved", ui_scope.CATALOG, "Makefile", "project.yml",
             "scripts/ui_test_scope.py", "scripts/ui_test_catalog.py", "docs/evidence/ui-test-runtime-budget.json",
-            "Sources/portavoz-app/MeetingDetailPrimaryColumn.swift", "Sources/portavoz-app/UITestDefaults.swift",
+            "Sources/portavoz-app/MeetingDetailPageLayout.swift", "Sources/portavoz-app/UITestDefaults.swift",
             "Sources/portavoz-app/L10n.swift", "Resources/Unknown.bin",
             "Tests/PortavozUITests/UITestSupport.swift",
         ]
@@ -1621,7 +1621,7 @@ class UITestScopeTests(unittest.TestCase):
 
     def test_nightly_only_and_on_demand_cases_stay_out_of_path_selection(self):
         everything = select_paths(["Sources/portavoz-app/" + name for name in (
-            "AudioImportQueueView.swift", "MeetingDetailPrimaryColumn.swift", "SkillsSettingsSection.swift")])
+            "AudioImportQueueView.swift", "MeetingDetailPageLayout.swift", "SkillsSettingsSection.swift")])
 
         self.assertFalse(set(everything.tests) & set(ui_scope.NIGHTLY_ONLY_TESTS))
         self.assertFalse(set(everything.tests) & set(ui_scope.ON_DEMAND_TESTS))

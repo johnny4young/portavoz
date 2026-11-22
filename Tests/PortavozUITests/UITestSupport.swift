@@ -54,27 +54,28 @@ extension XCUIApplication {
             "the sidebar must end \(visible ? "shown" : "hidden")")
     }
 
-    /// Normal windows show both reading regions; compact windows require an
-    /// explicit pane choice before asserting controls in the other region.
+    enum MeetingDetailSection { case summary, transcript }
+
+    /// The meeting page scrolls as one document: the header and summary open
+    /// it and the transcript follows, so this scrolls until that part is in view.
     @MainActor
-    func openMeetingDetailReadingPane(
-        _ pane: String,
+    func revealMeetingDetailSection(
+        _ section: MeetingDetailSection,
         timeout: TimeInterval = 10
     ) -> Bool {
-        guard ["summary", "transcript"].contains(pane) else { return false }
-        let button = buttons["detail-compact-\(pane)"]
-        let content = control(withIdentifier: pane == "summary"
-            ? "detail-artifacts-section" : "detail-transcript-section")
-        guard waitForUITestCondition(timeout: timeout, {
-            button.exists || content.exists
-        }) else { return false }
-        guard button.exists else { return content.exists }
-        if !button.isSelected {
-            guard button.waitForHittable(timeout: timeout) else { return false }
-            button.click()
+        let target = control(withIdentifier: section == .summary ? "detail-header-section" : "detail-transcript-title")
+        let page = control(withIdentifier: "detail-page-scroll")
+        guard target.waitForExistenceFast(timeout: timeout), page.exists else { return false }
+        let viewport = page.frame
+        // One scroll past the page top (it clamps there), or one that lifts the transcript
+        // title near it so its first rows are in view; then confirm it settled.
+        let delta = viewport.minY + (section == .summary ? 48 : 16) - target.frame.minY
+        if section == .transcript || !viewport.contains(target.frame), abs(delta) >= 1 {
+            page.scroll(byDeltaX: 0, deltaY: delta)
         }
-        return button.waitForSelection(timeout: 5)
-            && content.waitForExistenceFast(timeout: 5)
+        guard target.waitForStableFrame(timeout: 2) else { return false }
+        return page.frame.contains(target.frame)
+            || target.revealVertically(in: page, maxScrolls: 12, maximumStep: 800)
     }
 
     @MainActor
@@ -361,7 +362,8 @@ extension XCUIApplication {
                 return popover
             }
             let chip = buttons["detail-privacy-receipt"]
-            guard chip.waitForExistenceFast(timeout: timeout),
+            guard revealMeetingDetailSection(.summary, timeout: timeout),
+                  chip.waitForExistenceFast(timeout: timeout),
                   chip.waitForStableFrame(timeout: timeout)
             else {
                 XCTFail("the header never offered the activity chip", file: file, line: line)
