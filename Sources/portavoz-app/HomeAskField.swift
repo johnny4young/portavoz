@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The Ask entry in Today's header. Its leading glyph opens three ready
+/// The Ask entry in Today's title bar. Its leading glyph opens three ready
 /// questions; submitting hands the text to the Ask surface exactly as a
 /// suggestion does.
 struct HomeAskField: View {
@@ -21,7 +21,9 @@ struct HomeAskField: View {
                 Image(systemName: PVSymbol.ask)
                     .foregroundStyle(PVDesign.ink3)
             }
-            .menuStyle(.borderlessButton)
+            // A plain button menu draws the bare glyph; borderless adds a tinted bezel.
+            .menuStyle(.button)
+            .buttonStyle(.plain)
             .menuIndicator(.hidden)
             .fixedSize()
             .help("Suggested questions")

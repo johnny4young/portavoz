@@ -21,8 +21,14 @@ final class HomeUITests: PortavozUITestCase {
         }
         XCTAssertTrue(app.buttons["library-home-button"].isSelected)
 
-        // Every Today surface is visible inside the window without scrolling.
+        // The day and Ask sit in the title-bar row, level with each other.
         let window = app.windows.firstMatch.frame
+        let askField = app.control(withIdentifier: "home-ask-field")
+        XCTAssertTrue(askField.waitForExistenceFast(timeout: 5), "Ask is one field on Today")
+        XCTAssertLessThan(title.frame.maxY, window.minY + 52, "Today lives in the title bar")
+        XCTAssertEqual(title.frame.midY, askField.frame.midY, accuracy: 6, "Ask shares the title row")
+
+        // Every Today surface is visible inside the window without scrolling.
         let upcoming = app.control(withIdentifier: "home-upcoming-ui-test-upcoming-rollout")
         XCTAssertTrue(upcoming.waitForExistenceFast(timeout: 10))
         let todo = app.descendants(matching: .any)
@@ -33,8 +39,6 @@ final class HomeUITests: PortavozUITestCase {
             .matching(NSPredicate(format: "identifier BEGINSWITH 'home-recent-'"))
             .firstMatch
         XCTAssertTrue(recent.waitForExistenceFast(timeout: 10))
-        let askField = app.control(withIdentifier: "home-ask-field")
-        XCTAssertTrue(askField.waitForExistenceFast(timeout: 5), "Ask is one field on Today")
         let countdown = app.descendants(matching: .any)["home-upcoming-countdown"]
         XCTAssertTrue(countdown.waitForExistenceFast(timeout: 5), "the next meeting counts down")
         let record = app.buttons["home-upcoming-record-ui-test-upcoming-rollout"]
@@ -94,7 +98,7 @@ final class HomeUITests: PortavozUITestCase {
             .firstMatch
         // Opening the brief records its source, so the card now has lines; in a
         // narrow window it stacks under the hero and open work scrolls into view.
-        let scroll = app.scrollViews.containing(.staticText, identifier: "home-title").element
+        let scroll = app.scrollViews["home-scroll"]
         XCTAssertTrue(toggle.revealVertically(in: scroll))
         XCTAssertTrue(toggle.waitForStableFrame(timeout: 5))
         toggle.click()
@@ -211,7 +215,7 @@ final class HomeUITests: PortavozUITestCase {
 
         // A 1024 pt screen only has room for the wide layout without the sidebar.
         app.setSidebar(visible: false)
-        let scroll = app.scrollViews.containing(.staticText, identifier: "home-title").element
+        let scroll = app.scrollViews["home-scroll"]
         XCTAssertTrue(axis.revealVertically(in: scroll))
         XCTAssertTrue(axis.waitForStableFrame(timeout: 5))
         attachScreenshot(of: app, named: "pr-home-who-spoke-today")
@@ -264,7 +268,7 @@ final class HomeUITests: PortavozUITestCase {
 
         // A 1024 pt screen only has room for the wide layout without the sidebar.
         app.setSidebar(visible: false)
-        let scroll = app.scrollViews.containing(.staticText, identifier: "home-title").element
+        let scroll = app.scrollViews["home-scroll"]
         XCTAssertTrue(recent.revealVertically(in: scroll))
         XCTAssertTrue(recent.waitForStableFrame(timeout: 5))
         attachScreenshot(of: app, named: "pr-home-pick-up-and-todos")
@@ -320,6 +324,8 @@ final class HomeUITests: PortavozUITestCase {
 
         let pill = app.buttons["home-automations"]
         XCTAssertTrue(pill.waitForStableFrame(timeout: 10), "pending suggestions show in Today's header")
+        let title = app.staticTexts["home-title"]
+        XCTAssertEqual(pill.frame.midY, title.frame.midY, accuracy: 6, "the pill shares the title-bar row")
         let countdown = app.descendants(matching: .any)["home-upcoming-countdown"]
         XCTAssertTrue(countdown.waitForExistenceFast(timeout: 5))
         XCTAssertLessThan(
@@ -337,5 +343,49 @@ final class HomeUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "settings-skills-pause-all").waitForExistenceFast(timeout: 10),
             "the pill opens Settings on Automations")
+    }
+
+    @MainActor
+    func testNarrowToolbarFoldsAskIntoItsGlyph() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
+        app.launchArguments += ["-seed-duplicate-skill-proposals", "-seed-narrow-window", "-AppleInterfaceStyle", "Light"]
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        // Returning to Today re-reads the count after the fixture has seeded.
+        let askRoute = app.buttons["library-ask-button"]
+        XCTAssertTrue(askRoute.waitForStableFrame(timeout: 5))
+        askRoute.click()
+        let today = app.buttons["library-home-button"]
+        XCTAssertTrue(today.waitForStableFrame(timeout: 5))
+        today.click()
+
+        // The day and the pill keep their full width; Ask folds into its glyph.
+        let window = app.windows.firstMatch.frame
+        let pill = app.buttons["home-automations"]
+        XCTAssertTrue(pill.waitForStableFrame(timeout: 10))
+        let open = app.buttons["home-ask-open"]
+        XCTAssertTrue(open.waitForExistenceFast(timeout: 5), "a narrow toolbar keeps Ask as its glyph")
+        XCTAssertFalse(app.control(withIdentifier: "home-ask-field").exists, "the field is never squeezed")
+        let title = app.staticTexts["home-title"]
+        for element in [title, open, pill] {
+            XCTAssertTrue(window.contains(element.frame), "\(element) stays inside the window")
+            XCTAssertEqual(element.frame.midY, title.frame.midY, accuracy: 6, "\(element) shares the title row")
+        }
+        XCTAssertLessThan(title.frame.maxX, open.frame.minX)
+        XCTAssertLessThan(open.frame.maxX, pill.frame.minX)
+        attachScreenshot(of: app, named: "pr-home-narrow-toolbar")
+
+        // The glyph opens the whole field, which asks as the wide one does.
+        open.click()
+        let field = app.control(withIdentifier: "home-ask-field")
+        XCTAssertTrue(field.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["home-ask-suggestions"].exists)
+        attachScreenshot(of: app, named: "pr-home-narrow-ask")
+        field.click()
+        field.typeText("What is still open?\n")
+        XCTAssertTrue(app.control(withIdentifier: "ask-question-field").waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(app.buttons["library-ask-button"].isSelected)
     }
 }

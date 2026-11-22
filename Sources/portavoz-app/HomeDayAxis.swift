@@ -359,10 +359,10 @@ struct HomeDayAxis: View {
     private static let dotSpacing: CGFloat = 3
     private static let captionSpacing: CGFloat = 4
     /// The fonts the axis draws its text in, for measuring it.
-    private static let titleFont = systemFont(.callout, .semibold)
-    private static let minutesFont = systemFont(.callout, .medium)
-    private static let nextCaptionFont = systemFont(.subheadline, .semibold)
-    private static let captionFont = systemFont(.subheadline, .medium)
+    private static let titleFont = PVTextMetrics.font(.callout, .semibold)
+    private static let minutesFont = PVTextMetrics.font(.callout, .medium)
+    private static let nextCaptionFont = PVTextMetrics.font(.subheadline, .semibold)
+    private static let captionFont = PVTextMetrics.font(.subheadline, .medium)
     private static let nowFont = NSFont.monospacedDigitSystemFont(
         ofSize: NSFont.preferredFont(forTextStyle: .caption1).pointSize, weight: .bold)
     /// Tall enough for the title, the strip and the dots under it.
@@ -398,7 +398,7 @@ struct HomeDayAxis: View {
             },
             width: width,
             // The pill's 8 pt side padding.
-            nowPillWidth: Self.width(nowText, Self.nowFont) + 16,
+            nowPillWidth: PVTextMetrics.width(nowText, Self.nowFont) + 16,
             calendar: .current)
         return ZStack(alignment: .topLeading) {
             ruler(layout)
@@ -507,7 +507,7 @@ struct HomeDayAxis: View {
     /// The invitee dots and the caption beside them.
     private func upcomingMarkWidth(_ meeting: TodayVoices.UpcomingMeeting, isNext: Bool) -> CGFloat {
         let font = isNext ? Self.nextCaptionFont : Self.captionFont
-        let caption = Self.width(caption(meeting.event, isNext: isNext), font)
+        let caption = PVTextMetrics.width(caption(meeting.event, isNext: isNext), font)
         return Self.dotsWidth(meeting.cast.voices.count) + Self.captionSpacing + caption
     }
 
@@ -581,19 +581,12 @@ struct HomeDayAxis: View {
 
     /// The widths `titleLine` draws at.
     private static func measure(_ title: String, detail: String?) -> DayAxisLayout.Title {
-        let full = width(title, titleFont) + (detail.map { width("  \($0)", minutesFont) } ?? 0)
+        let full = PVTextMetrics.width(title, titleFont)
+            + (detail.map { PVTextMetrics.width("  \($0)", minutesFont) } ?? 0)
         return DayAxisLayout.Title(
             full: full,
-            word: title.split(separator: " ").first.map { width("\($0)…", titleFont) } ?? full,
-            minutes: detail.map { width($0, minutesFont) } ?? 0)
-    }
-
-    private static func width(_ text: String, _ font: NSFont) -> CGFloat {
-        ceil(NSAttributedString(string: text, attributes: [.font: font]).size().width)
-    }
-
-    private static func systemFont(_ style: NSFont.TextStyle, _ weight: NSFont.Weight) -> NSFont {
-        NSFont.systemFont(ofSize: NSFont.preferredFont(forTextStyle: style).pointSize, weight: weight)
+            word: title.split(separator: " ").first.map { PVTextMetrics.width("\($0)…", titleFont) } ?? full,
+            minutes: detail.map { PVTextMetrics.width($0, minutesFont) } ?? 0)
     }
 
     private static func dotTints(_ cast: VoiceCast) -> [VoiceCast.Tint] {

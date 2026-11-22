@@ -249,3 +249,15 @@ struct DisplayTimeText: View {
         }
     }
 }
+
+/// AppKit metrics that mirror SwiftUI's system text styles, for layouts that
+/// must know a label's width before SwiftUI draws it.
+enum PVTextMetrics {
+    static func font(_ style: NSFont.TextStyle, _ weight: NSFont.Weight = .regular) -> NSFont {
+        NSFont.systemFont(ofSize: NSFont.preferredFont(forTextStyle: style).pointSize, weight: weight)
+    }
+
+    static func width(_ text: String, _ font: NSFont) -> CGFloat {
+        ceil(NSAttributedString(string: text, attributes: [.font: font]).size().width)
+    }
+}
