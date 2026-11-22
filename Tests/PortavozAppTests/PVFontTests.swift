@@ -86,6 +86,13 @@ final class PVFontTests: XCTestCase {
         XCTAssertEqual(monoRuns, ["02:18"], "only the trailing position, not a title that quotes one")
         XCTAssertTrue(line.runs.contains { $0.font == nil }, "the rest keeps the surrounding font")
 
+        let placed = PVFont.timeCoded("Sprint 02:18 · 02:18", time: "02:18")
+        let placedMono = placed.runs.filter { $0.font == mono }
+        XCTAssertEqual(placedMono.count, 1)
+        XCTAssertEqual(
+            placedMono.first.map { String(placed[$0.range.lowerBound...].characters) }, "02:18",
+            "a localized line marks the last occurrence, not a title that quotes the same time")
+
         let untimed = PVFont.timeCoded("unheard", time: nil)
         XCTAssertFalse(untimed.runs.contains { $0.font != nil })
     }
