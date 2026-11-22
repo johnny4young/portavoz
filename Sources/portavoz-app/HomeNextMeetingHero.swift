@@ -69,6 +69,8 @@ struct HomeNextMeetingHero: View {
     /// Invitees with you last, in the day's hues when known.
     let cast: VoiceCast
     let isToday: Bool
+    /// Steps the countdown down to fit beside the brief in a narrower section.
+    var compact = false
     let recordingActive: Bool
     /// The event whose brief is being prepared, if any.
     let briefLoading: UpcomingEvent?
@@ -80,7 +82,7 @@ struct HomeNextMeetingHero: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if isToday {
-                HomeCountdown(start: event.startDate)
+                HomeCountdown(start: event.startDate, compact: compact)
             } else {
                 HomeHeroKicker(
                     lead: L10n.text("Next meeting"),
@@ -93,8 +95,12 @@ struct HomeNextMeetingHero: View {
                 .lineLimit(2)
                 .padding(.top, isToday ? 14 : PVDesign.space2)
             ViewThatFits(in: .horizontal) {
-                HStack(spacing: PVDesign.space4) { details }
-                VStack(alignment: .leading, spacing: PVDesign.space2) { details }
+                HStack(spacing: PVDesign.space4) {
+                    details { HStack(spacing: PVDesign.space4) { invitees } }
+                }
+                VStack(alignment: .leading, spacing: PVDesign.space2) {
+                    details { FlowLayout(spacing: PVDesign.space4, rowSpacing: 4) { invitees } }
+                }
             }
             .padding(.top, PVDesign.space3)
             HStack(spacing: 10) {
@@ -133,21 +139,12 @@ struct HomeNextMeetingHero: View {
     }
 
     @ViewBuilder
-    private var details: some View {
+    private func details(@ViewBuilder inviteeRow: () -> some View) -> some View {
         if !event.attendees.isEmpty {
-            HStack(spacing: PVDesign.space4) {
-                ForEach(cast.voices) { voice in
-                    HomeInvitee(voice: voice)
-                }
-                if !cast.others.isEmpty {
-                    Text(L10n.format("Others · %d", cast.others.count))
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(PVDesign.ink2)
-                }
-            }
-            .lineLimit(1)
-            .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("home-upcoming-invitees")
+            inviteeRow()
+                .lineLimit(1)
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("home-upcoming-invitees")
         }
         if let facts = Self.facts(event) {
             HStack(spacing: PVDesign.space4) {
@@ -162,6 +159,18 @@ struct HomeNextMeetingHero: View {
                     .foregroundStyle(PVDesign.ink2)
                     .lineLimit(1)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var invitees: some View {
+        ForEach(cast.voices) { voice in
+            HomeInvitee(voice: voice)
+        }
+        if !cast.others.isEmpty {
+            Text(L10n.format("Others · %d", cast.others.count))
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(PVDesign.ink2)
         }
     }
 
@@ -216,18 +225,24 @@ struct HomeHeroKicker: View {
 
 /// Only this view re-renders every second. Digits sit in equal cells, so the
 /// numeral keeps its width while it counts and nothing around it moves.
-private struct HomeCountdown: View {
+struct HomeCountdown: View {
     let start: Date
+    var compact = false
+
+    private var leadStyle: PVDisplayStyle { compact ? .countdownCompact : .countdown }
+    private var trailStyle: PVDisplayStyle { compact ? .countdownTrailCompact : .countdownTrail }
 
     var body: some View {
         let locale = AppLanguage.current.locale
+        // The numeral's side bearing and line gap, trimmed in proportion to its size.
+        let trim = leadStyle.size / PVDisplayStyle.countdown.size
         TimelineView(CountdownSchedule(start: start)) { context in
             let countdown = NextMeetingCountdown(start: start, at: context.date, locale: locale)
             VStack(alignment: .leading, spacing: 0) {
                 kicker(countdown)
                 numeral(countdown)
-                    .padding(.leading, -8)
-                    .padding(.vertical, -26)
+                    .padding(.leading, -8 * trim)
+                    .padding(.vertical, -26 * trim)
                     .padding(.top, 4)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(accessibilityLabel(countdown))
@@ -259,9 +274,9 @@ private struct HomeCountdown: View {
         switch countdown {
         case .counting(let lead, let trail, let unit):
             HStack(alignment: .lastTextBaseline, spacing: 0) {
-                DisplayTimeText(lead, style: .countdown)
+                DisplayTimeText(lead, style: leadStyle)
                     .foregroundStyle(PVDesign.ink)
-                DisplayTimeText(trail, style: .countdownTrail)
+                DisplayTimeText(trail, style: trailStyle)
                     .foregroundStyle(PVDesign.ink3)
                 Text(unit == .minutes ? L10n.text("min") : L10n.text("h"))
                     .font(.body.weight(.semibold))
@@ -274,7 +289,7 @@ private struct HomeCountdown: View {
             .fixedSize()
         case .now:
             Text(L10n.text("Now"))
-                .pvDisplay(.countdown)
+                .pvDisplay(leadStyle)
                 .foregroundStyle(PVDesign.now)
                 .lineLimit(1)
                 .fixedSize()
@@ -295,17 +310,37 @@ private struct HomeCountdown: View {
 /// otherwise. Chosen from the proposed width alone, so the ticking hero is
 /// never measured against alternative layouts. Expects two subviews.
 struct HomeHeroLayout: Layout {
-    private static let sideWidths: ClosedRange<CGFloat> = 360...552
-    private static let minimumHeroWidth: CGFloat = 536
-    private static let spacing: CGFloat = 44
-    private static let stackedSpacing = PVDesign.space6
-    private static let minimumWideWidth = minimumHeroWidth + spacing + sideWidths.lowerBound
+    enum Arrangement: Equatable {
+        /// Beside a hero with the full countdown.
+        case wide
+        /// Beside a hero whose countdown steps down to fit.
+        case compact
+        /// Under the hero.
+        case stacked
 
-    /// Whether a section this wide puts the side column beside the hero.
-    static func isWide(width: CGFloat) -> Bool { width >= minimumWideWidth }
+        var isBeside: Bool { self != .stacked }
+    }
+
+    private struct Columns {
+        let hero: CGFloat
+        let side: ClosedRange<CGFloat>
+        let spacing: CGFloat
+        var minimumWidth: CGFloat { hero + spacing + side.lowerBound }
+    }
+
+    // Compact tops out at the wide side's minimum, so crossing into wide keeps the side where it is.
+    private static let wide = Columns(hero: 536, side: 360...552, spacing: 44)
+    private static let compact = Columns(hero: 324, side: 284...360, spacing: 32)
+    private static let stackedSpacing = PVDesign.space6
+
+    static func arrangement(width: CGFloat) -> Arrangement {
+        if width >= wide.minimumWidth { return .wide }
+        if width >= compact.minimumWidth { return .compact }
+        return .stacked
+    }
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let width = proposal.width ?? Self.minimumWideWidth
+        let width = proposal.width ?? Self.wide.minimumWidth
         let heights = frames(width: width, subviews: subviews).map(\.maxY)
         return CGSize(width: width, height: heights.max() ?? 0)
     }
@@ -318,22 +353,32 @@ struct HomeHeroLayout: Layout {
         }
     }
 
+    /// Hero and side widths when they sit side by side; nil when stacked.
+    static func columns(width: CGFloat) -> (hero: CGFloat, side: CGFloat)? {
+        let columns: Columns
+        switch arrangement(width: width) {
+        case .wide: columns = wide
+        case .compact: columns = compact
+        case .stacked: return nil
+        }
+        // The side grows to its full width once the hero keeps its minimum.
+        let side = min(columns.side.upperBound, width - columns.hero - columns.spacing)
+        return (width - side - columns.spacing, side)
+    }
+
     private func frames(width: CGFloat, subviews: Subviews) -> [CGRect] {
         guard subviews.count == 2 else { return [] }
-        if Self.isWide(width: width) {
-            // The side grows to its full width once the hero keeps its minimum.
-            let side = min(Self.sideWidths.upperBound, width - Self.minimumHeroWidth - Self.spacing)
-            let heroWidth = width - side - Self.spacing
-            return [
-                CGRect(origin: .zero, size: size(subviews[0], width: heroWidth)),
-                CGRect(origin: CGPoint(x: width - side, y: 0), size: size(subviews[1], width: side))
-            ]
+        guard let columns = Self.columns(width: width) else {
+            let hero = CGRect(origin: .zero, size: size(subviews[0], width: width))
+            let side = size(subviews[1], width: width)
+            // An empty side column adds no gap under the hero.
+            let sideY = hero.maxY + (side.height > 0 ? Self.stackedSpacing : 0)
+            return [hero, CGRect(origin: CGPoint(x: 0, y: sideY), size: side)]
         }
-        let hero = CGRect(origin: .zero, size: size(subviews[0], width: width))
-        let side = size(subviews[1], width: width)
-        // An empty side column adds no gap under the hero.
-        let sideY = hero.maxY + (side.height > 0 ? Self.stackedSpacing : 0)
-        return [hero, CGRect(origin: CGPoint(x: 0, y: sideY), size: side)]
+        return [
+            CGRect(origin: .zero, size: size(subviews[0], width: columns.hero)),
+            CGRect(origin: CGPoint(x: width - columns.side, y: 0), size: size(subviews[1], width: columns.side))
+        ]
     }
 
     private func size(_ subview: LayoutSubview, width: CGFloat) -> CGSize {
@@ -341,21 +386,21 @@ struct HomeHeroLayout: Layout {
     }
 }
 
-/// The agenda in `HomeHeroLayout`, telling the side column which arrangement
-/// it is in. Owns that one flag so `HomeView` keeps no state of its own.
+/// The agenda in `HomeHeroLayout`, telling the hero and the side column which
+/// arrangement they are in. Owns that one value so `HomeView` keeps no state of its own.
 struct HomeAgendaSection<Hero: View, Side: View>: View {
-    @ViewBuilder let hero: Hero
-    @ViewBuilder let side: (_ isWide: Bool) -> Side
-    @State private var isWide = false
+    @ViewBuilder let hero: (_ arrangement: HomeHeroLayout.Arrangement) -> Hero
+    @ViewBuilder let side: (_ arrangement: HomeHeroLayout.Arrangement) -> Side
+    @State private var arrangement = HomeHeroLayout.Arrangement.stacked
 
     var body: some View {
         HomeHeroLayout {
-            hero
-            side(isWide)
+            hero(arrangement)
+            side(arrangement)
         }
         // The section's width comes from the window alone, never from its content.
-        .onGeometryChange(for: Bool.self) { proxy in
-            HomeHeroLayout.isWide(width: proxy.size.width)
-        } action: { isWide = $0 }
+        .onGeometryChange(for: HomeHeroLayout.Arrangement.self) { proxy in
+            HomeHeroLayout.arrangement(width: proxy.size.width)
+        } action: { arrangement = $0 }
     }
 }

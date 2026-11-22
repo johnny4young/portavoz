@@ -28,29 +28,7 @@ final class HomeUITests: PortavozUITestCase {
         XCTAssertLessThan(title.frame.maxY, window.minY + 52, "Today lives in the title bar")
         XCTAssertEqual(title.frame.midY, askField.frame.midY, accuracy: 6, "Ask shares the title row")
 
-        // Every Today surface is visible inside the window without scrolling.
-        let upcoming = app.control(withIdentifier: "home-upcoming-ui-test-upcoming-rollout")
-        XCTAssertTrue(upcoming.waitForExistenceFast(timeout: 10))
-        let todo = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "identifier BEGINSWITH 'home-todo-' AND NOT identifier BEGINSWITH 'home-todo-toggle-'"))
-            .firstMatch
-        XCTAssertTrue(todo.waitForExistenceFast(timeout: 10))
-        let recent = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "identifier BEGINSWITH 'home-recent-'"))
-            .firstMatch
-        XCTAssertTrue(recent.waitForExistenceFast(timeout: 10))
-        let countdown = app.descendants(matching: .any)["home-upcoming-countdown"]
-        XCTAssertTrue(countdown.waitForExistenceFast(timeout: 5), "the next meeting counts down")
-        let record = app.buttons["home-upcoming-record-ui-test-upcoming-rollout"]
-        for element in [upcoming, countdown, record, todo, recent, askField] {
-            XCTAssertTrue(element.exists, "\(element) must render")
-            XCTAssertTrue(window.contains(element.frame), "\(element) must sit above the fold")
-        }
-        // An empty brief holds the column beside the hero; it never stacks under it.
-        let emptyBrief = app.descendants(matching: .any)["home-brief-empty"]
-        if emptyBrief.exists {
-            XCTAssertGreaterThan(emptyBrief.frame.minX, countdown.frame.maxX, "an empty brief must not cost the fold")
-        }
+        let (todo, recent, record) = assertTodayFitsAboveTheFold(app)
         XCTAssertTrue(app.staticTexts["Presupuesto rollout"].exists)
         XCTAssertTrue(todo.label.contains("Prepare the rollout"), todo.label)
         let radarLink = app.buttons["home-radar-link"]
@@ -126,6 +104,51 @@ final class HomeUITests: PortavozUITestCase {
         XCTAssertTrue(app.buttons["library-return-to-recording"].waitForExistenceFast(timeout: 5))
     }
 
+    /// Every Today surface is visible inside the window without scrolling.
+    @MainActor
+    @discardableResult
+    private func assertTodayFitsAboveTheFold(
+        _ app: XCUIApplication
+    ) -> (todo: XCUIElement, recent: XCUIElement, record: XCUIElement) {
+        let window = app.windows.firstMatch.frame
+        let askField = app.control(withIdentifier: "home-ask-field")
+        let upcoming = app.control(withIdentifier: "home-upcoming-ui-test-upcoming-rollout")
+        XCTAssertTrue(upcoming.waitForExistenceFast(timeout: 10))
+        let todo = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'home-todo-' AND NOT identifier BEGINSWITH 'home-todo-toggle-'"))
+            .firstMatch
+        XCTAssertTrue(todo.waitForExistenceFast(timeout: 10))
+        let recent = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'home-recent-'"))
+            .firstMatch
+        XCTAssertTrue(recent.waitForExistenceFast(timeout: 10))
+        let countdown = app.descendants(matching: .any)["home-upcoming-countdown"]
+        XCTAssertTrue(countdown.waitForExistenceFast(timeout: 5), "the next meeting counts down")
+        let record = app.buttons["home-upcoming-record-ui-test-upcoming-rollout"]
+        for element in [upcoming, countdown, record, todo, recent, askField] {
+            XCTAssertTrue(element.exists, "\(element) must render")
+            XCTAssertTrue(window.contains(element.frame), "\(element) must sit above the fold")
+        }
+        // An empty brief holds the column beside the hero; it never stacks under it.
+        let emptyBrief = app.descendants(matching: .any)["home-brief-empty"]
+        if emptyBrief.exists {
+            XCTAssertGreaterThan(emptyBrief.frame.minX, countdown.frame.maxX, "an empty brief must not cost the fold")
+        }
+        return (todo, recent, record)
+    }
+
+    @MainActor
+    func testTodayKeepsEverythingAboveTheFoldAtTheMinimumWindow() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
+        app.launchArguments += ["-seed-narrow-window", "-AppleInterfaceStyle", "Light"]
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        assertTodayFitsAboveTheFold(app)
+        attachScreenshot(of: app, named: "pr-home-minimum-window")
+    }
+
     @MainActor
     func testBriefCardShowsWhatEachPersonSaidLastTime() throws {
         let app = try XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
@@ -142,10 +165,10 @@ final class HomeUITests: PortavozUITestCase {
             waitForUITestCondition(timeout: 10) { rows.count == 2 }, "one row per person heard last time")
         let countdown = app.descendants(matching: .any)["home-upcoming-countdown"]
         XCTAssertTrue(countdown.waitForExistenceFast(timeout: 5))
-        // A 1024 pt screen only has room for the wide layout without the sidebar.
-        app.setSidebar(visible: false)
+        // A 1024 pt window with the sidebar showing steps the countdown down to keep the brief beside it.
         XCTAssertTrue(card.waitForStableFrame(timeout: 5))
         XCTAssertGreaterThan(card.frame.minX, countdown.frame.maxX, "the brief sits beside the countdown")
+        XCTAssertLessThan(card.frame.minY, countdown.frame.maxY, "level with the countdown, not under it")
         attachScreenshot(of: app, named: "pr-home-brief-card")
 
         // A row opens the previous meeting at the moment the line was said.
@@ -159,7 +182,6 @@ final class HomeUITests: PortavozUITestCase {
         XCTAssertFalse(card.exists)
 
         // Back on Today, the card opens the full brief.
-        app.setSidebar(visible: true)
         let today = app.buttons["library-home-button"]
         XCTAssertTrue(today.waitForStableFrame(timeout: 5))
         today.click()

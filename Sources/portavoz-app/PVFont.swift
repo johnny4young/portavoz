@@ -173,6 +173,9 @@ struct PVDisplayStyle: Equatable, Sendable {
     /// The countdown's smaller unit, a lighter cut beside the lead.
     static let countdownTrail = PVDisplayStyle(
         size: 172, weight: 300, soft: 100, tracking: -0.045, relativeTo: .largeTitle)
+    /// The countdown where it shares a narrower section with the brief.
+    static let countdownCompact = countdown.sized(120)
+    static let countdownTrailCompact = countdownTrail.sized(120)
     /// Page and meeting titles.
     static let title = PVDisplayStyle(size: 40, weight: 480, relativeTo: .largeTitle)
     static let section = PVDisplayStyle(size: 21, weight: 520, relativeTo: .title2)
@@ -185,6 +188,12 @@ struct PVDisplayStyle: Equatable, Sendable {
     /// A running or scheduled time at a size the surrounding layout allows.
     static func clock(size: CGFloat) -> PVDisplayStyle {
         PVDisplayStyle(size: size, weight: 400, soft: 100, tracking: 0, relativeTo: .title2)
+    }
+
+    func sized(_ size: CGFloat) -> PVDisplayStyle {
+        var style = self
+        style.size = size
+        return style
     }
 
     func resolved(size: CGFloat) -> PVFont.Resolved {
