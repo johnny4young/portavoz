@@ -10,6 +10,7 @@ struct AskView: View {
     let onOpenCitation: (AskCitation) -> Void
     let onOpenNoteCitation: (AskNoteCitation) -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var questionFocused: Bool
 
     var body: some View {
@@ -108,7 +109,7 @@ struct AskView: View {
             }
             .onChange(of: model.state.exchanges.count) { _, _ in
                 if let last = model.state.exchanges.last?.id {
-                    withAnimation { proxy.scrollTo(last, anchor: .bottom) }
+                    proxy.pvScrollTo(last, anchor: .bottom, reduceMotion: reduceMotion)
                 }
             }
         }

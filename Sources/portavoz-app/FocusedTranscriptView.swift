@@ -75,6 +75,7 @@ struct FocusedTranscriptView<Item: Identifiable, Row: View>: View where Item.ID:
     var scrollAccessibilityIdentifier: String?
     @ViewBuilder var row: (Item, Bool) -> Row
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isFollowing = true
 
     init(
@@ -200,12 +201,8 @@ struct FocusedTranscriptView<Item: Identifiable, Row: View>: View where Item.ID:
         animated: Bool = true
     ) {
         guard let id else { return }
-        if animated {
-            withAnimation(.easeInOut(duration: 0.35)) {
-                proxy.scrollTo(id, anchor: anchor)
-            }
-        } else {
-            proxy.scrollTo(id, anchor: anchor)
-        }
+        proxy.pvScrollTo(
+            id, anchor: anchor, animation: animated ? .easeInOut(duration: 0.35) : nil,
+            reduceMotion: reduceMotion)
     }
 }
