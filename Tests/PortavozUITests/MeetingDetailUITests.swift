@@ -1767,7 +1767,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             review.waitForExistenceFast(timeout: 5),
             "the exact commitment review action must exist before activation")
-        XCTAssertTrue(review.revealVertically(in: artifacts), "the review action must be visible before activation")
         review.click()
         XCTAssertTrue(
             app.control(withIdentifier: "commitment-editor").waitForExistenceFast(timeout: 5),

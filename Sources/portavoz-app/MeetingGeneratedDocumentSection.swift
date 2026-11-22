@@ -75,13 +75,10 @@ struct MeetingGeneratedDocumentSection: View {
             HStack(alignment: .top, spacing: 22) {
                 gutter
                     .frame(width: Self.gutterWidth, alignment: .trailing)
-                VStack(alignment: .leading, spacing: 10) {
-                    documentContent
-                    suggestionRow
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                documentContent
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            Divider()
+            closingRule
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-generated-document")
@@ -487,6 +484,16 @@ private extension MeetingGeneratedDocumentSection {
         .buttonStyle(.plain)
         .accessibilityIdentifier(segment.accessibilityIdentifier)
         .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    /// Suggestions ride on the closing rule instead of taking a row of their
+    /// own, so one that arrives late never moves the material below it.
+    var closingRule: some View {
+        HStack(spacing: 8) {
+            VStack { Divider() }
+            suggestionRow
+        }
+        .frame(height: 1)
     }
 
     @ViewBuilder
