@@ -1787,7 +1787,7 @@
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "control",
       "source": "Button {",
-      "occurrences": 2
+      "occurrences": 3
     },
     {
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
@@ -1847,12 +1847,6 @@
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "control",
       "source": "Button(L10n.format(\"Remove topic “%@”\", link.label)) {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
-      "category": "control",
-      "source": "Button(clock(segment.startTime)) {",
       "occurrences": 1
     },
     {
