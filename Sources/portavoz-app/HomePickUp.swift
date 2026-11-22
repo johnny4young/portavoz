@@ -8,7 +8,8 @@ import SwiftUI
 struct HomePickUp: View {
     let rows: [TodayPickUp.Row]
     let hasMeetings: Bool
-    let strips: [MeetingID: VoiceStripColumns]
+    /// Draws each strip in the colours the rest of Today uses.
+    let page: TodayPageCast
     let openItems: [LibraryOpenItem]
     let onOpen: (MeetingID) -> Void
 
@@ -25,7 +26,7 @@ struct HomePickUp: View {
 
     private func row(_ row: TodayPickUp.Row) -> some View {
         let meeting = row.meeting
-        let strip = strips[meeting.id] ?? .empty
+        let strip = page.strip(for: meeting.id) ?? .empty
         let progress = row.progress.map {
             PVFont.timeCoded(Self.progressText($0), time: Self.stoppedAt($0), weight: .semibold)
         }

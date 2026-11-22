@@ -27,7 +27,7 @@ protocol LibraryModelClient: AnyObject {
     func requestLibraryCalendarAccess() async
     func buildLibraryBrief(for event: UpcomingEvent) async -> MeetingBrief?
     func libraryBriefLines(for event: UpcomingEvent) async throws -> MeetingBriefLines?
-    func libraryTodayVoices(at now: Date, events: [UpcomingEvent]) async throws -> TodayVoices
+    func libraryTodayVoices(at now: Date, events: [UpcomingEvent], later: [UpcomingEvent]) async throws -> TodayVoices
     func libraryTodayWork(_ request: LoadTodayWork.Request) async throws -> TodayWork
     /// Skill offers waiting for review; zero when they cannot be read.
     func pendingLibraryAutomations() async -> Int
@@ -88,6 +88,7 @@ final class LibraryModel {
         fileprivate(set) var loadPhase: LoadPhase = .idle
         fileprivate(set) var meetings: [Meeting] = []
         fileprivate(set) var voiceStrips: [MeetingID: VoiceStripColumns] = [:]
+        fileprivate(set) var voiceSources: [MeetingID: VoiceStripSource] = [:]
         fileprivate(set) var openItems: [LibraryOpenItem] = []
         fileprivate(set) var trashed: [LibraryTrashItem] = []
 
@@ -131,15 +132,32 @@ final class LibraryModel {
             TodayPickUp.rows(meetings: meetings, positions: playbackPositions)
         }
 
+        /// Tomorrow's hero, whose invitees the day read also resolves.
+        var laterHero: [UpcomingEvent] {
+            heroEvent.flatMap { $0.isToday ? nil : [$0.event] } ?? []
+        }
+
         /// The first event of today, else the first of tomorrow.
         var heroEvent: (event: UpcomingEvent, isToday: Bool)? {
             if let first = upcomingToday.first { return (first, true) }
             return upcomingTomorrow.first.map { ($0, false) }
         }
 
-        /// Invitees in the hues the day axis gives them, once today's read has the event.
-        func inviteeCast(for event: UpcomingEvent) -> VoiceCast {
-            todayVoices?.upcoming.first { $0.event == event }?.cast ?? VoiceCast(invitees: event.attendees)
+        /// The brief of the hero's own occurrence, once it has loaded.
+        var heroBriefPreview: BriefPreview? {
+            guard let event = heroEvent?.event, let briefPreview, briefPreview.isFor(event) else { return nil }
+            return briefPreview
+        }
+
+        /// One cast for all of Today: the day's voices, then the hero's
+        /// invitees, the brief source, to-do sources and pick-up rows.
+        func pageCast(pickUp: [TodayPickUp.Row]) -> TodayPageCast {
+            let ids = [heroBriefPreview?.lines?.sourceMeetingID].compactMap(\.self)
+                + shownOpenItems.map(\.meetingID)
+                + pickUp.map(\.meeting.id)
+            return TodayPageCast(
+                day: todayVoices, hero: heroEvent?.event,
+                meetings: ids.compactMap { id in voiceSources[id].map { (id, $0) } })
         }
     }
 
@@ -311,6 +329,9 @@ private extension LibraryModel {
             state.voiceStrips = Dictionary(uniqueKeysWithValues: rows.map {
                 ($0.meeting.id, $0.voiceStrip)
             })
+            state.voiceSources = Dictionary(uniqueKeysWithValues: rows.compactMap { row in
+                row.voiceSource.map { (row.meeting.id, $0) }
+            })
             markObserved(.meetings, inlineFailureCount: failures)
             bumpRevision(meetings: rows.map { MeetingSignature($0.meeting) })
             refreshAgenda()
@@ -455,7 +476,7 @@ private extension LibraryModel {
         let signature = TodaySignature(
             meetings: today.map(MeetingSignature.init),
             strips: today.filter { $0.lifecycleState != .recording }.map { state.voiceStrips[$0.id] ?? .empty },
-            events: state.upcomingToday)
+            events: state.upcomingToday + state.laterHero)
         guard signature != todaySignature else { return }
         todaySignature = signature
         state.todayVoicesRevision &+= 1
@@ -511,7 +532,8 @@ private extension LibraryModel {
         let request = todayVoicesRequest
         let voices: TodayVoices
         do {
-            voices = try await client.libraryTodayVoices(at: Date(), events: state.upcomingToday)
+            voices = try await client.libraryTodayVoices(
+                at: Date(), events: state.upcomingToday, later: state.laterHero)
         } catch {
             return
         }

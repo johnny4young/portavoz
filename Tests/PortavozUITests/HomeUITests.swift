@@ -270,6 +270,34 @@ final class HomeUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testEveryTodaySurfaceDrawsTheSamePeople() throws {
+        for dark in [false, true] {
+            let app = try XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
+            app.launchArguments += ["-seed-brief-previous", "-seed-pick-up", "-seed-today-voices", "-seed-wide-window"]
+            app.launchArguments += XCUIApplication.appearanceArguments(dark: dark)
+            app.launchPortavoz()
+
+            XCTAssertTrue(app.waitForSeededLibraryToSettle())
+            let rows = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "identifier BEGINSWITH 'home-brief-person-'"))
+            XCTAssertTrue(waitForUITestCondition(timeout: 15) { rows.count == 2 }, "the brief lists who spoke")
+            let todo = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "identifier BEGINSWITH 'home-todo-' AND NOT identifier BEGINSWITH 'home-todo-toggle-'"))
+                .firstMatch
+            XCTAssertTrue(waitForUITestCondition(timeout: 10) { todo.label.contains("said it") }, todo.label)
+            let recent = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "identifier BEGINSWITH 'home-recent-'"))
+                .firstMatch
+            XCTAssertTrue(waitForUITestCondition(timeout: 10) { recent.label.contains("stopped at") }, recent.label)
+            // A 1024 pt screen only has room for the wide layout without the sidebar.
+            app.setSidebar(visible: false)
+            XCTAssertTrue(recent.waitForStableFrame(timeout: 5))
+            attachScreenshot(of: app, named: dark ? "pr-home-page-voices-dark" : "pr-home-page-voices")
+            finishUITestApplication(app)
+        }
+    }
+
+    @MainActor
     func testPendingAutomationsOpenTheirSettings() throws {
         let app = try XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
         app.launchArguments += ["-seed-duplicate-skill-proposals", "-seed-wide-window", "-AppleInterfaceStyle", "Light"]

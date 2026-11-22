@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 137
+    "expectedCaseCount": 138
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -40,6 +40,7 @@
     "MeetingTranscriptTranslationUITests/testMissingLanguagesPointToTheirDownload()": 30.0,
     "MeetingTranscriptTranslationUITests/testAnExportCanUseTheCurrentTranslation()": 30.0,
     "HomeUITests/testBriefCardShowsWhatEachPersonSaidLastTime()": 25.0,
+    "HomeUITests/testEveryTodaySurfaceDrawsTheSamePeople()": 35.0,
     "HomeUITests/testPendingAutomationsOpenTheirSettings()": 25.0,
     "HomeUITests/testTodayShowsEverythingAboveTheFoldAndActsWithoutTyping()": 50.0,
     "HomeUITests/testWhoSpokeTodayLeadsTheDayAxisAndOpensItsMeetings()": 25.0,

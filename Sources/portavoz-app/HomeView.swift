@@ -72,18 +72,20 @@ struct HomeView: View {
     /// Header, the hero beside the rest of the agenda, the to-dos beside the
     /// meetings to pick up, then who spoke today.
     private var content: some View {
-        VStack(alignment: .leading, spacing: PVDesign.space4) {
+        let rows = state.pickUpRows
+        let page = state.pageCast(pickUp: rows)
+        return VStack(alignment: .leading, spacing: PVDesign.space4) {
             header
-            agendaSection
+            agendaSection(page)
             Divider()
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .top, spacing: 44) {
-                    yoursToDo.frame(maxWidth: .infinity, alignment: .topLeading)
-                    pickUp.frame(maxWidth: .infinity, alignment: .topLeading)
+                    yoursToDo(page).frame(maxWidth: .infinity, alignment: .topLeading)
+                    pickUp(rows, page: page).frame(maxWidth: .infinity, alignment: .topLeading)
                 }
                 VStack(alignment: .leading, spacing: PVDesign.space4) {
-                    yoursToDo
-                    pickUp
+                    yoursToDo(page)
+                    pickUp(rows, page: page)
                 }
             }
             // Below the work rows: the day's talk time must never cost the fold.
@@ -165,18 +167,20 @@ struct HomeView: View {
     }
 
     @ViewBuilder
-    private var agendaSection: some View {
+    private func agendaSection(_ page: TodayPageCast) -> some View {
         let hasLater = !laterToday.isEmpty || !tomorrow.isEmpty
         // Laid out from the hero alone, so the card arriving never moves the countdown.
         if state.heroEvent == nil, !hasLater {
-            hero
+            hero(page)
         } else {
             HomeAgendaSection {
-                hero
+                hero(page)
             } side: { isWide in
                 VStack(alignment: .leading, spacing: PVDesign.space4) {
                     // Stacked, an empty brief only pushes open work below the fold.
-                    if let briefPreview, isWide || briefPreview.hasLines { briefCard(briefPreview) }
+                    if let briefPreview = state.heroBriefPreview, isWide || briefPreview.hasLines {
+                        briefCard(briefPreview, page: page)
+                    }
                     if hasLater { laterCard }
                 }
             }
@@ -184,12 +188,12 @@ struct HomeView: View {
     }
 
     @ViewBuilder
-    private var hero: some View {
-        if let next = state.heroEvent {
+    private func hero(_ page: TodayPageCast) -> some View {
+        if let next = state.heroEvent, let cast = page.hero {
             let event = next.event
             HomeNextMeetingHero(
                 event: event,
-                cast: state.inviteeCast(for: event),
+                cast: cast,
                 isToday: next.isToday,
                 recordingActive: recordingActive,
                 briefLoading: state.briefLoading,
@@ -303,23 +307,23 @@ struct HomeView: View {
 
     // MARK: - Work
 
-    private var yoursToDo: some View {
+    private func yoursToDo(_ page: TodayPageCast) -> some View {
         HomeYoursToDo(
             items: state.shownOpenItems,
             totalOpen: state.openItems.count,
             sources: state.openItemSources,
-            strips: state.voiceStrips,
+            page: page,
             suggestionsToReview: state.suggestionsToReview,
             onToggle: { perform(.setActionItem($0, done: $1)) },
             onOpen: onOpenMeeting,
             onOpenRadar: { route = .commitments(nil) })
     }
 
-    private var pickUp: some View {
+    private func pickUp(_ rows: [TodayPickUp.Row], page: TodayPageCast) -> some View {
         HomePickUp(
-            rows: state.pickUpRows,
+            rows: rows,
             hasMeetings: !state.meetings.isEmpty,
-            strips: state.voiceStrips,
+            page: page,
             openItems: state.openItems,
             onOpen: { route = .meeting($0) })
     }
@@ -366,19 +370,12 @@ private extension HomeView {
         let sourceStrip: VoiceStripColumns?
     }
 
-    /// Shown once the hero's own occurrence has loaded.
-    var briefPreview: LibraryModel.BriefPreview? {
-        guard let event = state.heroEvent?.event, let preview = state.briefPreview, preview.isFor(event)
-        else { return nil }
-        return preview
-    }
-
-    func briefCard(_ preview: LibraryModel.BriefPreview) -> some View {
+    func briefCard(_ preview: LibraryModel.BriefPreview, page: TodayPageCast) -> some View {
         let sourceID = preview.lines?.sourceMeetingID
         return HomeBriefCard(
             preview: preview,
             source: sourceID.flatMap { id in state.meetings.first { $0.id == id } },
-            strip: sourceID.flatMap { state.voiceStrips[$0] } ?? .empty,
+            page: page,
             briefDisabled: state.briefLoading != nil,
             onBrief: { state.heroEvent.map { perform(.openBrief($0.event)) } },
             onOpenLine: onOpenMeeting)

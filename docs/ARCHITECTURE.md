@@ -1463,7 +1463,9 @@ builds the read model for who spoke today and the day axis from the
 meetings started today, their stored voice strips and the adapter's upcoming
 events, with invitees resolved to confirmed people by unique exact alias;
 `LibraryModel` reads it through its client and Today draws it as the "Who
-spoke today" section and day axis. `LoadTodayWork` reads, outside the library
+spoke today" section and day axis. `TodayPageCast` extends that day cast over
+the hero's invitees and the brief, to-do and pick-up meetings, recasting each
+from the library row's `VoiceStripSource`, so Today colours a person once. `LoadTodayWork` reads, outside the library
 observation, the saved playback positions behind "Pick up where you left off"
 (ordered by `TodayPickUp`) and who said each shown to-do (`openItemSources`,
 over the corrected transcript); the review queue's count behind the Radar badge

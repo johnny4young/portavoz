@@ -194,22 +194,6 @@ final class VoiceCastTests: XCTestCase {
         XCTAssertEqual(strip.columns, stored.columns)
     }
 
-    func testInviteesKeepCalendarOrderWithYouLast() {
-        let cast = VoiceCast(invitees: ["Marta", "Ilarion"])
-        XCTAssertEqual(cast.voices.map(\.name), ["Marta", "Ilarion", nil])
-        XCTAssertEqual(cast.voices.last?.tint, .you)
-        XCTAssertEqual(
-            cast.voices.first?.tint, .hue(VoiceHue.index(name: "Marta")),
-            "an invitee wears the hue their name has in recorded meetings")
-    }
-
-    func testInviteesPastTheCastFoldIntoOthers() {
-        let names = (1...7).map { "Person \($0)" }
-        let cast = VoiceCast(invitees: names)
-        XCTAssertEqual(cast.voices.count, VoiceHue.paletteSize + 1)
-        XCTAssertEqual(cast.others.map(\.name), ["Person 6", "Person 7"])
-    }
-
     func testAPageCastKeepsEveryTintItGaveAndLendsNoneOfItsHues() throws {
         let marta = VoiceHue.index(name: "Marta")
         let rival = try XCTUnwrap((1...100).map { "Person \($0)" }.first { VoiceHue.index(name: $0) == marta })
@@ -225,7 +209,7 @@ final class VoiceCastTests: XCTestCase {
             members: [Member(key: "person", name: "Marta G.", talkSeconds: 1),
                       Member(key: "p5", name: "Guest 5", talkSeconds: 9),
                       Member(key: "stranger", name: rival, talkSeconds: 5)],
-            ordering: .talkShare, page: page)
+            ordering: .talkShare, page: page.page)
         XCTAssertEqual(meeting.tint(for: "person"), .hue(marta), "known by key under another name")
         XCTAssertEqual(meeting.tint(for: "p5"), .grey, "grey on the page stays grey")
         let pageHues = Set(page.voices.map(\.tint))

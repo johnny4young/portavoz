@@ -9,7 +9,8 @@ struct HomeBriefCard: View {
     let preview: LibraryModel.BriefPreview
     /// The previous occurrence, when the library has it.
     let source: Meeting?
-    let strip: VoiceStripColumns
+    /// Colours the source's voices as the rest of Today does.
+    let page: TodayPageCast
     let briefDisabled: Bool
     let onBrief: () -> Void
     let onOpenLine: (MeetingID, TimeInterval?) -> Void
@@ -27,8 +28,8 @@ struct HomeBriefCard: View {
         VStack(alignment: .leading, spacing: 0) {
             header
             if let lines = preview.lines, !lines.people.isEmpty {
-                if !strip.columns.isEmpty {
-                    stripRow.padding(.top, 12).padding(.bottom, 10)
+                if let strip = page.strip(for: lines.sourceMeetingID), !strip.columns.isEmpty {
+                    stripRow(strip).padding(.top, 12).padding(.bottom, 10)
                 }
                 ForEach(lines.people, id: \.speakerID) { person in
                     if let line = person.lead {
@@ -86,7 +87,7 @@ struct HomeBriefCard: View {
     }
 
     /// The strip beside its shares when they fit, above them otherwise.
-    private var stripRow: some View {
+    private func stripRow(_ strip: VoiceStripColumns) -> some View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 14) {
                 VoiceStrip(strip, size: .card).frame(width: 210)
@@ -108,7 +109,9 @@ struct HomeBriefCard: View {
             HStack(alignment: .top, spacing: 12) {
                 HStack(spacing: 7) {
                     Circle()
-                        .fill(VoicePalette.color(tint(person), colorScheme: colorScheme))
+                        .fill(VoicePalette.color(
+                            page.tint(for: person.speakerID, isMe: person.isMe, in: meetingID),
+                            colorScheme: colorScheme))
                         .frame(width: 10, height: 10)
                     Text(Self.name(person))
                         .font(.system(size: 13.5, weight: .bold))
@@ -143,10 +146,6 @@ struct HomeBriefCard: View {
         .buttonStyle(.plain)
         .help("Open the meeting at this moment")
         .accessibilityIdentifier("home-brief-person-\(person.speakerID.rawValue.uuidString)")
-    }
-
-    private func tint(_ person: MeetingBriefLines.Person) -> VoiceCast.Tint {
-        person.isMe ? .you : strip.cast.tint(for: person.speakerID)
     }
 
     nonisolated static func name(_ person: MeetingBriefLines.Person) -> String {

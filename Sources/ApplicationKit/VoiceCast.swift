@@ -70,14 +70,14 @@ public struct VoiceCast: Sendable, Equatable {
     ///   - previous: the last cast of the same meeting. Named voices keep the
     ///     hue they already had, so live re-ranking or relabelling never
     ///     recolours someone on screen.
-    ///   - page: a cast that already coloured the page. A voice it knows by key
-    ///     keeps that tint, grey included; a new named voice takes a hue it left free.
+    ///   - page: tints the page already shows. A voice it knows by key keeps
+    ///     that tint, grey included; a new named voice takes a hue it left free.
     public init(
         members: [Member],
         ordering: Ordering,
         current: String? = nil,
         previous: VoiceCast? = nil,
-        page: VoiceCast? = nil
+        page: Page? = nil
     ) {
         let total = members.reduce(0) { $0 + $1.talkSeconds }
         let appearance = Dictionary(
@@ -134,7 +134,7 @@ public struct VoiceCast: Sendable, Equatable {
     /// Previous hues first, then each name's stable hue, or the next free one
     /// when an earlier voice already holds it. Keyed by name, not live label.
     private static func assignHues(
-        to named: [(key: String, name: String)], previous: VoiceCast?, page: VoiceCast?
+        to named: [(key: String, name: String)], previous: VoiceCast?, page: Page?
     ) -> [String: Int] {
         if let page { return assignHues(to: named, page: page) }
         var kept: [String: Int] = [:]
@@ -163,7 +163,7 @@ public struct VoiceCast: Sendable, Equatable {
     }
 
     private static func assignHues(
-        to named: [(key: String, name: String)], page: VoiceCast
+        to named: [(key: String, name: String)], page: Page
     ) -> [String: Int] {
         var taken = Set(page.tints.values.compactMap { tint -> Int? in
             if case .hue(let index) = tint { return index }
@@ -188,6 +188,21 @@ public struct VoiceCast: Sendable, Equatable {
 }
 
 extension VoiceCast {
+    /// Tints by key that a page already shows, so later casts on it agree.
+    public struct Page: Sendable, Equatable {
+        fileprivate var tints: [String: Tint] = [:]
+
+        public static let empty = Page()
+
+        /// Adds the cast's tints; a key the page already has keeps its tint.
+        public func adding(_ cast: VoiceCast) -> Page {
+            Page(tints: tints.merging(cast.tints) { kept, _ in kept })
+        }
+    }
+
+    /// This cast's tints as a page for others to draw on.
+    public var page: Page { Page(tints: tints) }
+
     /// A finished meeting's cast, ranked by attributed talk. Members are
     /// passed in first-heard order, so a hue clash goes to whoever spoke first.
     public init(speakers: [Speaker], segments: [TranscriptSegment]) {
@@ -210,14 +225,6 @@ extension VoiceCast {
                     talkSeconds: seconds[$0.id, default: 0])
             },
             ordering: .talkShare)
-    }
-
-    /// Calendar invitees in calendar order with you last.
-    public init(invitees: [String]) {
-        let members = invitees.enumerated().map { index, name in
-            Member(key: "invitee-\(index)", name: name, talkSeconds: 0)
-        } + [Member(key: "me", isMe: true, name: nil, talkSeconds: 0)]
-        self.init(members: members, ordering: .talkShare)
     }
 
     public static func key(_ id: SpeakerID) -> String { id.rawValue.uuidString }

@@ -15,11 +15,16 @@ public struct LoadTodayVoices: ApplicationUseCase {
     public struct Request: Sendable {
         public let now: Date
         public let events: [UpcomingEvent]
+        /// Events past today whose invitees the page still draws, e.g. tomorrow's hero.
+        public let later: [UpcomingEvent]
         public let calendar: Calendar
 
-        public init(now: Date, events: [UpcomingEvent], calendar: Calendar = .current) {
+        public init(
+            now: Date, events: [UpcomingEvent], later: [UpcomingEvent] = [], calendar: Calendar = .current
+        ) {
             self.now = now
             self.events = events
+            self.later = later
             self.calendar = calendar
         }
     }
@@ -35,7 +40,7 @@ public struct LoadTodayVoices: ApplicationUseCase {
         let end = request.calendar.date(byAdding: .day, value: 1, to: start) ?? start.addingTimeInterval(86_400)
         let day = DateInterval(start: start, end: end)
         let today = request.events.filter { day.start <= $0.startDate && $0.startDate < day.end }
-        let names = Array(Set(today.flatMap(\.attendees))).sorted()
+        let names = Array(Set((today + request.later).flatMap(\.attendees))).sorted()
         let meetings = try await store.meetingRows(startedIn: day)
         let people: [String: [Person]]
         do {
@@ -47,6 +52,7 @@ public struct LoadTodayVoices: ApplicationUseCase {
             people = [:]
         }
         return TodayVoices(
-            day: day, now: request.now, meetings: meetings, events: request.events, people: people)
+            day: day, now: request.now, meetings: meetings, events: request.events, later: request.later,
+            people: people)
     }
 }
