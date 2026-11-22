@@ -2008,6 +2008,12 @@
     {
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "state",
+      "source": "@State private var savingClaimFeedback = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "state",
       "source": "@State private var tabSelection = 0",
       "occurrences": 1
     },
@@ -2541,6 +2547,12 @@
     },
     {
       "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"voice-turns-\\(speaker.label)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
       "category": "state",
       "source": "@State private var isNarrow = false",
       "occurrences": 1
@@ -2549,6 +2561,12 @@
       "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
       "category": "state",
       "source": "@State private var showsOthers = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
+      "category": "state",
+      "source": "@State private var trailingWidth: CGFloat = 0",
       "occurrences": 1
     },
     {
@@ -2776,6 +2794,12 @@
     {
       "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
       "category": "control",
+      "source": "Button(\"Clear\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "control",
       "source": "Button(\"Clear\") { persist(nil) }",
       "occurrences": 1
     },
@@ -2794,7 +2818,7 @@
     {
       "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
       "category": "control",
-      "source": "Button(L10n.text(isUnsupported ? \"Unsupported\" : \"Mark unsupported\")) {",
+      "source": "Menu {",
       "occurrences": 1
     },
     {
@@ -2805,8 +2829,20 @@
     },
     {
       "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "control",
+      "source": "Toggle(L10n.text(\"Mark unsupported\"), isOn: Binding(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"summary-feedback-clear\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"summary-feedback-clear-menu\")",
       "occurrences": 1
     },
     {
@@ -2825,6 +2861,12 @@
       "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"summary-feedback-correction-value\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"summary-feedback-menu\")",
       "occurrences": 1
     },
     {
@@ -2873,7 +2915,7 @@
       "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
       "category": "state",
       "source": "@State private var saving = false",
-      "occurrences": 2
+      "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
@@ -3379,6 +3421,7 @@
       "feature": "dismissible-suggestions-and-feedback",
       "tests": [
         "testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix",
+        "testStandfirstControlsStayWholeInTheNarrowestWindow",
         "testSummaryFeedbackIsExplicitReversibleAndLocal"
       ],
       "sourceAnchors": [
@@ -3393,7 +3436,8 @@
       ],
       "screenshots": [
         "dismissible-ai-suggestions-and-clear-playback",
-        "meeting-detail-summary-feedback"
+        "meeting-detail-summary-feedback",
+        "pr-meeting-standfirst-narrow"
       ]
     },
     {
@@ -3491,7 +3535,8 @@
     {
       "feature": "many-voices",
       "tests": [
-        "testManyVoicesKeepSixInTheCastAndFoldTheRestIntoOthers"
+        "testManyVoicesKeepSixInTheCastAndFoldTheRestIntoOthers",
+        "testVoiceStripsRunUpToTheirRowControls"
       ],
       "sourceAnchors": [
         {
@@ -3505,7 +3550,8 @@
       ],
       "screenshots": [
         "pr-many-voices-cast",
-        "pr-many-voices-others-open"
+        "pr-many-voices-others-open",
+        "pr-meeting-voices-strips"
       ]
     },
     {

@@ -1,56 +1,42 @@
 import PortavozCore
 import SwiftUI
 
-/// Explicit, local review controls for one generated claim. Feedback is
-/// visible and reversible; it never changes the generated summary in place.
-struct SummaryClaimFeedbackView: View {
+/// The summary margin's review menu for one generated claim. Feedback is
+/// explicit and reversible; it never changes the generated summary in place.
+struct SummaryClaimFeedbackMenu: View {
     let claim: SummaryClaim
+    /// Shared with the status's Clear, so only one save runs at a time.
+    @Binding var saving: Bool
     let save: (SummaryClaimFeedback?) async -> Bool
 
     @State private var showingCorrection = false
-    @State private var saving = false
-
-    private var isUnsupported: Bool {
-        claim.feedback?.kind == .unsupported
-    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            HStack(spacing: 7) {
-                Label("Review", systemImage: "checkmark.bubble")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Button(L10n.text(
-                    claim.feedback?.kind == .correction
-                        ? "Edit correction…"
-                        : "Add correction…")) {
-                    showingCorrection = true
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.mini)
-                .accessibilityIdentifier("summary-feedback-correction")
-                Button(L10n.text(isUnsupported ? "Unsupported" : "Mark unsupported")) {
-                    persist(.unsupported)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.mini)
-                .tint(isUnsupported ? PVDesign.caution : nil)
-                .accessibilityAddTraits(isUnsupported ? .isSelected : [])
-                .accessibilityIdentifier("summary-feedback-unsupported")
-                if claim.feedback != nil {
-                    Button("Clear") { persist(nil) }
-                        .buttonStyle(.borderless)
-                        .controlSize(.mini)
-                        .accessibilityIdentifier("summary-feedback-clear")
-                }
-                if saving { ProgressView().controlSize(.mini) }
+        Menu {
+            Button(L10n.text(
+                claim.feedback?.kind == .correction ? "Edit correction…" : "Add correction…")) {
+                showingCorrection = true
             }
-            feedbackStatus
-            Text("Stays on this Mac. Included only when you export a .portavoz file.")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+            .accessibilityIdentifier("summary-feedback-correction")
+            Toggle(L10n.text("Mark unsupported"), isOn: Binding(
+                get: { claim.feedback?.kind == .unsupported },
+                set: { persist($0 ? .unsupported : nil) }))
+                .accessibilityIdentifier("summary-feedback-unsupported")
+            if claim.feedback != nil {
+                Divider()
+                Button("Clear") { persist(nil) }
+                    .accessibilityIdentifier("summary-feedback-clear-menu")
+            }
+        } label: {
+            Image(systemName: "checkmark.bubble")
         }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
         .disabled(saving)
+        .help(Self.privacyNote)
+        .accessibilityLabel(L10n.text("Review"))
+        .accessibilityIdentifier("summary-feedback-menu")
         .sheet(isPresented: $showingCorrection) {
             SummaryCorrectionSheet(
                 initialText: claim.feedback?.correctionText ?? "",
@@ -58,9 +44,55 @@ struct SummaryClaimFeedbackView: View {
         }
     }
 
+    static var privacyNote: String {
+        L10n.text("Stays on this Mac. Included only when you export a .portavoz file.")
+    }
+
+    private func persist(_ feedback: SummaryClaimFeedback?) {
+        Self.persist(feedback, saving: $saving, save: save)
+    }
+
+    @MainActor
+    static func persist(
+        _ feedback: SummaryClaimFeedback?,
+        saving: Binding<Bool>,
+        save: @escaping (SummaryClaimFeedback?) async -> Bool
+    ) {
+        guard !saving.wrappedValue else { return }
+        saving.wrappedValue = true
+        Task {
+            _ = await save(feedback)
+            saving.wrappedValue = false
+        }
+    }
+}
+
+/// The user's assessment under the standfirst, shown only once one is set.
+struct SummaryClaimFeedbackStatus: View {
+    let claim: SummaryClaim
+    @Binding var saving: Bool
+    let save: (SummaryClaimFeedback?) async -> Bool
+
+    var body: some View {
+        if let kind = claim.feedback?.kind {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                status(kind)
+                Button("Clear") {
+                    SummaryClaimFeedbackMenu.persist(nil, saving: $saving, save: save)
+                }
+                .buttonStyle(.borderless)
+                .controlSize(.small)
+                .fixedSize()
+                .disabled(saving)
+                .help(SummaryClaimFeedbackMenu.privacyNote)
+                .accessibilityIdentifier("summary-feedback-clear")
+            }
+        }
+    }
+
     @ViewBuilder
-    private var feedbackStatus: some View {
-        switch claim.feedback?.kind {
+    private func status(_ kind: SummaryClaimFeedbackKind) -> some View {
+        switch kind {
         case .correction:
             VStack(alignment: .leading, spacing: 3) {
                 Label("Your correction", systemImage: PVSymbol.correction)
@@ -68,6 +100,7 @@ struct SummaryClaimFeedbackView: View {
                     .accessibilityIdentifier("summary-feedback-status")
                 Text(claim.feedback?.correctionText ?? "")
                     .font(.caption)
+                    .fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
                     .accessibilityIdentifier("summary-feedback-correction-value")
             }
@@ -76,17 +109,6 @@ struct SummaryClaimFeedbackView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(PVDesign.caution)
                 .accessibilityIdentifier("summary-feedback-status")
-        case nil:
-            EmptyView()
-        }
-    }
-
-    private func persist(_ feedback: SummaryClaimFeedback?) {
-        guard !saving else { return }
-        saving = true
-        Task {
-            _ = await save(feedback)
-            saving = false
         }
     }
 }

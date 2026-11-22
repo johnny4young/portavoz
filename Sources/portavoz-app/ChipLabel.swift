@@ -50,6 +50,8 @@ struct DismissibleSuggestionChip: View {
                 action: dismiss)
         }
         .pvPill(kind.background, trailing: 4)
+        // A chip keeps its whole text; layouts wrap chips instead of truncating them.
+        .fixedSize()
     }
 }
 
@@ -95,6 +97,8 @@ struct UndoableAppliedChip: View {
                 action: keep)
         }
         .pvPill(kind.background, trailing: 4)
+        // A chip keeps its whole text; layouts wrap chips instead of truncating them.
+        .fixedSize()
     }
 }
 

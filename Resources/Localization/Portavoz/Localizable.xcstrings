@@ -15581,6 +15581,16 @@
         }
       }
     },
+    "Turns": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turnos"
+          }
+        }
+      }
+    },
     "Turns “I’ll send it Friday” into a commitment you confirm, with its source.": {
       "localizations": {
         "es": {
@@ -15727,16 +15737,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hablante desconocido"
-          }
-        }
-      }
-    },
-    "Unsupported": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No sustentado"
           }
         }
       }

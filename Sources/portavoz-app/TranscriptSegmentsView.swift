@@ -223,17 +223,20 @@ private struct TranscriptChapterRow: View {
         .accessibilityIdentifier("transcript-chapter-\(Int(chapter.startTime))")
     }
 
+    /// Wide, the time sits in the speaker margin; narrow, it follows the
+    /// title the way a turn's time follows its speaker, so title and turn
+    /// text share one edge.
     private var heading: some View {
-        HStack(alignment: .firstTextBaseline, spacing: isNarrow ? 12 : TranscriptReadingLayout.marginGap) {
-            Text(ClockFormat.mmss(chapter.startTime))
-                .font(.system(.caption, design: .monospaced))
-                .foregroundStyle(PVDesign.ink3)
-                .frame(width: isNarrow ? nil : TranscriptReadingLayout.marginWidth, alignment: .trailing)
+        HStack(alignment: .firstTextBaseline, spacing: isNarrow ? 10 : TranscriptReadingLayout.marginGap) {
+            if !isNarrow {
+                time.frame(width: TranscriptReadingLayout.marginWidth, alignment: .trailing)
+            }
             Text(chapter.title)
                 .pvDisplay(isNarrow ? .sectionCompact : .section)
                 .foregroundStyle(PVDesign.ink)
-                .lineLimit(2)
                 .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+            if isNarrow { time }
             Spacer(minLength: 0)
         }
         .padding(.top, 11)
@@ -243,6 +246,13 @@ private struct TranscriptChapterRow: View {
         }
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
+    }
+
+    private var time: some View {
+        Text(ClockFormat.mmss(chapter.startTime))
+            .font(.system(.caption, design: .monospaced))
+            .foregroundStyle(PVDesign.ink3)
+            .fixedSize()
     }
 }
 
