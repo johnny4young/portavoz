@@ -589,7 +589,10 @@ the page instead of scrolling on their own. The generated document keeps its
 118-point gutter of kicker, counts, version and menus beside the lede from 640
 points of width and moves it onto a row above the lede below that, wrapping
 onto two lines before anything truncates. The docked player sits below the
-page scroll across the detail width, so it never covers a row. There is no
+page scroll across the whole detail width (main column and margin), on paper
+under a one-point `line` hairline, its content capped and centred like the page
+column so its edges align with the text above; the scroll view ends at its top
+edge, so the last transcript line always scrolls fully above it (D659). There is no
 pane selection and no measured height policy: commitment cards, notes and the
 first chapter all render in the flow, and a short window simply scrolls.
 
@@ -2102,13 +2105,19 @@ dead-time and voice-focus filters before publication. `PlaybackTimeline`
 (D605) treats transcript gaps of at least 20 s (speech padded by 1 s) as dead
 time: the scrubber draws each such gap no longer than a tenth of the
 conversation (at least 10 s), labels it with its real length when it fits, and
-Skip silence, on by default, jumps over it. Without a transcript the scrubber
-stays linear and skipping falls back to waveform silence. The one-row transport
-is play/pause, back/forward 15 s (`player-skip-back`, `player-skip-forward`),
-current/total time, speed 1×–2× with preserved pitch (`player-speed`) and an options menu
+Skip silence, on by default, jumps over it. A gap label is measured
+unconstrained and drawn only when it fits inside its gap with padding, so labels
+never wrap, overlap bars or each other, or clip at the edge. Without a
+transcript the scrubber stays linear and skipping falls back to waveform
+silence. Under the scrubber, the one-row transport is play/pause (an ink disc), back/forward 15 s (`player-skip-back`, `player-skip-forward`),
+current time in ink with equal digit cells (`DisplayTimeText`, never the red
+`now` tone, which is reserved for live recording) over the total in ink 3,
+speed 1×–2× with preserved pitch (`player-speed`) and an options menu
 (`player-options`) holding Skip silence (`player-skip-silence`), Reduce echo
 (`player-clear-playback`) and Mark clip start/end (`clip-mark-start`,
-`clip-mark-end`). Meeting Detail reopens at the position where listening
+`clip-mark-end`). A `ViewThatFits` keeps that row whole at every width: a tight
+column shrinks the clock and shows speed as a gauge glyph (its rate stays in
+the accessibility value) instead of wrapping a control. Meeting Detail reopens at the position where listening
 stopped (D653): before preparing playback the model reads the saved position
 (or the one it saved last, ahead of a write still in flight) and seeks there
 unless it is within a second of either end; a pending route seek (a citation,
@@ -2823,7 +2832,7 @@ composition isolation, not a security sandbox for arbitrary environment paths.
 
 **Accent**: `PVDesign.accent` is the ink, and the root `.tint` and `AccentColor.colorset` (`#14201E`/`#EEEBE2`, compiled by `make-app.sh`) follow it, so primary buttons, selection and focus are neutral. `Color.accentColor` stays out of the app target. What macOS paints natively (list selection, focus rings) still follows the user's system accent. `VoicePalette` holds five voice hues (Cobalt, Madder, Moss, Clay, Lagoon) plus `unnamed` grey; `VoiceHue.paletteSize` is 5 so you plus five others keep a colour. Voice hues fill pills, bars and strips; voice names stay ink on the tint.
 
-**Family controls (D646)**: `PVComponents.swift` holds the shapes shared with Secreteo. `PVButtonStyle` draws `.pvPrimary` (ink fill, `onInk` label), `.pvSecondary` (raised fill, 0.5 pt `line2` hairline) and `.pvStop` (`now` fill, `onNow` label) on an 8 pt radius, 24/30/32/36 pt tall for small/regular/large/extra-large control sizes, dimmed to 45% when disabled; focus keeps the system ring. Every former `.borderedProminent` button uses `.pvPrimary`; Record buttons use `RecordLabel` (red dot + title) (the sidebar New recording and Today's Record controls), and the recording toolbar's Stop is `.pvStop`. Chips use `pvPill` (22 pt capsule, 11 pt semibold): the suggestion chips in `ChipLabel.swift` (dismissible and undoable) keep the ✦/voice suggestions on the green tint. `StatusPill` is the only red text: "Recording mm:ss" on `nowBg` in the menu-bar panel header and the solid "Now m:ss" current-time label of the meeting player. `pvCard(.outlined)` (full width, card fill, 1 pt `line`, 10 pt radius, secondary text in ink 3) frames commitment inbox candidates, whose `PVCardCaption` reads "Commitment · suggested due <date>"; `pvCard(.generated)` puts Insights findings and live translations on `greenBg` and sets the hierarchical secondary and tertiary styles to ink 2 and ink 3 so they stay above 4.5:1. `PVSegmentedControl` (one button per segment, `isSelected` on the chosen one) replaces the in-content pickers of Insights, Commitment Radar, Ask and the transcript language; `.pvCheckbox` draws the to-do checkboxes on Today, Library and the summary. Settings forms, the Ask source picker and pop-up menus keep native controls.
+**Family controls (D646)**: `PVComponents.swift` holds the shapes shared with Secreteo. `PVButtonStyle` draws `.pvPrimary` (ink fill, `onInk` label), `.pvSecondary` (raised fill, 0.5 pt `line2` hairline) and `.pvStop` (`now` fill, `onNow` label) on an 8 pt radius, 24/30/32/36 pt tall for small/regular/large/extra-large control sizes, dimmed to 45% when disabled; focus keeps the system ring. Every former `.borderedProminent` button uses `.pvPrimary`; Record buttons use `RecordLabel` (red dot + title) (the sidebar New recording and Today's Record controls), and the recording toolbar's Stop is `.pvStop`. Chips use `pvPill` (22 pt capsule, 11 pt semibold): the suggestion chips in `ChipLabel.swift` (dismissible and undoable) keep the ✦/voice suggestions on the green tint. `StatusPill` is the only red text: "Recording mm:ss" on `nowBg` in the menu-bar panel header and the solid "Now h:mm" label of Today's day axis; the meeting player's clock is ink (D659). `pvCard(.outlined)` (full width, card fill, 1 pt `line`, 10 pt radius, secondary text in ink 3) frames commitment inbox candidates, whose `PVCardCaption` reads "Commitment · suggested due <date>"; `pvCard(.generated)` puts Insights findings and live translations on `greenBg` and sets the hierarchical secondary and tertiary styles to ink 2 and ink 3 so they stay above 4.5:1. `PVSegmentedControl` (one button per segment, `isSelected` on the chosen one) replaces the in-content pickers of Insights, Commitment Radar, Ask and the transcript language; `.pvCheckbox` draws the to-do checkboxes on Today, Library and the summary. Settings forms, the Ask source picker and pop-up menus keep native controls.
 
 **Many voices (D647)**: `VoiceCast` (ApplicationKit) assigns every voice a `Tint` (`.you`, `.hue(i)` or `.grey`) and `VoicePalette.color(_:colorScheme:)` maps it. `MeetingReviewCore.voiceCast` is built once per load from speakers and segment durations, ordered by talk share; you plus the five voices with most talk form `voices`, everyone else is `others` (grey, by talk share). Only named voices in `voices` hold a hue: their `VoiceHue.index(name:)`, or the next free hue when an earlier-heard name already holds it (the detail and the sidebar mix both order members by each voice's first segment, so a clash resolves the same way on both). The meeting header's Voices table (D655) draws `voices` as rows, then an "Others · n" row (`cast-others`, value Expanded/Collapsed) that opens the folded rows; transcript rows and Meeting health dots read the same cast. Sidebar rows and Today's recent meetings draw the stored voice strip with the cast from `VoiceCast(columns:)`, so folded voices are grey where they spoke. Insights' "Who you talk with" rows give each person's share of the bar and avatar their cast colour (the sixth person is grey). Live caption pills carry S-labels only, so remote voices are grey; `VoiceCast` also supports a `.recency` cast (current speaker first, then most recent) whose `previous:` keeps a name's hue across re-ranking and relabelling, but no live surface draws it yet. A `page:` cast colours one page across several casts: a voice it knows by key keeps that tint, grey included, and a new named voice takes a hue it left free.
 

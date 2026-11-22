@@ -100,15 +100,11 @@ private extension MeetingDetailView {
                         transcriptSection(detail, content: transcript, structureProjection: structureProjection)
                     }
                 }
-                .padding(.horizontal, MeetingDetailPageMetrics.sideGutter)
                 .padding(.vertical, 16)
-                .frame(maxWidth: MeetingDetailPageMetrics.maximumPageWidth, alignment: .topLeading)
-                .frame(maxWidth: .infinity)
+                .meetingPageColumn()
             }
             .accessibilityIdentifier("detail-page-scroll")
             playerSection
-                .padding(.horizontal, MeetingDetailPageMetrics.sideGutter)
-                .padding(.vertical, 10)
         }
     }
 

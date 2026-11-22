@@ -343,6 +343,7 @@ DEFAULT_FEATURE_OWNERSHIP = (
         "tests": [
             "testPlayerMarksAClipJumpsFromALineAndPlaysOneVoice",
             "testReopeningAMeetingResumesWhereListeningStopped",
+            "testPlayerDocksAcrossTheDetailUnderThePage",
         ],
         "sourceAnchors": [
             {

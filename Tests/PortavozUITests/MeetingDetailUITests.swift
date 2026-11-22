@@ -885,6 +885,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(rail.exists)
         XCTAssertGreaterThan(rail.frame.minY, standfirst.frame.maxY, "the margin moves below the summary")
         XCTAssertEqual(rail.frame.minX, standfirst.frame.minX, accuracy: 2, "one column, no margin beside it")
+        XCTAssertTrue(app.buttons["player-play-pause"].waitForExistenceFast(timeout: 10))
+        assertPlayerControlsShareOneRow(in: app)
         attachScreenshot(of: app, named: "pr-meeting-page-scroll-narrow")
 
         let page = app.control(withIdentifier: "detail-page-scroll")
@@ -923,6 +925,51 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let title = app.control(withIdentifier: "detail-transcript-title")
         XCTAssertLessThan(title.frame.maxX, rail.frame.minX, "the transcript keeps the reading column")
         attachScreenshot(of: app, named: "pr-meeting-page-scroll")
+    }
+
+    @MainActor
+    func testPlayerDocksAcrossTheDetailUnderThePage() throws {
+        let app = try launchOnSeededMeeting(extraArguments: ["-seed-wide-window", "-AppleInterfaceStyle", "Light"])
+        defer { finishUITestApplication(app) }
+
+        let page = app.control(withIdentifier: "detail-page-scroll")
+        let player = app.control(withIdentifier: "detail-player-section")
+        XCTAssertTrue(app.buttons["player-play-pause"].waitForExistenceFast(timeout: 15))
+        XCTAssertTrue(player.waitForStableFrame(timeout: 5))
+        // The paper background may extend under the floating sidebar, so only the leading edge is a bound.
+        XCTAssertLessThanOrEqual(player.frame.minX, page.frame.minX + 1, "the player spans the detail, not a column")
+        XCTAssertEqual(player.frame.maxX, page.frame.maxX, accuracy: 1, "the player spans the detail, not a column")
+        XCTAssertGreaterThanOrEqual(player.frame.minY, page.frame.maxY - 1, "the player sits under the page")
+        let rail = app.control(withIdentifier: "detail-secondary-rail")
+        let header = app.control(withIdentifier: "detail-header-section")
+        XCTAssertTrue(rail.waitForExistenceFast(timeout: 5))
+        let waveform = app.control(withIdentifier: "player-waveform")
+        XCTAssertEqual(waveform.frame.minX, header.frame.minX, accuracy: 2, "the scrubber starts with the page text")
+        XCTAssertGreaterThanOrEqual(waveform.frame.maxX, rail.frame.maxX - 2, "the scrubber runs under the margin too")
+        assertPlayerControlsShareOneRow(in: app)
+
+        XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
+        for _ in 0..<4 { page.scroll(byDeltaX: 0, deltaY: -2000) }
+        let rows = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'transcript-segment-'"))
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { rows.count > 0 })
+        let last = try XCTUnwrap(rows.allElementsBoundByIndex.max { $0.frame.maxY < $1.frame.maxY })
+        XCTAssertTrue(last.waitForStableFrame(timeout: 5))
+        XCTAssertLessThanOrEqual(
+            last.frame.maxY, player.frame.minY,
+            "the last transcript line ends above the player; row=\(last.frame) player=\(player.frame)")
+        attachScreenshot(of: app, named: "pr-meeting-docked-player")
+    }
+
+    /// Play, time, speed and options stay on one line at every window width.
+    @MainActor
+    private func assertPlayerControlsShareOneRow(in app: XCUIApplication) {
+        let play = app.buttons["player-play-pause"]
+        for identifier in ["player-current-time", "player-speed", "player-options"] {
+            let control = app.control(withIdentifier: identifier)
+            XCTAssertTrue(control.exists, identifier)
+            XCTAssertEqual(control.frame.midY, play.frame.midY, accuracy: 8, "\(identifier) shares the play row")
+        }
     }
 
     @MainActor

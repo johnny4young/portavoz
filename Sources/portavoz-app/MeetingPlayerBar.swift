@@ -4,10 +4,10 @@ import PortavozCore
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The transport bar (M11): play/pause + a waveform scrubber over the mixed
-/// timeline. Its own View so the scrubber's 5 fps updates don't re-render
-/// the whole detail. Falls back to a plain slider until the waveform is
-/// generated (or if the audio was unreadable).
+/// The transport bar (M11): a waveform scrubber over the mixed timeline and
+/// one row of controls under it. Its own View so the scrubber's 5 fps updates
+/// don't re-render the whole detail. Falls back to a plain slider until the
+/// waveform is generated (or if the audio was unreadable).
 struct MeetingPlayerBar: View {
     let player: MeetingPlaybackSession
     let waveform: [MeetingWaveformBucket]
@@ -21,44 +21,16 @@ struct MeetingPlayerBar: View {
     private static let rates: [Float] = [1, 1.25, 1.5, 2]
 
     var body: some View {
-        VStack(spacing: 8) {
-            // A narrow detail column moves the menus to a second row instead of
-            // pushing them under the rail.
+        VStack(alignment: .leading, spacing: 6) {
+            PlayerScrubber(player: player, waveform: waveform)
+            // A tight column shrinks the clock and shows speed as a glyph
+            // rather than wrapping a control onto a second row.
             ViewThatFits(in: .horizontal) {
-                HStack(spacing: 10) {
-                    transportControls
-                    rateMenu
-                    Spacer(minLength: 8)
-                    optionsMenu
-                }
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 10) {
-                        transportControls
-                        Spacer(minLength: 0)
-                    }
-                    HStack(spacing: 10) {
-                        rateMenu
-                        Spacer(minLength: 8)
-                        optionsMenu
-                    }
-                }
-            }
-            if waveform.isEmpty {
-                Slider(
-                    value: Binding(get: { player.currentTime }, set: { player.seek(to: $0) }),
-                    in: 0...max(player.duration, 0.1))
-            } else {
-                WaveformView(
-                    buckets: waveform,
-                    timeline: player.timeline,
-                    currentTime: player.currentTime,
-                    clipRange: player.clipRange,
-                    onSeek: { player.seek(to: $0) })
+                controlRow(compact: false)
+                controlRow(compact: true)
             }
             if player.clipRange != nil { clipRow }
         }
-        .padding(10)
-        .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
         .alert(
             "Could not export",
             isPresented: Binding(get: { exportError != nil }, set: { if !$0 { exportError = nil } })
@@ -69,33 +41,30 @@ struct MeetingPlayerBar: View {
         }
     }
 
-    @ViewBuilder
-    private var transportControls: some View {
+    private func controlRow(compact: Bool) -> some View {
+        HStack(spacing: compact ? 8 : 12) {
+            playButton
+            skipButton(seconds: -15, symbol: "gobackward.15", identifier: "player-skip-back")
+            skipButton(seconds: 15, symbol: "goforward.15", identifier: "player-skip-forward")
+            PlayerClock(player: player, size: compact ? 18 : 22)
+            Spacer(minLength: 8)
+            rateMenu(compact: compact)
+            optionsMenu
+        }
+    }
+
+    private var playButton: some View {
         Button {
             player.togglePlayPause()
         } label: {
             Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                .font(.title)
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(PVDesign.onInk, PVDesign.ink)
+                .font(.system(size: 32))
         }
         .buttonStyle(.plain)
-        .foregroundStyle(.tint)
         .help(player.isPlaying ? "Pause" : "Play")
         .accessibilityIdentifier("player-play-pause")
-
-        skipButton(seconds: -15, symbol: "gobackward.15", identifier: "player-skip-back")
-        skipButton(seconds: 15, symbol: "goforward.15", identifier: "player-skip-forward")
-
-        HStack(spacing: 4) {
-            let now = ClockFormat.mmss(player.currentTime, paddedMinutes: false)
-            StatusPill(kind: .now, text: L10n.format("Now %@", now))
-                .accessibilityLabel(L10n.text("Current time"))
-                .accessibilityIdentifier("player-current-time")
-                .accessibilityValue(now)
-            Text(verbatim: "/ \(ClockFormat.mmss(player.duration, paddedMinutes: false))")
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
-        }
-        .fixedSize()
     }
 
     private func skipButton(seconds: TimeInterval, symbol: String, identifier: String) -> some View {
@@ -103,14 +72,15 @@ struct MeetingPlayerBar: View {
             player.skip(by: seconds)
         } label: {
             Image(systemName: symbol)
+                .font(.body)
         }
         .buttonStyle(.plain)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(PVDesign.ink2)
         .help(seconds < 0 ? "Back 15 seconds" : "Forward 15 seconds")
         .accessibilityIdentifier(identifier)
     }
 
-    private var rateMenu: some View {
+    private func rateMenu(compact: Bool) -> some View {
         Menu {
             ForEach(Self.rates, id: \.self) { rate in
                 Button {
@@ -125,11 +95,22 @@ struct MeetingPlayerBar: View {
                 .accessibilityIdentifier("player-speed-\(Self.rateLabel(rate))")
             }
         } label: {
-            Text(Self.rateLabel(player.rate)).font(.caption.monospacedDigit())
+            if compact {
+                Image(systemName: "gauge.with.dots.needle.50percent")
+            } else {
+                Text(Self.rateLabel(player.rate)).font(.callout.monospacedDigit())
+            }
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
+        .padding(.horizontal, compact ? 0 : 8)
+        .padding(.vertical, compact ? 0 : 3)
+        .overlay {
+            if !compact { Capsule().strokeBorder(PVDesign.line2) }
+        }
         .help("Playback speed")
+        .accessibilityLabel(L10n.text("Playback speed"))
+        .accessibilityValue(Self.rateLabel(player.rate))
         .accessibilityIdentifier("player-speed")
     }
 
@@ -150,6 +131,7 @@ struct MeetingPlayerBar: View {
                 .accessibilityIdentifier("clip-mark-end")
         } label: {
             Image(systemName: "ellipsis.circle")
+                .foregroundStyle(PVDesign.ink2)
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
@@ -217,6 +199,50 @@ struct MeetingPlayerBar: View {
 
 }
 
+/// The scrubber and the clock read the 5 fps playback time themselves, so a
+/// tick redraws only them and not every control row `ViewThatFits` measures.
+private struct PlayerScrubber: View {
+    let player: MeetingPlaybackSession
+    let waveform: [MeetingWaveformBucket]
+
+    var body: some View {
+        if waveform.isEmpty {
+            Slider(
+                value: Binding(get: { player.currentTime }, set: { player.seek(to: $0) }),
+                in: 0...max(player.duration, 0.1))
+        } else {
+            WaveformView(
+                buckets: waveform,
+                timeline: player.timeline,
+                currentTime: player.currentTime,
+                clipRange: player.clipRange,
+                onSeek: { player.seek(to: $0) })
+        }
+    }
+}
+
+/// The current time in ink with equal digit cells; red stays with live recording.
+private struct PlayerClock: View {
+    let player: MeetingPlaybackSession
+    let size: CGFloat
+
+    var body: some View {
+        let now = ClockFormat.mmss(player.currentTime, paddedMinutes: false)
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            DisplayTimeText(now, style: .clock(size: size))
+                .foregroundStyle(PVDesign.ink)
+                .accessibilityLabel(L10n.text("Current time"))
+                .accessibilityValue(now)
+                .accessibilityIdentifier("player-current-time")
+            Text(verbatim: "/ \(ClockFormat.mmss(player.duration, paddedMinutes: false))")
+                .font(.callout.monospacedDigit())
+                .foregroundStyle(PVDesign.ink3)
+        }
+        .lineLimit(1)
+        .fixedSize()
+    }
+}
+
 /// The scrubber waveform (M11): peak-amplitude columns tinted by who was
 /// talking (accent = you, gray = them) and dimmed past the playhead. Long
 /// stretches without speech are drawn short with their length written in.
@@ -252,7 +278,7 @@ struct WaveformView: View {
                     onSeek(timeline.time(at: value.location.x / max(1, geo.size.width)))
                 })
         }
-        .frame(height: 44)
+        .frame(height: 28)
         .accessibilityElement()
         .accessibilityLabel(Text("Playback position"))
         .accessibilityValue(Text(ClockFormat.mmss(currentTime, paddedMinutes: false)))
@@ -307,8 +333,9 @@ struct WaveformView: View {
             .font(.caption2.monospacedDigit())
             .foregroundStyle(.secondary)
         let resolved = context.resolve(label)
-        let measured = resolved.measure(in: CGSize(width: max(0, right - left - 6), height: size.height))
-        guard measured.width > 0, measured.width <= right - left - 6 else { return }
+        // Measured unconstrained: a bounded measure wraps to fit and never says no.
+        let measured = resolved.measure(in: CGSize(width: CGFloat.infinity, height: size.height))
+        guard measured.width > 0, measured.width <= right - left - 8 else { return }
         context.draw(resolved, at: CGPoint(x: (left + right) / 2, y: size.height / 2))
     }
 }

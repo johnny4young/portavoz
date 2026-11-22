@@ -3550,6 +3550,7 @@
     {
       "feature": "playback-and-clips",
       "tests": [
+        "testPlayerDocksAcrossTheDetailUnderThePage",
         "testPlayerMarksAClipJumpsFromALineAndPlaysOneVoice",
         "testReopeningAMeetingResumesWhereListeningStopped"
       ],
@@ -3570,7 +3571,8 @@
       "screenshots": [
         "clip-paused-export",
         "meeting-detail-waveform",
-        "pr-meeting-detail-resume-position"
+        "pr-meeting-detail-resume-position",
+        "pr-meeting-docked-player"
       ]
     },
     {

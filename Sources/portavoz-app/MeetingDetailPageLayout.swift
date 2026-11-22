@@ -28,6 +28,15 @@ struct MeetingDetailPageLayout: Layout {
     }
 }
 
+extension View {
+    /// The page column: side gutters, capped and centred past the readable width.
+    func meetingPageColumn() -> some View {
+        padding(.horizontal, MeetingDetailPageMetrics.sideGutter)
+            .frame(maxWidth: MeetingDetailPageMetrics.maximumPageWidth, alignment: .topLeading)
+            .frame(maxWidth: .infinity)
+    }
+}
+
 enum MeetingDetailPageMetrics {
     static let gap: CGFloat = 28
     static let sectionSpacing: CGFloat = 16
