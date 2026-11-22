@@ -2021,6 +2021,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
         reviewMenu.click()
         let correctionItem = app.menuItems["summary-feedback-correction"]
         XCTAssertTrue(correctionItem.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(
+            app.menuItems["summary-feedback-clear-menu"].exists,
+            "a set assessment can be cleared from the review menu")
         correctionItem.click()
         let sheet = app.sheets.firstMatch
         XCTAssertTrue(
@@ -2047,6 +2050,11 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let feedbackStatus = app.control(withIdentifier: "summary-feedback-status")
         app.control(withIdentifier: "summary-feedback-clear").click()
         XCTAssertTrue(feedbackStatus.waitForDisappearance(timeout: 5))
+
+        app.control(withIdentifier: "summary-tab-todos").click()
+        XCTAssertTrue(
+            reviewMenu.waitForDisappearance(timeout: 5),
+            "the overview's review menu leaves with the overview, so it never acts on a hidden claim")
     }
 
     @MainActor

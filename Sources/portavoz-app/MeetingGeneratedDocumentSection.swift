@@ -60,6 +60,8 @@ struct MeetingGeneratedDocumentSection: View {
 
     @State private var tabSelection = 0
     @State private var savingClaimFeedback = false
+    /// Owned here, not by the gutter menu, so a layout switch never dismisses the sheet.
+    @State private var showingCorrection = false
     @State private var isNarrow = false
 
     private var document: MeetingGeneratedDocumentPresentation {
@@ -101,6 +103,13 @@ struct MeetingGeneratedDocumentSection: View {
         .accessibilityIdentifier("detail-generated-document")
         .onChange(of: values.summary.version) { _, _ in
             tabSelection = 0
+        }
+        .sheet(isPresented: $showingCorrection) {
+            if let claim = overviewClaim {
+                SummaryCorrectionSheet(
+                    initialText: claim.feedback?.correctionText ?? "",
+                    save: saveFeedback(claim))
+            }
         }
     }
 
@@ -263,6 +272,10 @@ struct MeetingGeneratedDocumentSection: View {
         return segments
     }
 
+    private var showsOverview: Bool {
+        tabSelection != 1000 && !(tabSelection >= 1 && tabSelection - 1 < document.sections.count)
+    }
+
     @ViewBuilder
     private var documentContent: some View {
         if tabSelection == 1000 {
@@ -420,9 +433,11 @@ struct MeetingGeneratedDocumentSection: View {
 
     @ViewBuilder
     private var claimReviewMenu: some View {
-        if let claim = overviewClaim {
+        // Only beside the overview, where its assessment shows.
+        if showsOverview, let claim = overviewClaim {
             SummaryClaimFeedbackMenu(
-                claim: claim, saving: $savingClaimFeedback, save: saveFeedback(claim))
+                claim: claim, saving: $savingClaimFeedback, save: saveFeedback(claim),
+                editCorrection: { showingCorrection = true })
         }
     }
 

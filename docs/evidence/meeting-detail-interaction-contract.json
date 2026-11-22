@@ -2001,6 +2001,12 @@
     },
     {
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "presentation",
+      "source": ".sheet(isPresented: $showingCorrection) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "state",
       "source": "@State private var isNarrow = false",
       "occurrences": 1
@@ -2009,6 +2015,12 @@
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "state",
       "source": "@State private var savingClaimFeedback = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "state",
+      "source": "@State private var showingCorrection = false",
       "occurrences": 1
     },
     {
@@ -2901,12 +2913,6 @@
     },
     {
       "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
-      "category": "presentation",
-      "source": ".sheet(isPresented: $showingCorrection) {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
       "category": "state",
       "source": "@State private var errorMessage: String?",
       "occurrences": 1
@@ -2915,12 +2921,6 @@
       "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
       "category": "state",
       "source": "@State private var saving = false",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
-      "category": "state",
-      "source": "@State private var showingCorrection = false",
       "occurrences": 1
     },
     {

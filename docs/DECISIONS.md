@@ -23372,7 +23372,7 @@ regenerate, D656): Add/Edit correction and a checkable Mark unsupported, with
 the privacy note as help text. The assessment and its Clear button appear
 under the overview only once one is set, so D88's visible, reversible state
 stays without a permanent row of controls. Suggestion chips sit in the flow
-under the lede at full width, side by side or stacked; the scrolling page
+under the lede and wrap before they truncate; the scrolling page
 (D658) removed the reason they rode the hairline. Chapter titles wrap fully,
 and in the narrow transcript the chapter time follows the title the way a
 turn's time follows its speaker. Turn strips fill their row up to a trailing

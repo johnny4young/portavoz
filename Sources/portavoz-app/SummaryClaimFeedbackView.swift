@@ -8,15 +8,13 @@ struct SummaryClaimFeedbackMenu: View {
     /// Shared with the status's Clear, so only one save runs at a time.
     @Binding var saving: Bool
     let save: (SummaryClaimFeedback?) async -> Bool
-
-    @State private var showingCorrection = false
+    let editCorrection: () -> Void
 
     var body: some View {
         Menu {
             Button(L10n.text(
-                claim.feedback?.kind == .correction ? "Edit correction…" : "Add correction…")) {
-                showingCorrection = true
-            }
+                claim.feedback?.kind == .correction ? "Edit correction…" : "Add correction…"),
+                action: editCorrection)
             .accessibilityIdentifier("summary-feedback-correction")
             Toggle(L10n.text("Mark unsupported"), isOn: Binding(
                 get: { claim.feedback?.kind == .unsupported },
@@ -37,11 +35,6 @@ struct SummaryClaimFeedbackMenu: View {
         .help(Self.privacyNote)
         .accessibilityLabel(L10n.text("Review"))
         .accessibilityIdentifier("summary-feedback-menu")
-        .sheet(isPresented: $showingCorrection) {
-            SummaryCorrectionSheet(
-                initialText: claim.feedback?.correctionText ?? "",
-                save: save)
-        }
     }
 
     static var privacyNote: String {
@@ -113,7 +106,7 @@ struct SummaryClaimFeedbackStatus: View {
     }
 }
 
-private struct SummaryCorrectionSheet: View {
+struct SummaryCorrectionSheet: View {
     @Environment(\.dismiss) private var dismiss
     let save: (SummaryClaimFeedback?) async -> Bool
 

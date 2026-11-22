@@ -190,6 +190,7 @@ struct MeetingDetailHeaderSection<Receipt: View>: View {
                     "detail-name-suggestion-dismiss-\(suggestion.label)",
                 accept: { actions.acceptNameSuggestion(suggestion) },
                 dismiss: { actions.dismissNameSuggestion(suggestion.label) })
+            .fixedSize()
             .help(nameSuggestionHelp(suggestion))
         }
     }

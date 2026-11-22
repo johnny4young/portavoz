@@ -86,6 +86,7 @@ struct MeetingVoicesTable<Trailing: View>: View {
                 if !isNarrow { timeText(row.voice.talkSeconds) }
                 VoiceTurnsStrip(turns: row.turns, duration: table.duration, tint: row.voice.tint)
                     .frame(minWidth: 48, maxWidth: .infinity)
+                    .layoutPriority(-1)
                     .accessibilityIdentifier("voice-turns-\(speaker.label)")
                 HStack(spacing: columnSpacing) {
                     if let suggestion = suggestions[speaker.label] {
@@ -95,7 +96,7 @@ struct MeetingVoicesTable<Trailing: View>: View {
                         onlyButton(row, speaker: speaker)
                     }
                 }
-                .fixedSize()
+                // The strip yields first; a long chip truncates only once the strip is at its minimum.
                 .background {
                     GeometryReader { Color.clear.preference(key: TrailingWidthKey.self, value: $0.size.width) }
                 }
