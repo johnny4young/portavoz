@@ -4,6 +4,17 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## 2.1.0 — November 22, 2026
+
+**Voices first, on paper.**
+
+- **🖋️ Ink on paper** — warm paper and ink in light and dark, a soft serif for titles, and a new three-strand icon: colour now means something, with amber for you, a hue per voice, red only for the live moment and green for what Portavoz wrote.
+- **⏳ Count down to your next call** — Today opens on your next meeting with who's invited, what each person said last time, Record (⌘R) and Open brief, then who spoke today on an hour axis and the to-dos that say who asked for them.
+- **⏱️ See who spoke when** — every meeting carries a flat voice strip, and each meeting page gets a Voices table with share, talk time, turns and Only; big meetings keep you and five voices in colour.
+- **📜 One page per meeting** — date, serif title and summary as a lede, a transcript in chapters with who spoke in the margin, and a player docked along the bottom, all in one scroll that fits any window.
+- **🧭 Back, forward and where you came from** — the meeting title bar shows "Today › Meeting name" with back and forward (⌘[ and ⌘]), and reopening a meeting resumes where you stopped listening.
+- **🧘 Easier to read, calmer to watch** — secondary text in a darker ink, time codes in one mono face, and Reduce Motion respected across recording, onboarding, captions and Ask.
+
 ## 2.0.0 — November 15, 2026
 
 **All about your meetings.**
