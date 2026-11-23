@@ -22,11 +22,9 @@ extension AppServices {
         guard ProcessInfo.processInfo.arguments.contains("-seed-today-voices") else { return }
         let now = Self.fixtureAgendaStart
         let justEnded = ProcessInfo.processInfo.arguments.contains("-seed-just-ended")
-        // Room on the axis for the just-ended meeting's title, even on a 1024 pt screen.
         let dayStart = Calendar.current.startOfDay(for: now)
-        let sinceMidnight = now.timeIntervalSince(dayStart)
-        let quiet: TimeInterval = justEnded ? min(90 * 60, sinceMidnight) : 0
-        let span = max(0, min(sinceMidnight - quiet, 4 * 3_600))
+        let window = Self.todayVoicesWindow(sinceMidnight: now.timeIntervalSince(dayStart), justEnded: justEnded)
+        let quiet = window.quiet, span = window.span
         let base = now.addingTimeInterval(-quiet - span)
         await seedTodayMeeting(
             "Sprint demo", start: base.addingTimeInterval(span * 0.05), length: span * 0.3,
@@ -38,11 +36,21 @@ extension AppServices {
             turns: [1, 0, 1, 1, 0, 1])
         // `-seed-just-ended`: a meeting that ended two minutes ago, under the now pill.
         guard justEnded else { return }
-        let checkIn = max(dayStart, now.addingTimeInterval(-12 * 60))
+        let lead = min(12 * 60, quiet)
         await seedTodayMeeting(
-            "Roadmap check-in", start: checkIn, length: min(10 * 60, now.timeIntervalSince(checkIn)),
+            "Roadmap check-in", start: now.addingTimeInterval(-lead), length: lead * 5 / 6,
             voices: [nil, "Ilarion"],
             turns: [0, 1, 0, 1])
+    }
+
+    /// The quiet gap before now (room for the just-ended title) and the span holding
+    /// the two meetings, both inside today; early in the day they shrink instead of
+    /// collapsing to zero.
+    nonisolated static func todayVoicesWindow(
+        sinceMidnight: TimeInterval, justEnded: Bool
+    ) -> (quiet: TimeInterval, span: TimeInterval) {
+        let quiet = justEnded ? min(90 * 60, sinceMidnight / 2) : 0
+        return (quiet, min(sinceMidnight - quiet, 4 * 3_600))
     }
 
     /// Voice 0 is you; `turns` split the meeting into equal turns by voice.
