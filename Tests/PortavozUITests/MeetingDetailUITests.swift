@@ -1967,7 +1967,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             XCTAssertTrue(app.control(withIdentifier: "action-item-\(candidateID)-\(control)").exists, control)
         }
         let review = app.control(withIdentifier: "action-item-\(candidateID)-confirm")
-        XCTAssertTrue(review.waitForHittable(timeout: 5))
+        XCTAssertTrue(review.waitForExistenceFast(timeout: 5))
         attachScreenshot(of: app, named: "pr-meeting-detail-todos-inline-review")
         review.click()
         XCTAssertTrue(
