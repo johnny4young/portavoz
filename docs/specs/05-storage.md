@@ -1617,6 +1617,8 @@ caught-error compensation and require field qualification.
 
 `channelFile(named:in:)` locates audio by channel inside `Audio/<uuid>/`: prefers `.m4a` after user-requested compression, then `.caf` (current capture, crash-safe), then `.wav` (pre-Jul-2026 meetings), followed by the preserved external formats `.mp3`, `.aac`, `.aiff`, `.aif` and `.m4b`. The closed `channelExtensions` catalog also validates both meeting-bundle attachment directions, so these imports keep their original audio through export/reimport. Staging names such as `system.partial.caf` or `system.partial.mp3` remain invisible. All readers (playback, Refine, clips, voice memory, bundles and CLI) pass through this layout.
 
+Owner-only POSIX permissions are enforced on local meeting data: `MeetingStore` creates its parent directory with `0o700` and restricts `.sqlite`, `-wal`, `-shm`, and `-journal` files to `0o600`; `RecordingSession` creates per-recording directories with `0o700` and `CaptureFileWriter` sets `.caf` outputs to `0o600`; `PostMeetingShortcut` creates temporary Markdown handoff files with `0o600` and removes them even when process launch fails.
+
 ## Secrets — Core port and PlatformKit adapter
 
 `PortavozCore` defines stable `SecretIdentifier` values and the Sendable

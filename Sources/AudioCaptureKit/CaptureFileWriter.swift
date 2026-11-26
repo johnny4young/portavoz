@@ -48,6 +48,7 @@ public final class CaptureFileWriter: @unchecked Sendable {
             commonFormat: .pcmFormatFloat32,
             interleaved: false
         )
+        try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
     }
 
     public func append(_ samples: [Float]) throws {

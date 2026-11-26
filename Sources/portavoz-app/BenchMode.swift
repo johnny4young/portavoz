@@ -106,6 +106,12 @@ extension BenchMode {
         guard let flag = arguments.firstIndex(of: "--mlx-smoke") else { return }
         let trailingArguments = arguments.suffix(from: flag + 1)
         let useRealMeeting = trailingArguments.contains("real")
+        #if !DEBUG
+        if useRealMeeting {
+            print("MLX smoke FAILED: real library mode is disabled in release builds")
+            exit(2)
+        }
+        #endif
         // Optional exact token picks an evaluation-only model. Ambiguity
         // fails before any model download; the serving default remains 4B.
         let descriptor: ModelDescriptor
@@ -124,8 +130,12 @@ extension BenchMode {
                 print("model: \(descriptor.displayName)")
                 let directory = try await AppServices.makeModelStore(usesTemporaryStore: false)
                     .ensureAvailable(descriptor)
+                #if DEBUG
                 let request =
                     useRealMeeting ? try await realMeetingRequest() : syntheticRequest()
+                #else
+                let request = syntheticRequest()
+                #endif
                 let start = Date()
                 let runtime = MLXSummaryRuntime()
                 let draft = try await MLXSummaryProvider(
@@ -134,8 +144,14 @@ extension BenchMode {
                     .summarize(request)
                 let elapsed = Date().timeIntervalSince(start)
                 print("MLX smoke OK in \(String(format: "%.1f", elapsed)) s")
+                #if DEBUG
                 print(draft.markdown)
                 print("action items: \(draft.actionItems.map(\.text))")
+                #else
+                print(
+                    "output bytes: \(draft.markdown.utf8.count), "
+                        + "action items: \(draft.actionItems.count)")
+                #endif
                 exit(0)
             } catch {
                 print("MLX smoke FAILED: \(error)")
@@ -165,6 +181,7 @@ extension BenchMode {
             recipe: .general, targetLanguage: "es", glossary: [])
     }
 
+    #if DEBUG
     /// Newest library meeting that has a transcript, as a summary request
     /// shaped exactly like the app's regenerate path: Spanish target, the
     /// user's vocabulary as glossary, and the meeting's notes woven in.
@@ -189,6 +206,7 @@ extension BenchMode {
             domain: "MLXSmoke", code: 1,
             userInfo: [NSLocalizedDescriptionKey: "no meeting with a transcript in the library"])
     }
+    #endif
 }
 
 extension BenchMode {

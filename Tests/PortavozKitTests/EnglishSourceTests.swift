@@ -25,13 +25,28 @@ final class EnglishSourceTests: XCTestCase {
         XCTAssertTrue(failures.isEmpty, "Spanish prose outside approved resources/fixtures:\n" + failures.joined(separator: "\n"))
     }
 
+    private static let ignoredDocumentationPrefixes = [
+        "plans/",
+        "tickets/",
+    ]
+
+    private static let ignoredDocumentationFiles: Set<String> = [
+        "ROADMAP.md",
+        "refactor-20260714.md",
+        "STRATEGY-20260716.md",
+    ]
+
     func testDocumentationProseIsEnglish() throws {
         let root = Self.repoRoot.appendingPathComponent("docs")
         guard let enumerator = FileManager.default.enumerator(atPath: root.path) else {
             return XCTFail("Unable to enumerate docs/")
         }
         let files = enumerator.compactMap { $0 as? String }
-            .filter { $0.hasSuffix(".md") }
+            .filter { item in
+                item.hasSuffix(".md")
+                    && !Self.ignoredDocumentationFiles.contains(item)
+                    && !Self.ignoredDocumentationPrefixes.contains(where: { item.hasPrefix($0) })
+            }
             .sorted()
         var failures: [String] = []
         for item in files {

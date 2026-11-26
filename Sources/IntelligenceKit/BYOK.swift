@@ -63,8 +63,8 @@ enum OpenAICompatibleChatCodec {
 
     static func responseContent(data: Data, statusCode: Int) throws -> String {
         guard (200..<300).contains(statusCode) else {
-            let body = String(data: data.prefix(300), encoding: .utf8) ?? ""
-            throw IntelligenceError.providerFailed("HTTP \(statusCode): \(body)")
+            // Avoid embedding raw provider response bodies that may echo prompt content.
+            throw IntelligenceError.providerFailed("HTTP \(statusCode) (\(data.count) bytes)")
         }
         return try parseContent(data)
     }
@@ -225,17 +225,27 @@ public enum BYOKSettings {
     public static let modelKey = "byokModel"
     public static let companionEnabledKey = "companionBYOKEnabled"
 
-    /// A usable http(s) URL with a host, or nil. The UI uses this to gate
-    /// the opt-in toggle; `client` uses it to refuse half-configured state.
+    /// A usable HTTPS URL (or loopback HTTP URL) with a host, or nil. Remote
+    /// endpoints require HTTPS so credentials and requests are not sent in plaintext.
     public static func endpointURL(from raw: String) -> URL? {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard
             let url = URL(string: trimmed),
             let scheme = url.scheme?.lowercased(),
-            scheme == "http" || scheme == "https",
-            url.host != nil
+            let host = url.host?.lowercased(),
+            !host.isEmpty
         else { return nil }
-        return url
+        if scheme == "https" {
+            return url
+        }
+        if scheme == "http", Self.isLoopbackHost(host) {
+            return url
+        }
+        return nil
+    }
+
+    private static func isLoopbackHost(_ host: String) -> Bool {
+        host == "localhost" || host == "127.0.0.1" || host == "::1" || host == "[::1]"
     }
 
     /// Assembles a client from raw pieces; nil when anything is missing.

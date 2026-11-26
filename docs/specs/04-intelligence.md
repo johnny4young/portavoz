@@ -2554,7 +2554,11 @@ claim. On-device and explicit BYOK providers are selected at CLI composition,
 not in the command body (D75/D103).
 
 Only the gateway-backed client is public; the shared chat codec is internal and
-transport-free. Offline tests decode remote and loopback requests, prove exact
+transport-free. Remote BYOK endpoints require `https://` (`http://` is accepted
+only for loopback hosts: `localhost`, `127.0.0.1`, `::1`). Provider HTTP and
+structured-JSON decode failures remain content-free (status code, byte/character
+counts, and decoder error type only — never raw response bodies or `/tmp`
+dumps). Offline tests decode remote and loopback requests, prove exact
 metadata and consent, exercise the real provider response parser, and reject
 cross-operation consent. The 23rd architecture rule prevents IntelligenceKit,
 app composition, or CLI composition from restoring a direct summary network

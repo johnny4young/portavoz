@@ -11,9 +11,9 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 ![Platform](https://img.shields.io/badge/platform-macOS%2026%2B-lightgrey)
 ![Swift](https://img.shields.io/badge/Swift-6-orange)
 
-![Today: the next meeting with its countdown, brief and linked recording, an Ask field with three ready questions, open to-dos beside the meetings to pick back up](assets/screenshots/today.png)
+![Today: the next meeting with its countdown, brief and linked recording, an Ask field, open to-dos beside the meetings to pick back up, and who spoke today](assets/screenshots/today.png)
 
-![A current Portavoz meeting: dismissible ✦ suggestions in one row, colored speaker pills, an activity chip, a tabbed summary, transcript, clear playback, and a side column with People, Apuntador and Chapters lenses](assets/screenshots/meeting-detail.png)
+![A current Portavoz meeting: serif title and summary lede, Voices table, activity chip, transcript in chapters with speaker margin, docked player, and a side rail with People, Apuntador and Chapters](assets/screenshots/meeting-detail.png)
 
 <table>
 <tr>
@@ -44,7 +44,7 @@ Portavoz records your meetings, transcribes them live, and tells apart every voi
 
 ## Status
 
-**Current release: 1.3.0. Shipping and self-updating on macOS 26 Tahoe.** Releases after 1.2.0 require macOS 26 Tahoe; Macs on macOS 15 Sequoia or earlier keep 1.2.0, and neither Sparkle nor Homebrew offers them a newer version. Install with Homebrew or grab the notarized DMG from [Releases](https://github.com/johnny4young/portavoz/releases); updates arrive automatically via Sparkle:
+**Current release: 2.1.0. Shipping and self-updating on macOS 26 Tahoe.** Releases after 1.2.0 require macOS 26 Tahoe; Macs on macOS 15 Sequoia or earlier keep 1.2.0, and neither Sparkle nor Homebrew offers them a newer version. Global dictation moved to its own companion app (**Secreteo**) in 2.0.0 so Portavoz stays focused exclusively on meetings. Install with Homebrew or grab the notarized DMG from [Releases](https://github.com/johnny4young/portavoz/releases); updates arrive automatically via Sparkle:
 
 ```sh
 brew install --cask johnny4young/tap/portavoz
@@ -92,8 +92,7 @@ Everything below runs on your Mac. Grouped by what you're doing:
 
 **Fits your workflow**
 - **Apuntador while you talk** (opt-in, macOS 26 + Apple Intelligence) — live cards answer a factual question the room just asked, or flag when someone addressed you by name. In review, each saved card separates the exact question moment from the transcript passages cited by a context answer. Settings makes the requirement and activation path explicit; BYOK can replace the answer provider, but not the current on-device question detector.
-- **Dictate anywhere** — use the configurable global hotkey or a middle/additional mouse button to transcribe straight into any app. Exact-spelling replacements, an optional ES/EN filler filter, and a dedicated dictation-language choice polish only the delivered dictation; meeting transcripts remain verbatim.
-- **Menu-bar resident** — recording state, one-click record/dictate/ask, and your next calendar meeting, with the window closed.
+- **Menu-bar resident** — recording state, one-click record and ask, and your next calendar meeting, with the window closed.
 - **Pre-meeting briefs** from your calendar, with verifiable citations, and recordings born with the real event name.
 - **Review suggestions that wait for you** — optional titles, speaker names, summary structures, and summary retries are admitted against one meeting revision, stay inert until you accept them, expose a tiny dismiss action, and never make a failed rename look saved.
 - **Developer glue** — action items → GitHub/Linear issues, a local **MCP server** so your AI tools can ask "what did I agree to yesterday?", installed with the app (Settings › Integrations puts `portavoz-cli` on your path and copies the `claude mcp add` command; Homebrew links it for you), a native **Start recording** action in the Shortcuts action picker (add it once to a custom Shortcut for reliable Spotlight/Siri invocation on macOS), plus Shortcuts automation on meeting end.
@@ -120,11 +119,12 @@ Measured on a MacBook Pro **M4 Max, 36 GB, macOS 26** (July 2026). Everything be
 | **Waveform, 56-minute dual-channel recording** | stateless bucket spans + Accelerate | first wall/CPU **109.25/94.81 ms**; repeat p95 **70.11/71.33 ms**, down from 747.53/754.79 ms | `portavoz-cli bench-waveform --mic microphone.caf --system system.caf` |
 | **Meeting Detail at 5k segments** | scoped GRDB read + SwiftUI | core read p95 **16.27 ms**; health p95 **9.94 ms**; first content **91.87 ms** with no measured hang | `make install && scripts/run-detail-ui-baseline.sh` |
 
-> The semantic row is the accepted July baseline, not current release proof.
-> The authoritative 8 Aug audit measured **139.64/141.98 ms** wall/CPU on
-> the same reference Tahoe host, above the 100 ms budget; no later passing run
-> exists yet. See [T5](docs/GAPS.md) for the open optimization and cross-host
-> evidence gate.
+> The semantic row above is the accepted July baseline. With local-internal
+> `mmap` enabled on the Tahoe reference host, D346 measured **73.92/74.50 ms**
+> wall/CPU p95 across three stable runs (and **63.53/64.54 ms** in the Aug 9
+> `perf-ledger`); without `mmap`, exact scans run around **140 ms**. Cross-host
+> 8 GB / 16 GB evidence and the algorithmic `O(n)` limit remain tracked in
+> [T5](docs/GAPS.md).
 
 An alternate live engine, Apple's **SpeechAnalyzer** (macOS 26), is benchmarked head-to-head against Parakeet in [docs/specs/02-transcription.md](docs/specs/02-transcription.md#speechanalyzer-spike-m12d25--status-and-findings-jul-2026): both stay under 1 s p95; Parakeet keeps the finalization-latency crown, SpeechAnalyzer wins on zero-download and rich volatile captions.
 
@@ -136,7 +136,7 @@ An alternate live engine, Apple's **SpeechAnalyzer** (macOS 26), is benchmarked 
 
 ### Models
 
-Downloaded on first use and verified against pinned SHA-256 checksums (`portavoz-cli models download` / `verify`). Recording never waits for that first download: audio starts immediately and a complete transcript is recovered from the finalized channels when the model becomes ready. Readiness is role-specific: durable first-pass transcription and dictation load Parakeet only; Refine prepares Whisper only and acquires pyannote later as degradable speaker attribution; external-audio Import also never loads Parakeet as a side effect. Whisper Turbo and Compact can also be prepared explicitly in Settings before the first Refine; one app-scoped lifecycle keeps integrity checks and install/delete operations coherent, continues preparation after Settings closes, and lets Refine/Import join or reuse verified results. None of the models phone home after download.
+Downloaded on first use and verified against pinned SHA-256 checksums (`portavoz-cli models download` / `verify`). Recording never waits for that first download: audio starts immediately and a complete transcript is recovered from the finalized channels when the model becomes ready. Readiness is role-specific: durable first-pass transcription loads Parakeet only; Refine prepares Whisper only and acquires pyannote later as degradable speaker attribution; external-audio Import also never loads Parakeet as a side effect. Whisper Turbo and Compact can also be prepared explicitly in Settings before the first Refine; one app-scoped lifecycle keeps integrity checks and install/delete operations coherent, continues preparation after Settings closes, and lets Refine/Import join or reuse verified results. None of the models phone home after download.
 
 | Model | Role | On-disk | Min RAM |
 |---|---|---|---|
@@ -154,9 +154,9 @@ on `PortavozCore`; the few verified cross-Kit dependencies are documented in
 [docs/specs/](docs/specs/README.md). The completed, feature-parity-preserving
 macOS convergence and its binding trade-offs are recorded in
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and
-[docs/DECISIONS.md](docs/DECISIONS.md). The package exposes ten
-implemented Kit libraries; speculative package targets are added only with a
-real vertical use case. Current-SDK diagnostics are closed without broad
+[docs/DECISIONS.md](docs/DECISIONS.md). The package exposes twelve
+implemented library products (`PortavozCore`, ten Kits, and `PortavozCLIKit`);
+speculative package targets are added only with a real vertical use case. Current-SDK diagnostics are closed without broad
 concurrency suppressions; the warning-as-error gate is documented below and in
 the architecture source of truth.
 
@@ -166,13 +166,14 @@ the architecture source of truth.
 | `ApplicationKit` | Characterized workflows for lifecycle/trash, explicit canonical-person lookup/linking, provenance-linked summary, refined-transcript, and Apuntador generation, standalone file transcription/diarization/summarization, persisted quality refinement, `.portavoz` aggregate import/export, coherent meeting-document preparation and explicit document/action publishing, confirmed-only Commitment Radar mutations and content-free reminder reconciliation, Meeting Detail playback/waveform/clear-mix preparation plus failure-safe compression and clip export, exact-first local Library semantic augmentation, verified calendar-backed speaker-name suggestions, local voice capture/enrollment/status/deletion, participant voice-memory suggestion/admission/persistence and privacy-safe management, local summary-provider discovery and clean-install selection, microphone discovery, resumable recording-root changes, whole-library Markdown backup with typed partial results, content-minimized publication recovery state, and exact fail-closed relaunch continuation, one shared progressive Ask search/evidence/answer boundary with storage-independent lexical and fused citations, bounded command-library reads, async secret/pinned-model management, first-run eligibility, exact local-data receipts, source-grounded pre-meeting preparation, redacted support diagnostics, durable recording Start/Stop/launch-recovery handoffs and post-capture transcription/diarization/summary execution with stable coded failures, storage-independent Library/Insights/Meeting Detail/menu-bar read contracts, and deterministic product policies over narrow capability ports |
 | `PlatformKit` | Concrete Apple platform/security adapters: device-only Keychain storage, microphone authorization, and regular persistent file bookmarks, injected at executable composition roots |
 | `ModelStoreKit` | Curated model registry; exact-revision SHA-256 downloads, atomic repair, verified-installation evidence, and a serialized shared process lifecycle |
-| `AudioCaptureKit` | Call-safe raw mic capture + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
+| `AudioCaptureKit` | Call-safe raw mic capture + per-app Core Audio process taps (macOS 26), crash-safe CAF writer |
 | `TranscriptionKit` | Engine protocol, task-based routing, Parakeet (live + durable first-pass recovery) + Whisper (refine with one-shot CPU load fallback), exact privacy-safe initial/Refine operation fingerprints, scheduler |
 | `DiarizationKit` | Speaker separation (pyannote/CoreML), who-said-what attribution, voice enrollment |
 | `IntelligenceKit` | Summaries (Foundation Models / Ollama / embedded MLX / BYOK), recipes, action items, live Apuntador, exact content-free generation fingerprints, provider/egress traces, and gateway-only OpenAI-compatible summary and Apuntador clients |
 | `AudioPlaybackKit` | Synchronized player, reversible role-aware clear mix, stateless Accelerate-vectorized channel waveform, clip export, AAC transcode |
-| `StorageKit` | GRDB/SQLite schema v34, FTS5 search, additive canonical people/aliases, typed immutable transcript-correction history, confirmed-only commitment continuity with explicit self/person/unassigned ownership, exact evidence, append-only lifecycle events, a separate due-date-fenced reminder projection/history, immutable content-free first-presentation evidence for commitment field quality, reversible UUID topic continuity with ambiguous aliases and append-only merge/split history, and explicit decision continuity with immutable ordered multimeeting evidence plus named supersede/reverse successors; source-bound dismiss/defer review feedback that never copies generated candidates; source-revision-fenced overview, decision, action-item, and role-separated Apuntador evidence with separate reversible overview feedback; a content-free generation-fenced per-meeting mutation journal plus exact-generation text-first aggregate projection/atomic remote replay (the separate CloudKit adapter cannot redefine these rules); scoped Library/Insights/Meeting Detail observations; one-read Spotlight and whole-library backup projections; versioned snapshots; atomic recovered/accepted transcripts; summary and Apuntador-card provenance; immutable content-free egress attempts and receipt-coverage boundary; atomic support-safe snapshots; durable leased meeting jobs plus independent derived-maintenance lease/retry ownership; and a compatibility-fenced local vector index |
+| `StorageKit` | GRDB/SQLite schema v63, FTS5 search, additive canonical people/aliases, typed immutable transcript-correction history, confirmed-only commitment continuity with explicit self/person/unassigned ownership, exact evidence, append-only lifecycle events, a separate due-date-fenced reminder projection/history, immutable content-free first-presentation evidence for commitment field quality, reversible UUID topic continuity with ambiguous aliases and append-only merge/split history, and explicit decision continuity with immutable ordered multimeeting evidence plus named supersede/reverse successors; source-bound dismiss/defer review feedback that never copies generated candidates; source-revision-fenced overview, decision, action-item, and role-separated Apuntador evidence with separate reversible overview feedback; per-meeting transcript translations, voice columns, brief lines, and playback resume position; a content-free generation-fenced per-meeting mutation journal plus exact-generation text-first aggregate projection/atomic remote replay (the separate CloudKit adapter cannot redefine these rules); scoped Library/Insights/Meeting Detail observations; one-read Spotlight and whole-library backup projections; versioned snapshots; atomic recovered/accepted transcripts; summary and Apuntador-card provenance; immutable content-free egress attempts and receipt-coverage boundary; atomic support-safe snapshots; durable leased meeting jobs plus independent derived-maintenance lease/retry ownership; and a compatibility-fenced local vector index |
 | `IntegrationsKit` | Canonical Markdown/PDF and identity-preserving SRT/WebVTT exporters; gateway-only GitHub/Linear/Gist publishers; EventKit calendar; bundle formats; MCP protocol handling; deterministic meeting-sync envelopes; and the private-zone CloudKit boundary: encrypted inline/private-asset records, capability-probed protection metadata over mandatory owner-only durable atomic publication for account/consent/seed and exact delivery/replay state, a thin injected CKSyncEngine delegate, and a manually driven engine with automatic sync disabled. A platform-neutral lifecycle owns explicit enable/seed/retry/pause/remove-device semantics and truthful content-free status. One fail-closed macOS adapter creates the named private container only after explicit consent and signed-capability admission; local/XCUITest builds remain no-cloud. Also owns the policy-checked, receipt-before-transport outbound network adapter |
+| `PortavozCLIKit` | Command parsing, terminal and stdio MCP presentation, benchmark harnesses, and CLI process composition (shared by `portavoz-cli` and the bundled app helper) |
 
 The macOS app owns per-window `LibraryModel`, `InsightsModel`, and `AskModel`
 state owners plus process-scoped command-palette, first-run, and local-data
@@ -288,7 +289,7 @@ no cloud service or transcript translation is involved.
 
 ## Build from source
 
-Requires **Xcode 26.6+ / Swift 6.3 on macOS 26+** with the full Xcode toolchain.
+Requires **Xcode 26.6+ / Swift 6.2+ on macOS 26+** with the full Xcode toolchain. Building with the default `EmbeddedMLX` trait also requires Xcode's Metal Toolchain (`xcodebuild -downloadComponent MetalToolchain`); pass `--disable-default-traits` to build and test without embedded MLX.
 
 ```sh
 git clone https://github.com/johnny4young/portavoz.git
@@ -320,7 +321,7 @@ Distributed as a notarized DMG with Sparkle auto-updates, plus the Homebrew cask
 
 ## Privacy
 
-Audio, transcripts, summaries, and voice embeddings stay on-device by default. API keys live in the Keychain, never in the database or preferences. Apuntador BYOK sends only an explicitly enabled knowledge question; OpenAI-compatible summaries send their declared transcript/notes/glossary material only after the user selects that provider. Both cross one policy-checked gateway that distinguishes provable loopback from remote destinations. Explicit Gist, GitHub Issue, and Linear Issue publishing cross the same boundary with separate document/action-item classifications and consent. The gateway validates metadata, persists an immutable content-free attempt, blocks redirects, and only then hands bytes to URLSession; if the receipt cannot be stored, the transfer does not start. Meeting Detail renders those attempts beside generation provenance and marks pre-v7 history as only partially covered. Model downloads are checksum-verified. The MCP server binds to localhost only. See [SECURITY.md](SECURITY.md) for the full commitments and how to report a vulnerability.
+Audio, transcripts, summaries, and voice embeddings stay on-device by default. API keys live in the Keychain, never in the database or preferences. Apuntador BYOK sends only an explicitly enabled knowledge question; OpenAI-compatible summaries send their declared transcript/notes/glossary material only after the user selects that provider. Both cross one policy-checked gateway that distinguishes provable loopback from remote destinations. Explicit Gist, GitHub Issue, and Linear Issue publishing cross the same boundary with separate document/action-item classifications and consent. The gateway validates metadata, persists an immutable content-free attempt, blocks redirects, and only then hands bytes to URLSession; if the receipt cannot be stored, the transfer does not start. Meeting Detail renders those attempts beside generation provenance and marks pre-v7 history as only partially covered. Model downloads are checksum-verified. The MCP server communicates exclusively over process stdio with no network listener. See [SECURITY.md](SECURITY.md) for the full commitments and how to report a vulnerability.
 
 The current Developer ID distribution uses Hardened Runtime and notarization,
 but **does not claim App Sandbox**. A signed sandbox/control probe showed that a

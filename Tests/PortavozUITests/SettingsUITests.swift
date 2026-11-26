@@ -425,7 +425,7 @@ final class SettingsUITests: PortavozUITestCase {
             revealing: "settings-mic-device",
             in: app)
         XCTAssertTrue(callSafePolicy.waitForStableFrame())
-        attachScreenshot(of: app, named: "call-safe-audio-settings")
+        attachScreenshot(of: app, names: ["call-safe-audio-settings", "pr-audio-settings"])
     }
 
     @MainActor

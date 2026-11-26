@@ -109,7 +109,10 @@ public actor RecordingSession {
         onHealthEvent: (@Sendable (RecordingCaptureHealthEvent) -> Void)? = nil
     ) async throws {
         guard !isRecording else { return }
-        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(
+            at: outputDirectory,
+            withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700])
 
         do {
             for source in newSources {

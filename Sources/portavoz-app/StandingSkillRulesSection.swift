@@ -113,7 +113,7 @@ private extension StandingSkillRulesSection {
                 systemImage: PVSymbol.warning)
                 .foregroundStyle(PVDesign.caution)
                 .accessibilityIdentifier("settings-standing-load-error")
-            Text("Loading your automations…")
+            Text("Could not load automatic actions. Try again.")
                 .font(.caption)
                 .foregroundStyle(.ink3)
             Button("Try again") { Task { await load() } }
