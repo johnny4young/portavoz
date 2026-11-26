@@ -335,7 +335,7 @@ struct InsightsView: View {
     private func heatmapAccessibilitySummary(_ stats: LibraryStats) -> String {
         let total = stats.heatmap.flatMap { $0 }.reduce(0, +)
         return L10n.format(
-            "12-week meeting rhythm: %d meetings, busiest day %d",
+            "12-week meeting rhythm: %d meetings, up to %d on the busiest day",
             total,
             stats.heatmapMax)
     }

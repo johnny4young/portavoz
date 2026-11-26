@@ -65,6 +65,10 @@ final class SettingsTransferUITests: PortavozUITestCase {
             XCTAssertEqual(after[key] as? NSObject, before[key] as? NSObject, key)
         }
         attachScreenshot(of: app, named: "settings-preferences-imported")
+
+        XCTAssertTrue(app.openSettingsCategory(
+            "settings-category-intelligence", revealing: "settings-vocabulary-remove-Cóndor"),
+            "each imported vocabulary term must expose its own remove control")
     }
 
     @MainActor

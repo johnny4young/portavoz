@@ -541,6 +541,7 @@ extension SettingsView {
                     .buttonStyle(.plain)
                     .help("Remove \"\(term)\"")
                     .accessibilityLabel(L10n.format("Remove \"%@\"", term))
+                    .accessibilityIdentifier("settings-vocabulary-remove-\(term)")
                 }
             }
             HStack {
@@ -593,6 +594,7 @@ extension SettingsView {
             .buttonStyle(.plain)
             .help("Don't suggest \"\(term)\" again")
             .accessibilityLabel(L10n.format("Don't suggest \"%@\" again", term))
+            .accessibilityIdentifier("settings-vocabulary-reject-\(term)")
         }
     }
 

@@ -1534,7 +1534,7 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
       "category": "control",
-      "source": "Button { actions.copyAnswer(card.answer) } label: {",
+      "source": "Button { actions.copyAnswer(card.answer) } label: { Image(systemName: \"doc.on.doc\") }",
       "occurrences": 1
     },
     {
@@ -1559,6 +1559,12 @@
       "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"apuntador-card-\\(card.id.uuidString)-stale\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"apuntador-card-copy-\\(Int(card.askedAt))\")",
       "occurrences": 1
     },
     {

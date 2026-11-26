@@ -16737,16 +16737,6 @@
         }
       }
     },
-    "column = week · row = weekday · more intense = more meetings": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "columna = semana · fila = día · más intenso = más reuniones"
-          }
-        }
-      }
-    },
     "confirmed commitment": {
       "localizations": {
         "es": {
@@ -18707,12 +18697,12 @@
         }
       }
     },
-    "12-week meeting rhythm: %d meetings, busiest day %d": {
+    "12-week meeting rhythm: %d meetings, up to %d on the busiest day": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ritmo de reuniones en 12 semanas: %d reuniones, día con más actividad: %d"
+            "value": "Ritmo de reuniones en 12 semanas: %d reuniones, hasta %d en el día con más actividad"
           }
         }
       }

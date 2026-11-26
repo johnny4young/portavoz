@@ -2871,7 +2871,7 @@ and an optional on-device answer. Missing generation degrades to complete
 evidence rather than losing citations. Citation controls pass storage-
 independent identity and time to composition, then set the one-shot,
 meeting-scoped detail seek; the palette reopens a main window only when none is
-visible. ⌘C copies the
+visible. ⇧⌘C copies the
 answer and citations through `ApplicationKit.AskMarkdown`. The views and panel
 import no StorageKit, IntegrationsKit, or IntelligenceKit. Disposable bilingual
 UI coverage verifies the full Ask answer, instant palette results, generated
