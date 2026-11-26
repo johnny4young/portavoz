@@ -182,7 +182,7 @@ private struct BackgroundWorkRow: View {
         switch snapshot.owner {
         case .recovery:
             return L10n.format(
-                "Reconciled: %d · leases recovered: %d · deferred: %d · attention: %d",
+                "Recovered: %d · cleared: %d · waiting: %d · needs attention: %d",
                 metrics.reconciledRecordings,
                 metrics.recoveredLeases,
                 metrics.deferredRecordings,
@@ -202,7 +202,7 @@ private struct BackgroundWorkRow: View {
                 metrics.skippedSegments)
         case .memoryGraph:
             return L10n.format(
-                "Scopes rebuilt: %d · relationships published: %d",
+                "Meetings indexed: %d · links updated: %d",
                 metrics.rebuiltGraphScopes,
                 metrics.publishedGraphEdges)
         }

@@ -12,7 +12,7 @@ final class SettingsUITests: PortavozUITestCase {
             #"{"transcriptionLanguage":"es","meetingLiveSpeechEngine":"appleSpeech"}"#
         app.launchPortavoz()
         defer { finishUITestApplication(app) }
-        openCategory("settings-category-intelligence",
+        openCategory("settings-category-audio",
                      revealing: "settings-meeting-live-engine", in: app)
         let retry = app.buttons["settings-meeting-live-apple-retry"]
         XCTAssertTrue(retry.waitForExistenceFast(timeout: 5))
@@ -33,7 +33,7 @@ final class SettingsUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { finishUITestApplication(app) }
 
-        openCategory("settings-category-intelligence",
+        openCategory("settings-category-audio",
                      revealing: "settings-meeting-live-engine", in: app)
         let meetingStatus = app.staticTexts["settings-meeting-live-apple-status"]
         XCTAssertTrue(meetingStatus.waitForExistenceFast(timeout: 5))
@@ -170,15 +170,19 @@ final class SettingsUITests: PortavozUITestCase {
             spanish ? "Apple requiere Apple Intelligence" : "Apple requires Apple Intelligence"))
         XCTAssertTrue(providerCopy.contains(spanish ? "motor local seleccionado" : "selected local engine"))
         _ = try uiSnapshotElement("settings-category-data", in: intelligence)
-        _ = try uiSnapshotElement("settings-category-integrations", in: intelligence)
+        _ = try uiSnapshotElement("settings-category-skills", in: intelligence)
         _ = try uiObservation(
             of: app,
             requiring: [
                 "settings-summary-engine-picker", "settings-summary-language",
-                "settings-summary-detail", "settings-whisper-turbo"
+                "settings-summary-detail"
             ],
             timeout: 5,
-            message: "Intelligence must expose summary engine, output language, detail and Whisper preparation")
+            message: "Intelligence must expose summary engine, output language, and detail")
+        openCategory(
+            "settings-category-audio",
+            revealing: "settings-whisper-turbo",
+            in: app)
         let whisperDownload = app.control(withIdentifier: "settings-whisper-download-turbo")
         XCTAssertTrue(
             whisperDownload.exists,
@@ -437,7 +441,7 @@ final class SettingsUITests: PortavozUITestCase {
         defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.openSettingsCategory(
-            "settings-category-integrations", revealing: "settings-byok-endpoint"))
+            "settings-category-skills", revealing: "settings-byok-endpoint"))
         let warning = app.control(withIdentifier: "settings-byok-endpoint-insecure")
         XCTAssertTrue(
             warning.waitForExistenceFast(timeout: 5),
@@ -447,21 +451,25 @@ final class SettingsUITests: PortavozUITestCase {
 
     @MainActor
     func testVoicePaneOffersTheMirrorOptIn() throws {
-        // The post-meeting mirror (6a-2) is opt-in and off by default; its
-        // switch lives in the "My voice & Apuntador" pane.
+        // The post-meeting mirror (6a-2) lives in General; local voice enrollment
+        // stays in Intelligence.
         let app = try XCUIApplication.portavoz(openSettings: true)
         app.launchPortavoz()
         defer { finishUITestApplication(app) }
 
         openCategory(
-            "settings-category-intelligence",
+            "settings-category-general",
             revealing: "settings-mirror-after-meeting",
             in: app)
-
         let mirror = app.control(withIdentifier: "settings-mirror-after-meeting")
         XCTAssertTrue(
             mirror.waitForExistenceFast(timeout: 5),
-            "the voice pane must offer the post-meeting mirror opt-in")
+            "General must offer the post-meeting mirror opt-in")
+
+        openCategory(
+            "settings-category-intelligence",
+            revealing: "settings-voice-enroll",
+            in: app)
         XCTAssertTrue(
             app.control(withIdentifier: "settings-voice-enroll").exists,
             "a disposable library must expose local voice enrollment")
@@ -525,11 +533,11 @@ final class SettingsUITests: PortavozUITestCase {
         languagePicker.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.5)).click()
         // The whole UI re-localizes live: the pane label AND a nav category.
         XCTAssertTrue(app.staticTexts["Usar idioma del sistema"].waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(app.staticTexts["General e idioma"].exists)
+        XCTAssertTrue(app.staticTexts["Audio y transcripción"].exists)
 
         systemToggle.click()  // back to launch/system English
         XCTAssertTrue(app.staticTexts["Use system language"].waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(app.staticTexts["General & language"].exists)
+        XCTAssertTrue(app.staticTexts["Audio & transcription"].exists)
     }
 
     /// Settings lives in its own macOS window, so a category can exist while

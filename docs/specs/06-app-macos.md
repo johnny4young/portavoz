@@ -2660,18 +2660,21 @@ single hint when more rows exist, and moves each commitment's full sources and
 history behind a popover (`commitment-radar-details-<id>`) while the first
 source stays visible on the card.
 
-## Settings layout (Sep 2026, D537)
+## Settings layout (Sep 2026, D537; consolidated Nov 2026)
 
-Settings has seven categories: General & language, Audio (microphone, capture
-source, call-safe capture),
-Intelligence (summary engine, languages, Apuntador, your voice, remembered
-voices, semantic search, structures, vocabulary), Agenda & automation,
-Automations, Integrations, and Your data (ledger, iCloud sync, background
-activity, legacy dictation deletion, diagnostics, backup, recordings folder). The former "My voice &
-Apuntador", "Sync" and "Background activity" categories merged into
-Intelligence and Your data; their controls and accessibility identifiers are
-unchanged, and every deep link (`pendingSettingsCategory`) resolves to one of
-the seven. The window resizes between 760×620 and the screen (ideal 900×700)
+Settings has five categories: General (language, menu bar, calendar reminders,
+title template, talk-time mirror), Audio & transcription (microphone, capture
+source, call-safe capture, spoken language and live speech engine, Whisper
+improvement model, custom vocabulary), Intelligence (summary engine, model
+memory, summary language and detail, Apuntador, your voice, remembered voices,
+semantic search, custom structures), Automations (suggested actions control
+center, post-meeting Shortcut, external providers, GitHub, CLI/MCP), and Data &
+privacy (ledger, legacy dictation deletion, iCloud sync, background activity,
+settings transfer, diagnostics, backup, recordings folder, local models,
+credits). The sidebar lists category icons and titles without visible two-line
+subtitles (keeping `subtitleKey` for VoiceOver hints and search), and every
+deep link (`pendingSettingsCategory`) resolves to one of the five. The window
+resizes between 760×620 and the screen (ideal 900×700)
 with a fixed 224-point sidebar. Long explanations live behind
 `HowItWorksLink` ("How it works", a popover next to a one-line caption);
 Apuntador reports one status with three values, `Apuntador: ready`,

@@ -18826,6 +18826,186 @@
           }
         }
       }
+    },
+    "General": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "General"
+          }
+        }
+      }
+    },
+    "Audio & transcription": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio y transcripción"
+          }
+        }
+      }
+    },
+    "Data & privacy": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Datos y privacidad"
+          }
+        }
+      }
+    },
+    "Language · menu bar · calendar · talk time": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma · barra de menú · calendario · tiempo de habla"
+          }
+        }
+      }
+    },
+    "Microphone · transcription · Whisper · vocabulary": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Micrófono · transcripción · Whisper · vocabulario"
+          }
+        }
+      }
+    },
+    "Summary engine · Apuntador · voices · search": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motor de resumen · Apuntador · voces · búsqueda"
+          }
+        }
+      }
+    },
+    "Actions · Shortcuts · providers · GitHub · CLI": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acciones · Atajos · proveedores · GitHub · CLI"
+          }
+        }
+      }
+    },
+    "Privacy · iCloud sync · storage · diagnostics": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacidad · sincronización iCloud · almacenamiento · diagnóstico"
+          }
+        }
+      }
+    },
+    "whisper refine transcription language vocabulary apple speech parakeet": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "whisper mejorar idioma transcripcion vocabulario apple speech parakeet"
+          }
+        }
+      }
+    },
+    "Post-meeting Shortcut": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atajo al terminar"
+          }
+        }
+      }
+    },
+    "Talk-time mirror": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Espejo de participación"
+          }
+        }
+      }
+    },
+    "Recommended memory: %d GB or more.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Memoria recomendada: %d GB o más."
+          }
+        }
+      }
+    },
+    "This Mac has less memory than recommended; performance may be slower.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este Mac tiene menos memoria de la recomendada; el rendimiento puede ser más lento."
+          }
+        }
+      }
+    },
+    "Writes one Markdown file per meeting — summary, action items and full transcript — into a folder you choose. Plain files you can read, search, and back up without Portavoz.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escribe un archivo Markdown por reunión — resumen, pendientes y transcripción completa — en la carpeta que elijas. Archivos de texto que puedes leer, buscar y respaldar sin Portavoz."
+          }
+        }
+      }
+    },
+    "Recovered: %d · cleared: %d · waiting: %d · needs attention: %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recuperadas: %d · liberadas: %d · en espera: %d · atención: %d"
+          }
+        }
+      }
+    },
+    "Meetings indexed: %d · links updated: %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reuniones indexadas: %d · vínculos actualizados: %d"
+          }
+        }
+      }
+    },
+    "This changes the Portavoz interface only. Transcript and summary languages are configured separately.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esto cambia solo la interfaz de Portavoz. Los idiomas de transcripción y resumen se configuran aparte."
+          }
+        }
+      }
+    },
+    "This changes generated summaries only. Transcript language is set in Audio & transcription.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esto cambia solo los resúmenes generados. El idioma de transcripción se configura en Audio y transcripción."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

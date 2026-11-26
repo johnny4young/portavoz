@@ -26,8 +26,8 @@ final class BackgroundWorkUITests: PortavozUITestCase {
         let spanish = UITestLocale.environmentLocale == "es"
         let expectedDetails = [
             "background-work-detail-recovery": spanish
-                ? "Reconciliadas: 2 · concesiones recuperadas: 1 · diferidas: 0 · atención: 0"
-                : "Reconciled: 2 · leases recovered: 1 · deferred: 0 · attention: 0",
+                ? "Recuperadas: 2 · liberadas: 1 · en espera: 0 · atención: 0"
+                : "Recovered: 2 · cleared: 1 · waiting: 0 · needs attention: 0",
             "background-work-detail-semantic-index": spanish
                 ? "Indexados: 12 · excluidos: 3 · omitidos: 0"
                 : "Indexed: 12 · excluded: 3 · skipped: 0",

@@ -7,7 +7,7 @@ import XCTest
 @MainActor
 final class PortableSettingsObservationTests: XCTestCase {
     func testAudioCategoryKeepsShortcutNeutralLocalizationKey() async {
-        XCTAssertEqual(SettingsCategory.audio.subtitleKey, "Microphone · call-safe capture")
+        XCTAssertEqual(SettingsCategory.audio.subtitleKey, "Microphone · transcription · Whisper · vocabulary")
     }
 
     func testTemporaryImportNotifiesMountedPreferenceObservers() async throws {

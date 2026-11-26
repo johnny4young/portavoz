@@ -10,7 +10,7 @@ final class CommandLineToolUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { finishUITestApplication(app) }
 
-        XCTAssertTrue(app.openSettingsCategory("settings-category-integrations", revealing: "settings-cli-install"))
+        XCTAssertTrue(app.openSettingsCategory("settings-category-skills", revealing: "settings-cli-install"))
         XCTAssertTrue(app.buttons["settings-cli-copy-claude"].exists)
         XCTAssertTrue(app.buttons["settings-cli-copy-json"].exists)
         app.buttons["settings-cli-install"].click()
@@ -33,7 +33,7 @@ final class CommandLineToolUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { finishUITestApplication(app) }
 
-        XCTAssertTrue(app.openSettingsCategory("settings-category-integrations", revealing: "settings-cli-unavailable"))
+        XCTAssertTrue(app.openSettingsCategory("settings-category-skills", revealing: "settings-cli-unavailable"))
         XCTAssertFalse(app.buttons["settings-cli-install"].exists)
     }
 }

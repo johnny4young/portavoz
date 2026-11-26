@@ -14,7 +14,7 @@ final class SettingsTransferUITests: PortavozUITestCase {
         XCTAssertTrue(app.openSettingsCategory("settings-category-data", revealing: "settings-export-preferences"))
 
         let dataCategory = app.buttons["settings-category-data"]
-        XCTAssertEqual(dataCategory.label, target == "es" ? "Your data" : "Tus datos")
+        XCTAssertEqual(dataCategory.label, target == "es" ? "Data & privacy" : "Datos y privacidad")
         let export = app.buttons["settings-export-preferences"]
         XCTAssertTrue(export.exists)
         export.click()
@@ -48,7 +48,7 @@ final class SettingsTransferUITests: PortavozUITestCase {
         XCTAssertTrue(app.staticTexts["settings-preferences-status"].waitForExistenceFast(timeout: 5))
         // The sidebar is already mounted. Reading a fresh export alone cannot
         // prove that existing @AppStorage observers received the actual import.
-        let translatedCategory = target == "es" ? "Tus datos" : "Your data"
+        let translatedCategory = target == "es" ? "Datos y privacidad" : "Data & privacy"
         XCTAssertTrue(waitForUITestCondition(timeout: 5) { dataCategory.label == translatedCategory })
         XCTAssertTrue(dataCategory.isSelected, "language changes must preserve the current pane")
         let intelligenceTitle = target == "es" ? "Inteligencia" : "Intelligence"
@@ -67,7 +67,7 @@ final class SettingsTransferUITests: PortavozUITestCase {
         attachScreenshot(of: app, named: "settings-preferences-imported")
 
         XCTAssertTrue(app.openSettingsCategory(
-            "settings-category-intelligence", revealing: "settings-vocabulary-remove-Cóndor"),
+            "settings-category-audio", revealing: "settings-vocabulary-remove-Cóndor"),
             "each imported vocabulary term must expose its own remove control")
     }
 

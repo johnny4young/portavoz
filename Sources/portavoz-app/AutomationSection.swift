@@ -6,7 +6,7 @@ struct AutomationSection: View {
     @AppStorage(PostMeetingShortcut.defaultsKey) private var shortcutName = ""
 
     var body: some View {
-        Section("Automation") {
+        Section("Post-meeting Shortcut") {
             TextField("Run a Shortcut when a meeting ends", text: $shortcutName)
                 .accessibilityIdentifier("settings-automation-shortcut")
             Text(

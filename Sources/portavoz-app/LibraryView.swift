@@ -75,19 +75,6 @@ struct LibraryView: View {
                 onOpen: { showsImportQueue = true },
                 onDismissError: { perform(.dismissActionError) })
 
-            if state.offerCalendar {
-                Button {
-                    perform(.requestCalendarAccess)
-                } label: {
-                    Label("Connect your calendar", systemImage: "calendar.badge.plus")
-                        .frame(maxWidth: .infinity)
-                }
-                .controlSize(.small)
-                .padding(.horizontal, 12)
-                .padding(.top, 8)
-                .help("Shows today's and tomorrow's meetings with a brief for each.")
-            }
-
             searchField
                 .padding(.horizontal, 12)
                 .padding(.top, 8)

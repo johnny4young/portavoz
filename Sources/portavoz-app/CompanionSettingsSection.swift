@@ -11,7 +11,6 @@ struct CompanionSettingsSection: View {
     let providerAnswersAvailable: Bool
     @Binding var companionEnabled: Bool
     @Binding var companionUserName: String
-    @Binding var mirrorAfterMeeting: Bool
 
     /// Ready · Questions only · Unavailable, never a green check over a failure.
     private enum Readiness {
@@ -60,12 +59,6 @@ struct CompanionSettingsSection: View {
             Text(L10n.format(
                 "Cards addressed to “%@” are marked as asked to you.",
                 companionUserName.isEmpty ? NSFullUserName() : companionUserName))
-                .font(.caption)
-                .foregroundStyle(.ink3)
-
-            Toggle("Your talk time after each meeting", isOn: $mirrorAfterMeeting)
-                .accessibilityIdentifier("settings-mirror-after-meeting")
-            Text("After meetings of five minutes or more, next to your average.")
                 .font(.caption)
                 .foregroundStyle(.ink3)
         }
