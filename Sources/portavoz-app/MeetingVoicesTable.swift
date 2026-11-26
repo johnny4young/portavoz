@@ -40,8 +40,6 @@ struct MeetingVoicesTable<Trailing: View>: View {
         let byID = Dictionary(speakers.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let suggestions = Dictionary(
             voiceSuggestions.map { ($0.speakerLabel, $0) }, uniquingKeysWith: { first, _ in first })
-        let healthBySpeaker = Dictionary(
-            (health?.stats ?? []).map { ($0.speakerID, $0) }, uniquingKeysWith: { first, _ in first })
         Group {
             if table.count == 1, let onlyRow = table.rows.first, let speaker = byID[onlyRow.speakerID] {
                 soloSummary(onlyRow, speaker: speaker, suggestion: suggestions[speaker.label])
@@ -49,8 +47,7 @@ struct MeetingVoicesTable<Trailing: View>: View {
                 VStack(alignment: .leading, spacing: 0) {
                     heading.padding(.bottom, 6)
                     ForEach(table.rows) {
-                        row($0, speaker: byID[$0.speakerID], stat: healthBySpeaker[$0.speakerID],
-                            suggestions: suggestions)
+                        row($0, speaker: byID[$0.speakerID], suggestions: suggestions)
                     }
                     if !table.others.isEmpty {
                         othersRow(names: table.others.compactMap { byID[$0.speakerID].map(VoiceName.of(_:)) })
@@ -59,8 +56,7 @@ struct MeetingVoicesTable<Trailing: View>: View {
                             showsOthers || other.speakerID == playback?.focus
                                 || byID[other.speakerID].map { suggestions[$0.label] != nil } == true
                         }) {
-                            row($0, speaker: byID[$0.speakerID], stat: healthBySpeaker[$0.speakerID],
-                                suggestions: suggestions)
+                            row($0, speaker: byID[$0.speakerID], suggestions: suggestions)
                         }
                     }
                 }
@@ -161,7 +157,6 @@ struct MeetingVoicesTable<Trailing: View>: View {
     private func row(
         _ row: MeetingVoiceTable.Row,
         speaker: Speaker?,
-        stat: MeetingHealth.SpeakerStat?,
         suggestions: [String: MeetingVoiceSuggestion]
     ) -> some View {
         if let speaker {
@@ -173,21 +168,7 @@ struct MeetingVoicesTable<Trailing: View>: View {
                     .frame(minWidth: 48, maxWidth: .infinity)
                     .layoutPriority(-1)
                     .accessibilityIdentifier("voice-turns-\(speaker.label)")
-                HStack(spacing: 6) {
-                    if !isNarrow, let stat, stat.questions > 0 {
-                        healthChip(
-                            PVSymbol.apuntador,
-                            "\(stat.questions)",
-                            accessibilityLabel: L10n.format("%d questions", stat.questions))
-                            .help("Counts the questions this speaker asked")
-                    }
-                    if !isNarrow, let stat, stat.interruptionsMade > 0 {
-                        healthChip(
-                            "exclamationmark.bubble",
-                            "\(stat.interruptionsMade)",
-                            accessibilityLabel: L10n.format("%d interruptions", stat.interruptionsMade))
-                            .help("Counts how often this speaker interrupted")
-                    }
+                HStack(spacing: columnSpacing) {
                     if let suggestion = suggestions[speaker.label] {
                         suggestionChip(suggestion)
                     }
