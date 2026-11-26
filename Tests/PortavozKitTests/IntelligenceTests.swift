@@ -1191,6 +1191,13 @@ final class BYOKSettingsTests: XCTestCase {
     func testEndpointURLRejectsNonHTTPOrHostless() {
         XCTAssertNotNil(BYOKSettings.endpointURL(from: " https://api.openai.com/v1 "))
         XCTAssertNotNil(BYOKSettings.endpointURL(from: "http://localhost:11434/v1"))
+        XCTAssertNotNil(BYOKSettings.endpointURL(from: "http://127.0.0.1:11434/v1"))
+        XCTAssertNotNil(BYOKSettings.endpointURL(from: "http://[::1]:11434/v1"))
+        XCTAssertNotNil(BYOKSettings.endpointURL(from: "http://127.0.0.2:11434/v1"))
+        XCTAssertNotNil(BYOKSettings.endpointURL(from: "http://ollama.localhost:11434/v1"))
+        XCTAssertNil(BYOKSettings.endpointURL(from: "http://192.168.1.20:11434/v1"))
+        XCTAssertNil(BYOKSettings.endpointURL(from: "http://studio.local:1234/v1"))
+        XCTAssertNil(BYOKSettings.endpointURL(from: "http://api.openai.com/v1"))
         XCTAssertNil(BYOKSettings.endpointURL(from: "ftp://files.example.com"))
         XCTAssertNil(BYOKSettings.endpointURL(from: "api.openai.com/v1"))
         XCTAssertNil(BYOKSettings.endpointURL(from: ""))
@@ -1367,8 +1374,57 @@ final class OpenAICompatibleProviderTests: XCTestCase {
     }
 
     func testRejectsNonJSONContent() {
+        let secret = "confidential budget agreement 4291"
         XCTAssertThrowsError(
-            try OpenAICompatibleSummaryProvider.parseStructured("I cannot help with that."))
+            try OpenAICompatibleSummaryProvider.parseStructured("I cannot help with \(secret).")
+        ) { error in
+            XCTAssertFalse(
+                error.localizedDescription.contains(secret),
+                "parse errors must not echo raw model output")
+        }
+    }
+
+    func testHTTPErrorDoesNotEchoRawProviderBody() {
+        let secret = "echoed-transcript-phrase-991"
+        XCTAssertThrowsError(
+            try OpenAICompatibleChatCodec.responseContent(
+                data: Data("error near: \(secret)".utf8),
+                statusCode: 500)
+        ) { error in
+            XCTAssertTrue(error.localizedDescription.contains("HTTP 500"))
+            XCTAssertFalse(
+                error.localizedDescription.contains(secret),
+                "HTTP errors must not embed raw provider response bodies")
+        }
+    }
+
+    func testHTTPErrorKeepsOnlyIdentifierShapedProviderCode() {
+        let secret = "echoed-transcript-phrase-991"
+        let body = #"{"error":{"message":"bad: \#(secret)","type":"invalid_request_error","code":"model_not_found"}}"#
+        XCTAssertThrowsError(
+            try OpenAICompatibleChatCodec.responseContent(data: Data(body.utf8), statusCode: 404)
+        ) { error in
+            XCTAssertTrue(error.localizedDescription.contains("model_not_found"))
+            XCTAssertFalse(error.localizedDescription.contains(secret))
+        }
+        let prose = #"{"error":{"code":"the transcript says \#(secret)"}}"#
+        XCTAssertNil(OpenAICompatibleChatCodec.providerErrorCode(Data(prose.utf8)))
+    }
+
+    func testParseErrorNamesDecodingCaseAndTruncation() {
+        let secret = "confidential budget agreement 4291"
+        XCTAssertThrowsError(
+            try OpenAICompatibleSummaryProvider.parseStructured(#"{"overview": "\#(secret)"}"#)
+        ) { error in
+            XCTAssertTrue(error.localizedDescription.contains("keyNotFound sections"))
+            XCTAssertFalse(error.localizedDescription.contains(secret))
+        }
+        XCTAssertThrowsError(
+            try OpenAICompatibleSummaryProvider.parseStructured(#"{"overview": "\#(secret)", "sec"#)
+        ) { error in
+            XCTAssertTrue(error.localizedDescription.contains("unterminated"))
+            XCTAssertFalse(error.localizedDescription.contains(secret))
+        }
     }
 
     /// Smaller local models (MLX Qwen3-4B) wrap the object in prose; the

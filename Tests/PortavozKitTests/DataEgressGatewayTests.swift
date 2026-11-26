@@ -245,6 +245,44 @@ final class DataEgressGatewayTests: XCTestCase {
         }
     }
 
+    func testGatewayRejectsRemoteChatOverPlainHTTP() async throws {
+        let summaryGateway = CapturingDataEgressGateway()
+        _ = try await OpenAICompatibleSummaryClient(
+            endpoint: URL(string: "http://192.168.1.20:11434/v1")!,
+            model: "m",
+            apiKey: "k",
+            gateway: summaryGateway
+        ).completeSummary(system: "s", user: "u", meetingID: meetingID)
+        let companionGateway = CapturingDataEgressGateway()
+        _ = try await CompanionBYOKClient(
+            endpoint: URL(string: "http://api.example.com/v1")!,
+            model: "m",
+            apiKey: "k",
+            gateway: companionGateway
+        ).completeCompanionQuestion(
+            system: "s",
+            user: "u",
+            maxTokens: 10,
+            context: CompanionDataEgressContext(
+                meetingID: meetingID,
+                consentSource: .companionBYOKSettings))
+
+        let expected = [
+            "Remote Summary egress requires HTTPS",
+            "Remote Apuntador egress requires HTTPS",
+        ]
+        for (gateway, message) in zip([summaryGateway, companionGateway], expected) {
+            let snapshot = await gateway.snapshot()
+            let captured = try XCTUnwrap(snapshot)
+            XCTAssertEqual(captured.metadata.destination.scope, .remote)
+            XCTAssertThrowsError(try URLSessionDataEgressGateway.validate(
+                captured.request,
+                metadata: captured.metadata)) { error in
+                XCTAssertEqual(error as? DataEgressGatewayError, .invalidMetadata(message))
+            }
+        }
+    }
+
     func testGatewayAcceptsOnlyMatchingCanonicalPublishingMetadata() throws {
         let item = ActionItem(text: "Ship the release")
         let requests = [

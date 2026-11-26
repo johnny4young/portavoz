@@ -324,6 +324,13 @@ public struct URLSessionDataEgressGateway: DataEgressGateway {
             throw DataEgressGatewayError.invalidMetadata(
                 "\(label) egress requires a classified non-empty model POST")
         }
+        // Prompts and bearer keys never leave the device over plaintext HTTP.
+        guard metadata.destination.scope == .localDevice
+                || networkRequest.url?.scheme?.lowercased() == "https"
+        else {
+            throw DataEgressGatewayError.invalidMetadata(
+                "Remote \(label) egress requires HTTPS")
+        }
     }
 
     private static func validatePublishingRequest(

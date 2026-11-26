@@ -43,6 +43,8 @@ public enum AudioTailTrimmer {
     public static func commit(originals: [URL], staged: [URL]) throws {
         try commit(originals: originals, staged: staged) { original, copy in
             _ = try FileManager.default.replaceItemAt(original, withItemAt: copy)
+            // The swap keeps the original's metadata, including its mode.
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: original.path)
         }
     }
 

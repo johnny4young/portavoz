@@ -16,6 +16,12 @@ struct BYOKSettingsSection: View {
     let secrets: ManageSecrets
     let companionAvailable: Bool
 
+    /// A typed endpoint the HTTPS rule rejects; empty input is not an error.
+    private var endpointIsRejected: Bool {
+        !endpoint.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && BYOKSettings.endpointURL(from: endpoint) == nil
+    }
+
     private var isReady: Bool {
         hasStoredKey
             && BYOKSettings.endpointURL(from: endpoint) != nil
@@ -29,6 +35,16 @@ struct BYOKSettingsSection: View {
                 prompt: Text("https://api.openai.com/v1")
             )
             .autocorrectionDisabled()
+            .accessibilityIdentifier("settings-byok-endpoint")
+            if endpointIsRejected {
+                Label(
+                    "Use https://. Plain http:// works only on this Mac (localhost).",
+                    systemImage: "lock.trianglebadge.exclamationmark"
+                )
+                .font(.caption)
+                .foregroundStyle(PVDesign.caution)
+                .accessibilityIdentifier("settings-byok-endpoint-insecure")
+            }
             TextField("Model", text: $model, prompt: Text("gpt-4o-mini"))
                 .autocorrectionDisabled()
             SecureField("API key", text: $key)
@@ -55,7 +71,7 @@ struct BYOKSettingsSection: View {
                 HowItWorksLink(
                     text: L10n.text(
                         // swiftlint:disable:next line_length
-                        "Any /chat/completions endpoint works, including a local Ollama or LM Studio server. Apuntador sends only the detected question, never audio or meeting text."),
+                        "Any HTTPS /chat/completions endpoint works, plus Ollama or LM Studio on this Mac. Apuntador sends only the detected question, never audio or meeting text."),
                     identifier: "settings-byok-how-it-works")
             }
             if let message {

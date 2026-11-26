@@ -13,19 +13,43 @@ enum PostMeetingShortcut {
         let name = (UserDefaults.standard.string(forKey: defaultsKey) ?? "")
             .trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { return }
-        let input = FileManager.default.temporaryDirectory
+        run(
+            shortcutName: name,
+            markdown: markdown,
+            temporaryDirectory: FileManager.default.temporaryDirectory
+        ) { inputURL, onComplete in
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/shortcuts")
+            process.arguments = ["run", name, "--input-path", inputURL.path]
+            process.terminationHandler = { _ in onComplete() }
+            try process.run()
+        }
+    }
+
+    static func run(
+        shortcutName: String,
+        markdown: String,
+        temporaryDirectory: URL,
+        launch: (_ inputURL: URL, _ onComplete: @escaping @Sendable () -> Void) throws -> Void
+    ) {
+        guard !shortcutName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        let input = temporaryDirectory
             .appendingPathComponent("portavoz-meeting-\(UUID().uuidString).md")
-        do {
-            try Data(markdown.utf8).write(to: input)
-        } catch {
+        // Create with owner-only permissions up front so meeting text is never world-readable.
+        guard FileManager.default.createFile(
+            atPath: input.path,
+            contents: Data(markdown.utf8),
+            attributes: [.posixPermissions: 0o600]
+        ) else {
             return
         }
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/shortcuts")
-        process.arguments = ["run", name, "--input-path", input.path]
-        process.terminationHandler = { _ in
+        let cleanup: @Sendable () -> Void = {
             try? FileManager.default.removeItem(at: input)
         }
-        try? process.run()
+        do {
+            try launch(input, cleanup)
+        } catch {
+            cleanup()
+        }
     }
 }

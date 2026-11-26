@@ -142,13 +142,14 @@ private struct AppImportMeetingBundleFiles: ImportMeetingBundleFiles {
             do {
                 try files.createDirectory(
                     at: directory,
-                    withIntermediateDirectories: true)
+                    withIntermediateDirectories: true,
+                    attributes: [.posixPermissions: 0o700])
                 for attachment in attachments {
                     let filename =
                         "\(attachment.channel.rawValue).\(attachment.fileExtension)"
-                    try attachment.data.write(
-                        to: directory.appendingPathComponent(filename),
-                        options: .atomic)
+                    let file = directory.appendingPathComponent(filename)
+                    try attachment.data.write(to: file, options: .atomic)
+                    try? files.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
                 }
                 return ImportedMeetingBundleAudio(
                     relativeDirectory: relativeDirectory)

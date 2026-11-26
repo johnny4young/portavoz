@@ -2554,7 +2554,17 @@ claim. On-device and explicit BYOK providers are selected at CLI composition,
 not in the command body (D75/D103).
 
 Only the gateway-backed client is public; the shared chat codec is internal and
-transport-free. Offline tests decode remote and loopback requests, prove exact
+transport-free. Remote BYOK endpoints require `https://` (`http://` is accepted
+only for hosts the shared egress classifier calls local-device: `localhost`,
+`*.localhost`, `127/8`, `::1`; the CLI `--byok` flag applies the same rule,
+and the gateway rejects any remote summary or Apuntador chat request that is
+not HTTPS). Settings names a rejected endpoint inline
+(`settings-byok-endpoint-insecure`) instead of only disabling the toggle.
+Provider HTTP and structured-JSON decode failures remain content-free: status
+code, byte/character counts, an identifier-shaped OpenAI `error.code`/`type`
+(e.g. `model_not_found`), the `DecodingError` case with its schema coding path,
+and whether the output is unterminated — never raw response bodies, provider
+messages, or `/tmp` dumps. Offline tests decode remote and loopback requests, prove exact
 metadata and consent, exercise the real provider response parser, and reject
 cross-operation consent. The 23rd architecture rule prevents IntelligenceKit,
 app composition, or CLI composition from restoring a direct summary network

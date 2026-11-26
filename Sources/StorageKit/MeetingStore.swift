@@ -243,13 +243,42 @@ public final class MeetingStore: Sendable {
             .appendingPathComponent("Portavoz/portavoz.sqlite")
     }
 
-    public init(databaseURL: URL) throws {
+    public convenience init(databaseURL: URL) throws {
+        try self.init(
+            databaseURL: databaseURL,
+            ownsParentDirectory: databaseURL.standardizedFileURL
+                == Self.defaultDatabaseURL.standardizedFileURL)
+    }
+
+    /// `ownsParentDirectory` also tightens a folder that already exists; a
+    /// caller-chosen database path never changes its folder's mode.
+    init(databaseURL: URL, ownsParentDirectory: Bool) throws {
+        let parent = databaseURL.deletingLastPathComponent()
         try FileManager.default.createDirectory(
-            at: databaseURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            at: parent,
+            withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700])
+        if ownsParentDirectory {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: parent.path)
+        }
         self.database = try DatabaseQueue(
             path: databaseURL.path,
             configuration: Self.databaseConfiguration(for: databaseURL))
         try StorageSchema.migrator().migrate(database)
+        Self.restrictDatabaseFilePermissions(at: databaseURL)
+    }
+
+    private static func restrictDatabaseFilePermissions(at databaseURL: URL) {
+        let fileManager = FileManager.default
+        let paths = [
+            databaseURL.path,
+            databaseURL.path + "-wal",
+            databaseURL.path + "-shm",
+            databaseURL.path + "-journal"
+        ]
+        for path in paths where fileManager.fileExists(atPath: path) {
+            try? fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: path)
+        }
     }
 
     /// Ephemeral store for tests and previews.

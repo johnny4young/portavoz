@@ -1216,7 +1216,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ya hay otro refine en curso: inténtalo cuando termine."
+            "value": "Ya hay otra mejora en curso: inténtalo cuando termine."
           }
         }
       }
@@ -1261,12 +1261,12 @@
         }
       }
     },
-    "Any /chat/completions endpoint works, including a local Ollama or LM Studio server. Apuntador sends only the detected question, never audio or meeting text.": {
+    "Any HTTPS /chat/completions endpoint works, plus Ollama or LM Studio on this Mac. Apuntador sends only the detected question, never audio or meeting text.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sirve cualquier endpoint /chat/completions, incluido un servidor local de Ollama o LM Studio. Apuntador envía solo la pregunta detectada, nunca audio ni texto de la reunión."
+            "value": "Sirve cualquier endpoint HTTPS /chat/completions, además de Ollama o LM Studio en este Mac. Apuntador envía solo la pregunta detectada, nunca audio ni texto de la reunión."
           }
         }
       }
@@ -2386,7 +2386,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cancelar refine"
+            "value": "Cancelar mejora"
           }
         }
       }
@@ -2396,7 +2396,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cancelando refine…"
+            "value": "Cancelando mejora…"
           }
         }
       }
@@ -3552,7 +3552,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo aplicar el refine: %@"
+            "value": "No se pudo aplicar la mejora: %@"
           }
         }
       }
@@ -5434,7 +5434,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Exportar archivo de soporte redactado…"
+            "value": "Exportar archivo de soporte anonimizado…"
           }
         }
       }
@@ -7189,16 +7189,6 @@
         }
       }
     },
-    "Loading your automations…": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cargando tus automatizaciones…"
-          }
-        }
-      }
-    },
     "Local Ollama: summaries on your Mac, without Apple Intelligence.": {
       "localizations": {
         "es": {
@@ -7384,7 +7374,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El audio de reuniones vive en Audio/ dentro de esta carpeta. Al cambiarla, las grabaciones existentes se mueven a la nueva ubicación; la base de datos y los transcripts se quedan donde están."
+            "value": "El audio de reuniones vive en Audio/ dentro de esta carpeta. Al cambiarla, las grabaciones existentes se mueven a la nueva ubicación; la base de datos y las transcripciones se quedan donde están."
           }
         }
       }
@@ -9794,7 +9784,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Portavoz deja el procesamiento de voz de macOS en manos de tu app de reuniones y nunca atenúa el audio de la llamada mientras graba. Las voces remotas duplicadas se eliminan del transcript después de la captura."
+            "value": "Portavoz deja el procesamiento de voz de macOS en manos de tu app de reuniones y nunca atenúa el audio de la llamada mientras graba. Las voces remotas duplicadas se eliminan de la transcripción después de la captura."
           }
         }
       }
@@ -13156,7 +13146,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Las fuentes quedaron desactualizadas tras los cambios del transcript."
+            "value": "Las fuentes quedaron desactualizadas tras los cambios en la transcripción."
           }
         }
       }
@@ -13756,7 +13746,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El resumen v%d ya coincide con este material — no hay nada que regenerar. Cambia el transcript, las notas o el vocabulario para producir uno nuevo."
+            "value": "El resumen v%d ya coincide con este material — no hay nada que regenerar. Cambia la transcripción, las notas o el vocabulario para producir uno nuevo."
           }
         }
       }
@@ -14216,7 +14206,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El archivo está redactado y permanece en tu Mac a menos que decidas compartirlo."
+            "value": "El archivo está anonimizado y permanece en tu Mac a menos que decidas compartirlo."
           }
         }
       }
@@ -14246,7 +14236,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El transcript completo saldrá de tu Mac hacia GitHub como un gist SECRETO (no listado)."
+            "value": "La transcripción completa saldrá de tu Mac hacia GitHub como un gist SECRETO (no listado)."
           }
         }
       }
@@ -14486,7 +14476,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El refine cubre mucha menos voz que el transcript actual — probablemente falló. No lo apliques."
+            "value": "La mejora cubre mucha menos voz que la transcripción actual — probablemente falló. No la apliques."
           }
         }
       }
@@ -14606,7 +14596,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El transcript cambió mientras revisabas este borrador. Ejecuta Refine de nuevo."
+            "value": "La transcripción cambió mientras revisabas este borrador. Vuelve a ejecutar Mejorar."
           }
         }
       }
@@ -14626,7 +14616,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El transcript se refinó, pero no se pudieron actualizar las tarjetas del Apuntador."
+            "value": "La transcripción se mejoró, pero no se pudieron actualizar las tarjetas del Apuntador."
           }
         }
       }
@@ -15811,6 +15801,16 @@
         }
       }
     },
+    "Use https://. Plain http:// works only on this Mac (localhost).": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa https://. http:// sin cifrar solo funciona en este Mac (localhost)."
+          }
+        }
+      }
+    },
     "Use my first listen": {
       "localizations": {
         "es": {
@@ -16181,12 +16181,12 @@
         }
       }
     },
-    "What to record besides your mic: Automatic picks system audio or the meeting app; Nothing records only your microphone.": {
+    "What to record besides your mic: Automatic captures the active meeting app or system audio.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Qué grabar además de tu micrófono: Automático elige el audio del sistema o la app de reunión; Nada graba solo tu micrófono."
+            "value": "Qué grabar además de tu micrófono: Automático captura la app de reunión activa o el audio del sistema."
           }
         }
       }
@@ -16306,7 +16306,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Escribe un archivo Markdown por reunión — resumen, pendientes y transcript completo — en la carpeta que elijas. Archivos planos que puedes leer, buscar y respaldar sin Portavoz."
+            "value": "Escribe un archivo Markdown por reunión — resumen, pendientes y transcripción completa — en la carpeta que elijas. Archivos planos que puedes leer, buscar y respaldar sin Portavoz."
           }
         }
       }
@@ -16792,7 +16792,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "detectados localmente en tus transcripts — cada uno con su acción"
+            "value": "detectados localmente en tus transcripciones — cada uno con su acción"
           }
         }
       }

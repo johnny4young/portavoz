@@ -105,6 +105,7 @@
     "SettingsUITests/testSyncPaneKeepsOptInAndExistingLibrarySeparate()": 11.3,
     "SettingsUITests/testUnreadableVoiceStorageStaysVisibleAndOffersExplicitRecovery()": 21.8,
     "SettingsUITests/testVoicePaneOffersTheMirrorOptIn()": 10.7,
+    "SettingsUITests/testIntegrationsFlagsAPlainHTTPRemoteBYOKEndpoint()": 20.0,
     "SkillsSettingsUITests/testAutomaticBriefCancellationFailureRequiresVerifiedReload()": 16.3,
     "SkillsSettingsUITests/testAutomaticBriefRuleRecoversAndKeepsInspectableHistory()": 36.7,
     "SkillsSettingsUITests/testProposedSkillDismissalRetiresTheDurableOfferEverywhere()": 29.6,

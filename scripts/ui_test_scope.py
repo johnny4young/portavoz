@@ -310,7 +310,7 @@ def tests_using(helpers: set[str], root: Path) -> set[str]:
 
 def app_features(filename: str) -> set[str]:
     lowered = filename.lower()
-    if "commandlinetool" in lowered:
+    if "commandlinetool" in lowered or lowered == "byoksettingssection.swift":
         return {"settings-integrations"}
     if "liveassistvalidation" in lowered:
         return {"live-assist"}

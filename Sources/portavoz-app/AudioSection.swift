@@ -30,11 +30,7 @@ struct AudioSection: View {
                 Text("All system audio").tag("system")
             }
             .accessibilityIdentifier("settings-capture-mode")
-            Text(
-                // One-line UI help text.
-                // swiftlint:disable:next line_length
-                "What to record besides your mic: Automatic picks system audio or the meeting app; Nothing records only your microphone."
-            )
+            Text("What to record besides your mic: Automatic captures the active meeting app or system audio.")
             .font(.caption)
             .foregroundStyle(.ink3)
 

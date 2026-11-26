@@ -1,7 +1,7 @@
 {
   "files": {
     "Package.swift": 2,
-    "README.md": 5,
+    "README.md": 1,
     "Resources/Localization/Portavoz/Localizable.xcstrings": 16,
     "Sources/ApplicationKit/PortableSettings.swift": 2,
     "Sources/IntegrationsKit/URLSessionDataEgressGateway.swift": 3,

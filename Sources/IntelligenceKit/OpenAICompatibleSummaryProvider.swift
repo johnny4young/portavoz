@@ -94,12 +94,6 @@ public struct OpenAICompatibleSummaryProvider: SummaryProvider {
             .replacingOccurrences(of: "```", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        // Local debugging only: dump the raw output when explicitly asked.
-        if ProcessInfo.processInfo.environment["PORTAVOZ_JSON_DUMP"] != nil {
-            let url = FileManager.default.temporaryDirectory
-                .appendingPathComponent("portavoz-summary-dump.txt")
-            try? stripped.write(to: url, atomically: true, encoding: .utf8)
-        }
         var firstDecodeError: Error?
         var candidates = [stripped]
         // Smaller local models also wrap the object in prose ("Here is the
@@ -121,11 +115,30 @@ public struct OpenAICompatibleSummaryProvider: SummaryProvider {
                 }
             }
         }
-        // Head AND tail: a truncated generation is instantly visible from
-        // an unterminated tail, while a refusal shows in the head.
+        // Keep errors content-free so raw summary text never leaks into logs or alerts.
+        let decoderReason = firstDecodeError.map(Self.contentFreeReason) ?? "none"
+        let ending = stripped.hasSuffix("}") ? "" : ", unterminated"
         throw IntelligenceError.providerFailed(
             "model did not return the expected JSON shape "
-                + "(\(stripped.count) characters): \(stripped.prefix(160)) … \(stripped.suffix(160)) "
-                + "— decoder: \(firstDecodeError.map(String.init(describing:)) ?? "none")")
+                + "(\(stripped.count) characters\(ending), decoder: \(decoderReason))")
+    }
+
+    /// Decoding case plus schema coding path; never the decoder's debug text,
+    /// which can quote model output.
+    static func contentFreeReason(_ error: any Error) -> String {
+        guard let decoding = error as? DecodingError else {
+            return String(describing: type(of: error))
+        }
+        let (name, context): (String, DecodingError.Context?) = switch decoding {
+        case .keyNotFound(let key, let context): ("keyNotFound \(key.stringValue)", context)
+        case .typeMismatch(_, let context): ("typeMismatch", context)
+        case .valueNotFound(_, let context): ("valueNotFound", context)
+        case .dataCorrupted(let context): ("dataCorrupted", context)
+        @unknown default: ("DecodingError", nil)
+        }
+        let path = context?.codingPath
+            .map { $0.intValue.map(String.init) ?? $0.stringValue }
+            .joined(separator: ".") ?? ""
+        return path.isEmpty ? name : "\(name) at \(path)"
     }
 }

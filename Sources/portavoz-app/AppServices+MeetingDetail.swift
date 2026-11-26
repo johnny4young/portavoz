@@ -30,7 +30,7 @@ extension AppServices {
             kickPostCaptureProcessing()
         } catch {
             Logger(subsystem: "app.portavoz.mac", category: "transcript-translation")
-                .error("Translation request failed: \(error.localizedDescription, privacy: .public)")
+                .error("Translation request failed: \(error.localizedDescription)")
         }
     }
 

@@ -165,6 +165,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "settings-integrations": (
         test_id("CommandLineToolUITests", "testIntegrationsInstallsAndRemovesTheCommandLineToolLink"),
+        test_id("SettingsUITests", "testIntegrationsFlagsAPlainHTTPRemoteBYOKEndpoint"),
     ),
     "settings-skills": (
         test_id("SkillsSettingsUITests", "testProposedSkillReviewReturnsToItsMeetingWithoutRunning"),

@@ -182,6 +182,11 @@ struct CLIPlatformDependencies {
 enum CLISummaryProviderConfiguration: Sendable {
     case onDevice
     case byok(endpoint: URL, model: String, apiKey: String)
+
+    /// Same rule as Settings: remote endpoints require HTTPS.
+    static func byokEndpoint(from raw: String) -> URL? {
+        BYOKSettings.endpointURL(from: raw)
+    }
 }
 
 enum CLISummaryProviderConfigurationError: Error, LocalizedError {
