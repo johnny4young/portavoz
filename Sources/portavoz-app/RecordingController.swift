@@ -350,6 +350,7 @@ final class RecordingController {
         companionTerminalRuns = []
         contextItems = []
         drafts = RecordingDrafts()
+        selectedAssistTab = .notes
         cancelCompanionGeneration()
         lastOpenRowID = nil
         turnEndpointTask?.cancel()

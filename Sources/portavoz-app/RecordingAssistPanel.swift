@@ -245,11 +245,14 @@ private extension RecordingAssistPanel {
                         maxHeight: .infinity,
                         alignment: .topLeading)
             }
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    RecordingNotesPanel(controller: controller, scrollable: false)
-                    RecordingObjectivesPanel(controller: controller)
+            ScrollViewReader { objectiveScroll in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        RecordingNotesPanel(controller: controller, scrollable: false)
+                        RecordingObjectivesPanel(controller: controller)
+                    }
                 }
+                .scrollsToAddedObjective(controller, objectiveScroll)
             }
         }
     }
@@ -259,11 +262,7 @@ private extension RecordingAssistPanel {
             ScrollView {
                 RecordingObjectivesPanel(controller: controller)
             }
-            .onChange(of: controller.objectives.objectives.map(\.id)) { previous, current in
-                let previousIDs = Set(previous)
-                guard let added = current.last(where: { !previousIDs.contains($0) }) else { return }
-                objectiveScroll.scrollTo(added, anchor: .center)
-            }
+            .scrollsToAddedObjective(controller, objectiveScroll)
         }
     }
 
@@ -364,6 +363,18 @@ struct RecordingCatchUpCard: View {
                 .font(.callout)
                 .foregroundStyle(.ink3)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+private extension View {
+    func scrollsToAddedObjective(
+        _ controller: RecordingController, _ proxy: ScrollViewProxy
+    ) -> some View {
+        onChange(of: controller.objectives.objectives.map(\.id)) { previous, current in
+            let previousIDs = Set(previous)
+            guard let added = current.last(where: { !previousIDs.contains($0) }) else { return }
+            proxy.scrollTo(added, anchor: .center)
         }
     }
 }
