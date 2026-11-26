@@ -2555,7 +2555,8 @@ not in the command body (D75/D103).
 
 Only the gateway-backed client is public; the shared chat codec is internal and
 transport-free. Remote BYOK endpoints require `https://` (`http://` is accepted
-only for loopback hosts: `localhost`, `127.0.0.1`, `::1`). Provider HTTP and
+only for hosts the shared egress classifier calls local-device: `localhost`,
+`*.localhost`, `127/8`, `::1`; the CLI `--byok` flag applies the same rule). Provider HTTP and
 structured-JSON decode failures remain content-free (status code, byte/character
 counts, and decoder error type only — never raw response bodies or `/tmp`
 dumps). Offline tests decode remote and loopback requests, prove exact

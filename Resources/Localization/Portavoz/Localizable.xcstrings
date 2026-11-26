@@ -7199,16 +7199,6 @@
         }
       }
     },
-    "Loading your automations…": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cargando tus automatizaciones…"
-          }
-        }
-      }
-    },
     "Local Ollama: summaries on your Mac, without Apple Intelligence.": {
       "localizations": {
         "es": {

@@ -88,8 +88,8 @@ enum SummarizeCommand {
         // Resolve the provider before doing any heavy work.
         let provider: CLISummaryProviderConfiguration
         if let byokEndpoint {
-            guard let endpoint = URL(string: byokEndpoint) else {
-                print("error: invalid --byok endpoint")
+            guard let endpoint = CLISummaryProviderConfiguration.byokEndpoint(from: byokEndpoint) else {
+                print("error: --byok needs an https:// endpoint (http:// only for loopback)")
                 return
             }
             guard let key = ProcessInfo.processInfo.environment["PORTAVOZ_BYOK_API_KEY"] else {

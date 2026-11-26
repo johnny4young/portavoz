@@ -289,7 +289,7 @@ no cloud service or transcript translation is involved.
 
 ## Build from source
 
-Requires **Xcode 26.6+ / Swift 6.2+ on macOS 26+** with the full Xcode toolchain. Building with the default `EmbeddedMLX` trait also requires Xcode's Metal Toolchain (`xcodebuild -downloadComponent MetalToolchain`); pass `--disable-default-traits` to build and test without embedded MLX.
+Requires **Xcode 26.6+ / Swift 6.3 on macOS 26+** with the full Xcode toolchain. Building with the default `EmbeddedMLX` trait also requires Xcode's Metal Toolchain (`xcodebuild -downloadComponent MetalToolchain`); pass `--disable-default-traits` to build and test without embedded MLX.
 
 ```sh
 git clone https://github.com/johnny4young/portavoz.git

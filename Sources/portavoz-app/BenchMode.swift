@@ -97,9 +97,10 @@ extension BenchMode {
     /// `portavoz-app --mlx-smoke [real] [model]` — loads a verified model
     /// embedded model and summarizes either a tiny synthetic Spanish meeting
     /// (default) or, with `real`, the most recent library meeting that has a
-    /// transcript (read-only: nothing is saved back). Prints timing and the
-    /// markdown. In-app on purpose: SwiftPM CLI builds cannot compile the
-    /// Metal shaders (mlx-swift README), so the metallib only exists in
+    /// transcript (read-only: nothing is saved back; DEBUG builds only).
+    /// Prints timing and, in DEBUG builds, the markdown. In-app on purpose:
+    /// SwiftPM CLI builds cannot compile the Metal shaders (mlx-swift
+    /// README), so the metallib only exists in
     /// xcodebuild products — same reasoning as `--bench-live`.
     static func runMLXSmokeIfRequested() {
         let arguments = ProcessInfo.processInfo.arguments

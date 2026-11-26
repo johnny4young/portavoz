@@ -238,14 +238,10 @@ public enum BYOKSettings {
         if scheme == "https" {
             return url
         }
-        if scheme == "http", Self.isLoopbackHost(host) {
+        if scheme == "http", DataEgressDestination.scope(forHost: host) == .localDevice {
             return url
         }
         return nil
-    }
-
-    private static func isLoopbackHost(_ host: String) -> Bool {
-        host == "localhost" || host == "127.0.0.1" || host == "::1" || host == "[::1]"
     }
 
     /// Assembles a client from raw pieces; nil when anything is missing.

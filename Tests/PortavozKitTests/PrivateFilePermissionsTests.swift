@@ -19,6 +19,20 @@ final class PrivateFilePermissionsTests: XCTestCase {
         XCTAssertEqual((dbAttrs[.posixPermissions] as? NSNumber)?.intValue, 0o600)
     }
 
+    func testMeetingStoreRestrictsExistingWorldReadableDatabase() throws {
+        let tempRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("portavoz-perms-existing-\(UUID().uuidString)")
+        let dbURL = tempRoot.appendingPathComponent("portavoz.sqlite")
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+        _ = try MeetingStore(databaseURL: dbURL)
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: dbURL.path)
+
+        _ = try MeetingStore(databaseURL: dbURL)
+
+        let dbAttrs = try FileManager.default.attributesOfItem(atPath: dbURL.path)
+        XCTAssertEqual((dbAttrs[.posixPermissions] as? NSNumber)?.intValue, 0o600)
+    }
+
     func testCaptureFileWriterCreatesOwnerOnlyAudioFile() throws {
         let tempRoot = FileManager.default.temporaryDirectory
             .appendingPathComponent("portavoz-perms-caf-\(UUID().uuidString)")

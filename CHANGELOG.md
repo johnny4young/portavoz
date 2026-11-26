@@ -90,9 +90,9 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
-## November 25, 2026
+## November 26, 2026
 
-- **🔒 Tighter local file privacy** — new databases, recordings, and temporary post-meeting Shortcut handoff files are created owner-only (`0600`/`0700`), failed Shortcut launches clean up their temp file immediately, remote BYOK endpoints require HTTPS, and provider parse/HTTP errors never echo raw summary or transcript text.
+- **🔒 Tighter local file privacy** — new databases, new recordings, and temporary post-meeting Shortcut handoff files are created owner-only (`0600`/`0700`), failed Shortcut launches clean up their temp file immediately, remote BYOK endpoints require HTTPS, and BYOK provider errors never echo raw summary or transcript text.
 - **🇪🇸 Clearer Spanish privacy copy** — support diagnostics now say "anonimizado" instead of the false friend "redactado", Spanglish in Spanish notices ("transcript"/"refine") is translated cleanly, and Settings help copy in Audio and Automations matches the controls on screen.
 
 ## November 22, 2026
