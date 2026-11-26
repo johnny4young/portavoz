@@ -28,6 +28,7 @@ struct MeetingGeneratedDocumentValues {
     let freshness: DerivedArtifactFreshness
     let decisionConfirmations:
         [SummaryDecisionID: DecisionObservationConfirmationState]
+    var commitmentInbox: MeetingCommitmentInboxValues?
 }
 
 struct MeetingGeneratedDocumentActions {
@@ -47,6 +48,8 @@ struct MeetingGeneratedDocumentActions {
     let retractDecisionTopic:
         @MainActor (DecisionObservationConfirmationState.TopicLink) -> Void
     let decisionsDidAppear: @MainActor () -> Void
+    var commitmentActions: MeetingCommitmentInboxActions?
+    var onShowingTodosChanged: (@MainActor (Bool) -> Void)?
 }
 
 /// The generated meeting document: overview, typed sections, commitments,
@@ -73,6 +76,11 @@ struct MeetingGeneratedDocumentSection: View {
     /// The board's left margin: the kicker and counts sit beside the lede,
     /// or above it once the column is too narrow for that margin.
     private static let gutterWidth: CGFloat = 118
+    private static let todosTab = 1000
+
+    private var showsTodos: Bool {
+        tabSelection == Self.todosTab && !values.summary.draft.actionItems.isEmpty
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -104,6 +112,10 @@ struct MeetingGeneratedDocumentSection: View {
         .onChange(of: values.summary.version) { _, _ in
             tabSelection = 0
         }
+        .onChange(of: showsTodos, initial: true) { _, showing in
+            actions.onShowingTodosChanged?(showing)
+        }
+        .onDisappear { actions.onShowingTodosChanged?(false) }
         .sheet(isPresented: $showingCorrection) {
             if let claim = overviewClaim {
                 SummaryCorrectionSheet(
@@ -200,7 +212,6 @@ struct MeetingGeneratedDocumentSection: View {
                 Button("Regenerate in English") {
                     actions.regenerate(.english, nil, nil)
                 }
-                structureMenu
                 detailMenu
                 if let alternate = values.alternateEngine {
                     Divider()
@@ -224,33 +235,6 @@ struct MeetingGeneratedDocumentSection: View {
         }
     }
 
-    private var structureMenu: some View {
-        Menu("Structure") {
-            ForEach(values.recipes) { recipe in
-                Button {
-                    actions.regenerate(values.summaryLanguage, nil, recipe)
-                } label: {
-                    Text(recipe.localizedDisplayName)
-                    Text(recipe.localizedSectionSummary)
-                }
-                .accessibilityIdentifier("detail-structure-\(recipe.id)")
-            }
-            Divider()
-            Button("New structure…", action: actions.createStructure)
-        }
-        .accessibilityIdentifier("detail-structure-menu")
-    }
-
-    private var detailMenu: some View {
-        Menu("Detail") {
-            ForEach(SummaryDetail.allCases, id: \.self) { level in
-                Button(level.title) { actions.regenerateDetail(level) }
-                    .accessibilityIdentifier("detail-summary-detail-\(level.rawValue)")
-            }
-        }
-        .accessibilityIdentifier("detail-summary-detail-menu")
-    }
-
     private var documentSegments: [PVSegment<Int>] {
         let done = values.summary.draft.actionItems.filter(\.isDone).count
         let total = values.summary.draft.actionItems.count
@@ -265,7 +249,7 @@ struct MeetingGeneratedDocumentSection: View {
         }
         if total > 0 {
             segments.append(PVSegment(
-                value: 1000,
+                value: Self.todosTab,
                 title: L10n.format("To-dos · %d/%d", done, total),
                 accessibilityIdentifier: "summary-tab-todos"))
         }
@@ -273,12 +257,12 @@ struct MeetingGeneratedDocumentSection: View {
     }
 
     private var showsOverview: Bool {
-        tabSelection != 1000 && !(tabSelection >= 1 && tabSelection - 1 < document.sections.count)
+        tabSelection != Self.todosTab && !(tabSelection >= 1 && tabSelection - 1 < document.sections.count)
     }
 
     @ViewBuilder
     private var documentContent: some View {
-        if tabSelection == 1000 {
+        if tabSelection == Self.todosTab {
             actionItems
         } else if tabSelection >= 1, tabSelection - 1 < document.sections.count {
             let section = document.sections[tabSelection - 1]
@@ -533,12 +517,47 @@ private extension MeetingGeneratedDocumentSection {
     }
 
     var documentMenus: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: 6) {
+            structureMenu
             copyMenu
             claimReviewMenu
             regenerateMenu
         }
         .foregroundStyle(PVDesign.ink3)
+    }
+
+    var structureMenu: some View {
+        Menu {
+            ForEach(values.recipes) { recipe in
+                Button {
+                    actions.regenerate(values.summaryLanguage, nil, recipe)
+                } label: {
+                    Text(recipe.localizedDisplayName)
+                    Text(recipe.localizedSectionSummary)
+                }
+                .accessibilityIdentifier("detail-structure-\(recipe.id)")
+            }
+            Divider()
+            Button("New structure…", action: actions.createStructure)
+        } label: {
+            Text("Structure")
+                .font(.caption2.weight(.medium))
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .disabled(values.regenerating)
+        .accessibilityLabel(L10n.text("Structure"))
+        .accessibilityIdentifier("detail-structure-menu")
+    }
+
+    var detailMenu: some View {
+        Menu("Detail") {
+            ForEach(SummaryDetail.allCases, id: \.self) { level in
+                Button(level.title) { actions.regenerateDetail(level) }
+                    .accessibilityIdentifier("detail-summary-detail-\(level.rawValue)")
+            }
+        }
+        .accessibilityIdentifier("detail-summary-detail-menu")
     }
 
     func gutterButton(_ segment: PVSegment<Int>) -> some View {

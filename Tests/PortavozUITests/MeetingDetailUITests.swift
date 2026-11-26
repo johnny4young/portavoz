@@ -862,6 +862,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(standfirst.waitForExistenceFast(timeout: 10), "the summary opens the page as its lede")
         XCTAssertTrue(app.control(withIdentifier: "summary-tab-0").isSelected)
         XCTAssertTrue(app.control(withIdentifier: "summary-tab-todos").waitForLabelContaining("0/1", timeout: 5))
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-structure-menu").waitForExistenceFast(timeout: 5),
+            "Structure must be promoted beside the summary instead of buried inside Regenerate")
         XCTAssertTrue(app.control(withIdentifier: "detail-header-section").waitForStableFrame(timeout: 5))
         attachScreenshot(of: app, named: "pr-meeting-document-header")
 
@@ -1139,9 +1142,12 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let secondaryRail = app.control(withIdentifier: "detail-secondary-rail")
         _ = try uiObservation(
             of: secondaryRail,
-            requiring: ["detail-secondary-rail", "detail-meeting-health"],
+            requiring: ["detail-secondary-rail", "detail-rail-tab-chapters", "detail-rail-tab-apuntador"],
             timeout: 10,
-            message: "the independent secondary review boundary must show meeting health")
+            message: "the independent secondary review boundary must expose labeled rail lenses")
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-meeting-health").waitForExistenceFast(timeout: 5),
+            "meeting health counts must surface inside the Voices header")
         XCTAssertTrue(
             app.buttons["detail-privacy-receipt"].waitForExistenceFast(timeout: 10),
             "the header must show the local privacy chip")
@@ -1942,24 +1948,27 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 .exists,
             "only an exact canonical participant link may prefill the owner")
 
-        let evidence = app.control(
-            withIdentifier: "commitment-\(candidateID)-evidence-0")
+        let evidence = app.control(withIdentifier: "commitment-\(candidateID)-evidence-0")
         XCTAssertTrue(
             evidence.waitForExistenceFast(timeout: 5),
             "confirmation must expose its exact transcript evidence")
-        XCTAssertEqual(
-            evidence.value as? String,
-            "El rollout del modelo queda para el viernes.")
-        XCTAssertTrue(
-            app.control(withIdentifier: "commitment-\(candidateID)-dismiss").exists)
-        XCTAssertTrue(
-            app.control(withIdentifier: "commitment-\(candidateID)-defer").exists)
+        XCTAssertEqual(evidence.value as? String, "El rollout del modelo queda para el viernes.")
+        for control in ["dismiss", "defer"] {
+            XCTAssertTrue(app.control(withIdentifier: "commitment-\(candidateID)-\(control)").exists, control)
+        }
         attachScreenshot(of: app, named: "meeting-detail-commitment-inbox")
+        XCTAssertTrue(app.control(withIdentifier: "commitment-\(candidateID)-review").exists)
 
-        let review = app.control(withIdentifier: "commitment-\(candidateID)-review")
-        XCTAssertTrue(
-            review.waitForExistenceFast(timeout: 5),
-            "the exact commitment review action must exist before activation")
+        let todos = app.control(withIdentifier: "summary-tab-todos")
+        XCTAssertTrue(todos.waitForHittable(timeout: 5))
+        todos.click()
+        XCTAssertTrue(inbox.waitForDisappearance(timeout: 5), "To-dos reviews the same candidates inline")
+        for control in ["defer", "dismiss", "github"] {
+            XCTAssertTrue(app.control(withIdentifier: "action-item-\(candidateID)-\(control)").exists, control)
+        }
+        let review = app.control(withIdentifier: "action-item-\(candidateID)-confirm")
+        XCTAssertTrue(review.waitForExistenceFast(timeout: 5))
+        attachScreenshot(of: app, named: "pr-meeting-detail-todos-inline-review")
         review.click()
         XCTAssertTrue(
             app.control(withIdentifier: "commitment-editor").waitForExistenceFast(timeout: 5),
@@ -1974,10 +1983,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "Prepare the rollout")
         let editor = app.control(withIdentifier: "commitment-editor")
         let ownerPickers = editor.descendants(matching: .popUpButton)
-        XCTAssertEqual(
-            ownerPickers.count,
-            1,
-            "the editor must expose exactly one native owner picker")
+        XCTAssertEqual(ownerPickers.count, 1, "the editor must expose exactly one native owner picker")
         let ownerPicker = ownerPickers.firstMatch
         XCTAssertTrue(
             ownerPicker.waitForExistenceFast(timeout: 5),
@@ -1991,7 +1997,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         attachScreenshot(of: app, named: "meeting-detail-commitment-self-assignment")
         app.control(withIdentifier: "commitment-editor-confirm").click()
 
-        XCTAssertTrue(inbox.waitForDisappearance(timeout: 10))
+        XCTAssertTrue(review.waitForDisappearance(timeout: 10))
     }
 
     @MainActor

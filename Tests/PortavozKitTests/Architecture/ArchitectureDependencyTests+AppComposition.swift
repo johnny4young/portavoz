@@ -1756,7 +1756,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(rail.contains("struct MeetingDetailRailValues"))
         XCTAssertTrue(rail.contains("struct MeetingDetailRailActions"))
         XCTAssertTrue(rail.contains("MeetingDetailCompanionSection("))
-        XCTAssertTrue(rail.contains("let hasHealth: Bool"))
+        XCTAssertTrue(header.contains("let health: MeetingHealth"))
         XCTAssertFalse(rail.contains("segments.contains"))
         XCTAssertFalse(rail.contains("@State"))
 

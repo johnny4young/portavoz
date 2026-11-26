@@ -8,6 +8,7 @@ struct CommitmentRadarView: View {
     let reminders: CommitmentReminderModel
     let reminderDrafts: ReminderDraftModel
     let focus: CommitmentRadarRouteFocus?
+    var suggestionsToReview = 0
     let onClearFocus: () -> Void
     let onOpenMeeting: (MeetingID, TimeInterval?) -> Void
 
@@ -129,31 +130,68 @@ private extension CommitmentRadarView {
             Spacer()
             if state.mode == .confirmed {
                 CommitmentReminderStatusCard(model: reminders)
-            } else {
-                Label(headerBadge, systemImage: headerBadgeIcon)
-                    .font(.caption)
-                    .foregroundStyle(PVDesign.accent)
             }
         }
     }
 
     var modePicker: some View {
-        PVSegmentedControl(
-            segments: [
-                PVSegment(
-                    value: CommitmentRadarModel.Mode.confirmed, title: L10n.text("Confirmed"),
-                    accessibilityIdentifier: "commitment-radar-mode-confirmed"),
-                PVSegment(
-                    value: CommitmentRadarModel.Mode.review, title: L10n.text("To review"),
-                    accessibilityIdentifier: "commitment-radar-mode-review"),
-                PVSegment(
-                    value: CommitmentRadarModel.Mode.quality, title: L10n.text("Quality"),
-                    accessibilityIdentifier: "commitment-radar-mode-quality")
-            ],
-            selection: modeBinding)
-        .fixedSize()
-        .accessibilityLabel(L10n.text("Commitment view"))
-        .accessibilityIdentifier("commitment-radar-mode")
+        HStack(spacing: 12) {
+            PVSegmentedControl(
+                segments: [
+                    PVSegment(
+                        value: CommitmentRadarModel.Mode.confirmed,
+                        title: confirmedTabTitle,
+                        accessibilityIdentifier: "commitment-radar-mode-confirmed"),
+                    PVSegment(
+                        value: CommitmentRadarModel.Mode.review,
+                        title: reviewTabTitle,
+                        accessibilityIdentifier: "commitment-radar-mode-review")
+                ],
+                selection: modeBinding)
+            .fixedSize()
+            .accessibilityLabel(L10n.text("Commitment view"))
+            .accessibilityIdentifier("commitment-radar-mode")
+            Spacer(minLength: 0)
+            qualityToggleButton
+        }
+    }
+
+    private var qualityToggleButton: some View {
+        let selected = state.mode == .quality
+        return Button {
+            modeBinding.wrappedValue = selected ? .confirmed : .quality
+        } label: {
+            Label("Review quality", systemImage: "chart.bar.xaxis")
+                .font(.caption.weight(selected ? .semibold : .regular))
+                .foregroundStyle(selected ? PVDesign.accent : PVDesign.ink3)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background(
+                    selected ? PVDesign.accent.opacity(PVDesign.chipTint) : .clear,
+                    in: RoundedRectangle(cornerRadius: PVDesign.radiusSmall))
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityIdentifier("commitment-radar-mode-quality")
+        .help("Private signals from the suggestions you reviewed.")
+    }
+
+    private var confirmedTabTitle: String {
+        let unfiltered = state.owner == .all && state.due == .all
+            && state.activity == .all && state.routeFocus == nil
+        if unfiltered, let count = state.page?.totalCount, count > 0 {
+            return L10n.format("Confirmed · %d", count)
+        }
+        return L10n.text("Confirmed")
+    }
+
+    private var reviewTabTitle: String {
+        let count = state.reviewPage?.totalCount ?? suggestionsToReview
+        if count > 0 {
+            return L10n.format("To review · %d", count)
+        }
+        return L10n.text("To review")
     }
 
     var filters: some View {
@@ -536,25 +574,6 @@ private extension CommitmentRadarView {
             "Generated suggestions waiting for your decision."
         case .quality:
             "Private signals from the suggestions you reviewed."
-        }
-    }
-
-    var headerBadge: LocalizedStringKey {
-        switch state.mode {
-        case .confirmed:
-            "Local and confirmed by you"
-        case .review:
-            "Suggestions, not commitments"
-        case .quality:
-            "Local and advisory only"
-        }
-    }
-
-    var headerBadgeIcon: String {
-        switch state.mode {
-        case .confirmed: "checkmark.shield.fill"
-        case .review: "sparkles.rectangle.stack"
-        case .quality: "chart.bar.xaxis"
         }
     }
 

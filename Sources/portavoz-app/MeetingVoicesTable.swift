@@ -1,4 +1,5 @@
 import ApplicationKit
+import IntelligenceKit
 import PortavozCore
 import SwiftUI
 
@@ -24,6 +25,7 @@ struct MeetingVoicesTable<Trailing: View>: View {
     let voiceSuggestions: [MeetingVoiceSuggestion]
     /// Nil without audio.
     let playback: MeetingVoicesPlayback?
+    var health: MeetingHealth?
     let actions: MeetingVoicesTableActions
     @ViewBuilder let trailing: Trailing
     @State private var showsOthers = false
@@ -38,16 +40,26 @@ struct MeetingVoicesTable<Trailing: View>: View {
         let byID = Dictionary(speakers.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let suggestions = Dictionary(
             voiceSuggestions.map { ($0.speakerLabel, $0) }, uniquingKeysWith: { first, _ in first })
-        VStack(alignment: .leading, spacing: 0) {
-            heading.padding(.bottom, 6)
-            ForEach(table.rows) { row($0, speaker: byID[$0.speakerID], suggestions: suggestions) }
-            if !table.others.isEmpty {
-                othersRow(names: table.others.compactMap { byID[$0.speakerID].map(VoiceName.of(_:)) })
-                // Collapsed, a folded voice still shows while it offers a name or plays alone.
-                ForEach(table.others.filter { other in
-                    showsOthers || other.speakerID == playback?.focus
-                        || byID[other.speakerID].map { suggestions[$0.label] != nil } == true
-                }) { row($0, speaker: byID[$0.speakerID], suggestions: suggestions) }
+        Group {
+            if table.count == 1, let onlyRow = table.rows.first, let speaker = byID[onlyRow.speakerID] {
+                soloSummary(onlyRow, speaker: speaker, suggestion: suggestions[speaker.label])
+            } else {
+                VStack(alignment: .leading, spacing: 0) {
+                    heading.padding(.bottom, 6)
+                    ForEach(table.rows) {
+                        row($0, speaker: byID[$0.speakerID], suggestions: suggestions)
+                    }
+                    if !table.others.isEmpty {
+                        othersRow(names: table.others.compactMap { byID[$0.speakerID].map(VoiceName.of(_:)) })
+                        // Collapsed, a folded voice still shows while it offers a name or plays alone.
+                        ForEach(table.others.filter { other in
+                            showsOthers || other.speakerID == playback?.focus
+                                || byID[other.speakerID].map { suggestions[$0.label] != nil } == true
+                        }) {
+                            row($0, speaker: byID[$0.speakerID], suggestions: suggestions)
+                        }
+                    }
+                }
             }
         }
         .onGeometryChange(for: Bool.self) { $0.size.width < VoicesTableFormat.narrowWidth } action: {
@@ -60,6 +72,28 @@ struct MeetingVoicesTable<Trailing: View>: View {
         .accessibilityIdentifier("detail-voices")
     }
 
+    private func soloSummary(
+        _ row: MeetingVoiceTable.Row,
+        speaker: Speaker,
+        suggestion: MeetingVoiceSuggestion?
+    ) -> some View {
+        HStack(spacing: columnSpacing) {
+            PVCardCaption(text: L10n.text("Voices"), tint: PVDesign.ink)
+            nameButton(row, speaker: speaker)
+            shareText(row.voice.share)
+            timeText(row.voice.talkSeconds)
+            if let suggestion {
+                suggestionChip(suggestion)
+            }
+            trailing
+            Spacer(minLength: 0)
+        }
+        .contextMenu {
+            Button("Rename…") { actions.rename(speaker) }
+                .accessibilityIdentifier("cast-speaker-rename-\(speaker.label)")
+        }
+    }
+
     private var heading: some View {
         HStack(spacing: 10) {
             PVCardCaption(text: L10n.text("Voices"), tint: PVDesign.ink)
@@ -70,14 +104,60 @@ struct MeetingVoicesTable<Trailing: View>: View {
                     .font(.caption)
                     .foregroundStyle(PVDesign.ink3)
             }
+            if let health, health.stats.count >= 2 {
+                healthSummary(health)
+            }
             trailing
             Spacer(minLength: 0)
         }
     }
 
+    private func healthSummary(_ health: MeetingHealth) -> some View {
+        HStack(spacing: 6) {
+            if health.questionsTotal > 0 {
+                healthChip(
+                    PVSymbol.apuntador,
+                    "\(health.questionsTotal)",
+                    accessibilityLabel: L10n.format("%d questions", health.questionsTotal))
+                    .help("Counts the questions asked in this meeting")
+            }
+            if health.interruptionsTotal > 0 {
+                healthChip(
+                    "exclamationmark.bubble",
+                    "\(health.interruptionsTotal)",
+                    accessibilityLabel: L10n.format("%d interruptions", health.interruptionsTotal))
+                    .help("Counts how often someone talked over someone else")
+            }
+            if health.questionsTotal == 0 && health.interruptionsTotal == 0 {
+                Text("No questions or interruptions.")
+                    .font(.caption)
+                    .foregroundStyle(PVDesign.ink3)
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("detail-meeting-health")
+    }
+
+    private func healthChip(_ icon: String, _ value: String, accessibilityLabel: String) -> some View {
+        HStack(spacing: 3) {
+            Image(systemName: icon)
+                .accessibilityHidden(true)
+            Text(value).monospacedDigit()
+        }
+        .font(.caption2)
+        .foregroundStyle(PVDesign.ink3)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(.quaternary.opacity(0.6), in: Capsule())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
     @ViewBuilder
     private func row(
-        _ row: MeetingVoiceTable.Row, speaker: Speaker?, suggestions: [String: MeetingVoiceSuggestion]
+        _ row: MeetingVoiceTable.Row,
+        speaker: Speaker?,
+        suggestions: [String: MeetingVoiceSuggestion]
     ) -> some View {
         if let speaker {
             HStack(spacing: columnSpacing) {

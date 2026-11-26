@@ -326,32 +326,56 @@ extension AskView {
 
     private var sourcePolicy: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Picker(
-                "Answer sources",
-                selection: Binding(
-                    get: { model.state.sourceMode },
-                    set: { model.selectSourceMode($0) })) {
-                Label("Library", systemImage: "books.vertical")
-                    .tag(AskModel.SourceMode.library)
-                    .accessibilityIdentifier("ask-source-library")
-                Label("Meeting", systemImage: "person.2")
-                    .tag(AskModel.SourceMode.meeting)
-                    .accessibilityIdentifier("ask-source-meeting")
-                Label("Notes", systemImage: "note.text")
-                    .tag(AskModel.SourceMode.notes)
-                    .accessibilityIdentifier("ask-source-notes")
-                Label("Web", systemImage: "globe")
-                    .tag(AskModel.SourceMode.web)
-                    .accessibilityIdentifier("ask-source-web")
+            HStack(spacing: 6) {
+                Text("Source")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(PVDesign.ink3)
+                sourceChip(.library, title: "Library", symbol: "books.vertical", id: "ask-source-library")
+                sourceChip(.meeting, title: "Meeting", symbol: "person.2", id: "ask-source-meeting")
+                sourceChip(.notes, title: "Notes", symbol: "note.text", id: "ask-source-notes")
+                sourceChip(.web, title: "Web", symbol: "globe", id: "ask-source-web")
+                Spacer(minLength: 0)
             }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 640)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(L10n.text("Answer sources"))
             .accessibilityIdentifier("ask-source-picker")
 
             sourcePolicyStatus
+                .font(.caption)
+                .foregroundStyle(PVDesign.ink3)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+    }
+
+    private func sourceChip(
+        _ mode: AskModel.SourceMode,
+        title: LocalizedStringKey,
+        symbol: String,
+        id: String
+    ) -> some View {
+        let selected = model.state.sourceMode == mode
+        return Button {
+            model.selectSourceMode(mode)
+        } label: {
+            Label(title, systemImage: symbol)
+                .font(.caption.weight(selected ? .semibold : .regular))
+                .foregroundStyle(selected ? PVDesign.accent : PVDesign.ink3)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(
+                    selected ? PVDesign.accent.opacity(PVDesign.chipTint) : .clear,
+                    in: Capsule())
+                .overlay {
+                    if !selected {
+                        Capsule().strokeBorder(PVDesign.line, lineWidth: 1)
+                    }
+                }
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityIdentifier(id)
     }
 
     @ViewBuilder
