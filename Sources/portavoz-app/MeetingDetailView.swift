@@ -19,7 +19,8 @@ struct MeetingDetailView: View {
     let navigation: DetailNavigation
 
     @State private var playbackNavigation = MeetingDetailPlaybackNavigation()
-    @State private var railTab = MeetingDetailRailTab.people
+    @State private var railTab = MeetingDetailRailTab.chapters
+    @State private var showingSummaryTodos = false
     private var detail: MeetingReviewReadModel? { model.state.readModel }
     private var summary: MeetingReviewSummary? { detail?.summary }
     private var player: MeetingPlaybackSession? { model.state.playback?.session }
@@ -95,7 +96,9 @@ private extension MeetingDetailView {
                     MeetingDetailPageLayout {
                         VStack(alignment: .leading, spacing: 10) {
                             summaryOrGenerate(detail)
-                            commitmentInboxSection(detail)
+                            if !showingSummaryTodos {
+                                commitmentInboxSection(detail)
+                            }
                             notesSection(detail)
                         }
                         detailRail(detail, transcript: transcript)
@@ -170,10 +173,7 @@ private extension MeetingDetailView {
         MeetingDetailRailSection(
             values: MeetingDetailRailValues(
                 trust: MeetingDetailTrustValues.make(detail: detail),
-                hasHealth: detail.segments.contains { $0.speakerID != nil },
-                speakers: detail.speakers,
                 segments: detail.segments,
-                voiceCast: detail.core.voiceCast,
                 chapters: transcript.chapters,
                 companionCards: detail.companionCards,
                 companionFreshness: Dictionary(
@@ -237,11 +237,16 @@ private extension MeetingDetailView {
                 alternateEngine: coordinator.alternateEngine,
                 presentation: presentation,
                 freshness: detail.summaryFreshness,
-                decisionConfirmations: model.state.decisionConfirmations),
+                decisionConfirmations: model.state.decisionConfirmations,
+                commitmentInbox: MeetingCommitmentInboxValues(
+                    candidates: detail.commitmentInboxCandidates(),
+                    ownerChoices: detail.commitmentOwnerChoices(),
+                    presentation: presentation)),
             actions: coordinator.generatedDocumentActions(
                 summary: summary,
                 detail: detail,
-                focusEvidence: focusEvidence))
+                focusEvidence: focusEvidence,
+                onShowingTodosChanged: { showingSummaryTodos = $0 }))
     }
 
     private func notesSection(_ detail: MeetingReviewReadModel) -> some View {
@@ -313,6 +318,7 @@ private extension MeetingDetailView {
             titleSuggestion: model.state.suggestedTitle,
             speakers: detail.speakers,
             voiceTable: detail.core.voiceTable,
+            health: MeetingHealth.compute(segments: detail.segments),
             playback: player.map { MeetingVoicesPlayback(focus: $0.voiceFocus) },
             isSuggestingNames: model.state.isSuggestingNames,
             nameSuggestions: model.state.nameSuggestions,

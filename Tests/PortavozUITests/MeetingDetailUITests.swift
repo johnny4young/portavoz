@@ -862,6 +862,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(standfirst.waitForExistenceFast(timeout: 10), "the summary opens the page as its lede")
         XCTAssertTrue(app.control(withIdentifier: "summary-tab-0").isSelected)
         XCTAssertTrue(app.control(withIdentifier: "summary-tab-todos").waitForLabelContaining("0/1", timeout: 5))
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-structure-menu").waitForExistenceFast(timeout: 5),
+            "Structure must be promoted beside the summary instead of buried inside Regenerate")
         XCTAssertTrue(app.control(withIdentifier: "detail-header-section").waitForStableFrame(timeout: 5))
         attachScreenshot(of: app, named: "pr-meeting-document-header")
 
@@ -1139,9 +1142,12 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let secondaryRail = app.control(withIdentifier: "detail-secondary-rail")
         _ = try uiObservation(
             of: secondaryRail,
-            requiring: ["detail-secondary-rail", "detail-meeting-health"],
+            requiring: ["detail-secondary-rail", "detail-rail-tab-chapters", "detail-rail-tab-apuntador"],
             timeout: 10,
-            message: "the independent secondary review boundary must show meeting health")
+            message: "the independent secondary review boundary must expose labeled rail lenses")
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-meeting-health").waitForExistenceFast(timeout: 5),
+            "meeting health counts must surface inside the Voices header")
         XCTAssertTrue(
             app.buttons["detail-privacy-receipt"].waitForExistenceFast(timeout: 10),
             "the header must show the local privacy chip")

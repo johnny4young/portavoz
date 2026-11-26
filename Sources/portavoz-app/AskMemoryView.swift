@@ -78,6 +78,7 @@ struct AskMemoryView: View {
                 ForEach(model.state.people) { person in
                     Button {
                         model.selectPerson(person.id)
+                        model.loadSelectedPersonCommitments()
                     } label: {
                         HStack(spacing: 8) {
                             Image(systemName: "person.crop.circle")

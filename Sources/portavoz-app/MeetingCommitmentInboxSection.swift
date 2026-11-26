@@ -59,14 +59,9 @@ struct MeetingCommitmentInboxSection: View {
     }
 
     private var sectionHeader: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Label("Commitments to confirm", systemImage: PVSymbol.success)
-                .font(.headline)
-                .accessibilityIdentifier("detail-commitment-inbox-title")
-            Text("Check the source before adding anything to your commitments.")
-                .font(.caption)
-                .foregroundStyle(.ink3)
-        }
+        Label("Commitments to confirm", systemImage: PVSymbol.success)
+            .font(.headline)
+            .accessibilityIdentifier("detail-commitment-inbox-title")
     }
 
     private func candidateCard(_ candidate: CommitmentInboxCandidate) -> some View {
@@ -184,7 +179,7 @@ struct MeetingCommitmentInboxSection: View {
     }
 }
 
-private struct MeetingCommitmentConfirmationSheet: View {
+struct MeetingCommitmentConfirmationSheet: View {
     let candidate: CommitmentInboxCandidate
     let ownerChoices: [CommitmentOwnerSuggestion]
     let cancel: @MainActor () -> Void

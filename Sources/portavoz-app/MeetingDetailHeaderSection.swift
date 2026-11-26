@@ -1,4 +1,5 @@
 import ApplicationKit
+import IntelligenceKit
 import PortavozCore
 import SwiftUI
 
@@ -9,6 +10,7 @@ struct MeetingDetailHeaderValues {
     let titleSuggestion: String?
     let speakers: [Speaker]
     let voiceTable: MeetingVoiceTable
+    let health: MeetingHealth
     /// Nil without audio.
     let playback: MeetingVoicesPlayback?
     let isSuggestingNames: Bool
@@ -130,6 +132,7 @@ struct MeetingDetailHeaderSection<Receipt: View>: View {
                 speakers: values.speakers,
                 voiceSuggestions: values.voiceSuggestions,
                 playback: values.playback,
+                health: values.health,
                 actions: MeetingVoicesTableActions(
                     stepThroughTurns: actions.stepThroughTurns,
                     toggleOnly: actions.toggleOnly,

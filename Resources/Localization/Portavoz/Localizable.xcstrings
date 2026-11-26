@@ -18776,6 +18776,56 @@
           }
         }
       }
+    },
+    "Suggested": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugerido"
+          }
+        }
+      }
+    },
+    "Review quality": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calidad de revisión"
+          }
+        }
+      }
+    },
+    "Confirmed · %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmados · %d"
+          }
+        }
+      }
+    },
+    "To review · %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Por revisar · %d"
+          }
+        }
+      }
+    },
+    "Source": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuente"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

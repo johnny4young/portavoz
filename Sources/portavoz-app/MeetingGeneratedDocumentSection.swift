@@ -28,6 +28,7 @@ struct MeetingGeneratedDocumentValues {
     let freshness: DerivedArtifactFreshness
     let decisionConfirmations:
         [SummaryDecisionID: DecisionObservationConfirmationState]
+    var commitmentInbox: MeetingCommitmentInboxValues?
 }
 
 struct MeetingGeneratedDocumentActions {
@@ -47,6 +48,8 @@ struct MeetingGeneratedDocumentActions {
     let retractDecisionTopic:
         @MainActor (DecisionObservationConfirmationState.TopicLink) -> Void
     let decisionsDidAppear: @MainActor () -> Void
+    var commitmentActions: MeetingCommitmentInboxActions?
+    var onShowingTodosChanged: (@MainActor (Bool) -> Void)?
 }
 
 /// The generated meeting document: overview, typed sections, commitments,
@@ -103,6 +106,9 @@ struct MeetingGeneratedDocumentSection: View {
         .accessibilityIdentifier("detail-generated-document")
         .onChange(of: values.summary.version) { _, _ in
             tabSelection = 0
+        }
+        .onChange(of: tabSelection, initial: true) { _, selected in
+            actions.onShowingTodosChanged?(selected == 1000)
         }
         .sheet(isPresented: $showingCorrection) {
             if let claim = overviewClaim {
@@ -200,7 +206,6 @@ struct MeetingGeneratedDocumentSection: View {
                 Button("Regenerate in English") {
                     actions.regenerate(.english, nil, nil)
                 }
-                structureMenu
                 detailMenu
                 if let alternate = values.alternateEngine {
                     Divider()
@@ -222,33 +227,6 @@ struct MeetingGeneratedDocumentSection: View {
             .accessibilityLabel(L10n.text("Regenerate"))
             .accessibilityIdentifier("detail-regenerate-menu")
         }
-    }
-
-    private var structureMenu: some View {
-        Menu("Structure") {
-            ForEach(values.recipes) { recipe in
-                Button {
-                    actions.regenerate(values.summaryLanguage, nil, recipe)
-                } label: {
-                    Text(recipe.localizedDisplayName)
-                    Text(recipe.localizedSectionSummary)
-                }
-                .accessibilityIdentifier("detail-structure-\(recipe.id)")
-            }
-            Divider()
-            Button("New structure…", action: actions.createStructure)
-        }
-        .accessibilityIdentifier("detail-structure-menu")
-    }
-
-    private var detailMenu: some View {
-        Menu("Detail") {
-            ForEach(SummaryDetail.allCases, id: \.self) { level in
-                Button(level.title) { actions.regenerateDetail(level) }
-                    .accessibilityIdentifier("detail-summary-detail-\(level.rawValue)")
-            }
-        }
-        .accessibilityIdentifier("detail-summary-detail-menu")
     }
 
     private var documentSegments: [PVSegment<Int>] {
@@ -533,12 +511,47 @@ private extension MeetingGeneratedDocumentSection {
     }
 
     var documentMenus: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: 6) {
+            structureMenu
             copyMenu
             claimReviewMenu
             regenerateMenu
         }
         .foregroundStyle(PVDesign.ink3)
+    }
+
+    var structureMenu: some View {
+        Menu {
+            ForEach(values.recipes) { recipe in
+                Button {
+                    actions.regenerate(values.summaryLanguage, nil, recipe)
+                } label: {
+                    Text(recipe.localizedDisplayName)
+                    Text(recipe.localizedSectionSummary)
+                }
+                .accessibilityIdentifier("detail-structure-\(recipe.id)")
+            }
+            Divider()
+            Button("New structure…", action: actions.createStructure)
+        } label: {
+            Text("Structure")
+                .font(.caption2.weight(.medium))
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .disabled(values.regenerating)
+        .accessibilityLabel(L10n.text("Structure"))
+        .accessibilityIdentifier("detail-structure-menu")
+    }
+
+    var detailMenu: some View {
+        Menu("Detail") {
+            ForEach(SummaryDetail.allCases, id: \.self) { level in
+                Button(level.title) { actions.regenerateDetail(level) }
+                    .accessibilityIdentifier("detail-summary-detail-\(level.rawValue)")
+            }
+        }
+        .accessibilityIdentifier("detail-summary-detail-menu")
     }
 
     func gutterButton(_ segment: PVSegment<Int>) -> some View {

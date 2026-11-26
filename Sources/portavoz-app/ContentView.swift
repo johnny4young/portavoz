@@ -125,6 +125,7 @@ struct ContentView: View {
                         reminders: services.commitmentReminders,
                         reminderDrafts: reminderDraftModel,
                         focus: focus,
+                        suggestionsToReview: libraryModel.state.suggestionsToReview,
                         onClearFocus: { route = .commitments(nil) },
                         onOpenMeeting: openMeeting)
                 case .library, nil:

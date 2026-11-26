@@ -50,7 +50,8 @@ extension MeetingDetailCoordinator {
     func generatedDocumentActions(
         summary: MeetingReviewSummary,
         detail: MeetingReviewReadModel,
-        focusEvidence: @escaping @MainActor (TranscriptSegment) -> Void
+        focusEvidence: @escaping @MainActor (TranscriptSegment) -> Void,
+        onShowingTodosChanged: @escaping @MainActor (Bool) -> Void
     ) -> MeetingGeneratedDocumentActions {
         MeetingGeneratedDocumentActions(
             copy: { format in
@@ -112,7 +113,19 @@ extension MeetingDetailCoordinator {
             },
             decisionsDidAppear: {
                 Task { await model.send(.loadDecisionConfirmations) }
-            })
+            },
+            commitmentActions: commitmentInboxActions(focusEvidence: focusEvidence),
+            onShowingTodosChanged: onShowingTodosChanged)
+    }
+
+    func commitmentInboxActions(
+        focusEvidence: @escaping @MainActor (TranscriptSegment) -> Void
+    ) -> MeetingCommitmentInboxActions {
+        MeetingCommitmentInboxActions(
+            focusEvidence: focusEvidence,
+            confirm: confirmCommitment,
+            dismiss: dismissCommitment,
+            deferUntil: deferCommitment)
     }
 
     /// Runs the composed gesture and reports success so the sheet can close

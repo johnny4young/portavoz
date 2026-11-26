@@ -2,37 +2,31 @@ import ApplicationKit
 import PortavozCore
 import SwiftUI
 
-/// The three review lenses beside the transcript.
+/// The two review lenses beside the transcript.
 enum MeetingDetailRailTab: String, CaseIterable, Identifiable {
-    case people
-    case apuntador
     case chapters
+    case apuntador
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .people: L10n.text("People")
-        case .apuntador: L10n.text("Apuntador")
         case .chapters: L10n.text("Chapters")
+        case .apuntador: L10n.text("Apuntador")
         }
     }
 
     var symbol: String {
         switch self {
-        case .people: "person.2"
-        case .apuntador: PVSymbol.apuntador
         case .chapters: "list.number"
+        case .apuntador: PVSymbol.apuntador
         }
     }
 }
 
 struct MeetingDetailRailValues {
     let trust: MeetingDetailTrustValues?
-    let hasHealth: Bool
-    let speakers: [Speaker]
     let segments: [TranscriptSegment]
-    let voiceCast: VoiceCast
     let chapters: [MeetingTranscriptContent.Chapter]
     let companionCards: [CompanionCard]
     let companionFreshness: [UUID: DerivedArtifactFreshness]
@@ -58,10 +52,10 @@ struct MeetingDetailRailActions {
 /// The always-present review margin beside the summary and transcript, or
 /// above the transcript when the page reads as one column.
 ///
-/// Processing that needs attention sits on top; below it one of three lenses
-/// (People, Apuntador, Chapters) grows with the page instead of scrolling on
-/// its own. A lens without material says so in one line. Selection is owned
-/// by the composition, not by this view.
+/// Processing that needs attention sits on top; below it one of two lenses
+/// (Chapters, Apuntador) grows with the page instead of scrolling on its own.
+/// A lens without material says so in one line. Selection is owned by the
+/// composition, not by this view.
 struct MeetingDetailRailSection: View {
     let values: MeetingDetailRailValues
     let actions: MeetingDetailRailActions
@@ -91,10 +85,7 @@ struct MeetingDetailRailSection: View {
                 Button {
                     actions.selectTab(tab)
                 } label: {
-                    // The selected lens names itself; the others show their
-                    // mark only, so three lenses fit the narrowest margin.
                     Label(tab.title, systemImage: tab.symbol)
-                        .labelStyle(RailTabLabelStyle(showsTitle: selected))
                         .font(.caption.weight(selected ? .semibold : .regular))
                         .lineLimit(1)
                         .padding(.horizontal, 8)
@@ -120,15 +111,6 @@ struct MeetingDetailRailSection: View {
     @ViewBuilder
     private var lens: some View {
         switch values.selectedTab {
-        case .people:
-            if values.hasHealth {
-                MeetingHealthView(
-                    speakers: values.speakers,
-                    segments: values.segments,
-                    voiceCast: values.voiceCast)
-            } else {
-                emptyLens("No one has been identified yet.", id: "detail-rail-empty-people")
-            }
         case .apuntador:
             if values.companionCards.isEmpty {
                 emptyLens(
@@ -371,19 +353,5 @@ struct MeetingDetailCompanionSection: View {
         }
         if card.answer.isEmpty { return L10n.text("question detected") }
         return base
-    }
-}
-
-/// Icon always, title only when asked.
-private struct RailTabLabelStyle: LabelStyle {
-    let showsTitle: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 4) {
-            configuration.icon
-            if showsTitle {
-                configuration.title
-            }
-        }
     }
 }

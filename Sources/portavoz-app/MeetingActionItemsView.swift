@@ -9,22 +9,47 @@ struct MeetingActionItemsView: View {
     let values: MeetingGeneratedDocumentValues
     let actions: MeetingGeneratedDocumentActions
 
+    @State private var editingCandidate: CommitmentInboxCandidate?
+    @State private var processingID: UUID?
+
     private var evidenceByItem: [UUID: [SummaryActionItemEvidence]] {
         Dictionary(
             grouping: values.summary.draft.actionItemEvidence,
             by: \.actionItemID)
     }
 
+    private var pendingCandidateByItem: [UUID: CommitmentInboxCandidate] {
+        let pending = (values.commitmentInbox?.candidates ?? []).filter {
+            if case .pending = $0.status { return true }
+            return false
+        }
+        return Dictionary(pending.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+    }
+
     var body: some View {
-        ForEach(values.summary.draft.actionItems) { item in
-            VStack(alignment: .leading, spacing: 6) {
-                actionRow(item)
-                evidence(for: item)
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(values.summary.draft.actionItems) { item in
+                let pending = pendingCandidateByItem[item.id]
+                VStack(alignment: .leading, spacing: 6) {
+                    actionRow(item, pending: pending)
+                    evidence(for: item)
+                }
+            }
+        }
+        .sheet(item: $editingCandidate) { candidate in
+            if let inbox = values.commitmentInbox, let commitmentActions = actions.commitmentActions {
+                MeetingCommitmentConfirmationSheet(
+                    candidate: candidate,
+                    ownerChoices: inbox.ownerChoices,
+                    cancel: { editingCandidate = nil },
+                    confirm: { title, assignee, dueAt in
+                        await commitmentActions.confirm(candidate, title, assignee, dueAt)
+                    })
             }
         }
     }
 
-    private func actionRow(_ item: ActionItem) -> some View {
+    private func actionRow(_ item: ActionItem, pending: CommitmentInboxCandidate?) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Toggle(isOn: actionItemBinding(item)) {
                 Text(item.text).strikethrough(item.isDone)
@@ -32,7 +57,9 @@ struct MeetingActionItemsView: View {
             .toggleStyle(.pvCheckbox)
             .accessibilityIdentifier("action-item-\(item.id.uuidString)")
             Spacer(minLength: 8)
-            if canCreateGitHubIssue(item) {
+            if let pending, let commitmentActions = actions.commitmentActions {
+                pendingControls(pending, commitmentActions: commitmentActions)
+            } else if canCreateGitHubIssue(item) {
                 Button("Create GitHub issue") {
                     actions.createGitHubIssue(item)
                 }
@@ -43,6 +70,38 @@ struct MeetingActionItemsView: View {
                     // Keep this as one literal so localization validation sees it.
                     "Review the repository, the issue body and its sources before sending.")
             }
+        }
+    }
+
+    private func pendingControls(
+        _ candidate: CommitmentInboxCandidate,
+        commitmentActions: MeetingCommitmentInboxActions
+    ) -> some View {
+        let canConfirm = candidate.evidence.status == .current && !candidate.evidence.segments.isEmpty
+        return HStack(spacing: 6) {
+            Text("Suggested")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(PVDesign.accent)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(PVDesign.accent.opacity(0.12), in: Capsule())
+            Button("Review and confirm…") {
+                editingCandidate = candidate
+            }
+            .buttonStyle(.pvPrimary)
+            .controlSize(.mini)
+            .disabled(!canConfirm || processingID != nil)
+            .accessibilityIdentifier("action-item-\(candidate.id.uuidString)-confirm")
+            Button("Dismiss", role: .destructive) {
+                processingID = candidate.id
+                Task { @MainActor in
+                    _ = await commitmentActions.dismiss(candidate)
+                    processingID = nil
+                }
+            }
+            .controlSize(.mini)
+            .disabled(processingID == candidate.id)
+            .accessibilityIdentifier("action-item-\(candidate.id.uuidString)-dismiss")
         }
     }
 

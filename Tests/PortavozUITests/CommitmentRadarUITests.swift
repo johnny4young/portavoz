@@ -35,6 +35,7 @@ final class CommitmentRadarUITests: PortavozUITestCase {
         let reviewMode = app.control(
             withIdentifier: "commitment-radar-mode-review")
         XCTAssertTrue(reviewMode.waitForExistenceFast(timeout: 10))
+        attachScreenshot(of: app, named: "pr-radar-unified")
         reviewMode.click()
 
         let reviewID = "B5E00000-0000-4000-8000-000000000002"
