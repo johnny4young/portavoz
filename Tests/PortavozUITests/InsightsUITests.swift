@@ -39,7 +39,7 @@ final class InsightsUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "insights-participant-Ana").exists,
             "each named participant must get an amber/violet participation bar")
-        attachScreenshot(of: app, named: "band-2p-insights")
+        attachScreenshot(of: app, names: ["band-2p-insights", "pr-insights-dashboard"])
 
         // The launch argument pins the scope, so only the segments and their state are checked.
         XCTAssertTrue(
@@ -47,5 +47,15 @@ final class InsightsUITests: PortavozUITestCase {
             "the launch scope is the selected segment")
         XCTAssertFalse(app.control(withIdentifier: "insights-scope-month").isSelected)
         XCTAssertTrue(app.control(withIdentifier: "insights-scope-year").exists)
+
+        // Clicking the commitments tile opens Commitment Radar directly.
+        let commitmentsTile = app.buttons["insights-commitments"]
+        XCTAssertTrue(
+            commitmentsTile.waitForExistenceFast(timeout: 5),
+            "Insights must expose the commitments tile as an actionable button")
+        commitmentsTile.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "commitment-radar-title").waitForExistenceFast(timeout: 10),
+            "clicking the commitments tile must navigate to Commitment Radar")
     }
 }

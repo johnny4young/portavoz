@@ -78,6 +78,7 @@ struct MirrorCard: View {
         }
         .padding(20)
         .frame(width: 460)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("mirror-card")
     }
 

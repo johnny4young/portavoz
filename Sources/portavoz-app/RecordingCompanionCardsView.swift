@@ -124,6 +124,7 @@ struct RecordingCompanionCardsView: View {
             .buttonStyle(.plain)
             .foregroundStyle(.ink3)
             .help(L10n.text("Fold this card"))
+            .accessibilityLabel(L10n.text("Fold this card"))
             .accessibilityIdentifier("recording-companion-fold-\(identity)")
             Button {
                 controller.dismissCompanionCard(row.card.id)
@@ -133,6 +134,7 @@ struct RecordingCompanionCardsView: View {
             }
             .buttonStyle(.plain)
             .help(L10n.text("Dismiss this card"))
+            .accessibilityLabel(L10n.text("Dismiss this card"))
             .accessibilityIdentifier("recording-companion-dismiss-\(identity)")
         }
     }

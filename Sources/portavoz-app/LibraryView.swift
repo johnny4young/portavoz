@@ -19,6 +19,7 @@ struct LibraryView: View {
     let onOpenActivity: () -> Void
 
     @State private var showsPrivacyNote = false
+    @FocusState private var searchFocused: Bool
     private let briefTimer = Timer.publish(every: 300, on: .main, in: .common).autoconnect()
 
     /// Audio the importer accepts (drag-drop or the Import button).
@@ -399,16 +400,26 @@ extension LibraryView {
             Image(systemName: "magnifyingglass")
                 .font(.caption)
                 .foregroundStyle(.ink3)
+                .accessibilityHidden(true)
             TextField("Search all meetings…", text: Binding(
                 get: { state.query },
                 set: { perform(.queryChanged($0)) }))
                 .textFieldStyle(.plain)
+                .focused($searchFocused)
                 .accessibilityIdentifier("library-search-field")
                 .task(id: state.query) { _ = await model.send(.observeSearch) }
         }
         .padding(.horizontal, 9)
         .padding(.vertical, 6)
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+        .background {
+            // Invisible shortcut trigger so Cmd+F focuses the sidebar search field.
+            Button("") { searchFocused = true }
+                .keyboardShortcut("f", modifiers: .command)
+                .frame(width: 0, height: 0)
+                .opacity(0)
+                .accessibilityHidden(true)
+        }
     }
 
     /// The product's one privacy promise, pinned under the library (D536).

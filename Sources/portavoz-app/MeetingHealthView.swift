@@ -28,11 +28,17 @@ struct MeetingHealthView: View {
                         .accessibilityIdentifier("detail-meeting-health")
                     Spacer()
                     if health.questionsTotal > 0 {
-                        chip(PVSymbol.apuntador, "\(health.questionsTotal)")
+                        chip(
+                            PVSymbol.apuntador,
+                            "\(health.questionsTotal)",
+                            accessibilityLabel: L10n.format("%d questions", health.questionsTotal))
                             .help("Counts the questions asked in this meeting")
                     }
                     if health.interruptionsTotal > 0 {
-                        chip("exclamationmark.bubble", "\(health.interruptionsTotal)")
+                        chip(
+                            "exclamationmark.bubble",
+                            "\(health.interruptionsTotal)",
+                            accessibilityLabel: L10n.format("%d interruptions", health.interruptionsTotal))
                             .help("Counts how often someone talked over someone else")
                     }
                 }
@@ -57,19 +63,26 @@ struct MeetingHealthView: View {
                 .lineLimit(1)
             Spacer(minLength: 4)
             if stat.questions > 0 {
-                chip(PVSymbol.apuntador, "\(stat.questions)")
+                chip(
+                    PVSymbol.apuntador,
+                    "\(stat.questions)",
+                    accessibilityLabel: L10n.format("%d questions", stat.questions))
                     .help("Counts the questions this speaker asked")
             }
             if stat.interruptionsMade > 0 {
-                chip("exclamationmark.bubble", "\(stat.interruptionsMade)")
+                chip(
+                    "exclamationmark.bubble",
+                    "\(stat.interruptionsMade)",
+                    accessibilityLabel: L10n.format("%d interruptions", stat.interruptionsMade))
                     .help("Counts how often this speaker interrupted")
             }
         }
     }
 
-    private func chip(_ icon: String, _ value: String) -> some View {
+    private func chip(_ icon: String, _ value: String, accessibilityLabel: String) -> some View {
         HStack(spacing: 3) {
             Image(systemName: icon)
+                .accessibilityHidden(true)
             Text(value).monospacedDigit()
         }
         .font(.caption2)
@@ -77,5 +90,7 @@ struct MeetingHealthView: View {
         .padding(.horizontal, 6)
         .padding(.vertical, 2)
         .background(.quaternary.opacity(0.6), in: Capsule())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
     }
 }

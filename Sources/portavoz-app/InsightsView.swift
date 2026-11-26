@@ -10,6 +10,13 @@ struct InsightsView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     @AppStorage("insightsScope") private var scopeRaw = InsightsScope.week.rawValue
+    @State private var selectedHeatCell: HeatCell?
+
+    private struct HeatCell: Identifiable, Hashable {
+        let weekIndex: Int
+        let dayIndex: Int
+        var id: String { "\(weekIndex)-\(dayIndex)" }
+    }
 
     private var scope: InsightsScope { InsightsScope(rawValue: scopeRaw) ?? .week }
     private var readModel: InsightsReadModel? { model.state.readModel }
@@ -25,10 +32,19 @@ struct InsightsView: View {
                 if let readModel {
                     tiles(readModel)
                     findingsSection
-                    HStack(alignment: .top, spacing: 16) {
-                        rhythmHeatmap(readModel.stats)
-                        if let balance, !balance.participants.isEmpty {
-                            participationCard(balance)
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .top, spacing: 16) {
+                            rhythmHeatmap(readModel.stats)
+                                .frame(minWidth: 340, maxWidth: .infinity)
+                            if let balance, !balance.participants.isEmpty {
+                                participationCard(balance, fixedWidth: 320)
+                            }
+                        }
+                        VStack(alignment: .leading, spacing: 16) {
+                            rhythmHeatmap(readModel.stats)
+                            if let balance, !balance.participants.isEmpty {
+                                participationCard(balance, fixedWidth: nil)
+                            }
                         }
                     }
                 }
@@ -112,48 +128,64 @@ struct InsightsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
             .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+            .accessibilityElement(children: .combine)
             .accessibilityIdentifier("insights-balance")
         } else {
             tile(value: "—", label: L10n.text("talk balance"))
         }
     }
 
-    /// The commitments tile ("Pendientes"): open/total, amber when overdue.
+    /// The commitments tile ("Pendientes"): opens Radar directly.
     @ViewBuilder private var commitmentsTile: some View {
         if let facts {
             let total = facts.openActionItems + facts.doneActionItems
-            HStack(spacing: 10) {
-                if total > 0 {
-                    ZStack {
-                        Circle().stroke(.quaternary, lineWidth: 5)
-                        Circle()
-                            .trim(from: 0, to: Double(facts.doneActionItems) / Double(total))
-                            .stroke(PVDesign.accent, style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                            .rotationEffect(.degrees(-90))
+            Button {
+                route = .commitments(nil)
+            } label: {
+                HStack(spacing: 10) {
+                    if total > 0 {
+                        ZStack {
+                            Circle().stroke(.quaternary, lineWidth: 5)
+                            Circle()
+                                .trim(from: 0, to: Double(facts.doneActionItems) / Double(total))
+                                .stroke(PVDesign.accent, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                                .rotationEffect(.degrees(-90))
+                        }
+                        .frame(width: 40, height: 40)
+                        .accessibilityHidden(true)
                     }
-                    .frame(width: 40, height: 40)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 4) {
-                        Text("\(facts.doneActionItems)/\(max(total, facts.doneActionItems))")
-                            .font(.title3.bold().monospacedDigit())
-                        if facts.openActionItems > 0 {
-                            Image(systemName: PVSymbol.warning)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 4) {
+                            Text("\(facts.doneActionItems)/\(max(total, facts.doneActionItems))")
+                                .font(.title3.bold().monospacedDigit())
+                            if facts.openActionItems > 0 {
+                                Image(systemName: PVSymbol.warning)
+                                    .font(.caption2)
+                                    .foregroundStyle(PVDesign.caution)
+                                    .accessibilityHidden(true)
+                            }
+                        }
+                        HStack(spacing: 3) {
+                            Text(facts.openActionItems > 0
+                                ? L10n.format("%d open — review", facts.openActionItems)
+                                : L10n.text("action items"))
                                 .font(.caption2)
-                                .foregroundStyle(PVDesign.caution)
+                                .foregroundStyle(facts.openActionItems > 0 ? PVDesign.accent : PVDesign.ink3)
+                            Image(systemName: "chevron.right")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(facts.openActionItems > 0 ? PVDesign.accent : PVDesign.ink3)
+                                .accessibilityHidden(true)
                         }
                     }
-                    Text(facts.openActionItems > 0
-                        ? L10n.format("%d open — review", facts.openActionItems)
-                        : L10n.text("action items"))
-                        .font(.caption2)
-                        .foregroundStyle(.ink3)
+                    Spacer(minLength: 0)
                 }
-                Spacer(minLength: 0)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+                .contentShape(RoundedRectangle(cornerRadius: 10))
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
-            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+            .buttonStyle(.plain)
+            .help(L10n.text("Open Radar to review commitments"))
             .accessibilityIdentifier("insights-commitments")
         }
     }
@@ -218,40 +250,94 @@ struct InsightsView: View {
 
     private func rhythmHeatmap(_ stats: LibraryStats) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("Your rhythm · 12 weeks")
-                    .pvDisplay(.section)
-                    .accessibilityIdentifier("insights-heatmap")
-                Text("column = week · row = weekday · more intense = more meetings")
-                    .font(.caption2)
-                    .foregroundStyle(.ink3)
-            }
+            Text("Your rhythm · 12 weeks")
+                .pvDisplay(.section)
+                .accessibilityIdentifier("insights-heatmap")
             HStack(spacing: 7) {
                 VStack(alignment: .trailing, spacing: 4) {
                     ForEach(weekdayInitials, id: \.self) { day in
                         Text(day)
-                            .font(.system(size: 9, design: .monospaced))
+                            .font(.caption2.monospaced())
                             .foregroundStyle(.ink3)
-                            .frame(height: 13)
+                            .frame(height: 14)
                     }
                 }
+                .accessibilityHidden(true)
                 HStack(spacing: 4) {
-                    ForEach(Array(stats.heatmap.enumerated()), id: \.offset) { _, week in
+                    ForEach(Array(stats.heatmap.enumerated()), id: \.offset) { weekIndex, week in
                         VStack(spacing: 4) {
-                            ForEach(Array(week.enumerated()), id: \.offset) { _, count in
-                                RoundedRectangle(cornerRadius: 3)
-                                    .fill(heatColor(count, max: stats.heatmapMax))
-                                    .frame(height: 13)
+                            ForEach(Array(week.enumerated()), id: \.offset) { dayIndex, count in
+                                heatCell(
+                                    weekIndex: weekIndex,
+                                    dayIndex: dayIndex,
+                                    count: count,
+                                    stats: stats)
                             }
                         }
                         .frame(maxWidth: .infinity)
                     }
                 }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(heatmapAccessibilitySummary(stats))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func heatCell(
+        weekIndex: Int, dayIndex: Int, count: Int, stats: LibraryStats
+    ) -> some View {
+        let cell = HeatCell(weekIndex: weekIndex, dayIndex: dayIndex)
+        let label = heatmapCellDescription(weekIndex: weekIndex, dayIndex: dayIndex, count: count, stats: stats)
+        return Button {
+            selectedHeatCell = selectedHeatCell == cell ? nil : cell
+        } label: {
+            RoundedRectangle(cornerRadius: 3)
+                .fill(heatColor(count, max: stats.heatmapMax))
+                .frame(height: 14)
+        }
+        .buttonStyle(.plain)
+        .help(label)
+        .popover(
+            isPresented: Binding(
+                get: { selectedHeatCell == cell },
+                set: { if !$0, selectedHeatCell == cell { selectedHeatCell = nil } }),
+            arrowEdge: .top
+        ) {
+            Text(label)
+                .font(.caption)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+        }
+    }
+
+    private func heatmapCellDescription(
+        weekIndex: Int, dayIndex: Int, count: Int, stats: LibraryStats
+    ) -> String {
+        let dateText: String
+        if stats.perWeek.indices.contains(weekIndex),
+           let dayDate = Calendar.current.date(
+               byAdding: .day, value: dayIndex, to: stats.perWeek[weekIndex].weekStart
+           ) {
+            dateText = dayDate.formatted(
+                Date.FormatStyle(date: .abbreviated, time: .omitted)
+                    .locale(AppLanguage.current.locale))
+        } else {
+            dateText = weekdayInitials.indices.contains(dayIndex) ? weekdayInitials[dayIndex] : ""
+        }
+        if count == 0 { return L10n.format("%@ — no meetings", dateText) }
+        if count == 1 { return L10n.format("%@ — 1 meeting", dateText) }
+        return L10n.format("%@ — %d meetings", dateText, count)
+    }
+
+    private func heatmapAccessibilitySummary(_ stats: LibraryStats) -> String {
+        let total = stats.heatmap.flatMap { $0 }.reduce(0, +)
+        return L10n.format(
+            "12-week meeting rhythm: %d meetings, busiest day %d",
+            total,
+            stats.heatmapMax)
     }
 
     /// The intensity ramp: quiet fill → full accent as the cell's count
@@ -272,7 +358,7 @@ struct InsightsView: View {
 
     // MARK: - Who you talk with, and how much
 
-    private func participationCard(_ balance: InsightsVoiceBalance) -> some View {
+    private func participationCard(_ balance: InsightsVoiceBalance, fixedWidth: CGFloat?) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             // Identifier on the title leaf, not the container: a container
             // `.accessibilityIdentifier` stamps every descendant on macOS,
@@ -291,7 +377,8 @@ struct InsightsView: View {
                 .foregroundStyle(.ink3)
                 .padding(.top, 2)
         }
-        .frame(width: 320, alignment: .leading)
+        .frame(width: fixedWidth, alignment: .leading)
+        .frame(maxWidth: fixedWidth == nil ? .infinity : nil, alignment: .leading)
         .padding(16)
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
     }
@@ -314,14 +401,16 @@ struct InsightsView: View {
                     .foregroundStyle(.ink3)
                     .monospacedDigit()
             }
-            participationBar(share: person.myShareWithThem, them: colour)
+            participationBar(share: person.myShareWithThem, personName: person.name, them: colour)
         }
     }
 
     /// Amber (you) grows from the left to `share`; their colour fills the rest.
-    private func participationBar(share: Double, them: Color) -> some View {
-        GeometryReader { geometry in
-            let clamped = min(max(share, 0), 1)
+    private func participationBar(share: Double, personName: String, them: Color) -> some View {
+        let clamped = min(max(share, 0), 1)
+        let myPct = Int((clamped * 100).rounded())
+        let theirPct = 100 - myPct
+        return GeometryReader { geometry in
             HStack(spacing: 0) {
                 Rectangle().fill(VoicePalette.me)
                     .frame(width: geometry.size.width * clamped)
@@ -330,6 +419,8 @@ struct InsightsView: View {
         }
         .frame(height: 7)
         .clipShape(Capsule())
+        .accessibilityElement()
+        .accessibilityLabel(L10n.format("You %d%%, %@ %d%%", myPct, personName, theirPct))
     }
 
     private func avatar(_ name: String, colour: Color) -> some View {

@@ -45,6 +45,8 @@ struct TrashSection: View {
             }
             .buttonStyle(.plain)
             .help(L10n.text("Restore this meeting"))
+            .accessibilityLabel(L10n.text("Restore this meeting"))
+            .accessibilityIdentifier("trash-restore-\(entry.meeting.id.rawValue.uuidString)")
         }
         .selectionDisabled()
         .contextMenu {

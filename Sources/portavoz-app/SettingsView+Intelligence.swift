@@ -133,6 +133,8 @@ extension SettingsView {
                         Image(systemName: "pencil")
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(L10n.format("Edit %@", recipe.displayName))
+                    .accessibilityIdentifier("settings-edit-structure-\(recipe.id)")
                     Button {
                         CustomRecipeStore.delete(id: recipe.id)
                         customStructures = CustomRecipeStore.custom()
@@ -140,6 +142,8 @@ extension SettingsView {
                         Image(systemName: "trash").foregroundStyle(PVDesign.caution)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(L10n.format("Delete %@", recipe.displayName))
+                    .accessibilityIdentifier("settings-delete-structure-\(recipe.id)")
                 }
             }
             Button("Add structure") {

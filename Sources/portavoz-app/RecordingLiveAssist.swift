@@ -210,6 +210,7 @@ struct RecordingProactiveAssistView: View {
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .strokeBorder(PVDesign.ink.opacity(0.25), lineWidth: 1))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(
             "recording-proactive-suggestion-\(suggestion.kind.rawValue)")
     }

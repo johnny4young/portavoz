@@ -125,7 +125,7 @@ struct HomeBriefCard: View {
                             colorScheme: colorScheme))
                         .frame(width: 10, height: 10)
                     Text(Self.name(person))
-                        .font(.system(size: 13.5, weight: .bold))
+                        .font(.body.weight(.bold))
                         .foregroundStyle(PVDesign.ink)
                         .lineLimit(1)
                 }
@@ -137,7 +137,7 @@ struct HomeBriefCard: View {
                             .foregroundStyle(PVDesign.ink)
                     } else {
                         Text(line.text)
-                            .font(.system(size: 13.5, weight: .medium))
+                            .font(.body.weight(.medium))
                             .foregroundStyle(PVDesign.ink)
                     }
                     if let meta = Self.meta(line) {

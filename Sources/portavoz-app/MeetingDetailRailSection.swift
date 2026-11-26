@@ -283,12 +283,12 @@ struct MeetingDetailCompanionSection: View {
                     .foregroundStyle(card.directed ? tint : PVDesign.ink3)
                 Spacer()
                 if !card.answer.isEmpty {
-                    Button { actions.copyAnswer(card.answer) } label: {
-                        Image(systemName: "doc.on.doc")
-                    }
-                    .buttonStyle(.plain)
-                    .controlSize(.small)
-                    .help(L10n.text("Copy answer"))
+                    Button { actions.copyAnswer(card.answer) } label: { Image(systemName: "doc.on.doc") }
+                        .buttonStyle(.plain)
+                        .controlSize(.small)
+                        .help(L10n.text("Copy answer"))
+                        .accessibilityLabel(L10n.text("Copy answer"))
+                        .accessibilityIdentifier("apuntador-card-copy-\(Int(card.askedAt))")
                 }
                 Button {
                     Task { await actions.removeCard(card.id) }
