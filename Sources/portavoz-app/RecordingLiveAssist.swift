@@ -143,7 +143,7 @@ struct RecordingProactiveAssistView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Label(L10n.text("Proactive help"), systemImage: PVSymbol.proactive)
                     .font(.headline)
                     .accessibilityIdentifier("recording-proactive-panel")
@@ -153,6 +153,20 @@ struct RecordingProactiveAssistView: View {
                     .font(.caption2)
                     .foregroundStyle(.ink3)
                     .accessibilityIdentifier("recording-proactive-status")
+                Button {
+                    controller.setProactiveAssistPaused(
+                        !controller.proactiveAssist.isPaused)
+                } label: {
+                    Label(
+                        L10n.text(controller.proactiveAssist.isPaused
+                            ? "Resume proactive help" : "Pause proactive help"),
+                        systemImage: controller.proactiveAssist.isPaused
+                            ? "play.circle" : "pause.circle")
+                }
+                .controlSize(.small)
+                .accessibilityIdentifier("recording-proactive-pause")
+                .accessibilityValue(controller.proactiveAssist.isPaused
+                    ? L10n.text("Paused") : L10n.text("Watching local signals"))
             }
             if controller.proactiveAssist.suggestions.isEmpty {
                 Text("Suggestions appear only from open objectives or measured recent talk balance.")

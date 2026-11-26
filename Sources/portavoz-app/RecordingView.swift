@@ -198,7 +198,6 @@ struct RecordingView: View {
     private var recordingBar: some View {
         RecordingToolbar(
             controller: controller,
-            companionAvailable: services.companionAvailable,
             onStop: { Task { await controller.stop(services: services) } },
             onCompact: enterCompactMode
         )
@@ -334,12 +333,12 @@ private struct LiveRecordingCaptionsView: View {
     /// Voice hues are fills, not text colours: labels stay ink on the tint.
     private func pillText(_ voice: (label: String, isMe: Bool)) -> Color {
         if voice.isMe { return VoicePalette.meContrast }
-        return voice.label == L10n.text("Them") ? PVDesign.ink3 : PVDesign.ink
+        return voice.label == L10n.text("Others") ? PVDesign.ink3 : PVDesign.ink
     }
 
     private func pillBackground(_ voice: (label: String, isMe: Bool)) -> Color {
         if voice.isMe { return VoicePalette.me }
-        guard voice.label != L10n.text("Them") else {
+        guard voice.label != L10n.text("Others") else {
             return Color(nsColor: .quaternarySystemFill)
         }
         // Live labels are S1, S2…: unnamed voices stay grey until named.
@@ -349,11 +348,11 @@ private struct LiveRecordingCaptionsView: View {
     private func liveVoice(
         for segment: TranscriptSegment
     ) -> (label: String, isMe: Bool) {
-        if segment.channel == .microphone { return (L10n.text("Me"), true) }
+        if segment.channel == .microphone { return (L10n.text("You"), true) }
         if let voice = controller.liveSpeakerLabels[segment.id] {
-            return voice == "Me" ? (L10n.text("Me"), true) : (voice, false)
+            return voice == "Me" ? (L10n.text("You"), true) : (voice, false)
         }
-        return (L10n.text("Them"), false)
+        return (L10n.text("Others"), false)
     }
 }
 

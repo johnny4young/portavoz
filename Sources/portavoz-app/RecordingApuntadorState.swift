@@ -59,6 +59,7 @@ enum RecordingApuntadorState: Equatable {
 struct RecordingApuntadorStateChip: View {
     let state: RecordingApuntadorState
     let turnOn: @MainActor () -> Void
+    let turnOff: @MainActor () -> Void
     let openSettings: @MainActor () -> Void
 
     var body: some View {
@@ -79,14 +80,29 @@ struct RecordingApuntadorStateChip: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(PVDesign.accent)
                     .accessibilityIdentifier("recording-apuntador-turn-on")
-            case .questionsOnly, .unavailable:
+            case .questionsOnly:
+                Button(L10n.text("Settings"), action: openSettings)
+                    .buttonStyle(.plain)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(PVDesign.accent)
+                    .accessibilityIdentifier("recording-apuntador-settings")
+                Button(L10n.text("Turn off"), action: turnOff)
+                    .buttonStyle(.plain)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(PVDesign.ink3)
+                    .accessibilityIdentifier("recording-apuntador-turn-off")
+            case .unavailable:
                 Button(L10n.text("Settings"), action: openSettings)
                     .buttonStyle(.plain)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(PVDesign.accent)
                     .accessibilityIdentifier("recording-apuntador-settings")
             case .listening:
-                EmptyView()
+                Button(L10n.text("Turn off"), action: turnOff)
+                    .buttonStyle(.plain)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(PVDesign.ink3)
+                    .accessibilityIdentifier("recording-apuntador-turn-off")
             }
         }
         .padding(.horizontal, 8)

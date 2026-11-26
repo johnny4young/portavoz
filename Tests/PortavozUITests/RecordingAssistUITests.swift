@@ -14,6 +14,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         app.buttons["library-new-recording-button"].click()
         XCTAssertTrue(app.waitForLiveTranscriptFrontier())
+        try app.openAssistTab("companion")
 
         let retainedQuestion = "Seeded live question 5?"
         let retained = companionCard(in: app, question: retainedQuestion)
@@ -98,14 +99,13 @@ final class RecordingAssistUITests: PortavozUITestCase {
         note.click()
         typeText(noteText, in: app)
         XCTAssertTrue(try note.waitForLabelOrValue(noteText, timeout: 3))
-        try app.openAssistTab("objectives")
         let objective = app.control(withIdentifier: "recording-objective-field")
         objective.click()
         typeText(objectiveText, in: app)
         XCTAssertTrue(try objective.waitForLabelOrValue(objectiveText, timeout: 3))
+        try app.openAssistTab("companion")
         try app.openAssistTab("notes")
         XCTAssertTrue(try note.waitForLabelOrValue(noteText, timeout: 3))
-        try app.openAssistTab("objectives")
         XCTAssertTrue(try objective.waitForLabelOrValue(objectiveText, timeout: 3),
                       "changing tabs must not discard an unsubmitted objective")
         let meeting = app.descendants(matching: .any)
@@ -116,10 +116,9 @@ final class RecordingAssistUITests: PortavozUITestCase {
         meeting.click()
         XCTAssertTrue(app.control(withIdentifier: "detail-transcript-title").waitForExistenceFast(timeout: 8))
         app.buttons["library-return-to-recording"].click()
-        try app.openAssistTab("objectives")
+        try app.openAssistTab("notes")
         XCTAssertTrue(try objective.waitForLabelOrValue(objectiveText, timeout: 3),
                       "library browsing must not discard the objective draft")
-        try app.openAssistTab("notes")
         let restored = try note.waitForLabelOrValue(noteText, timeout: 3)
         XCTAssertTrue(restored, "library browsing must not discard the note draft")
         guard restored else { return }
@@ -169,6 +168,8 @@ final class RecordingAssistUITests: PortavozUITestCase {
             app.control(withIdentifier: "recording-focus-card")
                 .waitForExistenceFast(timeout: 10),
             "the one question addressed to the user must sit above the tabs")
+        attachScreenshot(of: app, named: "pr-recording-minimal")
+        try app.openAssistTab("companion")
 
         let newestID = String(companionCard(in: app, question: "Seeded live question 6?")
             .identifier.dropFirst("recording-companion-card-".count))
@@ -255,6 +256,15 @@ final class RecordingAssistUITests: PortavozUITestCase {
             app.control(withIdentifier: "recording-focus-card")
                 .waitForExistenceFast(timeout: 3),
             "a dismissed focus card must free the slot")
+
+        // The state chip is the sole Apuntador toggle during recording.
+        let turnOff = app.control(withIdentifier: "recording-apuntador-turn-off")
+        XCTAssertTrue(turnOff.waitForExistenceFast(timeout: 3))
+        turnOff.click()
+        let turnOn = app.control(withIdentifier: "recording-apuntador-turn-on")
+        XCTAssertTrue(turnOn.waitForExistenceFast(timeout: 3))
+        turnOn.click()
+        XCTAssertTrue(turnOff.waitForExistenceFast(timeout: 3))
     }
 
 }
