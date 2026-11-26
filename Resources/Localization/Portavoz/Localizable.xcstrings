@@ -18766,6 +18766,16 @@
           }
         }
       }
+    },
+    "Turn off": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desactivar"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

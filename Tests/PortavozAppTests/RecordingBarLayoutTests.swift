@@ -47,7 +47,6 @@ final class RecordingBarLayoutTests: XCTestCase {
         let window = host(
             RecordingToolbar(
                 controller: controller,
-                companionAvailable: true,
                 onStop: {},
                 onCompact: {}),
             counter: counter)

@@ -24,8 +24,8 @@ final class InterviewAssistUITests: PortavozUITestCase {
         XCTAssertEqual(
             app.dismissRecordingMorePanel(bundleIdentifier: keyboardReceiverBundleIdentifier), .admitted)
 
-        // Interview becomes a tab once the recording opts in (D504).
-        try app.openAssistTab("interview")
+        // Interview surfaces inside the unified Apuntador tab once opted in.
+        try app.openAssistTab("companion")
         let panel = app.control(withIdentifier: "recording-interview-panel")
         XCTAssertTrue(panel.waitForExistenceFast(timeout: 10))
         let question = app.control(
@@ -37,7 +37,7 @@ final class InterviewAssistUITests: PortavozUITestCase {
 
         let assist = app.control(withIdentifier: "recording-assist-panel")
         XCTAssertTrue(assist.waitForExistenceFast(timeout: 5))
-        try app.openAssistTab("objectives")
+        try app.openAssistTab("notes")
         let objective = app.control(withIdentifier: "recording-objective-field")
         XCTAssertTrue(objective.waitForHittable(timeout: 5))
         objective.click()
@@ -47,8 +47,7 @@ final class InterviewAssistUITests: PortavozUITestCase {
         typeText(objectiveText, in: app)
         XCTAssertTrue(objective.waitForValue(objectiveText, timeout: 5))
         typeKey(.return, modifierFlags: [], in: app)
-        // Both the admitted count and the saved row live on the objectives
-        // tab, so the original order survives the D504 split untouched.
+        // Both the admitted count and the saved row live on the Notes tab.
         let objectiveCount = app.control(
             withIdentifier: "recording-interview-objective-count")
         let expectedObjectiveCount = isSpanish
@@ -74,7 +73,7 @@ final class InterviewAssistUITests: PortavozUITestCase {
             "the product must keep the admitted objective fully visible "
                 + "without a test-owned wheel gesture")
 
-        try app.openAssistTab("interview")
+        try app.openAssistTab("companion")
         let answerAction = app.control(withIdentifier: "recording-interview-answer")
         XCTAssertTrue(
             answerAction.revealVertically(in: assist),

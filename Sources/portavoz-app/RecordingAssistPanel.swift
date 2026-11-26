@@ -32,20 +32,16 @@ struct RecordingAssistPanel: View {
     /// Resolved by the composition (it knows the detector and answer engines).
     let apuntadorState: RecordingApuntadorState
     let openApuntadorSettings: @MainActor () -> Void
-    @State private var selection: RecordingAssistTab = .companion
     /// Owned here so switching tabs does not reset what the user opened.
     @State private var presentations: [UUID: CompanionCardPresentation] = [:]
     @State private var companionUnread = RecordingAssistUnread()
 
     private var tabs: [RecordingAssistTab] {
-        RecordingAssistTab.available(
-            interviewEnabled: controller.interviewAssist.isEnabled,
-            proactiveEnabled: controller.proactiveAssist.isEnabled,
-            hasSummary: controller.liveSummary != nil)
+        RecordingAssistTab.available(hasSummary: controller.liveSummary != nil)
     }
 
     private var tab: RecordingAssistTab {
-        RecordingAssistTab.resolve(selection, in: tabs)
+        RecordingAssistTab.resolve(controller.selectedAssistTab, in: tabs)
     }
 
     private var companionIDs: Set<UUID> {
@@ -174,6 +170,7 @@ private extension RecordingAssistPanel {
             RecordingApuntadorStateChip(
                 state: apuntadorState,
                 turnOn: { controller.companionEnabled = true },
+                turnOff: { controller.companionEnabled = false },
                 openSettings: openApuntadorSettings)
         }
         .accessibilityElement(children: .contain)
@@ -186,7 +183,7 @@ private extension RecordingAssistPanel {
             ? companionUnread.count(in: companionIDs)
             : 0
         return Button {
-            selection = candidate
+            controller.selectedAssistTab = candidate
         } label: {
             HStack(spacing: 4) {
                 Image(systemName: candidate.symbol).font(.caption)
@@ -221,26 +218,43 @@ private extension RecordingAssistPanel {
     @ViewBuilder
     var activePanel: some View {
         switch tab {
-        case .companion:
-            RecordingCompanionCardsView(
-                controller: controller,
-                presentations: $presentations,
-                focused: focusedCardID,
-                emptyMessage: apuntadorState.explanation)
-        case .objectives:
-            objectivesTab
         case .notes:
-            RecordingNotesPanel(controller: controller)
-        case .interview:
-            ScrollView { RecordingInterviewAssistView(controller: controller) }
-        case .proactive:
-            ScrollView { RecordingProactiveAssistView(controller: controller) }
+            notesAndObjectivesTab
+        case .companion:
+            unifiedApuntadorTab
         case .summary:
             summaryTab
         }
     }
 
-    var objectivesTab: some View {
+    var notesAndObjectivesTab: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 12) {
+                RecordingNotesPanel(controller: controller)
+                    .frame(
+                        minWidth: 260,
+                        idealWidth: 260,
+                        maxWidth: .infinity,
+                        maxHeight: .infinity,
+                        alignment: .topLeading)
+                objectivesScroller
+                    .frame(
+                        minWidth: 260,
+                        idealWidth: 260,
+                        maxWidth: .infinity,
+                        maxHeight: .infinity,
+                        alignment: .topLeading)
+            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    RecordingNotesPanel(controller: controller, scrollable: false)
+                    RecordingObjectivesPanel(controller: controller)
+                }
+            }
+        }
+    }
+
+    var objectivesScroller: some View {
         ScrollViewReader { objectiveScroll in
             ScrollView {
                 RecordingObjectivesPanel(controller: controller)
@@ -250,6 +264,35 @@ private extension RecordingAssistPanel {
                 guard let added = current.last(where: { !previousIDs.contains($0) }) else { return }
                 objectiveScroll.scrollTo(added, anchor: .center)
             }
+        }
+    }
+
+    @ViewBuilder
+    var unifiedApuntadorTab: some View {
+        let hasExtras = controller.interviewAssist.isEnabled || controller.proactiveAssist.isEnabled
+        if hasExtras {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    if controller.interviewAssist.isEnabled {
+                        RecordingInterviewAssistView(controller: controller)
+                    }
+                    if controller.proactiveAssist.isEnabled {
+                        RecordingProactiveAssistView(controller: controller)
+                    }
+                    RecordingCompanionCardsView(
+                        controller: controller,
+                        presentations: $presentations,
+                        focused: focusedCardID,
+                        emptyMessage: apuntadorState.explanation)
+                }
+                .padding(.vertical, 2)
+            }
+        } else {
+            RecordingCompanionCardsView(
+                controller: controller,
+                presentations: $presentations,
+                focused: focusedCardID,
+                emptyMessage: apuntadorState.explanation)
         }
     }
 

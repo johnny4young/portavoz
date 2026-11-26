@@ -92,6 +92,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 26, 2026
 
+- **🎙️ Calmer, minimal recording screen** — live recording opens straight to Notes & Objectives in at most three tabs (Notes, Apuntador, and Summary), keeps one Apuntador control in the assist header, stops the top toolbar from shifting when proactive help turns on, and labels live speakers consistently as "You" and "Others".
 - **♿ Full VoiceOver & keyboard navigation** — every icon-only control now has a localized accessibility label, the playback waveform supports VoiceOver scrubbing, `⌘1`–`⌘4` jump between Today, Ask, Insights and Radar and `⌘F` focuses library search, even with the sidebar hidden, and copying selected text in Command Palette (`⌘C`) works normally while `⇧⌘C` copies the cited Markdown answer.
 - **📊 Interactive Insights dashboard** — clicking the Commitments tile opens Radar directly, heatmap cells reveal exact dates and meeting counts on hover, click or VoiceOver, and the rhythm/participation layout adapts cleanly to narrower windows.
 - **🔒 Tighter local file privacy** — your library, recordings, compressed and imported audio, and post-meeting Shortcut handoff files are owner-only (`0600`/`0700`), failed Shortcut launches clean up their temp file immediately, and BYOK provider errors name the cause (like `model_not_found`) without echoing summary or transcript text.

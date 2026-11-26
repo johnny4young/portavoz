@@ -115,22 +115,19 @@ final class RecordingAssistLayoutTests: XCTestCase {
 
     func testOptionalPanelsOnlyAppearOnceTheyCanShowSomething() {
         XCTAssertEqual(
-            RecordingAssistTab.available(
-                interviewEnabled: false, proactiveEnabled: false, hasSummary: false),
-            [.companion, .objectives, .notes])
+            RecordingAssistTab.available(hasSummary: false),
+            [.notes, .companion])
         XCTAssertEqual(
-            RecordingAssistTab.available(
-                interviewEnabled: true, proactiveEnabled: true, hasSummary: true),
-            [.companion, .objectives, .notes, .interview, .proactive, .summary])
+            RecordingAssistTab.available(hasSummary: true),
+            [.notes, .companion, .summary])
     }
 
     func testASelectionSurvivesItsTabDisappearing() {
-        let available = RecordingAssistTab.available(
-            interviewEnabled: false, proactiveEnabled: false, hasSummary: false)
+        let available = RecordingAssistTab.available(hasSummary: false)
 
-        XCTAssertEqual(RecordingAssistTab.resolve(.notes, in: available), .notes)
+        XCTAssertEqual(RecordingAssistTab.resolve(.companion, in: available), .companion)
         XCTAssertEqual(
-            RecordingAssistTab.resolve(.summary, in: available), .companion,
+            RecordingAssistTab.resolve(.summary, in: available), .notes,
             "a live summary that goes away must not leave a blank panel selected")
     }
 

@@ -5,7 +5,6 @@ import SwiftUI
 /// elapsed clock and Stop visible without crowding the transcript.
 struct RecordingToolbar: View {
     let controller: RecordingController
-    let companionAvailable: Bool
     let onStop: () -> Void
     let onCompact: () -> Void
 
@@ -64,16 +63,6 @@ struct RecordingToolbar: View {
             .accessibilityIdentifier("recording-translation-picker")
             .accessibilityHint(L10n.text(
                 "Show an English or Spanish translation below each spoken caption."))
-            if companionAvailable {
-                Toggle(isOn: companionBinding) {
-                    Label("Apuntador", systemImage: PVSymbol.apuntador)
-                }
-                .toggleStyle(.button)
-                .controlSize(.small)
-                .help(companionHelp)
-                .accessibilityIdentifier("recording-companion")
-                .accessibilityHint(companionHelp)
-            }
             Button {
                 controller.requestCatchUp()
             } label: {
@@ -85,29 +74,8 @@ struct RecordingToolbar: View {
             .accessibilityIdentifier("recording-catch-up")
             .accessibilityHint(L10n.text(
                 "Recap the last few minutes"))
-            if controller.proactiveAssist.isEnabled {
-                Button {
-                    controller.setProactiveAssistPaused(
-                        !controller.proactiveAssist.isPaused)
-                } label: {
-                    Label(
-                        L10n.text(controller.proactiveAssist.isPaused
-                            ? "Resume proactive help" : "Pause proactive help"),
-                        systemImage: controller.proactiveAssist.isPaused
-                            ? "play.circle" : "pause.circle")
-                }
-                .controlSize(.small)
-                .accessibilityIdentifier("recording-proactive-pause")
-                .accessibilityValue(controller.proactiveAssist.isPaused
-                    ? L10n.text("Paused") : L10n.text("Watching local signals"))
-            }
             moreMenu
         }
-    }
-
-    private var companionHelp: String {
-        L10n.text(
-            "Detects questions and suggests answers.")
     }
 
     /// Everything that is not needed every minute lives behind one menu.
@@ -123,13 +91,6 @@ struct RecordingToolbar: View {
         .controlSize(.small)
         .keyboardShortcut(".")
         .accessibilityIdentifier("recording-stop")
-    }
-
-    private var companionBinding: Binding<Bool> {
-        Binding(
-            get: { controller.companionEnabled },
-            set: { controller.companionEnabled = $0 }
-        )
     }
 
     private var translationBinding: Binding<String?> {

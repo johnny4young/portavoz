@@ -9,6 +9,7 @@ import SwiftUI
 /// the field stays put and the notes take whatever height the tab has (D504).
 struct RecordingNotesPanel: View {
     @Bindable var controller: RecordingController
+    var scrollable: Bool = true
     var body: some View {
         let isDraftEmpty = controller.drafts.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         VStack(alignment: .leading, spacing: 8) {
@@ -34,20 +35,27 @@ struct RecordingNotesPanel: View {
                     symbol: "square.and.pencil",
                     message: L10n.text(
                         "They guide the final summary: they are expanded with facts and marked as yours (▸)."))
-            } else {
+            } else if scrollable {
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 6) {
-                        // Newest first — the note you just took is right there.
-                        ForEach(controller.contextItems.reversed()) { item in
-                            note(item)
-                        }
-                    }
+                    notesStack
                 }
                 .accessibilityIdentifier("recording-notes-list")
+            } else {
+                notesStack
+                    .accessibilityIdentifier("recording-notes-list")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .disabled(controller.inputPersistence.isSaving || controller.inputPersistence.hasFailure)
+    }
+
+    private var notesStack: some View {
+        LazyVStack(alignment: .leading, spacing: 6) {
+            // Newest first — the note you just took is right there.
+            ForEach(controller.contextItems.reversed()) { item in
+                note(item)
+            }
+        }
     }
 
     private func note(_ item: ContextItem) -> some View {

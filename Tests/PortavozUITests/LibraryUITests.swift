@@ -740,7 +740,7 @@ final class LibraryUITests: PortavozUITestCase {
                 "the model-free checkpoint must disclose its extractive live highlights")
         }
 
-        try app.openAssistTab("objectives")
+        try app.openAssistTab("notes")
         let panel = app.control(withIdentifier: "recording-objectives-panel")
         XCTAssertTrue(
             panel.waitForExistenceFast(timeout: 8),
@@ -765,8 +765,8 @@ final class LibraryUITests: PortavozUITestCase {
             XCTAssertTrue(ready ? balanceVisible
                 : app.control(withIdentifier: "recording-talk-balance").waitForExistenceFast(timeout: 8),
                 "closed captions must surface the talk-balance cue")
-            XCTAssertFalse(ready ? contains("recording-assist-tab-proactive", in: observation)
-                : app.control(withIdentifier: "recording-assist-tab-proactive").exists,
+            XCTAssertFalse(ready ? contains("recording-proactive-panel", in: observation)
+                : app.control(withIdentifier: "recording-proactive-panel").exists,
                 "proactive help must be off until this recording explicitly opts in")
         }
 
@@ -778,8 +778,8 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertEqual(
             app.dismissRecordingMorePanel(bundleIdentifier: keyboardReceiverBundleIdentifier), .admitted)
 
-        // Suggestions only becomes a tab once this recording opts in.
-        try app.openAssistTab("proactive")
+        // Proactive help surfaces inside the unified Apuntador tab once opted in.
+        try app.openAssistTab("companion")
         let proactivePanel = app.control(withIdentifier: "recording-proactive-panel")
         let objectiveSuggestion = app.control(
             withIdentifier: "recording-proactive-suggestion-open-objective")

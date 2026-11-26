@@ -129,15 +129,11 @@ extension ArchitectureDependencyTests {
             XCTAssertTrue(gate.contains("RecordingProactiveAssistModelTests"))
         }
 
-        for identifier in [
-            "recording-proactive-assist",
-            "recording-proactive-pause",
-        ] {
-            XCTAssertTrue(toolbar.contains(identifier))
-        }
+        XCTAssertTrue(toolbar.contains("recording-proactive-assist"))
         for identifier in [
             "recording-proactive-panel",
             "recording-proactive-status",
+            "recording-proactive-pause",
             "recording-proactive-suggestion-",
             "recording-proactive-dismiss-",
             "recording-proactive-source-",

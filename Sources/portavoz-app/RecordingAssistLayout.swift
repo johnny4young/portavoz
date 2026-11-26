@@ -67,52 +67,36 @@ enum RecordingAssistLayout {
     }
 }
 
-/// The assist area shows one panel at a time instead of stacking every panel
-/// into a single scroll. The focus slot above the tabs keeps whatever cannot
-/// wait for the user to switch (D504).
+/// The assist area keeps at most three tabs: Notes (with objectives),
+/// Apuntador (questions, interview, and proactive signals), and Live summary
+/// once available. The focus slot above the tabs lifts urgent cards (D504).
 enum RecordingAssistTab: String, CaseIterable, Identifiable, Sendable {
-    case companion
-    case objectives
     case notes
-    case interview
-    case proactive
+    case companion
     case summary
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .companion: L10n.text("Apuntador")
-        case .objectives: L10n.text("Objectives")
         case .notes: L10n.text("Notes")
-        case .interview: L10n.text("Interview")
-        case .proactive: L10n.text("Suggestions")
+        case .companion: L10n.text("Apuntador")
         case .summary: L10n.text("Summary")
         }
     }
 
     var symbol: String {
         switch self {
-        case .companion: PVSymbol.apuntador
-        case .objectives: "target"
         case .notes: "square.and.pencil"
-        case .interview: "person.wave.2"
-        case .proactive: "lightbulb"
+        case .companion: PVSymbol.apuntador
         case .summary: PVSymbol.generate
         }
     }
 
-    /// Companion, objectives and notes are always reachable. The other three
-    /// appear only once they can show something, so the tab bar never offers a
-    /// panel that would open empty.
-    static func available(
-        interviewEnabled: Bool,
-        proactiveEnabled: Bool,
-        hasSummary: Bool
-    ) -> [RecordingAssistTab] {
-        var tabs: [RecordingAssistTab] = [.companion, .objectives, .notes]
-        if interviewEnabled { tabs.append(.interview) }
-        if proactiveEnabled { tabs.append(.proactive) }
+    /// Notes and Apuntador are always reachable; Summary appears once there is
+    /// enough closed conversation to summarize.
+    static func available(hasSummary: Bool) -> [RecordingAssistTab] {
+        var tabs: [RecordingAssistTab] = [.notes, .companion]
         if hasSummary { tabs.append(.summary) }
         return tabs
     }
@@ -122,7 +106,7 @@ enum RecordingAssistTab: String, CaseIterable, Identifiable, Sendable {
         _ selection: RecordingAssistTab,
         in available: [RecordingAssistTab]
     ) -> RecordingAssistTab {
-        available.contains(selection) ? selection : (available.first ?? .companion)
+        available.contains(selection) ? selection : (available.first ?? .notes)
     }
 }
 
