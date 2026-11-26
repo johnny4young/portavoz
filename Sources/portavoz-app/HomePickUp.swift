@@ -44,7 +44,7 @@ struct HomePickUp: View {
                         .background(PVDesign.ink, in: Circle())
                         .accessibilityHidden(true)
                     Text(MeetingRowTitle.display(meeting.title))
-                        .font(.body.weight(.semibold))
+                        .font(.system(size: 13.5, weight: .semibold))
                         .foregroundStyle(PVDesign.ink)
                         .lineLimit(1)
                         .layoutPriority(1)

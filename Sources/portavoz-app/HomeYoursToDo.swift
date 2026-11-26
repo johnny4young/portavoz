@@ -62,7 +62,7 @@ struct HomeYoursToDo: View {
                 HStack(alignment: .firstTextBaseline, spacing: PVDesign.space2) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(open.item.text)
-                            .font(.body.weight(.medium))
+                            .font(.system(size: 13.5, weight: .medium))
                             .foregroundStyle(PVDesign.ink)
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)

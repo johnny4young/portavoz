@@ -25,6 +25,14 @@ final class InsightsUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "insights-heatmap").exists,
             "Insights must render the rhythm heatmap (3a), not the old bar chart")
+        let heatCell = app.buttons["insights-heat-cell-0-0"]
+        XCTAssertTrue(heatCell.exists, "each heatmap day must be its own accessible button")
+        XCTAssertTrue(heatCell.label.contains(" — "), "a heatmap cell must name its date and count")
+        heatCell.click()
+        XCTAssertTrue(
+            app.popovers.firstMatch.waitForExistenceFast(timeout: 5),
+            "clicking a heatmap cell must reveal its date")
+        typeKey(.escape, modifierFlags: [], in: app)
         // The week/month/year scope control (3a).
         XCTAssertTrue(
             app.control(withIdentifier: "insights-scope").exists,

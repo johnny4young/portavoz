@@ -190,6 +190,18 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(
             waitForUITestCondition(timeout: 5) { search.observedKeyboardFocus == true },
             "⌘F must focus the sidebar search field")
+
+        typeKey("s", modifierFlags: [.command, .control], in: app)
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 5) { !search.isHittable }, "⌃⌘S must hide the sidebar")
+        typeKey("3", modifierFlags: .command, in: app)
+        XCTAssertTrue(
+            app.control(withIdentifier: "insights-title").waitForExistenceFast(timeout: 5),
+            "⌘3 must navigate while the sidebar is hidden")
+        typeKey("f", modifierFlags: .command, in: app)
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 5) { search.observedKeyboardFocus == true },
+            "⌘F must reveal the sidebar and focus its search field")
     }
 
     @MainActor

@@ -2877,9 +2877,17 @@ import no StorageKit, IntegrationsKit, or IntelligenceKit. Disposable bilingual
 UI coverage verifies the full Ask answer, instant palette results, generated
 answer, app-panel-only screenshot, and exact three-second citation seek (D100).
 
+## Window navigation commands
+
+`LibraryCommands` puts Today, Ask, Insights and Radar on ⌘1–⌘4 in the View menu,
+next to `SidebarCommands` (⌃⌘S), and ⌘F in the Edit menu. The main window
+publishes `LibraryCommandActions` through `focusedSceneValue`, so the commands
+act on the key window and still work while the sidebar is collapsed: ⌘F
+restores the sidebar column and then focuses library search.
+
 ## Insights (Jul 2026) — library dashboard
 
-`Route.insights` (button in sidebar): tiles (meetings, hours, average duration, weekly streak, most active day), a 12-week × 7-day rhythm heatmap with zero weeks retained, frequent people, pending gauge, and local findings. ApplicationKit owns `InsightsScope`, `LibraryStats`, `InsightsFindings`, and the complete storage-independent `InsightsReadModel`; calculations inject calendar/now. A per-window `InsightsModel` combines four app-mapped Store observations: live meeting chronology, participant/commitment facts, voice balance, and finding evidence for at most the 60 newest live meetings in the selected scope. Meetings without `endedAt` count but do not drag the average; no-decision findings require summarized evidence, and recurring topics exclude participant names. Everything remains 100% local. Writes refresh only the query families whose explicit base-table regions changed; scope changes restart the bounded finding observation without a process-wide reload.
+`Route.insights` (button in sidebar): tiles (meetings, hours, average duration, weekly streak, most active day), a 12-week × 7-day rhythm heatmap with zero weeks retained (each day is a button whose label and popover give its date and count; the grid also carries a VoiceOver summary), frequent people, pending gauge, and local findings. ApplicationKit owns `InsightsScope`, `LibraryStats`, `InsightsFindings`, and the complete storage-independent `InsightsReadModel`; calculations inject calendar/now. A per-window `InsightsModel` combines four app-mapped Store observations: live meeting chronology, participant/commitment facts, voice balance, and finding evidence for at most the 60 newest live meetings in the selected scope. Meetings without `endedAt` count but do not drag the average; no-decision findings require summarized evidence, and recurring topics exclude participant names. Everything remains 100% local. Writes refresh only the query families whose explicit base-table regions changed; scope changes restart the bounded finding observation without a process-wide reload.
 
 ## Resident menu bar (Jul 2026)
 

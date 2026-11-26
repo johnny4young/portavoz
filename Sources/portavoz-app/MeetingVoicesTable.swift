@@ -134,7 +134,7 @@ struct MeetingVoicesTable<Trailing: View>: View {
         HStack(spacing: 7) {
             dot
             Text(name)
-                .font(.body.weight(.bold))
+                .font(.system(size: 13.5, weight: .bold))
                 .foregroundStyle(ink)
                 .lineLimit(1)
                 .truncationMode(.tail)
@@ -144,7 +144,7 @@ struct MeetingVoicesTable<Trailing: View>: View {
 
     private func shareText(_ share: Double) -> some View {
         Text(share.formatted(VoiceStrip.percent))
-            .font(.body.weight(.semibold).monospacedDigit())
+            .font(.system(size: 13, weight: .semibold).monospacedDigit())
             .foregroundStyle(PVDesign.ink)
             .frame(width: isNarrow ? 34 : 38, alignment: .trailing)
     }

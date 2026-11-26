@@ -169,7 +169,7 @@ struct HomeNextMeetingHero: View {
         }
         if !cast.others.isEmpty {
             Text(L10n.format("Others · %d", cast.others.count))
-                .font(.headline)
+                .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(PVDesign.ink2)
         }
     }
@@ -196,7 +196,7 @@ private struct HomeInvitee: View {
                 .frame(width: 10, height: 10)
                 .accessibilityHidden(true)
             Text(voice.isMe ? L10n.text("You") : voice.name ?? "")
-                .font(.headline)
+                .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(PVDesign.ink)
         }
     }

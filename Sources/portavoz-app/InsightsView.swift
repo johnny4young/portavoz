@@ -257,7 +257,7 @@ struct InsightsView: View {
                 VStack(alignment: .trailing, spacing: 4) {
                     ForEach(weekdayInitials, id: \.self) { day in
                         Text(day)
-                            .font(.caption2.monospaced())
+                            .font(.system(size: 9, design: .monospaced))
                             .foregroundStyle(.ink3)
                             .frame(height: 14)
                     }
@@ -277,7 +277,7 @@ struct InsightsView: View {
                         .frame(maxWidth: .infinity)
                     }
                 }
-                .accessibilityElement(children: .ignore)
+                .accessibilityElement(children: .contain)
                 .accessibilityLabel(heatmapAccessibilitySummary(stats))
             }
         }
@@ -300,6 +300,8 @@ struct InsightsView: View {
         }
         .buttonStyle(.plain)
         .help(label)
+        .accessibilityLabel(label)
+        .accessibilityIdentifier("insights-heat-cell-\(weekIndex)-\(dayIndex)")
         .popover(
             isPresented: Binding(
                 get: { selectedHeatCell == cell },

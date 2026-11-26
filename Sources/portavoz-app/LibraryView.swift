@@ -12,6 +12,7 @@ struct LibraryView: View {
     @State private var showsImportQueue = false
     @State private var isChoosingAudio = false
     @Binding var route: Route?
+    @Binding var searchFocusRequested: Bool
     let recordingActive: Bool
     let onReturnToRecording: () -> Void
     let onOpenSearchHit: (LibrarySearchHit) -> Void
@@ -412,13 +413,14 @@ extension LibraryView {
         .padding(.horizontal, 9)
         .padding(.vertical, 6)
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
-        .background {
-            // Invisible shortcut trigger so Cmd+F focuses the sidebar search field.
-            Button("") { searchFocused = true }
-                .keyboardShortcut("f", modifiers: .command)
-                .frame(width: 0, height: 0)
-                .opacity(0)
-                .accessibilityHidden(true)
+        .task(id: searchFocusRequested) {
+            guard searchFocusRequested else { return }
+            // A sidebar being revealed can take focus only once it is on screen.
+            for _ in 0..<10 where !searchFocused {
+                searchFocused = true
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+            searchFocusRequested = false
         }
     }
 
