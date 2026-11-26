@@ -33,6 +33,8 @@ struct ContentView: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
     @State private var route: Route?
+    @State private var columnVisibility = NavigationSplitViewVisibility.automatic
+    @State private var searchFocusRequested = false
     @State private var navigation: DetailNavigation
     @State private var libraryModel: LibraryModel
     @State private var insightsModel: InsightsModel
@@ -68,11 +70,12 @@ struct ContentView: View {
     }
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             LibraryView(
                 model: libraryModel,
                 imports: services.audioImports,
                 route: $route,
+                searchFocusRequested: $searchFocusRequested,
                 recordingActive: services.recording.canReturnToLiveSession,
                 onReturnToRecording: {
                     route = .recording(nil)
@@ -147,6 +150,12 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background { PVDesign.paper.ignoresSafeArea() }
         }
+        .focusedSceneValue(\.libraryCommands, LibraryCommandActions(
+            navigate: { route = $0 },
+            focusSearch: {
+                columnVisibility = .all
+                searchFocusRequested = true
+            }))
         .toolbar {
             ToolbarItem(placement: .automatic) {
                 BackgroundWorkIndicator(

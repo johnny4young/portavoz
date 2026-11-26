@@ -93,14 +93,11 @@ private extension CommitmentFieldQualityView {
                   systemImage: "info.circle")
                 .font(.caption)
                 .foregroundStyle(PVDesign.accent)
+                .accessibilityIdentifier("commitment-quality-advisory")
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(PVDesign.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-            "Advisory only — no threshold or automation uses these numbers.")
-        .accessibilityIdentifier("commitment-quality-advisory")
     }
 
     func metricCard(

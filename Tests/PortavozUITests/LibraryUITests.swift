@@ -174,6 +174,34 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(app.control(withIdentifier: "ask-question-field").waitForExistenceFast(timeout: 5))
         XCTAssertTrue(app.buttons["library-ask-button"].isSelected)
         XCTAssertFalse(app.buttons["library-insights-button"].isSelected)
+
+        let shortcuts = [
+            ("3", "library-insights-button"), ("4", "library-commitment-radar-button"),
+            ("1", "library-home-button"), ("2", "library-ask-button")
+        ]
+        for (key, identifier) in shortcuts {
+            typeKey(key, modifierFlags: .command, in: app)
+            XCTAssertTrue(
+                waitForUITestCondition(timeout: 5) { app.buttons[identifier].isSelected },
+                "⌘\(key) must select \(identifier)")
+        }
+        let search = app.textFields["library-search-field"]
+        typeKey("f", modifierFlags: .command, in: app)
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 5) { search.observedKeyboardFocus == true },
+            "⌘F must focus the sidebar search field")
+
+        typeKey("s", modifierFlags: [.command, .control], in: app)
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 5) { !search.isHittable }, "⌃⌘S must hide the sidebar")
+        typeKey("3", modifierFlags: .command, in: app)
+        XCTAssertTrue(
+            app.control(withIdentifier: "insights-title").waitForExistenceFast(timeout: 5),
+            "⌘3 must navigate while the sidebar is hidden")
+        typeKey("f", modifierFlags: .command, in: app)
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 5) { search.observedKeyboardFocus == true },
+            "⌘F must reveal the sidebar and focus its search field")
     }
 
     @MainActor

@@ -452,6 +452,8 @@ extension SettingsView {
                 }
                 .buttonStyle(.borderless)
                 .help("Show available tokens and examples")
+                .accessibilityLabel(L10n.text("Show available tokens and examples"))
+                .accessibilityIdentifier("settings-title-help")
                 .popover(isPresented: $showTitleHelp, arrowEdge: .bottom) {
                     titleHelpPopover
                 }
@@ -538,6 +540,8 @@ extension SettingsView {
                     }
                     .buttonStyle(.plain)
                     .help("Remove \"\(term)\"")
+                    .accessibilityLabel(L10n.format("Remove \"%@\"", term))
+                    .accessibilityIdentifier("settings-vocabulary-remove-\(term)")
                 }
             }
             HStack {
@@ -589,6 +593,8 @@ extension SettingsView {
             }
             .buttonStyle(.plain)
             .help("Don't suggest \"\(term)\" again")
+            .accessibilityLabel(L10n.format("Don't suggest \"%@\" again", term))
+            .accessibilityIdentifier("settings-vocabulary-reject-\(term)")
         }
     }
 

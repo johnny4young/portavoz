@@ -136,6 +136,7 @@ private extension RecordingAssistPanel {
                 }
                 .buttonStyle(.plain)
                 .help(L10n.text("Dismiss this card"))
+                .accessibilityLabel(L10n.text("Dismiss this card"))
                 .accessibilityIdentifier("recording-focus-dismiss")
             }
             Text(card.question)

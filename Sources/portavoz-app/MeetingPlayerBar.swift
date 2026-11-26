@@ -64,6 +64,7 @@ struct MeetingPlayerBar: View {
         }
         .buttonStyle(.plain)
         .help(player.isPlaying ? "Pause" : "Play")
+        .accessibilityLabel(L10n.text(player.isPlaying ? "Pause" : "Play"))
         .accessibilityIdentifier("player-play-pause")
     }
 
@@ -77,6 +78,7 @@ struct MeetingPlayerBar: View {
         .buttonStyle(.plain)
         .foregroundStyle(PVDesign.ink2)
         .help(seconds < 0 ? "Back 15 seconds" : "Forward 15 seconds")
+        .accessibilityLabel(L10n.text(seconds < 0 ? "Back 15 seconds" : "Forward 15 seconds"))
         .accessibilityIdentifier(identifier)
     }
 
@@ -137,6 +139,7 @@ struct MeetingPlayerBar: View {
         .menuIndicator(.hidden)
         .fixedSize()
         .help("Playback options")
+        .accessibilityLabel(L10n.text("Playback options"))
         .accessibilityIdentifier("player-options")
     }
 
@@ -173,6 +176,7 @@ struct MeetingPlayerBar: View {
                 .buttonStyle(.plain)
                 .controlSize(.small)
                 .help("Discard the clip")
+                .accessibilityLabel(L10n.text("Discard the clip"))
                 .accessibilityIdentifier("clip-discard")
             }
             Spacer()
@@ -282,6 +286,19 @@ struct WaveformView: View {
         .accessibilityElement()
         .accessibilityLabel(Text("Playback position"))
         .accessibilityValue(Text(ClockFormat.mmss(currentTime, paddedMinutes: false)))
+        .accessibilityAdjustableAction { direction in
+            let step: TimeInterval = 10
+            let target: TimeInterval
+            switch direction {
+            case .increment:
+                target = min(timeline.duration, currentTime + step)
+            case .decrement:
+                target = max(0, currentTime - step)
+            @unknown default:
+                return
+            }
+            onSeek(target)
+        }
         .accessibilityIdentifier("player-waveform")
     }
 

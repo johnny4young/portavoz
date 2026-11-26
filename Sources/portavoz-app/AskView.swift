@@ -318,6 +318,7 @@ extension AskView {
                 model.state.draft.trimmingCharacters(
                     in: .whitespacesAndNewlines).isEmpty
                     || !hasResolvedSource)
+            .accessibilityLabel(L10n.text("Send question"))
             .accessibilityIdentifier("ask-submit")
         }
         .padding(12)

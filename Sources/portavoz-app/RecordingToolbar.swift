@@ -220,6 +220,8 @@ private struct RecordingLevelMeter: View {
                 .font(.caption)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(L10n.text(controller.micMuted
+                ? "Your mic is muted for Portavoz" : "Mute your mic for Portavoz"))
             .accessibilityIdentifier("recording-mute-mic")
             .help(L10n.text(controller.micMuted
                     ? "Your mic is muted for Portavoz" : "Mute your mic for Portavoz"))

@@ -150,6 +150,8 @@ struct RecordingHUDView: View {
             }
             .buttonStyle(.plain)
             .help("Return to the full window")
+            .accessibilityLabel(L10n.text("Return to the full window"))
+            .accessibilityIdentifier("recording-hud-expand")
             Button(action: onStop) {
                 Image(systemName: PVSymbol.stop)
                     .font(.title3)
@@ -157,6 +159,8 @@ struct RecordingHUDView: View {
             }
             .buttonStyle(.plain)
             .help("Stop recording")
+            .accessibilityLabel(L10n.text("Stop recording"))
+            .accessibilityIdentifier("recording-hud-stop")
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)

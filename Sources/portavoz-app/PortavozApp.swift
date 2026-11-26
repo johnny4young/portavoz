@@ -74,6 +74,7 @@ struct PortavozApp: App {
         .commands {
             if !runsIsolatedBenchmark {
                 CheckForUpdatesCommand()
+                LibraryCommands()
                 if let services = launch.services {
                     CommandGroup(after: .newItem) {
                         Button("Ask your week…") {

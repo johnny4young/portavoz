@@ -181,8 +181,9 @@ private struct CommandPaletteView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.ink3)
-                .keyboardShortcut("c", modifiers: .command)
+                .keyboardShortcut("c", modifiers: [.command, .shift])
                 .help(L10n.text("Copy answer with citations (Markdown)"))
+                .accessibilityLabel(L10n.text("Copy answer with citations (Markdown)"))
                 .accessibilityIdentifier("palette-copy-answer")
             }
         }

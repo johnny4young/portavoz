@@ -16737,16 +16737,6 @@
         }
       }
     },
-    "column = week · row = weekday · more intense = more meetings": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "columna = semana · fila = día · más intenso = más reuniones"
-          }
-        }
-      }
-    },
     "confirmed commitment": {
       "localizations": {
         "es": {
@@ -18643,6 +18633,136 @@
           "stringUnit": {
             "state": "translated",
             "value": "Adelante"
+          }
+        }
+      }
+    },
+    "Send question": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviar pregunta"
+          }
+        }
+      }
+    },
+    "Edit %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar %@"
+          }
+        }
+      }
+    },
+    "Delete %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar %@"
+          }
+        }
+      }
+    },
+    "%d questions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d preguntas"
+          }
+        }
+      }
+    },
+    "%d interruptions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d interrupciones"
+          }
+        }
+      }
+    },
+    "Open Radar to review commitments": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir Radar para revisar compromisos"
+          }
+        }
+      }
+    },
+    "12-week meeting rhythm: %d meetings, up to %d on the busiest day": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ritmo de reuniones en 12 semanas: %d reuniones, hasta %d en el día con más actividad"
+          }
+        }
+      }
+    },
+    "You %d%%, %@ %d%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tú %d%%, %@ %d%%"
+          }
+        }
+      }
+    },
+    "%@ — %d meetings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — %d reuniones"
+          }
+        }
+      }
+    },
+    "%@ — 1 meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — 1 reunión"
+          }
+        }
+      }
+    },
+    "%@ — no meetings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — sin reuniones"
+          }
+        }
+      }
+    },
+    "Remove \"%@\"": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar \"%@\""
+          }
+        }
+      }
+    },
+    "Don't suggest \"%@\" again": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No volver a sugerir \"%@\""
           }
         }
       }
