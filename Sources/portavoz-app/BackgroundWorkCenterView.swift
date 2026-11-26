@@ -202,7 +202,7 @@ private struct BackgroundWorkRow: View {
                 metrics.skippedSegments)
         case .memoryGraph:
             return L10n.format(
-                "Meetings indexed: %d · links updated: %d",
+                "Items indexed: %d · links updated: %d",
                 metrics.rebuiltGraphScopes,
                 metrics.publishedGraphEdges)
         }

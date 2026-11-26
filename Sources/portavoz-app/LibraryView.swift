@@ -16,7 +16,7 @@ struct LibraryView: View {
     let recordingActive: Bool
     let onReturnToRecording: () -> Void
     let onOpenSearchHit: (LibrarySearchHit) -> Void
-    /// Opens Settings on Your data, where the activity log lives.
+    /// Opens Settings on Data & privacy, where the activity log lives.
     let onOpenActivity: () -> Void
 
     @State private var showsPrivacyNote = false
@@ -413,7 +413,7 @@ extension LibraryView {
 
     /// The product's one privacy promise, pinned under the library (D536).
     /// Every other surface trusts this chip instead of repeating the claim;
-    /// the detail lives one click away, in Settings ▸ Your data.
+    /// the detail lives one click away, in Settings ▸ Data & privacy.
     private var localFooter: some View {
         HStack {
             Button {

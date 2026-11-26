@@ -386,7 +386,7 @@ strings, and raw errors never enter it. Post-capture's quarter-lease heartbeat
 is still only durable liveness; the UI never converts it into percentage
 progress.
 
-Settings shows a searchable **Background activity** section inside Your data
+Settings shows a searchable **Background activity** section inside Data & privacy
 with one row per owner. Running work uses an indeterminate progress indicator. Safe aggregate
 counts, attempt number, localized retry time, and closed failure reason remain
 visible after settlement. Owner-specific actions call only the existing owner:
@@ -2337,7 +2337,7 @@ the same evidence meaning. The sync element exposes its localized status as
 the accessibility label and the complete encryption disclosure as its value,
 so assistive technology receives the same evidence as the visual card.
 
-**Model credits (D570).** The last section of Your data lists
+**Model credits (D570).** The credits section of Data & privacy lists
 `ModelCatalog.credits`: each model the app can download, with its original
 creator, its license and a link to the pinned repository Portavoz downloads it
 from, derived from the descriptor (`ModelDescriptor.sourcePage`), so the link
@@ -2351,7 +2351,7 @@ it contributes no endpoint, model secret, Keychain value, or meeting content.
 Format 2 also carries current per-channel codec/health/duration/size/signal
 shape and aggregate transcript channel/attribution counts. Neither layer reads
 audio paths, checksums, text, speaker identities, or timestamps for that shape.
-Settings → Your data exposes the explicit `settings-export-diagnostics`
+Settings → Data & privacy exposes the explicit `settings-export-diagnostics`
 action, writes the returned JSON through `NSSavePanel`, and confirms that the
 file remains on the Mac unless the user chooses to share it. The app never
 uploads the report. A deterministic temp-store destination lets XCUITest prove
@@ -2416,7 +2416,7 @@ D77 keeps recording lifecycle error identity stable until presentation. Core's
 `ApplicationKit.StartRecordingFailure` and `StopRecordingFailure` classify the
 exact workflow stage without transporting a dependency-localized description.
 `RecordingController` maps each typed case to localized copy plus one recovery:
-retry, return to the Library when durable audio exists, or open Your data for
+retry, return to the Library when durable audio exists, or open Data & privacy for
 local support diagnostics when state is uncertain. `RecordingView` shows the
 stable code as selectable “Error reference” text and exposes identifiers for
 the failure, reference, retry, Library, diagnostics, and Back controls. The
@@ -2713,7 +2713,7 @@ through `MeetingStore`'s legacy retention facade. `open()` runs once from
 remain, and decides the notice; it also observes `NSWorkspace.didWakeNotification`.
 The resource governor's return to no capture, where sync and backup maintenance
 resume, purges again. A failure is logged under `legacy-dictation` and nothing
-is shown. Settings › Your data shows Dictation history
+is shown. Settings › Data & privacy shows Dictation history
 (`settings-legacy-dictation-delete`) while rows remain, with a destructive
 confirmation (`settings-legacy-dictation-delete-confirm`) and an inline failure
 line (`settings-legacy-dictation-delete-failed`).
@@ -2943,7 +2943,7 @@ translation job and swaps translated rows into the shown reading. The header
 shows `detail-transcript-language` (Original or a stored language),
 `detail-transcript-translation-stale` for an older reading,
 `detail-transcript-translation-cancel` while it runs,
-`detail-transcript-translation-settings` (Settings › Audio) for missing languages
+`detail-transcript-translation-settings` (Settings › Audio & transcription) for missing languages
 and `detail-transcript-translation-failure` otherwise. A requested translation is
 shown once it is current; a translated reading cannot be corrected. Translation
 jobs are left out of the trust section and labelled in the background work
@@ -3488,7 +3488,7 @@ exercises this same production path in the durable-resume XCUITest (D63).
   through ApplicationKit; SwiftUI does not render the canonical document, read
   the publishing credential, or construct the publisher/network gateway.
 
-**SettingsView (⌘,)**: Language (use system language or force English/Spanish, saved in `@AppStorage("app-language")`, applies `\.locale` live to `ContentView` and `SettingsView`) · Intelligence language policies (`transcriptionLanguage`: "Auto-detect" / "English" / "Español" for recognition only; `summaryLanguage`: "Meeting language" / "English" / "Español" for generated output only) · capability-aware Summary engine selection whose localized recommendation action is prominent and whose unavailable Apple state names Ollama/MLX recovery · proactive Whisper Turbo/Compact rows with select/download/retry/delete, background preparation progress that says download occurs only when needed, stable `settings-whisper-*` accessibility identifiers, and full catalog-integrity verification before any model is shown as downloaded (D71/D113). Whisper artifacts live under user Application Support rather than either app bundle, so Dev reinstall and normal application updates preserve them · Audio (always-on call-safe raw capture status, preferred mic with visible fallback, capture mode auto/app/system and disclosure of scope; no VPIO/AEC recording toggle, D125) · Recordings (configurable folder with migration and progress) · Titles (template with help popover of tokens, insertable chips, `Reset` button, and live preview) · Vocabulary (list editor: Enter adds, − removes) · My voice (enroll 12 s / delete — destroys file+key) · Apuntador activation/status (the bundled detector is enabled with or without Apple Intelligence; without it, cards show the question only unless a provider answers) · External model BYOK (endpoint/model in defaults, key through the async application secret boundary into this-device-only Keychain, answer-provider opt-in disabled until everything and the Apuntador classifier are available; a remote `http://` endpoint shows an inline HTTPS notice, `settings-byok-endpoint-insecure`; deleting key turns it off — spec 04) · GitHub (same injected secret boundary) · explicit local redacted support export in Your data (`settings-export-diagnostics`, D76) · whole-library Markdown backup with the native `NSOpenPanel`, visible progress, localized complete/partial/fatal status, bounded bookmark access plus a private publication/failure journal, and no Store or IntegrationsKit coordination in SwiftUI (`settings-export-all-button`, `settings-backup-progress`, `settings-backup-status`, D99/D180–D189). A one-shot app route lets any feature open an existing or new Settings window at an exact category (D72). `AppServices` is the sole app constructor of PlatformKit security and permission adapters; onboarding renders permission state and invokes app adapters rather than importing AVFoundation or EventKit.
+**SettingsView (⌘,)**: Language (use system language or force English/Spanish, saved in `@AppStorage("app-language")`, applies `\.locale` live to `ContentView` and `SettingsView`) · Audio & Intelligence language policies (`transcriptionLanguage` in Audio & transcription: "Auto-detect" / "English" / "Español" for recognition only; `summaryLanguage` in Intelligence: "Meeting language" / "English" / "Español" for generated output only) · capability-aware Summary engine selection whose localized recommendation action is prominent and whose unavailable Apple state names Ollama/MLX recovery · proactive Whisper Turbo/Compact rows with select/download/retry/delete, background preparation progress that says download occurs only when needed, stable `settings-whisper-*` accessibility identifiers, and full catalog-integrity verification before any model is shown as downloaded (D71/D113). Whisper artifacts live under user Application Support rather than either app bundle, so Dev reinstall and normal application updates preserve them · Audio (always-on call-safe raw capture status, preferred mic with visible fallback, capture mode auto/app/system and disclosure of scope; no VPIO/AEC recording toggle, D125) · Recordings (configurable folder with migration and progress) · Titles (template with help popover of tokens, insertable chips, `Reset` button, and live preview) · Vocabulary (list editor: Enter adds, − removes) · My voice (enroll 12 s / delete — destroys file+key) · Apuntador activation/status (the bundled detector is enabled with or without Apple Intelligence; without it, cards show the question only unless a provider answers) · External model BYOK (endpoint/model in defaults, key through the async application secret boundary into this-device-only Keychain, answer-provider opt-in disabled until everything and the Apuntador classifier are available; a remote `http://` endpoint shows an inline HTTPS notice, `settings-byok-endpoint-insecure`; deleting key turns it off — spec 04) · GitHub (same injected secret boundary) · explicit local redacted support export in Data & privacy (`settings-export-diagnostics`, D76) · whole-library Markdown backup with the native `NSOpenPanel`, visible progress, localized complete/partial/fatal status, bounded bookmark access plus a private publication/failure journal, and no Store or IntegrationsKit coordination in SwiftUI (`settings-export-all-button`, `settings-backup-progress`, `settings-backup-status`, D99/D180–D189). A one-shot app route lets any feature open an existing or new Settings window at an exact category (D72). `AppServices` is the sole app constructor of PlatformKit security and permission adapters; onboarding renders permission state and invokes app adapters rather than importing AVFoundation or EventKit.
 
 ## Portable settings contract
 
@@ -3512,7 +3512,7 @@ replace only their own key.
 The write adapter rejects a changed portable snapshot or active capture before
 any preference mutation. It preserves unrelated preferences and startup overrides;
 an explicit production import supersedes only its changed keys' overrides.
-Temporary composition changes only volatile preferences. Settings → Your data
+Temporary composition changes only volatile preferences. Settings → Data & privacy
 offers explicit Export/Import preferences actions. Native panels choose one JSON
 document; cancelling file selection performs no write. The review shows full
 current and resulting values, including merged collections. Apply rechecks the
@@ -3522,7 +3522,7 @@ to shared localization for row titles, hints and category filtering. Prelocalize
 strings do not inherit SwiftUI locale invalidation by themselves. Updating the
 language preserves the current category, query and review rather than remounting
 Settings. The live UI check targets the selected sidebar button, not the General
-pane title that is absent while Your data is open.
+pane title that is absent while Data & privacy is open.
 Stale/capture failures keep the review open with an actionable explanation;
 Cancel/Escape discard it. Late file reads cannot reopen a cancelled review.
 
@@ -4594,7 +4594,7 @@ speed improvement.
 
 `AppModelMemoryCapacity` converts physical bytes to whole binary GiB for provider
 discovery and compares exact bytes for the at-most-8-GiB lightweight suggestion.
-Zero means unknown. Catalog RAM guidance is displayed for Whisper variants;
+Zero means unknown. Recommended memory guidance is displayed for Whisper variants;
 below-guidance Macs receive advice, not an admission ban. Both variant choices
 remain available. Compact is still a disk-saving option: there is no measured
 RAM advantage that would justify silently choosing it for an existing or new
@@ -4619,7 +4619,7 @@ processing phase. This is a process-local fence, not an interprocess file lock.
 
 `PortavozLauncher` is the app's `@main`: when `CommandLine.arguments[0]` ends in
 `portavoz-cli` it runs `PortavozCLI.main()` on the main actor and exits,
-otherwise it calls `PortavozApp.main()`. Settings › Integrations adds
+otherwise it calls `PortavozApp.main()`. Settings › Automations adds
 `CommandLineToolSection`. With the tool present it shows the
 link status (`settings-cli-status`), Install… or Replace link… behind a
 confirmation (`settings-cli-install`, `-install-confirm`), Remove when the link

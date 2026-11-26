@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Settings › Your data, while a 1.x library still holds dictation rows.
+/// Settings › Data & privacy, while a 1.x library still holds dictation rows.
 struct LegacyDictationDataSection: View {
     let model: LegacyDictationModel
     @State private var confirming = false

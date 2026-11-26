@@ -43,7 +43,7 @@ unknown fields or invalid measurements cannot enter a published package.
 ### After Stop, before Refine
 
 1. Confirm the meeting reopens and is no longer shown as recording.
-2. Open **Settings → Your data → Support diagnostics** and choose
+2. Open **Settings → Data & privacy → Support diagnostics** and choose
    **Export redacted support file…**.
 3. Find the new pseudonymous reference without copying content:
 

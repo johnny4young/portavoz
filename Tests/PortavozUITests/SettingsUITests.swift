@@ -230,14 +230,14 @@ final class SettingsUITests: PortavozUITestCase {
         attachment.lifetime = .keepAlways
         add(attachment)
 
-        // Your data shows the export action.
+        // Data & privacy shows the export action.
         openCategory(
             "settings-category-data",
             revealing: "settings-export-all-button",
             in: app)
         XCTAssertTrue(
             app.buttons["settings-export-all-button"].waitForExistenceFast(timeout: 5),
-            "the Your-data pane must show the export-all action")
+            "the Data & privacy pane must show the export-all action")
         XCTAssertTrue(
             app.buttons["settings-recordings-change"].waitForExistenceFast(timeout: 5),
             "recording storage must load through the application boundary")
@@ -314,7 +314,7 @@ final class SettingsUITests: PortavozUITestCase {
         let export = app.buttons["settings-export-diagnostics"]
         XCTAssertTrue(
             export.waitForExistenceFast(timeout: 5),
-            "the Your-data pane must offer an explicit redacted support export")
+            "the Data & privacy pane must offer an explicit redacted support export")
         XCTAssertTrue(app.staticTexts["settings-diagnostics-host-disclosure"].exists)
         export.click()
         XCTAssertTrue(
@@ -446,6 +446,15 @@ final class SettingsUITests: PortavozUITestCase {
         XCTAssertTrue(
             warning.waitForExistenceFast(timeout: 5),
             "a saved remote http:// endpoint must say why BYOK is off")
+        let settingsWindow = app.windows.containing(
+            .any, identifier: "settings-category-list"
+        ).firstMatch
+        let settingsForm = settingsWindow.scrollViews.element(boundBy: 1)
+        XCTAssertTrue(
+            warning.revealVertically(
+                in: settingsForm,
+                maximumStep: max(settingsForm.frame.height, 240)),
+            "the BYOK HTTPS warning must be scrolled into view before capturing UI evidence")
         attachScreenshot(of: app, named: "pr-byok-endpoint-insecure")
     }
 
@@ -470,9 +479,19 @@ final class SettingsUITests: PortavozUITestCase {
             "settings-category-intelligence",
             revealing: "settings-voice-enroll",
             in: app)
+        let enroll = app.control(withIdentifier: "settings-voice-enroll")
         XCTAssertTrue(
-            app.control(withIdentifier: "settings-voice-enroll").exists,
+            enroll.exists,
             "a disposable library must expose local voice enrollment")
+        let settingsWindow = app.windows.containing(
+            .any, identifier: "settings-category-list"
+        ).firstMatch
+        let settingsForm = settingsWindow.scrollViews.element(boundBy: 1)
+        XCTAssertTrue(
+            enroll.revealVertically(
+                in: settingsForm,
+                maximumStep: max(settingsForm.frame.height, 240)),
+            "local voice enrollment must be visible before capturing UI evidence")
         attachScreenshot(of: app, named: "local-voice-enrollment")
     }
 
@@ -533,11 +552,11 @@ final class SettingsUITests: PortavozUITestCase {
         languagePicker.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.5)).click()
         // The whole UI re-localizes live: the pane label AND a nav category.
         XCTAssertTrue(app.staticTexts["Usar idioma del sistema"].waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Audio y transcripción"].exists)
+        XCTAssertEqual(app.buttons["settings-category-audio"].label, "Audio y transcripción")
 
         systemToggle.click()  // back to launch/system English
         XCTAssertTrue(app.staticTexts["Use system language"].waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Audio & transcription"].exists)
+        XCTAssertEqual(app.buttons["settings-category-audio"].label, "Audio & transcription")
     }
 
     /// Settings lives in its own macOS window, so a category can exist while

@@ -285,7 +285,7 @@ final class LibraryUITests: PortavozUITestCase {
             seeActivity.click()
             XCTAssertTrue(
                 app.control(withIdentifier: "settings-ledger-audio").waitForExistenceFast(timeout: 10),
-                "See activity must land on Your data, where the activity log lives")
+                "See activity must land on Data & privacy, where the activity log lives")
             XCTAssertTrue(app.buttons["settings-category-data"].isSelected)
         }
 

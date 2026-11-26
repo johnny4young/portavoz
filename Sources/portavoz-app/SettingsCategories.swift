@@ -59,7 +59,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .general:
             [
                 "language english spanish menu bar launch login",
-                "reminder calendar shortcut title template"
+                "reminder calendar agenda title template mirror talk time participation"
             ]
         case .audio:
             [
@@ -68,13 +68,13 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
             ]
         case .intelligence:
             [
-                "summary engine apple ollama mlx whisper refine vocabulary model memory ram lightweight",
+                "summary engine apple ollama mlx model memory ram lightweight semantic search structures custom",
                 "voice enroll apuntador name remembered"
             ]
         case .skills:
             [
-                "actions suggestions skills automation automations pause enable history local drafts exports",
-                "byok api key github gist token mcp endpoint openai"
+                "actions suggestions skills automation automations shortcut pause enable history local drafts exports",
+                "byok api key github gist token mcp endpoint openai cli command line claude providers"
             ]
         case .data:
             [
@@ -88,7 +88,10 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     func matches(_ query: String, language: AppLanguage = .current) -> Bool {
         let query = query.trimmingCharacters(in: .whitespaces).lowercased()
         guard !query.isEmpty else { return true }
-        return L10n.text(titleKey, language: language).lowercased().contains(query)
+        return titleKey.lowercased().contains(query)
+            || subtitleKey.lowercased().contains(query)
+            || L10n.text(titleKey, language: language).lowercased().contains(query)
+            || L10n.text(subtitleKey, language: language).lowercased().contains(query)
             || keywordGroups.contains { group in
                 group.contains(query) || L10n.text(group, language: language).lowercased().contains(query)
             }

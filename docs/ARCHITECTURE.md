@@ -157,7 +157,7 @@ A library from 1.x keeps its dictation rows. `LegacyDictationModel`, one per
 process, purges them on their frozen horizons when the app opens, after the Mac
 wakes and whenever capture ends, beside the other maintenance that resumes then;
 a failure is logged, never shown, and never blocks launch. While rows remain,
-Settings › Your data offers deleting the history and statistics at once. The
+Settings › Data & privacy offers deleting the history and statistics at once. The
 first main window shows one sheet saying dictation moved to Secreteo, recorded as
 seen only once it is on screen and handed to another window if its own closes first,
 and only to a user who dictated: legacy rows exist or the 1.x dictation switch was
@@ -1029,7 +1029,7 @@ aggregate counts, attempt numbers, retry dates, and timestamps. They cannot
 carry a meeting identity, title, transcript or note text, path, model payload,
 or raw error. A processing lease heartbeat remains ownership liveness and is
 never presented as percentage progress. The **Background activity** section of
-the Your data Settings pane renders indeterminate progress only while an owner reports running, shows
+the Data & privacy Settings pane renders indeterminate progress only while an owner reports running, shows
 exact safe counts/retry metadata, and routes recovery actions back to the
 original owner. A compact main-toolbar indicator exists only while work is
 active, waiting, retrying, or needs attention and deep-links to that pane.
@@ -1471,7 +1471,7 @@ observation, the saved playback positions behind "Pick up where you left off"
 over the corrected transcript); the review queue's count behind the Radar badge
 rides the automation-count refresh. The sidebar lists past meetings only; the agenda lives on Today. One privacy promise exists in the main window: the sidebar footer chip
 "On your Mac" (`library-privacy-chip`), whose popover explains that nothing is
-sent unless the user asks and opens Settings on Your data. Today,
+sent unless the user asks and opens Settings on Data & privacy. Today,
 Insights, the menu-bar panel, onboarding and the Settings sidebar repeat no
 disclaimer; feature-specific on-device claims remain limited to
 operations that cannot use a remote provider. Colour is ink on paper: `PVDesign` holds every token as a light/dark `PVTone` mirrored in `docs/design/ds/tokens/colors.css`; chrome is ink, voices own the hues (`VoicePalette`: you in amber plus five; `VoiceCast` in ApplicationKit decides which five, greys unnamed voices and folds the rest into "Others · n"), red marks only the present and green marks generated content. Secondary text is ink 3 through the `.ink3` shape style, never a system grey; an architecture ratchet rejects `.secondary` and `.tertiary` text outside `PVDesign.swift`. Every animation goes through `PVMotion`, which drops the easing under Reduce Motion; an architecture ratchet rejects `withAnimation`, `.animation(` and per-frame timelines elsewhere. Titles, section heads and display numerals use the bundled Fraunces variable font through `PVFont` and `.pvDisplay(_:)` roles, falling back to New York when it cannot register; body text and controls stay SF. Every SF Symbol the app draws is a `PVSymbol` constant (one per concept, in `PVDesign.swift`); `sparkles` is reserved for `ChipLabel` (`ChipLabel.generatedSymbol` lends it to other generated content), and an architecture ratchet keeps retired glyph literals out of view code. Positions on a recording's time axis are set in SF Mono through `PVFont.timeCode`; clock-of-day labels stay SF. The app icon, the menu-bar mark, New recording and the brand files all draw the three-strand geometry in `PortavozMark`: `MenuBarIcon` and the single-colour SwiftUI `PortavozMarkGlyph` render it at runtime, and `scripts/make-icons.sh` compiles it into the Icon Composer document `assets/AppIcon.icon` (light and dark), the legacy `AppIcon.icns`, the SVGs and the social card.

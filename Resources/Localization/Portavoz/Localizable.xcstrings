@@ -501,6 +501,16 @@
         }
       }
     },
+    "actions suggestions skills automation automations shortcut pause enable history local drafts exports": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "acciones sugerencias habilidades automatización automatizaciones atajo pausar activar historial borradores locales exportaciones"
+          }
+        }
+      }
+    },
     "Automations · %d to review": {
       "localizations": {
         "es": {
@@ -517,6 +527,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Brief · lo que dijeron la última vez"
+          }
+        }
+      }
+    },
+    "byok api key github gist token mcp endpoint openai cli command line claude providers": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "byok api key github gist token mcp endpoint openai cli línea de comandos claude proveedores"
           }
         }
       }
@@ -567,6 +587,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "h"
+          }
+        }
+      }
+    },
+    "Items indexed: %d · links updated: %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elementos indexados: %d · vínculos actualizados: %d"
           }
         }
       }
@@ -777,16 +807,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Finaliza la grabación antes de aplicar los ajustes. La revisión sigue abierta."
-          }
-        }
-      }
-    },
-    "Microphone · call-safe capture": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Micrófono · captura segura"
           }
         }
       }
@@ -1057,16 +1077,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Agenda"
-          }
-        }
-      }
-    },
-    "Agenda & automation": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Agenda y automatización"
           }
         }
       }
@@ -2051,16 +2061,6 @@
         }
       }
     },
-    "Automation": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Automatización"
-          }
-        }
-      }
-    },
     "Automations": {
       "localizations": {
         "es": {
@@ -2097,16 +2097,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Por revisar"
-          }
-        }
-      }
-    },
-    "BYOK OpenAI-compatible · GitHub gists · MCP": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "BYOK OpenAI-compatible · GitHub gists · MCP"
           }
         }
       }
@@ -2477,16 +2467,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Las tarjetas dirigidas a “%@” se marcan como preguntas para ti."
-          }
-        }
-      }
-    },
-    "Catalog RAM guidance: %d GB or more.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "RAM orientativa del catálogo: %d GB o más."
           }
         }
       }
@@ -5879,16 +5859,6 @@
         }
       }
     },
-    "General & language": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "General e idioma"
-          }
-        }
-      }
-    },
     "General meeting": {
       "localizations": {
         "es": {
@@ -6475,16 +6445,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Inspeccionar historial de ejecución"
-          }
-        }
-      }
-    },
-    "Integrations": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Integraciones"
           }
         }
       }
@@ -7615,16 +7575,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Actividad de modelos: %d · Transferencias locales: %d"
-          }
-        }
-      }
-    },
-    "Model choices and downloaded files are unchanged. This is not a RAM usage limit.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Los modelos seleccionados y archivos descargados no cambian. Esto no limita el uso de RAM."
           }
         }
       }
@@ -10099,16 +10049,6 @@
         }
       }
     },
-    "Privacy · iCloud sync · storage · background activity": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Privacidad · sincronización iCloud · almacenamiento · actividad en segundo plano"
-          }
-        }
-      }
-    },
     "Private due-date reminders": {
       "localizations": {
         "es": {
@@ -10689,16 +10629,6 @@
         }
       }
     },
-    "Reconciled: %d · leases recovered: %d · deferred: %d · attention: %d": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reconciliadas: %d · concesiones recuperadas: %d · diferidas: %d · atención: %d"
-          }
-        }
-      }
-    },
     "Record": {
       "localizations": {
         "es": {
@@ -11169,6 +11099,16 @@
         }
       }
     },
+    "reminder calendar agenda title template mirror talk time participation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "aviso calendario agenda título plantilla espejo tiempo de habla participación"
+          }
+        }
+      }
+    },
     "Reminder draft": {
       "localizations": {
         "es": {
@@ -11215,16 +11155,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Las sugerencias de recordatorios no están disponibles. Tus compromisos no cambiaron. Vuelve a abrir Radar para intentarlo de nuevo."
-          }
-        }
-      }
-    },
-    "Reminder · end-of-meeting Shortcut · title template": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aviso · Atajo al terminar · plantilla de títulos"
           }
         }
       }
@@ -12005,16 +11935,6 @@
         }
       }
     },
-    "Review · enable · history": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Revisar · activar · historial"
-          }
-        }
-      }
-    },
     "Revoke approval": {
       "localizations": {
         "es": {
@@ -12227,16 +12147,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Decisiones de alcance"
-          }
-        }
-      }
-    },
-    "Scopes rebuilt: %d · relationships published: %d": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ámbitos reconstruidos: %d · relaciones publicadas: %d"
           }
         }
       }
@@ -13701,12 +13611,12 @@
         }
       }
     },
-    "Summary engine · Apuntador · your voice": {
+    "summary engine apple ollama mlx model memory ram lightweight semantic search structures custom": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Motor de resúmenes · Apuntador · tu voz"
+            "value": "motor resumen apple ollama mlx memoria modelos ram ligero búsqueda semántica estructuras personalizadas"
           }
         }
       }
@@ -13827,16 +13737,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Predeterminado del sistema"
-          }
-        }
-      }
-    },
-    "System language · English/Spanish · menu bar": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Idioma del sistema · English/Español · barra de menú"
           }
         }
       }
@@ -14801,16 +14701,6 @@
         }
       }
     },
-    "This Mac is below the catalog guidance; performance may be limited.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Esta Mac no alcanza la RAM orientativa del catálogo; el rendimiento puede ser limitado."
-          }
-        }
-      }
-    },
     "This Mac or macOS version doesn't provide the required Apple language model. Exact search still works.": {
       "localizations": {
         "es": {
@@ -14897,16 +14787,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Esto solo cambia los resúmenes generados. El idioma de transcripción se controla por separado arriba y este ajuste nunca lo cambia."
-          }
-        }
-      }
-    },
-    "This changes the Portavoz interface only. Transcript and summary language policies stay in Intelligence settings and each meeting's overrides.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Esto solo cambia la interfaz de Portavoz. Las políticas de transcripción y resumen permanecen en los ajustes de Inteligencia y en las opciones de cada reunión."
           }
         }
       }
@@ -16301,16 +16181,6 @@
         }
       }
     },
-    "Writes one Markdown file per meeting — summary, action items and full transcript — into a folder you choose. Plain files you can read, grep and back up without Portavoz.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Escribe un archivo Markdown por reunión — resumen, pendientes y transcripción completa — en la carpeta que elijas. Archivos planos que puedes leer, buscar y respaldar sin Portavoz."
-          }
-        }
-      }
-    },
     "Year": {
       "localizations": {
         "es": {
@@ -16667,16 +16537,6 @@
         }
       }
     },
-    "actions suggestions skills automation automations pause enable history local drafts exports": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "acciones sugerencias automatizaciones pausar activar historial local borradores exportaciones"
-          }
-        }
-      }
-    },
     "asked you": {
       "localizations": {
         "es": {
@@ -16713,16 +16573,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "equilibrado"
-          }
-        }
-      }
-    },
-    "byok api key github gist token mcp endpoint openai": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "byok api key github gist token mcp endpoint openai"
           }
         }
       }
@@ -17087,32 +16937,12 @@
         }
       }
     },
-    "reminder calendar shortcut title template": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "aviso calendario atajo título plantilla"
-          }
-        }
-      }
-    },
     "stays on your Mac": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "se queda en tu Mac"
-          }
-        }
-      }
-    },
-    "summary engine apple ollama mlx whisper refine vocabulary model memory ram lightweight": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "resumen motor apple ollama mlx whisper refine vocabulario memoria modelo ram ligero"
           }
         }
       }
@@ -18912,7 +18742,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "whisper mejorar idioma transcripcion vocabulario apple speech parakeet"
+            "value": "whisper mejorar idioma transcripción vocabulario apple speech parakeet"
           }
         }
       }
@@ -18973,16 +18803,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Recuperadas: %d · liberadas: %d · en espera: %d · atención: %d"
-          }
-        }
-      }
-    },
-    "Meetings indexed: %d · links updated: %d": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reuniones indexadas: %d · vínculos actualizados: %d"
           }
         }
       }

@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 
 /// User-facing app UI language. This only affects Portavoz chrome; transcript
-/// and summary policies remain independent in Intelligence settings.
+/// and summary policies remain independent in Audio & transcription and Intelligence.
 enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
     case system
     case english = "en"
