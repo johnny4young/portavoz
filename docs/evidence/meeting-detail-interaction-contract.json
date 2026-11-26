@@ -36,7 +36,6 @@
     "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
     "Sources/portavoz-app/SkillConfirmSheet.swift",
     "Sources/portavoz-app/SkillOfferBanner.swift",
-    "Sources/portavoz-app/MeetingHealthView.swift",
     "Sources/portavoz-app/MeetingPlayerBar.swift",
     "Sources/portavoz-app/MeetingRecapSheet.swift",
     "Sources/portavoz-app/MeetingTranscriptSection.swift",
@@ -490,6 +489,36 @@
     {
       "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
       "category": "control",
+      "source": "Button(\"Dismiss\", role: .destructive) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+      "category": "control",
+      "source": "Button(\"Next week\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+      "category": "control",
+      "source": "Button(\"Review and confirm…\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+      "category": "control",
+      "source": "Button(\"Tomorrow\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+      "category": "control",
+      "source": "Menu(\"Review later\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+      "category": "control",
       "source": "Toggle(isOn: actionItemBinding(item)) {",
       "occurrences": 1
     },
@@ -502,7 +531,55 @@
     {
       "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
       "category": "identifier",
+      "source": ".accessibilityIdentifier(\"action-item-\\(candidate.id.uuidString)-confirm\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"action-item-\\(candidate.id.uuidString)-defer\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"action-item-\\(candidate.id.uuidString)-defer-tomorrow\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"action-item-\\(candidate.id.uuidString)-defer-week\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"action-item-\\(candidate.id.uuidString)-dismiss\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+      "category": "identifier",
       "source": ".accessibilityIdentifier(\"action-item-\\(item.id.uuidString)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+      "category": "presentation",
+      "source": ".sheet(item: $editingCandidate) { candidate in",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+      "category": "state",
+      "source": "@State private var editingCandidate: CommitmentInboxCandidate?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+      "category": "state",
+      "source": "@State private var processingID: UUID?",
       "occurrences": 1
     },
     {
@@ -1792,7 +1869,13 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "state",
-      "source": "@State private var railTab = MeetingDetailRailTab.people",
+      "source": "@State private var railTab = MeetingDetailRailTab.chapters",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "state",
+      "source": "@State private var showingSummaryTodos = false",
       "occurrences": 1
     },
     {
@@ -1877,18 +1960,12 @@
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "control",
       "source": "Menu {",
-      "occurrences": 3
+      "occurrences": 4
     },
     {
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "control",
       "source": "Menu(\"Detail\") {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
-      "category": "control",
-      "source": "Menu(\"Structure\") {",
       "occurrences": 1
     },
     {
@@ -2033,12 +2110,6 @@
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "state",
       "source": "@State private var tabSelection = 0",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingHealthView.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(\"detail-meeting-health\")",
       "occurrences": 1
     },
     {
@@ -2519,7 +2590,7 @@
       "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
       "category": "control",
       "source": "Button(\"Rename…\") { actions.rename(speaker) }",
-      "occurrences": 1
+      "occurrences": 2
     },
     {
       "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
@@ -2549,6 +2620,12 @@
       "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"cast-speaker-rename-\\(speaker.label)\")",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-meeting-health\")",
       "occurrences": 1
     },
     {
@@ -3380,7 +3457,8 @@
       ],
       "screenshots": [
         "meeting-detail-commitment-inbox",
-        "meeting-detail-commitment-self-assignment"
+        "meeting-detail-commitment-self-assignment",
+        "pr-meeting-detail-todos-inline-review"
       ]
     },
     {
@@ -3674,12 +3752,12 @@
           "anchor": "\"detail-generated-document\""
         },
         {
-          "path": "Sources/portavoz-app/MeetingHealthView.swift",
-          "anchor": "\"detail-meeting-health\""
-        },
-        {
           "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
           "anchor": "\"detail-chapters\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
+          "anchor": "\"detail-meeting-health\""
         }
       ],
       "screenshots": [

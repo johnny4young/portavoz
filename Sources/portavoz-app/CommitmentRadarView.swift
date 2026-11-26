@@ -178,7 +178,9 @@ private extension CommitmentRadarView {
     }
 
     private var confirmedTabTitle: String {
-        if let count = state.page?.totalCount, count > 0 {
+        let unfiltered = state.owner == .all && state.due == .all
+            && state.activity == .all && state.routeFocus == nil
+        if unfiltered, let count = state.page?.totalCount, count > 0 {
             return L10n.format("Confirmed · %d", count)
         }
         return L10n.text("Confirmed")

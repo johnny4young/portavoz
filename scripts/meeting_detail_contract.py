@@ -50,7 +50,6 @@ INTERACTION_SOURCE_PATHS = (
     "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
     "Sources/portavoz-app/SkillConfirmSheet.swift",
     "Sources/portavoz-app/SkillOfferBanner.swift",
-    "Sources/portavoz-app/MeetingHealthView.swift",
     "Sources/portavoz-app/MeetingPlayerBar.swift",
     "Sources/portavoz-app/MeetingRecapSheet.swift",
     "Sources/portavoz-app/MeetingTranscriptSection.swift",
@@ -414,7 +413,7 @@ DEFAULT_FEATURE_OWNERSHIP = (
                 "anchor": '"detail-secondary-rail"',
             },
             {
-                "path": "Sources/portavoz-app/MeetingHealthView.swift",
+                "path": "Sources/portavoz-app/MeetingVoicesTable.swift",
                 "anchor": '"detail-meeting-health"',
             },
             {

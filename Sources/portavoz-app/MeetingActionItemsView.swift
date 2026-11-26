@@ -59,7 +59,8 @@ struct MeetingActionItemsView: View {
             Spacer(minLength: 8)
             if let pending, let commitmentActions = actions.commitmentActions {
                 pendingControls(pending, commitmentActions: commitmentActions)
-            } else if canCreateGitHubIssue(item) {
+            }
+            if canCreateGitHubIssue(item) {
                 Button("Create GitHub issue") {
                     actions.createGitHubIssue(item)
                 }
@@ -91,17 +92,52 @@ struct MeetingActionItemsView: View {
             .buttonStyle(.pvPrimary)
             .controlSize(.mini)
             .disabled(!canConfirm || processingID != nil)
+            .help(canConfirm
+                ? L10n.text("Review the wording, owner, deadline, and source before confirming.")
+                : L10n.text("Regenerate the summary before confirming this stale source."))
             .accessibilityIdentifier("action-item-\(candidate.id.uuidString)-confirm")
-            Button("Dismiss", role: .destructive) {
-                processingID = candidate.id
-                Task { @MainActor in
-                    _ = await commitmentActions.dismiss(candidate)
-                    processingID = nil
+            Menu("Review later") {
+                Button("Tomorrow") {
+                    deferCandidate(candidate, days: 1, actions: commitmentActions)
                 }
+                .accessibilityIdentifier("action-item-\(candidate.id.uuidString)-defer-tomorrow")
+                Button("Next week") {
+                    deferCandidate(candidate, days: 7, actions: commitmentActions)
+                }
+                .accessibilityIdentifier("action-item-\(candidate.id.uuidString)-defer-week")
+            }
+            .controlSize(.mini)
+            .fixedSize()
+            .disabled(processingID == candidate.id)
+            .accessibilityIdentifier("action-item-\(candidate.id.uuidString)-defer")
+            Button("Dismiss", role: .destructive) {
+                perform(candidate) { await commitmentActions.dismiss(candidate) }
             }
             .controlSize(.mini)
             .disabled(processingID == candidate.id)
             .accessibilityIdentifier("action-item-\(candidate.id.uuidString)-dismiss")
+        }
+    }
+
+    private func deferCandidate(
+        _ candidate: CommitmentInboxCandidate,
+        days: Int,
+        actions commitmentActions: MeetingCommitmentInboxActions
+    ) {
+        guard let revisitAt = Calendar.autoupdatingCurrent.date(byAdding: .day, value: days, to: Date())
+        else { return }
+        perform(candidate) { await commitmentActions.deferUntil(candidate, revisitAt) }
+    }
+
+    /// Failures surface through the detail model's action error.
+    private func perform(
+        _ candidate: CommitmentInboxCandidate,
+        operation: @escaping @MainActor () async -> Bool
+    ) {
+        processingID = candidate.id
+        Task { @MainActor in
+            _ = await operation()
+            processingID = nil
         }
     }
 

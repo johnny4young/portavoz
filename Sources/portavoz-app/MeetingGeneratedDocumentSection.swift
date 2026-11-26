@@ -76,6 +76,11 @@ struct MeetingGeneratedDocumentSection: View {
     /// The board's left margin: the kicker and counts sit beside the lede,
     /// or above it once the column is too narrow for that margin.
     private static let gutterWidth: CGFloat = 118
+    private static let todosTab = 1000
+
+    private var showsTodos: Bool {
+        tabSelection == Self.todosTab && !values.summary.draft.actionItems.isEmpty
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -107,9 +112,10 @@ struct MeetingGeneratedDocumentSection: View {
         .onChange(of: values.summary.version) { _, _ in
             tabSelection = 0
         }
-        .onChange(of: tabSelection, initial: true) { _, selected in
-            actions.onShowingTodosChanged?(selected == 1000)
+        .onChange(of: showsTodos, initial: true) { _, showing in
+            actions.onShowingTodosChanged?(showing)
         }
+        .onDisappear { actions.onShowingTodosChanged?(false) }
         .sheet(isPresented: $showingCorrection) {
             if let claim = overviewClaim {
                 SummaryCorrectionSheet(
@@ -243,7 +249,7 @@ struct MeetingGeneratedDocumentSection: View {
         }
         if total > 0 {
             segments.append(PVSegment(
-                value: 1000,
+                value: Self.todosTab,
                 title: L10n.format("To-dos · %d/%d", done, total),
                 accessibilityIdentifier: "summary-tab-todos"))
         }
@@ -251,12 +257,12 @@ struct MeetingGeneratedDocumentSection: View {
     }
 
     private var showsOverview: Bool {
-        tabSelection != 1000 && !(tabSelection >= 1 && tabSelection - 1 < document.sections.count)
+        tabSelection != Self.todosTab && !(tabSelection >= 1 && tabSelection - 1 < document.sections.count)
     }
 
     @ViewBuilder
     private var documentContent: some View {
-        if tabSelection == 1000 {
+        if tabSelection == Self.todosTab {
             actionItems
         } else if tabSelection >= 1, tabSelection - 1 < document.sections.count {
             let section = document.sections[tabSelection - 1]
