@@ -706,6 +706,7 @@ final class LibraryUITests: PortavozUITestCase {
             ? "pregunta detectada"
             : "question detected"
         let transcript = app.control(withIdentifier: "recording-live-transcript")
+        try app.openAssistTab("companion")
         do {
             let deadline = Date().addingTimeInterval(10)
             let observation = try app.snapshot()
