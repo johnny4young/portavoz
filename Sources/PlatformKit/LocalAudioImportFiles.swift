@@ -71,10 +71,12 @@ public struct LocalAudioImportFiles: AudioImportFiles {
             // Source validation precedes reclamation so an unavailable source
             // does not destroy the last, possibly complete staged bytes.
             if files.fileExists(atPath: directory.path) { try files.removeItem(at: directory) }
-            try files.createDirectory(at: directory, withIntermediateDirectories: false)
+            try files.createDirectory(
+                at: directory, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
             do {
                 let destination = try audioURL(in: directory, fileExtension: input.fileExtension)
                 let digest = try AudioImportFileTransfer.copy(from: source, to: destination, expectedSize: before.size)
+                try? files.setAttributes([.posixPermissions: 0o600], ofItemAtPath: destination.path)
                 let afterIdentity = try URL(fileURLWithPath: source.path)
                     .resourceValues(forKeys: identityKeys).fileResourceIdentifier
                 guard try AudioImportSourceMetadata.read(source) == before,
@@ -138,7 +140,8 @@ public struct LocalAudioImportFiles: AudioImportFiles {
                 throw AudioImportFileError.invalidOwnedCopy
             }
             if createParents, index < parts.count - 1 {
-                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                try FileManager.default.createDirectory(
+                    at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
             }
         }
         return directory

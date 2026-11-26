@@ -113,6 +113,9 @@ public actor RecordingSession {
             at: outputDirectory,
             withIntermediateDirectories: true,
             attributes: [.posixPermissions: 0o700])
+        // `attributes` only applies to a folder this call creates.
+        try? FileManager.default.setAttributes(
+            [.posixPermissions: 0o700], ofItemAtPath: outputDirectory.path)
 
         do {
             for source in newSources {

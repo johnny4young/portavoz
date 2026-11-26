@@ -173,6 +173,19 @@ final class RecordingSummaryTests: XCTestCase {
         XCTAssertEqual(system.stopCount, 1)
     }
 
+    func testStartTightensAnExistingRecordingFolder() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(
+            at: root, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o755])
+        defer { try? FileManager.default.removeItem(at: root) }
+        let session = RecordingSession(outputDirectory: root)
+        try await session.start(sources: [FakeCaptureSource(channel: .microphone)], onChunk: { _ in })
+        _ = await session.stop()
+
+        let mode = try FileManager.default.attributesOfItem(atPath: root.path)[.posixPermissions] as? NSNumber
+        XCTAssertEqual(mode?.intValue, 0o700)
+    }
+
     func testInvalidWriterGeometryRetiresOnlyItsSourceWithoutCreatingInvalidMedia() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

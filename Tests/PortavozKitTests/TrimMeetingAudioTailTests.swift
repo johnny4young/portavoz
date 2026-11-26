@@ -103,6 +103,8 @@ struct AudioTailTrimmerTests {
 
         #expect(abs(try audioDuration(file) - 1) < 0.01)
         #expect(try FileManager.default.contentsOfDirectory(atPath: directory.path) == [file.lastPathComponent])
+        let mode = try FileManager.default.attributesOfItem(atPath: file.path)[.posixPermissions] as? NSNumber
+        #expect(mode?.intValue == 0o600)
     }
 
     @Test

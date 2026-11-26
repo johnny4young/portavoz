@@ -5043,7 +5043,8 @@ meeting evidence, and extends that journal with direct Web retrieval attempts.
 It admits only `web-source-retrieval`, explicit one-request Web
 consent, no model or meeting identity, and a destination scope consistent with
 the host. It stores the host but never URL path/query, question, page text,
-prompt, answer, or citation. The Web gateway accepts only body-free GET,
+prompt, answer, or citation. Remote summary and Apuntador chat requests also
+require HTTPS. The Web gateway accepts only body-free GET,
 requires HTTPS for remote destinations, blocks redirects, normalizes response
 headers, and streams to a 512 KiB ceiling; all other current gateway responses
 retain a 2 MiB ceiling. Per-meeting receipt projection remains unchanged.

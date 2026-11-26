@@ -126,6 +126,7 @@ public enum AudioTranscoder {
         else { throw TranscodeError.exportFailed("no export session") }
 
         try await session.export(to: output, as: .m4a)
+        try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: output.path)
     }
 
     private static func verifyAudio(at output: URL) throws {

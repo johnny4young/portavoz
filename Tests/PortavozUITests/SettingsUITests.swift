@@ -429,6 +429,23 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testIntegrationsFlagsAPlainHTTPRemoteBYOKEndpoint() throws {
+        let app = try XCUIApplication.portavoz(openSettings: true)
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
+            #"{"byokEndpoint":"http://192.168.1.20:11434/v1"}"#
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        XCTAssertTrue(app.openSettingsCategory(
+            "settings-category-integrations", revealing: "settings-byok-endpoint"))
+        let warning = app.control(withIdentifier: "settings-byok-endpoint-insecure")
+        XCTAssertTrue(
+            warning.waitForExistenceFast(timeout: 5),
+            "a saved remote http:// endpoint must say why BYOK is off")
+        attachScreenshot(of: app, named: "pr-byok-endpoint-insecure")
+    }
+
+    @MainActor
     func testVoicePaneOffersTheMirrorOptIn() throws {
         // The post-meeting mirror (6a-2) is opt-in and off by default; its
         // switch lives in the "My voice & Apuntador" pane.

@@ -261,6 +261,8 @@ final class AudioTranscoderTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: url.path), "source removed after write")
         XCTAssertLessThan(
             AudioTranscoder.totalBytes(of: [m4a]), wavBytes, "AAC must be smaller than the WAV")
+        let mode = try FileManager.default.attributesOfItem(atPath: m4a.path)[.posixPermissions] as? NSNumber
+        XCTAssertEqual(mode?.intValue, 0o600)
     }
 
     func testTranscodesEveryChannelBeforeRemovingAnyOriginal() async throws {

@@ -17,6 +17,11 @@ final class LocalAudioImportFilesTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: copy.fileURL), fixture.bytes)
         XCTAssertEqual(copy.digest, ContentDigest.sha256(fixture.bytes))
         XCTAssertFalse(copy.fileURL.path.hasPrefix(renamed.path))
+        func mode(_ url: URL) throws -> Int? {
+            (try FileManager.default.attributesOfItem(atPath: url.path)[.posixPermissions] as? NSNumber)?.intValue
+        }
+        XCTAssertEqual(try mode(copy.fileURL), 0o600)
+        XCTAssertEqual(try mode(copy.fileURL.deletingLastPathComponent()), 0o700)
     }
 
     func testPublishedRealCopySurvivesMissingOriginalAndNewAdapter() async throws {

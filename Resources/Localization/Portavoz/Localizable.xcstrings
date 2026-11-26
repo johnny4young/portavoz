@@ -1216,7 +1216,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ya hay otra re-transcripción en curso: inténtalo cuando termine."
+            "value": "Ya hay otra mejora en curso: inténtalo cuando termine."
           }
         }
       }
@@ -1261,12 +1261,12 @@
         }
       }
     },
-    "Any /chat/completions endpoint works, including a local Ollama or LM Studio server. Apuntador sends only the detected question, never audio or meeting text.": {
+    "Any HTTPS /chat/completions endpoint works, plus Ollama or LM Studio on this Mac. Apuntador sends only the detected question, never audio or meeting text.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sirve cualquier endpoint /chat/completions, incluido un servidor local de Ollama o LM Studio. Apuntador envía solo la pregunta detectada, nunca audio ni texto de la reunión."
+            "value": "Sirve cualquier endpoint HTTPS /chat/completions, además de Ollama o LM Studio en este Mac. Apuntador envía solo la pregunta detectada, nunca audio ni texto de la reunión."
           }
         }
       }
@@ -2386,7 +2386,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cancelar re-transcripción"
+            "value": "Cancelar mejora"
           }
         }
       }
@@ -2396,7 +2396,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cancelando re-transcripción…"
+            "value": "Cancelando mejora…"
           }
         }
       }
@@ -3552,7 +3552,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo aplicar la re-transcripción: %@"
+            "value": "No se pudo aplicar la mejora: %@"
           }
         }
       }
@@ -3723,16 +3723,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "No se pudieron importar los ajustes. Elige un archivo de ajustes de Portavoz compatible."
-          }
-        }
-      }
-    },
-    "Could not load automatic actions. Try again.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No se pudieron cargar las acciones automáticas. Inténtalo de nuevo."
           }
         }
       }
@@ -14486,7 +14476,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La re-transcripción cubre mucha menos voz que la transcripción actual — probablemente falló. No la apliques."
+            "value": "La mejora cubre mucha menos voz que la transcripción actual — probablemente falló. No la apliques."
           }
         }
       }
@@ -14606,7 +14596,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La transcripción cambió mientras revisabas este borrador. Vuelve a ejecutar la re-transcripción."
+            "value": "La transcripción cambió mientras revisabas este borrador. Vuelve a ejecutar Mejorar."
           }
         }
       }
@@ -15807,6 +15797,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Usar carpeta predeterminada"
+          }
+        }
+      }
+    },
+    "Use https://. Plain http:// works only on this Mac (localhost).": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa https://. http:// sin cifrar solo funciona en este Mac (localhost)."
           }
         }
       }

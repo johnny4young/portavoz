@@ -92,7 +92,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 26, 2026
 
-- **🔒 Tighter local file privacy** — new databases, new recordings, and temporary post-meeting Shortcut handoff files are created owner-only (`0600`/`0700`), failed Shortcut launches clean up their temp file immediately, remote BYOK endpoints require HTTPS, and BYOK provider errors never echo raw summary or transcript text.
+- **🔒 Tighter local file privacy** — your library, recordings, compressed and imported audio, and post-meeting Shortcut handoff files are owner-only (`0600`/`0700`), failed Shortcut launches clean up their temp file immediately, and BYOK provider errors name the cause (like `model_not_found`) without echoing summary or transcript text.
+- **🔐 HTTPS for external models** — remote BYOK endpoints, in Settings and `portavoz-cli --byok`, must use HTTPS; Settings says so right under the endpoint instead of silently greying out the switch, and Ollama or LM Studio on this Mac still work over `http://localhost`.
 - **🇪🇸 Clearer Spanish privacy copy** — support diagnostics now say "anonimizado" instead of the false friend "redactado", Spanglish in Spanish notices ("transcript"/"refine") is translated cleanly, and Settings help copy in Audio and Automations matches the controls on screen.
 
 ## November 22, 2026

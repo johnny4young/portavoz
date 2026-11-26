@@ -63,10 +63,28 @@ enum OpenAICompatibleChatCodec {
 
     static func responseContent(data: Data, statusCode: Int) throws -> String {
         guard (200..<300).contains(statusCode) else {
-            // Avoid embedding raw provider response bodies that may echo prompt content.
-            throw IntelligenceError.providerFailed("HTTP \(statusCode) (\(data.count) bytes)")
+            // Only the provider's identifier-shaped error code: free text may echo the prompt.
+            let code = providerErrorCode(data).map { ", \($0)" } ?? ""
+            throw IntelligenceError.providerFailed("HTTP \(statusCode) (\(data.count) bytes\(code))")
         }
         return try parseContent(data)
+    }
+
+    /// `error.code` or `error.type` from an OpenAI-style error body, when it
+    /// is a short identifier such as `model_not_found`.
+    static func providerErrorCode(_ data: Data) -> String? {
+        guard
+            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let error = object["error"] as? [String: Any]
+        else { return nil }
+        for key in ["code", "type"] {
+            guard let value = error[key] as? String,
+                  (1...64).contains(value.count),
+                  value.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || "_-.".contains($0)) })
+            else { continue }
+            return value
+        }
+        return nil
     }
 
     /// Free-text answer without the model's reasoning. Throws when reasoning

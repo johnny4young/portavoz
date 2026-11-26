@@ -192,7 +192,8 @@ public struct RecordingsLocation: Sendable {
         // An empty selected root must exist before its marker is authoritative.
         try manager.createDirectory(at: targetAudio.deletingLastPathComponent(), withIntermediateDirectories: true)
         guard manager.fileExists(atPath: sourceAudio.path) else { return false }
-        try manager.createDirectory(at: targetAudio, withIntermediateDirectories: true)
+        try manager.createDirectory(
+            at: targetAudio, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         return true
     }
 

@@ -1398,6 +1398,35 @@ final class OpenAICompatibleProviderTests: XCTestCase {
         }
     }
 
+    func testHTTPErrorKeepsOnlyIdentifierShapedProviderCode() {
+        let secret = "echoed-transcript-phrase-991"
+        let body = #"{"error":{"message":"bad: \#(secret)","type":"invalid_request_error","code":"model_not_found"}}"#
+        XCTAssertThrowsError(
+            try OpenAICompatibleChatCodec.responseContent(data: Data(body.utf8), statusCode: 404)
+        ) { error in
+            XCTAssertTrue(error.localizedDescription.contains("model_not_found"))
+            XCTAssertFalse(error.localizedDescription.contains(secret))
+        }
+        let prose = #"{"error":{"code":"the transcript says \#(secret)"}}"#
+        XCTAssertNil(OpenAICompatibleChatCodec.providerErrorCode(Data(prose.utf8)))
+    }
+
+    func testParseErrorNamesDecodingCaseAndTruncation() {
+        let secret = "confidential budget agreement 4291"
+        XCTAssertThrowsError(
+            try OpenAICompatibleSummaryProvider.parseStructured(#"{"overview": "\#(secret)"}"#)
+        ) { error in
+            XCTAssertTrue(error.localizedDescription.contains("keyNotFound sections"))
+            XCTAssertFalse(error.localizedDescription.contains(secret))
+        }
+        XCTAssertThrowsError(
+            try OpenAICompatibleSummaryProvider.parseStructured(#"{"overview": "\#(secret)", "sec"#)
+        ) { error in
+            XCTAssertTrue(error.localizedDescription.contains("unterminated"))
+            XCTAssertFalse(error.localizedDescription.contains(secret))
+        }
+    }
+
     /// Smaller local models (MLX Qwen3-4B) wrap the object in prose; the
     /// parser must recover the outermost braces instead of failing.
     func testParsesJSONWrappedInProse() throws {
