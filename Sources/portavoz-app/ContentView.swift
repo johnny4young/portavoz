@@ -69,6 +69,10 @@ struct ContentView: View {
             initialValue: services.makeReminderDraftModel())
     }
 
+    private var liveRecordingStartedAt: Date? {
+        services.recording.canReturnToLiveSession ? services.recording.startedAt : nil
+    }
+
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             LibraryView(
@@ -76,7 +80,7 @@ struct ContentView: View {
                 imports: services.audioImports,
                 route: $route,
                 searchFocusRequested: $searchFocusRequested,
-                recordingActive: services.recording.canReturnToLiveSession,
+                recordingStartedAt: liveRecordingStartedAt,
                 onReturnToRecording: {
                     route = .recording(nil)
                 },

@@ -54,13 +54,15 @@ struct RecordingView: View {
                 Spacer()
 
             case .recording:
-                // Design system 4a: a compact top bar, then a single column
-                // — the words ARE the interface. Captions are the focal
-                // lyrics area; the Companion cards and notes flow below.
-                recordingBar
+                // The stage: controls, the clock beside the meeting, who is
+                // talking, then the captions above the assist area.
+                RecordingToolbar(controller: controller, onCompact: enterCompactMode)
+                RecordingStageHero(controller: controller, onStop: stop)
                 RecordingStatusStrip(notices: notices)
                 RecordingInputStatusView(controller: controller)
+                RecordingLiveVoicesTable(model: controller.liveVoices, startedAt: controller.startedAt)
                 assistSplit
+                RecordingStageFooter(controller: controller)
 
             case .processing(let step):
                 Spacer()
@@ -106,6 +108,8 @@ struct RecordingView: View {
             }
         }
         .navigationTitle("Recording")
+        // The stage's kicker names it; the window menu keeps the title.
+        .toolbar(removing: .title)
         .liveTranslation(controller)
         .task { await startRecording() }
         .task { apuntadorAnswersAvailable = await services.companionAnswersAvailable() }
@@ -148,7 +152,6 @@ struct RecordingView: View {
                     .padding(.horizontal, 20)
             }
         }
-        .padding(.bottom, 16)
     }
 
     private func assistDivider(total: CGFloat) -> some View {
@@ -195,12 +198,8 @@ struct RecordingView: View {
             }
     }
 
-    private var recordingBar: some View {
-        RecordingToolbar(
-            controller: controller,
-            onStop: { Task { await controller.stop(services: services) } },
-            onCompact: enterCompactMode
-        )
+    private func stop() {
+        Task { await controller.stop(services: services) }
     }
 
     /// Shrinks the recording to the floating HUD and miniaturizes the main
@@ -211,7 +210,7 @@ struct RecordingView: View {
         hud.show(content: RecordingHUDView(
             controller: controller,
             onExpand: { exitCompactMode() },
-            onStop: { Task { await controller.stop(services: services) } },
+            onStop: stop,
             onHeight: { [hud] height in hud.setContentHeight(height) }))
         NSApp.keyWindow?.miniaturize(nil)
     }
@@ -262,14 +261,15 @@ private struct LiveRecordingCaptionsView: View {
         active: Bool,
         translation: String?
     ) -> some View {
-        let voice = liveVoice(for: segment)
+        let key = LiveVoiceStage.key(for: segment, labels: controller.liveSpeakerLabels)
+        let isMe = key == LiveVoiceStage.youKey
         return HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(voice.label)
+            Text(LiveVoiceName.of(key: key))
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(pillText(voice))
+                .foregroundStyle(pillText(key))
                 .padding(.horizontal, 7)
                 .padding(.vertical, 2)
-                .background(pillBackground(voice), in: Capsule())
+                .background(pillBackground(key), in: Capsule())
             VStack(alignment: .leading, spacing: 1) {
                 Text(segment.text)
                     .font(active ? .title3.weight(.medium) : .body)
@@ -285,9 +285,9 @@ private struct LiveRecordingCaptionsView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
-        .padding(.vertical, active && voice.isMe ? 10 : 0)
+        .padding(.vertical, active && isMe ? 10 : 0)
         .background {
-            if active && voice.isMe {
+            if active && isMe {
                 RoundedRectangle(cornerRadius: PVDesign.radiusCard)
                     .fill(VoicePalette.me.opacity(0.12))
                     .strokeBorder(VoicePalette.me.opacity(0.35))
@@ -331,27 +331,20 @@ private struct LiveRecordingCaptionsView: View {
     }
 
     /// Voice hues are fills, not text colours: labels stay ink on the tint.
-    private func pillText(_ voice: (label: String, isMe: Bool)) -> Color {
-        if voice.isMe { return VoicePalette.meContrast }
-        return voice.label == L10n.text("Others") ? PVDesign.ink3 : PVDesign.ink
-    }
-
-    private func pillBackground(_ voice: (label: String, isMe: Bool)) -> Color {
-        if voice.isMe { return VoicePalette.me }
-        guard voice.label != L10n.text("Others") else {
-            return Color(nsColor: .quaternarySystemFill)
+    private func pillText(_ key: String) -> Color {
+        switch key {
+        case LiveVoiceStage.youKey: VoicePalette.meContrast
+        case LiveVoiceStage.unlabelledKey: PVDesign.ink3
+        default: PVDesign.ink
         }
-        // Live labels are S1, S2…: unnamed voices stay grey until named.
-        return VoicePalette.unnamed.opacity(0.22)
     }
 
-    private func liveVoice(
-        for segment: TranscriptSegment
-    ) -> (label: String, isMe: Bool) {
-        switch LiveVoiceStage.key(for: segment, labels: controller.liveSpeakerLabels) {
-        case LiveVoiceStage.youKey: (L10n.text("You"), true)
-        case LiveVoiceStage.unlabelledKey: (L10n.text("Others"), false)
-        case let label: (label, false)
+    private func pillBackground(_ key: String) -> Color {
+        switch key {
+        case LiveVoiceStage.youKey: VoicePalette.me
+        case LiveVoiceStage.unlabelledKey: Color(nsColor: .quaternarySystemFill)
+        // Live labels are S1, S2…: unnamed voices stay grey until named.
+        default: VoicePalette.unnamed.opacity(0.22)
         }
     }
 }

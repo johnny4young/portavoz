@@ -178,6 +178,8 @@ struct PVDisplayStyle: Equatable, Sendable {
     static let countdownTrailCompact = countdownTrail.sized(120)
     /// Page and meeting titles.
     static let title = PVDisplayStyle(size: 40, weight: 480, relativeTo: .largeTitle)
+    /// The meeting's title beside the recording's clock.
+    static let stageTitle = PVDisplayStyle(size: 30, weight: 460, relativeTo: .title)
     static let section = PVDisplayStyle(size: 21, weight: 520, relativeTo: .title2)
     static let sectionCompact = PVDisplayStyle(size: 19, weight: 520, relativeTo: .title3)
     /// The summary lede that opens a meeting page.

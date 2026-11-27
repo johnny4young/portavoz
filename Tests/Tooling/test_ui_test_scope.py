@@ -1306,9 +1306,20 @@ class UITestScopeTests(unittest.TestCase):
             tuple(test for test in ALL_TESTS if test in set(
                 FEATURE_TESTS["automation-entry"]
                 + FEATURE_TESTS["recording-interview"]
-                + FEATURE_TESTS["recording-recovery"])),
+                + FEATURE_TESTS["recording-recovery"]
+                + FEATURE_TESTS["recording-stage"])),
         )
         self.assertEqual(selection.locales, ("en",))
+
+    def test_recording_stage_sources_select_the_stage_journeys(self):
+        for path in [
+            "Sources/ApplicationKit/LiveVoiceTable.swift",
+            "Sources/portavoz-app/RecordingLiveVoicesTable.swift",
+            "Sources/portavoz-app/RecordingStageHero.swift",
+        ]:
+            selection = select_paths([path])
+            self.assertTrue(set(FEATURE_TESTS["recording-stage"]) <= set(selection.tests), path)
+            self.assertFalse(selection.scope_unknown, path)
 
     def test_interview_sources_select_the_single_grounded_real_app_journey(self):
         expected = FEATURE_TESTS["recording-interview"]

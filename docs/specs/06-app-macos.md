@@ -1437,12 +1437,60 @@ microphone-speech flag, your notes and the Apuntador cards:
   timestamp, and each Apuntador card at `askedAt` with the voice of its
   question row when the card's evidence names one.
 
+A remote row that closes is relabelled at once (after Apuntador detection has
+read it), so a row whose diarizer turn already arrived does not read as
+unlabelled until the next window.
+
 Requests coalesce into one refresh, at least a second after the previous one.
 The controller asks from `didSet` on the captions, live labels, live turns,
 notes and Apuntador cards, so every caption delta asks, but a burst is one
 rebuild. Start, Stop and the
 hand-off to the next session reset the model; after Stop the durable
 diarization pass re-attributes the meeting and nothing live is persisted.
+
+### Recording stage (D674)
+
+`RecordingView` lays the live recording out top to bottom:
+
+- `RecordingToolbar`: "● RECORDING" in the colour of the present, then the
+  translation menu (its "Translate" label kept for VoiceOver only), Catch me
+  up and More as a glyph. Under the width the labels need, Catch me up drops
+  to its glyph too. The kicker dot blinks in a timeline hosted
+  in an overlay of a fixed 8 pt frame, so the row never re-measures.
+- `RecordingStageHero`: the elapsed time as minutes in ink and dimmer seconds
+  (ink 3) in Fraunces with equal digit cells, the meeting title
+  (`MeetingRowTitle.page`, so a default title drops its date and time),
+  "Meet · started 2:26 PM · 12 voices so far" (`RecordingStageDetail`; the
+  app appears only when capture taps meeting apps directly), and Stop (⌘.,
+  `recording-stop`). The width picks the scale: 112 pt clock and 30 pt title
+  from 840 pt, 88/26 from 680 pt, 64/22 below. The clock ticks in an overlay of
+  a hidden zero-digit placeholder (`recording-elapsed-time`).
+- The status strip and input status, unchanged.
+- `RecordingLiveVoicesTable` (`recording-voices`), at most 760 pt wide and
+  hidden until the first voice is heard. `LiveVoiceTable` takes the live cast: you and the five most recent
+  voices in rows, the current speaker first on a raised card with level bars
+  and "speaking now · 0:20" (the time since its latest turn began, or just
+  "speaking now" when that turn is more than four seconds old), the others with
+  "12 s ago", "2 min ago" or "1 h ago", a share bar scaled to the widest share
+  on screen, and the share. Past six, "Others · n" (`recording-voices-others`)
+  shows the first three folded labels, their combined share, and opens to their
+  rows by talk share. Live voices are unnamed: you are amber, every other voice
+  grey with an open dot and its live label (S3); an unlabelled remote row reads
+  "Others", in the table and the caption pills alike (`LiveVoiceName`). Each
+  row (`recording-voice-<key>`) reads "S1, 22 s ago, 15%". The rows rebuild
+  when the live voices refresh and on one shared one-second tick for their
+  recency, inside fixed-width columns, so neither moves the table.
+- The captions and the assist area, split as before.
+- `RecordingStageFooter`: "Talk balance" with your share of the last five
+  minutes as a bar and "you 20% · listening 80%" (`recording-talk-balance`),
+  then the mute control and the microphone level.
+
+The window's drawn title is removed; the kicker names the screen and the
+Window menu keeps "Recording". While a recording is live the sidebar's red
+`library-return-to-recording` button shows the elapsed time and takes the
+whole row; the Import ▾ menu returns after Stop (audio can still be dropped on
+the window). The disposable-store `-simulate-live-voices` fixture plays a call
+twelve minutes in with you and eleven remote voices through the live labeler.
 
 ### Bounded recording-level relay (D168)
 
@@ -3331,7 +3379,7 @@ frames at launch so a collapsed sidebar never carries into the next test.
 
 ## Views and flows
 
-**LibraryView + LibraryModel**: `New recording` (⌘N), led by the three-strand mark in the button's on-ink colour (`PortavozMarkGlyph`, a Canvas over `PortavozMark.drawGlyph`), with a ▾ menu that holds `Import audio…` (`library-record-menu`, `library-import-audio-button`; the navigation list is destinations only), meeting rows titled without a leading ISO date (`MeetingRowTitle.display`, the date stays on the row's second line), FTS search with snippets, past meetings only, grouped This week (today included) and Earlier, each with its semibold title, "Wed 9 Sep · 31 min" and voice strip, with `Rename`/`Delete` (the agenda and open to-dos live on Today); the sidebar column is 200–360 pt wide (232 ideal), the list keeps 16 pt under the search field and takes its identity from the visible section keys so a newly inserted section never leaves the first header scrolled away, and "No meetings yet" appears only after the first read (D667), a Radar badge counting the suggestions waiting in its review queue (`library-commitment-radar-button-badge`), Recently Deleted restore/permanent purge, import progress/errors, and calendar briefs. The per-window model owns data, debounce, mutations, and effects through its narrow client; the SwiftUI views own rendering, native presentation, file picking/drop acceptance, and route binding. Library and Meeting Detail deletion plus Recently Deleted restore/permanent purge still enter through ApplicationKit use cases; launch cleanup uses the same purge boundary for tombstones strictly older than 30 days. Existing controls, navigation, and degradable filesystem behavior remain while scoped observations update only their owning sections. `library-search-field` provides a stable automation boundary for the real FTS/model wiring. The query adapter expands a deterministic local English/Spanish meeting lexicon and StorageKit ORs complete language variants while keeping terms inside each variant conjunctive; `unicode61` folds Latin accents. Exact rows publish first. When Apple Latin embedding assets are already installed and capture is inactive, a shared ApplicationKit search actor appends bounded semantic paraphrase/cross-language hits from already-published vectors without downloading assets, writing the corpus, or replacing exact rank (D145/D197). Ask and Library share one typed readiness resolver; launch, searchable mutations, and capture completion wake the sole no-poll product writer, which uses the process coordinator and installed assets (D176/D178/D197). Search rows publish their exact timestamp through the shared one-shot seek channel before routing. While capture is preparing, recording, or processing, the main action becomes identified `Return to recording`; browsing history cannot hide the live timer and Stop control or create a second session. UITests use `firstMatch` for to-dos because a meeting title also appears as the row caption.
+**LibraryView + LibraryModel**: `New recording` (⌘N), led by the three-strand mark in the button's on-ink colour (`PortavozMarkGlyph`, a Canvas over `PortavozMark.drawGlyph`), with a ▾ menu that holds `Import audio…` (`library-record-menu`, `library-import-audio-button`; the navigation list is destinations only), meeting rows titled without a leading ISO date (`MeetingRowTitle.display`, the date stays on the row's second line), FTS search with snippets, past meetings only, grouped This week (today included) and Earlier, each with its semibold title, "Wed 9 Sep · 31 min" and voice strip, with `Rename`/`Delete` (the agenda and open to-dos live on Today); the sidebar column is 200–360 pt wide (232 ideal), the list keeps 16 pt under the search field and takes its identity from the visible section keys so a newly inserted section never leaves the first header scrolled away, and "No meetings yet" appears only after the first read (D667), a Radar badge counting the suggestions waiting in its review queue (`library-commitment-radar-button-badge`), Recently Deleted restore/permanent purge, import progress/errors, and calendar briefs. The per-window model owns data, debounce, mutations, and effects through its narrow client; the SwiftUI views own rendering, native presentation, file picking/drop acceptance, and route binding. Library and Meeting Detail deletion plus Recently Deleted restore/permanent purge still enter through ApplicationKit use cases; launch cleanup uses the same purge boundary for tombstones strictly older than 30 days. Existing controls, navigation, and degradable filesystem behavior remain while scoped observations update only their owning sections. `library-search-field` provides a stable automation boundary for the real FTS/model wiring. The query adapter expands a deterministic local English/Spanish meeting lexicon and StorageKit ORs complete language variants while keeping terms inside each variant conjunctive; `unicode61` folds Latin accents. Exact rows publish first. When Apple Latin embedding assets are already installed and capture is inactive, a shared ApplicationKit search actor appends bounded semantic paraphrase/cross-language hits from already-published vectors without downloading assets, writing the corpus, or replacing exact rank (D145/D197). Ask and Library share one typed readiness resolver; launch, searchable mutations, and capture completion wake the sole no-poll product writer, which uses the process coordinator and installed assets (D176/D178/D197). Search rows publish their exact timestamp through the shared one-shot seek channel before routing. While capture is preparing, recording, or processing, the main action becomes the red, identified `Return to recording` with the elapsed time, and the Import ▾ menu steps aside until Stop; browsing history cannot hide the live timer and Stop control or create a second session. UITests use `firstMatch` for to-dos because a meeting title also appears as the row caption.
 
 **RecordingView + RecordingController** (full live pipeline):
 1. `start`: `RecordingController` resets live visual state and sends callbacks
