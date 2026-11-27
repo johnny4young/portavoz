@@ -92,6 +92,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 27, 2026
 
+- **🎚️ A player you can read** — the bar along the bottom of a meeting is now its voice strip, with chapter titles over their ticks and a readout of who is speaking in which chapter; Skip silence, Only my voice and Reduce echo sit beside the speed as one-click toggles.
 - **🗂️ Marginalia, Apuntador and People** — the meeting margin now has three tabs: your notes become cards beside the line playing when you wrote them, a voice Portavoz named by itself waits beside that voice's first line to keep or undo, and suggested names and "remember this person" offers gather under People.
 
 ## November 26, 2026

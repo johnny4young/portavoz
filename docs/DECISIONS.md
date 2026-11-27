@@ -23582,7 +23582,32 @@ tabs shows only as the empty Marginalia lens, and its recipe chip stays under
 the standfirst (D656). Notes anchor without a current summary; decisions and
 commitments still need one (D669).
 
-## D671 — The file-backed store is a WAL pool with an in-memory semantic pack (Nov 2026)
+## D671 — The docked player is the meeting's voice strip
+
+The player drew peak-amplitude bars in two colours (your channel and the
+room) and kept Skip silence and Reduce echo inside an options menu. The board
+draws the player as the meeting's voice strip with chapter titles over their
+ticks, a readout of who is speaking in which chapter, and the playback
+settings as quiet toggles. `MeetingPlayerStrip` (ApplicationKit) bins the
+Voices table's turns on the playback timeline's display axis, so long silences
+stay as short as D605 draws them and a voice keeps the tint it has in the
+Voices table, with each turn cut at that dead time; the detail view caches it
+with the core and the prepared playback, so the 5 fps clock never rebuilds it.
+Without attributed speech the waveform still has a role: each loud column takes amber when your microphone
+was louder and grey otherwise, so a meeting without a transcript is not a
+blank track, and the waveform keeps driving Skip silence there. The toggles
+are Skip silence, Only my voice (the same focus as your Voices row's Only) and
+Reduce echo; the board's "Voice only" is that echo control, and it keeps the
+"Reduce echo" name D605 chose because it says what it does. Back and forward
+15 s stay beside play, and the options menu keeps the clip marks. Chapter
+titles are hidden from VoiceOver and Marginalia keeps its chapter list as the
+accessible jump; the strip itself stays one adjustable "Playback position"
+element, now `player-strip`. The dock sits on the card tone the board uses.
+Below the widest row the readout gives up its room first, then the toggles
+their titles; every toggle stays one click away at the narrowest width, where
+the board drops two of them.
+
+## D672 — The file-backed store is a WAL pool with an in-memory semantic pack (Nov 2026)
 
 **Context:** the serial `DatabaseQueue` in SQLite's rollback journal let an
 independent reader (`portavoz-cli`, MCP, a diagnostic observer) reject a

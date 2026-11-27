@@ -1889,6 +1889,12 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "state",
+      "source": "@State private var playerStrip = MeetingDetailPlayerStripCache()",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "state",
       "source": "@State private var railTab = MeetingDetailRailTab.marginalia",
       "occurrences": 1
     },
@@ -2279,6 +2285,12 @@
     {
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
       "category": "control",
+      "source": ".gesture(DragGesture(minimumDistance: 0).onChanged { value in",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "control",
       "source": "Button {",
       "occurrences": 5
     },
@@ -2303,7 +2315,7 @@
     {
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
       "category": "control",
-      "source": "DragGesture(minimumDistance: 0).onChanged { value in",
+      "source": "Button(action: action) {",
       "occurrences": 1
     },
     {
@@ -2311,24 +2323,6 @@
       "category": "control",
       "source": "Menu {",
       "occurrences": 2
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
-      "category": "control",
-      "source": "Slider(",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
-      "category": "control",
-      "source": "Toggle(\"Reduce echo\", isOn: Binding(",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
-      "category": "control",
-      "source": "Toggle(\"Skip silence\", isOn: Binding(",
-      "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
@@ -2357,12 +2351,6 @@
     {
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
       "category": "identifier",
-      "source": ".accessibilityIdentifier(\"player-clear-playback\")",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
-      "category": "identifier",
       "source": ".accessibilityIdentifier(\"player-current-time\")",
       "occurrences": 1
     },
@@ -2381,7 +2369,7 @@
     {
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
       "category": "identifier",
-      "source": ".accessibilityIdentifier(\"player-skip-silence\")",
+      "source": ".accessibilityIdentifier(\"player-readout\")",
       "occurrences": 1
     },
     {
@@ -2399,14 +2387,14 @@
     {
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
       "category": "identifier",
-      "source": ".accessibilityIdentifier(\"player-waveform\")",
+      "source": ".accessibilityIdentifier(\"player-strip\")",
       "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(identifier)",
-      "occurrences": 1
+      "occurrences": 2
     },
     {
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
@@ -2417,19 +2405,31 @@
     {
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
       "category": "navigation",
-      "source": "let onSeek: (TimeInterval) -> Void",
+      "source": "case .decrement: player.seek(to: max(0, player.currentTime - step))",
       "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
       "category": "navigation",
-      "source": "onSeek: { player.seek(to: $0) })",
+      "source": "case .increment: player.seek(to: min(timeline.duration, player.currentTime + step))",
       "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
       "category": "navigation",
-      "source": "value: Binding(get: { player.currentTime }, set: { player.seek(to: $0) }),",
+      "source": "let onSeek: (Int) -> Void",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "navigation",
+      "source": "onSeek: { player.seek(to: chapters.starts[$0]) })",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "navigation",
+      "source": "player.seek(to: timeline.time(at: value.location.x / max(1, geo.size.width)))",
       "occurrences": 1
     },
     {

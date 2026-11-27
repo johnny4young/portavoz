@@ -88,13 +88,16 @@ public enum Waveform {
         return raw.map { Bucket(amplitude: min(1, $0.amplitude * scale), micDominant: $0.micDominant) }
     }
 
+    /// Peak amplitude below which a bucket counts as silence.
+    public static let silenceThreshold: Float = 0.06
+
     /// Silent stretches (M11 skip-silence): runs of buckets under
     /// `threshold` lasting at least `minLength`, as second ranges over the
     /// meeting `duration`. Pure, so it's unit-tested.
     public static func silentRanges(
         _ buckets: [Bucket],
         duration: TimeInterval,
-        threshold: Float = 0.06,
+        threshold: Float = silenceThreshold,
         minLength: TimeInterval = 1.2
     ) -> [ClosedRange<TimeInterval>] {
         guard !buckets.isEmpty, duration > 0 else { return [] }
