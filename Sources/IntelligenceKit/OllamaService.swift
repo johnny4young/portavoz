@@ -11,6 +11,11 @@ public enum OllamaService {
     public static let baseURL = URL(string: "http://localhost:11434")!
     /// The OpenAI-compatible endpoint the summary provider talks to.
     public static var openAIEndpoint: URL { baseURL.appendingPathComponent("v1") }
+    /// Conservative map-reduce chunk cap so long meetings fit inside Ollama's
+    /// default 4k–8k `num_ctx` without silent server-side truncation.
+    public static let defaultContextCharacterBudget = 12_000
+    /// Local or thinking models over long transcripts routinely exceed URLRequest's 60 s default.
+    public static let defaultRequestTimeout: TimeInterval = 300
 
     public struct Model: Sendable, Identifiable, Equatable {
         public let name: String
@@ -71,14 +76,18 @@ public enum OllamaService {
     public static func summaryProvider(
         model: String,
         gateway: any DataEgressGateway,
-        consentSource: DataEgressConsentSource = .explicitSummaryProvider
+        consentSource: DataEgressConsentSource = .explicitSummaryProvider,
+        requestTimeout: TimeInterval = defaultRequestTimeout,
+        contextCharacterBudget: Int? = defaultContextCharacterBudget
     ) -> OpenAICompatibleSummaryProvider {
         OpenAICompatibleSummaryProvider(
             endpoint: openAIEndpoint,
             model: model,
             apiKey: "ollama",
             gateway: gateway,
-            consentSource: consentSource)
+            consentSource: consentSource,
+            requestTimeout: requestTimeout,
+            contextCharacterBudget: contextCharacterBudget)
     }
 
     /// A grounded Ask provider pinned to the same fixed loopback service as

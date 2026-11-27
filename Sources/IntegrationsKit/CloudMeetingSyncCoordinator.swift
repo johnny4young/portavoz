@@ -133,7 +133,10 @@ public actor CloudMeetingSyncCoordinator {
     /// Returns true when a newer exact generation for the same record still
     /// needs admission after CKSyncEngine settles this save callback.
     @discardableResult
-    public func handleSavedRecord(_ record: CKRecord) async throws -> Bool {
+    public func handleSavedRecord(
+        _ record: CKRecord,
+        at date: Date = Date()
+    ) async throws -> Bool {
         let envelope = try await transportStore.envelope(from: record)
         if await transportStore.deferredReplayBlocksOutgoing(
             for: envelope.meetingID) {
@@ -148,7 +151,7 @@ public actor CloudMeetingSyncCoordinator {
             isDeleted: Self.isDeletion(envelope))
         try await meetingStore.acknowledgeMeetingSync(change)
         try await transportStore.completeSend(of: envelope, savedRecord: record)
-        try await completeInitialSeedIfDrained()
+        try await completeInitialSeedIfDrained(at: date)
         return await transportStore.hasOutgoingAttempt(for: envelope.meetingID)
     }
 
@@ -178,14 +181,10 @@ public actor CloudMeetingSyncCoordinator {
             try await transportStore.stageDeferredReplay(envelope, from: record)
             return .deferred(localGeneration: generation)
         case .correctionConflict:
-            try await transportStore.stageDeferredReplay(
-                envelope,
-                from: record,
-                blocksOutgoing: true)
-            let generation = try await blockCurrentLocalGeneration(
-                for: envelope.meetingID,
+            return try await handleCorrectionConflict(
+                envelope: envelope,
+                record: record,
                 at: date)
-            return .blockedCorrectionConflict(localGeneration: generation)
         case .applied:
             try await transportStore.completeReplay(
                 of: envelope,
@@ -212,7 +211,11 @@ public actor CloudMeetingSyncCoordinator {
         if failure.category == .serverConflict,
            let serverRecord = CloudSyncFailureClassifier.serverRecord(from: error) {
             let serverEnvelope = try await transportStore.envelope(from: serverRecord)
-            let serverMatchesOutgoing = try Self.samePayload(envelope, serverEnvelope)
+            let serverMatchesOutgoing = try Self.samePayload(
+                record: record,
+                envelope: envelope,
+                serverRecord: serverRecord,
+                serverEnvelope: serverEnvelope)
             let fetchResult = try await handleFetchedRecord(serverRecord, at: date)
             switch fetchResult {
             case .applied(.deletionWon):
@@ -226,7 +229,7 @@ public actor CloudMeetingSyncCoordinator {
                     shouldRetry: false)
             case .ignoredOwnDevice where serverMatchesOutgoing,
                  .ignoredDuplicate where serverMatchesOutgoing:
-                _ = try await handleSavedRecord(serverRecord)
+                _ = try await handleSavedRecord(serverRecord, at: date)
                 return CloudSyncFailureResolution(
                     category: .serverConflict,
                     shouldRetry: false)
@@ -308,15 +311,53 @@ public actor CloudMeetingSyncCoordinator {
         _ = try await transportStore.stage(envelope, at: date)
     }
 
+    private func handleCorrectionConflict(
+        envelope: MeetingSyncEnvelope,
+        record: CKRecord,
+        at date: Date
+    ) async throws -> CloudMeetingFetchResult {
+        try await transportStore.stageDeferredReplay(
+            envelope,
+            from: record,
+            blocksOutgoing: true)
+        if let generation = try await blockCurrentLocalGeneration(
+            for: envelope.meetingID,
+            at: date) {
+            return .blockedCorrectionConflict(localGeneration: generation)
+        }
+        // The pending local change cleared between apply and stage; retry once
+        // now that the stale blocking replay has been removed.
+        let retry = try await meetingStore.applyRemoteMeetingSyncEnvelope(envelope)
+        switch retry {
+        case .applied:
+            try await transportStore.completeReplay(
+                of: envelope, from: record, discardOutgoing: false)
+            return .applied(retry)
+        case .deletionWon:
+            try await transportStore.completeReplay(
+                of: envelope, from: record, discardOutgoing: true)
+            return .applied(retry)
+        case .localChangePending(let generation):
+            try await transportStore.stageDeferredReplay(envelope, from: record)
+            return .deferred(localGeneration: generation)
+        case .correctionConflict:
+            throw CloudMeetingTransportError.invalidState(
+                "correction conflict has no pending local generation")
+        }
+    }
+
     private func blockCurrentLocalGeneration(
         for meetingID: MeetingID,
         at date: Date
-    ) async throws -> Int {
+    ) async throws -> Int? {
         guard let current = try await meetingStore.pendingMeetingSyncChange(
             for: meetingID)
         else {
-            throw CloudMeetingTransportError.invalidState(
-                "correction conflict has no pending local generation")
+            // If the pending local change disappeared mid-race, release the
+            // orphaned blocking replay instead of stranding this meeting.
+            try await transportStore.discardDeferredReplay(for: meetingID)
+            try await transportStore.discardAttempt(for: meetingID)
+            return nil
         }
         let envelope = try await meetingStore.meetingSyncEnvelope(
             for: current,
@@ -334,9 +375,19 @@ public actor CloudMeetingSyncCoordinator {
     }
 
     private static func samePayload(
-        _ first: MeetingSyncEnvelope,
-        _ second: MeetingSyncEnvelope
+        record: CKRecord,
+        envelope: MeetingSyncEnvelope,
+        serverRecord: CKRecord,
+        serverEnvelope: MeetingSyncEnvelope
     ) throws -> Bool {
-        try MeetingSyncEnvelopeCodec.encode(first) == MeetingSyncEnvelopeCodec.encode(second)
+        if let localDigest = CloudMeetingRecordCodec.payloadSHA256(of: record),
+           let serverDigest = CloudMeetingRecordCodec.payloadSHA256(of: serverRecord) {
+            return localDigest == serverDigest
+        }
+        let firstDigest = MeetingSyncEnvelopeCodec.sha256(
+            try MeetingSyncEnvelopeCodec.encode(envelope))
+        let secondDigest = MeetingSyncEnvelopeCodec.sha256(
+            try MeetingSyncEnvelopeCodec.encode(serverEnvelope))
+        return firstDigest == secondDigest
     }
 }

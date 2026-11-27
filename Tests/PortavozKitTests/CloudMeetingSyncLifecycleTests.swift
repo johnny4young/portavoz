@@ -310,7 +310,7 @@ final class CloudMeetingSyncLifecycleTests: XCTestCase {
     }
 
     private func deletionEnvelope() -> MeetingSyncEnvelope {
-        MeetingSyncEnvelope(
+        return MeetingSyncEnvelope(
             meetingID: MeetingID(rawValue: UUID(
                 uuidString: "50000000-0000-0000-0000-000000000099")!),
             sourceDeviceID: UUID(
@@ -318,6 +318,33 @@ final class CloudMeetingSyncLifecycleTests: XCTestCase {
             generation: 3,
             changedAt: Date(timeIntervalSince1970: 1_784_340_000),
             mutation: .delete)
+    }
+
+    func testCurrentStatusSurfacesBlockingCorrectionConflictCountAndFailedPhase() async throws {
+        let fixture = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.root) }
+        let now = Date(timeIntervalSince1970: 1_784_350_000)
+        try await fixture.transportStore.updateAccount(status: .available, fingerprint: accountA)
+        try await fixture.transportStore.grantConsent(forAccountFingerprint: accountA, at: now)
+
+        let remoteEnvelope = MeetingSyncEnvelope(
+            meetingID: MeetingID(rawValue: UUID(
+                uuidString: "50000000-0000-0000-0000-000000000077")!),
+            sourceDeviceID: UUID(
+                uuidString: "50000000-0000-0000-0000-000000000002")!,
+            generation: 2,
+            changedAt: now,
+            mutation: .delete)
+        let codec = CloudMeetingRecordCodec()
+        let record = try codec.encode(remoteEnvelope, assetDirectory: fixture.root).record
+        try await fixture.transportStore.stageDeferredReplay(
+            remoteEnvelope,
+            from: record,
+            blocksOutgoing: true)
+
+        let status = await fixture.lifecycle.currentStatus()
+        XCTAssertEqual(status.progress.conflictCount, 1)
+        XCTAssertEqual(status.phase, .failed)
     }
 }
 

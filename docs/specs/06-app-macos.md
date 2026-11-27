@@ -1272,7 +1272,12 @@ serialization prevents duplicate exports.
 loads one aggregate at a time and checkpoints before the next staged read,
 after loading one aggregate, after rendering one document, and after atomic
 publication. Its active run retains the immutable stage cursor, filename
-allocator, typed results, and at most one pending aggregate or document.
+allocator, typed results, and at most one pending aggregate or document,
+synchronized via `defer` on cancellation or mid-run errors (while never
+resurrecting a terminated run), with internal invariant checks throwing
+`LibraryMarkdownBackupError.libraryUnavailable` instead of trapping, and
+destination-directory filename refreshes on `.nameCollision` so pre-existing
+collisions skip in memory rather than reserving a journal entry each.
 Resume therefore continues from the same database moment and never republishes
 a completed file.
 
@@ -2400,7 +2405,11 @@ bundle still uses its existing progress and automatic result navigation.
 The separate `ProcessAudioImports` use case can consume admitted durable imports
 without presentation ownership. It claims a fresh owner per attempt, copies or
 verifies the retained source before creating model capabilities, and runs
-`ImportMeeting` with owned adapters. Lease heartbeat and execution are structured
+`ImportMeeting` with owned adapters, preserving the imported file's
+`sourceModifiedAt` timestamp (`ImportMeetingRequest.recordedAt`), skipping
+summary generation for empty or zero-duration recordings, and detaching
+`.cancelled` summary-run provenance writes so GRDB persists cancellation under
+a cancelled parent task. Lease heartbeat and execution are structured
 children; explicit cancellation rejects late output, while process interruption
 awaits uncancelled storage cleanup and returns work to pending. A failed source
 does not prepare models; a failed transcription keeps copied audio for retry and

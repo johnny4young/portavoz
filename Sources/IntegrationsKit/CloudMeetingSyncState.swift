@@ -208,17 +208,20 @@ public struct CloudMeetingSyncProgress: Equatable, Sendable {
     public let queuedTransfers: Int
     public let retryingTransfers: Int
     public let failedTransfers: Int
+    public let conflictCount: Int
 
     public init(
         pendingLocalChanges: Int,
         queuedTransfers: Int,
         retryingTransfers: Int,
-        failedTransfers: Int
+        failedTransfers: Int,
+        conflictCount: Int = 0
     ) {
         self.pendingLocalChanges = pendingLocalChanges
         self.queuedTransfers = queuedTransfers
         self.retryingTransfers = retryingTransfers
         self.failedTransfers = failedTransfers
+        self.conflictCount = conflictCount
     }
 }
 

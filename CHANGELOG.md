@@ -92,6 +92,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 27, 2026
 
+- **🔧 Reliable long summaries, imports, playback, backup, and iCloud sync** — Ollama now chunks long transcripts with a longer timeout instead of overflowing local context windows; combining Skip silence and Only my voice jumps cleanly in one hop with playback failure recovery; imported recordings keep their original file date and skip empty summaries; Markdown library backups preserve state safely on cancellation without crashing; and Settings now calls out iCloud transcript-edit conflicts directly.
 - **🛡️ Resilient capture and lighter Refine on long meetings** — microphone and app-audio recovery now bound retries instead of stalling silently, per-app capture never widens to all Mac audio when a meeting app restarts, long recordings use far less memory during Refine and speaker diarization, shared models stay locked while in use, and long user notes no longer overflow Apple Intelligence summaries.
 - **🎙️ Recording as a live stage** — a big clock beside the meeting's title and how many voices so far, then who is speaking now on top and who spoke last with "12 s ago" and their share; past six voices the rest fold into Others, and the sidebar's Return to recording shows the time.
 - **🎚️ A player you can read** — the bar along the bottom of a meeting is now its voice strip, with chapter titles over their ticks and a readout of who is speaking in which chapter; Skip silence, Only my voice and Reduce echo sit beside the speed as one-click toggles.

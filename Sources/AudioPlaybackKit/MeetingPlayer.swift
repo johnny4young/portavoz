@@ -15,6 +15,8 @@ public final class MeetingPlayer {
     public private(set) var currentTime: TimeInterval = 0
     public private(set) var duration: TimeInterval = 0
     public private(set) var isPlaying = false
+    /// True after AVPlayerItem enters `.failed` or fails playback to end.
+    public private(set) var hasPlaybackFailed = false
     /// Counts playbacks that ran to the end and rewound.
     public private(set) var playedToEndCount = 0
 
@@ -54,8 +56,10 @@ public final class MeetingPlayer {
 
     private let player: AVPlayer
     private let cleanAudioMix: AVAudioMix?
-    private var timeObserver: Any?
-    private var endObserver: NSObjectProtocol?
+    private let observerCleanup: PlayerObserverCleanup
+    private var isSeekInFlight = false
+    private var pendingSeekTarget: TimeInterval?
+    private var isInvalidated = false
 
     private init(
         item: AVPlayerItem,
@@ -63,38 +67,45 @@ public final class MeetingPlayer {
         channelFiles: [URL],
         cleanAudioMix: AVAudioMix?
     ) {
-        self.player = AVPlayer(playerItem: item)
+        let player = AVPlayer(playerItem: item)
+        self.player = player
         self.cleanAudioMix = cleanAudioMix
         self.canClearPlayback = cleanAudioMix != nil
         self.duration = duration
         self.channelFiles = channelFiles
+        self.observerCleanup = PlayerObserverCleanup(player: player)
         item.audioMix = cleanAudioMix
+        installObservers(item: item)
+    }
 
+    deinit {
+        observerCleanup.teardown()
+    }
+
+    private func installObservers(item: AVPlayerItem) {
         // 5 fps: smooth enough for a highlight + scrubber, cheap enough not
         // to churn a long transcript's rows.
         let interval = CMTime(seconds: 0.2, preferredTimescale: 600)
-        timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
+        let timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.currentTime = min(time.seconds, self.duration)
-                // Jump over a silent gap when asked (M11), leaving a small
-                // margin at its end so speech isn't clipped.
-                if self.skipSilence, self.isPlaying,
-                    let gap = self.silentRanges.first(where: {
-                        $0.contains(self.currentTime) && self.currentTime < $0.upperBound - 0.3
-                    }) {
-                    self.seek(to: gap.upperBound - 0.2)
-                } else if self.playsFocusOnly, self.isPlaying,
-                    let gap = self.outsideFocusRanges.first(where: {
-                        $0.contains(self.currentTime) && self.currentTime < $0.upperBound - 0.3
-                    }) {
-                    self.seek(to: gap.upperBound - 0.05)
+                guard self.isPlaying else { return }
+                if let target = Self.skipTarget(
+                    at: self.currentTime,
+                    duration: self.duration,
+                    skipSilence: self.skipSilence,
+                    silentRanges: self.silentRanges,
+                    playsFocusOnly: self.playsFocusOnly,
+                    outsideFocusRanges: self.outsideFocusRanges
+                ) {
+                    self.seek(to: target)
                 }
             }
         }
         // Playing to the end stops and rewinds, so the transport button
         // flips back to "play" instead of pretending it's still going.
-        endObserver = NotificationCenter.default.addObserver(
+        let endObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
@@ -104,6 +115,37 @@ public final class MeetingPlayer {
                 self.seek(to: 0)
             }
         }
+        let failedObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.handlePlaybackFailure()
+            }
+        }
+        let statusObservation = item.observe(\.status, options: [.new]) { [weak self] observed, _ in
+            guard observed.status == .failed else { return }
+            Task { @MainActor [weak self] in
+                self?.handlePlaybackFailure()
+            }
+        }
+        let timeControlObservation = player.observe(
+            \.timeControlStatus, options: [.old, .new]
+        ) { [weak self] observed, change in
+            guard change.oldValue != .paused,
+                  change.newValue == .paused,
+                  observed.rate == 0
+            else { return }
+            Task { @MainActor [weak self] in
+                guard let self, self.player.rate == 0 else { return }
+                self.isPlaying = false
+            }
+        }
+        observerCleanup.install(
+            timeObserver: timeObserver,
+            endObserver: endObserver,
+            failedObserver: failedObserver,
+            statusObservation: statusObservation,
+            timeControlObservation: timeControlObservation)
     }
 
     /// Builds a player mixing every existing channel file. Returns nil when
@@ -166,12 +208,12 @@ public final class MeetingPlayer {
     }
 
     public func setSilentRanges(_ ranges: [ClosedRange<TimeInterval>]) {
-        silentRanges = ranges
+        silentRanges = Self.normalizeRanges(ranges)
     }
 
     /// Everything outside the focused voice, merged and sorted by the caller.
     public func setOutsideFocusRanges(_ ranges: [ClosedRange<TimeInterval>]) {
-        outsideFocusRanges = ranges
+        outsideFocusRanges = Self.normalizeRanges(ranges)
     }
 
     public func skip(by seconds: TimeInterval) {
@@ -179,6 +221,11 @@ public final class MeetingPlayer {
     }
 
     public func play() {
+        guard !isInvalidated, player.currentItem?.status != .failed else {
+            handlePlaybackFailure()
+            return
+        }
+        hasPlaybackFailed = false
         // Restart from the top if we're parked at the end.
         if currentTime >= duration - 0.05 { seek(to: 0) }
         player.play()
@@ -197,18 +244,175 @@ public final class MeetingPlayer {
     public func seek(to seconds: TimeInterval) {
         let clamped = max(0, min(seconds, duration))
         currentTime = clamped
-        player.seek(
-            to: CMTime(seconds: clamped, preferredTimescale: 600),
-            toleranceBefore: .zero, toleranceAfter: .zero)
+        guard !isInvalidated else { return }
+        // Coalesce rapid scrub drags so AVPlayer finishes one exact seek before starting the next.
+        if isSeekInFlight {
+            pendingSeekTarget = clamped
+            return
+        }
+        startSeek(to: clamped)
     }
 
-    /// Releases the AVFoundation observers. Call from the view's
-    /// `onDisappear`; AVPlayer leaks its periodic observer otherwise.
+    /// Releases the AVFoundation observers. Also runs defensively in `deinit`.
     public func invalidate() {
+        isInvalidated = true
+        pendingSeekTarget = nil
+        isSeekInFlight = false
         pause()
+        observerCleanup.teardown()
+    }
+
+    private func handlePlaybackFailure() {
+        player.pause()
+        isPlaying = false
+        hasPlaybackFailed = true
+    }
+
+    private func startSeek(to seconds: TimeInterval) {
+        isSeekInFlight = true
+        player.seek(
+            to: CMTime(seconds: seconds, preferredTimescale: 600),
+            toleranceBefore: .zero, toleranceAfter: .zero
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.completeSeek()
+            }
+        }
+    }
+
+    private func completeSeek() {
+        isSeekInFlight = false
+        guard !isInvalidated, let next = pendingSeekTarget else { return }
+        pendingSeekTarget = nil
+        startSeek(to: next)
+    }
+
+    /// Sorts and merges overlapping ranges so lookup runs in O(log n).
+    nonisolated static func normalizeRanges(
+        _ ranges: [ClosedRange<TimeInterval>]
+    ) -> [ClosedRange<TimeInterval>] {
+        let sorted = ranges
+            .filter { $0.lowerBound.isFinite && $0.upperBound.isFinite }
+            .sorted { $0.lowerBound < $1.lowerBound }
+        var merged: [ClosedRange<TimeInterval>] = []
+        merged.reserveCapacity(sorted.count)
+        for range in sorted {
+            if let last = merged.last, range.lowerBound <= last.upperBound {
+                merged[merged.count - 1] = last.lowerBound...max(last.upperBound, range.upperBound)
+            } else {
+                merged.append(range)
+            }
+        }
+        return merged
+    }
+
+    nonisolated static func containingRange(
+        at time: TimeInterval,
+        in sortedRanges: [ClosedRange<TimeInterval>]
+    ) -> ClosedRange<TimeInterval>? {
+        var low = 0
+        var high = sortedRanges.count
+        while low < high {
+            let mid = low + (high - low) / 2
+            let range = sortedRanges[mid]
+            if time < range.lowerBound {
+                high = mid
+            } else if time > range.upperBound {
+                low = mid + 1
+            } else {
+                return range
+            }
+        }
+        return nil
+    }
+
+    /// Resolves combined silence and focus-voice skips in one hop so landing
+    /// from a silent gap inside an excluded turn never plays a 200 ms blip.
+    nonisolated static func skipTarget(
+        at time: TimeInterval,
+        duration: TimeInterval,
+        skipSilence: Bool,
+        silentRanges: [ClosedRange<TimeInterval>],
+        playsFocusOnly: Bool,
+        outsideFocusRanges: [ClosedRange<TimeInterval>]
+    ) -> TimeInterval? {
+        var candidate = time
+        var jumped = false
+        let maxHops = silentRanges.count + outsideFocusRanges.count + 2
+        for _ in 0..<maxHops {
+            if skipSilence,
+               let gap = containingRange(at: candidate, in: silentRanges),
+               candidate < gap.upperBound - 0.3 {
+                let next = min(duration, gap.upperBound - 0.2)
+                if next > candidate + 0.001 {
+                    candidate = next
+                    jumped = true
+                    continue
+                }
+            }
+            if playsFocusOnly,
+               let gap = containingRange(at: candidate, in: outsideFocusRanges),
+               candidate < gap.upperBound - 0.3 {
+                let next = min(duration, gap.upperBound - 0.05)
+                if next > candidate + 0.001 {
+                    candidate = next
+                    jumped = true
+                    continue
+                }
+            }
+            break
+        }
+        return jumped ? candidate : nil
+    }
+}
+
+private final class PlayerObserverCleanup: @unchecked Sendable {
+    private let lock = NSLock()
+    private let player: AVPlayer
+    private var timeObserver: Any?
+    private var endObserver: NSObjectProtocol?
+    private var failedObserver: NSObjectProtocol?
+    private var statusObservation: NSKeyValueObservation?
+    private var timeControlObservation: NSKeyValueObservation?
+
+    init(player: AVPlayer) {
+        self.player = player
+    }
+
+    func install(
+        timeObserver: Any,
+        endObserver: NSObjectProtocol,
+        failedObserver: NSObjectProtocol,
+        statusObservation: NSKeyValueObservation,
+        timeControlObservation: NSKeyValueObservation
+    ) {
+        lock.lock()
+        self.timeObserver = timeObserver
+        self.endObserver = endObserver
+        self.failedObserver = failedObserver
+        self.statusObservation = statusObservation
+        self.timeControlObservation = timeControlObservation
+        lock.unlock()
+    }
+
+    func teardown() {
+        lock.lock()
+        let timeObserver = self.timeObserver
+        let endObserver = self.endObserver
+        let failedObserver = self.failedObserver
+        let statusObservation = self.statusObservation
+        let timeControlObservation = self.timeControlObservation
+        self.timeObserver = nil
+        self.endObserver = nil
+        self.failedObserver = nil
+        self.statusObservation = nil
+        self.timeControlObservation = nil
+        lock.unlock()
+
         if let timeObserver { player.removeTimeObserver(timeObserver) }
-        timeObserver = nil
         if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
-        endObserver = nil
+        if let failedObserver { NotificationCenter.default.removeObserver(failedObserver) }
+        statusObservation?.invalidate()
+        timeControlObservation?.invalidate()
     }
 }

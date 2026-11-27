@@ -580,6 +580,70 @@ final class CloudMeetingSyncCoordinatorTests: XCTestCase {
             sourceDeviceID: sourceDeviceID)
     }
 
+    func testHandleSavedRecordPropagatesInjectedDateAndCodecExposesPayloadSHA256() async throws {
+        let root = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try MeetingStore.inMemory()
+        let transportStore = try await readyTransportStore(at: root)
+        let deviceID = UUID(uuidString: "30000000-0000-0000-0000-000000000051")!
+        let coordinator = CloudMeetingSyncCoordinator(
+            meetingStore: store,
+            transportStore: transportStore,
+            localDeviceID: deviceID)
+        let seedDate = Date(timeIntervalSince1970: 1_784_500_000)
+        let meeting = Meeting(title: "Injected Date", startedAt: seedDate)
+        try await store.save(meeting)
+
+        _ = try await coordinator.requestInitialSeed(at: seedDate)
+        _ = try await coordinator.prepareInitialSeed(at: seedDate)
+        let recordIDs = try await coordinator.stagePendingChanges(at: seedDate)
+        let firstRecordID = try XCTUnwrap(recordIDs.first)
+        let rawEncoded = try await coordinator.encodedRecord(
+            for: firstRecordID,
+            at: seedDate)
+        let encoded = try XCTUnwrap(rawEncoded)
+
+        XCTAssertNotNil(CloudMeetingRecordCodec.payloadSHA256(of: encoded.record))
+        let saveDate = Date(timeIntervalSince1970: 1_784_500_500)
+        _ = try await coordinator.handleSavedRecord(encoded.record, at: saveDate)
+
+        let snapshot = await transportStore.currentSnapshot()
+        XCTAssertEqual(snapshot.initialSeedState, .complete)
+        XCTAssertEqual(snapshot.initialSeedCompletedAt, saveDate)
+    }
+
+    func testServerConflictMatchesByRecordSHA256DigestWithoutReencodingMismatch() async throws {
+        let root = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try MeetingStore.inMemory()
+        let transportStore = try await readyTransportStore(at: root)
+        let deviceID = UUID(uuidString: "30000000-0000-0000-0000-000000000052")!
+        let coordinator = CloudMeetingSyncCoordinator(
+            meetingStore: store,
+            transportStore: transportStore,
+            localDeviceID: deviceID)
+        let now = Date(timeIntervalSince1970: 1_784_501_000)
+        try await store.save(Meeting(title: "Digest Match", startedAt: now))
+        let recordIDs = try await coordinator.stagePendingChanges(at: now)
+        let firstRecordID = try XCTUnwrap(recordIDs.first)
+        let rawEncoded = try await coordinator.encodedRecord(
+            for: firstRecordID,
+            at: now)
+        let encoded = try XCTUnwrap(rawEncoded)
+        let conflictError = CKError(
+            .serverRecordChanged,
+            userInfo: [CKRecordChangedErrorServerRecordKey: encoded.record])
+
+        let resolution = try await coordinator.handleFailedRecord(
+            encoded.record,
+            error: conflictError,
+            at: now.addingTimeInterval(30))
+        XCTAssertEqual(resolution.category, .serverConflict)
+        XCTAssertFalse(resolution.shouldRetry)
+        let pendingAfter = try await store.pendingMeetingSyncChanges()
+        XCTAssertTrue(pendingAfter.isEmpty)
+    }
+
     private func temporaryDirectory() -> URL {
         FileManager.default.temporaryDirectory
             .appendingPathComponent("portavoz-cloud-coordinator-tests")

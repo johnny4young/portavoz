@@ -70,12 +70,16 @@ public actor ExportLibraryMarkdownBackup: ApplicationUseCase {
         else {
             throw LibraryMarkdownBackupError.operationInProgress
         }
+        // Keep actor state aligned with any journal mutations even when
+        // cancellation interrupts mid-iteration; cleared runs stay nil.
+        defer {
+            if activeRun != nil { activeRun = run }
+        }
         do {
             try await refreshDestinationBookmark(
                 destinationLease.bookmark,
                 in: &run)
         } catch {
-            activeRun = run
             throw LibraryMarkdownBackupError.libraryUnavailable
         }
 
@@ -96,13 +100,9 @@ public actor ExportLibraryMarkdownBackup: ApplicationUseCase {
                 }
                 activeRun = run
             } catch is BackupRecoveryPersistenceError {
-                // A post-move journal failure must not rewind the process-local
-                // run and publish the same document again on retry.
-                activeRun = run
                 throw LibraryMarkdownBackupError.libraryUnavailable
             }
         }
-        activeRun = run
         return .suspended
     }
 
@@ -185,10 +185,12 @@ private extension ExportLibraryMarkdownBackup {
         guard Self.sameDirectory(run.directory, request.directory) else {
             throw LibraryMarkdownBackupError.operationInProgress
         }
+        defer {
+            if activeRun != nil { activeRun = run }
+        }
         do {
             return try await finishTermination(run: &run)
         } catch is BackupRecoveryPersistenceError {
-            activeRun = run
             throw LibraryMarkdownBackupError.libraryUnavailable
         }
     }
@@ -355,6 +357,11 @@ private extension ExportLibraryMarkdownBackup {
                     progress: progress)
                 return
             case .nameCollision:
+                // Refresh destination names once so pre-existing collisions
+                // skip in memory instead of writing one journal reservation each.
+                if let currentNames = try? await existingFileNames(in: directory) {
+                    run.allocator.recordExisting(currentNames)
+                }
                 continue
             }
         }
@@ -372,7 +379,7 @@ private extension ExportLibraryMarkdownBackup {
         guard try await prepareSourceIfNeeded(in: directory) else { return nil }
         guard shouldProceed(at: .checkpoint) else { return nil }
         guard let preparedSource else {
-            preconditionFailure("prepared backup source must exist")
+            throw LibraryMarkdownBackupError.libraryUnavailable
         }
         return try await activate(
             preparedSource,
@@ -463,8 +470,7 @@ private extension ExportLibraryMarkdownBackup {
         in run: inout ActiveLibraryMarkdownBackupRun
     ) async throws -> LibraryMarkdownBackupRecoveryPublication {
         guard let sourceCursor = run.pendingSourceCursor else {
-            preconditionFailure(
-                "reserved backup content must retain its source cursor")
+            throw LibraryMarkdownBackupError.libraryUnavailable
         }
         var candidateAllocator = run.allocator
         let reservation = LibraryMarkdownBackupRecoveryPublication(
@@ -525,7 +531,7 @@ private extension ExportLibraryMarkdownBackup {
         progress: LibraryMarkdownBackupProgressHandler
     ) async throws {
         guard let cursor = run.pendingRecoveryCheckpoint else {
-            preconditionFailure("backup recovery checkpoint must exist")
+            throw LibraryMarkdownBackupError.libraryUnavailable
         }
         try await applyRecovery(
             .checkpointSource(cursor),
@@ -563,8 +569,7 @@ private extension ExportLibraryMarkdownBackup {
         progress: LibraryMarkdownBackupProgressHandler
     ) async throws {
         guard let cursor = run.pendingSourceCursor else {
-            preconditionFailure(
-                "failed backup content must retain its source cursor")
+            throw LibraryMarkdownBackupError.libraryUnavailable
         }
         let recoveryFailure = LibraryMarkdownBackupRecoveryFailure(
             sequence: run.recoveryState.failures.count,
@@ -649,7 +654,7 @@ private extension ExportLibraryMarkdownBackup {
         run: inout ActiveLibraryMarkdownBackupRun
     ) async throws -> LibraryMarkdownBackupExecution {
         guard let termination = run.pendingTermination else {
-            preconditionFailure("backup termination must exist")
+            throw LibraryMarkdownBackupError.libraryUnavailable
         }
         if termination == .completed,
            run.recoveryState.phase == .active {

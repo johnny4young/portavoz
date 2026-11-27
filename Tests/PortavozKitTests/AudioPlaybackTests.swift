@@ -626,4 +626,45 @@ final class MeetingPlayerTests: XCTestCase {
         let player = await MeetingPlayer.make(channelFiles: [])
         XCTAssertNil(player)
     }
+
+    func testNormalizeRangesMergesOverlapsAndBinarySearchFindsMatches() {
+        let normalized = MeetingPlayer.normalizeRanges([12...18, 2...5, 4...7, 20...22])
+        XCTAssertEqual(normalized, [2...7, 12...18, 20...22])
+        XCTAssertEqual(MeetingPlayer.containingRange(at: 5.5, in: normalized), 2...7)
+        XCTAssertEqual(MeetingPlayer.containingRange(at: 20, in: normalized), 20...22)
+        XCTAssertNil(MeetingPlayer.containingRange(at: 9, in: normalized))
+    }
+
+    func testSkipTargetResolvesCombinedSilenceAndFocusRangesInOneHop() {
+        let silent = MeetingPlayer.normalizeRanges([10...15, 24.9...30])
+        let outsideFocus = MeetingPlayer.normalizeRanges([12...25])
+
+        let combined = MeetingPlayer.skipTarget(
+            at: 10.2,
+            duration: 60,
+            skipSilence: true,
+            silentRanges: silent,
+            playsFocusOnly: true,
+            outsideFocusRanges: outsideFocus)
+        XCTAssertEqual(combined ?? -1, 29.8, accuracy: 0.001,
+            "landing inside an excluded turn and trailing silence must jump straight past both")
+
+        let focusOnly = MeetingPlayer.skipTarget(
+            at: 10.2,
+            duration: 60,
+            skipSilence: true,
+            silentRanges: [10...15],
+            playsFocusOnly: true,
+            outsideFocusRanges: outsideFocus)
+        XCTAssertEqual(focusOnly ?? -1, 24.95, accuracy: 0.001,
+            "silent gap ending inside an excluded turn must jump directly past the excluded turn")
+
+        XCTAssertNil(MeetingPlayer.skipTarget(
+            at: 5,
+            duration: 60,
+            skipSilence: true,
+            silentRanges: silent,
+            playsFocusOnly: true,
+            outsideFocusRanges: outsideFocus))
+    }
 }

@@ -42,7 +42,7 @@ extension MeetingStore {
                     throw StorageError.invalidImportedMeeting("admission cannot replace an existing meeting")
                 }
                 let meeting = Meeting(
-                    id: input.meetingID, title: input.title, startedAt: timestamp,
+                    id: input.meetingID, title: input.title, startedAt: input.sourceModifiedAt,
                     audioDirectory: input.copyDirectory,
                     lifecycleState: .processing)
                 try MeetingRecord(meeting, createdAt: timestamp, updatedAt: timestamp).insert(db)
