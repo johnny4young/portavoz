@@ -23,12 +23,19 @@ final class MeetingDetailTranscriptPresentation: Sendable {
 struct MeetingDetailTranscriptPresentationState {
     private(set) var chapterTitles: [TimeInterval: String] = [:]
     private(set) var presentation: MeetingDetailTranscriptPresentation?
+    /// Decisions and commitments keyed by the row that produced them.
+    private(set) var marginNotes = MeetingMarginNotes.empty
 
-    mutating func receiveCore(_ detail: MeetingReviewReadModel?, resetChapterTitles: Bool) {
-        if resetChapterTitles { chapterTitles = [:] }
-        presentation = detail.map {
-            MeetingDetailTranscriptPresentation(detail: $0, chapterTitles: chapterTitles)
+    /// A core rebuilds the reading; reviews and summaries arrive outside it,
+    /// so every update re-anchors the margin notes.
+    mutating func receive(_ detail: MeetingReviewReadModel?, isCore: Bool, resetChapterTitles: Bool) {
+        if isCore {
+            if resetChapterTitles { chapterTitles = [:] }
+            presentation = detail.map {
+                MeetingDetailTranscriptPresentation(detail: $0, chapterTitles: chapterTitles)
+            }
         }
+        marginNotes = presentation.flatMap { detail?.marginNotes(in: $0.current) } ?? .empty
     }
 
     @discardableResult
@@ -44,5 +51,13 @@ struct MeetingDetailTranscriptPresentationState {
         chapterTitles = merged
         presentation = next
         return true
+    }
+}
+
+extension MeetingReviewUpdate {
+    /// A core delivery carries the transcript; other updates carry reviews.
+    var isCore: Bool {
+        if case .core = self { return true }
+        return false
     }
 }

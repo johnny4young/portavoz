@@ -14,6 +14,14 @@ struct MeetingCommitmentInboxActions {
         @MainActor (CommitmentInboxCandidate, String, CommitmentAssignee, Date?) async -> Bool
     let dismiss: @MainActor (CommitmentInboxCandidate) async -> Bool
     let deferUntil: @MainActor (CommitmentInboxCandidate, Date) async -> Bool
+
+    /// Puts the candidate back in review this many days from now.
+    @MainActor
+    func deferCandidate(_ candidate: CommitmentInboxCandidate, days: Int) async -> Bool {
+        guard let revisitAt = Calendar.autoupdatingCurrent.date(byAdding: .day, value: days, to: Date())
+        else { return false }
+        return await deferUntil(candidate, revisitAt)
+    }
 }
 
 /// Evidence-first admission surface for generated action items. The section
@@ -149,12 +157,7 @@ struct MeetingCommitmentInboxSection: View {
     }
 
     private func deferCandidate(_ candidate: CommitmentInboxCandidate, days: Int) {
-        guard let revisitAt = Calendar.autoupdatingCurrent.date(
-            byAdding: .day,
-            value: days,
-            to: Date())
-        else { return }
-        perform(candidate) { await actions.deferUntil(candidate, revisitAt) }
+        perform(candidate) { await actions.deferCandidate(candidate, days: days) }
     }
 
     private func perform(
@@ -252,6 +255,7 @@ struct MeetingCommitmentConfirmationSheet: View {
                 Spacer()
                 Button("Cancel") { cancel() }
                     .keyboardShortcut(.cancelAction)
+                    .accessibilityIdentifier("commitment-editor-cancel")
                 Button("Confirm") { save() }
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.pvPrimary)

@@ -150,6 +150,8 @@ final class MeetingDetailFlowState {
     var renameMeetingTitle = ""
     var transcriptCorrectionTarget: TranscriptCorrectionTarget?
     var decisionConfirmTarget: DecisionConfirmTarget?
+    /// The summary version whose decision confirmations the margin cards loaded.
+    @ObservationIgnored var marginDecisionsLoadedFor: Int?
     var skillConfirmTarget: SkillConfirmTarget?
     var githubIssueTarget: GitHubIssueTarget?
     var renameSpeakerName = ""

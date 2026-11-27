@@ -3,6 +3,24 @@ import Foundation
 import PortavozCore
 
 extension MeetingDetailCoordinator {
+    /// The cards beside the transcript and the flows they reuse; nil without any.
+    func marginContext(
+        _ detail: MeetingReviewReadModel,
+        notes: MeetingMarginNotes,
+        focusEvidence: @escaping @MainActor (TranscriptSegment) -> Void
+    ) -> MeetingMarginNotesContext? {
+        guard !notes.byRow.isEmpty else { return nil }
+        return MeetingMarginNotesContext(
+            notes: notes,
+            cast: detail.core.voiceCast,
+            decisionConfirmations: model.state.decisionConfirmations,
+            ownerChoices: detail.commitmentOwnerChoices(),
+            confirmDecision: { presentDecisionConfirmation($0, statement: $1, meetingID: detail.meeting.id) },
+            retractDecisionTopic: retractDecisionTopic,
+            setDone: setActionItem,
+            commitments: commitmentInboxActions(focusEvidence: focusEvidence))
+    }
+
     func confirmCommitment(
         _ candidate: CommitmentInboxCandidate,
         title: String,

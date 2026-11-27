@@ -15,6 +15,7 @@ final class MeetingDetailModel {
         fileprivate(set) var readModel: MeetingReviewReadModel?
         fileprivate(set) var transcriptPresentationState = MeetingDetailTranscriptPresentationState()
         var transcriptPresentation: MeetingDetailTranscriptPresentation? { transcriptPresentationState.presentation }
+        var marginNotes: MeetingMarginNotes { transcriptPresentationState.marginNotes }
         fileprivate(set) var nameSuggestions: [MeetingNameSuggestion] = []
         fileprivate(set) var isSuggestingNames = false
         fileprivate(set) var voice = MeetingDetailVoiceSuggestions()
@@ -790,12 +791,10 @@ private extension MeetingDetailModel {
         var next = state
         next.readModel = transition.readModel
         next.voice.follow(speakers: transition.readModel?.speakers ?? [])
-        if case .core = update {
-            // Every delivered core is authoritative, even if its revision ID
-            // matches: refinement, rows or speakers may still have changed.
-            next.transcriptPresentationState.receiveCore(
-                transition.readModel, resetChapterTitles: transition.correctionRevisionChanged)
-        }
+        // Every delivered core is authoritative, even if its revision ID
+        // matches: refinement, rows or speakers may still have changed.
+        next.transcriptPresentationState.receive(
+            transition.readModel, isCore: update.isCore, resetChapterTitles: transition.correctionRevisionChanged)
         next.phase = transition.phase
         next.revision += 1
         // Publish the matching read model and derived reading together.

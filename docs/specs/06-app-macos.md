@@ -492,7 +492,7 @@ synchronization performs a start-time upper-bound
 search plus a maximum-end segment-tree lookup, retaining the released overlap
 and gap behavior without scanning up to 20,000 rows every 200 ms. The extracted
 transcript and chapter sections receive only immutable values and explicit seek
-or rename actions. Row rendering remains a stable-ID `LazyVStack`, now a
+or rename actions. Row rendering remains a stable-ID `LazyVStack` (one per run of lines between margin-noted ones, D669), now a
 section of the meeting page's scroll rather than its own viewport (D658); the
 generic focused viewport serves only live captions and keeps reader ownership
 in a separately tested pure policy.
@@ -580,9 +580,57 @@ generated material (summary, commitment inbox and notes, each at its full
 height), the rail (`detail-secondary-rail`) and the
 transcript (`detail-transcript-section`). When the page is wide enough for a
 260–300 point margin (30% of the width) while the reading column keeps 540
-points, the rail sits beside material and transcript, its top level with the
-standfirst; otherwise all three stack in one column with the rail between the
-material and the transcript, so the rail never narrows the reading column. The
+points, the rail sits beside the material, its top level with the standfirst,
+and the transcript spans the page under the material: its header, chapter
+headings and turns keep the reading column and the margin beside them holds
+margin notes (D669); otherwise all three stack in one column with the rail
+between the material and the transcript, so the rail never narrows the reading
+column.
+
+Margin notes (D669): `MeetingReviewReadModel.marginNotes(in:)` keys each
+decision bullet with typed evidence and each action item with evidence to the
+visible row holding its first evidence line that still resolves, only while the
+summary is current; dismissed and deferred commitments stay out. A row's
+notes render as cards (`MeetingMarginNotesView`, `pvCard(.outlined)`) in the
+margin beside the row, top-aligned with it, and a card taller than its line
+makes the row taller, so cards never overlap. A transcript that holds notes
+tells `MeetingDetailPageLayout` so (`MeetingTranscriptHoldsMarginNotes`, a
+layout value), and on a wide page it then starts below whichever of the
+material and the rail ends lower, so no card can meet the rail; the layout
+computes that from the sections' heights, and no row measures its position or
+keeps layout state. Each row and the transcript header go through
+`MeetingTranscriptLineLayout`, which derives the reading column and margin
+widths from the width it is proposed, so no measured width is written to view
+state; only the speaker margin's narrow/wide switch is a geometry-derived
+flag. The page scroll sits in `MeetingDetailViewportLayout`, which takes the
+size it is offered without measuring the scroll, so a minimum or ideal size
+query from the window never lays the lazy transcript out at a width the page
+does not have; the page and line layouts answer `explicitAlignment` with nil,
+so measuring one never places its subviews. On a one-column page the same cards fold under the line's text, on its
+edge. A `LazyVStack` sizes itself from the rows it has measured, so a row with
+cards, several times taller than its neighbours, made that size alternate
+between two values on every layout pass once the row left the realized window
+(macOS 26), and the page never settled. `MeetingMarginNotes.readingRuns`
+therefore splits the reading items into runs: a noted line is its own run,
+placed eagerly in the transcript's `VStack`, and each stretch of lines between
+noted ones is one `LazyVStack`; a transcript without notes stays a single lazy
+run. Row identifiers and `scrollTo` targets are unchanged. A decision card (`margin-decision-<id>`) reads
+"✓ Decision", the bullet in SF semibold and the Decisions tab's own
+`DecisionConfirmationControl`: Confirm… (`-confirm`, the decision sheet) or
+Confirmed with its topics (`-confirmed`, a menu that removes a topic);
+confirmations load with each presentation refresh while any decision card
+exists. A commitment card
+(`margin-commitment-<id>`) reads "⚑ Commitment" or "Commitment · due <day>"
+(`-caption`, amber when you own it, ink 3 otherwise), a checkbox with the item
+(`-done`, the same to-do toggle as the To-dos tab), who said the line and who
+owns it ("● Marta asked · ● You own it", or "● You said it and own it";
+`-attribution`, Today's said-it/asked rule) and, while it waits for review,
+Confirm… (`-confirm`, the commitment confirmation sheet hosted by the transcript
+section) and a ⋯ menu (`-more`) with Review later (`-defer-tomorrow`,
+`-defer-week`) and Dismiss (`-dismiss`). The commitment inbox above the
+transcript lists only pending candidates whose evidence has no visible row,
+such as a hidden line (`MeetingMarginNotes.inbox`). The projection is rebuilt
+with every read-model update, beside the transcript reading, not per render. The
 page keeps 28-point side gutters, caps at 1,240 points and centres beyond
 that. Transcript turn text shares the standfirst's left edge (the same 118-point
 gutter and 22-point gap; the rows' outline inset is given back by the stack),

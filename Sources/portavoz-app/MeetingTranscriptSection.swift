@@ -15,6 +15,8 @@ struct MeetingTranscriptValues {
     let revealCount: Int
     let performanceScrollEnabled: Bool
     let translation: MeetingTranscriptTranslationState
+    /// Nil when no decision or commitment anchors to a shown line.
+    let margin: MeetingMarginNotesContext?
 }
 
 struct MeetingTranscriptActions {
@@ -40,12 +42,14 @@ struct MeetingTranscriptSection: View {
     /// Nil shows the original; a language shows its stored translation.
     @State private var language: String?
     @State private var requestedLanguage: String?
+    /// Owned here, not by a lazy row, so scrolling never dismisses the sheet.
+    @State private var reviewing: MarginReviewTarget?
+    @State private var isSaving = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            transcriptHeader
-            transcriptRows
-        }
+        transcriptContent
+        // Rows fill the page, but an empty transcript must not measure the header's width.
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-transcript-section")
         .onChange(of: values.translation.translations) {
@@ -58,6 +62,22 @@ struct MeetingTranscriptSection: View {
             SuppressedTranscriptCorrectionsSheet(
                 contexts: values.structureProjection.suppressedContexts,
                 restore: actions.restructure)
+        }
+    }
+
+    private var transcriptContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            MeetingTranscriptLineLayout { transcriptHeader }
+            transcriptRows
+                .sheet(item: $reviewing) { target in
+                    MeetingCommitmentConfirmationSheet(
+                        candidate: target.candidate,
+                        ownerChoices: target.ownerChoices,
+                        cancel: { reviewing = nil },
+                        confirm: { title, assignee, dueAt in
+                            await target.commitments.confirm(target.candidate, title, assignee, dueAt)
+                        })
+                }
         }
     }
 
@@ -108,7 +128,34 @@ struct MeetingTranscriptSection: View {
                 language == nil && (values.correctionContext($0) != nil
                     || values.structureProjection.context(for: $0) != nil)
             },
-            onCorrect: actions.presentCorrection)
+            onCorrect: actions.presentCorrection,
+            margin: margin)
+    }
+
+    private var margin: MeetingMarginNotesContext? {
+        guard var margin = values.margin else { return nil }
+        let commitments = margin.commitments
+        let ownerChoices = margin.ownerChoices
+        margin.review = MeetingMarginReview(
+            open: { candidate in
+                reviewing = MarginReviewTarget(
+                    candidate: candidate, ownerChoices: ownerChoices, commitments: commitments)
+            },
+            deferCandidate: { candidate, days in
+                save { await commitments.deferCandidate(candidate, days: days) }
+            },
+            dismiss: { candidate in save { await commitments.dismiss(candidate) } },
+            isBusy: isSaving)
+        return margin
+    }
+
+    /// Failures surface through the detail model's action error.
+    private func save(_ operation: @escaping @MainActor () async -> Bool) {
+        isSaving = true
+        Task {
+            _ = await operation()
+            isSaving = false
+        }
     }
 }
 
@@ -162,4 +209,14 @@ struct MeetingTranscriptChaptersSection: View {
             ? L10n.text("Jump to this moment")
             : L10n.text("Jumping needs audio, and this meeting has none"))
     }
+}
+
+/// The sheet keeps the flows it opened with, so a refresh that drops the
+/// margin never leaves it empty.
+private struct MarginReviewTarget: Identifiable {
+    let candidate: CommitmentInboxCandidate
+    let ownerChoices: [CommitmentOwnerSuggestion]
+    let commitments: MeetingCommitmentInboxActions
+
+    var id: CommitmentInboxCandidate.ID { candidate.id }
 }

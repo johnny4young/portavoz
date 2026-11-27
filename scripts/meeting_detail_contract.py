@@ -60,6 +60,7 @@ INTERACTION_SOURCE_PATHS = (
     "Sources/portavoz-app/TranscriptSegmentsView.swift",
     "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
     "Sources/portavoz-app/MeetingVoicesTable.swift",
+    "Sources/portavoz-app/MeetingMarginNotesView.swift",
 )
 
 PERFORMANCE_EVIDENCE_PATHS = (

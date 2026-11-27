@@ -3385,13 +3385,26 @@ presentation children.
 
 Meeting Detail is one scrolling page. The root owns a single vertical
 `ScrollView` (`detail-page-scroll`) for the header, Voices table, generated
-material, rail and transcript, with the player docked below it.
+material, rail and transcript, with the player docked below it. The scroll
+sits in `MeetingDetailViewportLayout`, which takes the offered size without
+measuring it, so window size queries never lay the lazy transcript out.
 `MeetingDetailPageLayout` is a stateless custom `Layout`: from the width it is
-offered it puts the rail beside material and transcript, or stacks all three
-in one column, so the reading column never starves for the margin. Transcript
-rows are a lazy section of that page and follow playback through the page's
-scroll; no view measures heights to allocate panes, and no route or storage
-state knows about layout.
+offered it puts the rail beside the material and gives the transcript the whole
+width under it, or stacks all three in one column, so the reading column never
+starves for the margin. Transcript rows are a lazy section of that page and
+follow playback through the page's scroll; no view measures heights to allocate
+panes, and no route or storage state knows about layout. A transcript holding
+margin notes says so through a layout value, and the layout starts it below a
+taller rail so cards never meet it; lazy rows keep no layout state. A line with
+notes is several times taller than its neighbours, and a lazy stack that holds
+one never settles on a size, so `MeetingMarginNotes.readingRuns` splits the
+transcript: each noted line is laid out eagerly and the lines between them
+share a lazy stack. Margin notes come
+from `MeetingReviewReadModel.marginNotes(in:)`, a pure ApplicationKit
+projection that keys each current decision and action item to the visible row
+holding its first resolvable evidence line; the transcript draws a row's notes
+in the margin beside it, or under its text on a one-column page, and the
+commitment inbox keeps only candidates without such a row.
 
 Transcript correction follows the same modal boundary. The flow captures the
 editor context, structural context, accepted reading, and revision as one
