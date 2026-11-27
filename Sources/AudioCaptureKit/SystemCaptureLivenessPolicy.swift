@@ -1,9 +1,10 @@
 import Foundation
 import PortavozCore
+import Synchronization
 
-/// Deterministic state machine for the field failure where microphone frames
-/// keep arriving after the remote/system tap stops calling back entirely.
-/// Silence is intentionally irrelevant: a silent tap still supplies frames.
+/// Deterministic state machine for the field failure where one capture channel
+/// keeps delivering frames after its peer stops calling back entirely.
+/// Silence is intentionally irrelevant: a silent source still supplies frames.
 struct SystemCaptureLivenessPolicy {
     struct Configuration: Sendable {
         let stallAfter: TimeInterval
@@ -16,9 +17,9 @@ struct SystemCaptureLivenessPolicy {
     }
 
     enum Signal: Equatable {
-        case stalled(secondsWithoutFrames: TimeInterval)
-        case recoveryDue(attempt: Int, secondsWithoutFrames: TimeInterval)
-        case recovered(outageSeconds: TimeInterval)
+        case stalled(channel: AudioChannel, secondsWithoutFrames: TimeInterval)
+        case recoveryDue(channel: AudioChannel, attempt: Int, secondsWithoutFrames: TimeInterval)
+        case recovered(channel: AudioChannel, outageSeconds: TimeInterval)
     }
 
     private struct Incident {
@@ -28,46 +29,61 @@ struct SystemCaptureLivenessPolicy {
     }
 
     private let configuration: Configuration
-    private var lastSystemFrameAt: TimeInterval?
-    private var incident: Incident?
+    private var lastFrameAt: [AudioChannel: TimeInterval] = [:]
+    private var incidents: [AudioChannel: Incident] = [:]
 
     init(configuration: Configuration = Configuration()) {
         self.configuration = configuration
     }
 
+    mutating func retire(channel: AudioChannel) {
+        lastFrameAt.removeValue(forKey: channel)
+        incidents.removeValue(forKey: channel)
+    }
+
     mutating func observe(channel: AudioChannel, at timestamp: TimeInterval) -> [Signal] {
-        switch channel {
-        case .system:
-            lastSystemFrameAt = timestamp
-            guard let incident else { return [] }
-            self.incident = nil
-            return [.recovered(outageSeconds: max(0, timestamp - incident.startedAt))]
+        guard let peer = Self.peer(for: channel) else { return [] }
+        lastFrameAt[channel] = timestamp
 
-        case .microphone:
-            guard let lastSystemFrameAt else { return [] }
-            let outage = max(0, timestamp - lastSystemFrameAt)
-            guard outage >= configuration.stallAfter else { return [] }
+        var signals: [Signal] = []
+        if let recoveredIncident = incidents.removeValue(forKey: channel) {
+            signals.append(.recovered(
+                channel: channel,
+                outageSeconds: max(0, timestamp - recoveredIncident.startedAt)))
+        }
 
-            if var incident {
-                guard timestamp - incident.lastAttemptAt >= configuration.retryEvery else {
-                    return []
-                }
-                incident.attempts += 1
-                incident.lastAttemptAt = timestamp
-                self.incident = incident
-                return [.recoveryDue(
-                    attempt: incident.attempts,
-                    secondsWithoutFrames: outage)]
+        guard let peerLastFrameAt = lastFrameAt[peer] else { return signals }
+        let outage = max(0, timestamp - peerLastFrameAt)
+        guard outage >= configuration.stallAfter else { return signals }
+
+        if var incident = incidents[peer] {
+            guard timestamp - incident.lastAttemptAt >= configuration.retryEvery else {
+                return signals
             }
+            incident.attempts += 1
+            incident.lastAttemptAt = timestamp
+            incidents[peer] = incident
+            signals.append(.recoveryDue(
+                channel: peer,
+                attempt: incident.attempts,
+                secondsWithoutFrames: outage))
+            return signals
+        }
 
-            incident = Incident(startedAt: lastSystemFrameAt, attempts: 1, lastAttemptAt: timestamp)
-            return [
-                .stalled(secondsWithoutFrames: outage),
-                .recoveryDue(attempt: 1, secondsWithoutFrames: outage)
-            ]
+        incidents[peer] = Incident(
+            startedAt: peerLastFrameAt,
+            attempts: 1,
+            lastAttemptAt: timestamp)
+        signals.append(.stalled(channel: peer, secondsWithoutFrames: outage))
+        signals.append(.recoveryDue(channel: peer, attempt: 1, secondsWithoutFrames: outage))
+        return signals
+    }
 
-        case .room:
-            return []
+    private static func peer(for channel: AudioChannel) -> AudioChannel? {
+        switch channel {
+        case .microphone: .system
+        case .system: .microphone
+        case .room: nil
         }
     }
 }
@@ -76,11 +92,10 @@ struct SystemCaptureLivenessPolicy {
 /// `RecordingSession` actor's hot path. Audio writers ask this monitor for a
 /// pure state transition after each persisted chunk; only the rare non-empty
 /// signal list crosses back to the actor to request source recovery.
-final class SystemCaptureLivenessMonitor: @unchecked Sendable {
-    private let lock = NSLock()
+final class SystemCaptureLivenessMonitor: Sendable {
     private let configuration: SystemCaptureLivenessPolicy.Configuration
     private let monotonicNow: @Sendable () -> TimeInterval
-    private var policy: SystemCaptureLivenessPolicy
+    private let policy: Mutex<SystemCaptureLivenessPolicy>
 
     init(
         configuration: SystemCaptureLivenessPolicy.Configuration = .init(),
@@ -90,18 +105,25 @@ final class SystemCaptureLivenessMonitor: @unchecked Sendable {
     ) {
         self.configuration = configuration
         self.monotonicNow = monotonicNow
-        policy = SystemCaptureLivenessPolicy(configuration: configuration)
+        policy = Mutex(SystemCaptureLivenessPolicy(configuration: configuration))
     }
 
     func observe(channel: AudioChannel) -> [SystemCaptureLivenessPolicy.Signal] {
-        lock.withLock {
-            policy.observe(channel: channel, at: monotonicNow())
+        let now = monotonicNow()
+        return policy.withLock { state in
+            state.observe(channel: channel, at: now)
+        }
+    }
+
+    func retire(channel: AudioChannel) {
+        policy.withLock { state in
+            state.retire(channel: channel)
         }
     }
 
     func reset() {
-        lock.withLock {
-            policy = SystemCaptureLivenessPolicy(configuration: configuration)
+        policy.withLock { state in
+            state = SystemCaptureLivenessPolicy(configuration: configuration)
         }
     }
 }

@@ -12,6 +12,16 @@ public enum RecordingCaptureHealthEvent: Equatable, Sendable {
     )
     case recovered(channel: AudioChannel, outageSeconds: TimeInterval)
     case streamFailed(channel: AudioChannel)
+
+    public var channel: AudioChannel {
+        switch self {
+        case .stalled(let channel, _),
+             .recoveryRequested(let channel, _, _),
+             .recovered(let channel, _),
+             .streamFailed(let channel):
+            channel
+        }
+    }
 }
 
 /// A long callback outage may mean the call ended while Portavoz remained

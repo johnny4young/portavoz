@@ -54,9 +54,14 @@ public final class NemotronLatin1120Engine: TranscriptionEngine, Sendable {
     )
 
     private let models: SharedNemotronMultilingualModels
+    private let installationLease: ModelStore.ModelLease?
 
-    private init(models: SharedNemotronMultilingualModels) {
+    private init(
+        models: SharedNemotronMultilingualModels,
+        installationLease: ModelStore.ModelLease? = nil
+    ) {
         self.models = models
+        self.installationLease = installationLease
     }
 
     /// Loads only after the caller supplies a directory verified against the
@@ -65,10 +70,27 @@ public final class NemotronLatin1120Engine: TranscriptionEngine, Sendable {
     public static func load(
         fromVerifiedDirectory directory: URL
     ) async throws -> NemotronLatin1120Engine {
+        try await load(directory: directory, installationLease: nil)
+    }
+
+    /// Shared-store callers retain the deletion lock while Nemotron weights
+    /// remain loaded and until every active streaming job finishes cleanup.
+    public static func loadLeased(
+        _ installation: ModelStore.ModelLease
+    ) async throws -> NemotronLatin1120Engine {
+        try await load(directory: installation.directory, installationLease: installation)
+    }
+
+    private static func load(
+        directory: URL,
+        installationLease: ModelStore.ModelLease?
+    ) async throws -> NemotronLatin1120Engine {
         try NemotronModelLayout.validate(directory: directory)
         let models = try await StreamingNemotronMultilingualAsrManager.preloadShared(
             from: directory)
-        return NemotronLatin1120Engine(models: models)
+        return NemotronLatin1120Engine(
+            models: models,
+            installationLease: installationLease)
     }
 
     public func transcribe(
@@ -76,9 +98,11 @@ public final class NemotronLatin1120Engine: TranscriptionEngine, Sendable {
         hints: TranscriptionHints
     ) -> AsyncThrowingStream<TranscriptSegment, Error> {
         let models = self.models
+        let installationLease = self.installationLease
         return AsyncThrowingStream { continuation in
             let job = Task {
                 let manager = StreamingNemotronMultilingualAsrManager()
+                defer { _ = installationLease }
                 do {
                     let language = try Self.validate(hints: hints)
 

@@ -124,16 +124,16 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, CaptureRepor
         deliveredLock.unlock()
         guard let continuation else { return }
 
-        // Skip PIDs that don't resolve to an audio process object (a process
-        // may have exited, or never produced audio); tap the rest as a
-        // mixdown. If none resolve, fall back to the global tap rather than
-        // failing the recording.
+        // Preserve explicit per-app isolation: if specific meeting PIDs were
+        // requested and none resolve (e.g., the call app exited or restarted),
+        // fail closed instead of silently widening into a global Mac tap.
         let objects = processIDs.compactMap(Self.processObject(for:))
         let description: CATapDescription
-        if objects.isEmpty {
+        switch try Self.resolveTapScope(requestedProcessIDs: processIDs, resolvedObjects: objects) {
+        case .global:
             description = CATapDescription(stereoGlobalTapButExcludeProcesses: [])
-        } else {
-            description = CATapDescription(stereoMixdownOfProcesses: objects)
+        case .processes(let resolved):
+            description = CATapDescription(stereoMixdownOfProcesses: resolved)
         }
         description.isPrivate = true
         description.muteBehavior = .unmuted
@@ -243,12 +243,34 @@ public final class ProcessTapSource: RecoverableAudioCaptureSource, CaptureRepor
                 try self.buildGraph()
             } catch {
                 self.destroyGraph()
-                self.scheduleRebuild(
-                    ticket: ticket,
-                    delay: AudioRouteTransitionTiming.retryDelay
-                )
+                if self.routeTransitions.recordRetry(for: ticket) {
+                    self.scheduleRebuild(
+                        ticket: ticket,
+                        delay: AudioRouteTransitionTiming.retryDelay
+                    )
+                } else {
+                    self.continuation?.finish(failure: .sourceFailed)
+                }
             }
         }
+    }
+
+    enum TapScope: Equatable {
+        case global
+        case processes([AudioObjectID])
+    }
+
+    static func resolveTapScope(
+        requestedProcessIDs: [pid_t],
+        resolvedObjects: [AudioObjectID]
+    ) throws -> TapScope {
+        if requestedProcessIDs.isEmpty {
+            return .global
+        }
+        guard !resolvedObjects.isEmpty else {
+            throw AudioCaptureError.targetProcessesUnavailable
+        }
+        return .processes(resolvedObjects)
     }
 
     /// Best-effort recovery requested after the writer observes that this tap

@@ -17,8 +17,11 @@ public actor WhisperEngine {
     /// bypass verified preparation.
     public struct PreparedModel: Sendable {
         public let descriptorID: String
-        fileprivate let modelDirectory: URL
-        fileprivate let tokenizerDirectory: URL
+        fileprivate let modelLease: ModelStore.ModelLease
+        fileprivate let tokenizerLease: ModelStore.ModelLease
+
+        fileprivate var modelDirectory: URL { modelLease.directory }
+        fileprivate var tokenizerDirectory: URL { tokenizerLease.directory }
     }
 
     /// One progress domain across the model and tokenizer downloads. This
@@ -38,9 +41,11 @@ public actor WhisperEngine {
     }
 
     private let pipe: WhisperKit
+    private let installationLeases: [ModelStore.ModelLease]
 
-    private init(pipe: WhisperKit) {
+    private init(pipe: WhisperKit, installationLeases: [ModelStore.ModelLease]) {
         self.pipe = pipe
+        self.installationLeases = installationLeases
     }
 
     /// Ensures model + tokenizer are downloaded/verified, then loads. The
@@ -70,19 +75,20 @@ public actor WhisperEngine {
         let modelBytes = descriptor.totalSizeBytes
         let tokenizerBytes = tokenizer.totalSizeBytes
         let totalBytes = modelBytes + tokenizerBytes
-        let modelDirectory = try await store.ensureAvailable(descriptor) { update in
+        _ = try await store.ensureAvailable(descriptor) { update in
             progress?(PreparationProgress(
                 completedBytes: Int(Double(modelBytes) * update.fraction),
                 totalBytes: totalBytes,
                 currentPath: update.currentPath,
                 isDownloading: update.totalBytes > 0))
         }
+        let modelLease = try await store.lease(descriptor)
         progress?(PreparationProgress(
             completedBytes: modelBytes,
             totalBytes: totalBytes,
             currentPath: "",
             isDownloading: false))
-        let tokenizerDirectory = try await store.ensureAvailable(tokenizer) { update in
+        _ = try await store.ensureAvailable(tokenizer) { update in
             progress?(PreparationProgress(
                 completedBytes: modelBytes
                     + Int(Double(tokenizerBytes) * update.fraction),
@@ -90,6 +96,7 @@ public actor WhisperEngine {
                 currentPath: update.currentPath,
                 isDownloading: update.totalBytes > 0))
         }
+        let tokenizerLease = try await store.lease(tokenizer)
         progress?(PreparationProgress(
             completedBytes: totalBytes,
             totalBytes: totalBytes,
@@ -97,8 +104,8 @@ public actor WhisperEngine {
             isDownloading: false))
         return PreparedModel(
             descriptorID: descriptor.id,
-            modelDirectory: modelDirectory,
-            tokenizerDirectory: tokenizerDirectory)
+            modelLease: modelLease,
+            tokenizerLease: tokenizerLease)
     }
 
     /// Loads only from opaque verified preparation evidence. A failed load
@@ -132,7 +139,9 @@ public actor WhisperEngine {
             download: false
         )
         let pipe = try await WhisperKit(config)
-        return WhisperEngine(pipe: pipe)
+        return WhisperEngine(
+            pipe: pipe,
+            installationLeases: [prepared.modelLease, prepared.tokenizerLease])
     }
 
     /// Batch quality transcription. Segments come out sentence-sized with
@@ -227,6 +236,27 @@ public actor WhisperEngine {
     /// Languages automatic detection may choose for a decoding window.
     static let automaticLanguages: Set<String> = ["en", "es"]
 
+    /// Minimum post-normalization peak amplitude required before retrying a
+    /// low-coverage whole-file decode sequentially; digital silence skips retry.
+    static let minimumAudiblePeak: Float = 0.01
+
+    static func windowSampleRange(
+        for window: Range<TimeInterval>,
+        sampleRate: Double,
+        sampleCount: Int
+    ) -> Range<Int> {
+        let lower = max(0, min(sampleCount, Int(window.lowerBound * sampleRate)))
+        let upper = max(lower, min(sampleCount, Int(window.upperBound * sampleRate)))
+        return lower..<upper
+    }
+
+    static func hasAudibleSignal(in samples: [Float]) -> Bool {
+        for sample in samples where abs(sample) >= minimumAudiblePeak {
+            return true
+        }
+        return false
+    }
+
     private func transcribeSpeech(
         _ samples: [Float],
         windows: [Range<TimeInterval>],
@@ -235,13 +265,15 @@ public actor WhisperEngine {
         channel: AudioChannel
     ) async throws -> [TranscriptSegment] {
         let rate = Double(WhisperKit.sampleRate)
-        let slices = windows.map { window in
-            Array(samples[Int(window.lowerBound * rate)..<min(samples.count, Int(window.upperBound * rate))])
+        let ranges = windows.map {
+            Self.windowSampleRange(for: $0, sampleRate: rate, sampleCount: samples.count)
         }
-        var languages: [String?] = Array(repeating: options.language, count: slices.count)
+        var languages: [String?] = Array(repeating: options.language, count: windows.count)
         if options.language == nil {
             var detected: [String?] = []
-            for slice in slices {
+            detected.reserveCapacity(ranges.count)
+            for range in ranges {
+                let slice = Array(samples[range])
                 detected.append(try? await pipe.detectLangauge(audioArray: slice).language)
                 try Task.checkCancellation()
             }
@@ -250,11 +282,12 @@ public actor WhisperEngine {
         }
 
         var segments: [TranscriptSegment] = []
-        for (index, slice) in slices.enumerated() {
+        for (index, range) in ranges.enumerated() {
             var windowOptions = options
             windowOptions.language = languages[index]
             windowOptions.detectLanguage = languages[index] == nil
             windowOptions.chunkingStrategy = nil
+            let slice = Array(samples[range])
             let results = try await pipe.transcribe(audioArray: slice, decodeOptions: windowOptions)
             let offset = windows[index].lowerBound
             segments += Self.buildSegments(
@@ -281,15 +314,13 @@ public actor WhisperEngine {
         // silent meeting — a real 482 s recording came back as 3 segments.
         // Coverage must be measured on the CLEANED segments: poisoned
         // chunks return valid-looking timespans whose text cleans to
-        // nothing. When the fast path covers suspiciously little audio,
-        // redo it sequentially — that path decodes every window and
-        // propagates errors — and WITHOUT the vocabulary prompt:
-        // conditioning that doesn't match a window derails its decoding
-        // wholesale (observed: with the glossary prompt only the chunk
-        // that actually mentioned its terms survived). A full unbiased
-        // transcript beats a biased sliver.
+        // nothing. When the fast path covers suspiciously little audio (and
+        // the normalized file actually contains audible signal), redo it
+        // sequentially without the vocabulary prompt.
         let fileDuration = Double(samples.count) / Double(WhisperKit.sampleRate)
-        if fileDuration > 60, Self.coverage(of: segments) < fileDuration * 0.2 {
+        if fileDuration > 60,
+           Self.coverage(of: segments) < fileDuration * 0.2,
+           Self.hasAudibleSignal(in: samples) {
             var sequential = options
             sequential.chunkingStrategy = nil
             sequential.promptTokens = nil

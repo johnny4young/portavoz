@@ -363,13 +363,7 @@ private struct LiveRecordingCaptionsView: View {
 extension RecordingView {
     var notices: [RecordingNotice] {
         var list: [RecordingNotice] = []
-        if controller.microphoneCaptureFailed {
-            list.append(RecordingNotice(
-                id: "recording-microphone-capture-failure",
-                severity: .error,
-                message: L10n.text("Microphone capture failed. Stop and start a new recording."),
-                symbol: "mic.slash.fill"))
-        }
+        if let micHealth = microphoneCaptureHealthNotice { list.append(micHealth) }
         if let callEnded = callEndedNotice { list.append(callEnded) }
         if let health = systemCaptureHealthNotice { list.append(health) }
         if controller.liveTranscriptState == .failed {
@@ -451,6 +445,31 @@ extension RecordingView {
                     identifier: "recording-call-ended-stop",
                     prominent: true) { Task { await controller.stop(services: services) } }
             ])
+    }
+
+    private var microphoneCaptureHealthNotice: RecordingNotice? {
+        switch controller.microphoneCaptureHealth {
+        case .healthy:
+            return nil
+        case .stalled, .recovering:
+            return RecordingNotice(
+                id: "recording-microphone-capture-health",
+                severity: .warning,
+                message: L10n.text("Microphone stopped — reconnecting…"),
+                symbol: "mic.slash.fill")
+        case .recovered:
+            return RecordingNotice(
+                id: "recording-microphone-capture-health",
+                severity: .success,
+                message: L10n.text("Microphone capture recovered."),
+                symbol: "mic.fill")
+        case .failed:
+            return RecordingNotice(
+                id: "recording-microphone-capture-failure",
+                severity: .error,
+                message: L10n.text("Microphone capture failed. Stop and start a new recording."),
+                symbol: "mic.slash.fill")
+        }
     }
 
     /// A tap that stops invoking its callback is different from silent audio:

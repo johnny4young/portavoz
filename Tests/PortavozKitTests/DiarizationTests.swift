@@ -410,3 +410,101 @@ final class MergeMicroClustersTests: XCTestCase {
         XCTAssertEqual(merged[3].voiceLabel, "S2")
     }
 }
+
+final class StreamingAudioFileReaderTests: XCTestCase {
+    func testStreams10SecondWindowsWithExactOffsetsAndDuration() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("portavoz-stream-diar-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let url = root.appendingPathComponent("stereo-25s.caf")
+        let sourceRate: Double = 48_000
+        let totalFrames = Int(sourceRate * 25)
+        let format = try XCTUnwrap(AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: sourceRate,
+            channels: 2,
+            interleaved: false))
+        try autoreleasepool {
+            let file = try AVAudioFile(forWriting: url, settings: format.settings)
+            let chunkFrames = 48_000
+            let buffer = try XCTUnwrap(AVAudioPCMBuffer(
+                pcmFormat: format,
+                frameCapacity: AVAudioFrameCount(chunkFrames)))
+            var written = 0
+            while written < totalFrames {
+                let count = min(chunkFrames, totalFrames - written)
+                buffer.frameLength = AVAudioFrameCount(count)
+                let channels = try XCTUnwrap(buffer.floatChannelData)
+                for i in 0..<count {
+                    channels[0][i] = 0.5
+                    channels[1][i] = 0.1
+                }
+                try file.write(from: buffer)
+                written += count
+            }
+        }
+
+        var counts: [Int] = []
+        var offsets: [TimeInterval] = []
+        let duration = try StreamingAudioFileReader.streamMonoWindows(
+            url: url,
+            targetSampleRate: 16_000,
+            windowSeconds: 10
+        ) { window, offset in
+            counts.append(window.count)
+            offsets.append(offset)
+            XCTAssertEqual(window.first ?? 0, 0.3, accuracy: 0.01)
+        }
+
+        XCTAssertEqual(duration, 25.0, accuracy: 0.01)
+        XCTAssertEqual(counts.count, 3)
+        XCTAssertEqual(counts[0], 160_000)
+        XCTAssertEqual(counts[1], 160_000)
+        XCTAssertEqual(counts[2], 80_000, accuracy: 8)
+        XCTAssertEqual(offsets[0], 0.0, accuracy: 0.001)
+        XCTAssertEqual(offsets[1], 10.0, accuracy: 0.001)
+        XCTAssertEqual(offsets[2], 20.0, accuracy: 0.001)
+    }
+
+    func testExtractMonoRangesSeeksLongestRangesUpToCap() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("portavoz-stream-vp-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let url = root.appendingPathComponent("segments.caf")
+        let sourceRate: Double = 16_000
+        let format = try XCTUnwrap(AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: sourceRate,
+            channels: 1,
+            interleaved: false))
+        try autoreleasepool {
+            let file = try AVAudioFile(forWriting: url, settings: format.settings)
+            let seconds = 30
+            let buffer = try XCTUnwrap(AVAudioPCMBuffer(
+                pcmFormat: format,
+                frameCapacity: 16_000))
+            for sec in 0..<seconds {
+                buffer.frameLength = 16_000
+                let dst = try XCTUnwrap(buffer.floatChannelData)[0]
+                let value: Float = (10..<20).contains(sec) ? 0.6 : ((22..<26).contains(sec) ? 0.4 : 0.2)
+                for i in 0..<16_000 { dst[i] = value }
+                try file.write(from: buffer)
+            }
+        }
+
+        let extracted = try StreamingAudioFileReader.extractMonoRanges(
+            url: url,
+            ranges: [0...3, 10...20, 22...26],
+            targetSampleRate: 16_000,
+            maximumSeconds: 12)
+        XCTAssertEqual(extracted.count, 12 * 16_000)
+        // First 10 seconds come from the longest range (10...20 @ 0.6),
+        // followed by 2 seconds from the second longest (22...26 @ 0.4).
+        XCTAssertEqual(extracted[1_000], 0.6, accuracy: 0.01)
+        XCTAssertEqual(extracted[10 * 16_000 + 1_000], 0.4, accuracy: 0.01)
+    }
+}

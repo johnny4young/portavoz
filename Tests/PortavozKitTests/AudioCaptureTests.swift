@@ -76,6 +76,39 @@ final class AudioRouteTransitionGateTests: XCTestCase {
         XCTAssertFalse(gate.admits(priorCapture))
         XCTAssertTrue(gate.admits(currentCapture))
     }
+
+    func testRouteTransitionRetriesAreBoundedAndResetOnNewRequest() throws {
+        var gate = AudioRouteTransitionGate()
+        gate.activate()
+        let first = try XCTUnwrap(gate.request())
+
+        for _ in 0..<AudioRouteTransitionTiming.maxRetries {
+            XCTAssertTrue(gate.recordRetry(for: first))
+        }
+        XCTAssertFalse(gate.recordRetry(for: first))
+
+        let replacement = try XCTUnwrap(gate.request())
+        XCTAssertFalse(gate.recordRetry(for: first))
+        XCTAssertTrue(gate.recordRetry(for: replacement))
+    }
+
+    #if os(macOS)
+    func testPerAppTapNeverSilentlyWidensToGlobalWhenTargetProcessesDisappear() throws {
+        XCTAssertEqual(
+            try ProcessTapSource.resolveTapScope(requestedProcessIDs: [], resolvedObjects: []),
+            .global)
+        XCTAssertEqual(
+            try ProcessTapSource.resolveTapScope(requestedProcessIDs: [101], resolvedObjects: [7]),
+            .processes([7]))
+        XCTAssertThrowsError(
+            try ProcessTapSource.resolveTapScope(requestedProcessIDs: [101], resolvedObjects: [])
+        ) { error in
+            guard case AudioCaptureError.targetProcessesUnavailable = error else {
+                return XCTFail("expected targetProcessesUnavailable, got \(error)")
+            }
+        }
+    }
+    #endif
 }
 
 final class CaptureFileWriterTests: XCTestCase {
@@ -308,6 +341,52 @@ final class RecordingSummaryTests: XCTestCase {
         system.yield(at: 9)
         try await waitUntil { probe.events.count == 3 }
         XCTAssertEqual(probe.events.last, .recovered(channel: .system, outageSeconds: 9))
+
+        let summary = await session.stop()
+        XCTAssertNotNil(summary.files[.microphone])
+        XCTAssertNotNil(summary.files[.system])
+    }
+
+    func testMicrophoneCallbackStallRequestsRecoveryWhileSystemKeepsWriting() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let clock = TestMonotonicClock()
+        let microphone = FakeRecoverableCaptureSource(channel: .microphone)
+        let system = FakeCaptureSource(channel: .system)
+        let probe = CaptureLivenessProbe()
+        let session = RecordingSession(
+            outputDirectory: directory,
+            livenessConfiguration: .init(stallAfter: 8, retryEvery: 8),
+            monotonicNow: { clock.now })
+
+        try await session.start(
+            sources: [microphone, system],
+            onChunk: { probe.record(chunk: $0) },
+            onHealthEvent: { probe.record(event: $0) })
+
+        clock.now = 1
+        microphone.yield(at: 0)
+        try await waitUntil { probe.chunkCount(for: .microphone) == 1 }
+
+        clock.now = 9
+        system.yield(at: 8)
+        try await waitUntil {
+            microphone.recoveryCount == 1
+                && probe.chunkCount(for: .system) == 1
+                && probe.events.count == 2
+        }
+        XCTAssertEqual(probe.events, [
+            .stalled(channel: .microphone, secondsWithoutFrames: 8),
+            .recoveryRequested(channel: .microphone, attempt: 1, secondsWithoutFrames: 8)
+        ])
+
+        clock.now = 10
+        microphone.yield(at: 9)
+        try await waitUntil { probe.events.count == 3 }
+        XCTAssertEqual(probe.events.last, .recovered(channel: .microphone, outageSeconds: 9))
 
         let summary = await session.stop()
         XCTAssertNotNil(summary.files[.microphone])
@@ -577,17 +656,43 @@ final class SystemCaptureLivenessPolicyTests: XCTestCase {
         XCTAssertTrue(policy.observe(channel: .system, at: 1).isEmpty)
         XCTAssertTrue(policy.observe(channel: .microphone, at: 8.9).isEmpty)
         XCTAssertEqual(policy.observe(channel: .microphone, at: 9), [
-            .stalled(secondsWithoutFrames: 8),
-            .recoveryDue(attempt: 1, secondsWithoutFrames: 8)
+            .stalled(channel: .system, secondsWithoutFrames: 8),
+            .recoveryDue(channel: .system, attempt: 1, secondsWithoutFrames: 8)
         ])
         XCTAssertTrue(policy.observe(channel: .microphone, at: 16.9).isEmpty)
         XCTAssertEqual(policy.observe(channel: .microphone, at: 17), [
-            .recoveryDue(attempt: 2, secondsWithoutFrames: 16)
+            .recoveryDue(channel: .system, attempt: 2, secondsWithoutFrames: 16)
         ])
         XCTAssertEqual(policy.observe(channel: .system, at: 18), [
-            .recovered(outageSeconds: 17)
+            .recovered(channel: .system, outageSeconds: 17)
         ])
         XCTAssertTrue(policy.observe(channel: .system, at: 19).isEmpty)
+    }
+
+    func testDetectsRetriesAndRecoversAStalledMicrophoneChannel() {
+        var policy = SystemCaptureLivenessPolicy(configuration: .init(
+            stallAfter: 8,
+            retryEvery: 8))
+
+        XCTAssertTrue(policy.observe(channel: .microphone, at: 1).isEmpty)
+        XCTAssertTrue(policy.observe(channel: .system, at: 8.9).isEmpty)
+        XCTAssertEqual(policy.observe(channel: .system, at: 9), [
+            .stalled(channel: .microphone, secondsWithoutFrames: 8),
+            .recoveryDue(channel: .microphone, attempt: 1, secondsWithoutFrames: 8)
+        ])
+        XCTAssertEqual(policy.observe(channel: .microphone, at: 11), [
+            .recovered(channel: .microphone, outageSeconds: 10)
+        ])
+    }
+
+    func testRetiringFailedChannelStopsEmittingStallsForIt() {
+        var policy = SystemCaptureLivenessPolicy(configuration: .init(
+            stallAfter: 8,
+            retryEvery: 8))
+
+        XCTAssertTrue(policy.observe(channel: .microphone, at: 1).isEmpty)
+        policy.retire(channel: .microphone)
+        XCTAssertTrue(policy.observe(channel: .system, at: 20).isEmpty)
     }
 
     func testRoomFramesNeverHideOrTriggerTheRemoteChannelPolicy() {
@@ -598,8 +703,8 @@ final class SystemCaptureLivenessPolicyTests: XCTestCase {
         XCTAssertTrue(policy.observe(channel: .system, at: 1).isEmpty)
         XCTAssertTrue(policy.observe(channel: .room, at: 20).isEmpty)
         XCTAssertEqual(policy.observe(channel: .microphone, at: 20), [
-            .stalled(secondsWithoutFrames: 19),
-            .recoveryDue(attempt: 1, secondsWithoutFrames: 19)
+            .stalled(channel: .system, secondsWithoutFrames: 19),
+            .recoveryDue(channel: .system, attempt: 1, secondsWithoutFrames: 19)
         ])
     }
 }
@@ -670,10 +775,14 @@ private final class FakeCaptureSource: AudioCaptureSource, @unchecked Sendable {
 private final class FakeRecoverableCaptureSource:
     RecoverableAudioCaptureSource, @unchecked Sendable
 {
-    let channel = AudioChannel.system
+    let channel: AudioChannel
     private let lock = NSLock()
     private var continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation?
     private var recoveries = 0
+
+    init(channel: AudioChannel = .system) {
+        self.channel = channel
+    }
 
     var recoveryCount: Int { lock.withLock { recoveries } }
 
@@ -685,7 +794,7 @@ private final class FakeRecoverableCaptureSource:
 
     func yield(at timestamp: TimeInterval) {
         lock.withLock { continuation }?.yield(AudioChunk(
-            channel: .system,
+            channel: channel,
             samples: [0.1],
             sampleRate: 48_000,
             timestamp: timestamp))

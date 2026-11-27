@@ -354,37 +354,33 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
             throw IntelligenceError.modelUnavailable(reason)
         }
 
-        // D28: the user's notes ride the FINAL pass as intent. They share
-        // the 4096-token window with the condensed material, so the reduce
-        // target shrinks by exactly what the notes block occupies.
-        let notesBlock = PromptFactory.notesBlock(request.contextItems)
+        // D28: the user's notes ride the FINAL pass as intent. Condense long
+        // user notes first so they never push the guided pass past 4,096 tokens.
+        let rawNotesBlock = PromptFactory.notesBlock(request.contextItems)
+        var effectiveNotes = rawNotesBlock
+        if effectiveNotes.count > TranscriptFormatter.onDeviceNotesBudget {
+            effectiveNotes = try await condense(
+                effectiveNotes,
+                targetLanguage: request.targetLanguage,
+                glossary: request.glossary,
+                detail: request.detail,
+                priority: priority,
+                reduceBudget: TranscriptFormatter.onDeviceNotesBudget)
+        }
+        let materialBudget = TranscriptFormatter.onDeviceReduceMaterialBudget(
+            notesCharacterCount: effectiveNotes.count)
         let condensed = try await condense(
             material, targetLanguage: request.targetLanguage, glossary: request.glossary,
             detail: request.detail,
             priority: priority,
-            reduceBudget: TranscriptFormatter.onDeviceReduceBudget - notesBlock.count)
+            reduceBudget: materialBudget)
 
-        let session = LanguageModelSession(
-            instructions: PromptFactory.summaryInstructions(
-                recipe: request.recipe,
-                targetLanguage: request.targetLanguage,
-                glossary: request.glossary,
-                hasUserNotes: !notesBlock.isEmpty,
-                detail: request.detail))
-        // Greedy decoding: summaries want faithfulness, not creativity —
-        // sampled decoding made the 3B model invent action items. The draft
-        // is built INSIDE the slot because Response<T> isn't Sendable.
-        return try await IntelligenceScheduler.shared.run(priority) {
-            let response = try await session.respond(
-                to: PromptFactory.summaryPrompt(
-                    transcriptOrNotes: condensed, targetLanguage: request.targetLanguage,
-                    userNotes: notesBlock),
-                generating: GeneratedSummary.self,
-                options: .greedy())
-            return response.content.structured.draft(
-                for: request,
-                includeEvidence: includeEvidence)
-        }
+        return try await generateStructuredSummary(
+            condensed: condensed,
+            notesBlock: effectiveNotes,
+            request: request,
+            priority: priority,
+            includeEvidence: includeEvidence)
     }
 
     /// Map phase: collapses the transcript into notes small enough for the
@@ -475,6 +471,82 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
                     priority: priority))
             }
             return notes
+        }
+    }
+}
+
+private extension FoundationModelSummaryProvider {
+    /// Runs the final guided-generation pass with bounded context-overflow
+    /// retries on fresh sessions. Cancellation and other errors propagate as-is.
+    func generateStructuredSummary(
+        condensed initialMaterial: String,
+        notesBlock initialNotes: String,
+        request: SummaryRequest,
+        priority: IntelligenceScheduler.Priority,
+        includeEvidence: Bool
+    ) async throws -> SummaryDraft {
+        var currentMaterial = initialMaterial
+        var currentNotes = initialNotes
+        while true {
+            let materialToSend = currentMaterial
+            let notesToSend = currentNotes
+            do {
+                let session = LanguageModelSession(
+                    instructions: PromptFactory.summaryInstructions(
+                        recipe: request.recipe,
+                        targetLanguage: request.targetLanguage,
+                        glossary: request.glossary,
+                        hasUserNotes: !notesToSend.isEmpty,
+                        detail: request.detail))
+                // Greedy decoding: summaries want faithfulness, not creativity —
+                // sampled decoding made the 3B model invent action items. The draft
+                // is built INSIDE the slot because Response<T> isn't Sendable.
+                return try await IntelligenceScheduler.shared.run(priority) {
+                    let response = try await session.respond(
+                        to: PromptFactory.summaryPrompt(
+                            transcriptOrNotes: materialToSend,
+                            targetLanguage: request.targetLanguage,
+                            userNotes: notesToSend),
+                        generating: GeneratedSummary.self,
+                        options: .greedy())
+                    return response.content.structured.draft(
+                        for: request,
+                        includeEvidence: includeEvidence)
+                }
+            } catch let generationError as LanguageModelSession.GenerationError {
+                guard case .exceededContextWindowSize = generationError else {
+                    throw generationError
+                }
+                if let nextMaterialBudget = TranscriptFormatter.nextOnDeviceRetryBudget(
+                    for: currentMaterial.count) {
+                    let tightened = try await condense(
+                        currentMaterial,
+                        targetLanguage: request.targetLanguage,
+                        glossary: request.glossary,
+                        detail: request.detail,
+                        priority: priority,
+                        reduceBudget: nextMaterialBudget)
+                    if tightened.count < currentMaterial.count {
+                        currentMaterial = tightened
+                        continue
+                    }
+                }
+                if let nextNotesBudget = TranscriptFormatter.nextOnDeviceRetryBudget(
+                    for: currentNotes.count) {
+                    let tightenedNotes = try await condense(
+                        currentNotes,
+                        targetLanguage: request.targetLanguage,
+                        glossary: request.glossary,
+                        detail: request.detail,
+                        priority: priority,
+                        reduceBudget: nextNotesBudget)
+                    if tightenedNotes.count < currentNotes.count {
+                        currentNotes = tightenedNotes
+                        continue
+                    }
+                }
+                throw generationError
+            }
         }
     }
 }
