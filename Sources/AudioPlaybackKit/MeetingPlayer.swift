@@ -230,7 +230,7 @@ public final class MeetingPlayer {
         }
         hasPlaybackFailed = false
         // Restart from the top if we're parked at the end.
-        if currentTime >= duration - 0.05 { seek(to: 0) }
+        if currentTime >= duration - 0.05 { restartFromTop() }
         player.play()
         isPlaying = true
     }
@@ -269,6 +269,14 @@ public final class MeetingPlayer {
         player.pause()
         isPlaying = false
         hasPlaybackFailed = true
+    }
+
+    /// Bypasses coalescing: a queued restart behind a seek to the end would let
+    /// AVPlayer play out the end and park paused at 0.
+    private func restartFromTop() {
+        currentTime = 0
+        pendingSeekTarget = nil
+        startSeek(to: 0)
     }
 
     private func startSeek(to seconds: TimeInterval) {
