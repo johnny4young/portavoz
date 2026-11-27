@@ -11,23 +11,38 @@ public actor SileroSpeechRegionDetector: SpeechRegionDetecting {
     static let threshold: Float = 0.5
 
     private let manager: VadManager
+    private let installationLease: ModelStore.ModelLease?
 
-    private init(manager: VadManager) {
+    private init(
+        manager: VadManager,
+        installationLease: ModelStore.ModelLease?
+    ) {
         self.manager = manager
+        self.installationLease = installationLease
     }
 
     public static func load(from store: ModelStore) async throws -> SileroSpeechRegionDetector {
-        guard let installed = await store.verifiedInstallation(ModelCatalog.sileroVAD) else {
+        guard await store.verifiedInstallation(ModelCatalog.sileroVAD) != nil else {
             throw VoiceActivityDetectionError.modelNotInstalled
         }
-        let url = installed.directory.appendingPathComponent(
+        let lease: ModelStore.ModelLease
+        do {
+            lease = try await store.lease(ModelCatalog.sileroVAD)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw VoiceActivityDetectionError.modelNotInstalled
+        }
+        let url = lease.directory.appendingPathComponent(
             ModelCatalog.sileroVADBundleDirectory, isDirectory: true)
         let configuration = MLModelConfiguration()
         configuration.computeUnits = .cpuOnly
         let model = try await MLModel.load(contentsOf: url, configuration: configuration)
-        return SileroSpeechRegionDetector(manager: VadManager(
-            config: VadConfig(defaultThreshold: threshold, computeUnits: .cpuOnly),
-            vadModel: model))
+        return SileroSpeechRegionDetector(
+            manager: VadManager(
+                config: VadConfig(defaultThreshold: threshold, computeUnits: .cpuOnly),
+                vadModel: model),
+            installationLease: lease)
     }
 
     public func speechRegions(in samples: [Float]) async throws -> [ClosedRange<TimeInterval>] {

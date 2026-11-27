@@ -1,9 +1,11 @@
 import AVFAudio
 import Foundation
 import PortavozCore
+import Synchronization
 
 public enum AudioCaptureError: Error, Sendable {
     case noInputDevice
+    case targetProcessesUnavailable
     case coreAudioError(operation: String, status: Int32)
     case unsupportedFormat
     case invalidCaptureFile(String)
@@ -20,6 +22,10 @@ enum AudioRouteTransitionTiming {
     /// Keeps the capture stream alive while a transient route has no usable
     /// input/output yet, without spinning on the graph queue.
     static let retryDelay: TimeInterval = 0.5
+
+    /// Bounds consecutive route-recovery retries (~5 s) so a revoked permission
+    /// or vanished device surfaces a channel failure instead of spinning silently.
+    static let maxRetries = 10
 }
 
 /// Invalidates stale audio-graph work when route notifications arrive in
@@ -34,16 +40,19 @@ struct AudioRouteTransitionGate: Sendable {
     }
 
     private var generation: UInt64 = 0
+    private var retries = 0
     private(set) var isActive = false
 
     mutating func activate() {
         generation &+= 1
+        retries = 0
         isActive = true
     }
 
     mutating func request() -> Ticket? {
         guard isActive else { return nil }
         generation &+= 1
+        retries = 0
         return Ticket(generation: generation)
     }
 
@@ -51,23 +60,35 @@ struct AudioRouteTransitionGate: Sendable {
         isActive && ticket.generation == generation
     }
 
+    /// Consumes one retry slot for `ticket`. Returns `false` once the bounded
+    /// limit is exhausted so callers terminate the failed stream explicitly.
+    mutating func recordRetry(
+        for ticket: Ticket,
+        maxRetries: Int = AudioRouteTransitionTiming.maxRetries
+    ) -> Bool {
+        guard admits(ticket), retries < maxRetries else { return false }
+        retries += 1
+        return true
+    }
+
     mutating func deactivate() {
         generation &+= 1
+        retries = 0
         isActive = false
     }
 }
 
 /// Converts Core Audio host times into seconds elapsed since the first
 /// callback of a session.
-///
-/// `@unchecked Sendable`: `start` is written exactly once, from the
-/// serialized audio callback path that owns this clock.
-final class HostClock: @unchecked Sendable {
-    private var start: UInt64 = 0
+final class HostClock: Sendable {
+    private let start = Mutex<UInt64>(0)
 
     func elapsed(hostTime: UInt64) -> TimeInterval {
-        if start == 0 { start = hostTime }
-        return AVAudioTime.seconds(forHostTime: hostTime) - AVAudioTime.seconds(forHostTime: start)
+        let anchor = start.withLock { current -> UInt64 in
+            if current == 0 { current = hostTime }
+            return current
+        }
+        return AVAudioTime.seconds(forHostTime: hostTime) - AVAudioTime.seconds(forHostTime: anchor)
     }
 }
 

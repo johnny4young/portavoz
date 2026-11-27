@@ -41,6 +41,33 @@ final class MLXSummaryProviderTests: XCTestCase {
                 request: request,
                 providerID: MLXSummaryProvider.providerID))
     }
+
+    func testOnDeviceNotesAndMaterialBudgetsStayBoundedWithinContextWindow() {
+        XCTAssertEqual(
+            TranscriptFormatter.onDeviceReduceMaterialBudget(notesCharacterCount: 0),
+            TranscriptFormatter.onDeviceReduceBudget)
+        XCTAssertEqual(
+            TranscriptFormatter.onDeviceReduceMaterialBudget(notesCharacterCount: 400),
+            TranscriptFormatter.onDeviceReduceBudget - 400)
+        // The notes block is capped below `onDeviceNotesBudget`, so the final pass
+        // always keeps room for transcript material.
+        let meetingID = MeetingID()
+        let notes = (0..<40).map {
+            ContextItem(
+                meetingID: meetingID, kind: .note,
+                content: String(repeating: "x", count: 200), timestamp: TimeInterval($0))
+        }
+        XCTAssertLessThanOrEqual(
+            PromptFactory.notesBlock(notes).count, TranscriptFormatter.onDeviceNotesBudget)
+        XCTAssertEqual(
+            TranscriptFormatter.onDeviceReduceMaterialBudget(notesCharacterCount: 5_000),
+            TranscriptFormatter.onDeviceReduceBudget - TranscriptFormatter.onDeviceNotesBudget)
+        XCTAssertGreaterThanOrEqual(
+            TranscriptFormatter.onDeviceReduceMaterialBudget(
+                notesCharacterCount: 5_000,
+                totalBudget: 1_000),
+            TranscriptFormatter.onDeviceRetryFloor)
+    }
 }
 
 private actor MLXRuntimeClientSpy: MLXSummaryRuntimeClient {

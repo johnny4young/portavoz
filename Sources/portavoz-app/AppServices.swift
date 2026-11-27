@@ -187,6 +187,7 @@ final class AppServices {
     @ObservationIgnored let mlxSummaryRuntime = MLXSummaryRuntime()
     @ObservationIgnored var mlxRuntimeLoad: MLXRuntimeLoad?
     @ObservationIgnored var mlxRuntimeRelease: Task<Bool, Never>?
+    @ObservationIgnored var mlxModelLease: ModelStore.ModelLease?
     var mlxRuntimeDirectoryKey: String?
 
     /// Process-scoped, coalescing reconciliation for the protected local

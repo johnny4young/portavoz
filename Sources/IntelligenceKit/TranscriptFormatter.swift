@@ -28,9 +28,21 @@ public enum TranscriptFormatter {
     /// and the structured output itself needs headroom.
     public static let onDeviceReduceBudget = 3000
 
+    /// Maximum character budget reserved for user notes in the final guided
+    /// pass so long notes condense before sharing the 4,096-token window.
+    public static let onDeviceNotesBudget = 1200
+
     /// Finite floor for retrying a map chunk after the framework reports a
     /// context overflow. A failure at this size propagates instead of looping.
     public static let onDeviceRetryFloor = 500
+
+    public static func onDeviceReduceMaterialBudget(
+        notesCharacterCount: Int,
+        totalBudget: Int = onDeviceReduceBudget
+    ) -> Int {
+        let clampedNotes = min(max(0, notesCharacterCount), onDeviceNotesBudget)
+        return max(totalBudget - clampedNotes, onDeviceRetryFloor)
+    }
 
     public static func nextOnDeviceRetryBudget(for characterCount: Int) -> Int? {
         guard characterCount > onDeviceRetryFloor else { return nil }

@@ -478,18 +478,14 @@ Hardened against 3 REAL WhisperKit failures (all reproduced and verified, Jul 20
    stripped from Whisper segment text. "Gracias", "gracias por ver" and
    "gracias por ver el video" join the known microphone silence boilerplate.
 
-- Loads model+tokenizer from verified directories, `download: false` (never downloads without verification). Local tokenizer avoids the network.
+- Loads model+tokenizer from verified, leased directories (`ModelStore.ModelLease`), `download: false` (never downloads without verification). Local tokenizer avoids the network and stays deletion-locked while prepared or resident.
+- Speech-gated `transcribeSpeech` slices each speech window lazily per iteration instead of materializing all window copies simultaneously (avoiding a 2× PCM memory spike on multi-hour recordings), and `transcribeWholeFile` skips the sequential retry when normalized audio has no audible signal (`peak < 0.01`).
 - Vocabulary (`hints.vocabulary`) → `promptTokens` as a natural sentence in the homogeneous spoken language ("In this meeting we discussed …" / "En esta reunión hablamos de …", not a "Glossary:" list); for mixed/unknown meetings, the prompt is omitted to avoid biasing Whisper toward one language. WhisperKit prepends it with `<|startofprev|>` and filters special tokens.
 - `timings.inputAudioSeconds` under-reports with VAD → duration comes from the file.
 
 ### Proactive verified preparation (D71)
 
-`WhisperEngine.prepare` downloads and verifies the selected Turbo/Compact
-descriptor plus the shared tokenizer through `ModelStore`, reporting one byte
-progress domain across both stores. It returns an opaque `PreparedModel` whose
-directories cannot be constructed outside TranscriptionKit.
-`loadPrepared` is the only runtime-allocation path after that split and still
-sets `download: false`.
+`WhisperEngine.prepare` downloads, verifies, and acquires `ModelStore.ModelLease` locks for both the selected Turbo/Compact descriptor and the shared tokenizer through `ModelStore`, reporting one byte progress domain across both stores. It returns an opaque `PreparedModel` retaining those leases whose directories cannot be constructed outside TranscriptionKit. `loadPrepared` is the only runtime-allocation path after that split, transfers the leases onto the resident `WhisperEngine`, and still sets `download: false`.
 
 The macOS composition root serializes one preparation task across Settings,
 Refine, and external-audio Import. Settings can start it explicitly, and its

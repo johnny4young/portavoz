@@ -1,5 +1,6 @@
 import Foundation
 import IntelligenceKit
+import ModelStoreKit
 import PortavozCore
 
 @MainActor
@@ -8,7 +9,7 @@ extension AppServices {
         let generation: UUID
         let directoryKey: String
         let ticket: ResourceModelLoadTicket
-        let task: Task<Void, Error>
+        let task: Task<ModelStore.ModelLease?, Error>
     }
 
     struct MLXRuntimeLease {
@@ -127,14 +128,20 @@ extension AppServices {
         }
         let telemetry = workloadTelemetry
         let runtime = mlxSummaryRuntime
-        let task = Task {
+        let store = modelStore
+        let task = Task<ModelStore.ModelLease?, Error> {
+            let installationLease = try await Self.acquireMLXModelLease(
+                for: directory,
+                directoryKey: directoryKey,
+                in: store)
             try await telemetry.measure(ResourceWorkloadDescriptor(
                 workloadClass: workloadClass,
                 kind: .languageInference,
                 operation: .load)
             ) {
-                try await runtime.prepare(directory)
+                try await runtime.prepare(installationLease?.directory ?? directory)
             }
+            return installationLease
         }
         let load = MLXRuntimeLoad(
             generation: UUID(),
@@ -171,6 +178,7 @@ extension AppServices {
             operation: .release))
         let release = Task { @MainActor in
             await mlxSummaryRuntime.release()
+            mlxModelLease = nil
             mlxRuntimeDirectoryKey = nil
             workloadTelemetry.finish(span, outcome: .completed)
             let finished = modelResidencyLedger.finishRelease(ticket)
@@ -192,7 +200,7 @@ extension AppServices {
         _ load: MLXRuntimeLoad
     ) async throws -> MLXRuntimeLease {
         do {
-            try await load.task.value
+            let installationLease = try await load.task.value
             guard mlxRuntimeLoad?.generation == load.generation else {
                 guard let runtime = try residentMLXRuntime(
                     directoryKey: load.directoryKey)
@@ -211,11 +219,13 @@ extension AppServices {
                 measuredFootprintBytes: nil)
             else {
                 mlxRuntimeLoad = nil
+                mlxModelLease = nil
                 _ = modelResidencyLedger.failLoad(load.ticket)
                 await mlxSummaryRuntime.release()
                 throw MLXRuntimeError.inconsistentResidency
             }
             mlxRuntimeLoad = nil
+            mlxModelLease = installationLease
             mlxRuntimeDirectoryKey = load.directoryKey
             guard let runtime = try residentMLXRuntime(
                 directoryKey: load.directoryKey)
@@ -227,11 +237,26 @@ extension AppServices {
         } catch {
             if mlxRuntimeLoad?.generation == load.generation {
                 mlxRuntimeLoad = nil
+                mlxModelLease = nil
                 _ = modelResidencyLedger.failLoad(load.ticket)
                 await mlxSummaryRuntime.release()
             }
             throw error
         }
+    }
+
+    nonisolated private static func acquireMLXModelLease(
+        for directory: URL,
+        directoryKey: String,
+        in store: ModelStore
+    ) async throws -> ModelStore.ModelLease? {
+        for descriptor in ModelCatalog.all where descriptor.tasks.contains(.summarization) {
+            guard let installed = await store.verifiedInstallation(descriptor),
+                  mlxDirectoryKey(installed.directory) == directoryKey
+            else { continue }
+            return try await store.lease(descriptor)
+        }
+        return nil
     }
 
     private func residentMLXRuntime(
@@ -246,7 +271,7 @@ extension AppServices {
             residency: residency)
     }
 
-    private static func mlxDirectoryKey(_ directory: URL) -> String {
+    nonisolated private static func mlxDirectoryKey(_ directory: URL) -> String {
         directory.standardizedFileURL.resolvingSymlinksInPath().path
     }
 }

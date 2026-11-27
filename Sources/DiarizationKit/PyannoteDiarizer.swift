@@ -12,25 +12,36 @@ import PortavozCore
 /// one fresh diarizer session for every meeting or extraction operation.
 public struct PyannoteDiarizationRuntime: Sendable {
     private let models: DiarizerModels
+    private let installationLease: ModelStore.ModelLease?
 
     public static func load(
         fromVerifiedDirectory directory: URL
     ) throws -> PyannoteDiarizationRuntime {
-        PyannoteDiarizationRuntime(models: try DiarizerModels.load(
-            localSegmentationModel: directory.appendingPathComponent(
-                "pyannote_segmentation.mlmodelc"),
-            localEmbeddingModel: directory.appendingPathComponent(
-                "wespeaker_v2.mlmodelc")))
+        try load(directory: directory, installationLease: nil)
+    }
+
+    private static func load(
+        directory: URL,
+        installationLease: ModelStore.ModelLease?
+    ) throws -> PyannoteDiarizationRuntime {
+        PyannoteDiarizationRuntime(
+            models: try DiarizerModels.load(
+                localSegmentationModel: directory.appendingPathComponent(
+                    "pyannote_segmentation.mlmodelc"),
+                localEmbeddingModel: directory.appendingPathComponent(
+                    "wespeaker_v2.mlmodelc")),
+            installationLease: installationLease)
     }
 
     public static func loadRecommended(
         store: ModelStore,
         progress: (@Sendable (ModelStore.DownloadProgress) -> Void)? = nil
     ) async throws -> PyannoteDiarizationRuntime {
-        let directory = try await store.ensureAvailable(
+        _ = try await store.ensureAvailable(
             ModelCatalog.speakerDiarization,
             progress: progress)
-        return try load(fromVerifiedDirectory: directory)
+        let lease = try await store.lease(ModelCatalog.speakerDiarization)
+        return try load(directory: lease.directory, installationLease: lease)
     }
 
     public func makeDiarizer(
@@ -41,7 +52,8 @@ public struct PyannoteDiarizationRuntime: Sendable {
         return PyannoteDiarizer(
             models: sessionModels,
             clusteringThreshold: clusteringThreshold,
-            voiceprint: voiceprint)
+            voiceprint: voiceprint,
+            installationLease: installationLease)
     }
 }
 
@@ -69,6 +81,7 @@ public actor PyannoteDiarizer: Diarizer {
 
     private let manager: DiarizerManager
     private let converter = AudioConverter()
+    private let installationLease: ModelStore.ModelLease?
 
     /// The reserved speaker id an enrolled voiceprint matches to; its
     /// turns come out labeled "Me" (isMe in attribution). This is what
@@ -91,17 +104,17 @@ public actor PyannoteDiarizer: Diarizer {
             voiceprint: voiceprint)
     }
 
-    /// Ensures the catalog model is downloaded + verified, then loads it.
+    /// Ensures the catalog model is downloaded + verified, then loads it
+    /// while holding a shared-store deletion lease for the session's lifetime.
     public static func loadRecommended(
         store: ModelStore,
         clusteringThreshold: Float = defaultClusteringThreshold,
         voiceprint: Voiceprint? = nil,
         progress: (@Sendable (ModelStore.DownloadProgress) -> Void)? = nil
     ) async throws -> PyannoteDiarizer {
-        let descriptor = ModelCatalog.speakerDiarization
-        let directory = try await store.ensureAvailable(descriptor, progress: progress)
-        return try PyannoteDiarizationRuntime.load(
-            fromVerifiedDirectory: directory
+        try await PyannoteDiarizationRuntime.loadRecommended(
+            store: store,
+            progress: progress
         ).makeDiarizer(
             clusteringThreshold: clusteringThreshold,
             voiceprint: voiceprint)
@@ -110,7 +123,8 @@ public actor PyannoteDiarizer: Diarizer {
     init(
         models: consuming DiarizerModels,
         clusteringThreshold: Float = defaultClusteringThreshold,
-        voiceprint: Voiceprint? = nil
+        voiceprint: Voiceprint? = nil,
+        installationLease: ModelStore.ModelLease? = nil
     ) {
         var config = DiarizerConfig.default
         config.clusteringThreshold = clusteringThreshold
@@ -126,6 +140,7 @@ public actor PyannoteDiarizer: Diarizer {
             ])
         }
         self.manager = manager
+        self.installationLease = installationLease
     }
 
     // MARK: - Enrollment
@@ -148,34 +163,24 @@ public actor PyannoteDiarizer: Diarizer {
     }
 
     /// One voiceprint per speaker from their speech ranges in a meeting's
-    /// audio (the cross-meeting name-suggestion path). The file is
-    /// resampled ONCE and sliced per speaker; the longest ranges win until
-    /// `maximumSeconds` is gathered (enrollment guidance is ≥ 5 s, so
-    /// speakers under `minimumSeconds` of usable audio are skipped — a
-    /// too-short embedding would match noise). Only embeddings leave this
-    /// call; nothing is persisted here.
+    /// audio (the cross-meeting name-suggestion path). Seeks directly to the
+    /// longest ranges per speaker up to `maximumSeconds` so multi-hour files
+    /// never decode fully into RAM. Only embeddings leave this call.
     public func extractVoiceprints(
         fromFile url: URL,
         rangesBySpeaker: [String: [ClosedRange<TimeInterval>]],
         minimumSeconds: TimeInterval = 5,
         maximumSeconds: TimeInterval = 20
     ) throws -> [String: Voiceprint] {
-        let samples = try converter.resampleAudioFile(url)
-        let rate = Double(Self.modelSampleRate)
+        let minimumSamples = Int(minimumSeconds * Double(Self.modelSampleRate))
         var result: [String: Voiceprint] = [:]
         for (label, ranges) in rangesBySpeaker {
-            var gathered: [Float] = []
-            let byLength = ranges.sorted {
-                ($0.upperBound - $0.lowerBound) > ($1.upperBound - $1.lowerBound)
-            }
-            for range in byLength {
-                guard gathered.count < Int(maximumSeconds * rate) else { break }
-                let start = max(0, Int(range.lowerBound * rate))
-                let end = min(samples.count, Int(range.upperBound * rate))
-                guard end > start else { continue }
-                gathered.append(contentsOf: samples[start..<end])
-            }
-            guard gathered.count >= Int(minimumSeconds * rate) else { continue }
+            let gathered = try StreamingAudioFileReader.extractMonoRanges(
+                url: url,
+                ranges: ranges,
+                targetSampleRate: Self.modelSampleRate,
+                maximumSeconds: maximumSeconds)
+            guard gathered.count >= minimumSamples else { continue }
             result[label] = Voiceprint(
                 embedding: try manager.extractSpeakerEmbedding(from: gathered))
         }
@@ -219,15 +224,24 @@ public actor PyannoteDiarizer: Diarizer {
         }
     }
 
-    /// Batch: diarizes a whole file in one pass (FluidAudio chunks it
-    /// internally at the same window size, tracking speakers throughout).
+    /// Batch: streams 10 s mono 16 kHz windows from disk into the session's
+    /// shared `SpeakerManager`, matching FluidAudio's internal 10 s chunk size
+    /// while keeping PCM memory bounded to one window on multi-hour recordings.
     public func diarizeFile(at url: URL) throws -> [SpeakerTurn] {
-        let samples = try converter.resampleAudioFile(url)
-        let result = try manager.performCompleteDiarization(
-            samples, sampleRate: Self.modelSampleRate)
-        let duration = Double(samples.count) / Double(Self.modelSampleRate)
+        var turns: [SpeakerTurn] = []
+        let duration = try StreamingAudioFileReader.streamMonoWindows(
+            url: url,
+            targetSampleRate: Self.modelSampleRate,
+            windowSeconds: Self.windowSeconds
+        ) { window, offset in
+            let result = try manager.performCompleteDiarization(
+                window,
+                sampleRate: Self.modelSampleRate,
+                atTime: offset)
+            turns.append(contentsOf: result.segments.map(Self.turn(from:)))
+        }
         return Self.mergeMicroClusters(
-            Self.sanitizeTurns(result.segments.map(Self.turn(from:)), audioDuration: duration))
+            Self.sanitizeTurns(turns, audioDuration: duration))
     }
 
     /// Drops phantom speakers born in the last, zero-padded window: the

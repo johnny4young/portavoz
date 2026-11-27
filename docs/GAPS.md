@@ -127,14 +127,12 @@ summary model loading from read-only files. The gated tests read only the legacy
 folder, so a Mac whose models exist only in the shared store fails them as absent, and
 they need a shared-store seed before that folder retires.
 
-Parakeet v3 now retains shared-store leases through loading, residency,
-observer copies and live/batch jobs in the app and CLI. Whisper, Pyannote, Silero,
-MLX and the research-only Nemotron loader still rely only on claims: removal by
-another app for all consumers can delete their files while resident or between
-preparing and loading them. A Whisper tokenizer missing at that
-moment makes WhisperKit reach for its own download. Leases need wiring to the
-remaining model-memory residency, not to a check. Two processes with the same consumer, such as
-two copies of one build, can also let an adoption already staging undo a removal.
+Parakeet v3, Whisper (and its tokenizer), Pyannote diarization, Silero VAD,
+resident MLX summary runtimes, and the research-only Nemotron CLI loader now
+retain shared-store `ModelStore.ModelLease` deletion locks through loading,
+residency, and active jobs so removal by another app defers instead of deleting
+in-use weights. Two processes with the same consumer, such as two copies of one
+build, can still let an adoption already staging undo a removal.
 
 A second app waiting on another app's install reads as checking local files, with no
 percent, although the store reports the other app's progress.
@@ -276,16 +274,14 @@ microphone.
 
 ### Closed-row revision after microphone echo replacement
 
-A synthetic controller call-site sequence reproduces a limitation in the shared
+A synthetic controller call-site sequence reproduces a case in the shared
 coalescer: remote text, an overlapping microphone echo, then its direct system
-copy can remove the mic tail and extend the preceding remote row. The count
-shrinks even though that remote row had already been exposed as closed. D545
-reports the earliest invalidated row without changing existing coalescer
-behavior. Meeting translation,
-summary and Companion cursor consumers require a separate end-to-end audit of
-this reopening before they can be claimed revision-safe; preserved identity and
-count alone are not sufficient. Physical source attribution is not evaluated by
-this synthetic cross-channel case.
+copy can remove the mic tail and extend the preceding remote row. D545 reports
+the earliest invalidated row, and `RecordingController` now purges removed echo
+identities from live translation, rolling summary, and live speaker labels while
+invalidating reopened rows so live translation re-queues them, stale in-flight
+translations are rejected, and rolling summary re-admits their updated text.
+Physical source attribution is still not evaluated by this synthetic cross-channel case.
 
 ### Accepted live input survives interrupted recordings
 

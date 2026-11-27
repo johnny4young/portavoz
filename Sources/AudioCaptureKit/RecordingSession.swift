@@ -227,6 +227,7 @@ public actor RecordingSession {
     }
 
     private func retireFailedSource(channel: AudioChannel, ownerID: UUID) async {
+        systemLiveness.retire(channel: channel)
         guard let owned = sources[channel], owned.id == ownerID else { return }
         sources.removeValue(forKey: channel)
         await owned.source.stop()
@@ -324,21 +325,21 @@ public actor RecordingSession {
         var events: [RecordingCaptureHealthEvent] = []
         for signal in signals {
             switch signal {
-            case .stalled(let secondsWithoutFrames):
+            case .stalled(let channel, let secondsWithoutFrames):
                 events.append(.stalled(
-                    channel: .system,
+                    channel: channel,
                     secondsWithoutFrames: secondsWithoutFrames))
-            case .recoveryDue(let attempt, let secondsWithoutFrames):
-                guard let source = sources[.system]?.source as? any RecoverableAudioCaptureSource else {
+            case .recoveryDue(let channel, let attempt, let secondsWithoutFrames):
+                guard let source = sources[channel]?.source as? any RecoverableAudioCaptureSource else {
                     continue
                 }
                 await source.requestRecovery()
                 events.append(.recoveryRequested(
-                    channel: .system,
+                    channel: channel,
                     attempt: attempt,
                     secondsWithoutFrames: secondsWithoutFrames))
-            case .recovered(let outageSeconds):
-                events.append(.recovered(channel: .system, outageSeconds: outageSeconds))
+            case .recovered(let channel, let outageSeconds):
+                events.append(.recovered(channel: channel, outageSeconds: outageSeconds))
             }
         }
         return events

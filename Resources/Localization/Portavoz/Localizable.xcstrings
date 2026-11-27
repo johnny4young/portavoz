@@ -7609,6 +7609,26 @@
         }
       }
     },
+    "Microphone capture recovered.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se recuperó la captura del micrófono."
+          }
+        }
+      }
+    },
+    "Microphone stopped — reconnecting…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El micrófono se detuvo — reconectando…"
+          }
+        }
+      }
+    },
     "Migration failed: %@. Nothing was lost — recordings that were not moved are still read from the previous folder; you can retry.": {
       "localizations": {
         "es": {

@@ -110,12 +110,19 @@ public actor MLXSummaryRuntime: MLXSummaryRuntimeClient {
     private var container: ModelContainer?
     private var directory: URL?
     private var standaloneIdleGeneration = 0
+    private var standaloneIdleTask: Task<Void, Never>?
+
+    deinit {
+        standaloneIdleTask?.cancel()
+    }
 
     public func respond(
         system: String,
         user: String,
         directory newDirectory: URL
     ) async throws -> String {
+        standaloneIdleTask?.cancel()
+        standaloneIdleTask = nil
         standaloneIdleGeneration += 1
         let idleGeneration = standaloneIdleGeneration
         defer { scheduleStandaloneIdleRelease(after: idleGeneration) }
@@ -185,17 +192,25 @@ public actor MLXSummaryRuntime: MLXSummaryRuntimeClient {
 
     /// Drops resident weights but never removes verified model files.
     public func release() {
+        standaloneIdleTask?.cancel()
+        standaloneIdleTask = nil
         standaloneIdleGeneration += 1
         container = nil
         directory = nil
     }
 
     private func scheduleStandaloneIdleRelease(after requestGeneration: Int) {
-        Task {
+        standaloneIdleTask?.cancel()
+        standaloneIdleTask = Task { [weak self] in
             try? await Task.sleep(for: Self.idleRelease)
-            guard requestGeneration == standaloneIdleGeneration else { return }
-            release()
+            guard !Task.isCancelled, let self else { return }
+            await self.releaseStandaloneIfStillIdle(for: requestGeneration)
         }
+    }
+
+    private func releaseStandaloneIfStillIdle(for requestGeneration: Int) {
+        guard requestGeneration == standaloneIdleGeneration else { return }
+        release()
     }
 }
 #endif
