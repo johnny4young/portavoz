@@ -4,13 +4,13 @@ import PortavozCore
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The transport bar: a waveform scrubber over the mixed timeline and
-/// one row of controls under it. Its own View so the scrubber's 5 fps updates
-/// don't re-render the whole detail. Falls back to a plain slider until the
-/// waveform is generated (or if the audio was unreadable).
+/// The docked player: the meeting's voice strip with chapter ticks and a
+/// playhead, then one row of transport, readout and quiet toggles. Its own
+/// View so the 5 fps playback ticks don't re-render the whole detail.
 struct MeetingPlayerBar: View {
     let player: MeetingPlaybackSession
-    let waveform: [MeetingWaveformBucket]
+    let strip: MeetingPlayerStrip?
+    let chapters: [MeetingTranscriptContent.Chapter]
     let exportClip: @MainActor @Sendable (
         ClosedRange<TimeInterval>, URL
     ) async -> String?
@@ -20,14 +20,23 @@ struct MeetingPlayerBar: View {
 
     private static let rates: [Float] = [1, 1.25, 1.5, 2]
 
+    /// What a narrower row gives up, in order: the readout's room, then the
+    /// toggles' titles, then the clock's size and the speed's capsule.
+    private enum Fit {
+        case regular, tight, quiet, compact
+
+        var readoutWidth: CGFloat { self == .regular ? 180 : 0 }
+    }
+
     var body: some View {
+        let chapters = PlayerChapters(chapters, timeline: player.timeline)
         VStack(alignment: .leading, spacing: 6) {
-            PlayerScrubber(player: player, waveform: waveform)
-            // A tight column shrinks the clock and shows speed as a glyph
-            // rather than wrapping a control onto a second row.
+            PlayerStripScrubber(player: player, strip: strip, chapters: chapters)
             ViewThatFits(in: .horizontal) {
-                controlRow(compact: false)
-                controlRow(compact: true)
+                controlRow(.regular, chapters: chapters)
+                controlRow(.tight, chapters: chapters)
+                controlRow(.quiet, chapters: chapters)
+                controlRow(.compact, chapters: chapters)
             }
             if player.clipRange != nil { clipRow }
         }
@@ -41,15 +50,48 @@ struct MeetingPlayerBar: View {
         }
     }
 
-    private func controlRow(compact: Bool) -> some View {
-        HStack(spacing: compact ? 8 : 12) {
+    private func controlRow(_ fit: Fit, chapters: PlayerChapters) -> some View {
+        HStack(spacing: fit == .compact ? 8 : 12) {
             playButton
             skipButton(seconds: -15, symbol: "gobackward.15", identifier: "player-skip-back")
             skipButton(seconds: 15, symbol: "goforward.15", identifier: "player-skip-forward")
-            PlayerClock(player: player, size: compact ? 18 : 22)
-            Spacer(minLength: 8)
-            rateMenu(compact: compact)
+            PlayerClock(player: player, size: fit == .compact ? 18 : 22)
+            // The readout takes what the controls leave and never decides the fit.
+            Color.clear
+                .frame(minWidth: fit.readoutWidth, maxWidth: .infinity)
+                .frame(height: 26)
+                .overlay(alignment: .leading) {
+                    PlayerReadout(player: player, strip: strip, chapters: chapters)
+                }
+            toggles(showsTitles: fit == .regular || fit == .tight)
+            rateMenu(compact: fit == .compact)
             optionsMenu
+        }
+    }
+
+    @ViewBuilder
+    private func toggles(showsTitles: Bool) -> some View {
+        PlayerToggleChip(
+            title: "Skip silence", symbol: "chevron.forward.2", isOn: player.skipSilence,
+            showsTitle: showsTitles, identifier: "player-skip-silence"
+        ) {
+            player.skipSilence.toggle()
+        }
+        if let me = strip?.myVoice {
+            PlayerToggleChip(
+                title: "Only my voice", symbol: "person", isOn: player.voiceFocus == me.speakerID,
+                showsTitle: showsTitles, identifier: "player-only-my-voice"
+            ) {
+                player.toggleFocus(on: me.speakerID, turns: me.turns)
+            }
+        }
+        if player.canClearPlayback {
+            PlayerToggleChip(
+                title: "Reduce echo", symbol: "mic", isOn: player.clearPlayback,
+                showsTitle: showsTitles, identifier: "player-clear-playback"
+            ) {
+                player.clearPlayback.toggle()
+            }
         }
     }
 
@@ -60,7 +102,7 @@ struct MeetingPlayerBar: View {
             Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
                 .symbolRenderingMode(.palette)
                 .foregroundStyle(PVDesign.onInk, PVDesign.ink)
-                .font(.system(size: 32))
+                .font(.system(size: 34))
         }
         .buttonStyle(.plain)
         .help(player.isPlaying ? "Pause" : "Play")
@@ -100,13 +142,18 @@ struct MeetingPlayerBar: View {
             if compact {
                 Image(systemName: "gauge.with.dots.needle.50percent")
             } else {
-                Text(Self.rateLabel(player.rate)).font(.callout.monospacedDigit())
+                HStack(spacing: 5) {
+                    Image(systemName: "gauge.with.dots.needle.50percent").imageScale(.small)
+                    Text(Self.rateLabel(player.rate)).monospacedDigit()
+                }
+                .font(.callout.weight(.semibold))
             }
         }
         .menuStyle(.borderlessButton)
+        .foregroundStyle(PVDesign.ink2)
         .fixedSize()
-        .padding(.horizontal, compact ? 0 : 8)
-        .padding(.vertical, compact ? 0 : 3)
+        .padding(.horizontal, compact ? 0 : 10)
+        .frame(height: 26)
         .overlay {
             if !compact { Capsule().strokeBorder(PVDesign.line2) }
         }
@@ -118,15 +165,6 @@ struct MeetingPlayerBar: View {
 
     private var optionsMenu: some View {
         Menu {
-            Toggle("Skip silence", isOn: Binding(
-                get: { player.skipSilence }, set: { player.skipSilence = $0 }))
-                .accessibilityIdentifier("player-skip-silence")
-            if player.canClearPlayback {
-                Toggle("Reduce echo", isOn: Binding(
-                    get: { player.clearPlayback }, set: { player.clearPlayback = $0 }))
-                    .accessibilityIdentifier("player-clear-playback")
-            }
-            Divider()
             Button("Mark clip start") { player.markClipStart() }
                 .accessibilityIdentifier("clip-mark-start")
             Button("Mark clip end") { player.markClipEnd() }
@@ -203,25 +241,187 @@ struct MeetingPlayerBar: View {
 
 }
 
-/// The scrubber and the clock read the 5 fps playback time themselves, so a
-/// tick redraws only them and not every control row `ViewThatFits` measures.
-private struct PlayerScrubber: View {
+/// The voice strip as a scrubber: chapter titles over their ticks, the
+/// playhead, the marked clip and long silences drawn short with their length.
+/// Reads the 5 fps playback time itself so a tick redraws only the strip.
+private struct PlayerStripScrubber: View {
     let player: MeetingPlaybackSession
-    let waveform: [MeetingWaveformBucket]
+    let strip: MeetingPlayerStrip?
+    let chapters: PlayerChapters
 
     var body: some View {
-        if waveform.isEmpty {
-            Slider(
-                value: Binding(get: { player.currentTime }, set: { player.seek(to: $0) }),
-                in: 0...max(player.duration, 0.1))
-        } else {
-            WaveformView(
-                buckets: waveform,
-                timeline: player.timeline,
-                currentTime: player.currentTime,
-                clipRange: player.clipRange,
-                onSeek: { player.seek(to: $0) })
+        let timeline = player.timeline
+        VStack(alignment: .leading, spacing: 2) {
+            if !chapters.isEmpty {
+                PlayerChapterLabels(
+                    chapters: chapters, current: chapters.index(at: player.currentTime),
+                    onSeek: { player.seek(to: chapters.starts[$0]) })
+            }
+            VoiceStrip(
+                strip?.strip ?? .empty, size: .player,
+                only: player.voiceFocus.flatMap { strip?.voiceIndex(of: $0) },
+                progress: timeline.fraction(at: player.currentTime), ticks: chapters.ticks)
+                .overlay {
+                    PlayerStripMarks(timeline: timeline, clip: player.clipRange).equatable()
+                }
+                .padding(.vertical, 4)
+                .overlay {
+                    GeometryReader { geo in
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .gesture(DragGesture(minimumDistance: 0).onChanged { value in
+                                player.seek(to: timeline.time(at: value.location.x / max(1, geo.size.width)))
+                            })
+                    }
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text("Playback position"))
+                .accessibilityValue(Text(ClockFormat.mmss(player.currentTime, paddedMinutes: false)))
+                .accessibilityAdjustableAction { direction in
+                    let step: TimeInterval = 10
+                    switch direction {
+                    case .increment: player.seek(to: min(timeline.duration, player.currentTime + step))
+                    case .decrement: player.seek(to: max(0, player.currentTime - step))
+                    @unknown default: return
+                    }
+                }
+                .accessibilityIdentifier("player-strip")
         }
+    }
+}
+
+/// The marked clip and long silences with their length; unchanged by the
+/// playback clock, so a tick never redraws them.
+private struct PlayerStripMarks: View, Equatable {
+    let timeline: PlaybackTimeline
+    let clip: ClosedRange<TimeInterval>?
+
+    var body: some View {
+        Canvas { context, size in
+            if let clip { drawClip(clip, in: &context, size: size) }
+            for gap in timeline.parts where gap.isGap {
+                drawGap(gap.range, in: &context, size: size)
+            }
+        }
+        .allowsHitTesting(false)
+    }
+
+    private func drawClip(_ clip: ClosedRange<TimeInterval>, in context: inout GraphicsContext, size: CGSize) {
+        let lower = timeline.fraction(at: clip.lowerBound) * size.width
+        let upper = timeline.fraction(at: clip.upperBound) * size.width
+        let rect = CGRect(x: lower, y: 0, width: max(2, upper - lower), height: size.height).insetBy(dx: 0.75, dy: 0.75)
+        context.stroke(
+            Path(roundedRect: rect, cornerRadius: 4), with: .color(PVDesign.ink), lineWidth: 1.5)
+    }
+
+    private func drawGap(_ gap: ClosedRange<TimeInterval>, in context: inout GraphicsContext, size: CGSize) {
+        let left = timeline.fraction(at: gap.lowerBound) * size.width
+        let right = timeline.fraction(at: gap.upperBound) * size.width
+        var edges = Path()
+        for x in [left + 1, right - 1] {
+            edges.move(to: CGPoint(x: x, y: 3))
+            edges.addLine(to: CGPoint(x: x, y: size.height - 3))
+        }
+        context.stroke(edges, with: .color(PVDesign.ink3.opacity(0.5)), style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
+        let label = Text(Duration.seconds(gap.upperBound - gap.lowerBound)
+            .formatted(.units(allowed: [.hours, .minutes, .seconds], width: .narrow, maximumUnitCount: 2)))
+            .font(.caption2.monospacedDigit())
+            .foregroundStyle(.ink3)
+        let resolved = context.resolve(label)
+        // Measured unconstrained: a bounded measure wraps to fit and never says no.
+        let measured = resolved.measure(in: CGSize(width: CGFloat.infinity, height: size.height))
+        guard measured.width > 0, measured.width <= right - left - 8 else { return }
+        context.draw(resolved, at: CGPoint(x: (left + right) / 2, y: size.height / 2))
+    }
+}
+
+/// Chapters that start inside the audio, with their place on the strip.
+struct PlayerChapters: Equatable {
+    let starts: [TimeInterval]
+    let titles: [String]
+    let ticks: [Double]
+
+    var isEmpty: Bool { starts.isEmpty }
+
+    init(_ chapters: [MeetingTranscriptContent.Chapter], timeline: PlaybackTimeline) {
+        let inside = chapters.filter { $0.startTime < timeline.duration }
+        starts = inside.map(\.startTime)
+        titles = inside.map(\.title)
+        ticks = starts.map { timeline.fraction(at: $0) }
+    }
+
+    /// The chapter playing at `time`; a seek a frame short of a start counts as in it.
+    func index(at time: TimeInterval) -> Int? {
+        starts.lastIndex { $0 <= time + 0.05 }
+    }
+}
+
+/// Each chapter's title starts at its tick and ends before the next one; a
+/// title without room for a word is left to the transcript and Marginalia.
+private struct PlayerChapterLabels: View {
+    let chapters: PlayerChapters
+    let current: Int?
+    let onSeek: (Int) -> Void
+
+    private static let inset: CGFloat = 5.5
+    private static let minimumWidth: CGFloat = 32
+
+    var body: some View {
+        GeometryReader { geo in
+            ForEach(chapters.titles.indices, id: \.self) { index in
+                let left = chapters.ticks[index] * geo.size.width + Self.inset
+                let next = (index + 1 < chapters.ticks.count ? chapters.ticks[index + 1] : 1) * geo.size.width
+                let room = next - left - 6
+                if room >= Self.minimumWidth {
+                    Text(chapters.titles[index])
+                        .font(.subheadline.weight(index == current ? .bold : .medium))
+                        .foregroundStyle(index == current ? PVDesign.ink : PVDesign.ink2)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(width: room, alignment: .leading)
+                        .contentShape(Rectangle())
+                        .onTapGesture { onSeek(index) }
+                        .offset(x: left)
+                }
+            }
+        }
+        .frame(height: 14)
+        // Marginalia's chapter list is the accessible way to jump.
+        .accessibilityHidden(true)
+    }
+}
+
+/// Who is speaking at the playhead and in which chapter: "You · Kickoff".
+private struct PlayerReadout: View {
+    let player: MeetingPlaybackSession
+    let strip: MeetingPlayerStrip?
+    let chapters: PlayerChapters
+
+    var body: some View {
+        let time = player.currentTime
+        let voice = strip?.voice(at: time)
+        let name = voice.map { VoiceName.of(isMe: $0.voice.isMe, name: $0.voice.name, label: $0.label) }
+        let chapter = chapters.index(at: time).map { chapters.titles[$0] }
+        let text = [name, chapter].compactMap(\.self).joined(separator: " · ")
+        // Never truncated: the chapter goes first, then the whole readout.
+        ViewThatFits(in: .horizontal) {
+            line(voice, text)
+            if let name { line(voice, name) }
+            Color.clear.frame(width: 0)
+        }
+        .font(.callout)
+        .foregroundStyle(PVDesign.ink3)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(verbatim: text))
+        .accessibilityIdentifier("player-readout")
+    }
+
+    private func line(_ voice: MeetingPlayerStrip.Voice?, _ text: String) -> some View {
+        HStack(spacing: 6) {
+            if let voice = voice?.voice { VoiceDot(tint: voice.tint, isOpen: !voice.isMe && voice.name == nil) }
+            Text(verbatim: text).lineLimit(1)
+        }
+        .fixedSize()
     }
 }
 
@@ -247,112 +447,36 @@ private struct PlayerClock: View {
     }
 }
 
-/// The scrubber waveform (M11): peak-amplitude columns tinted by who was
-/// talking (accent = you, gray = them) and dimmed past the playhead. Long
-/// stretches without speech are drawn short with their length written in.
-/// Click or drag anywhere to seek.
-struct WaveformView: View {
-    let buckets: [MeetingWaveformBucket]
-    let timeline: PlaybackTimeline
-    let currentTime: TimeInterval
-    let clipRange: ClosedRange<TimeInterval>?
-    /// Called with the meeting time under a click or drag.
-    let onSeek: (TimeInterval) -> Void
+/// A quiet playback setting: plain while off, an ink pill while on. Without
+/// room for its title it keeps the glyph and says the title on hover.
+private struct PlayerToggleChip: View {
+    let title: LocalizedStringKey
+    let symbol: String
+    let isOn: Bool
+    let showsTitle: Bool
+    let identifier: String
+    let action: () -> Void
 
     var body: some View {
-        GeometryReader { geo in
-            Canvas { context, size in
-                guard !buckets.isEmpty, timeline.duration > 0 else { return }
-                if let clipRange {
-                    let lower = timeline.fraction(at: clipRange.lowerBound) * size.width
-                    let upper = timeline.fraction(at: clipRange.upperBound) * size.width
-                    context.fill(
-                        Path(roundedRect: CGRect(x: lower, y: 0, width: upper - lower, height: size.height),
-                             cornerRadius: 3),
-                        with: .color(PVDesign.accent.opacity(0.15)))
-                }
-                drawBars(in: &context, size: size)
-                for gap in timeline.parts where gap.isGap {
-                    drawGap(gap.range, in: &context, size: size)
-                }
+        Button(action: action) {
+            HStack(spacing: 5) {
+                Image(systemName: symbol)
+                    .font(.system(size: 11, weight: .semibold))
+                if showsTitle { Text(title) }
             }
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0).onChanged { value in
-                    onSeek(timeline.time(at: value.location.x / max(1, geo.size.width)))
-                })
+            .font(.callout.weight(.semibold))
+            .lineLimit(1)
+            .foregroundStyle(isOn ? PVDesign.onInk : PVDesign.ink2)
+            .padding(.horizontal, showsTitle ? 10 : 8)
+            .frame(height: 26)
+            .background(Capsule().fill(isOn ? PVDesign.ink : .clear))
+            .contentShape(Capsule())
         }
-        .frame(height: 28)
-        .accessibilityElement()
-        .accessibilityLabel(Text("Playback position"))
-        .accessibilityValue(Text(ClockFormat.mmss(currentTime, paddedMinutes: false)))
-        .accessibilityAdjustableAction { direction in
-            let step: TimeInterval = 10
-            let target: TimeInterval
-            switch direction {
-            case .increment:
-                target = min(timeline.duration, currentTime + step)
-            case .decrement:
-                target = max(0, currentTime - step)
-            @unknown default:
-                return
-            }
-            onSeek(target)
-        }
-        .accessibilityIdentifier("player-waveform")
-    }
-
-    private func drawBars(in context: inout GraphicsContext, size: CGSize) {
-        let bucketLength = timeline.duration / Double(buckets.count)
-        let progress = timeline.fraction(at: currentTime)
-        let mid = size.height / 2
-        let gaps = timeline.gaps
-        // Resolved once per draw: dynamic voice colours are costly per bar.
-        let mePlayed = context.resolve(GraphicsContext.Shading.color(VoicePalette.me.opacity(0.9)))
-        let meAhead = context.resolve(GraphicsContext.Shading.color(VoicePalette.me.opacity(0.3)))
-        let themPlayed = context.resolve(GraphicsContext.Shading.color(VoicePalette.unnamed.opacity(0.9)))
-        let themAhead = context.resolve(GraphicsContext.Shading.color(VoicePalette.unnamed.opacity(0.3)))
-        for (index, bucket) in buckets.enumerated() {
-            let start = Double(index) * bucketLength
-            let center = start + bucketLength / 2
-            guard !gaps.contains(where: { $0.contains(center) }) else { continue }
-            let left = timeline.fraction(at: start) * size.width
-            let right = timeline.fraction(at: start + bucketLength) * size.width
-            let width = max(1, (right - left) * 0.6)
-            let height = max(2, CGFloat(bucket.amplitude) * (size.height - 2))
-            let rect = CGRect(
-                x: left + (right - left - width) / 2, y: mid - height / 2,
-                width: width, height: height)
-            // Your channel is amber: the colour is the voice.
-            let played = timeline.fraction(at: center) <= progress
-            let shading = bucket.microphoneDominant
-                ? (played ? mePlayed : meAhead)
-                : (played ? themPlayed : themAhead)
-            context.fill(Path(roundedRect: rect, cornerRadius: 1), with: shading)
-        }
-    }
-
-    private func drawGap(
-        _ gap: ClosedRange<TimeInterval>,
-        in context: inout GraphicsContext,
-        size: CGSize
-    ) {
-        let left = timeline.fraction(at: gap.lowerBound) * size.width
-        let right = timeline.fraction(at: gap.upperBound) * size.width
-        var edges = Path()
-        for x in [left + 1, right - 1] {
-            edges.move(to: CGPoint(x: x, y: 6))
-            edges.addLine(to: CGPoint(x: x, y: size.height - 6))
-        }
-        context.stroke(edges, with: .color(PVDesign.ink3.opacity(0.5)), style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
-        let label = Text(Duration.seconds(gap.upperBound - gap.lowerBound)
-            .formatted(.units(allowed: [.hours, .minutes, .seconds], width: .narrow, maximumUnitCount: 2)))
-            .font(.caption2.monospacedDigit())
-            .foregroundStyle(.ink3)
-        let resolved = context.resolve(label)
-        // Measured unconstrained: a bounded measure wraps to fit and never says no.
-        let measured = resolved.measure(in: CGSize(width: CGFloat.infinity, height: size.height))
-        guard measured.width > 0, measured.width <= right - left - 8 else { return }
-        context.draw(resolved, at: CGPoint(x: (left + right) / 2, y: size.height / 2))
+        .buttonStyle(.plain)
+        .fixedSize()
+        .help(title)
+        .accessibilityLabel(Text(title))
+        .accessibilityAddTraits(isOn ? .isSelected : [])
+        .accessibilityIdentifier(identifier)
     }
 }

@@ -20,7 +20,7 @@ struct VoiceStrip: View {
             switch self {
             case .row: 6
             case .card, .resume: 8
-            case .player: 16
+            case .player: 18
             case .live: 12
             case .axis: 10
             }
@@ -155,18 +155,21 @@ struct VoiceStrip: View {
 
     private func drawMarks(in context: inout GraphicsContext, size canvas: CGSize) {
         let ink = context.resolve(GraphicsContext.Shading.color(PVDesign.ink))
+        var tickContext = context
+        tickContext.opacity = 0.45
         for tick in ticks {
             var path = Path()
             path.move(to: CGPoint(x: tick * canvas.width, y: 0))
             path.addLine(to: CGPoint(x: tick * canvas.width, y: canvas.height - Self.overhang))
-            context.stroke(path, with: ink, lineWidth: 1)
+            tickContext.stroke(path, with: ink, lineWidth: 1)
         }
         guard let playhead else { return }
         let width: CGFloat = 2.2
-        // Inset by the round cap so the line ends exactly at the overhang.
+        // Kept whole at either end; inset by the round cap so it ends exactly at the overhang.
+        let x = min(max(playhead * canvas.width, width / 2), canvas.width - width / 2)
         var path = Path()
-        path.move(to: CGPoint(x: playhead * canvas.width, y: width / 2))
-        path.addLine(to: CGPoint(x: playhead * canvas.width, y: canvas.height - width / 2))
+        path.move(to: CGPoint(x: x, y: width / 2))
+        path.addLine(to: CGPoint(x: x, y: canvas.height - width / 2))
         context.stroke(path, with: ink, style: StrokeStyle(lineWidth: width, lineCap: .round))
     }
 }

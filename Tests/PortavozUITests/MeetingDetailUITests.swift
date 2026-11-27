@@ -713,13 +713,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
         nameDismiss.click()
         XCTAssertFalse(app.buttons["detail-name-suggestion-S1"].exists)
 
-        let options = app.control(withIdentifier: "player-options")
-        XCTAssertTrue(options.waitForExistenceFast(timeout: 10))
-        options.click()
-        XCTAssertTrue(
-            app.menuItems["player-clear-playback"].waitForExistenceFast(timeout: 5),
-            "two-channel playback must expose the reversible clear mix")
-        typeKey(.escape, modifierFlags: [], in: app)
+        let clearMix = app.buttons["player-clear-playback"]
+        XCTAssertTrue(clearMix.waitForExistenceFast(timeout: 10) && clearMix.isSelected, "two channels offer the clear mix, on")
+        clearMix.click()
+        XCTAssertTrue(waitForUITestCondition(timeout: 5) { !clearMix.isSelected }, "the clear mix is reversible")
         attachScreenshot(of: app, named: "dismissible-ai-suggestions-and-clear-playback")
     }
 
@@ -1014,11 +1011,13 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let header = app.control(withIdentifier: "detail-header-section")
         XCTAssertTrue(rail.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(header.waitForExistenceFast(timeout: 5))
-        let waveform = app.control(withIdentifier: "player-waveform")
+        let waveform = app.control(withIdentifier: "player-strip")
         XCTAssertTrue(waveform.waitForStableFrame(timeout: 5), "the waveform replaces the fallback slider")
         XCTAssertEqual(waveform.frame.minX, header.frame.minX, accuracy: 2, "the scrubber starts with the page text")
         XCTAssertGreaterThanOrEqual(waveform.frame.maxX, rail.frame.maxX - 2, "the scrubber runs under the margin too")
         assertPlayerControlsShareOneRow(in: app)
+        let readout = app.control(withIdentifier: "player-readout").label
+        XCTAssertTrue(readout.contains("You"), "the readout names the voice under the playhead: \(readout)")
 
         XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
         for _ in 0..<4 { page.scroll(byDeltaX: 0, deltaY: -2000) }
@@ -1033,11 +1032,12 @@ final class MeetingDetailUITests: PortavozUITestCase {
         attachScreenshot(of: app, named: "pr-meeting-docked-player")
     }
 
-    /// Play, time, speed and options stay on one line at every window width.
+    /// Play, time, toggles, speed and options stay on one line at every window width.
     @MainActor
     private func assertPlayerControlsShareOneRow(in app: XCUIApplication) {
         let play = app.buttons["player-play-pause"]
-        for identifier in ["player-current-time", "player-speed", "player-options"] {
+        for identifier in ["player-current-time", "player-skip-silence", "player-only-my-voice",
+                           "player-clear-playback", "player-speed", "player-options"] {
             let control = app.control(withIdentifier: identifier)
             XCTAssertTrue(control.exists, identifier)
             XCTAssertEqual(control.frame.midY, play.frame.midY, accuracy: 8, "\(identifier) shares the play row")
@@ -2175,7 +2175,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(currentTime.waitForValue("0:00", timeout: 5))
         play.click()
         play.click()
-        let waveform = app.control(withIdentifier: "player-waveform")
+        let waveform = app.control(withIdentifier: "player-strip")
         XCTAssertTrue(waveform.waitForHittable(timeout: 5))
         waveform.click()  // seek to the six-second fixture's center without playing
         XCTAssertTrue(waitForUITestCondition(timeout: 5) {
@@ -2214,7 +2214,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         app.menuItems["clip-mark-start"].click()
         XCTAssertTrue(currentTime.waitForValue("0:00", timeout: 5), "Start must be marked before seeking")
 
-        let waveform = app.control(withIdentifier: "player-waveform")
+        let waveform = app.control(withIdentifier: "player-strip")
         XCTAssertTrue(waveform.waitForHittable(timeout: 5))
         waveform.click()  // seek to the identified waveform's center without starting playback
         XCTAssertTrue(waitForUITestCondition(timeout: 5) {
@@ -2262,13 +2262,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(app.buttons["player-skip-back"].exists)
         XCTAssertTrue(app.buttons["player-skip-forward"].exists)
         XCTAssertTrue(app.control(withIdentifier: "player-speed").exists)
-        XCTAssertTrue(app.control(withIdentifier: "player-waveform").exists)
-        XCTAssertTrue(options.exists, "skip silence, echo and clips live in the options menu")
-        options.click()
-        XCTAssertTrue(
-            app.menuItems["player-skip-silence"].waitForExistenceFast(timeout: 5),
-            "the player must offer skipping dead time")
-        typeKey(.escape, modifierFlags: [], in: app)
+        XCTAssertTrue(app.control(withIdentifier: "player-strip").exists)
+        XCTAssertTrue(options.exists, "clip marks live in the options menu")
+        XCTAssertTrue(app.buttons["player-skip-silence"].isSelected, "the player offers skipping dead time, on")
         let more = app.control(withIdentifier: "detail-more-menu")
         XCTAssertTrue(more.waitForHittable(timeout: 5))
         more.click()
@@ -2290,6 +2286,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         onlyMe.click()
         XCTAssertTrue(
             waitForUITestCondition(timeout: 5) { onlyMe.isSelected }, "Only shows which voice is playing")
+        XCTAssertTrue(app.buttons["player-only-my-voice"].isSelected, "the player's toggle shows the same focus")
         XCTAssertTrue(
             currentTime.waitForValueChange(from: initialTime, timeout: 5),
             "playback must advance instead of merely accepting the click")
