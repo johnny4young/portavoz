@@ -127,12 +127,32 @@ final class RecordingAssistLayoutTests: XCTestCase {
             "the narrowest window stacks the panel under the captions")
     }
 
-    func testAShortWindowKeepsTheSplitInsteadOfOverflowing() {
-        let wide: CGFloat = 1_200
-        XCTAssertTrue(RecordingStageLayout.isSideBySide(
-            CGSize(width: wide, height: RecordingStageLayout.minimumSideBySideHeight)))
-        XCTAssertFalse(RecordingStageLayout.isSideBySide(
-            CGSize(width: wide, height: RecordingStageLayout.minimumSideBySideHeight - 1)))
+    func testAShortStageFoldsVoiceRowsBeforeTheCaptionsLoseTheirFloor() {
+        typealias Layout = RecordingStageLayout
+        // A 1024 x 768 display leaves the stage about 400 pt: six rows left the captions nothing.
+        XCTAssertEqual(Layout.voices(height: 400, sideBySide: true), .rows(3))
+        XCTAssertEqual(Layout.voices(height: .infinity, sideBySide: true), .rows(3))
+        // Beside the panel only the strip and the captions sit under the table.
+        XCTAssertEqual(Layout.voices(height: 474, sideBySide: true), .rows(6))
+        XCTAssertEqual(Layout.voices(height: 473, sideBySide: true), .rows(5))
+        XCTAssertEqual(Layout.voices(height: 700, sideBySide: false), .rows(6))
+        XCTAssertEqual(Layout.voices(height: 699, sideBySide: false), .rows(5))
+    }
+
+    func testAStackedStageTooShortForTheTableShowsOnlyWhoLeads() {
+        typealias Layout = RecordingStageLayout
+        XCTAssertEqual(Layout.voices(height: 550, sideBySide: false), .rows(1))
+        XCTAssertEqual(Layout.voices(height: 549, sideBySide: false), .leadOnly)
+        XCTAssertEqual(Layout.voices(height: 430, sideBySide: false), .leadOnly)
+        XCTAssertEqual(Layout.voices(height: 0, sideBySide: false), .leadOnly)
+        XCTAssertEqual(Layout.voices(height: .nan, sideBySide: false), .leadOnly)
+    }
+
+    func testAShortStageLowersTheSharedRowInsteadOfOverflowing() {
+        XCTAssertEqual(
+            RecordingStageLayout.rowMinimumHeight(height: 1_000), RecordingStageLayout.panelMinimumHeight)
+        XCTAssertEqual(RecordingStageLayout.rowMinimumHeight(height: 400), 172)
+        XCTAssertEqual(RecordingStageLayout.rowMinimumHeight(height: 100), 0)
     }
 
     func testThePanelKeepsTheBoardShareOfAWideRow() {

@@ -42,7 +42,7 @@ struct RecordingView: View {
     /// `RecordingView` invalidation — captions re-projected and all — into every
     /// tick of the gesture.
     @State private var draggingFraction: Double?
-    /// The stage's size: voices and the assist panel share a row once it is wide and tall enough.
+    /// The stage's size: its width puts the panel beside the voices, its height folds voice rows.
     @State private var stageSize: CGSize = .zero
 
     var body: some View {
@@ -133,17 +133,23 @@ struct RecordingView: View {
     /// taking the rest. Narrower, the panel goes under the captions.
     @ViewBuilder
     private var stage: some View {
-        let voices = RecordingLiveVoicesTable(model: controller.liveVoices, startedAt: controller.startedAt)
+        let sideBySide = RecordingStageLayout.isSideBySide(width: stageSize.width)
+        let voices = RecordingLiveVoicesTable(
+            model: controller.liveVoices, startedAt: controller.startedAt,
+            fit: RecordingStageLayout.voices(height: stageSize.height, sideBySide: sideBySide))
         let strip = RecordingLiveStrip(model: controller.liveVoices, startedAt: controller.startedAt)
             .padding(.horizontal, 20)
-        if RecordingStageLayout.isSideBySide(stageSize) {
+        if sideBySide {
             let panelWidth = RecordingStageLayout.panelWidth(for: stageSize.width)
-            VStack(spacing: 12) {
+            VStack(spacing: RecordingStageLayout.spacing) {
                 HStack(alignment: .top, spacing: RecordingStageLayout.columnGap) {
                     voices.frame(maxWidth: .infinity, alignment: .topLeading)
                     Color.clear.frame(width: panelWidth, height: 1)
                 }
-                .frame(maxWidth: .infinity, minHeight: RecordingStageLayout.panelMinimumHeight, alignment: .top)
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: RecordingStageLayout.rowMinimumHeight(height: stageSize.height),
+                    alignment: .top)
                 // The panel takes the row's height: the voices' or its floor.
                 .overlay(alignment: .topTrailing) {
                     // Clipped to the row: an overlay neither grows it nor stops at it.
@@ -152,11 +158,10 @@ struct RecordingView: View {
                 .padding(.horizontal, 20)
                 strip
                 LiveRecordingCaptionsView(controller: controller)
-                    .frame(minHeight: RecordingAssistLayout.minimumCaptionsHeight)
                     .padding(.horizontal, 20)
             }
         } else {
-            VStack(spacing: 12) {
+            VStack(spacing: RecordingStageLayout.spacing) {
                 voices.padding(.horizontal, 20)
                 strip
                 assistSplit
@@ -193,6 +198,7 @@ struct RecordingView: View {
                 assistDivider(total: geo.size.height)
                 assistPanel
                     .frame(height: split.assist)
+                    .clipped()
                     .padding(.horizontal, 20)
             }
         }

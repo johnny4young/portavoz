@@ -1945,7 +1945,7 @@ extension ArchitectureDependencyTests {
         XCTAssertFalse(interviewUITest.contains(
             "scroll.scroll(byDeltaX: 0, deltaY: -240)"))
         XCTAssertTrue(interviewUITest.contains(
-            "answerAction.revealVertically(in: assist)"))
+            "answerAction.revealVertically(in: content)"))
 
         let commitmentExistence = try XCTUnwrap(uiTests.range(
             of: "review.waitForExistenceFast(timeout: 5)"))

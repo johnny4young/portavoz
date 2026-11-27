@@ -1486,14 +1486,26 @@ diarization pass re-attributes the meeting and nothing live is persisted.
   when the live voices refresh and on one shared one-second tick for their
   recency, inside fixed-width columns, so neither moves the table.
 - From `RecordingStageLayout.isSideBySide` (room for a 400 pt table, a 40 pt
-  gap and the 322 pt panel, and the height for the row, strip and the
-  captions' floor), the table and `RecordingAssistPanel` share a row;
+  gap and the 322 pt panel), the table and `RecordingAssistPanel` share a row;
   the panel takes 34% of it (never under 322 pt, the board's proportion) and
   the row's height is the table's or the panel's 300 pt floor, and the panel
   is clipped to it; the strip and the
   captions take the full width under it and the captions take the rest of the
   height. Narrower, the table and the strip stack above the captions and the
-  assist area, split as before (D504).
+  assist area, split as before (D504); the assist floor is 212 pt, which holds
+  the tabs, the focus card, a usable list and the note field.
+- The stage's height decides how much of the table shows
+  (`RecordingStageLayout.voices`), so a short window (a 1024 x 768 display
+  leaves the stage about 400 pt) folds voices instead of squeezing what is
+  under them. `LiveVoiceTable.folding(to:)` moves the oldest rows into
+  "Others" until the strip and the captions' floor fit (and, stacked, the
+  assist floor). Beside the panel the table keeps at least three rows, and the
+  shared row's 300 pt floor drops to what is left; stacked, a stage too short
+  for one row and its fold shows only the leading voice, with no caption or
+  "Others" row. The open "Others" list shows as many rows as the table keeps.
+  Each tab's content gives way and is clipped before the tab bar or the note
+  field; the Apuntador and Objectives scroll areas are
+  `recording-apuntador-scroll` and `recording-objectives-scroll`.
 - `RecordingLiveStrip` (`recording-strip`): a 72 pt block. The voice
   columns (`LiveVoiceStage.strip(cast:)`, one per second up to the last
   refresh) fill `VoiceStrip(size: .live, span:)` from the left over a 16 pt

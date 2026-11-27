@@ -203,7 +203,9 @@ final class RecordingAssistUITests: PortavozUITestCase {
         // Reaching back for an older card folds the oldest recency-open one,
         // so the panel keeps its size instead of growing.
         let list = app.scrollViews["recording-companion-list"]
-        guard folded.revealVertically(in: list, maximumStep: list.frame.height) else {
+        // A step is one viewport, but a short window's list is too low to cross the open cards.
+        let step = max(list.frame.height, 160)
+        guard folded.revealVertically(in: list, maximumStep: step) else {
             return XCTFail(
                 "Older Companion card was not reachable: control=\(folded.frame), "
                     + "viewport=\(list.frame), enabled=\(folded.isEnabled)")
@@ -221,7 +223,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
         // recency window's own direction is unproven end to end.
         let fold = app.control(withIdentifier: "recording-companion-fold-\(newestID)")
         XCTAssertTrue(fold.exists)
-        guard fold.revealVertically(in: list, maximumStep: list.frame.height) else {
+        guard fold.revealVertically(in: list, maximumStep: step) else {
             return XCTFail(
                 "Newest Companion fold was not reachable: control=\(fold.frame), "
                     + "viewport=\(list.frame), enabled=\(fold.isEnabled)")

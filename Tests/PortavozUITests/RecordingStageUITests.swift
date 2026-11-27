@@ -8,6 +8,14 @@ final class RecordingStageUITests: PortavozUITestCase {
         let app = try launchStage(["-seed-wide-window", "-seed-dark-appearance"])
         defer { finishUITestApplication(app) }
 
+        let clock = app.control(withIdentifier: "recording-elapsed-time")
+        XCTAssertTrue(clock.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(renderedText(of: clock).hasPrefix("12:"), "the clock reads the call's elapsed time: \(renderedText(of: clock))")
+        let returnToRecording = app.buttons["library-return-to-recording"]
+        XCTAssertTrue(returnToRecording.label.contains("12:"), "the sidebar shows the elapsed time: \(returnToRecording.label)")
+        // A 1024 pt display has room for the shared row, and so three rows, only without the sidebar.
+        app.setSidebar(visible: false)
+
         let you = app.control(withIdentifier: "recording-voice-you")
         XCTAssertTrue(you.waitForExistenceFast(timeout: 10))
         // The scripted call streams in; your open turn is its last row.
@@ -22,14 +30,13 @@ final class RecordingStageUITests: PortavozUITestCase {
 
         let detail = app.control(withIdentifier: "recording-stage-detail")
         XCTAssertTrue(renderedText(of: detail).contains("12 voices so far"), renderedText(of: detail))
-        let clock = app.control(withIdentifier: "recording-elapsed-time")
-        XCTAssertTrue(renderedText(of: clock).hasPrefix("12:"), "the clock reads the call's elapsed time: \(renderedText(of: clock))")
-        let returnToRecording = app.buttons["library-return-to-recording"]
-        XCTAssertTrue(returnToRecording.label.contains("12:"), "the sidebar shows the elapsed time: \(returnToRecording.label)")
-
         let others = app.buttons["recording-voices-others"]
         XCTAssertTrue(others.exists)
-        XCTAssertEqual(others.label, "Others · 6")
+        // A short display folds more rows; every voice is still a row or in the fold.
+        let shown = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'recording-voice-'"))
+            .count
+        XCTAssertEqual(others.label, "Others · \(12 - shown)")
         XCTAssertFalse(app.control(withIdentifier: "recording-voice-S6").exists)
         attachScreenshot(of: app, named: "pr-recording-stage")
         others.click()
@@ -45,6 +52,8 @@ final class RecordingStageUITests: PortavozUITestCase {
         let app = try launchStage(["-seed-wide-window", "-seed-dark-appearance"])
         defer { finishUITestApplication(app) }
 
+        // A 1024 pt display has room for the shared row only without the sidebar.
+        app.setSidebar(visible: false)
         let you = app.control(withIdentifier: "recording-voice-you")
         XCTAssertTrue(you.waitForExistenceFast(timeout: 10))
         let panel = app.control(withIdentifier: "recording-assist-panel")
@@ -93,7 +102,11 @@ final class RecordingStageUITests: PortavozUITestCase {
         let transcript = app.control(withIdentifier: "recording-live-transcript")
         let panel = app.control(withIdentifier: "recording-assist-panel")
         XCTAssertTrue(app.control(withIdentifier: "recording-strip").exists)
-        XCTAssertGreaterThan(panel.frame.minY, transcript.frame.minY, "narrow, the panel goes under the captions")
+        XCTAssertGreaterThanOrEqual(
+            panel.frame.minY, transcript.frame.maxY, "narrow, the panel goes under the captions")
+        XCTAssertLessThanOrEqual(
+            panel.frame.maxY, app.control(withIdentifier: "recording-talk-balance").frame.minY,
+            "a short window keeps the panel above the footer")
         attachScreenshot(of: app, named: "pr-recording-stage-min")
     }
 

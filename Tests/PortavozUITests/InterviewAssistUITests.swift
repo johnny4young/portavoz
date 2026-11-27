@@ -37,6 +37,9 @@ final class InterviewAssistUITests: PortavozUITestCase {
 
         let assist = app.control(withIdentifier: "recording-assist-panel")
         XCTAssertTrue(assist.waitForExistenceFast(timeout: 5))
+        // Each tab scrolls between the tab bar and the note field.
+        let objectives = app.scrollViews["recording-objectives-scroll"]
+        let content = app.scrollViews["recording-apuntador-scroll"]
         try app.openAssistTab("objectives")
         let objective = app.control(withIdentifier: "recording-objective-field")
         XCTAssertTrue(objective.waitForHittable(timeout: 5))
@@ -68,7 +71,7 @@ final class InterviewAssistUITests: PortavozUITestCase {
             "the product must materialize the exact admitted objective")
         XCTAssertTrue(
             savedObjective.revealVertically(
-                in: assist,
+                in: objectives,
                 maxScrolls: 0),
             "the product must keep the admitted objective fully visible "
                 + "without a test-owned wheel gesture")
@@ -76,7 +79,7 @@ final class InterviewAssistUITests: PortavozUITestCase {
         try app.openAssistTab("companion")
         let answerAction = app.control(withIdentifier: "recording-interview-answer")
         XCTAssertTrue(
-            answerAction.revealVertically(in: assist),
+            answerAction.revealVertically(in: content),
             "the answer action must be fully inside the assist viewport")
         answerAction.click()
 
@@ -88,6 +91,9 @@ final class InterviewAssistUITests: PortavozUITestCase {
                 : "within five minutes")
         }, "the grounded answer must publish its exact bounded fact")
         let evidence = app.control(withIdentifier: "recording-interview-evidence-1")
+        // A short window shows the answer first; the citation is read once scrolled into view.
+        XCTAssertTrue(evidence.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(evidence.revealVertically(in: content), "the citation must scroll fully into view")
         XCTAssertTrue(waitForUITestCondition(timeout: 5) {
             self.accessibleText(of: evidence).contains(isSpanish
                 ? "Avisaría a la responsable de base de datos"

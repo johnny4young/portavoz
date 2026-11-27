@@ -6243,7 +6243,8 @@ panel beside it on a wide window (`RecordingStageLayout`), the live strip
 mute and level); a narrow window keeps the captions and assist split. Each is
 responsive by construction rather than by control truncation: the toolbar's
 `ViewThatFits` drops labels to glyphs, the hero steps its type down from the
-width it is given, and the strip hides tick labels it has no room for. The focused external-recording XCUITest and
+width it is given, the strip hides tick labels it has no room for, and the
+table folds rows into "Others" in the height the stage has. The focused external-recording XCUITest and
 `RecordingStageUITests` enforce those geometric invariants.
 
 `ViewThatFits` re-measures every variant, AppKit-backed controls included,

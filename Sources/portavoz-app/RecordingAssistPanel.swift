@@ -59,8 +59,11 @@ struct RecordingAssistPanel: View {
         VStack(spacing: 10) {
             tabBar
             focusSlot
+            // In a short area the open panel gives way, not the tabs or the note field.
             activePanel
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .frame(minHeight: 0, maxHeight: .infinity, alignment: .top)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .clipped()
             RecordingNoteField(controller: controller)
         }
         .onChange(of: companionIDs, initial: true) { _, ids in
@@ -276,6 +279,7 @@ private extension RecordingAssistPanel {
             ScrollView {
                 RecordingObjectivesPanel(controller: controller)
             }
+            .accessibilityIdentifier("recording-objectives-scroll")
             .scrollsToAddedObjective(controller, objectiveScroll)
         }
     }
@@ -300,6 +304,7 @@ private extension RecordingAssistPanel {
                 }
                 .padding(.vertical, 2)
             }
+            .accessibilityIdentifier("recording-apuntador-scroll")
         } else {
             RecordingCompanionCardsView(
                 controller: controller,

@@ -14,7 +14,8 @@ enum RecordingAssistLayout {
     static let maximumFraction = 0.70
     static let defaultFraction = 0.42
     static let minimumCaptionsHeight: CGFloat = 132
-    static let minimumAssistHeight: CGFloat = 168
+    /// The tabs, the focus card, a usable list and the note field under every tab.
+    static let minimumAssistHeight: CGFloat = 212
     /// Pointer target for the divider; the visible capsule is thinner.
     static let dividerHeight: CGFloat = 14
     /// One keyboard or VoiceOver step on the divider.
@@ -130,14 +131,43 @@ enum RecordingStageLayout {
         width >= minimumVoicesWidth + columnGap + panelWidth + 2 * horizontalPadding
     }
 
-    /// The row, the strip and the captions' floor, with the stage's spacing.
     static let stripHeight: CGFloat = 72
-    static let minimumSideBySideHeight: CGFloat =
-        panelMinimumHeight + 12 + stripHeight + 12 + RecordingAssistLayout.minimumCaptionsHeight
+    static let spacing: CGFloat = 12
+    /// Beside the panel the table keeps three rows, about what the panel needs anyway.
+    static let minimumSharedRowVoices = 3
+    /// The table's caption, its raised lead row and the fold row.
+    static let voicesChromeHeight: CGFloat = 22 + 44 + 30
 
-    /// A short window keeps the split, whose zones shrink together, instead of overflowing.
-    static func isSideBySide(_ size: CGSize) -> Bool {
-        isSideBySide(width: size.width) && size.height >= minimumSideBySideHeight
+    /// What stays under the table: the strip and the captions, plus the assist area when stacked.
+    private static func reservedHeight(sideBySide: Bool) -> CGFloat {
+        let floors = sideBySide
+            ? RecordingAssistLayout.minimumCaptionsHeight
+            : RecordingAssistLayout.minimumCaptionsHeight + RecordingAssistLayout.dividerHeight
+                + RecordingAssistLayout.minimumAssistHeight
+        return 2 * spacing + stripHeight + floors
+    }
+
+    /// What the voices table shows in the height the stage has.
+    enum Voices: Equatable {
+        /// Up to this many rows under the caption; the rest fold into "Others".
+        case rows(Int)
+        /// Only the leading voice: stacked, the captions and the assist area come first.
+        case leadOnly
+    }
+
+    /// A short stage folds voice rows instead of squeezing the captions and the assist area.
+    static func voices(height: CGFloat, sideBySide: Bool) -> Voices {
+        guard height.isFinite else { return sideBySide ? .rows(minimumSharedRowVoices) : .leadOnly }
+        let room = height - reservedHeight(sideBySide: sideBySide) - voicesChromeHeight
+        let fitting = 1 + Int((room / LiveVoicesTableMetrics.rowHeight).rounded(.down))
+        if sideBySide { return .rows(max(minimumSharedRowVoices, fitting)) }
+        return fitting >= 1 ? .rows(fitting) : .leadOnly
+    }
+
+    /// The shared row's floor: the panel's, less what a short stage owes the strip and captions.
+    static func rowMinimumHeight(height: CGFloat) -> CGFloat {
+        guard height.isFinite else { return panelMinimumHeight }
+        return min(panelMinimumHeight, max(0, height - reservedHeight(sideBySide: true)))
     }
 
     /// The panel keeps the board's share of a wide row, never under 322 pt.

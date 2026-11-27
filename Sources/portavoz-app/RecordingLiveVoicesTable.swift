@@ -9,21 +9,26 @@ import SwiftUI
 struct RecordingLiveVoicesTable: View {
     let model: RecordingLiveVoicesModel
     let startedAt: Date
+    /// What the stage has room for.
+    var fit: RecordingStageLayout.Voices = .rows(.max)
 
     @State private var showsOthers = false
     @State private var isNarrow = false
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        let table = LiveVoiceTable(stage: model.stage, cast: model.cast)
+        let table = LiveVoiceTable(stage: model.stage, cast: model.cast).folding(to: rowLimit)
+        let leadOnly = fit == .leadOnly
         if !table.isEmpty {
             TimelineView(.periodic(from: startedAt, by: 1)) { context in
                 let now = context.date.timeIntervalSince(startedAt)
                 VStack(alignment: .leading, spacing: 0) {
-                    PVCardCaption(text: L10n.text("Voices"), tint: PVDesign.ink)
-                        .padding(.bottom, 8)
+                    if !leadOnly {
+                        PVCardCaption(text: L10n.text("Voices"), tint: PVDesign.ink)
+                            .padding(.bottom, 8)
+                    }
                     ForEach(table.rows) { row($0, in: table, now: now) }
-                    if !table.others.isEmpty {
+                    if !leadOnly, !table.others.isEmpty {
                         othersRow(table)
                         if showsOthers {
                             othersList(table, now: now)
@@ -38,6 +43,10 @@ struct RecordingLiveVoicesTable: View {
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("recording-voices")
         }
+    }
+
+    private var rowLimit: Int {
+        if case .rows(let limit) = fit { limit } else { 1 }
     }
 
     private var metrics: LiveVoicesTableMetrics { LiveVoicesTableMetrics(isNarrow: isNarrow) }
@@ -98,13 +107,13 @@ struct RecordingLiveVoicesTable: View {
     /// A large call can fold dozens of voices; past a few rows they scroll
     /// instead of pushing the captions off the stage.
     private func othersList(_ table: LiveVoiceTable, now: TimeInterval) -> some View {
-        let visible = min(table.others.count, LiveVoicesTableMetrics.visibleOthers)
+        let visible = min(table.others.count, LiveVoicesTableMetrics.visibleOthers, rowLimit)
         return ScrollView {
             VStack(spacing: 0) {
                 ForEach(table.others) { row($0, in: table, now: now) }
             }
         }
-        .scrollDisabled(table.others.count <= LiveVoicesTableMetrics.visibleOthers)
+        .scrollDisabled(table.others.count <= visible)
         .frame(height: CGFloat(visible) * LiveVoicesTableMetrics.rowHeight)
     }
 

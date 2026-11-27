@@ -41,8 +41,22 @@ public struct LiveVoiceTable: Sendable, Equatable {
                 voice: voice, lastHeard: live.lastHeard, isSpeaking: speaking,
                 currentTurn: speaking ? live.turns.last : nil)
         }
-        rows = cast.voices.compactMap(row)
-        others = cast.others.compactMap(row)
+        self.init(rows: cast.voices.compactMap(row), others: cast.others.compactMap(row))
+    }
+
+    /// The table with at most `limit` rows; the rest join the fold, still by talk share.
+    public func folding(to limit: Int) -> LiveVoiceTable {
+        let kept = max(1, limit)
+        // One folded voice would take the row it gives up.
+        guard rows.count > kept, !(others.isEmpty && rows.count == kept + 1) else { return self }
+        return LiveVoiceTable(
+            rows: Array(rows.prefix(kept)),
+            others: (rows.dropFirst(kept) + others).sorted { $0.voice.share > $1.voice.share })
+    }
+
+    private init(rows: [Row], others: [Row]) {
+        self.rows = rows
+        self.others = others
         othersShare = others.reduce(0) { $0 + $1.voice.share }
         widestShare = max(rows.map(\.voice.share).max() ?? 0, othersShare)
     }
