@@ -127,6 +127,14 @@ final class RecordingAssistLayoutTests: XCTestCase {
             "the narrowest window stacks the panel under the captions")
     }
 
+    func testAShortWindowKeepsTheSplitInsteadOfOverflowing() {
+        let wide: CGFloat = 1_200
+        XCTAssertTrue(RecordingStageLayout.isSideBySide(
+            CGSize(width: wide, height: RecordingStageLayout.minimumSideBySideHeight)))
+        XCTAssertFalse(RecordingStageLayout.isSideBySide(
+            CGSize(width: wide, height: RecordingStageLayout.minimumSideBySideHeight - 1)))
+    }
+
     func testThePanelKeepsTheBoardShareOfAWideRow() {
         XCTAssertEqual(RecordingStageLayout.panelWidth(for: 800), RecordingStageLayout.panelWidth)
         XCTAssertEqual(RecordingStageLayout.panelWidth(for: 1662), 551)

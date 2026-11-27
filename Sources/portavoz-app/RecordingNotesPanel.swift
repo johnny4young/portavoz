@@ -67,7 +67,7 @@ private struct RecordingNotePlaceholder: View {
         TimelineView(.periodic(from: startedAt, by: 1)) { context in
             Text(L10n.format(
                 "Note at %@…",
-                ClockFormat.mmss(context.date.timeIntervalSince(startedAt), truncating: true)))
+                ClockFormat.mmss(context.date.timeIntervalSince(startedAt))))
                 .font(.system(size: 12.5))
                 .foregroundStyle(.ink3)
                 .lineLimit(1)

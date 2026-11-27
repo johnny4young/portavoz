@@ -109,7 +109,7 @@ public struct LiveVoiceStage: Sendable, Equatable {
 
         let current: String? = if source.youSpeaking {
             youKey
-        } else if let open, source.now - open.endTime <= currentWindow {
+        } else if let open, open.startTime < now, source.now - open.endTime <= currentWindow {
             key(open)
         } else {
             nil

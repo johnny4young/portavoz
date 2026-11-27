@@ -10,7 +10,7 @@ struct RecordingLiveStrip: View {
     @State private var width: CGFloat = 0
     @Environment(\.colorScheme) private var colorScheme
 
-    static let height: CGFloat = 72
+    static let height = RecordingStageLayout.stripHeight
     private static let labelY: CGFloat = 7
     private static let glyph: CGFloat = 11
     private static let glyphSpacing: CGFloat = 5

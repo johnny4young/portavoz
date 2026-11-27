@@ -188,6 +188,7 @@ final class LiveVoiceStageTests: XCTestCase {
         XCTAssertEqual(stage.voice(LiveVoiceStage.youKey)?.talkSeconds, 10)
         XCTAssertEqual(stage.voice(LiveVoiceStage.youKey)?.lastHeard, 20)
         XCTAssertNil(stage.voice(LiveVoiceStage.unlabelledKey), "a row that starts after now is not heard yet")
+        XCTAssertNil(stage.current, "nor is it speaking now")
     }
 
     func testEveryLiveSurfaceSharesOneVoiceKeyRule() {

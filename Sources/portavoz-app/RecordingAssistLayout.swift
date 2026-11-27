@@ -130,6 +130,16 @@ enum RecordingStageLayout {
         width >= minimumVoicesWidth + columnGap + panelWidth + 2 * horizontalPadding
     }
 
+    /// The row, the strip and the captions' floor, with the stage's spacing.
+    static let stripHeight: CGFloat = 72
+    static let minimumSideBySideHeight: CGFloat =
+        panelMinimumHeight + 12 + stripHeight + 12 + RecordingAssistLayout.minimumCaptionsHeight
+
+    /// A short window keeps the split, whose zones shrink together, instead of overflowing.
+    static func isSideBySide(_ size: CGSize) -> Bool {
+        isSideBySide(width: size.width) && size.height >= minimumSideBySideHeight
+    }
+
     /// The panel keeps the board's share of a wide row, never under 322 pt.
     static func panelWidth(for width: CGFloat) -> CGFloat {
         guard width.isFinite else { return panelWidth }

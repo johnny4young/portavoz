@@ -42,8 +42,8 @@ struct RecordingView: View {
     /// `RecordingView` invalidation — captions re-projected and all — into every
     /// tick of the gesture.
     @State private var draggingFraction: Double?
-    /// The stage's width: voices and the assist panel share a row once it is wide enough.
-    @State private var stageWidth: CGFloat = 0
+    /// The stage's size: voices and the assist panel share a row once it is wide and tall enough.
+    @State private var stageSize: CGSize = .zero
 
     var body: some View {
         VStack(spacing: 16) {
@@ -63,6 +63,10 @@ struct RecordingView: View {
                 RecordingStatusStrip(notices: notices)
                 RecordingInputStatusView(controller: controller)
                 stage
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .onGeometryChange(for: CGSize.self) {
+                        CGSize(width: $0.size.width.rounded(), height: $0.size.height.rounded())
+                    } action: { stageSize = $0 }
                 RecordingStageFooter(controller: controller)
 
             case .processing(let step):
@@ -108,7 +112,6 @@ struct RecordingView: View {
                 Spacer()
             }
         }
-        .onGeometryChange(for: CGFloat.self) { $0.size.width.rounded() } action: { stageWidth = $0 }
         .navigationTitle("Recording")
         // While recording the stage's kicker names it; the window menu keeps the title.
         .toolbar(removing: controller.phase == .recording ? .title : nil)
@@ -133,8 +136,8 @@ struct RecordingView: View {
         let voices = RecordingLiveVoicesTable(model: controller.liveVoices, startedAt: controller.startedAt)
         let strip = RecordingLiveStrip(model: controller.liveVoices, startedAt: controller.startedAt)
             .padding(.horizontal, 20)
-        if RecordingStageLayout.isSideBySide(width: stageWidth) {
-            let panelWidth = RecordingStageLayout.panelWidth(for: stageWidth)
+        if RecordingStageLayout.isSideBySide(stageSize) {
+            let panelWidth = RecordingStageLayout.panelWidth(for: stageSize.width)
             VStack(spacing: 12) {
                 HStack(alignment: .top, spacing: RecordingStageLayout.columnGap) {
                     voices.frame(maxWidth: .infinity, alignment: .topLeading)
@@ -143,7 +146,8 @@ struct RecordingView: View {
                 .frame(maxWidth: .infinity, minHeight: RecordingStageLayout.panelMinimumHeight, alignment: .top)
                 // The panel takes the row's height: the voices' or its floor.
                 .overlay(alignment: .topTrailing) {
-                    assistPanel.frame(width: panelWidth)
+                    // Clipped to the row: an overlay neither grows it nor stops at it.
+                    assistPanel.frame(width: panelWidth).clipped()
                 }
                 .padding(.horizontal, 20)
                 strip
@@ -318,9 +322,8 @@ private struct LiveRecordingCaptionsView: View {
         return HStack(alignment: .firstTextBaseline, spacing: 18) {
             VStack(alignment: .trailing, spacing: 1) {
                 HStack(spacing: 5) {
-                    VoiceDot(
-                        tint: key == LiveVoiceStage.youKey ? .you : controller.liveVoices.cast.tint(for: key),
-                        size: 7)
+                    // Live voices are unnamed, so grey; reading the cast would rebuild captions every refresh.
+                    VoiceDot(tint: key == LiveVoiceStage.youKey ? .you : .grey, size: 7)
                     Text(LiveVoiceName.of(key: key))
                         .font(.system(size: 12.5, weight: .bold))
                         .foregroundStyle(nameInk(key))
