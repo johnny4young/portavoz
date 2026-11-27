@@ -873,7 +873,7 @@ private struct GeneratedFixture {
     let personID: PersonID
 }
 
-private func foreignKeyFailures(in database: DatabaseQueue) throws -> [Row] {
+private func foreignKeyFailures(in database: any DatabaseReader) throws -> [Row] {
     try database.read { database in
         try Row.fetchAll(database, sql: "PRAGMA foreign_key_check")
     }

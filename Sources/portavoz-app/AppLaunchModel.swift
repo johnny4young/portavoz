@@ -62,9 +62,12 @@ final class AppLaunchModel {
     private(set) var diagnosticsState: ArtifactState = .idle
 
     @ObservationIgnored private let arguments: [String]
+    @ObservationIgnored private let environment: [String: String]
+    @ObservationIgnored private let storagePolicy: AppStorageIsolationPolicy
     @ObservationIgnored private let databaseURL: URL
     @ObservationIgnored private let now: () -> Date
-    @ObservationIgnored private let servicesFactory: ServicesFactory
+    @ObservationIgnored private let servicesFactory: ServicesFactory?
+    @ObservationIgnored private var openGeneration: UInt64 = 0
     @ObservationIgnored private var activatedServices = false
 
     init(
@@ -74,22 +77,29 @@ final class AppLaunchModel {
         servicesFactory: ServicesFactory? = nil
     ) {
         self.arguments = arguments
-        let storagePolicy = AppStorageIsolationPolicy(
+        self.environment = environment
+        let preparedPolicy = AppServices.prepareStoragePolicy(
             arguments: arguments,
-            environment: environment)
-        databaseURL = storagePolicy.meetingStoreURL
+            environment: environment,
+            override: nil,
+            defaults: .standard)
+        storagePolicy = preparedPolicy
+        databaseURL = preparedPolicy.meetingStoreURL
         self.now = now
-        self.servicesFactory = servicesFactory ?? {
-            try AppServices(
-                arguments: arguments,
-                environment: environment,
-                storagePolicy: storagePolicy)
-        }
+        self.servicesFactory = servicesFactory
         guard !ProductionSyncQualificationConfiguration.isRequested(
             arguments: arguments),
               !BenchMode.runsBeforeAppServices(arguments: arguments)
         else { return }
-        openServices()
+        if servicesFactory != nil {
+            openServices()
+        } else {
+            openGeneration &+= 1
+            let generation = openGeneration
+            Task { @MainActor [weak self] in
+                await self?.openDefaultServicesOffMainActor(generation: generation)
+            }
+        }
     }
 
     var services: AppServices? {
@@ -104,9 +114,15 @@ final class AppLaunchModel {
     func retry() async {
         guard !hasOperationInProgress else { return }
         phase = .opening
+        openGeneration &+= 1
+        let generation = openGeneration
         await Task.yield()
-        openServices()
-        activateReadyServicesIfNeeded()
+        if servicesFactory != nil {
+            openServices()
+            activateReadyServicesIfNeeded()
+        } else {
+            await openDefaultServicesOffMainActor(generation: generation)
+        }
     }
 
     func saveRecoveryCopy(to destinationRoot: URL) async {
@@ -161,7 +177,7 @@ final class AppLaunchModel {
             BenchMode.runsIsolatedBenchmark(arguments: arguments)
         if !runsIsolatedBenchmark {
             services.installAutomationEntityCatalog()
-            PortavozAppDelegate.services = services
+            PortavozAppDelegate.didActivateServices(services)
         }
 
         BenchMode.runRecordBenchIfRequested(
@@ -218,15 +234,38 @@ final class AppLaunchModel {
 
 private extension AppLaunchModel {
     func openServices() {
+        guard let servicesFactory else { return }
         do {
             phase = .ready(try servicesFactory())
         } catch {
-            PortavozAppDelegate.services = nil
-            phase = .databaseUnavailable(Self.failure(
-                error: error,
-                databaseURL: databaseURL,
-                occurredAt: now()))
+            recordOpenFailure(error)
         }
+    }
+
+    func openDefaultServicesOffMainActor(generation: UInt64) async {
+        do {
+            let openedStore = try await AppServices.openMeetingStoreOffMainActor(
+                storagePolicy: storagePolicy)
+            guard generation == openGeneration else { return }
+            let composed = try AppServices(
+                arguments: arguments,
+                environment: environment,
+                storagePolicy: storagePolicy,
+                preopenedStore: openedStore)
+            phase = .ready(composed)
+            activateReadyServicesIfNeeded()
+        } catch {
+            guard generation == openGeneration else { return }
+            recordOpenFailure(error)
+        }
+    }
+
+    func recordOpenFailure(_ error: any Error) {
+        PortavozAppDelegate.services = nil
+        phase = .databaseUnavailable(Self.failure(
+            error: error,
+            databaseURL: databaseURL,
+            occurredAt: now()))
     }
 
     static func failure(

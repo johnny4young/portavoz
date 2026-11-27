@@ -181,11 +181,9 @@ fingerprint held by the Application observer.
 
 ## Database
 
-GRDB 7 (`upToNextMajor(from: 7.11.1)`), SQLite through a serial `DatabaseQueue`, at `Portavoz/portavoz.sqlite` inside the platform Application Support container (`~/Library/Application Support` on macOS; the app container on iOS). `MeetingStore.defaultDatabaseURL` owns that default and the CLI accepts `--db`.
-The connection does not force WAL: a new file retains SQLite's rollback-journal
-default, and an existing file retains its journal mode. Independent readers can
-therefore conflict with a writer; the external-reader boundary and preserved
-input behavior are recorded in GAPS.
+GRDB 7 (`upToNextMajor(from: 7.11.1)`), SQLite through a WAL-backed `DatabasePool` (with a bounded 5-second `busyTimeout`, zero `mmap_size`, and `DatabaseQueue` retained only for `:memory:` and isolated read-only snapshot stages), at `Portavoz/portavoz.sqlite` inside the platform Application Support container (`~/Library/Application Support` on macOS; the app container on iOS). `MeetingStore.defaultDatabaseURL` owns that default, `AppLaunchModel` opens and migrates the store off `@MainActor` before activating services, and the CLI accepts `--db`.
+Concurrent readers (`portavoz-cli`, MCP stdio queries, or in-process projections) read WAL snapshots without blocking `StopRecording` or background job claims; if an external writer holds an exclusive write transaction past `busyTimeout`, explicit failure and preserved accepted-input guarantees still apply.
+Exact semantic search (`MeetingStore.searchSemantic`) keeps normalized `Float32` BLOBs as the sole SQLite authority and accelerates queries without `mmap` via a lazy in-memory `Float16` packed vector index (`SemanticVectorPackCache`, invalidated by GRDB `TransactionObserver` plus cross-process `PRAGMA data_version` checks and released on capture/memory pressure) paired with an exact `Float32` dot-product rerank over the shortlisted candidates.
 
 ### Database-open recovery (D319)
 

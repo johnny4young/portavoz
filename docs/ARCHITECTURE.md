@@ -350,14 +350,18 @@ OS asset or claiming recognition quality.
 
 ### Database launch recovery
 
-The macOS composition root is two-stage. `AppLaunchModel` first asks the
-throwing `AppServices` constructor to open the authoritative `MeetingStore`;
-`AppServices` does that before installing telemetry or constructing any other
-runtime, model, sensitive-storage, scheduler, sync, recovery, or global-input
-owner. The root then publishes either one complete service graph or a focused
-database-unavailable state. Normal windows, Settings, commands, menu-bar
-models, and background owners are created only from the complete graph, and
-process activation is idempotent across retry.
+The macOS composition root is two-stage. On ordinary launches, `AppLaunchModel`
+opens and migrates the authoritative `MeetingStore` (a WAL-mode `DatabasePool`
+with a 5-second `busyTimeout`, zero `mmap_size`, and a lazy pressure-evictable
+`Float16` + exact `Float32` semantic rerank cache) off `@MainActor` before
+composing `AppServices`; `AppServices` binds that authority before installing
+telemetry or constructing any other runtime, model, sensitive-storage,
+scheduler, sync, recovery, or global-input owner. Cold-launch `.portavoz` files
+and Spotlight activities arriving during `.opening` wait in bounded delegate
+slots and replay once services activate. The root then publishes either one
+complete service graph or a focused database-unavailable state. Normal windows,
+Settings, commands, menu-bar models, and background owners are created only from
+the complete graph, and process activation is idempotent across retry.
 
 The failure state reduces arbitrary errors to content-free typed evidence. It
 can retry, export mode-`0600` diagnostics without paths or raw error text, or

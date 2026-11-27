@@ -22,6 +22,21 @@ extension MeetingStore {
           AND \(acceptedSegmentHasNoActiveTextCorrectionSQL)
         """
 
+    private static let acceptedUnfencedSemanticScanSQL = """
+        SELECT segment.embedding AS embedding,
+               segment.rowid AS rowID,
+               0 AS sourceKind,
+               NULL AS correctionID
+        FROM segment
+        WHERE segment.embedding IS NOT NULL
+          AND segment.embeddingFingerprint = ?
+          AND segment.deletedAt IS NULL
+          AND segment.meetingID NOT IN (
+              SELECT meeting.id FROM meeting WHERE meeting.deletedAt IS NOT NULL
+          )
+        ORDER BY segment.rowid ASC
+        """
+
     private static let acceptedSemanticScanSQL = """
         \(acceptedSemanticScanBranchSQL)
         ORDER BY segment.rowid ASC
@@ -97,16 +112,22 @@ extension MeetingStore {
             profile: profile,
             limit: limit)
         else { return [[SearchHit]](repeating: [], count: queries.count) }
+        let cache = semanticVectorCache
         return try await database.read { db in
-            try Self.searchSemantic(batch, in: db)
+            try Self.searchSemantic(batch, in: db, cache: cache)
         }
     }
 
     private static func searchSemantic(
         _ batch: SemanticQueryBatch,
-        in database: Database
+        in database: Database,
+        cache: SemanticVectorPackCache
     ) throws -> [[SearchHit]] {
-        let candidates = try semanticCandidates(for: batch, in: database)
+        let candidates = try semanticPackedCandidates(
+            for: batch.packQuery,
+            in: database,
+            cache: cache)
+            ?? semanticCandidates(for: batch, in: database)
         var results = [[SearchHit]](
             repeating: [],
             count: batch.resultCount)
@@ -174,10 +195,16 @@ extension MeetingStore {
         return candidates
     }
 
-    private static func semanticScan(
+    static func semanticScan(
         profileFingerprint: String,
         in database: Database
     ) throws -> (sql: String, arguments: StatementArguments) {
+        let hasAnyCorrections = try Bool.fetchOne(
+            database,
+            sql: "SELECT EXISTS (SELECT 1 FROM transcriptCorrection LIMIT 1)") ?? false
+        guard hasAnyCorrections else {
+            return (acceptedUnfencedSemanticScanSQL, [profileFingerprint])
+        }
         let hasCorrectionVectors = try Bool.fetchOne(
             database,
             sql: """
@@ -221,21 +248,21 @@ extension MeetingStore {
         return (acceptedSemanticScanSQL, [profileFingerprint])
     }
 
-    private static func semanticCandidateSource(
+    static func semanticCandidateSource(
         from row: Row
     ) throws -> SemanticEmbeddingCandidate.Source {
-        let sourceKind: Int = row["sourceKind"]
+        let sourceKind: Int = row[2]
         switch sourceKind {
         case 0:
             return .accepted
         case 1:
             return .corrected(correctionID: try PersistedIdentity.required(
-                row["correctionID"],
+                row[3],
                 table: "segmentCorrectedText",
                 column: "correctionID"))
         case 2:
             return .structural(correctionID: try PersistedIdentity.required(
-                row["correctionID"],
+                row[3],
                 table: "transcriptStructuralSearchRow",
                 column: "correctionID"))
         default:
@@ -248,7 +275,7 @@ extension MeetingStore {
 
     /// Bounded insertion into one variant's top-k, preserving the exact
     /// score-then-traversal-order tie-break of the single-query scan.
-    private static func admit(
+    static func admit(
         score: Float,
         order: Int,
         rowID: Int64,
@@ -360,7 +387,7 @@ extension MeetingStore {
         return current
     }
 
-    private static func semanticDotProduct(
+    static func semanticDotProduct(
         _ blob: Data,
         query: UnsafeBufferPointer<Float>,
         expectedBytes: Int
@@ -601,6 +628,16 @@ private struct SemanticQueryBatch: Sendable {
     let profileFingerprint: String
     let limit: Int
 
+    var packQuery: SemanticPackQuery {
+        SemanticPackQuery(
+            variantCount: scoredIndices.count,
+            flattenedQueries: flattenedQueries,
+            dimension: dimension,
+            expectedBytes: expectedBytes,
+            profileFingerprint: profileFingerprint,
+            limit: limit)
+    }
+
     init?(
         queries: [[Float]],
         profile: SemanticEmbeddingProfile,
@@ -629,7 +666,7 @@ private struct SemanticQueryBatch: Sendable {
     }
 }
 
-private struct SemanticCandidate {
+struct SemanticCandidate: Sendable {
     let score: Float
     let order: Int
     let rowID: Int64
@@ -644,7 +681,7 @@ private struct SemanticCandidate {
     }
 }
 
-private struct SemanticCandidateKey: Hashable {
+struct SemanticCandidateKey: Hashable, Sendable {
     let rowID: Int64
     let source: SemanticEmbeddingCandidate.Source
 }

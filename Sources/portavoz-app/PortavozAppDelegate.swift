@@ -13,9 +13,13 @@ final class PortavozAppDelegate:
     NSObject,
     NSApplicationDelegate,
     UNUserNotificationCenterDelegate {
-    /// Wired by `PortavozApp.init` — the delegate is instantiated by the
-    /// adaptor before any scene exists.
+    /// Wired when `AppLaunchModel` activates ready services. Cold-launch files
+    /// and Spotlight activities arriving while the store opens off `@MainActor`
+    /// wait in bounded process-local slots and replay on activation.
     @MainActor static weak var services: AppServices?
+    @MainActor private static var pendingOpenURLs: [URL] = []
+    @MainActor private static var pendingSpotlightMeetingID: MeetingID?
+    @MainActor private static var didRouteSimulatedReminder = false
     @MainActor private var stopRecordingIntentTask: Task<Void, Never>?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
@@ -55,8 +59,23 @@ final class PortavozAppDelegate:
             routePendingStartRecordingIntent()
             routePendingStopRecordingIntent()
             routePendingNavigationIntent()
-            routeSimulatedReminderIfRequested()
+            if Self.services != nil {
+                Self.routeSimulatedReminderOnceIfRequested()
+            }
         }
+    }
+
+    @MainActor
+    static func didActivateServices(_ services: AppServices) {
+        self.services = services
+        if let meetingID = pendingSpotlightMeetingID {
+            pendingSpotlightMeetingID = nil
+            services.pendingRoute = .meeting(meetingID)
+        }
+        let queuedURLs = pendingOpenURLs
+        pendingOpenURLs.removeAll()
+        importBundleURLs(queuedURLs, into: services)
+        routeSimulatedReminderOnceIfRequested()
     }
 
     deinit {
@@ -183,12 +202,22 @@ final class PortavozAppDelegate:
     /// navigate there (same pendingRoute channel as Spotlight hits).
     func application(_ application: NSApplication, open urls: [URL]) {
         MainActor.assumeIsolated {
-            guard let services = Self.services else { return }
-            for url in urls where url.pathExtension.lowercased() == "portavoz" {
-                Task { @MainActor in
-                    if let id = try? await services.importBundle(from: url) {
-                        services.pendingRoute = .meeting(id)
-                    }
+            let bundles = urls.filter { $0.pathExtension.lowercased() == "portavoz" }
+            guard !bundles.isEmpty else { return }
+            guard let services = Self.services else {
+                Self.pendingOpenURLs.append(contentsOf: bundles)
+                return
+            }
+            Self.importBundleURLs(bundles, into: services)
+        }
+    }
+
+    @MainActor
+    private static func importBundleURLs(_ urls: [URL], into services: AppServices) {
+        for url in urls {
+            Task { @MainActor in
+                if let id = try? await services.importBundle(from: url) {
+                    services.pendingRoute = .meeting(id)
                 }
             }
         }
@@ -204,7 +233,12 @@ final class PortavozAppDelegate:
             let uuid = UUID(uuidString: raw)
         else { return false }
         MainActor.assumeIsolated {
-            Self.services?.pendingRoute = .meeting(MeetingID(rawValue: uuid))
+            let target = MeetingID(rawValue: uuid)
+            if let services = Self.services {
+                services.pendingRoute = .meeting(target)
+            } else {
+                Self.pendingSpotlightMeetingID = target
+            }
         }
         return true
     }
@@ -387,11 +421,13 @@ private extension PortavozAppDelegate {
     }
 
     @MainActor
-    func routeSimulatedReminderIfRequested() {
+    static func routeSimulatedReminderOnceIfRequested() {
+        guard !didRouteSimulatedReminder else { return }
         let process = ProcessInfo.processInfo
         guard process.arguments.contains("-use-temp-store"),
               process.arguments.contains("-simulate-reminder-open")
         else { return }
+        didRouteSimulatedReminder = true
         let commitmentID = CommitmentID()
         let deliveredAt = Date()
         Task { @MainActor in

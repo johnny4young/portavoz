@@ -7,7 +7,7 @@ import StorageKit
 /// disposable and reuse the normal verified model cache so repeated Release
 /// samples do not include a fresh model installation. OS-model-only Ask and
 /// standalone indexing keep both Portavoz stores disposable.
-struct AppStorageIsolationPolicy: Equatable {
+struct AppStorageIsolationPolicy: Equatable, Sendable {
     let usesTemporaryMeetingStore: Bool
     let usesTemporaryModelStore: Bool
     let usesTemporarySensitiveStore: Bool
