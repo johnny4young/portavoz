@@ -42,6 +42,22 @@ final class RecordingStageFormatTests: XCTestCase {
         XCTAssertEqual(RecordingStageDetail.line(apps: [], startedAt: start, voices: 0), "started \(started)")
     }
 
+    func testUnlabelledRemoteSpeechIsNotCountedAsAVoice() {
+        let meetingID = MeetingID()
+        func row(_ channel: AudioChannel, _ start: TimeInterval) -> TranscriptSegment {
+            TranscriptSegment(
+                meetingID: meetingID, channel: channel, text: "words",
+                startTime: start, endTime: start + 2, isFinal: true)
+        }
+        let labelled = row(.system, 3)
+        let stage = LiveVoiceStage.updating(.empty, with: LiveVoiceSource(
+            captions: [row(.microphone, 0), labelled, row(.system, 6)],
+            labels: [labelled.id: "S1"], latestTurn: nil, now: 8))
+
+        XCTAssertEqual(stage.voices.map(\.key), ["you", "S1", "remote"])
+        XCTAssertEqual(RecordingStageDetail.voiceCount(stage), 2)
+    }
+
     func testTheHeroStepsItsTypeDownWithWidth() {
         XCTAssertEqual(RecordingStageHeroScale(width: 1_200), .wide)
         XCTAssertEqual(RecordingStageHeroScale(width: 840), .wide)

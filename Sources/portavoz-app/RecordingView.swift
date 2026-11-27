@@ -108,8 +108,8 @@ struct RecordingView: View {
             }
         }
         .navigationTitle("Recording")
-        // The stage's kicker names it; the window menu keeps the title.
-        .toolbar(removing: .title)
+        // While recording the stage's kicker names it; the window menu keeps the title.
+        .toolbar(removing: controller.phase == .recording ? .title : nil)
         .liveTranslation(controller)
         .task { await startRecording() }
         .task { apuntadorAnswersAvailable = await services.companionAnswersAvailable() }

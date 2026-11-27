@@ -13,7 +13,8 @@ struct LibraryView: View {
     @State private var isChoosingAudio = false
     @Binding var route: Route?
     @Binding var searchFocusRequested: Bool
-    /// When the recording in progress started; nil when none is live.
+    let recordingActive: Bool
+    /// When the capture in progress started; nil while preparing or processing.
     let recordingStartedAt: Date?
     let onReturnToRecording: () -> Void
     let onOpenSearchHit: (LibrarySearchHit) -> Void
@@ -306,12 +307,12 @@ extension LibraryView {
 
     /// The primary action, an ink pill led by the Portavoz mark, plus a ▾ menu
     /// for the rare ones (Import), so the navigation list stays destinations only.
-    /// While a recording is live the red return button takes the whole row;
-    /// audio can still be dropped on the window to import it.
+    /// While capture runs the red return button and its clock take the whole
+    /// row; audio can still be dropped on the window to import it.
     private var recordButton: some View {
         HStack(spacing: 4) {
             recordAction
-            if !recordingActive { importMenu }
+            if recordingStartedAt == nil { importMenu }
         }
     }
 
@@ -348,12 +349,14 @@ extension LibraryView {
             }
         } label: {
             HStack(spacing: 6) {
-                if let recordingStartedAt {
+                if recordingActive {
                     Circle().fill(PVDesign.onNow).frame(width: 6, height: 6)
                     Text("Return to recording")
                         .minimumScaleFactor(0.8)
-                    Spacer(minLength: 0)
-                    LibraryRecordingElapsed(startedAt: recordingStartedAt)
+                    if let recordingStartedAt {
+                        Spacer(minLength: 0)
+                        LibraryRecordingElapsed(startedAt: recordingStartedAt)
+                    }
                 } else {
                     PortavozMarkGlyph(color: PVDesign.onInk)
                     Text("New recording")
@@ -372,8 +375,6 @@ extension LibraryView {
             ? L10n.text("Return to the recording in progress")
             : L10n.text("Start a new recording"))
     }
-
-    private var recordingActive: Bool { recordingStartedAt != nil }
 
     /// The short privacy note behind the sidebar chip.
     private var privacyNote: some View {

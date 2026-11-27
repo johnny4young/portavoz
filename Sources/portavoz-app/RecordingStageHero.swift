@@ -1,3 +1,4 @@
+import ApplicationKit
 import SwiftUI
 
 /// The recording's hero: the elapsed time in display type, the meeting with
@@ -73,11 +74,16 @@ struct RecordingStageDetail: View {
         Text(Self.line(
             apps: controller.tappedMeetingApps,
             startedAt: controller.startedAt,
-            voices: controller.liveVoices.stage.voices.count))
+            voices: Self.voiceCount(controller.liveVoices.stage)))
             .font(.system(size: 13))
             .foregroundStyle(PVDesign.ink2)
             .lineLimit(2)
             .accessibilityIdentifier("recording-stage-detail")
+    }
+
+    /// Unlabelled remote speech is not a voice yet.
+    static func voiceCount(_ stage: LiveVoiceStage) -> Int {
+        stage.voices.count { $0.key != LiveVoiceStage.unlabelledKey }
     }
 
     static func line(apps: [String], startedAt: Date, voices: Int) -> String {

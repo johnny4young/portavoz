@@ -26,7 +26,7 @@ struct RecordingLiveVoicesTable: View {
                     if !table.others.isEmpty {
                         othersRow(table)
                         if showsOthers {
-                            ForEach(table.others) { row($0, in: table, now: now) }
+                            othersList(table, now: now)
                         }
                     }
                 }
@@ -60,6 +60,7 @@ struct RecordingLiveVoicesTable: View {
                 .font(.system(size: 12, weight: row.isSpeaking ? .semibold : .regular).monospacedDigit())
                 .foregroundStyle(row.isSpeaking ? PVDesign.ink : PVDesign.ink3)
                 .lineLimit(1)
+                .minimumScaleFactor(0.8)
                 .frame(width: metrics.recency, alignment: .leading)
             shareColumns(table.barFraction(row.voice.share), share: row.voice.share, tint: row.voice.tint)
         }
@@ -97,6 +98,19 @@ struct RecordingLiveVoicesTable: View {
         .accessibilityIdentifier("recording-voices-others")
     }
 
+    /// A large call can fold dozens of voices; past a few rows they scroll
+    /// instead of pushing the captions off the stage.
+    private func othersList(_ table: LiveVoiceTable, now: TimeInterval) -> some View {
+        let visible = min(table.others.count, LiveVoicesTableMetrics.visibleOthers)
+        return ScrollView {
+            VStack(spacing: 0) {
+                ForEach(table.others) { row($0, in: table, now: now) }
+            }
+        }
+        .scrollDisabled(table.others.count <= LiveVoicesTableMetrics.visibleOthers)
+        .frame(height: CGFloat(visible) * LiveVoicesTableMetrics.rowHeight)
+    }
+
     /// A 14 pt glyph slot and the bold name, at the table's name width.
     private func nameColumn(
         _ name: String, size: CGFloat, ink: Color, @ViewBuilder glyph: () -> some View
@@ -126,6 +140,8 @@ struct RecordingLiveVoicesTable: View {
 struct LiveVoicesTableMetrics {
     static let narrowWidth: CGFloat = 520
     static let maximumWidth: CGFloat = 760
+    static let rowHeight: CGFloat = 30
+    static let visibleOthers = 6
     let isNarrow: Bool
 
     var name: CGFloat { isNarrow ? 104 : 138 }
@@ -184,7 +200,7 @@ private struct LiveVoiceRowShape: ViewModifier {
                 .padding(.bottom, 4)
         } else {
             content
-                .frame(height: 30)
+                .frame(height: LiveVoicesTableMetrics.rowHeight)
                 .overlay(alignment: .top) { Rectangle().fill(PVDesign.line).frame(height: 1) }
         }
     }
