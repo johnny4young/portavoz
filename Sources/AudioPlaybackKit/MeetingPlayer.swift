@@ -89,6 +89,8 @@ public final class MeetingPlayer {
         let timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
             MainActor.assumeIsolated {
                 guard let self else { return }
+                // A queued seek has not reached AVPlayer yet; its stale time must not rewind the playhead.
+                guard self.pendingSeekTarget == nil else { return }
                 self.currentTime = min(time.seconds, self.duration)
                 guard self.isPlaying else { return }
                 if let target = Self.skipTarget(
@@ -221,7 +223,8 @@ public final class MeetingPlayer {
     }
 
     public func play() {
-        guard !isInvalidated, player.currentItem?.status != .failed else {
+        guard !isInvalidated else { return }
+        guard player.currentItem?.status != .failed else {
             handlePlaybackFailure()
             return
         }

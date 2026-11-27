@@ -643,15 +643,28 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
         XCTAssertEqual(destinationAccess.acquireCount, 1)
     }
 
-    func testCancellationMidRunPreservesActiveRunStateForRetry() async throws {
-        let recoveryStore = BackupRecoveryStoreFake()
-        let cancellingFiles = BackupCancellingPublishFiles()
+    func testCancellationMidRunRetriesTheReservedNameWhenNothingLanded() async throws {
+        let (names, published) = try await exportAfterCancelledPublish(landed: false)
+        XCTAssertEqual(names, ["Alpha.md"])
+        XCTAssertEqual(published, ["Alpha.md", "Alpha.md"])
+    }
+
+    func testCancellationMidRunRecordsTheReservedNameWhenTheFileLanded() async throws {
+        let (names, published) = try await exportAfterCancelledPublish(landed: true)
+        XCTAssertEqual(names, ["Alpha.md"])
+        XCTAssertEqual(published, ["Alpha.md"], "a landed file must not be published again under a sibling name")
+    }
+
+    private func exportAfterCancelledPublish(
+        landed: Bool
+    ) async throws -> (exported: [String], published: [String]) {
+        let cancellingFiles = BackupCancellingPublishFiles(landsBeforeCancelling: landed)
         let useCase = ExportLibraryMarkdownBackup(
             store: BackupStoreFake(contents: [backupContent(title: "Alpha")]),
             documents: BackupDocumentsFake(),
             files: cancellingFiles,
             destinationAccess: BackupDestinationAccessFake(),
-            recoveryStore: recoveryStore)
+            recoveryStore: BackupRecoveryStoreFake())
         let request = ExportLibraryMarkdownBackupRequest(
             directory: URL(fileURLWithPath: "/backup", isDirectory: true))
 
@@ -661,9 +674,8 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
         let hasPending = await useCase.hasPendingRun()
         XCTAssertTrue(hasPending)
 
-        let execution = try await useCase.execute(request)
-        let result = try completedResult(from: execution)
-        XCTAssertEqual(result.exportedFileNames, ["Alpha 2.md"])
+        let result = try completedResult(from: try await useCase.execute(request))
+        return (result.exportedFileNames, await cancellingFiles.publishedNames)
     }
 
     func testNameCollisionRefreshesExistingNamesToSkipSubsequentCollisionsInMemory() async throws {
@@ -692,8 +704,14 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
 }
 
 private actor BackupCancellingPublishFiles: LibraryMarkdownBackupFiles {
+    private let landsBeforeCancelling: Bool
     private var cancelledOnce = false
+    private var landedNames: Set<String> = []
     private(set) var publishedNames: [String] = []
+
+    init(landsBeforeCancelling: Bool) {
+        self.landsBeforeCancelling = landsBeforeCancelling
+    }
 
     func existingMarkdownFileNames(in directory: URL) async throws -> Set<String> { [] }
 
@@ -705,8 +723,11 @@ private actor BackupCancellingPublishFiles: LibraryMarkdownBackupFiles {
         publishedNames.append(fileName)
         if !cancelledOnce {
             cancelledOnce = true
+            if landsBeforeCancelling { landedNames.insert(fileName) }
             throw CancellationError()
         }
+        if landedNames.contains(fileName) { return .nameCollision }
+        landedNames.insert(fileName)
         return .published
     }
 
@@ -714,7 +735,7 @@ private actor BackupCancellingPublishFiles: LibraryMarkdownBackupFiles {
         for publication: LibraryMarkdownBackupRecoveryPublication,
         in directory: URL
     ) -> BackupPublicationEvidence {
-        publishedNames.contains(publication.fileName) ? .matching : .missing
+        landedNames.contains(publication.fileName) ? .matching : .missing
     }
 }
 

@@ -325,11 +325,24 @@ private extension ExportLibraryMarkdownBackup {
         into run: inout ActiveLibraryMarkdownBackupRun,
         progress: LibraryMarkdownBackupProgressHandler
     ) async throws {
+        var resumed = try await resumablePublication(
+            data,
+            for: content,
+            in: directory,
+            run: &run,
+            progress: progress)
+        if case .finished = resumed { return }
         for _ in 0..<10_000 {
-            let reservation = try await reserveNextPublication(
-                data,
-                for: content,
-                in: &run)
+            let reservation: LibraryMarkdownBackupRecoveryPublication
+            if case .reuse(let pending) = resumed {
+                reservation = pending
+                resumed = .none
+            } else {
+                reservation = try await reserveNextPublication(
+                    data,
+                    for: content,
+                    in: &run)
+            }
 
             let publicationResult: LibraryMarkdownBackupPublication
             do {
@@ -462,6 +475,45 @@ private extension ExportLibraryMarkdownBackup {
             operationID: run.recoveryState.operationID)
         run.destinationBookmark = bookmark
         run.recoveryState.destinationBookmark = bookmark
+    }
+
+    enum ResumedPublication {
+        case none
+        case reuse(LibraryMarkdownBackupRecoveryPublication)
+        case finished
+    }
+
+    /// A cancelled publish keeps its journal reservation; retry that exact name
+    /// instead of allocating a sibling, and record it if the file already landed.
+    func resumablePublication(
+        _ data: Data,
+        for content: LibraryMarkdownBackupContent,
+        in directory: URL,
+        run: inout ActiveLibraryMarkdownBackupRun,
+        progress: LibraryMarkdownBackupProgressHandler
+    ) async throws -> ResumedPublication {
+        guard let pending = run.recoveryState.pendingPublication,
+              pending.meetingID == content.meeting.id,
+              pending.sourceCursor == run.pendingSourceCursor,
+              pending.sha256 == ContentDigest.sha256(data)
+        else { return .none }
+        let evidence: BackupPublicationEvidence
+        do {
+            evidence = try await files.evidence(for: pending, in: directory)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            return .none
+        }
+        switch evidence {
+        case .matching:
+            try await recordPublished(pending, in: &run, progress: progress)
+            return .finished
+        case .missing:
+            return .reuse(pending)
+        case .conflicting:
+            return .none
+        }
     }
 
     func reserveNextPublication(

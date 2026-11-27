@@ -517,26 +517,9 @@ final class ImportMeetingUseCaseTests: XCTestCase {
 
     func testCancelledSummaryPersistsCancellationRunEvenWhenParentTaskIsCancelled() async throws {
         let fixture = ImportFixture()
-        let dependencies = ImportDependencies(
-            transcription: fixture.spanishTranscription,
-            failures: [.summaryCancellation])
+        let dependencies = ImportDependencies(transcription: fixture.spanishTranscription)
         let store = CancellationAwareImportStore()
-        let useCase = ImportMeeting(
-            audioFiles: dependencies,
-            preferences: dependencies,
-            processor: dependencies,
-            store: store,
-            summaryProviders: dependencies,
-            makeMeetingID: { fixture.meetingID },
-            makeGenerationRunID: { fixture.generationRunID },
-            now: { fixture.now })
-
-        let task = Task {
-            withUnsafeCurrentTask { $0?.cancel() }
-            return try await useCase.execute(fixture.request(dependencies: dependencies))
-        }
-        // Only the summary stage should see cancellation; verify the cancellation-aware
-        // store receives the `.cancelled` run under a non-cancelled detached task.
+        // The provider cancels its own task; the cancelled run must still persist.
         let cancellableUseCase = ImportMeeting(
             audioFiles: dependencies,
             preferences: dependencies,
@@ -546,7 +529,6 @@ final class ImportMeetingUseCaseTests: XCTestCase {
             makeMeetingID: { fixture.meetingID },
             makeGenerationRunID: { fixture.generationRunID },
             now: { fixture.now })
-        _ = try? await task.value
 
         let parentTask = Task {
             try await cancellableUseCase.execute(fixture.request(dependencies: dependencies))
