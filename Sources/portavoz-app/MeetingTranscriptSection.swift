@@ -169,17 +169,14 @@ struct MeetingTranscriptChaptersSection: View {
 
     var body: some View {
         if !chapters.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                Label("Chapters", systemImage: PVSymbol.generate)
-                    .font(.headline)
-                    .foregroundStyle(PVDesign.accent)
+            VStack(alignment: .leading, spacing: 4) {
+                PVCardCaption(text: L10n.text("Chapters"), systemImage: "list.number", tint: PVDesign.ink2)
+                    .padding(.bottom, 2)
                 ForEach(chapters) { chapter in
                     chapterButton(chapter)
                 }
             }
-            .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("detail-chapters")
         }
@@ -192,11 +189,13 @@ struct MeetingTranscriptChaptersSection: View {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(presentation.clock(chapter.startTime, paddedMinutes: true))
                     .font(PVFont.timeCode(.caption))
-                    .foregroundStyle(PVDesign.accent)
+                    .foregroundStyle(PVDesign.ink3)
                     .frame(width: 44, alignment: .leading)
                 Text(chapter.title)
                     .font(.callout)
-                    .lineLimit(1)
+                    .foregroundStyle(PVDesign.ink)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .contentShape(Rectangle())

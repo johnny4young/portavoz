@@ -46,7 +46,8 @@
     "Sources/portavoz-app/TranscriptSegmentsView.swift",
     "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
     "Sources/portavoz-app/MeetingVoicesTable.swift",
-    "Sources/portavoz-app/MeetingMarginNotesView.swift"
+    "Sources/portavoz-app/MeetingMarginNotesView.swift",
+    "Sources/portavoz-app/MeetingDetailPeopleSection.swift"
   ],
   "interactionSignals": [
     {
@@ -1438,26 +1439,14 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
       "category": "control",
-      "source": "Button(L10n.text(\"Remember\"), action: accept)",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
-      "category": "control",
       "source": "Button(action: actions.suggestNames) {",
       "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
       "category": "control",
-      "source": "Button(action: dismiss) {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
-      "category": "control",
       "source": "DismissibleSuggestionChip(",
-      "occurrences": 2
+      "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
@@ -1480,31 +1469,7 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
       "category": "identifier",
-      "source": ".accessibilityIdentifier(\"detail-suggestions-row\")",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
-      "category": "identifier",
       "source": ".accessibilityIdentifier(\"detail-title\")",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(\"detail-voice-auto-\\(voice.speakerLabel)\")",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(presentation.acceptIdentifier)",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(presentation.dismissIdentifier)",
       "occurrences": 1
     },
     {
@@ -1562,6 +1527,48 @@
       "occurrences": 1
     },
     {
+      "path": "Sources/portavoz-app/MeetingDetailPeopleSection.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Remember\"), action: accept)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailPeopleSection.swift",
+      "category": "control",
+      "source": "Button(action: dismiss) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailPeopleSection.swift",
+      "category": "control",
+      "source": "DismissibleSuggestionChip(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailPeopleSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-people\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailPeopleSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-voice-auto-\\(voice.speakerLabel)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailPeopleSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(presentation.acceptIdentifier)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailPeopleSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(presentation.dismissIdentifier)",
+      "occurrences": 1
+    },
+    {
       "path": "Sources/portavoz-app/MeetingDetailPlaybackNavigation.swift",
       "category": "navigation",
       "source": "player.seek(to: player.duration * fraction)",
@@ -1613,7 +1620,7 @@
       "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
       "category": "control",
       "source": "Button {",
-      "occurrences": 2
+      "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
@@ -1631,6 +1638,12 @@
       "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
       "category": "control",
       "source": "Button(action: actions.refresh) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "control",
+      "source": "return Button {",
       "occurrences": 1
     },
     {
@@ -1876,7 +1889,7 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "state",
-      "source": "@State private var railTab = MeetingDetailRailTab.chapters",
+      "source": "@State private var railTab = MeetingDetailRailTab.marginalia",
       "occurrences": 1
     },
     {
@@ -2152,6 +2165,18 @@
     {
       "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
       "category": "control",
+      "source": "Button(L10n.text(\"Keep name\")) { context.keepVoice(match) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Undo\")) { context.undoVoice(match) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "control",
       "source": "Menu {",
       "occurrences": 1
     },
@@ -2165,6 +2190,12 @@
       "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
       "category": "control",
       "source": "Toggle(isOn: Binding(get: { item.isDone }, set: { context.setDone(item, $0) })) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "control",
+      "source": "case .link: L10n.text(\"Link\")",
       "occurrences": 1
     },
     {
@@ -2213,6 +2244,30 @@
       "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"\\(identifier)-more\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-voice-auto-\\(label)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-voice-auto-keep-\\(label)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-voice-auto-undo-\\(label)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"margin-note-\\(item.id.uuidString)\")",
       "occurrences": 1
     },
     {
@@ -3963,17 +4018,18 @@
           "anchor": "\"detail-suggest-names\""
         },
         {
-          "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
-          "anchor": "\"detail-voice-auto-undo-"
+          "path": "Sources/portavoz-app/MeetingDetailPeopleSection.swift",
+          "anchor": "\"person-remember-offer\""
         },
         {
-          "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
-          "anchor": "\"person-remember-offer\""
+          "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+          "anchor": "\"detail-voice-auto-undo-"
         }
       ],
       "screenshots": [
         "meeting-detail-confirmed-person-memory",
-        "meeting-name-suggestions"
+        "meeting-name-suggestions",
+        "pr-margin-voice-match"
       ]
     },
     {

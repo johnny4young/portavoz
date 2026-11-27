@@ -2,6 +2,35 @@ import ApplicationKit
 import PortavozCore
 
 extension MeetingDetailCoordinator {
+    /// What the margin's People tab still asks you to confirm.
+    var peopleValues: MeetingDetailPeopleValues {
+        MeetingDetailPeopleValues(
+            nameSuggestions: model.state.nameSuggestions,
+            unplacedVoiceMatches: model.state.transcriptPresentationState.unplacedVoiceMatches,
+            personOffer: flow.personOffer.flatMap { offer in
+                offer.speaker.displayName.map {
+                    MeetingDetailRememberOffer(speakerID: offer.speaker.id, name: $0, isBusy: flow.isFindingPerson)
+                }
+            },
+            voiceOffer: flow.rememberedVoiceOffer.flatMap { offer in
+                offer.displayName.map {
+                    MeetingDetailRememberOffer(speakerID: offer.id, name: $0, isBusy: flow.isRememberingVoice)
+                }
+            })
+    }
+
+    func peopleActions(_ detail: MeetingReviewReadModel) -> MeetingDetailPeopleActions {
+        MeetingDetailPeopleActions(
+            acceptNameSuggestion: { acceptNameSuggestion($0, in: detail) },
+            dismissNameSuggestion: dismissNameSuggestion,
+            undoVoiceAutoAssign: undoVoiceAutoAssign,
+            keepVoiceAutoAssign: keepVoiceAutoAssign,
+            acceptPersonOffer: { flow.personOffer.map(findOrCreatePerson(for:)) },
+            dismissPersonOffer: { flow.personOffer = nil },
+            acceptVoiceOffer: { flow.rememberedVoiceOffer.map(rememberVoice(of:)) },
+            dismissVoiceOffer: { flow.rememberedVoiceOffer = nil })
+    }
+
     func renameMeeting(_ meeting: Meeting, title: String) {
         let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         flow.sheet = nil

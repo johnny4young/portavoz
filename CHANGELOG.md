@@ -90,6 +90,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## November 27, 2026
+
+- **🗂️ Marginalia, Apuntador and People** — the meeting margin now has three tabs: your notes become cards beside the line playing when you wrote them, a voice Portavoz named by itself waits beside that voice's first line to keep or undo, and suggested names and "remember this person" offers gather under People.
+
 ## November 26, 2026
 
 - **🗒️ Notes in the margin** — each decision and commitment now sits beside the transcript line that produced it, with who asked, who owns it and when it is due; confirm it or tick it off right there, and on a narrow window it folds under the line.

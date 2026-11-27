@@ -2,34 +2,31 @@ import ApplicationKit
 import PortavozCore
 import SwiftUI
 
-/// The two review lenses beside the transcript.
+/// The margin's three lenses beside the transcript.
 enum MeetingDetailRailTab: String, CaseIterable, Identifiable {
-    case chapters
+    case marginalia
     case apuntador
+    case people
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .chapters: L10n.text("Chapters")
+        case .marginalia: L10n.text("Marginalia")
         case .apuntador: L10n.text("Apuntador")
-        }
-    }
-
-    var symbol: String {
-        switch self {
-        case .chapters: "list.number"
-        case .apuntador: PVSymbol.apuntador
+        case .people: L10n.text("People")
         }
     }
 }
 
 struct MeetingDetailRailValues {
     let trust: MeetingDetailTrustValues?
+    let notes: MeetingDetailNotesValues
     let segments: [TranscriptSegment]
     let chapters: [MeetingTranscriptContent.Chapter]
     let companionCards: [CompanionCard]
     let companionFreshness: [UUID: DerivedArtifactFreshness]
+    let people: MeetingDetailPeopleValues
     let transcriptRevision: Int
     let hasPlayback: Bool
     let isRefreshingCompanion: Bool
@@ -41,6 +38,8 @@ struct MeetingDetailRailActions {
     let retryProcessing: @MainActor @Sendable () async -> Void
     let refineSavedAudio: @MainActor () -> Void
     let openSupportDiagnostics: @MainActor () -> Void
+    let notes: MeetingDetailNotesActions
+    let people: MeetingDetailPeopleActions
     let seekAndPlay: @MainActor (TimeInterval) -> Void
     let focusEvidence: @MainActor (TranscriptSegment) -> Void
     let copyAnswer: @MainActor (String) -> Void
@@ -49,27 +48,19 @@ struct MeetingDetailRailActions {
     let selectTab: @MainActor (MeetingDetailRailTab) -> Void
 }
 
-/// The always-present review margin beside the summary and transcript, or
-/// above the transcript when the page reads as one column.
+/// The margin beside the summary and transcript, or above the transcript when
+/// the page reads as one column.
 ///
-/// Processing that needs attention sits on top; below it one of two lenses
-/// (Chapters, Apuntador) grows with the page instead of scrolling on its own.
-/// A lens without material says so in one line. Selection is owned by the
-/// composition, not by this view.
+/// One of three lenses grows with the page instead of scrolling on its own:
+/// Marginalia (processing that needs attention, chapters and your notes, whose
+/// cards sit beside their lines), Apuntador, and People (names and voices still
+/// to confirm). Selection is owned by the composition, not by this view.
 struct MeetingDetailRailSection: View {
     let values: MeetingDetailRailValues
     let actions: MeetingDetailRailActions
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if let trust = values.trust {
-                MeetingDetailTrustSection(
-                    values: trust,
-                    actions: MeetingDetailTrustActions(
-                        retryProcessing: actions.retryProcessing,
-                        refineSavedAudio: actions.refineSavedAudio,
-                        openSupportDiagnostics: actions.openSupportDiagnostics))
-            }
             tabBar
             lens
         }
@@ -79,28 +70,9 @@ struct MeetingDetailRailSection: View {
     }
 
     private var tabBar: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 14) {
             ForEach(MeetingDetailRailTab.allCases) { tab in
-                let selected = tab == values.selectedTab
-                Button {
-                    actions.selectTab(tab)
-                } label: {
-                    Label(tab.title, systemImage: tab.symbol)
-                        .font(.caption.weight(selected ? .semibold : .regular))
-                        .lineLimit(1)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .background(
-                            selected ? PVDesign.accent.opacity(PVDesign.chipTint) : .clear,
-                            in: RoundedRectangle(cornerRadius: PVDesign.radiusSmall))
-                        .foregroundStyle(selected ? PVDesign.accent : PVDesign.ink3)
-                        .contentShape(.rect)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(tab.title)
-                .help(tab.title)
-                .accessibilityAddTraits(selected ? .isSelected : [])
-                .accessibilityIdentifier("detail-rail-tab-\(tab.rawValue)")
+                tabButton(tab)
             }
             Spacer(minLength: 0)
         }
@@ -108,9 +80,45 @@ struct MeetingDetailRailSection: View {
         .accessibilityIdentifier("detail-rail-tabs")
     }
 
+    /// Text tabs; the chosen one is ink with a hairline under it.
+    private func tabButton(_ tab: MeetingDetailRailTab) -> some View {
+        let selected = tab == values.selectedTab
+        let count = tab == .people ? values.people.count : 0
+        return Button {
+            actions.selectTab(tab)
+        } label: {
+            HStack(spacing: 4) {
+                Text(tab.title)
+                if count > 0 {
+                    Text(count, format: .number)
+                        .monospacedDigit()
+                        .foregroundStyle(PVDesign.ink2)
+                }
+            }
+            .font(.subheadline.weight(.semibold))
+            .lineLimit(1)
+            .fixedSize()
+            .foregroundStyle(selected ? PVDesign.ink : PVDesign.ink3)
+            .padding(.bottom, 4)
+            .overlay(alignment: .bottom) {
+                if selected {
+                    Rectangle().fill(PVDesign.ink).frame(height: 1.5)
+                }
+            }
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(tab.title)
+        .accessibilityValue(count > 0 ? Text(count, format: .number) : Text(verbatim: ""))
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityIdentifier("detail-rail-tab-\(tab.rawValue)")
+    }
+
     @ViewBuilder
     private var lens: some View {
         switch values.selectedTab {
+        case .marginalia:
+            marginalia
         case .apuntador:
             if values.companionCards.isEmpty {
                 emptyLens(
@@ -133,18 +141,39 @@ struct MeetingDetailRailSection: View {
                         refresh: actions.refreshCompanionCards,
                         removeCard: actions.removeCompanionCard))
             }
-        case .chapters:
-            if values.chapters.isEmpty {
-                emptyLens(
-                    "Chapters appear once the conversation has natural breaks.",
-                    id: "detail-rail-empty-chapters")
+        case .people:
+            if values.people.isEmpty {
+                emptyLens("Suggested names and voices appear here.", id: "detail-rail-empty-people")
             } else {
+                MeetingDetailPeopleSection(values: values.people, actions: actions.people)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var marginalia: some View {
+        if values.trust == nil, values.chapters.isEmpty, !values.notes.hasContent {
+            emptyLens(
+                "Commitments, decisions and your notes sit beside the line that produced them.",
+                id: "detail-rail-empty-marginalia")
+        } else {
+            VStack(alignment: .leading, spacing: 14) {
+                if let trust = values.trust {
+                    MeetingDetailTrustSection(
+                        values: trust,
+                        actions: MeetingDetailTrustActions(
+                            retryProcessing: actions.retryProcessing,
+                            refineSavedAudio: actions.refineSavedAudio,
+                            openSupportDiagnostics: actions.openSupportDiagnostics))
+                }
                 MeetingTranscriptChaptersSection(
                     chapters: values.chapters,
                     hasPlayback: values.hasPlayback,
                     presentation: values.presentation,
                     seekAndPlay: actions.seekAndPlay)
+                MeetingDetailNotesSection(values: values.notes, actions: actions.notes)
             }
+            // No accessibility container: with one child SwiftUI merges it and the child's identifier is lost.
         }
     }
 
@@ -152,9 +181,8 @@ struct MeetingDetailRailSection: View {
         Text(text)
             .font(.callout)
             .foregroundStyle(.ink3)
+            .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
-            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
             .accessibilityIdentifier(id)
     }
 }

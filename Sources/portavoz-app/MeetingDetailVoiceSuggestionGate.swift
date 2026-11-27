@@ -38,7 +38,7 @@ struct MeetingDetailVoiceSuggestionGate {
 /// Voice chips and voice-applied names for one open meeting.
 struct MeetingDetailVoiceSuggestions {
     private(set) var offered: [MeetingVoiceSuggestion] = []
-    /// Applied without a tap and still undoable from the header.
+    /// Applied without a tap and still undoable from the margin.
     private(set) var autoAssigned: [MeetingVoiceSuggestion] = []
     private var gate = MeetingDetailVoiceSuggestionGate()
 

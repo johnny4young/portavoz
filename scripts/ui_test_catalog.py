@@ -139,6 +139,8 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("MeetingDetailUITests", "testCommitmentInboxRequiresEvidenceReviewBeforeConfirmation"),
         test_id("MeetingMarginNotesUITests", "testMarginNotesSitBesideTheLineThatProducedThem"),
         test_id("MeetingMarginNotesUITests", "testNarrowMarginNotesFoldUnderTheirLine"),
+        test_id("MeetingMarginNotesUITests", "testMarginTabsHoldMarginaliaApuntadorAndPeople"),
+        test_id("MeetingMarginNotesUITests", "testNarrowMarginTabsSitBetweenMaterialAndTranscript"),
     ),
     "meeting-skills": (
         test_id("MeetingDetailUITests", "testSkillProposalJourneyFromBannerToReceipt"),

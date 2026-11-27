@@ -19,7 +19,7 @@ struct MeetingDetailView: View {
     let navigation: DetailNavigation
 
     @State private var playbackNavigation = MeetingDetailPlaybackNavigation()
-    @State private var railTab = MeetingDetailRailTab.chapters
+    @State private var railTab = MeetingDetailRailTab.marginalia
     @State private var showingSummaryTodos = false
     private var detail: MeetingReviewReadModel? { model.state.readModel }
     private var summary: MeetingReviewSummary? { detail?.summary }
@@ -48,6 +48,12 @@ struct MeetingDetailView: View {
         .task(id: model.state.revision) { await refreshPresentation() }
         .onChange(of: sceneValues.pendingSeek) { _, _ in
             deliverPendingMeetingSeekIfPossible()
+        }
+        // Names you asked for, and the offers a rename brings, open where they wait,
+        // unless processing that needs attention holds Marginalia.
+        .onChange(of: coordinator.peopleValues.followUps) { old, new in
+            guard !new.isSubset(of: old), detail.flatMap(MeetingDetailTrustValues.make) == nil else { return }
+            railTab = .people
         }
         .onDisappear { model.invalidatePlayback() }
     }
@@ -101,7 +107,6 @@ private extension MeetingDetailView {
                                 if !showingSummaryTodos {
                                     commitmentInboxSection(detail, margin: marginNotes)
                                 }
-                                notesSection(detail)
                             }
                             detailRail(detail, transcript: transcript)
                             transcriptSection(
@@ -183,6 +188,7 @@ private extension MeetingDetailView {
         MeetingDetailRailSection(
             values: MeetingDetailRailValues(
                 trust: MeetingDetailTrustValues.make(detail: detail),
+                notes: notesValues(detail, transcript: transcript),
                 segments: detail.segments,
                 chapters: transcript.chapters,
                 companionCards: detail.companionCards,
@@ -190,6 +196,7 @@ private extension MeetingDetailView {
                     uniqueKeysWithValues: detail.companionCards.map {
                         ($0.id, detail.companionFreshness($0))
                     }),
+                people: coordinator.peopleValues,
                 transcriptRevision: detail.meeting.transcriptRevision,
                 hasPlayback: player != nil,
                 isRefreshingCompanion: flow.isRefreshingCompanion,
@@ -199,6 +206,9 @@ private extension MeetingDetailView {
                 retryProcessing: coordinator.retryProcessing,
                 refineSavedAudio: { coordinator.startRefine(detail) },
                 openSupportDiagnostics: { sceneActions.openSettings(.data) },
+                notes: MeetingDetailNotesActions(
+                    enhance: { coordinator.enhanceNotes(language: $0, engine: $1, detail: detail) }),
+                people: coordinator.peopleActions(detail),
                 seekAndPlay: seekAndPlay,
                 focusEvidence: focusEvidence,
                 copyAnswer: coordinator.copyAnswer,
@@ -259,17 +269,17 @@ private extension MeetingDetailView {
                 onShowingTodosChanged: { showingSummaryTodos = $0 }))
     }
 
-    private func notesSection(_ detail: MeetingReviewReadModel) -> some View {
-        MeetingDetailNotesSection(
-            values: MeetingDetailNotesValues(
-                notes: detail.notes,
-                hasTranscript: !detail.segments.isEmpty,
-                isEnhancing: flow.isEnhancingNotes,
-                notice: flow.notesNotice,
-                alternateEngine: coordinator.alternateEngine,
-                presentation: presentation),
-            actions: MeetingDetailNotesActions(
-                enhance: { coordinator.enhanceNotes(language: $0, engine: $1, detail: detail) }))
+    private func notesValues(
+        _ detail: MeetingReviewReadModel, transcript: MeetingTranscriptContent
+    ) -> MeetingDetailNotesValues {
+        MeetingDetailNotesValues(
+            notes: detail.notes,
+            listsNotes: transcript.rows.isEmpty,
+            hasTranscript: !detail.segments.isEmpty,
+            isEnhancing: flow.isEnhancingNotes,
+            notice: flow.notesNotice,
+            alternateEngine: coordinator.alternateEngine,
+            presentation: presentation)
     }
 
     /// Commitments that already sit beside their line are not repeated here.
@@ -298,16 +308,8 @@ private extension MeetingDetailView {
                 stepThroughTurns: { playbackNavigation.stepThroughTurns(of: $0, content: transcript, player: player) },
                 toggleOnly: { player?.toggleFocus(on: $0.speakerID, turns: $0.turns) },
                 suggestNames: coordinator.suggestNames,
-                acceptNameSuggestion: { coordinator.acceptNameSuggestion($0, in: detail) },
-                dismissNameSuggestion: coordinator.dismissNameSuggestion,
                 acceptVoiceSuggestion: { coordinator.acceptVoiceSuggestion($0, in: detail) },
-                dismissVoiceSuggestion: coordinator.dismissVoiceSuggestion,
-                undoVoiceAutoAssign: coordinator.undoVoiceAutoAssign,
-                keepVoiceAutoAssign: coordinator.keepVoiceAutoAssign,
-                acceptPersonOffer: { flow.personOffer.map(coordinator.findOrCreatePerson(for:)) },
-                dismissPersonOffer: { flow.personOffer = nil },
-                acceptVoiceOffer: { flow.rememberedVoiceOffer.map(coordinator.rememberVoice(of:)) },
-                dismissVoiceOffer: { flow.rememberedVoiceOffer = nil }),
+                dismissVoiceSuggestion: coordinator.dismissVoiceSuggestion),
             receipt: {
                 MeetingDetailActivityLine(values: MeetingDetailActivityValues(
                     privacyReceipt: detail.privacyReceipt,
@@ -329,17 +331,8 @@ private extension MeetingDetailView {
             health: MeetingHealth.compute(segments: detail.segments),
             playback: player.map { MeetingVoicesPlayback(focus: $0.voiceFocus) },
             isSuggestingNames: model.state.isSuggestingNames,
-            nameSuggestions: model.state.nameSuggestions,
-            voiceSuggestions: model.state.voiceSuggestions,
-            autoAssignedVoices: model.state.autoAssignedVoices,
-            personOffer: flow.personOffer.flatMap { offer in
-                offer.speaker.displayName.map { MeetingDetailRememberOffer(name: $0, isBusy: flow.isFindingPerson) }
-            },
-            voiceOffer: flow.rememberedVoiceOffer.flatMap { offer in
-                offer.displayName.map {
-                    MeetingDetailRememberOffer(name: $0, isBusy: flow.isRememberingVoice)
-                }
-            })
+            hasNameSuggestions: !model.state.nameSuggestions.isEmpty,
+            voiceSuggestions: model.state.voiceSuggestions)
     }
 
     private func actionToolbar(_ detail: MeetingReviewReadModel) -> some View {
