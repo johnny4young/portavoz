@@ -107,6 +107,39 @@ final class MeetingMarginNotesTests: XCTestCase {
         XCTAssertTrue(notes.readingRuns([]).isEmpty)
     }
 
+    func testYourNotesSitBesideTheLinePlayingWhenYouWroteThem() {
+        let early = ContextItem(meetingID: meeting.id, kind: .note, content: "check budget", timestamp: 0.5)
+        let during = ContextItem(meetingID: meeting.id, kind: .note, content: "Friday?", timestamp: 5)
+        let late = ContextItem(meetingID: meeting.id, kind: .objective, content: "close Q3", timestamp: 90)
+        let review = MeetingReviewReadModel(
+            core: MeetingReviewCore(meeting: meeting, speakers: [me, ana], segments: [opening, decided]),
+            summary: nil, companionCards: [], privacyReceipt: nil, processingJobs: [],
+            notes: MeetingReviewNotes(contextItems: [early, during, late]))
+
+        let notes = review.marginNotes(in: content(), at: now)
+        XCTAssertEqual(notes.notes(forRow: opening.id).map(\.id), ["note-\(early.id.uuidString)"])
+        XCTAssertEqual(
+            notes.notes(forRow: decided.id).map(\.id),
+            ["note-\(during.id.uuidString)", "note-\(late.id.uuidString)"],
+            "a note after the last line stays with the last line, without a summary")
+        XCTAssertTrue(review.marginNotes(in: content(rows: []), at: now).byRow.isEmpty, "no line, no anchor")
+    }
+
+    func testAVoiceMatchSitsBesideThatVoicesFirstLine() {
+        let later = line("Friday works.", speaker: ana, at: 9)
+        let (notes, unplaced) = MeetingMarginNotes.empty.addingVoiceMatches(
+            [
+                MeetingVoiceSuggestion(speakerLabel: "S2", name: "Ana", distance: 0.2),
+                MeetingVoiceSuggestion(speakerLabel: "S9", name: "Nora", distance: 0.2)
+            ],
+            speakers: [me, ana],
+            in: content(rows: [opening, decided, later]))
+
+        XCTAssertEqual(notes.notes(forRow: decided.id).map(\.id), ["voice-S2"])
+        XCTAssertNil(notes.byRow[later.id])
+        XCTAssertEqual(unplaced.map(\.speakerLabel), ["S9"], "a voice without a shown line stays out of the margin")
+    }
+
     // MARK: Fixtures
 
     private let decisionID = SummaryDecisionID()

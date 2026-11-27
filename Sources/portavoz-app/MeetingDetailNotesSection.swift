@@ -5,6 +5,8 @@ import SwiftUI
 
 struct MeetingDetailNotesValues {
     let notes: MeetingReviewNotes
+    /// Without transcript lines, notes list here instead of beside a line.
+    let listsNotes: Bool
     let hasTranscript: Bool
     let isEnhancing: Bool
     let notice: String?
@@ -20,7 +22,8 @@ struct MeetingDetailNotesActions {
     let enhance: @MainActor (LanguageCode, SummaryEngine?) -> Void
 }
 
-/// User-authored notes and their optional local enhancement.
+/// User-authored notes in the margin: their optional local enhancement and any
+/// note without a transcript line to sit beside.
 ///
 /// Raw notes remain immutable presentation input. The section selects only a
 /// requested language/provider; generation and persistence stay above it.
@@ -40,8 +43,6 @@ struct MeetingDetailNotesSection: View {
                             .foregroundStyle(.ink3)
                     }
                 }
-                .padding(14)
-                .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("detail-notes-section")
             }
@@ -50,8 +51,7 @@ struct MeetingDetailNotesSection: View {
 
     private var header: some View {
         HStack {
-            Text("My notes")
-                .font(.headline)
+            PVCardCaption(text: L10n.text("My notes"), systemImage: "note.text", tint: PVDesign.ink2)
                 .accessibilityIdentifier("detail-notes-title")
             Spacer()
             if values.isEnhancing {
@@ -88,7 +88,7 @@ struct MeetingDetailNotesSection: View {
         if let enhanced = values.notes.enhanced {
             MarkdownText(text: enhanced.markdown)
                 .frame(maxWidth: .infinity, alignment: .leading)
-        } else {
+        } else if values.listsNotes {
             VStack(alignment: .leading, spacing: 4) {
                 ForEach(values.notes.contextItems) { item in
                     HStack(alignment: .firstTextBaseline, spacing: 6) {

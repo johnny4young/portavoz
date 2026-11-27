@@ -501,6 +501,66 @@
         }
       }
     },
+    "Commitments, decisions and your notes sit beside the line that produced them.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los compromisos, las decisiones y tus notas van junto a la línea que los originó."
+          }
+        }
+      }
+    },
+    "Marginalia": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Al margen"
+          }
+        }
+      }
+    },
+    "Named by voice": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombrado por su voz"
+          }
+        }
+      }
+    },
+    "Note": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nota"
+          }
+        }
+      }
+    },
+    "Objective": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Objetivo"
+          }
+        }
+      }
+    },
+    "Suggested names and voices appear here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aquí aparecen los nombres y las voces sugeridos."
+          }
+        }
+      }
+    },
     "actions suggestions skills automation automations shortcut pause enable history local drafts exports": {
       "localizations": {
         "es": {
@@ -2577,16 +2637,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Capítulos"
-          }
-        }
-      }
-    },
-    "Chapters appear once the conversation has natural breaks.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Los capítulos aparecen cuando la conversación tiene pausas naturales."
           }
         }
       }
@@ -8265,16 +8315,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aún no hay reuniones"
-          }
-        }
-      }
-    },
-    "No one has been identified yet.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aún no se ha identificado a nadie."
           }
         }
       }

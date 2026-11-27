@@ -1674,6 +1674,8 @@ extension ArchitectureDependencyTests {
             of: "Sources/portavoz-app/MeetingDetailRefineReviewSheet.swift")
         let rail = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailRailSection.swift")
+        let people = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailPeopleSection.swift")
         let focusedTranscript = try Self.contents(
             of: "Sources/portavoz-app/FocusedTranscriptView.swift")
         let documentPresentation = try Self.contents(
@@ -1688,7 +1690,8 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(view.contains("MeetingDetailRailSection("))
         XCTAssertTrue(view.contains("MeetingTranscriptSection("))
         XCTAssertTrue(view.contains("MeetingDetailPlayerSection("))
-        XCTAssertTrue(view.contains("MeetingDetailNotesSection("))
+        XCTAssertTrue(rail.contains("MeetingDetailNotesSection("))
+        XCTAssertTrue(rail.contains("MeetingDetailPeopleSection("))
         XCTAssertTrue(rail.contains("MeetingDetailTrustSection("))
         XCTAssertTrue(rail.contains("MeetingTranscriptChaptersSection("))
         XCTAssertFalse(view.contains("private func header("))
@@ -1711,6 +1714,7 @@ extension ArchitectureDependencyTests {
             ("transcript", transcript),
             ("player", player),
             ("rail", rail),
+            ("people", people),
             ("notes", notes),
             ("refine review", refineReview)
         ] {

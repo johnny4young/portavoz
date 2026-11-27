@@ -539,15 +539,18 @@ def app_features(filename: str) -> set[str]:
             "meeting-summary",
         }
     if "meetingdetailnotessection" in lowered:
-        return {"meeting-summary"}
+        return {"meeting-commitments", "meeting-summary"}
     if "meetingdetailrefinereviewsheet" in lowered:
         return {"meeting-processing"}
     if "meetingdetailplaybacknavigation" in lowered:
         return {"meeting-audio", "meeting-evidence", "meeting-performance"}
     if "meetingdetailrailsection" in lowered:
         return {
-            "meeting-correction", "meeting-evidence", "meeting-health", "meeting-processing"
+            "meeting-commitments", "meeting-correction", "meeting-evidence", "meeting-health",
+            "meeting-processing",
         }
+    if "meetingdetailpeoplesection" in lowered:
+        return {"meeting-commitments", "meeting-naming"}
     if "meetingdetailplayersection" in lowered:
         return {"meeting-audio"}
     if "meetingdetailflowstate" in lowered:

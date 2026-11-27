@@ -61,6 +61,7 @@ INTERACTION_SOURCE_PATHS = (
     "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
     "Sources/portavoz-app/MeetingVoicesTable.swift",
     "Sources/portavoz-app/MeetingMarginNotesView.swift",
+    "Sources/portavoz-app/MeetingDetailPeopleSection.swift",
 )
 
 PERFORMANCE_EVIDENCE_PATHS = (
@@ -440,7 +441,7 @@ DEFAULT_FEATURE_OWNERSHIP = (
                 "anchor": '"detail-suggest-names"',
             },
             {
-                "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+                "path": "Sources/portavoz-app/MeetingDetailPeopleSection.swift",
                 "anchor": '"person-remember-offer"',
             },
             {
@@ -448,7 +449,7 @@ DEFAULT_FEATURE_OWNERSHIP = (
                 "anchor": "func acceptNameSuggestion(",
             },
             {
-                "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+                "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
                 "anchor": '"detail-voice-auto-undo-',
             },
         ],

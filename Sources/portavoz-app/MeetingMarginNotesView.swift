@@ -2,8 +2,8 @@ import ApplicationKit
 import PortavozCore
 import SwiftUI
 
-/// Everything the transcript needs to draw decision and commitment cards
-/// beside, or under, the line that produced them.
+/// Everything the transcript needs to draw margin cards beside, or under,
+/// the line they belong to.
 struct MeetingMarginNotesContext {
     let notes: MeetingMarginNotes
     let cast: VoiceCast
@@ -13,6 +13,8 @@ struct MeetingMarginNotesContext {
     let retractDecisionTopic: @MainActor (DecisionObservationConfirmationState.TopicLink) -> Void
     let setDone: @MainActor (ActionItem, Bool) -> Void
     let commitments: MeetingCommitmentInboxActions
+    let keepVoice: @MainActor (MeetingVoiceSuggestion) -> Void
+    let undoVoice: @MainActor (MeetingVoiceSuggestion) -> Void
     /// Set by the transcript section, which hosts the confirmation sheet.
     var review = MeetingMarginReview()
 }
@@ -53,7 +55,50 @@ private struct MeetingMarginNoteCard: View {
             decision(evidence, statement: statement)
         case .commitment(let commitment):
             self.commitment(commitment)
+        case .note(let item):
+            note(item)
+        case .voice(let match):
+            voice(match)
         }
+    }
+
+    private func note(_ item: ContextItem) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            PVCardCaption(
+                text: item.kind == .objective ? L10n.text("Objective") : L10n.text("Note"),
+                systemImage: "note.text",
+                tint: PVDesign.ink2)
+            Text(item.content)
+                .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
+        }
+        .pvCard(.outlined, padding: 12)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("margin-note-\(item.id.uuidString)")
+    }
+
+    /// The same Undo and Keep the applied chip offered, beside the voice's first line.
+    private func voice(_ match: MeetingVoiceSuggestion) -> some View {
+        let label = match.speakerLabel
+        return VStack(alignment: .leading, spacing: 7) {
+            PVCardCaption(text: L10n.text("Named by voice"), systemImage: "person.wave.2", tint: PVDesign.ink2)
+            words(match.name)
+            HStack(spacing: 12) {
+                Button(L10n.text("Undo")) { context.undoVoice(match) }
+                    .accessibilityIdentifier("detail-voice-auto-undo-\(label)")
+                Button(L10n.text("Keep name")) { context.keepVoice(match) }
+                    .accessibilityIdentifier("detail-voice-auto-keep-\(label)")
+                Spacer(minLength: 0)
+            }
+            .buttonStyle(.plain)
+            .font(.caption)
+            .foregroundStyle(PVDesign.accent)
+        }
+        .pvCard(.outlined, padding: 12)
+        .help(L10n.format("Matches “%@” from your remembered voices", match.name))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("detail-voice-auto-\(label)")
     }
 
     private func decision(_ evidence: SummaryDecisionEvidence, statement: String) -> some View {

@@ -1,12 +1,16 @@
 import Foundation
 import PortavozCore
 
-/// A decision or commitment placed beside the transcript row whose words
-/// produced it.
+/// A decision, commitment, note or voice match placed beside the transcript
+/// row it belongs to.
 public struct MeetingMarginNote: Sendable, Identifiable {
     public enum Kind: Sendable {
         case decision(SummaryDecisionEvidence, statement: String)
         case commitment(Commitment)
+        /// Something you wrote while recording, beside the line playing then.
+        case note(ContextItem)
+        /// A voice named without a tap, beside that voice's first line.
+        case voice(MeetingVoiceSuggestion)
     }
 
     public struct Commitment: Sendable {
@@ -25,6 +29,8 @@ public struct MeetingMarginNote: Sendable, Identifiable {
         switch kind {
         case .decision(let evidence, _): "decision-\(evidence.id.rawValue.uuidString)"
         case .commitment(let commitment): "commitment-\(commitment.item.id.uuidString)"
+        case .note(let item): "note-\(item.id.uuidString)"
+        case .voice(let match): "voice-\(match.speakerLabel)"
         }
     }
 }
@@ -90,6 +96,35 @@ public struct MeetingMarginNotes: Sendable {
         })
     }
 
+    /// Adds each voice match beside the first line its speaker said, in one
+    /// pass over the rows, and returns the matches with no shown line.
+    public func addingVoiceMatches(
+        _ matches: [MeetingVoiceSuggestion],
+        speakers: [Speaker],
+        in content: MeetingTranscriptContent
+    ) -> (notes: MeetingMarginNotes, unplaced: [MeetingVoiceSuggestion]) {
+        guard !matches.isEmpty else { return (self, []) }
+        let labels = Set(matches.map(\.speakerLabel))
+        var pending = Dictionary(
+            speakers.filter { labels.contains($0.label) }.map { ($0.id, $0.label) },
+            uniquingKeysWith: { first, _ in first })
+        var firstRowByLabel: [String: UUID] = [:]
+        for row in content.rows where !pending.isEmpty {
+            guard let speakerID = row.speakerID, let label = pending.removeValue(forKey: speakerID) else { continue }
+            firstRowByLabel[label] = row.id
+        }
+        var byRow = byRow
+        var unplaced: [MeetingVoiceSuggestion] = []
+        for match in matches {
+            guard let rowID = firstRowByLabel[match.speakerLabel] else {
+                unplaced.append(match)
+                continue
+            }
+            byRow[rowID, default: []].append(MeetingMarginNote(rowID: rowID, kind: .voice(match)))
+        }
+        return (MeetingMarginNotes(byRow: byRow), unplaced)
+    }
+
     /// The inbox keeps only candidates without a card beside their line, so
     /// each commitment shows in one place.
     public func inbox(_ candidates: [CommitmentInboxCandidate]) -> [CommitmentInboxCandidate] {
@@ -99,11 +134,21 @@ public struct MeetingMarginNotes: Sendable {
 }
 
 public extension MeetingReviewReadModel {
-    /// Notes keyed by the visible row holding each item's first evidence line.
-    /// Only a current summary anchors; dismissed or deferred commitments and
-    /// items whose evidence no longer resolves stay out of the margin.
+    /// Notes keyed by the visible row holding each item's first evidence line,
+    /// and your notes keyed by the line playing when you wrote them. Only a
+    /// current summary anchors decisions and commitments; dismissed or deferred
+    /// commitments and items whose evidence no longer resolves stay out.
     func marginNotes(in content: MeetingTranscriptContent, at date: Date = Date()) -> MeetingMarginNotes {
-        guard let summary, summaryFreshness == .current, !content.rows.isEmpty else { return .empty }
+        guard let firstRow = content.rows.first else { return .empty }
+        let written = notes.contextItems.map { item in
+            MeetingMarginNote(rowID: content.activeRowID(at: item.timestamp) ?? firstRow.id, kind: .note(item))
+        }
+        let summarized = summaryMarginNotes(in: content, at: date)
+        return MeetingMarginNotes(byRow: Dictionary(grouping: summarized + written, by: \.rowID))
+    }
+
+    private func summaryMarginNotes(in content: MeetingTranscriptContent, at date: Date) -> [MeetingMarginNote] {
+        guard let summary, summaryFreshness == .current else { return [] }
         let rows = Dictionary(content.rows.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         typealias Anchor = (row: MeetingTranscriptContent.Row, line: TranscriptSegment)
         func anchor(_ resolution: TranscriptEvidenceResolution) -> Anchor? {
@@ -160,7 +205,7 @@ public extension MeetingReviewReadModel {
                     candidate: confirmed == nil ? candidates[item.id] : nil,
                     source: marginSource(item, row: anchor.row, line: anchor.line, confirmed: confirmed)))))
         }
-        return MeetingMarginNotes(byRow: Dictionary(grouping: decisions + commitments, by: \.rowID))
+        return decisions + commitments
     }
 
     private func marginSource(

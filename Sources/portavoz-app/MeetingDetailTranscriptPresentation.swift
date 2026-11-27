@@ -23,8 +23,13 @@ final class MeetingDetailTranscriptPresentation: Sendable {
 struct MeetingDetailTranscriptPresentationState {
     private(set) var chapterTitles: [TimeInterval: String] = [:]
     private(set) var presentation: MeetingDetailTranscriptPresentation?
-    /// Decisions and commitments keyed by the row that produced them.
+    /// Everything the margin shows beside a line, keyed by that row.
     private(set) var marginNotes = MeetingMarginNotes.empty
+    /// Voice matches without a shown line; the People tab lists them.
+    private(set) var unplacedVoiceMatches: [MeetingVoiceSuggestion] = []
+    private var reviewedNotes = MeetingMarginNotes.empty
+    private var voiceMatches: [MeetingVoiceSuggestion] = []
+    private var speakers: [Speaker] = []
 
     /// A core rebuilds the reading; reviews and summaries arrive outside it,
     /// so every update re-anchors the margin notes.
@@ -35,7 +40,25 @@ struct MeetingDetailTranscriptPresentationState {
                 MeetingDetailTranscriptPresentation(detail: $0, chapterTitles: chapterTitles)
             }
         }
-        marginNotes = presentation.flatMap { detail?.marginNotes(in: $0.current) } ?? .empty
+        reviewedNotes = presentation.flatMap { detail?.marginNotes(in: $0.current) } ?? .empty
+        speakers = detail?.speakers ?? []
+        placeVoiceMatches()
+    }
+
+    /// Voice matches change without a review update, so they join here.
+    mutating func receive(voiceMatches matches: [MeetingVoiceSuggestion]) {
+        guard matches != voiceMatches else { return }
+        voiceMatches = matches
+        placeVoiceMatches()
+    }
+
+    private mutating func placeVoiceMatches() {
+        guard let content = presentation?.current else {
+            (marginNotes, unplacedVoiceMatches) = (reviewedNotes, voiceMatches)
+            return
+        }
+        (marginNotes, unplacedVoiceMatches) = reviewedNotes.addingVoiceMatches(
+            voiceMatches, speakers: speakers, in: content)
     }
 
     @discardableResult

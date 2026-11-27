@@ -436,6 +436,7 @@ class UITestScopeTests(unittest.TestCase):
                 "meeting-recap",
             ),
             "Sources/portavoz-app/MeetingDetailRailSection.swift": (
+                "meeting-commitments",
                 "meeting-correction",
                 "meeting-evidence",
                 "meeting-health",
@@ -492,6 +493,7 @@ class UITestScopeTests(unittest.TestCase):
                 "meeting-summary",
             ),
             "Sources/portavoz-app/MeetingDetailNotesSection.swift": (
+                "meeting-commitments",
                 "meeting-summary",
             ),
             "Sources/portavoz-app/MeetingDetailRefineReviewSheet.swift": (

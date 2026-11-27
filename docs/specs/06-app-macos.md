@@ -519,7 +519,7 @@ the page; an explicit seek, citation or turn step scrolls its row into view (a r
 `MeetingTranscriptNavigationState` makes a repeated request scroll again),
 opening a meeting never scrolls past the header, and Reduce Motion drops the
 animation (D658).
-The rail's Chapters lens stays as a second way to jump.
+The margin's chapter list, in the Marginalia lens, stays as a second way to jump.
 
 D226 composes the docked player through `MeetingDetailPlayerSection`. It
 receives the application-prepared playback session, waveform buckets, the
@@ -537,11 +537,16 @@ resolution, and pending seeks.
 (`detail-more-menu`: Rename… `detail-rename`, the silent-tail trim, Compress
 audio (AAC) `detail-compress-audio`, and Move to Recently deleted
 `detail-delete`). `MeetingDetailRailSection` is the always-present margin beside the summary
-and transcript, or above the transcript in one column (D658; simplified Nov 2026): processing that
-needs attention sits on top, then two always-labeled lenses, Chapters
-(`detail-rail-tab-chapters`, default) and Apuntador
-(`detail-rail-tab-apuntador`, persisted cards), of which exactly one shows at its full height
-in the page scroll; a lens without material shows one sentence
+and transcript, or above the transcript in one column (D658, D670): three text tabs, the
+selected one in ink over a 1.5 pt rule, of which exactly one lens shows at its full height in
+the page scroll. Marginalia (`detail-rail-tab-marginalia`, default) holds
+processing that needs attention, the chapter list (`detail-chapters`, `chapter-<s>`) and
+`MeetingDetailNotesSection` (`detail-notes-section`: My notes, Tidy up `detail-enhance-notes`,
+the tidied notes, and any note without a line). Apuntador (`detail-rail-tab-apuntador`)
+holds the persisted cards. People (`detail-rail-tab-people`, `MeetingDetailPeopleSection`,
+`detail-people`) holds suggested names, voice matches with no visible line and the
+remember-person and recognize-voice offers; its tab shows how many wait and the composition
+selects it when that number grows. A lens without material shows one sentence
 (`detail-rail-empty-*`). Speaker questions and interruptions live inside `MeetingVoicesTable`
 (`detail-meeting-health`) rather than a duplicate rail tab. The selected lens is composition state passed in as a
 value with a `selectTab` action, so the rail itself stays stateless.
@@ -549,9 +554,7 @@ value with a `selectTab` action, so the rail itself stays stateless.
 as one quiet label at the end of the date line (`detail-privacy-receipt`;
 ink 3 when everything stayed on this Mac, caution semibold otherwise) whose popover
 (`detail-activity-popover`) carries the remote attempts, the private iCloud
-disclosure and every `skill-receipt-<skillID>` row. The header keeps every ✦
-suggestion and remember offer in one horizontal row
-(`detail-suggestions-row`). None of these sections can reach the model,
+disclosure and every `skill-receipt-<skillID>` row. None of these sections can reach the model,
 services, store, or preferences.
 `MeetingDetailScene` owns one observable `MeetingDetailFlowState`; its typed
 sheet, dialog, alert, and export routes replace independent modal flags while
@@ -629,8 +632,16 @@ Confirm… (`-confirm`, the commitment confirmation sheet hosted by the transcri
 section) and a ⋯ menu (`-more`) with Review later (`-defer-tomorrow`,
 `-defer-week`) and Dismiss (`-dismiss`). The commitment inbox above the
 transcript lists only pending candidates whose evidence has no visible row,
-such as a hidden line (`MeetingMarginNotes.inbox`). The projection is rebuilt
-with every read-model update, beside the transcript reading, not per render. The
+such as a hidden line (`MeetingMarginNotes.inbox`). Your notes join the same
+projection without needing a summary (D670): each note keys to the row active
+at its timestamp (`activeRowID(at:)`, else the first row) and reads "Note" or
+"Objective" with its text (`margin-note-<id>`). A voice named without a tap
+(`MeetingMarginNotes.addingVoiceMatches`, added to the model state's margin
+notes since voice matches change outside review updates) keys to that voice's
+first row and reads "Named by voice", the name, Undo (`detail-voice-auto-undo-<label>`)
+and Keep name (`detail-voice-auto-keep-<label>`) (`detail-voice-auto-<label>`).
+The projection is rebuilt with every read-model update, beside the transcript
+reading, not per render. The
 page keeps 28-point side gutters, caps at 1,240 points and centres beyond
 that. Transcript turn text shares the standfirst's left edge (the same 118-point
 gutter and 22-point gap; the rows' outline inset is given back by the stack),

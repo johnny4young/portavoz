@@ -3402,9 +3402,14 @@ transcript: each noted line is laid out eagerly and the lines between them
 share a lazy stack. Margin notes come
 from `MeetingReviewReadModel.marginNotes(in:)`, a pure ApplicationKit
 projection that keys each current decision and action item to the visible row
-holding its first resolvable evidence line; the transcript draws a row's notes
-in the margin beside it, or under its text on a one-column page, and the
-commitment inbox keeps only candidates without such a row.
+holding its first resolvable evidence line, and each of your notes to the row
+active at its timestamp; voice matches named without a tap join at their
+voice's first row in the model state. The transcript draws a row's notes in the
+margin beside it, or under its text on a one-column page, and the commitment
+inbox keeps only candidates without such a row. The margin itself has three
+lenses: Marginalia (processing, chapters, My notes), Apuntador and
+People (`MeetingDetailPeopleSection`: suggested names, unplaced voice matches
+and remember offers), all value-and-action sections like the rest of the page.
 
 Transcript correction follows the same modal boundary. The flow captures the
 editor context, structural context, accepted reading, and revision as one
