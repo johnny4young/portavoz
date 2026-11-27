@@ -598,7 +598,8 @@ tells `MeetingDetailPageLayout` so (`MeetingTranscriptHoldsMarginNotes`, a
 layout value), and on a wide page it then starts below whichever of the
 material and the rail ends lower, so no card can meet the rail; the layout
 computes that from the sections' heights, and no row measures its position or
-keeps layout state. On a one-column page the same cards fold under the
+keeps layout state. The transcript reads its page width from the width it is
+proposed, never from its own rows, whose widths derive from it. On a one-column page the same cards fold under the
 line's text, on its edge. A decision card (`margin-decision-<id>`) reads
 "✓ Decision", the bullet in SF semibold and the Decisions tab's own
 `DecisionConfirmationControl`: Confirm… (`-confirm`, the decision sheet) or

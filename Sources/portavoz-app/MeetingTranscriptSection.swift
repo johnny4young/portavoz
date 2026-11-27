@@ -48,6 +48,32 @@ struct MeetingTranscriptSection: View {
     @State private var isSaving = false
 
     var body: some View {
+        // Rows take explicit widths from `pageWidth`, so it comes from the proposal
+        // alone: measuring the section would feed their widths back into it.
+        ZStack(alignment: .topLeading) {
+            Color.clear
+                .frame(height: 0)
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { pageWidth = $0 }
+            transcriptContent
+        }
+        // Rows fill the page, but an empty transcript must not measure the header's width.
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("detail-transcript-section")
+        .onChange(of: values.translation.translations) {
+            // A requested translation opens once it is current.
+            guard let requested = requestedLanguage, values.translation.isCurrent(requested) else { return }
+            language = requested
+            requestedLanguage = nil
+        }
+        .sheet(isPresented: $showingHiddenLines) {
+            SuppressedTranscriptCorrectionsSheet(
+                contexts: values.structureProjection.suppressedContexts,
+                restore: actions.restructure)
+        }
+    }
+
+    private var transcriptContent: some View {
         VStack(alignment: .leading, spacing: 10) {
             transcriptHeader
                 .frame(width: pageWidth > 0 ? MeetingDetailPageMetrics.readingWidth(forPageWidth: pageWidth) : nil)
@@ -61,22 +87,6 @@ struct MeetingTranscriptSection: View {
                             await target.commitments.confirm(target.candidate, title, assignee, dueAt)
                         })
                 }
-        }
-        // Rows fill the page, but an empty transcript must not measure the header's width.
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { pageWidth = $0 }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("detail-transcript-section")
-        .onChange(of: values.translation.translations) {
-            // A requested translation opens once it is current.
-            guard let requested = requestedLanguage, values.translation.isCurrent(requested) else { return }
-            language = requested
-            requestedLanguage = nil
-        }
-        .sheet(isPresented: $showingHiddenLines) {
-            SuppressedTranscriptCorrectionsSheet(
-                contexts: values.structureProjection.suppressedContexts,
-                restore: actions.restructure)
         }
     }
 
