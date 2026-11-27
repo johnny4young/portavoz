@@ -348,11 +348,11 @@ private struct LiveRecordingCaptionsView: View {
     private func liveVoice(
         for segment: TranscriptSegment
     ) -> (label: String, isMe: Bool) {
-        if segment.channel == .microphone { return (L10n.text("You"), true) }
-        if let voice = controller.liveSpeakerLabels[segment.id] {
-            return voice == "Me" ? (L10n.text("You"), true) : (voice, false)
+        switch LiveVoiceStage.key(for: segment, labels: controller.liveSpeakerLabels) {
+        case LiveVoiceStage.youKey: (L10n.text("You"), true)
+        case LiveVoiceStage.unlabelledKey: (L10n.text("Others"), false)
+        case let label: (label, false)
         }
-        return (L10n.text("Others"), false)
     }
 }
 

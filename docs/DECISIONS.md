@@ -23606,3 +23606,26 @@ element, now `player-strip`. The dock sits on the card tone the board uses.
 Below the widest row the readout gives up its room first, then the toggles
 their titles; every toggle stays one click away at the narrowest width, where
 the board drops two of them.
+
+## D672 — Live voices rebuild from captions, seconds apart
+
+The recording stage needs per-voice turns, talk time, who spoke last and who
+is speaking now, plus a voice strip with ticks for your notes and the
+questions asked of you. The live diarizer keeps revising closed rows: it
+splits a row into fresh IDs, swaps S-labels and labels rows it skipped. An
+incremental per-turn tracker would have to undo each of those, so
+`LiveVoiceStage` (ApplicationKit) is pure and rebuilds from the whole caption
+list and the current labels; churn then always equals a fresh build. Its
+voice columns are one per second with indexes that never move, so a rebuild
+rebins only from the first second whose attribution changed.
+
+The 13 Nov rule keeps live state out of the recording bar's layout.
+`RecordingLiveVoicesModel` is its own observable, read by neither the bar nor
+the floating panel, and refreshes at most once a second. The microphone level
+reaches it only as a speech gate with hysteresis measured in captured time,
+so the 20 Hz relay asks for a refresh only when you start or stop speaking.
+You are the current speaker while that gate is open; otherwise the open
+row's voice within three seconds of its last word. Live voices are not
+persisted: Stop resets the model and the durable diarization pass replaces
+every live label.
+

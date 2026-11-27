@@ -6245,6 +6245,11 @@ tick in a timeline hosted in an overlay of a hidden same-size placeholder that
 changes only when the clock gains a digit.
 The talk-balance cue reads captions in its own body. The floating panel's
 meter uses the same overlay fill.
+Live voices are a separate observable, `RecordingLiveVoicesModel`,
+that neither the bar nor the floating panel reads. It rebuilds the pure
+`LiveVoiceStage` (ApplicationKit) at most once a second from closed captions,
+live relabels, note and question changes, and microphone-speech flips; the
+level relay reaches it only through that flip, never per sample.
 
 AppKit asks the main window's root for its minimum size on every layout pass,
 and a `.frame(minWidth:minHeight:)` answers by measuring the whole tree, those

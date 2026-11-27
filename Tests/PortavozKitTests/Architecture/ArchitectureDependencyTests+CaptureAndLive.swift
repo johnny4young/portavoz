@@ -93,6 +93,16 @@ extension ArchitectureDependencyTests {
             hud.range(of: "private struct RecordingHUDMeterFill: View"))
         XCTAssertFalse(hud[..<hudFill.lowerBound].contains("controller.micLevel"))
 
+        // Live voices change on every closed caption and speech flip.
+        XCTAssertFalse(toolbar.contains("liveVoices"))
+        XCTAssertFalse(hud.contains("liveVoices"))
+        let controller = try Self.contents(
+            of: "Sources/portavoz-app/RecordingController.swift")
+        let levels = try XCTUnwrap(controller.range(of: "func applyRecordingLevels("))
+        let levelsBody = controller[levels.lowerBound...].prefix(1_200)
+        XCTAssertTrue(levelsBody.contains("liveVoices.setYouSpeaking("))
+        XCTAssertFalse(levelsBody.contains("liveVoices.requestRefresh()"))
+
         let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
         XCTAssertTrue(architecture.contains(
             "State that changes while recording therefore stays out of both."))
