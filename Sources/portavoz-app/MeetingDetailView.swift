@@ -83,32 +83,39 @@ private extension MeetingDetailView {
     ) -> some View {
         let transcript = transcriptPresentation.current
         let structureProjection = transcriptPresentation.structure
+        let marginNotes = model.state.marginNotes
         return VStack(spacing: 0) {
-            ScrollView(.vertical) {
-                VStack(alignment: .leading, spacing: 12) {
-                    headerSection(detail, title: title, transcript: transcript)
-                    if let report = detail.meeting.captureReport, report.requiresAttention {
-                        CaptureReportNotice(report: report)
-                    }
-                    MeetingDetailOperationStatus(
-                        progress: refine.status ?? flow.applyingStatus,
-                        error: refine.error ?? flow.operationError ?? model.state.lastActionError)
-                    MeetingDetailPageLayout {
-                        VStack(alignment: .leading, spacing: 10) {
-                            summaryOrGenerate(detail)
-                            if !showingSummaryTodos {
-                                commitmentInboxSection(detail)
-                            }
-                            notesSection(detail)
+            MeetingDetailViewportLayout {
+                ScrollView(.vertical) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        headerSection(detail, title: title, transcript: transcript)
+                        if let report = detail.meeting.captureReport, report.requiresAttention {
+                            CaptureReportNotice(report: report)
                         }
-                        detailRail(detail, transcript: transcript)
-                        transcriptSection(detail, content: transcript, structureProjection: structureProjection)
+                        MeetingDetailOperationStatus(
+                            progress: refine.status ?? flow.applyingStatus,
+                            error: refine.error ?? flow.operationError ?? model.state.lastActionError)
+                        MeetingDetailPageLayout {
+                            VStack(alignment: .leading, spacing: 10) {
+                                summaryOrGenerate(detail)
+                                if !showingSummaryTodos {
+                                    commitmentInboxSection(detail, margin: marginNotes)
+                                }
+                                notesSection(detail)
+                            }
+                            detailRail(detail, transcript: transcript)
+                            transcriptSection(
+                                detail, content: transcript, structureProjection: structureProjection,
+                                marginNotes: marginNotes)
+                                .layoutValue(
+                                    key: MeetingTranscriptHoldsMarginNotes.self, value: !marginNotes.byRow.isEmpty)
+                        }
                     }
+                    .padding(.vertical, 16)
+                    .meetingPageColumn()
                 }
-                .padding(.vertical, 16)
-                .meetingPageColumn()
+                .accessibilityIdentifier("detail-page-scroll")
             }
-            .accessibilityIdentifier("detail-page-scroll")
             playerSection
         }
     }
@@ -116,7 +123,8 @@ private extension MeetingDetailView {
     private func transcriptSection(
         _ detail: MeetingReviewReadModel,
         content: MeetingTranscriptContent,
-        structureProjection: MeetingTranscriptStructureProjection
+        structureProjection: MeetingTranscriptStructureProjection,
+        marginNotes: MeetingMarginNotes
     ) -> some View {
         MeetingTranscriptSection(
             values: MeetingTranscriptValues(
@@ -132,7 +140,9 @@ private extension MeetingDetailView {
                 revealCount: playbackNavigation.revealCount,
                 performanceScrollEnabled: sceneValues.performanceProfile
                     .shouldExerciseTranscriptScroll,
-                translation: MeetingTranscriptTranslationState(detail)),
+                translation: MeetingTranscriptTranslationState(detail),
+                margin: coordinator.marginContext(
+                    detail, notes: marginNotes, focusEvidence: focusEvidence)),
             actions: MeetingTranscriptActions(
                 seekAndPlay: seekAndPlay,
                 renameSpeaker: flow.presentRenameSpeaker,
@@ -262,19 +272,17 @@ private extension MeetingDetailView {
                 enhance: { coordinator.enhanceNotes(language: $0, engine: $1, detail: detail) }))
     }
 
+    /// Commitments that already sit beside their line are not repeated here.
     private func commitmentInboxSection(
-        _ detail: MeetingReviewReadModel
+        _ detail: MeetingReviewReadModel,
+        margin: MeetingMarginNotes
     ) -> some View {
         MeetingCommitmentInboxSection(
             values: MeetingCommitmentInboxValues(
-                candidates: detail.commitmentInboxCandidates(),
+                candidates: margin.inbox(detail.commitmentInboxCandidates()),
                 ownerChoices: detail.commitmentOwnerChoices(),
                 presentation: presentation),
-            actions: MeetingCommitmentInboxActions(
-                focusEvidence: focusEvidence,
-                confirm: coordinator.confirmCommitment,
-                dismiss: coordinator.dismissCommitment,
-                deferUntil: coordinator.deferCommitment))
+            actions: coordinator.commitmentInboxActions(focusEvidence: focusEvidence))
     }
 
     private func headerSection(
@@ -434,6 +442,8 @@ private extension MeetingDetailView {
     private func refreshPresentation() async {
         guard detail != nil else { return }
         deliverPendingMeetingSeekIfPossible()
+        // Decision cards show their confirmed state without opening the Decisions tab.
+        coordinator.loadMarginDecisionConfirmations()
         await coordinator.loadPresentationSuggestions()
     }
 

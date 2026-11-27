@@ -45,7 +45,8 @@
     "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
     "Sources/portavoz-app/TranscriptSegmentsView.swift",
     "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
-    "Sources/portavoz-app/MeetingVoicesTable.swift"
+    "Sources/portavoz-app/MeetingVoicesTable.swift",
+    "Sources/portavoz-app/MeetingMarginNotesView.swift"
   ],
   "interactionSignals": [
     {
@@ -694,6 +695,12 @@
       "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"commitment-editor\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-editor-cancel\")",
       "occurrences": 1
     },
     {
@@ -1882,7 +1889,7 @@
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "control",
       "source": "Button {",
-      "occurrences": 3
+      "occurrences": 2
     },
     {
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
@@ -1942,6 +1949,12 @@
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "control",
       "source": "Button(L10n.format(\"Remove topic “%@”\", link.label)) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "control",
+      "source": "Button(action: confirm) {",
       "occurrences": 1
     },
     {
@@ -2111,6 +2124,102 @@
       "category": "state",
       "source": "@State private var tabSelection = 0",
       "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "control",
+      "source": "Button(\"Confirm…\") { review.open(candidate) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "control",
+      "source": "Button(\"Dismiss\", role: .destructive) { context.review.dismiss(candidate) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "control",
+      "source": "Button(\"Next week\") { context.review.deferCandidate(candidate, 7) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "control",
+      "source": "Button(\"Tomorrow\") { context.review.deferCandidate(candidate, 1) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "control",
+      "source": "Menu {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "control",
+      "source": "Menu(\"Review later\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "control",
+      "source": "Toggle(isOn: Binding(get: { item.isDone }, set: { context.setDone(item, $0) })) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"\\(identifier)-attribution\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"\\(identifier)-caption\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"\\(identifier)-confirm\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"\\(identifier)-defer-tomorrow\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"\\(identifier)-defer-week\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"\\(identifier)-dismiss\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"\\(identifier)-done\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"\\(identifier)-more\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(identifier)",
+      "occurrences": 2
     },
     {
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
@@ -2486,6 +2595,18 @@
     },
     {
       "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "presentation",
+      "source": ".sheet(item: $reviewing) { target in",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "state",
+      "source": "@State private var isSaving = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
       "category": "state",
       "source": "@State private var language: String?",
       "occurrences": 1
@@ -2494,6 +2615,12 @@
       "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
       "category": "state",
       "source": "@State private var requestedLanguage: String?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "state",
+      "source": "@State private var reviewing: MarginReviewTarget?",
       "occurrences": 1
     },
     {

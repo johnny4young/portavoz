@@ -67,7 +67,7 @@ struct MeetingDetailMetadataChapterEligibilityTests {
         let fixture = Fixture()
         let original = fixture.review(.raw)
         var state = MeetingDetailTranscriptPresentationState()
-        state.receiveCore(original, resetChapterTitles: true)
+        state.receive(original, isCore: true, resetChapterTitles: true)
         let first = try #require(state.presentation)
         let didMerge = state.mergeChapterTitles([0: "Friday"], detail: original)
         #expect(didMerge)
@@ -82,14 +82,14 @@ struct MeetingDetailMetadataChapterEligibilityTests {
 
         let changed = fixture.review(.empty)
         #expect(changed.correctionRevision == original.correctionRevision)
-        state.receiveCore(changed, resetChapterTitles: false)
+        state.receive(changed, isCore: true, resetChapterTitles: false)
         #expect(state.presentation !== titled)
         let empty = try #require(state.presentation)
         var eligibility = MeetingDetailMetadataSuggestionState()
         let emptyAttempt = eligibility.begin(
             review: changed, content: empty.current, titledChapterStarts: Set(state.chapterTitles.keys))
         #expect(emptyAttempt == nil)
-        state.receiveCore(nil, resetChapterTitles: true)
+        state.receive(nil, isCore: true, resetChapterTitles: true)
         #expect(state.presentation == nil)
         #expect(state.chapterTitles.isEmpty)
     }

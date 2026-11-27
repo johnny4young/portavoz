@@ -124,9 +124,7 @@ struct MeetingActionItemsView: View {
         days: Int,
         actions commitmentActions: MeetingCommitmentInboxActions
     ) {
-        guard let revisitAt = Calendar.autoupdatingCurrent.date(byAdding: .day, value: days, to: Date())
-        else { return }
-        perform(candidate) { await commitmentActions.deferUntil(candidate, revisitAt) }
+        perform(candidate) { await commitmentActions.deferCandidate(candidate, days: days) }
     }
 
     /// Failures surface through the detail model's action error.

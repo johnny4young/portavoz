@@ -331,66 +331,18 @@ struct MeetingGeneratedDocumentSection: View {
         }
     }
 
-    /// The gesture entry, or the durable state it produced. Confirmation only
-    /// offers itself over current evidence — stale or purged evidence keeps
-    /// the existing honest badges and nothing else.
-    @ViewBuilder
     private func decisionConfirmation(
         _ evidence: SummaryDecisionEvidence,
         bullet: String,
         resolution: TranscriptEvidenceResolution,
         identifier: String
     ) -> some View {
-        if let confirmed = values.decisionConfirmations[evidence.id] {
-            let badge = confirmed.topicLabels.isEmpty
-                ? L10n.text("Confirmed")
-                : L10n.format(
-                    "Confirmed · %@",
-                    confirmed.topicLabels.joined(separator: ", "))
-            let badgeLabel = Label(badge, systemImage: PVSymbol.success)
-                .font(.caption)
-                .foregroundStyle(.ink3)
-            if confirmed.topicLinks.isEmpty {
-                badgeLabel
-                    // One element with an explicit label: the badge announces
-                    // its full state, and the identifier's element carries the
-                    // topic instead of an empty container wrapping unreachable
-                    // children.
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(badge)
-                    .accessibilityIdentifier("\(identifier)-confirmed")
-            } else {
-                // The badge doubles as the retraction entry: each active link
-                // offers its withdrawal. The decision stays confirmed — only
-                // what it is about is taken back (history keeps the event).
-                Menu {
-                    ForEach(confirmed.topicLinks) { link in
-                        Button(L10n.format("Remove topic “%@”", link.label)) {
-                            actions.retractDecisionTopic(link)
-                        }
-                        .accessibilityIdentifier(
-                            "\(identifier)-retract-\(link.id.rawValue.uuidString)")
-                    }
-                } label: {
-                    badgeLabel
-                }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .fixedSize()
-                .accessibilityLabel(badge)
-                .accessibilityIdentifier("\(identifier)-confirmed")
-            }
-        } else if resolution.status == .current {
-            Button {
-                actions.confirmDecision(evidence, bullet)
-            } label: {
-                Text("Confirm…")
-            }
-            .buttonStyle(.plain)
-            .font(.caption)
-            .foregroundStyle(PVDesign.accent)
-            .accessibilityIdentifier("\(identifier)-confirm")
-        }
+        DecisionConfirmationControl(
+            confirmation: values.decisionConfirmations[evidence.id],
+            canConfirm: resolution.status == .current,
+            identifier: identifier,
+            confirm: { actions.confirmDecision(evidence, bullet) },
+            retract: actions.retractDecisionTopic)
     }
 
     @ViewBuilder
@@ -641,6 +593,69 @@ struct MeetingEvidenceSources: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.ink3)
                 .accessibilityIdentifier(unavailableIdentifier)
+        }
+    }
+}
+
+/// The gesture entry, or the durable state it produced. Confirmation only
+/// offers itself over current evidence — stale or purged evidence keeps
+/// the existing honest badges and nothing else.
+struct DecisionConfirmationControl: View {
+    let confirmation: DecisionObservationConfirmationState?
+    let canConfirm: Bool
+    let identifier: String
+    let confirm: @MainActor () -> Void
+    let retract: @MainActor (DecisionObservationConfirmationState.TopicLink) -> Void
+
+    @ViewBuilder
+    var body: some View {
+        if let confirmed = confirmation {
+            let badge = confirmed.topicLabels.isEmpty
+                ? L10n.text("Confirmed")
+                : L10n.format(
+                    "Confirmed · %@",
+                    confirmed.topicLabels.joined(separator: ", "))
+            let badgeLabel = Label(badge, systemImage: PVSymbol.success)
+                .font(.caption)
+                .foregroundStyle(.ink3)
+            if confirmed.topicLinks.isEmpty {
+                badgeLabel
+                    // One element with an explicit label: the badge announces
+                    // its full state, and the identifier's element carries the
+                    // topic instead of an empty container wrapping unreachable
+                    // children.
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(badge)
+                    .accessibilityIdentifier("\(identifier)-confirmed")
+            } else {
+                // The badge doubles as the retraction entry: each active link
+                // offers its withdrawal. The decision stays confirmed — only
+                // what it is about is taken back (history keeps the event).
+                Menu {
+                    ForEach(confirmed.topicLinks) { link in
+                        Button(L10n.format("Remove topic “%@”", link.label)) {
+                            retract(link)
+                        }
+                        .accessibilityIdentifier(
+                            "\(identifier)-retract-\(link.id.rawValue.uuidString)")
+                    }
+                } label: {
+                    badgeLabel
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .accessibilityLabel(badge)
+                .accessibilityIdentifier("\(identifier)-confirmed")
+            }
+        } else if canConfirm {
+            Button(action: confirm) {
+                Text("Confirm…")
+            }
+            .buttonStyle(.plain)
+            .font(.caption)
+            .foregroundStyle(PVDesign.accent)
+            .accessibilityIdentifier("\(identifier)-confirm")
         }
     }
 }

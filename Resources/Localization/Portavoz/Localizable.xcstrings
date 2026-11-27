@@ -18217,6 +18217,66 @@
         }
       }
     },
+    "%@ said it and owns it": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo dijo %@ y es suyo"
+          }
+        }
+      }
+    },
+    "You said it and own it": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo dijiste tú y es tuyo"
+          }
+        }
+      }
+    },
+    "%@ owns it": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es de %@"
+          }
+        }
+      }
+    },
+    "You own it": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es tuyo"
+          }
+        }
+      }
+    },
+    "Decision": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Decisión"
+          }
+        }
+      }
+    },
+    "Commitment · due %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compromiso · vence %@"
+          }
+        }
+      }
+    },
     "%@ asked": {
       "localizations": {
         "es": {

@@ -489,6 +489,8 @@ def app_features(filename: str) -> set[str]:
         return {"meeting-processing", "meeting-summary"}
     if "meetingcommitmentinbox" in lowered:
         return {"meeting-commitments"}
+    if "meetingmarginnotes" in lowered:
+        return {"meeting-commitments", "meeting-evidence"}
     if any(token in lowered for token in (
         "skillofferbanner", "skillconfirmsheet", "meetingdetailcoordinator+skills"
     )):
@@ -718,6 +720,7 @@ def lower_layer_features(path: str) -> set[str]:
     if any(token in lowered for token in (
         "managemeetingcommitmentinbox",
         "meetingcommitmentinbox",
+        "meetingmarginnotes",
     )):
         return {"meeting-commitments"}
     if lowered in {
