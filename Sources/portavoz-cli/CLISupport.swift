@@ -43,9 +43,9 @@ enum CLISupport {
         store: ModelStore
     ) async throws -> NemotronLatin1120Engine {
         let descriptor = ModelCatalog.nemotronLatin1120
-        let directory = try await ensureModel(descriptor, store: store)
-        return try await NemotronLatin1120Engine.load(
-            fromVerifiedDirectory: directory)
+        _ = try await ensureModel(descriptor, store: store)
+        let installation = try await store.lease(descriptor)
+        return try await NemotronLatin1120Engine.loadLeased(installation)
     }
 
     private static func ensureModel(

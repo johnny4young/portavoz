@@ -52,7 +52,7 @@ enum AudioInputTapPolicy {
 /// `@unchecked Sendable`: the engine and continuation are mutated only from
 /// `start()`/`stop()` and the serial `restartQueue`; the tap block runs
 /// serialized on the render thread and closes over its own continuation.
-public final class MicrophoneSource: CaptureReportingSource, @unchecked Sendable {
+public final class MicrophoneSource: RecoverableAudioCaptureSource, CaptureReportingSource, @unchecked Sendable {
     public let channel: AudioChannel = .microphone
 
     private var engine = AVAudioEngine()
@@ -349,10 +349,7 @@ public final class MicrophoneSource: CaptureReportingSource, @unchecked Sendable
             self.applyVoiceProcessingIfEnabled()
             let input = self.engine.inputNode
             guard AudioInputFormatPolicy.isUsable(input.outputFormat(forBus: 0)) else {
-                self.scheduleRestart(
-                    ticket: ticket,
-                    delay: AudioRouteTransitionTiming.retryDelay
-                )
+                self.retryOrFailRestart(ticket: ticket)
                 return
             }
             self.installTap()
@@ -362,12 +359,26 @@ public final class MicrophoneSource: CaptureReportingSource, @unchecked Sendable
                 self.installConfigurationObserver()
             } catch {
                 self.discardCurrentEngine()
-                self.scheduleRestart(
-                    ticket: ticket,
-                    delay: AudioRouteTransitionTiming.retryDelay
-                )
+                self.retryOrFailRestart(ticket: ticket)
             }
         }
+    }
+
+    private func retryOrFailRestart(ticket: AudioRouteTransitionGate.Ticket) {
+        if routeTransitions.recordRetry(for: ticket) {
+            scheduleRestart(
+                ticket: ticket,
+                delay: AudioRouteTransitionTiming.retryDelay
+            )
+        } else {
+            continuation?.finish(failure: .sourceFailed)
+        }
+    }
+
+    /// Best-effort recovery requested after the writer observes that microphone
+    /// callbacks stopped while the remote channel remains alive.
+    public func requestRecovery() async {
+        requestRestart()
     }
 
     /// Re-selects the pinned input device. `required` start fails hard on a

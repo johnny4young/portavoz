@@ -86,6 +86,18 @@ final class ModelCatalogTests: XCTestCase {
         XCTAssertTrue(model.artifacts.allSatisfy { $0.sha256.count == 64 })
     }
 
+    func testWhisperWindowRangeClampsAndAudibleSignalSkipsDigitalSilence() {
+        XCTAssertEqual(
+            WhisperEngine.windowSampleRange(for: -1.0..<2.5, sampleRate: 16_000, sampleCount: 32_000),
+            0..<32_000)
+        XCTAssertEqual(
+            WhisperEngine.windowSampleRange(for: 1.0..<2.0, sampleRate: 16_000, sampleCount: 48_000),
+            16_000..<32_000)
+        XCTAssertFalse(WhisperEngine.hasAudibleSignal(in: [Float](repeating: 0, count: 1_000)))
+        XCTAssertFalse(WhisperEngine.hasAudibleSignal(in: [0.001, -0.002, 0.005]))
+        XCTAssertTrue(WhisperEngine.hasAudibleSignal(in: [0, 0.05, 0]))
+    }
+
     func testMLXLiveSummaryChallengersArePinnedAndNonServing() {
         let challengers = [
             ModelCatalog.mlxQwen35Point8BChallenger,

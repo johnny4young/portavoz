@@ -51,6 +51,7 @@ public actor SileroVoiceActivityDetector {
 
     private let channel: AudioChannel
     private let infer: Inference
+    private let installationLease: ModelStore.ModelLease?
     private var resampler = StreamingLinearResampler()
     private var modelState = VadStreamState.initial()
     private var pending: [Float] = []
@@ -66,11 +67,20 @@ public actor SileroVoiceActivityDetector {
         channel: AudioChannel,
         computeUnits: MLComputeUnits = .cpuOnly
     ) async throws -> SileroVoiceActivityDetector {
-        guard let installed = await store.verifiedInstallation(ModelCatalog.sileroVAD) else {
+        guard await store.verifiedInstallation(ModelCatalog.sileroVAD) != nil else {
             throw VoiceActivityDetectionError.modelNotInstalled
         }
         try Task.checkCancellation()
-        let url = installed.directory.appendingPathComponent(
+        let lease: ModelStore.ModelLease
+        do {
+            lease = try await store.lease(ModelCatalog.sileroVAD)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw VoiceActivityDetectionError.modelNotInstalled
+        }
+        try Task.checkCancellation()
+        let url = lease.directory.appendingPathComponent(
             ModelCatalog.sileroVADBundleDirectory, isDirectory: true)
         let configuration = MLModelConfiguration()
         configuration.computeUnits = computeUnits
@@ -78,13 +88,18 @@ public actor SileroVoiceActivityDetector {
         try Task.checkCancellation()
         let manager = VadManager(
             config: VadConfig(computeUnits: computeUnits), vadModel: model)
-        return SileroVoiceActivityDetector(channel: channel) { frame, state in
+        return SileroVoiceActivityDetector(channel: channel, installationLease: lease) { frame, state in
             try await manager.processStreamingChunk(frame, state: state)
         }
     }
 
-    init(channel: AudioChannel, infer: @escaping Inference) {
+    init(
+        channel: AudioChannel,
+        installationLease: ModelStore.ModelLease? = nil,
+        infer: @escaping Inference
+    ) {
         self.channel = channel
+        self.installationLease = installationLease
         self.infer = infer
     }
 

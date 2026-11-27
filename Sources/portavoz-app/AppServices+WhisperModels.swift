@@ -181,10 +181,10 @@ extension AppServices {
             activeID == id { return }
         if whisperRuntimeLoad?.descriptorID == id { return }
         if whisperVariantID == id, !releaseWhisper() { return }
-        try? await modelLifecycle.remove(descriptor)
         if whisperPreparedModel?.descriptorID == id {
             whisperPreparedModel = nil
         }
+        try? await modelLifecycle.remove(descriptor)
         switch whisperPreparationState {
         case .ready(let variantID) where variantID == id:
             whisperPreparationState = .idle

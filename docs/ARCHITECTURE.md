@@ -1491,16 +1491,16 @@ rename, and performs a complete verification pass before returning a loadable
 directory. Every store names its consumer and location, and a model this consumer
 has not claimed reads as missing, because bytes from another app are not consent.
 
-Shared-store Parakeet loading takes an opaque `ModelStore.ModelLease` before
-the final verification and native load. The engine, its observer copies, and
-each live or batch job retain that same lease through cleanup, so removing a
-claim in another process cannot delete resident speech weights. Releasing a
-readiness check is not runtime unload. Live failure cancels output and joins
-the native recognizer through its `finish()` barrier before cleanup; cancelling
-the pinned vendor task alone does not prove an in-flight prediction ended.
-The raw-directory loader remains for
-externally owned fixtures; app v3 and CLI product loading use the leased
-entry point. Other model families still have the lease gap recorded in `GAPS.md`.
+Shared-store loading across Parakeet, Whisper (and its tokenizer), Pyannote,
+Silero VAD, resident MLX summary runtimes, and the research-only Nemotron CLI
+loader takes an opaque `ModelStore.ModelLease` before final verification and
+native load. Each runtime and active job retains its lease through cleanup, so
+removing a claim in another process cannot delete resident weights. Releasing a
+readiness check is not runtime unload. Live Parakeet failure cancels output and
+joins the native recognizer through its `finish()` barrier before cleanup;
+cancelling the pinned vendor task alone does not prove an in-flight prediction
+ended. Raw-directory loaders remain for externally owned fixtures; app and CLI
+product loading hold shared-store leases.
 
 `VerifiedModelLifecycle` wraps the process's shared `ModelStore`. It emits an
 installation value only after the complete descriptor passes verification,
@@ -1983,23 +1983,25 @@ request. Generated content is never downgraded into provenance-free content,
 and healthy finalized audio is never deleted because an optional projection is
 invalid.
 
-System-audio callback liveness is monitored independently from acoustic
-silence. Monitoring begins only after the first system frame, then persisted
-microphone frames provide a recording heartbeat. Eight seconds without another
-system frame emits a content-free health event and requests a best-effort,
-in-place `ProcessTapSource` graph rebuild; retries remain bounded to one request
-per eight seconds until frames return. Capture, the microphone writer, and the
-recording lifecycle never stop for this degradable recovery. A lock-protected
-state machine keeps the per-chunk check off the `RecordingSession` actor hot
-path, while source recovery remains actor-isolated. The application presents a
-non-dismissible warning and an explicit recovered state; callback or stream
-health events contain no audio or transcript content. After two uninterrupted
-minutes without remote callbacks, Core policy makes Stop prominent in both the
-full recording surface and compact HUD because the call may have ended; the
-outage never stops capture or interrupts microphone capture. A separate Core
-`CallEndDetector` watches persisted levels: after the remote side was heard,
-three quiet minutes on both channels ask whether the call ended, and an
-unanswered question stops the recording through the normal Stop path five
+Capture callback liveness is monitored symmetrically across `.system` and
+`.microphone` independently from acoustic silence. Monitoring begins for a
+channel after its first frame, with persisted frames from its peer acting as a
+recording heartbeat. Eight seconds without another frame emits a content-free
+health event and requests a best-effort, in-place graph rebuild
+(`ProcessTapSource` or `MicrophoneSource`), bounded to 10 route-recovery retries
+(~5 s) before surfacing a terminal channel failure instead of spinning silently.
+Per-app `ProcessTapSource` sessions fail closed (`targetProcessesUnavailable`)
+rather than silently widening to global Mac audio when requested meeting PIDs
+vanish. A `Mutex`-protected state machine keeps the per-chunk check off the
+`RecordingSession` actor hot path, while source recovery remains actor-isolated.
+The application presents non-dismissible warnings and explicit recovered states;
+callback or stream health events contain no audio or transcript content. After
+two uninterrupted minutes without remote callbacks, Core policy makes Stop
+prominent in both the full recording surface and compact HUD because the call
+may have ended; the outage never stops capture or interrupts microphone capture.
+A separate Core `CallEndDetector` watches persisted levels: after the remote
+side was heard, three quiet minutes on both channels ask whether the call ended,
+and an unanswered question stops the recording through the normal Stop path five
 minutes later.
 
 At launch, expired leases are recovered before the application workflow

@@ -176,9 +176,11 @@ final class RecordingController {
     /// from finalized audio through the durable worker.
     private(set) var liveTranscriptState = LiveTranscriptState.idle
     private(set) var systemCaptureHealth = RecordingSystemCaptureHealth.healthy
-    private(set) var microphoneCaptureFailed = false
+    private(set) var microphoneCaptureHealth = RecordingSystemCaptureHealth.healthy
+    var microphoneCaptureFailed: Bool { microphoneCaptureHealth == .failed }
     private var captureHealthGeneration = UUID()
     private var systemRecoveryNoticeTask: Task<Void, Never>?
+    private var microphoneRecoveryNoticeTask: Task<Void, Never>?
 
     /// Live speaker hints (field ask jul 2026: two remote voices back to back
     /// merged into one "Them" row). A DEDICATED diarizer instance — the
@@ -379,10 +381,12 @@ final class RecordingController {
         systemAudioMissing = false
         systemAudioClipping = false
         systemCaptureHealth = .healthy
-        microphoneCaptureFailed = false
+        microphoneCaptureHealth = .healthy
         captureHealthGeneration = UUID()
         systemRecoveryNoticeTask?.cancel()
         systemRecoveryNoticeTask = nil
+        microphoneRecoveryNoticeTask?.cancel()
+        microphoneRecoveryNoticeTask = nil
         liveTurns = []
         liveSpeakerLabels = [:]
         tappedMeetingApps = []
@@ -608,13 +612,52 @@ extension RecordingController {
            !RecordingSpeechPreview.admit(segment, into: &speechVolatileByChannel) {
             return
         }
-        coalescer.apply(segment, to: &captions)
+        let previousCount = captions.count
+        let previousTailID = captions.last?.id
+        let earliestInvalidated = coalescer.apply(segment, to: &captions)
+        reconcileLiveConsumersAfterCaptionUpdate(
+            earliestInvalidated: earliestInvalidated,
+            previousCount: previousCount,
+            previousTailID: previousTailID)
         interviewAssist.observe(captions: captions)
         services?.liveAssistUITestFixture?.receiveCaption(in: self)
         services?.liveAssistUITestFixture?.receiveLiveVoice(in: self)
         detectClosedRow()
         armTurnEndpointDeadline()
         liveTranslationWakeHub.signal()
+    }
+
+    /// Keeps live translation, rolling summary, and live speaker labels aligned
+    /// when microphone-echo replacement removes the tail row or reopens and
+    /// extends the preceding remote row (D545).
+    private func reconcileLiveConsumersAfterCaptionUpdate(
+        earliestInvalidated: Int?,
+        previousCount: Int,
+        previousTailID: UUID?
+    ) {
+        var removedEchoTail = false
+        if let previousTailID, captions.last?.id != previousTailID,
+           !captions.contains(where: { $0.id == previousTailID }) {
+            removedEchoTail = true
+            translations.removeValue(forKey: previousTailID)
+            translatedSourceTexts.removeValue(forKey: previousTailID)
+            unsupportedTranslationRowIDs.remove(previousTailID)
+            summarizedCaptionIDs.remove(previousTailID)
+            liveSpeakerLabels.removeValue(forKey: previousTailID)
+        }
+        guard let earliestInvalidated,
+              earliestInvalidated < previousCount,
+              captions.indices.contains(earliestInvalidated)
+        else { return }
+        let mutatedID = captions[earliestInvalidated].id
+        unsupportedTranslationRowIDs.remove(mutatedID)
+        let wasSummarized = summarizedCaptionIDs.remove(mutatedID) != nil
+        if removedEchoTail || wasSummarized {
+            liveSummarySourceRevision &+= 1
+            if phase == .recording {
+                requestLiveSummaryRefresh()
+            }
+        }
     }
 
     var translationNeedsDownload: Bool { translationState == .needsDownload }
@@ -888,37 +931,60 @@ private extension RecordingController {
             }
         }
     }
+}
 
+extension RecordingController {
     func receiveCaptureHealth(_ event: RecordingCaptureHealthEvent) {
-        let channel: AudioChannel
-        switch event {
-        case .stalled(let value, _), .recoveryRequested(let value, _, _),
-             .recovered(let value, _), .streamFailed(let value):
-            channel = value
-        }
-        if channel == .microphone, case .streamFailed = event {
-            microphoneCaptureFailed = true
-            liveVoices.setYouSpeaking(false)
+        switch event.channel {
+        case .microphone:
+            if case .streamFailed = event { liveVoices.setYouSpeaking(false) }
+            applyCaptureHealth(
+                event,
+                to: &microphoneCaptureHealth,
+                clearTask: &microphoneRecoveryNoticeTask
+            ) { [weak self] in
+                guard self?.microphoneCaptureHealth == .recovered else { return }
+                self?.microphoneCaptureHealth = .healthy
+            }
+        case .system:
+            applyCaptureHealth(
+                event,
+                to: &systemCaptureHealth,
+                clearTask: &systemRecoveryNoticeTask
+            ) { [weak self] in
+                guard self?.systemCaptureHealth == .recovered else { return }
+                self?.systemCaptureHealth = .healthy
+            }
+        case .room:
             return
         }
-        guard channel == .system else { return }
-        systemRecoveryNoticeTask?.cancel()
+    }
+
+    private func applyCaptureHealth(
+        _ event: RecordingCaptureHealthEvent,
+        to health: inout RecordingSystemCaptureHealth,
+        clearTask: inout Task<Void, Never>?,
+        clearRecovered: @escaping @MainActor () -> Void
+    ) {
+        // A failed channel is retired until the next start; late events cannot revive it.
+        guard health != .failed else { return }
+        clearTask?.cancel()
         switch event {
         case .stalled(_, let secondsWithoutFrames):
-            systemCaptureHealth = .stalled(secondsWithoutFrames: secondsWithoutFrames)
+            health = .stalled(secondsWithoutFrames: secondsWithoutFrames)
         case .recoveryRequested(_, let attempt, let secondsWithoutFrames):
-            systemCaptureHealth = .recovering(
+            health = .recovering(
                 attempt: attempt,
                 secondsWithoutFrames: secondsWithoutFrames)
         case .recovered:
-            systemCaptureHealth = .recovered
-            systemRecoveryNoticeTask = Task { @MainActor [weak self] in
+            health = .recovered
+            clearTask = Task { @MainActor in
                 try? await Task.sleep(for: .seconds(5))
-                guard !Task.isCancelled, self?.systemCaptureHealth == .recovered else { return }
-                self?.systemCaptureHealth = .healthy
+                guard !Task.isCancelled else { return }
+                clearRecovered()
             }
         case .streamFailed:
-            systemCaptureHealth = .failed
+            health = .failed
         }
     }
 }
