@@ -3395,7 +3395,11 @@ starves for the margin. Transcript rows are a lazy section of that page and
 follow playback through the page's scroll; no view measures heights to allocate
 panes, and no route or storage state knows about layout. A transcript holding
 margin notes says so through a layout value, and the layout starts it below a
-taller rail so cards never meet it; lazy rows keep no layout state. Margin notes come
+taller rail so cards never meet it; lazy rows keep no layout state. A line with
+notes is several times taller than its neighbours, and a lazy stack that holds
+one never settles on a size, so `MeetingMarginNotes.readingRuns` splits the
+transcript: each noted line is laid out eagerly and the lines between them
+share a lazy stack. Margin notes come
 from `MeetingReviewReadModel.marginNotes(in:)`, a pure ApplicationKit
 projection that keys each current decision and action item to the visible row
 holding its first resolvable evidence line; the transcript draws a row's notes

@@ -89,6 +89,24 @@ final class MeetingMarginNotesTests: XCTestCase {
         XCTAssertTrue(notes.anchoredItemIDs.isEmpty)
     }
 
+    func testALineWithNotesLaysOutApartFromTheLinesAroundIt() {
+        let closing = line("Thanks, everyone.", speaker: me, at: 8)
+        let later = line("See you on Monday.", speaker: ana, at: 12)
+        let items = content(rows: [opening, decided, closing, later]).readingItems
+        let notes = review(items: [], evidence: [decided.id]).marginNotes(in: content(), at: now)
+
+        let runs = notes.readingRuns(items)
+        XCTAssertEqual(runs.map(\.holdsNotes), [false, true, false])
+        XCTAssertEqual(
+            runs.map { $0.items.map(\.id) },
+            [[.row(opening.id)], [.row(decided.id)], [.row(closing.id), .row(later.id)]])
+        XCTAssertEqual(runs.map(\.id), [.row(opening.id), .row(decided.id), .row(closing.id)])
+
+        let plain = MeetingMarginNotes.empty.readingRuns(items)
+        XCTAssertEqual(plain.map { $0.items.count }, [4], "a transcript without notes stays one lazy run")
+        XCTAssertTrue(notes.readingRuns([]).isEmpty)
+    }
+
     // MARK: Fixtures
 
     private let decisionID = SummaryDecisionID()

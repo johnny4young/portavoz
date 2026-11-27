@@ -492,7 +492,7 @@ synchronization performs a start-time upper-bound
 search plus a maximum-end segment-tree lookup, retaining the released overlap
 and gap behavior without scanning up to 20,000 rows every 200 ms. The extracted
 transcript and chapter sections receive only immutable values and explicit seek
-or rename actions. Row rendering remains a stable-ID `LazyVStack`, now a
+or rename actions. Row rendering remains a stable-ID `LazyVStack` (one per run of lines between margin-noted ones, D669), now a
 section of the meeting page's scroll rather than its own viewport (D658); the
 generic focused viewport serves only live captions and keeps reader ownership
 in a separately tested pure policy.
@@ -607,7 +607,14 @@ size it is offered without measuring the scroll, so a minimum or ideal size
 query from the window never lays the lazy transcript out at a width the page
 does not have; the page and line layouts answer `explicitAlignment` with nil,
 so measuring one never places its subviews. On a one-column page the same cards fold under the line's text, on its
-edge. A decision card (`margin-decision-<id>`) reads
+edge. A `LazyVStack` sizes itself from the rows it has measured, so a row with
+cards, several times taller than its neighbours, made that size alternate
+between two values on every layout pass once the row left the realized window
+(macOS 26), and the page never settled. `MeetingMarginNotes.readingRuns`
+therefore splits the reading items into runs: a noted line is its own run,
+placed eagerly in the transcript's `VStack`, and each stretch of lines between
+noted ones is one `LazyVStack`; a transcript without notes stays a single lazy
+run. Row identifiers and `scrollTo` targets are unchanged. A decision card (`margin-decision-<id>`) reads
 "✓ Decision", the bullet in SF semibold and the Decisions tab's own
 `DecisionConfirmationControl`: Confirm… (`-confirm`, the decision sheet) or
 Confirmed with its topics (`-confirmed`, a menu that removes a topic);

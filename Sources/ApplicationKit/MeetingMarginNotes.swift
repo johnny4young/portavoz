@@ -29,6 +29,22 @@ public struct MeetingMarginNote: Sendable, Identifiable {
     }
 }
 
+/// Consecutive transcript items that lay out together. A line with notes is
+/// several times taller than its neighbours, so it never shares their lazy
+/// stack, whose size is estimated from the rows it has measured.
+public struct TranscriptReadingRun: Sendable, Identifiable {
+    public let items: ArraySlice<TranscriptReadingItem>
+    public let holdsNotes: Bool
+    public let id: TranscriptReadingItem.Key
+
+    /// `items` must not be empty.
+    init(items: ArraySlice<TranscriptReadingItem>, holdsNotes: Bool) {
+        self.items = items
+        self.holdsNotes = holdsNotes
+        self.id = items[items.startIndex].id
+    }
+}
+
 public struct MeetingMarginNotes: Sendable {
     public static let empty = MeetingMarginNotes(byRow: [:])
 
@@ -40,6 +56,23 @@ public struct MeetingMarginNotes: Sendable {
 
     public func notes(forRow rowID: UUID) -> [MeetingMarginNote] {
         byRow[rowID] ?? []
+    }
+
+    /// The transcript in layout order: each line with notes alone, and the
+    /// lines between them together.
+    public func readingRuns(_ items: [TranscriptReadingItem]) -> [TranscriptReadingRun] {
+        guard !items.isEmpty else { return [] }
+        guard !byRow.isEmpty else { return [TranscriptReadingRun(items: items[...], holdsNotes: false)] }
+        var runs: [TranscriptReadingRun] = []
+        var start = items.startIndex
+        for (index, item) in zip(items.indices, items) {
+            guard case .row(let row, _) = item, byRow[row.id]?.isEmpty == false else { continue }
+            if start < index { runs.append(TranscriptReadingRun(items: items[start..<index], holdsNotes: false)) }
+            runs.append(TranscriptReadingRun(items: items[index...index], holdsNotes: true))
+            start = index + 1
+        }
+        if start < items.endIndex { runs.append(TranscriptReadingRun(items: items[start...], holdsNotes: false)) }
+        return runs
     }
 
     public var hasDecisions: Bool {

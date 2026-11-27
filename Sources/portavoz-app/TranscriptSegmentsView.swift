@@ -2,10 +2,11 @@ import ApplicationKit
 import PortavozCore
 import SwiftUI
 
-/// Lazy, synchronized transcript rows inside the meeting page's scroll. While
-/// audio plays and the transcript is on screen, the page follows the active
-/// row; an explicit seek or citation brings its row into view. Playback never
-/// pulls the page away from the header or summary the reader is on.
+/// Synchronized transcript rows inside the meeting page's scroll, lazy except
+/// for the lines that carry notes. While audio plays and the transcript is on
+/// screen, the page follows the active row; an explicit seek or citation brings
+/// its row into view. Playback never pulls the page away from the header or
+/// summary the reader is on.
 /// Active-row lookup stays logarithmic instead of scanning every row at the
 /// playback refresh cadence. On a page wide enough for the margin, a line's
 /// decisions and commitments sit beside it; otherwise they fold under it.
@@ -36,19 +37,17 @@ struct TranscriptSegmentsView: View {
     var body: some View {
         let activeRowID = activeRowID
         ScrollViewReader { proxy in
-            LazyVStack(alignment: .leading, spacing: 6) {
-                ForEach(content.readingItems) { item in
-                    let correctableRow = correctableRow(item)
-                    withNotes(item, reservesCorrectionSpace: correctableRow != nil) {
-                        ZStack(alignment: .trailing) {
-                            itemView(
-                                item,
-                                isActive: item.id == activeRowID.map { .row($0) },
-                                reservesCorrectionSpace: correctableRow != nil)
-                            if let correctableRow { correctionAction(for: correctableRow) }
+            // A lazy stack sizes itself from the rows it has measured; one far
+            // taller than the rest keeps that size, and so the page, from settling.
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach((margin?.notes ?? .empty).readingRuns(content.readingItems)) { run in
+                    if run.holdsNotes {
+                        rows(run.items, activeRowID: activeRowID)
+                    } else {
+                        LazyVStack(alignment: .leading, spacing: 6) {
+                            rows(run.items, activeRowID: activeRowID)
                         }
                     }
-                    .id(item.id)
                 }
             }
             // Rows inset for the active outline; the stack gives that back so
@@ -82,6 +81,22 @@ struct TranscriptSegmentsView: View {
             .task(id: performanceScrollEnabled ? content.rows.count : 0) {
                 runPerformanceScrollIfRequested(proxy)
             }
+        }
+    }
+
+    private func rows(_ items: ArraySlice<TranscriptReadingItem>, activeRowID: UUID?) -> some View {
+        ForEach(items) { item in
+            let correctableRow = correctableRow(item)
+            withNotes(item, reservesCorrectionSpace: correctableRow != nil) {
+                ZStack(alignment: .trailing) {
+                    itemView(
+                        item,
+                        isActive: item.id == activeRowID.map { .row($0) },
+                        reservesCorrectionSpace: correctableRow != nil)
+                    if let correctableRow { correctionAction(for: correctableRow) }
+                }
+            }
+            .id(item.id)
         }
     }
 
