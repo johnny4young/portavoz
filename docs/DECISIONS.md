@@ -23643,15 +23643,19 @@ questions asked of you. The live diarizer keeps revising closed rows: it
 splits a row into fresh IDs, swaps S-labels and labels rows it skipped. An
 incremental per-turn tracker would have to undo each of those, so
 `LiveVoiceStage` (ApplicationKit) is pure and rebuilds from the whole caption
-list and the current labels; churn then always equals a fresh build. Its
-voice columns are one per second with indexes that never move, so a rebuild
-rebins only from the first second whose attribution changed.
+list and the current labels; churn then always yields the voices and turns
+of a fresh build. Its voice columns are one per second with indexes that
+never move, so a rebuild rebins only from the first second whose attribution
+changed (an exact tie in one second goes to the voice seen first).
 
 The 13 Nov rule keeps live state out of the recording bar's layout.
 `RecordingLiveVoicesModel` is its own observable, read by neither the bar nor
 the floating panel, and refreshes at most once a second. The microphone level
 reaches it only as a speech gate with hysteresis measured in captured time,
 so the 20 Hz relay asks for a refresh only when you start or stop speaking.
+The gate ignores microphone samples quieter than the recent incoming peak,
+since loudspeaker bleed would otherwise make you the speaker while someone
+else talks, and it closes when the microphone stops sending samples.
 You are the current speaker while that gate is open; otherwise the open
 row's voice within three seconds of its last word. Live voices are not
 persisted: Stop resets the model and the durable diarization pass replaces

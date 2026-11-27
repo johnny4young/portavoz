@@ -898,6 +898,7 @@ private extension RecordingController {
         }
         if channel == .microphone, case .streamFailed = event {
             microphoneCaptureFailed = true
+            liveVoices.setYouSpeaking(false)
             return
         }
         guard channel == .system else { return }

@@ -50,6 +50,15 @@ final class LiveVoiceStageTests: XCTestCase {
         XCTAssertEqual(stage.voice("remote")?.turns, [17...18], "the growing row waits for a label")
     }
 
+    func testOverlappingRowsOfOneVoiceCountTheirTalkOnce() {
+        let mine = row(.microphone, 0, 4)
+        let echo = row(.system, 2, 5)
+        let stage = LiveVoiceStage.updating(.empty, with: source(
+            [mine, echo, row(.system, 6, 7)], labels: [echo.id: "Me"]))
+
+        XCTAssertEqual(stage.voice("you")?.talkSeconds, 5)
+    }
+
     func testCurrentSpeakerIsYouWhileTheMicrophoneSpeaksThenTheOpenRow() {
         let closed = row(.system, 0, 5)
         let open = row(.system, 5, 9)

@@ -55,6 +55,7 @@ final class RecordingLiveVoicesModel {
             if delay > .zero {
                 do { try await sleep(delay) } catch { return }
             }
+            guard !Task.isCancelled else { return }
             self?.refresh()
         }
     }
@@ -89,8 +90,9 @@ final class RecordingLiveVoicesModel {
         guard var source = source?() else { return }
         source.youSpeaking = youSpeaking
         apply(source)
-        // A remote speaker stops being current once their row goes quiet.
-        guard let current = stage.current, current != LiveVoiceStage.youKey else { return }
+        // Without the gate, whoever owns the open row (your microphone row
+        // included) stops being current once that row goes quiet.
+        guard stage.current != nil, !youSpeaking else { return }
         let sleep = sleep
         expiry = Task { [weak self] in
             do { try await sleep(.seconds(LiveVoiceStage.currentWindow) + Self.minimumInterval) } catch { return }

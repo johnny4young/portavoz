@@ -109,6 +109,10 @@ struct RecordingLevelBuffer {
     private var voicedMicrophoneLevel: Float = 0
     private var voicedMicrophoneChunks = 0
     private var microphoneSpeechGate = MicrophoneSpeechGate()
+    /// Loudspeaker bleed reaches the microphone quieter than the call itself.
+    private var recentSystemPeak: Float = 0
+    /// Captured system time since the last microphone sample.
+    private var systemSinceMicrophone: TimeInterval = 0
     private var smoothedSystemRMS: Float = 0
     private var systemChunks = 0
     private var systemCeilingDetector = SustainedCeilingDetector()
@@ -131,8 +135,10 @@ struct RecordingLevelBuffer {
             snapshot.microphoneIsLow =
                 voicedMicrophoneChunks > 150
                     && voicedMicrophoneLevel < 0.03
+            systemSinceMicrophone = 0
             snapshot.microphoneIsSpeaking = microphoneSpeechGate.observe(
-                peak: sample.peak, duration: sample.duration)
+                peak: sample.peak > recentSystemPeak ? sample.peak : 0,
+                duration: sample.duration)
         case .system:
             systemChunks += 1
             smoothedSystemRMS =
@@ -144,6 +150,13 @@ struct RecordingLevelBuffer {
                 systemCeilingDetector.observe(
                     peak: sample.peak,
                     duration: sample.duration)
+            recentSystemPeak = max(sample.peak, recentSystemPeak * 0.8)
+            // A stalled or failed microphone stops sending samples entirely.
+            if sample.duration.isFinite, sample.duration > 0 { systemSinceMicrophone += sample.duration }
+            if systemSinceMicrophone >= MicrophoneSpeechGate.exitDuration {
+                snapshot.microphoneIsSpeaking = false
+                microphoneSpeechGate = MicrophoneSpeechGate()
+            }
         case .room:
             return nil
         }
@@ -176,6 +189,8 @@ struct RecordingLevelBuffer {
         voicedMicrophoneLevel = 0
         voicedMicrophoneChunks = 0
         microphoneSpeechGate = MicrophoneSpeechGate()
+        recentSystemPeak = 0
+        systemSinceMicrophone = 0
         smoothedSystemRMS = 0
         systemChunks = 0
         systemCeilingDetector = SustainedCeilingDetector()

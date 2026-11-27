@@ -26,20 +26,49 @@ final class MicrophoneSpeechGateTests: XCTestCase {
         }
         XCTAssertEqual(buffer.drain(generation: 0)?.microphoneIsSpeaking, true)
     }
+
+    func testLoudspeakerBleedDoesNotOpenTheGate() {
+        var buffer = RecordingLevelBuffer()
+        for index in 0..<10 {
+            _ = buffer.submit(level(.system, peak: 0.4, at: index))
+            _ = buffer.submit(level(.microphone, peak: 0.05, at: index))
+        }
+        XCTAssertEqual(buffer.drain(generation: 0)?.microphoneIsSpeaking, false, "the call is louder than its bleed")
+
+        var speaking = RecordingLevelBuffer()
+        for index in 0..<10 {
+            _ = speaking.submit(level(.system, peak: 0.001, at: index))
+            _ = speaking.submit(level(.microphone, peak: 0.05, at: index))
+        }
+        XCTAssertEqual(speaking.drain(generation: 0)?.microphoneIsSpeaking, true)
+    }
+
+    func testAMicrophoneThatStopsSendingClosesTheGate() {
+        var buffer = RecordingLevelBuffer()
+        for index in 0..<4 { _ = buffer.submit(level(.microphone, peak: 0.2, at: index)) }
+        XCTAssertEqual(buffer.drain(generation: 0)?.microphoneIsSpeaking, true)
+        for index in 4..<20 { _ = buffer.submit(level(.system, peak: 0.001, at: index)) }
+        XCTAssertEqual(buffer.drain(generation: 0)?.microphoneIsSpeaking, false)
+    }
+
+    private func level(_ channel: AudioChannel, peak: Float, at index: Int) -> PersistedAudioLevel {
+        PersistedAudioLevel(channel: channel, peak: peak, rms: peak / 4, timestamp: Double(index) / 10, duration: 0.1)
+    }
 }
 
 @MainActor
 final class RecordingLiveVoicesModelTests: XCTestCase {
     private let meetingID = MeetingID()
 
-    private func source(rows: Int, youSpeaking: Bool = false) -> LiveVoiceSource {
+    private func source(rows: Int, youSpeaking: Bool = false, quiet: Bool = false) -> LiveVoiceSource {
         LiveVoiceSource(
             captions: (0..<rows).map {
                 TranscriptSegment(
                     meetingID: meetingID, channel: $0.isMultiple(of: 2) ? .microphone : .system,
                     text: "row", startTime: Double($0) * 2, endTime: Double($0) * 2 + 1.5, isFinal: true)
             },
-            labels: [:], latestTurn: nil, youSpeaking: youSpeaking, now: Double(rows) * 2)
+            labels: [:], latestTurn: nil, youSpeaking: youSpeaking,
+            now: Double(rows) * 2 + (quiet ? LiveVoiceStage.currentWindow + 1 : 0))
     }
 
     func testRepeatedLevelDeliveriesAskForOneRefreshPerFlip() async {
@@ -68,7 +97,7 @@ final class RecordingLiveVoicesModelTests: XCTestCase {
         let model = RecordingLiveVoicesModel(sleep: { await sleeps.record($0) })
         model.connect {
             reads += 1
-            return self.source(rows: rows)
+            return self.source(rows: rows, quiet: true)
         }
 
         model.requestRefresh()
@@ -86,6 +115,23 @@ final class RecordingLiveVoicesModelTests: XCTestCase {
         XCTAssertTrue(
             delays.contains { $0 > .milliseconds(900) && $0 <= RecordingLiveVoicesModel.minimumInterval },
             "the second refresh waits out the interval: \(delays)")
+    }
+
+    func testAQuietMicrophoneRowStopsBeingCurrentAfterTheWindow() async {
+        let sleeps = SleepLog()
+        let expiry = Duration.seconds(LiveVoiceStage.currentWindow) + RecordingLiveVoicesModel.minimumInterval
+        let model = RecordingLiveVoicesModel(sleep: { delay in
+            await sleeps.record(delay)
+            if delay >= expiry { try await Task.sleep(for: .seconds(3_600)) }
+        })
+        model.connect { self.source(rows: 1) }
+        model.requestRefresh()
+        await settle()
+
+        XCTAssertEqual(model.stage.current, LiveVoiceStage.youKey, "the open microphone row is current")
+        let delays = await sleeps.delays
+        XCTAssertTrue(delays.contains(expiry), "a trailing refresh clears it once the row goes quiet: \(delays)")
+        model.reset()
     }
 
     func testIntervalPolicy() async {

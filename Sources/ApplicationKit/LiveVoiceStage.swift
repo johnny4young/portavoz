@@ -127,8 +127,14 @@ public struct LiveVoiceStage: Sendable, Equatable {
     }
 
     private static func voices(_ attributed: [VoiceRow]) -> [Voice] {
+        // Overlapping rows of one voice (your microphone and its voiceprint echo) count once.
         var seconds: [String: TimeInterval] = [:]
-        for row in attributed { seconds[row.key, default: 0] += row.end - row.start }
+        var reach: [String: TimeInterval] = [:]
+        for row in attributed {
+            let from = max(row.start, reach[row.key] ?? row.start)
+            if row.end > from { seconds[row.key, default: 0] += row.end - from }
+            reach[row.key] = max(reach[row.key] ?? row.end, row.end)
+        }
         let merged = VoiceTurnRuns.merge(attributed.map { (key: $0.key, start: $0.start, end: $0.end) })
         return merged.order.map {
             Voice(key: $0, turns: merged.turns[$0] ?? [], talkSeconds: seconds[$0] ?? 0)
