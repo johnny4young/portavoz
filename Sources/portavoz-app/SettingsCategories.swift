@@ -10,9 +10,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     case general
     case audio
     case intelligence
-    case agenda
     case skills
-    case integrations
     case data
 
     var id: String { rawValue }
@@ -21,13 +19,11 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
 
     var titleKey: String {
         switch self {
-        case .general: "General & language"
-        case .audio: "Audio"
+        case .general: "General"
+        case .audio: "Audio & transcription"
         case .intelligence: "Intelligence"
-        case .agenda: "Agenda & automation"
         case .skills: "Automations"
-        case .integrations: "Integrations"
-        case .data: "Your data"
+        case .data: "Data & privacy"
         }
     }
 
@@ -36,26 +32,21 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .general: "globe"
         case .audio: "mic"
         case .intelligence: PVSymbol.intelligence
-        case .agenda: "calendar.badge.clock"
         case .skills: PVSymbol.automations
-        case .integrations: "link"
         case .data: PVSymbol.privacy
         }
     }
 
-    /// The one-line preview under each nav item (design system 2a): the
-    /// pane's contents at a glance, so the sidebar tells you where to go.
+    /// Accessibility hint summarizing the pane's sections.
     var subtitle: String { L10n.text(subtitleKey) }
 
     var subtitleKey: String {
         switch self {
-        case .general: "System language · English/Spanish · menu bar"
-        case .audio: "Microphone · call-safe capture"
-        case .intelligence: "Summary engine · Apuntador · your voice"
-        case .agenda: "Reminder · end-of-meeting Shortcut · title template"
-        case .skills: "Review · enable · history"
-        case .integrations: "BYOK OpenAI-compatible · GitHub gists · MCP"
-        case .data: "Privacy · iCloud sync · storage · background activity"
+        case .general: "Language · menu bar · calendar · talk time"
+        case .audio: "Microphone · transcription · Whisper · vocabulary"
+        case .intelligence: "Summary engine · Apuntador · voices · search"
+        case .skills: "Actions · Shortcuts · providers · GitHub · CLI"
+        case .data: "Privacy · iCloud sync · storage · diagnostics"
         }
     }
 
@@ -66,20 +57,25 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     var keywordGroups: [String] {
         switch self {
         case .general:
-            ["language english spanish menu bar launch login"]
+            [
+                "language english spanish menu bar launch login",
+                "reminder calendar agenda title template mirror talk time participation"
+            ]
         case .audio:
-            ["call safe capture echo aec microphone mic level system audio"]
+            [
+                "call safe capture echo aec microphone mic level system audio",
+                "whisper refine transcription language vocabulary apple speech parakeet"
+            ]
         case .intelligence:
             [
-                "summary engine apple ollama mlx whisper refine vocabulary model memory ram lightweight",
+                "summary engine apple ollama mlx model memory ram lightweight semantic search structures custom",
                 "voice enroll apuntador name remembered"
             ]
-        case .agenda:
-            ["reminder calendar shortcut title template"]
         case .skills:
-            ["actions suggestions skills automation automations pause enable history local drafts exports"]
-        case .integrations:
-            ["byok api key github gist token mcp endpoint openai"]
+            [
+                "actions suggestions skills automation automations shortcut pause enable history local drafts exports",
+                "byok api key github gist token mcp endpoint openai cli command line claude providers"
+            ]
         case .data:
             [
                 "export markdown backup folder recordings trash privacy local model credits licenses attribution",
@@ -92,7 +88,10 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     func matches(_ query: String, language: AppLanguage = .current) -> Bool {
         let query = query.trimmingCharacters(in: .whitespaces).lowercased()
         guard !query.isEmpty else { return true }
-        return L10n.text(titleKey, language: language).lowercased().contains(query)
+        return titleKey.lowercased().contains(query)
+            || subtitleKey.lowercased().contains(query)
+            || L10n.text(titleKey, language: language).lowercased().contains(query)
+            || L10n.text(subtitleKey, language: language).lowercased().contains(query)
             || keywordGroups.contains { group in
                 group.contains(query) || L10n.text(group, language: language).lowercased().contains(query)
             }

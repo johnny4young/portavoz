@@ -32,7 +32,7 @@ struct BackupSection: View {
             Text(
                 // One-line UI help text.
                 // swiftlint:disable:next line_length
-                "Writes one Markdown file per meeting — summary, action items and full transcript — into a folder you choose. Plain files you can read, grep and back up without Portavoz."
+                "Writes one Markdown file per meeting — summary, action items and full transcript — into a folder you choose. Plain files you can read, search, and back up without Portavoz."
             )
             .font(.caption)
             .foregroundStyle(.ink3)

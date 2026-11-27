@@ -231,7 +231,7 @@ that an action returns from Summary to Transcript. Portavoz 2.0 has no
 dictation UI and no native-delivery lane (D640); the catalog holds 119 cases.
 `LegacyDictationUITests` owns the `dictation` selector now: the one-time notice
 that dictation moved, forced with `-show-dictation-moved-notice`, and deleting
-the kept history from Settings › Your data, both over a library seeded with
+the kept history from Settings › Data & privacy, both over a library seeded with
 `-seed-legacy-dictation`. `ContentView` and `SettingsView`, which host those
 views, select it too.
 `LiveEngineLeaseIntegrationTests` enters the real live-transcription call site
@@ -8384,7 +8384,7 @@ does not click or address a key event to a field that its own popup may cover.
 `openSettingsWindow` applies that boundary to both existing and newly opened
 Settings windows, and `openSettingsCategory` applies it before every sidebar
 click. Routes that bypass `openSettingsWindow`, such as a launch that opens
-Settings or the Library privacy chip's route to Your data, are therefore covered
+Settings or the Library privacy chip's route to Data & privacy, are therefore covered
 without a call-site handoff; an auto-focused native search completion surface
 otherwise covers the category sidebar despite a correct destination. The
 summary recovery journey still ends the edit explicitly because it reads the

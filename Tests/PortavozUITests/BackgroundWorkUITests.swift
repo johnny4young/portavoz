@@ -26,11 +26,14 @@ final class BackgroundWorkUITests: PortavozUITestCase {
         let spanish = UITestLocale.environmentLocale == "es"
         let expectedDetails = [
             "background-work-detail-recovery": spanish
-                ? "Reconciliadas: 2 · concesiones recuperadas: 1 · diferidas: 0 · atención: 0"
-                : "Reconciled: 2 · leases recovered: 1 · deferred: 0 · attention: 0",
+                ? "Recuperadas: 2 · liberadas: 1 · en espera: 0 · atención: 0"
+                : "Recovered: 2 · cleared: 1 · waiting: 0 · needs attention: 0",
             "background-work-detail-semantic-index": spanish
                 ? "Indexados: 12 · excluidos: 3 · omitidos: 0"
                 : "Indexed: 12 · excluded: 3 · skipped: 0",
+            "background-work-detail-memory-graph": spanish
+                ? "Elementos indexados: 4 · vínculos actualizados: 9"
+                : "Items indexed: 4 · links updated: 9",
             "background-work-attempt-processing": spanish ? "Intento: 2" : "Attempt: 2",
             "background-work-failure-processing": spanish ? "Motivo: Procesamiento" : "Reason: Processing"
         ]
@@ -78,7 +81,7 @@ final class BackgroundWorkUITests: PortavozUITestCase {
             processingRetry.revealVertically(
                 in: settingsForm,
                 maximumStep: settingsForm.frame.height),
-            "the processing recovery action must be reachable in the Your data pane")
+            "the processing recovery action must be reachable in the Data & privacy pane")
         XCTAssertTrue(processingRetry.waitForHittable(timeout: 5))
         processingRetry.click()
         XCTAssertTrue(

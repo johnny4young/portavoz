@@ -58,21 +58,14 @@ struct SettingsSidebar: View {
                     .foregroundStyle(on ? PVDesign.accent : PVDesign.ink3)
                     .frame(width: 20)
                     .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(L10n.text(item.titleKey, language: language))
-                        .font(.body.weight(on ? .semibold : .regular))
-                    // Ink 3 drops under 4.5:1 on the selected tint.
-                    Text(L10n.text(item.subtitleKey, language: language))
-                        .font(.caption)
-                        .foregroundStyle(on ? PVDesign.ink2 : PVDesign.ink3)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                Text(L10n.text(item.titleKey, language: language))
+                    .font(.body.weight(on ? .semibold : .regular))
+                    .lineLimit(1)
                 Spacer(minLength: 0)
             }
             .foregroundStyle(.primary)
             .padding(.horizontal, 10)
-            .padding(.vertical, 7)
+            .padding(.vertical, 8)
             .background(
                 on ? PVDesign.accent.opacity(PVDesign.chipTint) : .clear,
                 in: RoundedRectangle(cornerRadius: PVDesign.radiusSmall))

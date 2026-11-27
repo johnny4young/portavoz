@@ -15,9 +15,6 @@ struct ModelMemorySettingsSection: View {
                 .font(.caption)
                 .foregroundStyle(.ink3)
                 .accessibilityIdentifier("settings-model-memory-help")
-            Text("Model choices and downloaded files are unchanged. This is not a RAM usage limit.")
-                .font(.caption)
-                .foregroundStyle(.ink3)
             Text(L10n.text(services.modelMemoryPreferences.recommendedProfile == .lightweight
                 ? "Suggested for this Mac: lightweight memory."
                 : "Balanced memory keeps models ready for back-to-back work."))

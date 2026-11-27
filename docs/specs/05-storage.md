@@ -2139,7 +2139,7 @@ The `dictation-polish` operation, `dictation-text` classification and
 `LegacyDictationRetention.swift`, next to them, is the facade for that data now that
 Portavoz no longer dictates. The app's `LegacyDictationModel` is its only caller: it purges
 when the app opens, after the Mac wakes and whenever capture ends, logs a failure without
-showing it, and deletes on request from Settings › Your data or the one-time notice that
+showing it, and deletes on request from Settings › Data & privacy or the one-time notice that
 dictation moved to Secreteo. `purgeExpiredLegacyDictationData(now:calendar:)`
 removes, in one transaction, history older than the stored 7, 30 or 90 days, stats days
 older than 365 local days and retry-dedupe rows older than two days, whatever the consent

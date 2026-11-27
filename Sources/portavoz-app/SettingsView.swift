@@ -104,23 +104,23 @@ struct SettingsView: View {
                 case .general:
                     languageSection
                     MenuBarSection()
+                    agendaSection
+                    titleSection
+                    postMeetingMirrorSection
                 case .audio:
                     AudioSection()
+                    transcriptionLanguageSection
+                    whisperSection
+                    vocabularySection
                 case .intelligence:
                     summaryEngineSection
                     ModelMemorySettingsSection(services: services)
-                    transcriptionLanguageSection
                     summaryLanguageSection
                     companionSection
                     SettingsVoiceSection()
                     RememberedVoicesSection()
                     semanticSearchSection
                     customStructuresSection
-                    vocabularySection
-                case .agenda:
-                    agendaSection
-                    AutomationSection()
-                    titleSection
                 case .skills:
                     SkillsSettingsSection(
                         activityRevision: skillActivityRevision,
@@ -129,7 +129,7 @@ struct SettingsView: View {
                             skillReceiptFocus.beginInspection(of: receipt.proposalID)
                             selectedSkillReceipt = receipt
                         })
-                case .integrations:
+                    AutomationSection()
                     byokSection
                     GitHubSection()
                     CommandLineToolSection()
@@ -281,9 +281,7 @@ extension SettingsView {
             .disabled(AppLanguage.fromStorage(appLanguageRaw) == .system)
             .accessibilityIdentifier("settings-language-picker")
             Text(
-                // One-line UI copy.
-                // swiftlint:disable:next line_length
-                "This changes the Portavoz interface only. Transcript and summary language policies stay in Intelligence settings and each meeting's overrides."
+                "This changes the Portavoz interface only. Transcript and summary languages are configured separately."
             )
                 .font(.caption)
                 .foregroundStyle(.ink3)
@@ -720,10 +718,11 @@ extension SettingsView {
             .font(.caption)
             .foregroundStyle(.ink3)
             .accessibilityIdentifier("settings-summary-provider-help")
+        }
+    }
 
-            Divider()
-            Text("Improvement model (Whisper large-v3)")
-                .font(.callout.weight(.medium))
+    private var whisperSection: some View {
+        Section("Improvement model (Whisper large-v3)") {
             if whisperVariants.isEmpty {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
@@ -754,6 +753,16 @@ extension SettingsView {
             )
             .font(.caption)
             .foregroundStyle(.ink3)
+        }
+    }
+
+    private var postMeetingMirrorSection: some View {
+        Section("Talk-time mirror") {
+            Toggle("Your talk time after each meeting", isOn: $mirrorAfterMeeting)
+                .accessibilityIdentifier("settings-mirror-after-meeting")
+            Text("After meetings of five minutes or more, next to your average.")
+                .font(.caption)
+                .foregroundStyle(.ink3)
         }
     }
 
@@ -792,8 +801,7 @@ extension SettingsView {
             detectorAvailable: services.companionAvailable,
             providerAnswersAvailable: byokAnswersReady,
             companionEnabled: companionEnabledBinding,
-            companionUserName: $companionUserName,
-            mirrorAfterMeeting: $mirrorAfterMeeting)
+            companionUserName: $companionUserName)
     }
 
     private var companionEnabledBinding: Binding<Bool> {

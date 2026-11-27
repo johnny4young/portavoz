@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Settings › Integrations: put the bundled `portavoz-cli` on the shell path
+/// Settings › Automations: put the bundled `portavoz-cli` on the shell path
 /// and copy what Claude Code or another MCP client needs to reach this Mac.
 struct CommandLineToolSection: View {
     @State private var model = CommandLineToolModel.forCurrentLaunch()

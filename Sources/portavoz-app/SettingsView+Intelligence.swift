@@ -96,9 +96,7 @@ extension SettingsView {
             .accessibilityIdentifier("settings-summary-language")
             SummaryDetailSetting()
             Text(
-                // One-line UI help.
-                // swiftlint:disable:next line_length
-                "This changes generated summaries only. Transcript language is controlled separately above and is never changed by this setting."
+                "This changes generated summaries only. Transcript language is set in Audio & transcription."
             )
             .font(.caption)
             .foregroundStyle(.ink3)

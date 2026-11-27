@@ -25,11 +25,11 @@ struct WhisperModelRow: View {
                                 ? "Compact — less disk" : "Turbo — best quality"))
                             .font(.callout)
                         status
-                        Text(L10n.format("Catalog RAM guidance: %d GB or more.", variant.minimumRAMGB))
+                        Text(L10n.format("Recommended memory: %d GB or more.", variant.minimumRAMGB))
                             .font(.caption)
                             .foregroundStyle(.ink3)
                         if belowCatalogRAM {
-                            Text("This Mac is below the catalog guidance; performance may be limited.")
+                            Text("This Mac has less memory than recommended; performance may be slower.")
                                 .font(.caption)
                                 .foregroundStyle(.ink3)
                         }
