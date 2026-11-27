@@ -43,6 +43,21 @@ final class MeetingPlayerStripTests: XCTestCase {
         XCTAssertEqual(player.myVoice?.turns, [5...7])
     }
 
+    func testOneVoiceAcrossDeadTimeLeavesTheGapEmpty() throws {
+        let me = Speaker(meetingID: meeting.id, label: "Me", isMe: true)
+        let segments = [segment(me.id, 0, 30), segment(me.id, 230, 260)]
+        let timeline = PlaybackTimeline(duration: 260, speech: segments.map { $0.startTime...$0.endTime })
+        let gap = try XCTUnwrap(timeline.gaps.first)
+
+        let player = strip(speakers: [me], segments: segments, timeline: timeline)
+
+        XCTAssertNil(player.voice(at: (gap.lowerBound + gap.upperBound) / 2), "nobody holds dead time")
+        XCTAssertEqual(player.voice(at: 240)?.voice.isMe, true)
+        let middle = timeline.fraction(at: (gap.lowerBound + gap.upperBound) / 2)
+        let columns = player.strip.columns
+        XCTAssertEqual(columns[Int(middle * Double(columns.count))], VoiceColumns.silence, "the gap stays track")
+    }
+
     func testWithoutAttributionTheLouderChannelDrawsTheStrip() throws {
         let waveform = [0.5, 0.01, 0.8, 0.9].enumerated().map { index, amplitude in
             MeetingWaveformBucket(amplitude: Float(amplitude), microphoneDominant: index == 0)

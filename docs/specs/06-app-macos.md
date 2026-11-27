@@ -2177,8 +2177,9 @@ silence. The scrubber is the meeting's voice strip (D671): `MeetingPlayerStrip`
 (ApplicationKit) bins the Voices table's turns on the timeline's display axis,
 so a shortened gap stays short and voices keep the Voices table's tints; with
 nothing attributed, each waveform column louder than 0.06 takes amber when the
-microphone was louder and grey otherwise. The model rebuilds it with each core
-or prepared playback, never per tick. `VoiceStrip` draws it at `.player` size
+microphone was louder and grey otherwise. A turn is cut at each such gap, so
+dead time stays track and the readout names nobody there. The detail view caches it
+per core revision and prepared playback, never rebuilding it per tick. `VoiceStrip` draws it at `.player` size
 (18 pt, radius 5) with the played part full and the rest dimmed, a 2.2 pt ink
 playhead, the marked clip outlined in ink, and a 0.45-opacity ink tick at each
 chapter that starts inside the audio. Each chapter title sits above its tick
@@ -2201,9 +2202,10 @@ the same focus as your Voices row's Only) and Reduce echo
 then speed 1×–2× with preserved pitch (`player-speed`, a gauge glyph and the rate
 in an outlined capsule) and an options menu (`player-options`) holding Mark
 clip start/end (`clip-mark-start`, `clip-mark-end`). A `ViewThatFits` keeps that
-row whole at every width: first the toggles drop their titles (their name stays
-in the tooltip and accessibility label), then the clock shrinks, the readout
-goes and speed becomes its glyph (its rate stays in the accessibility value).
+row whole at every width: first the readout gives up its reserved room, then the
+toggles drop their titles (their name stays in the tooltip and accessibility
+label), then the clock shrinks and speed becomes its glyph (its rate stays in
+the accessibility value).
 The readout fills what the controls leave and never decides which variant fits. Meeting Detail reopens at the position where listening
 stopped (D653): before preparing playback the model reads the saved position
 (or the one it saved last, ahead of a write still in flight) and seeks there

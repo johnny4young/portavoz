@@ -23591,9 +23591,9 @@ ticks, a readout of who is speaking in which chapter, and the playback
 settings as quiet toggles. `MeetingPlayerStrip` (ApplicationKit) bins the
 Voices table's turns on the playback timeline's display axis, so long silences
 stay as short as D605 draws them and a voice keeps the tint it has in the
-Voices table; the detail model caches it with the core and the prepared
-playback, so the 5 fps clock never rebuilds it. Without attributed speech the
-waveform still has a role: each loud column takes amber when your microphone
+Voices table, with each turn cut at that dead time; the detail view caches it
+with the core and the prepared playback, so the 5 fps clock never rebuilds it.
+Without attributed speech the waveform still has a role: each loud column takes amber when your microphone
 was louder and grey otherwise, so a meeting without a transcript is not a
 blank track, and the waveform keeps driving Skip silence there. The toggles
 are Skip silence, Only my voice (the same focus as your Voices row's Only) and

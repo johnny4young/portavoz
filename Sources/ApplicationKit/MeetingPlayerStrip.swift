@@ -34,10 +34,22 @@ public struct MeetingPlayerStrip: Sendable, Equatable {
     ) {
         let labels = Dictionary(core.speakers.map { ($0.id, $0.label) }, uniquingKeysWith: { first, _ in first })
         let rows = core.voiceTable.rows + core.voiceTable.others
+        // A turn runs on through a pause until someone else speaks; dead time holds nobody.
+        let gaps = timeline.gaps
+        func spoken(_ turn: ClosedRange<TimeInterval>) -> [ClosedRange<TimeInterval>] {
+            var pieces: [ClosedRange<TimeInterval>] = []
+            var start = turn.lowerBound
+            for gap in gaps where gap.upperBound > start && gap.lowerBound < turn.upperBound {
+                if gap.lowerBound > start { pieces.append(start...gap.lowerBound) }
+                start = gap.upperBound
+            }
+            if turn.upperBound > start { pieces.append(start...turn.upperBound) }
+            return pieces
+        }
         turns = rows
             .flatMap { row in
                 let voice = Voice(voice: row.voice, label: labels[row.speakerID] ?? "")
-                return row.turns.map { Turn(voice: voice, range: $0) }
+                return row.turns.flatMap(spoken).map { Turn(voice: voice, range: $0) }
             }
             .sorted { $0.range.lowerBound < $1.range.lowerBound }
         latestEnds = turns.reduce(into: []) { ends, turn in
@@ -59,7 +71,9 @@ public struct MeetingPlayerStrip: Sendable, Equatable {
             } : []
             tint = { $0 == "you" ? .you : .grey }
         } else {
-            entries = rows.flatMap { row in row.turns.map { onAxis(VoiceCast.key(row.speakerID), $0) } }
+            entries = rows.flatMap { row in
+                row.turns.flatMap(spoken).map { onAxis(VoiceCast.key(row.speakerID), $0) }
+            }
             tint = core.voiceCast.tint(for:)
         }
         let binned = VoiceColumns.strip(entries, duration: 1, count: Self.columnCount)
