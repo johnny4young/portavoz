@@ -1192,6 +1192,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         laterChapter.click()
         let currentTime = app.control(withIdentifier: "player-current-time")
         XCTAssertTrue(currentTime.waitForValueOtherThan("0:00", timeout: 5))
+        XCTAssertTrue(app.pauseMeetingPlayback(), "a following playhead would scroll the one-column rail away")
         selectRailTab("apuntador", in: app)
         _ = try uiObservation(
             of: secondaryRail,
