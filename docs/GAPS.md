@@ -289,22 +289,9 @@ See the storage/app specifications and the recording-input application and
 real-app journeys. Unsubmitted drafts are still memory-only; this does not claim
 that text never submitted or a write rejected by the filesystem was durable.
 
-### External live-database readers can reject a concurrent writer
+### External live-database writer contention and single-owner boundary
 
-The file-backed store uses a serial `DatabaseQueue` with SQLite's default
-journal and immediate lock-failure policy. An independent read transaction can
-therefore reject a concurrent Stop write; the controlled Apple SQLite probe
-reported `SQLITE_IOERR_LOCK`, not generic media failure. Accepted input remained
-unchanged and the same Stop completed after the reader released its lock.
-Ordinary in-process reads share the serialized owner; this finding concerns
-independent connections/processes, including diagnostic observers.
-
-UI tests now observe the app's acknowledgement before one-shot database
-assertions instead of creating this collision through external polling. This
-is not a general multi-process coordination fix. A future bounded lock policy
-must retain explicit failure, deadline/cancellation behavior, captured audio and
-accepted input, and validate SQLite/volume differences; do not mask all I/O
-errors or introduce unbounded retries. Copy a library for intrusive diagnostics.
+File-backed `MeetingStore` instances now open a WAL-mode `DatabasePool` with a bounded 5-second `busyTimeout` (and off-`@MainActor` startup migration in `AppLaunchModel`). Independent read transactions (`portavoz-cli`, MCP server, diagnostic readers) no longer block `StopRecording` or background job claims. If an independent external **writer** holds `BEGIN IMMEDIATE` beyond `busyTimeout`, `SQLITE_BUSY` / `SQLITE_IOERR_LOCK` still surfaces explicitly, accepted input remains unchanged, and retrying `StopRecording` completes after the lock releases.
 
 Distinct app bundle identities do not establish library isolation: production-mode
 Dev and release composition both select the same default database URL. The
@@ -691,7 +678,7 @@ Physical/model latency and cancellation field evidence remain open.
 | T2 | ~~**Taps + VPIO in the same process**~~ | **RESOLVED IN CODE (D125)**. See D125. | ✅ |
 | T3 | ~~FM without a priority policy~~ | **RESOLVED (D29)**. See D29. | ✅ |
 | T4 | ~~**Unmeasured Mac performance numbers**~~ | **RESOLVED (PERF-001/D137)**: `make perf-ledger` re-measures the unattended journeys against `docs/evidence/perf-thresholds.json` and fails a release on a budget miss. Battery stays an iOS-phase measurement. See D83, D137. | ✅ |
-| T5 | Exact semantic retrieval remains O(n), although the reference-host budget is restored | D318 keeps the Accelerate exact authority and normalized Float32 BLOB schema, but maps up to 512 MiB of `main` only for a file-backed macOS store on a volume classified as local and internal. The 9 Aug 2026 authoritative `make perf-ledger` run on the 36 GiB Tahoe reference host measured 63.53 ms wall / 64.54 ms CPU p95 at 100,000 × 512 against the 100 ms budget, with 0.17 MiB incremental process footprint. This closes the current-host regression, not the algorithmic or field-evidence gap: no accepted Sequoia, 8/16 GiB, correction-heavy, or alternative-engine matrix exists, and SQLite's documented mapped-page I/O signal risk remains explicit. | Keep exact control as the correctness authority and retain the local/internal guard. Collect the accepted D215/D219 multi-host receipts across Sequoia and Tahoe plus the required memory profiles; require bilingual quality, cancellation, correction, rebuild, disk, and rollback parity before selecting sqlite-vec, USearch/ANN, or any new product authority. |
+| T5 | Exact semantic retrieval remains O(n), although sub-10 ms packed Float16 + exact Float32 rerank removes SQLite `mmap` | `MeetingStore` removes `PRAGMA main.mmap_size` (eliminating SQLite's mapped-page SIGBUS I/O-signal hazard) and keeps normalized `Float32` BLOBs as the sole persisted authority while accelerating `searchSemantic` through a lazy contiguous `Float16` tile-scored index (`vDSP_mmul`) with an exact `Float32` top-shortlist rerank and automatic invalidation/pressure eviction. Multi-host 8/16 GiB and sublinear ANN index field qualification remain open for million-segment scale. | Keep exact `Float32` reranking as the correctness authority; collect the multi-host 8/16 GiB receipts before considering any approximate ANN index. |
 | T6 | ~~Audio storage 126 MB/channel/22 min~~ | **RESOLVED (Jul 2026)**. | ✅ |
 | T7 | CI does not run model-gated tests | **ACCEPTED with a compensating local gate (Q4/D380, Aug 2026).** Hosted CI cannot provide what these tests gate on: Apple Intelligence must be enabled interactively, Apple's contextual-embedding assets download through a flaky user-session service (documented failure even on a real host), and several suites need multi-GB sha256-pinned speech models or the owner's private enrollment audio. The compensating gate is `make test-model-gated`, a required pre-flight step in docs/RELEASING.md: it runs the six model/intelligence-gated classes in Release on the release Mac, fails when a filter matches nothing (rename protection), when a class skips entirely (capability absent), or when FluidAudio DEBUG output reaches the private lane, and prints every individual skip for owner review without echoing raw failure logs. The standalone target needs `PORTAVOZ_MODEL_TESTS=1` plus the two spoken fixtures (`PORTAVOZ_TEST_WAV`, `PORTAVOZ_TEST_CONVERSATION_WAV`); candidate automation runs the same classes with fixtures it generates itself and is the authoritative release lane | Revisit only if GitHub ships Apple-Silicon runners with Apple Intelligence, or a self-hosted runner is accepted |
 | T8 | ~~No SwiftLint/format in CI~~ | **RESOLVED (Jul 2026)**. | ✅ |

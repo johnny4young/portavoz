@@ -86,5 +86,6 @@ extension AppServices {
     func installAutomationEntityCatalog() {
         let catalog: any PortavozAppEntityCatalog = AppAutomationEntityCatalog(store: store)
         AppDependencyManager.shared.add(dependency: catalog)
+        PortavozAppEntityCatalogLaunch.publish(catalog)
     }
 }

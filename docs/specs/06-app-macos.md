@@ -2487,7 +2487,9 @@ release pipeline at packaging time instead of test time.
 
 D325 adds meeting, canonical-person, and confirmed-commitment `AppEntity`
 snapshots with bounded string queries. `AppServices` installs their standard
-`AppDependencyManager` catalog only after the database opens. Every open action
+`AppDependencyManager` catalog only after the database opens; queries that
+arrive during the off-main open wait up to 10 seconds in
+`PortavozAppEntityCatalogLaunch` and fail immediately on a failed open. Every open action
 revalidates its identity and uses one latest-wins process route: meeting opens
 Detail, person opens a visible reversible canonical-owner Radar focus, and
 commitment opens only the exact live Radar item. Exact focus temporarily

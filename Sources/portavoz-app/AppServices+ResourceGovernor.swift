@@ -213,6 +213,9 @@ extension AppServices {
             pressure: pressure,
             captureState: resourceCaptureState.current,
             residentModels: modelResidencyLedger.residentModels)
+        if pressure.requestsIdleModelRelease || resourceCaptureState.current != .inactive {
+            store.releaseSemanticSearchCache()
+        }
         var released: [ResourceModelFamily] = []
         for family in requested where await releaseIdleModel(family) {
             released.append(family)
@@ -232,7 +235,10 @@ extension AppServices {
     func releaseIdleModel(
         _ family: ResourceModelFamily
     ) async -> Bool {
-        switch family {
+        if family == .semanticEmbedding {
+            store.releaseSemanticSearchCache()
+        }
+        return switch family {
         case .liveSpeech:
             releaseLiveSpeechRuntime()
         case .qualitySpeech:
