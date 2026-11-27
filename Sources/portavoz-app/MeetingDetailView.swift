@@ -85,35 +85,37 @@ private extension MeetingDetailView {
         let structureProjection = transcriptPresentation.structure
         let marginNotes = model.state.marginNotes
         return VStack(spacing: 0) {
-            ScrollView(.vertical) {
-                VStack(alignment: .leading, spacing: 12) {
-                    headerSection(detail, title: title, transcript: transcript)
-                    if let report = detail.meeting.captureReport, report.requiresAttention {
-                        CaptureReportNotice(report: report)
-                    }
-                    MeetingDetailOperationStatus(
-                        progress: refine.status ?? flow.applyingStatus,
-                        error: refine.error ?? flow.operationError ?? model.state.lastActionError)
-                    MeetingDetailPageLayout {
-                        VStack(alignment: .leading, spacing: 10) {
-                            summaryOrGenerate(detail)
-                            if !showingSummaryTodos {
-                                commitmentInboxSection(detail, margin: marginNotes)
-                            }
-                            notesSection(detail)
+            MeetingDetailViewportLayout {
+                ScrollView(.vertical) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        headerSection(detail, title: title, transcript: transcript)
+                        if let report = detail.meeting.captureReport, report.requiresAttention {
+                            CaptureReportNotice(report: report)
                         }
-                        detailRail(detail, transcript: transcript)
-                        transcriptSection(
-                            detail, content: transcript, structureProjection: structureProjection,
-                            marginNotes: marginNotes)
-                            .layoutValue(
-                                key: MeetingTranscriptHoldsMarginNotes.self, value: !marginNotes.byRow.isEmpty)
+                        MeetingDetailOperationStatus(
+                            progress: refine.status ?? flow.applyingStatus,
+                            error: refine.error ?? flow.operationError ?? model.state.lastActionError)
+                        MeetingDetailPageLayout {
+                            VStack(alignment: .leading, spacing: 10) {
+                                summaryOrGenerate(detail)
+                                if !showingSummaryTodos {
+                                    commitmentInboxSection(detail, margin: marginNotes)
+                                }
+                                notesSection(detail)
+                            }
+                            detailRail(detail, transcript: transcript)
+                            transcriptSection(
+                                detail, content: transcript, structureProjection: structureProjection,
+                                marginNotes: marginNotes)
+                                .layoutValue(
+                                    key: MeetingTranscriptHoldsMarginNotes.self, value: !marginNotes.byRow.isEmpty)
+                        }
                     }
+                    .padding(.vertical, 16)
+                    .meetingPageColumn()
                 }
-                .padding(.vertical, 16)
-                .meetingPageColumn()
+                .accessibilityIdentifier("detail-page-scroll")
             }
-            .accessibilityIdentifier("detail-page-scroll")
             playerSection
         }
     }

@@ -3385,7 +3385,9 @@ presentation children.
 
 Meeting Detail is one scrolling page. The root owns a single vertical
 `ScrollView` (`detail-page-scroll`) for the header, Voices table, generated
-material, rail and transcript, with the player docked below it.
+material, rail and transcript, with the player docked below it. The scroll
+sits in `MeetingDetailViewportLayout`, which takes the offered size without
+measuring it, so window size queries never lay the lazy transcript out.
 `MeetingDetailPageLayout` is a stateless custom `Layout`: from the width it is
 offered it puts the rail beside the material and gives the transcript the whole
 width under it, or stacks all three in one column, so the reading column never

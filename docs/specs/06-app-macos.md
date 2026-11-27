@@ -602,7 +602,11 @@ keeps layout state. Each row and the transcript header go through
 `MeetingTranscriptLineLayout`, which derives the reading column and margin
 widths from the width it is proposed, so no measured width is written to view
 state; only the speaker margin's narrow/wide switch is a geometry-derived
-flag. On a one-column page the same cards fold under the line's text, on its
+flag. The page scroll sits in `MeetingDetailViewportLayout`, which takes the
+size it is offered without measuring the scroll, so a minimum or ideal size
+query from the window never lays the lazy transcript out at a width the page
+does not have; the page and line layouts answer `explicitAlignment` with nil,
+so measuring one never places its subviews. On a one-column page the same cards fold under the line's text, on its
 edge. A decision card (`margin-decision-<id>`) reads
 "✓ Decision", the bullet in SF semibold and the Decisions tab's own
 `DecisionConfirmationControl`: Confirm… (`-confirm`, the decision sheet) or

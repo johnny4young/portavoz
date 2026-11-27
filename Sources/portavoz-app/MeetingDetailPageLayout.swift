@@ -1,5 +1,31 @@
 import SwiftUI
 
+/// The page scroll's slot above the player. It takes the size it is offered
+/// without asking the scroll, so a minimum or ideal size query from the window
+/// never lays the lazy transcript out at a width the page does not have.
+struct MeetingDetailViewportLayout: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let fallback = MeetingDetailPageMetrics.fallbackWidth
+        return proposal.replacingUnspecifiedDimensions(by: CGSize(width: fallback, height: fallback))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        for subview in subviews {
+            subview.place(at: bounds.origin, proposal: ProposedViewSize(bounds.size))
+        }
+    }
+
+    func explicitAlignment(
+        of guide: HorizontalAlignment, in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews,
+        cache: inout ()
+    ) -> CGFloat? { nil }
+
+    func explicitAlignment(
+        of guide: VerticalAlignment, in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews,
+        cache: inout ()
+    ) -> CGFloat? { nil }
+}
+
 /// The meeting page below its header: generated material, the margin and the
 /// transcript, in that subview order. A wide detail puts the margin beside the
 /// material, top-aligned with the standfirst, and gives the transcript the full
@@ -21,6 +47,18 @@ struct MeetingDetailPageLayout: Layout {
                 proposal: ProposedViewSize(width: frame.width, height: frame.height))
         }
     }
+
+    // The default merges the subviews' guides by placing them again, which
+    // lays the lazy transcript out a second time on every measurement.
+    func explicitAlignment(
+        of guide: HorizontalAlignment, in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews,
+        cache: inout ()
+    ) -> CGFloat? { nil }
+
+    func explicitAlignment(
+        of guide: VerticalAlignment, in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews,
+        cache: inout ()
+    ) -> CGFloat? { nil }
 
     private static func frames(width: CGFloat, subviews: Subviews) -> [CGRect] {
         let holdsNotes = subviews.last?[MeetingTranscriptHoldsMarginNotes.self] ?? false
@@ -53,6 +91,17 @@ struct MeetingTranscriptLineLayout: Layout {
                 proposal: ProposedViewSize(width: frame.width, height: frame.height))
         }
     }
+
+    // No guides to merge; the default would place the line and notes to measure a row.
+    func explicitAlignment(
+        of guide: HorizontalAlignment, in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews,
+        cache: inout ()
+    ) -> CGFloat? { nil }
+
+    func explicitAlignment(
+        of guide: VerticalAlignment, in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews,
+        cache: inout ()
+    ) -> CGFloat? { nil }
 
     private func arrangement(width: CGFloat, subviews: Subviews) -> MeetingDetailPageMetrics.LineArrangement {
         MeetingDetailPageMetrics.lineArrangement(
