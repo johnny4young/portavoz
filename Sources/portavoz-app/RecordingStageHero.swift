@@ -82,11 +82,11 @@ struct RecordingStageDetail: View {
     }
 
     /// Unlabelled remote speech is not a voice yet.
-    static func voiceCount(_ stage: LiveVoiceStage) -> Int {
+    nonisolated static func voiceCount(_ stage: LiveVoiceStage) -> Int {
         stage.voices.count { $0.key != LiveVoiceStage.unlabelledKey }
     }
 
-    static func line(apps: [String], startedAt: Date, voices: Int) -> String {
+    nonisolated static func line(apps: [String], startedAt: Date, voices: Int) -> String {
         let started = startedAt.formatted(
             .dateTime.hour().minute().locale(AppLanguage.current.locale))
         var parts = apps.isEmpty ? [] : [apps.joined(separator: ", ")]
