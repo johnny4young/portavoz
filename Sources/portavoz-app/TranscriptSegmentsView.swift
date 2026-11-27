@@ -9,7 +9,8 @@ import SwiftUI
 /// summary the reader is on.
 /// Active-row lookup stays logarithmic instead of scanning every row at the
 /// playback refresh cadence. On a page wide enough for the margin, a line's
-/// decisions and commitments sit beside it; otherwise they fold under it.
+/// decisions, commitments, notes and voice matches sit beside it; otherwise
+/// they fold under it.
 struct TranscriptSegmentsView: View {
     let content: MeetingTranscriptContent
     let speakers: [Speaker]

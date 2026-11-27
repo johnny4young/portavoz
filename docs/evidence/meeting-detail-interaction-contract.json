@@ -2194,6 +2194,12 @@
     },
     {
       "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
+      "category": "control",
+      "source": "case .link: L10n.text(\"Link\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"\\(identifier)-attribution\")",
       "occurrences": 1

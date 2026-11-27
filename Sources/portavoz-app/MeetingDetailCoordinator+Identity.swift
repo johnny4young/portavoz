@@ -8,10 +8,14 @@ extension MeetingDetailCoordinator {
             nameSuggestions: model.state.nameSuggestions,
             unplacedVoiceMatches: model.state.transcriptPresentationState.unplacedVoiceMatches,
             personOffer: flow.personOffer.flatMap { offer in
-                offer.speaker.displayName.map { MeetingDetailRememberOffer(name: $0, isBusy: flow.isFindingPerson) }
+                offer.speaker.displayName.map {
+                    MeetingDetailRememberOffer(speakerID: offer.speaker.id, name: $0, isBusy: flow.isFindingPerson)
+                }
             },
             voiceOffer: flow.rememberedVoiceOffer.flatMap { offer in
-                offer.displayName.map { MeetingDetailRememberOffer(name: $0, isBusy: flow.isRememberingVoice) }
+                offer.displayName.map {
+                    MeetingDetailRememberOffer(speakerID: offer.id, name: $0, isBusy: flow.isRememberingVoice)
+                }
             })
     }
 

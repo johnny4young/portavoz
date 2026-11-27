@@ -490,7 +490,7 @@ def app_features(filename: str) -> set[str]:
     if "meetingcommitmentinbox" in lowered:
         return {"meeting-commitments"}
     if "meetingmarginnotes" in lowered:
-        return {"meeting-commitments", "meeting-evidence"}
+        return {"meeting-commitments", "meeting-evidence", "meeting-naming"}
     if any(token in lowered for token in (
         "skillofferbanner", "skillconfirmsheet", "meetingdetailcoordinator+skills"
     )):

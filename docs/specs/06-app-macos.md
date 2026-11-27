@@ -546,7 +546,7 @@ the tidied notes, and any note without a line). Apuntador (`detail-rail-tab-apun
 holds the persisted cards. People (`detail-rail-tab-people`, `MeetingDetailPeopleSection`,
 `detail-people`) holds suggested names, voice matches with no visible line and the
 remember-person and recognize-voice offers; its tab shows how many wait and the composition
-selects it when that number grows. A lens without material shows one sentence
+selects it when a new suggestion or offer joins, unless processing needs attention. A lens without material shows one sentence
 (`detail-rail-empty-*`). Speaker questions and interruptions live inside `MeetingVoicesTable`
 (`detail-meeting-health`) rather than a duplicate rail tab. The selected lens is composition state passed in as a
 value with a `selectTab` action, so the rail itself stays stateless.
@@ -634,8 +634,8 @@ section) and a ⋯ menu (`-more`) with Review later (`-defer-tomorrow`,
 transcript lists only pending candidates whose evidence has no visible row,
 such as a hidden line (`MeetingMarginNotes.inbox`). Your notes join the same
 projection without needing a summary (D670): each note keys to the row active
-at its timestamp (`activeRowID(at:)`, else the first row) and reads "Note" or
-"Objective" with its text (`margin-note-<id>`). A voice named without a tap
+at its timestamp (`activeRowID(at:)`, else the first row) and reads its kind
+(Note, Objective, Link, Code, File) with its text (`margin-note-<id>`). A voice named without a tap
 (`MeetingMarginNotes.addingVoiceMatches`, added to the model state's margin
 notes since voice matches change outside review updates) keys to that voice's
 first row and reads "Named by voice", the name, Undo (`detail-voice-auto-undo-<label>`)

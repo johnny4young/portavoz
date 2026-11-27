@@ -501,12 +501,42 @@
         }
       }
     },
+    "Code": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Código"
+          }
+        }
+      }
+    },
     "Commitments, decisions and your notes sit beside the line that produced them.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Los compromisos, las decisiones y tus notas van junto a la línea que los originó."
+          }
+        }
+      }
+    },
+    "File": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archivo"
+          }
+        }
+      }
+    },
+    "Link": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enlace"
           }
         }
       }

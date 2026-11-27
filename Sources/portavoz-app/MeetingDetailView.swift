@@ -49,9 +49,11 @@ struct MeetingDetailView: View {
         .onChange(of: sceneValues.pendingSeek) { _, _ in
             deliverPendingMeetingSeekIfPossible()
         }
-        // Names you asked for, and the offers a rename brings, open where they wait.
-        .onChange(of: coordinator.peopleValues.followUpCount) { old, new in
-            if new > old { railTab = .people }
+        // Names you asked for, and the offers a rename brings, open where they wait,
+        // unless processing that needs attention holds Marginalia.
+        .onChange(of: coordinator.peopleValues.followUps) { old, new in
+            guard !new.isSubset(of: old), detail.flatMap(MeetingDetailTrustValues.make) == nil else { return }
+            railTab = .people
         }
         .onDisappear { model.invalidatePlayback() }
     }

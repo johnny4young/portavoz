@@ -23574,8 +23574,10 @@ can play the line that decides it; the pending "sounds like" suggestion stays
 in its Voices row as the board draws it. People gathers what is still to
 confirm about who spoke: suggested names, a voice match with no visible line,
 and the offers to remember a person or recognize a voice. Its tab shows how
-many are waiting, and it opens on its own when that number grows, which only
-follows your own request for names or a rename. The board's help line under the
+many are waiting, and it opens on its own when a new one joins, which only
+follows your own request for names or a rename, and never while processing
+that needs attention holds Marginalia. A note card names its kind (Note,
+Objective, Link, Code, File). The board's help line under the
 tabs shows only as the empty Marginalia lens, and its recipe chip stays under
 the standfirst (D656). Notes anchor without a current summary; decisions and
 commitments still need one (D669).

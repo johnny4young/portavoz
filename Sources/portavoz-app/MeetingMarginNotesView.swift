@@ -65,7 +65,7 @@ private struct MeetingMarginNoteCard: View {
     private func note(_ item: ContextItem) -> some View {
         VStack(alignment: .leading, spacing: 7) {
             PVCardCaption(
-                text: item.kind == .objective ? L10n.text("Objective") : L10n.text("Note"),
+                text: Self.caption(item.kind),
                 systemImage: "note.text",
                 tint: PVDesign.ink2)
             Text(item.content)
@@ -76,6 +76,16 @@ private struct MeetingMarginNoteCard: View {
         .pvCard(.outlined, padding: 12)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("margin-note-\(item.id.uuidString)")
+    }
+
+    private static func caption(_ kind: ContextItem.Kind) -> String {
+        switch kind {
+        case .note: L10n.text("Note")
+        case .objective: L10n.text("Objective")
+        case .link: L10n.text("Link")
+        case .codeSnippet: L10n.text("Code")
+        case .file: L10n.text("File")
+        }
     }
 
     /// The same Undo and Keep the applied chip offered, beside the voice's first line.

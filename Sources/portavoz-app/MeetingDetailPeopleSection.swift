@@ -1,7 +1,9 @@
 import ApplicationKit
+import PortavozCore
 import SwiftUI
 
 struct MeetingDetailRememberOffer {
+    let speakerID: SpeakerID
     let name: String
     let isBusy: Bool
 }
@@ -14,11 +16,18 @@ struct MeetingDetailPeopleValues {
     let voiceOffer: MeetingDetailRememberOffer?
 
     /// What you asked for: suggested names and the offers a rename brings.
-    var followUpCount: Int {
-        nameSuggestions.count + (personOffer == nil ? 0 : 1) + (voiceOffer == nil ? 0 : 1)
+    /// Keyed by speaker so an offer replaced for another speaker reads as new.
+    var followUps: Set<String> {
+        var keys = Set(nameSuggestions.map { "name-\($0.label)" })
+        if let personOffer { keys.insert("person-\(personOffer.speakerID.rawValue)") }
+        if let voiceOffer { keys.insert("voice-\(voiceOffer.speakerID.rawValue)") }
+        return keys
     }
 
-    var count: Int { followUpCount + unplacedVoiceMatches.count }
+    var count: Int {
+        nameSuggestions.count + (personOffer == nil ? 0 : 1) + (voiceOffer == nil ? 0 : 1)
+            + unplacedVoiceMatches.count
+    }
 
     var isEmpty: Bool { count < 1 }
 }
