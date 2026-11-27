@@ -6237,11 +6237,13 @@ The live recording is a stage of separate views rather than a growing
 up and one More panel, a popover with its state shown as switches),
 `RecordingStageHero` (the elapsed clock in display type beside the meeting's
 title, "started · n voices so far" and Stop), the live Voices table
-(`RecordingLiveVoicesTable` over the pure `LiveVoiceTable`), the captions and
-assist split, and `RecordingStageFooter` (talk balance, mute and level). Each is
+(`RecordingLiveVoicesTable` over the pure `LiveVoiceTable`) with the assist
+panel beside it on a wide window (`RecordingStageLayout`), the live strip
+(`RecordingLiveStrip`), the captions, and `RecordingStageFooter` (talk balance,
+mute and level); a narrow window keeps the captions and assist split. Each is
 responsive by construction rather than by control truncation: the toolbar's
-`ViewThatFits` drops labels to glyphs, and the hero steps its type down from the
-width it is given. The focused external-recording XCUITest and
+`ViewThatFits` drops labels to glyphs, the hero steps its type down from the
+width it is given, and the strip hides tick labels it has no room for. The focused external-recording XCUITest and
 `RecordingStageUITests` enforce those geometric invariants.
 
 `ViewThatFits` re-measures every variant, AppKit-backed controls included,
@@ -6255,8 +6257,8 @@ does the same over a fixed frame.
 The talk-balance cue reads captions in its own body. The floating panel's
 meter uses the same overlay fill.
 Live voices are a separate observable, `RecordingLiveVoicesModel`,
-that neither the bar nor the floating panel reads; only the Voices table and the
-hero's detail line do. It rebuilds the pure
+that neither the bar nor the floating panel reads; only the Voices table, the
+live strip, a directed card's asker line and the hero's detail line do. It rebuilds the pure
 `LiveVoiceStage` (ApplicationKit) at most once a second from closed captions,
 live relabels, note and question changes, and microphone-speech flips; the
 level relay reaches it only through that flip, never per sample.

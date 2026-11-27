@@ -42,6 +42,8 @@ struct RecordingView: View {
     /// `RecordingView` invalidation — captions re-projected and all — into every
     /// tick of the gesture.
     @State private var draggingFraction: Double?
+    /// The stage's width: voices and the assist panel share a row once it is wide enough.
+    @State private var stageWidth: CGFloat = 0
 
     var body: some View {
         VStack(spacing: 16) {
@@ -60,8 +62,7 @@ struct RecordingView: View {
                 RecordingStageHero(controller: controller, onStop: stop)
                 RecordingStatusStrip(notices: notices)
                 RecordingInputStatusView(controller: controller)
-                RecordingLiveVoicesTable(model: controller.liveVoices, startedAt: controller.startedAt)
-                assistSplit
+                stage
                 RecordingStageFooter(controller: controller)
 
             case .processing(let step):
@@ -107,6 +108,7 @@ struct RecordingView: View {
                 Spacer()
             }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width.rounded() } action: { stageWidth = $0 }
         .navigationTitle("Recording")
         // While recording the stage's kicker names it; the window menu keeps the title.
         .toolbar(removing: controller.phase == .recording ? .title : nil)
@@ -124,6 +126,53 @@ struct RecordingView: View {
         services.simulateStopIntentIfRequested()
     }
 
+    /// Who is talking beside the assist panel, the strip, then the captions
+    /// taking the rest. Narrower, the panel goes under the captions.
+    @ViewBuilder
+    private var stage: some View {
+        let voices = RecordingLiveVoicesTable(model: controller.liveVoices, startedAt: controller.startedAt)
+        let strip = RecordingLiveStrip(model: controller.liveVoices, startedAt: controller.startedAt)
+            .padding(.horizontal, 20)
+        if RecordingStageLayout.isSideBySide(width: stageWidth) {
+            let panelWidth = RecordingStageLayout.panelWidth(for: stageWidth)
+            VStack(spacing: 12) {
+                HStack(alignment: .top, spacing: RecordingStageLayout.columnGap) {
+                    voices.frame(maxWidth: .infinity, alignment: .topLeading)
+                    Color.clear.frame(width: panelWidth, height: 1)
+                }
+                .frame(maxWidth: .infinity, minHeight: RecordingStageLayout.panelMinimumHeight, alignment: .top)
+                // The panel takes the row's height: the voices' or its floor.
+                .overlay(alignment: .topTrailing) {
+                    assistPanel.frame(width: panelWidth)
+                }
+                .padding(.horizontal, 20)
+                strip
+                LiveRecordingCaptionsView(controller: controller)
+                    .frame(minHeight: RecordingAssistLayout.minimumCaptionsHeight)
+                    .padding(.horizontal, 20)
+            }
+        } else {
+            VStack(spacing: 12) {
+                voices.padding(.horizontal, 20)
+                strip
+                assistSplit
+            }
+        }
+    }
+
+    private var assistPanel: some View {
+        RecordingAssistPanel(
+            controller: controller,
+            apuntadorState: RecordingApuntadorState.resolve(
+                enabled: controller.companionEnabled,
+                detectorAvailable: services.companionAvailable,
+                answersAvailable: apuntadorAnswersAvailable),
+            openApuntadorSettings: {
+                services.pendingSettingsCategory = .intelligence
+                openSettings()
+            })
+    }
+
     /// Captions and the assist area split the flexible height and the user
     /// owns where the line sits. The assist area used to be pinned at
     /// `maxHeight: 260` while the captions took every flexible point, so a
@@ -138,16 +187,7 @@ struct RecordingView: View {
                     .frame(height: split.captions)
                     .padding(.horizontal, 20)
                 assistDivider(total: geo.size.height)
-                RecordingAssistPanel(
-                    controller: controller,
-                    apuntadorState: RecordingApuntadorState.resolve(
-                        enabled: controller.companionEnabled,
-                        detectorAvailable: services.companionAvailable,
-                        answersAvailable: apuntadorAnswersAvailable),
-                    openApuntadorSettings: {
-                        services.pendingSettingsCategory = .intelligence
-                        openSettings()
-                    })
+                assistPanel
                     .frame(height: split.assist)
                     .padding(.horizontal, 20)
             }
@@ -253,27 +293,50 @@ private struct LiveRecordingCaptionsView: View {
                     translation: projection.translations[segment.id])
             }
         }
-        .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+        // Lines leave under the hairline by fading out, never cut in half.
+        .mask {
+            VStack(spacing: 0) {
+                Color.clear.frame(height: 6)
+                LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
+                    .frame(height: 36)
+                Color.black
+            }
+        }
+        .overlay(alignment: .top) {
+            Rectangle().fill(PVDesign.line).frame(height: 1)
+        }
     }
 
+    /// Who and when in a right-aligned margin, then the words; the newest
+    /// line is the large one and older words dim above it.
     private func captionRow(
         _ segment: TranscriptSegment,
         active: Bool,
         translation: String?
     ) -> some View {
         let key = LiveVoiceStage.key(for: segment, labels: controller.liveSpeakerLabels)
-        let isMe = key == LiveVoiceStage.youKey
-        return HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(LiveVoiceName.of(key: key))
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(pillText(key))
-                .padding(.horizontal, 7)
-                .padding(.vertical, 2)
-                .background(pillBackground(key), in: Capsule())
-            VStack(alignment: .leading, spacing: 1) {
+        return HStack(alignment: .firstTextBaseline, spacing: 18) {
+            VStack(alignment: .trailing, spacing: 1) {
+                HStack(spacing: 5) {
+                    VoiceDot(
+                        tint: key == LiveVoiceStage.youKey ? .you : controller.liveVoices.cast.tint(for: key),
+                        size: 7)
+                    Text(LiveVoiceName.of(key: key))
+                        .font(.system(size: 12.5, weight: .bold))
+                        .foregroundStyle(nameInk(key))
+                        .lineLimit(1)
+                }
+                Text(ClockFormat.mmss(segment.startTime))
+                    .font(PVFont.timeCode(.caption2))
+                    .foregroundStyle(.ink3)
+            }
+            .frame(width: Self.marginWidth, alignment: .trailing)
+            VStack(alignment: .leading, spacing: 4) {
                 Text(segment.text)
-                    .font(active ? .title3.weight(.medium) : .body)
+                    .font(.system(size: active ? 21 : 16.5, weight: active ? .medium : .regular))
+                    .lineSpacing(active ? 5 : 4)
                     .foregroundStyle(segment.isFinal ? PVDesign.ink : PVDesign.ink3)
+                    .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier(
                         (segment.liveUpdateMode == .rangeRevision || segment.liveUpdateMode == .tokenPreview)
                         ? "recording-live-preview-\(segment.channel.rawValue)"
@@ -282,19 +345,13 @@ private struct LiveRecordingCaptionsView: View {
                     translatedCaption(translated, segmentID: segment.id)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .liveCaptionFade()
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 12)
-        .padding(.vertical, active && isMe ? 10 : 0)
-        .background {
-            if active && isMe {
-                RoundedRectangle(cornerRadius: PVDesign.radiusCard)
-                    .fill(VoicePalette.me.opacity(0.12))
-                    .strokeBorder(VoicePalette.me.opacity(0.35))
-            }
-        }
-        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
     }
+
+    private static let marginWidth: CGFloat = 76
 
     private func translatedCaption(
         _ translated: String,
@@ -330,21 +387,12 @@ private struct LiveRecordingCaptionsView: View {
         }
     }
 
-    /// Voice hues are fills, not text colours: labels stay ink on the tint.
-    private func pillText(_ key: String) -> Color {
+    /// Voice hues are fills, not text colours: names stay ink beside the dot.
+    private func nameInk(_ key: String) -> Color {
         switch key {
-        case LiveVoiceStage.youKey: VoicePalette.meContrast
+        case LiveVoiceStage.youKey: PVDesign.youInk
         case LiveVoiceStage.unlabelledKey: PVDesign.ink3
-        default: PVDesign.ink
-        }
-    }
-
-    private func pillBackground(_ key: String) -> Color {
-        switch key {
-        case LiveVoiceStage.youKey: VoicePalette.me
-        case LiveVoiceStage.unlabelledKey: Color(nsColor: .quaternarySystemFill)
-        // Live labels are S1, S2…: unnamed voices stay grey until named.
-        default: VoicePalette.unnamed.opacity(0.22)
+        default: PVDesign.ink2
         }
     }
 }

@@ -1910,7 +1910,7 @@ extension ArchitectureDependencyTests {
                 + "        .id(objective.id)"))
         // Objective reveal behavior belongs to the real-app single/batched
         // arrival journeys, not an assertion freezing the predicate's spelling.
-        XCTAssertTrue(recording.contains("RecordingAssistPanel(\n                    controller: controller,"))
+        XCTAssertTrue(recording.contains("RecordingAssistPanel(\n            controller: controller,"))
         XCTAssertFalse(
             recording.contains(".frame(maxHeight: 260)"),
             "the assist area must grow with the window, not sit at a pinned height")
@@ -2076,7 +2076,7 @@ extension ArchitectureDependencyTests {
         let design = try Self.contents(of: "Sources/portavoz-app/PVDesign.swift")
         XCTAssertTrue(design.contains("enum PVSymbol"))
         for concept in [
-            "today", "ask", "insights", "radar", "apuntador", "apuntadorOff", "generate", "proactive",
+            "today", "ask", "insights", "radar", "apuntador", "generate", "proactive",
             "automations", "intelligence", "privacy", "success", "warning", "error",
             "retry", "correction", "history", "record", "stop"
         ] {
@@ -2149,7 +2149,7 @@ extension ArchitectureDependencyTests {
             presentOwners,
             [
                 "HomeDayAxis.swift", "HomeNextMeetingHero.swift", "MenuBarIcon.swift", "MenuBarView.swift",
-                "PVComponents.swift", "RecordingHUD.swift", "RecordingToolbar.swift"
+                "PVComponents.swift", "RecordingHUD.swift", "RecordingLiveStrip.swift", "RecordingToolbar.swift"
             ],
             "red marks only the present: Record, Stop, the live dot, the Now label and line, a meeting under way")
     }

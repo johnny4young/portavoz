@@ -1442,13 +1442,16 @@ read it), so a row whose diarizer turn already arrived does not read as
 unlabelled until the next window.
 
 Requests coalesce into one refresh, at least a second after the previous one.
+Nothing live runs past the clock: rows are cut at `now` (a row that starts
+after it is not heard yet) and the columns span exactly `now`, so every
+consumer reads the same present (D675).
 The controller asks from `didSet` on the captions, live labels, live turns,
 notes and Apuntador cards, so every caption delta asks, but a burst is one
 rebuild. Start, Stop and the
 hand-off to the next session reset the model; after Stop the durable
 diarization pass re-attributes the meeting and nothing live is persisted.
 
-### Recording stage (D674)
+### Recording stage (D674, D675)
 
 `RecordingView` lays the live recording out top to bottom:
 
@@ -1467,8 +1470,8 @@ diarization pass re-attributes the meeting and nothing live is persisted.
   from 840 pt, 88/26 from 680 pt, 64/22 below. The clock ticks in an overlay of
   a hidden zero-digit placeholder (`recording-elapsed-time`).
 - The status strip and input status, unchanged.
-- `RecordingLiveVoicesTable` (`recording-voices`), at most 760 pt wide and
-  hidden until the first voice is heard. `LiveVoiceTable` takes the live cast: you and the five most recent
+- `RecordingLiveVoicesTable` (`recording-voices`), hidden until the first
+  voice is heard. `LiveVoiceTable` takes the live cast: you and the five most recent
   voices in rows, the current speaker first on a raised card with level bars
   and "speaking now · 0:20" (the time since its latest turn began, or just
   "speaking now" when that turn is more than four seconds old), the others with
@@ -1482,7 +1485,52 @@ diarization pass re-attributes the meeting and nothing live is persisted.
   row (`recording-voice-<key>`) reads "S1, 22 s ago, 15%". The rows rebuild
   when the live voices refresh and on one shared one-second tick for their
   recency, inside fixed-width columns, so neither moves the table.
-- The captions and the assist area, split as before.
+- From `RecordingStageLayout.isSideBySide` (room for a 400 pt table, a 40 pt
+  gap and the 322 pt panel), the table and `RecordingAssistPanel` share a row;
+  the panel takes 34% of it (never under 322 pt, the board's proportion) and
+  the row's height is the table's or the panel's 300 pt floor; the strip and the
+  captions take the full width under it and the captions take the rest of the
+  height. Narrower, the table and the strip stack above the captions and the
+  assist area, split as before (D504).
+- `RecordingLiveStrip` (`recording-strip`): a 72 pt block. The voice
+  columns (`LiveVoiceStage.strip(cast:)`, one per second up to the last
+  refresh) fill `VoiceStrip(size: .live, span:)` from the left over a 16 pt
+  track; the rest of the track is the time still to come. A red now line
+  (2.4 pt) and "now" (`recording-strip-now`) mark the clock; above the track,
+  your notes (amber line, pencil, "your note · 04:40") and Apuntador questions
+  (green line, bubble, "S2 asked you · 11:20", or "Asked you · 11:20" before
+  a label) are ticks (`recording-strip-tick-<id>`). Below, a ruler with a
+  minor mark per minute and labelled majors every 5 minutes; the horizon is
+  the elapsed time rounded up to the next major (12:04 → 15:00), and majors
+  step to 10, 15, 30 and 60 minutes, then double, to stay 70 pt apart. Times
+  past an hour read as minutes ("65:00"). "now" is placed first and always
+  shows; tick labels go newest first, right of their line or else left,
+  4 pt apart, and hide (keeping their line) when neither side is free
+  (`RecordingLiveStripLayout`). A one-second timeline moves the now edge;
+  label widths are measured with AppKit only when the stage changes.
+- The captions (`recording-live-transcript`): a right-aligned 76 pt margin with
+  the voice dot and name (you in amber ink, live labels in ink 2, unlabelled
+  remote speech in ink 3) over the start time, then the words at 16.5 pt; the
+  newest line is 21 pt medium. While following, the words of each line above
+  the newest dim by distance down to 0.6 opacity (`TranscriptFocusVisualPolicy`
+  through `liveCaptionFade()`, fed the focus line by `FocusedTranscriptView`),
+  which keeps ink at 4.5:1 in light and dark; the margin keeps full ink because
+  its ink 2 and ink 3 type would not. Browsing history shows every line at
+  full ink. Only opacity changes, so Reduce Motion changes nothing. Translations
+  stay under their line.
+- `RecordingAssistPanel`: three text tabs, Apuntador (default), Objectives and
+  "Notes · n" (`recording-assist-tab-companion|objectives|notes`), and the
+  Apuntador state chip (`recording-apuntador-state`): one word (Listening,
+  Questions only, Off, Unavailable) that opens a menu with the action that
+  changes it (`recording-apuntador-turn-on|turn-off|settings`). Under the tabs
+  the focus slot; a directed card reads "S2 asked you · 11:20" (the asker from
+  the live tick for that card), the question quoted in Fraunces italic and the
+  answer after a green "Portavoz:". Objectives holds the objective field and
+  checklist; Notes lists your notes newest first, then the running summary
+  (`recording-live-summary`). Under every tab, `RecordingNoteField`
+  (`recording-note-field`) shows "Note at 12:04…" from its own one-second
+  timeline while empty; Return or `recording-note-add` adds the note at the
+  current time.
 - `RecordingStageFooter`: "Talk balance" with your share of the last five
   minutes as a bar and "you 20% · listening 80%" (`recording-talk-balance`),
   then the mute control and the microphone level.
@@ -2940,7 +2988,7 @@ Font: `docs/design/ds/` (authored in Claude Design, pine project). (1) `PVDesign
 
 **Recording/review polish (Jul 14)**: local mic mute in bar (zeros aligned, doesn't control call); floating HUD that grows with current utterance and returns to compact on speaker change/pause; unlimited Apuntador cards newest-first, persisted and reviewable; refine re-derives them; chapter titles with Foundation Models and literal fallback bounded to chapter. `MeetingDetailView` invalidates player/waveform and discards canceled loads when switching meetings so nothing from previous detail leaks into next.
 
-**Live assist area (Sep 2026, D504; consolidated Nov 2026)**: `RecordingView` no longer stacks eight panels inside a pinned 260 pt scroll. `RecordingAssistLayout.split(total:fraction:)` divides the flexible height between the captions and the assist area, both with floors, and a drag handle persists the fraction in `recording.assist.fraction` — a taller window now grows both zones. `RecordingAssistPanel` shows up to three tabs owned by `RecordingController.selectedAssistTab` (so Library browsing preserves selection): `notes` (default, combining `RecordingNotesPanel` and `RecordingObjectivesPanel` side-by-side on wide windows and stacked on narrow windows via `ViewThatFits`), `companion` (unified Apuntador feed combining interview assist and proactive help when enabled above the companion cards), and `summary` (only once a live summary exists); a selection whose tab disappears falls back to `notes`. Above the tabs, `RecordingFocusSlot` holds the one thing that cannot wait — catch-up first (the user just pressed it), then the newest card addressed to them by name, then the suggested next question — and it survives a tab switch. In the Companion tab, `CompanionCardWindow` keeps the newest three cards open with the answer clamped to four lines plus an explicit "Show all"; older cards fold to their question on one line and reopen on click, and a hand-opened card claims the window so reaching back folds the oldest recency-open card instead of growing the panel. The focused card is excluded from the list so it is never rendered twice. Live cards remain unlimited and persisted for the meeting detail; only the live panel is bounded. Live caption speaker pills use unified `"You"` / `"Others"` labels matching Meeting Detail and Ask.
+**Live assist area (Sep 2026, D504; consolidated Nov 2026)**: `RecordingView` no longer stacks eight panels inside a pinned 260 pt scroll. `RecordingAssistLayout.split(total:fraction:)` divides the flexible height between the captions and the assist area, both with floors, and a drag handle persists the fraction in `recording.assist.fraction` — a taller window now grows both zones. `RecordingAssistPanel` shows three tabs owned by `RecordingController.selectedAssistTab` (so Library browsing preserves selection): `companion` (default; the unified Apuntador feed combining interview assist and proactive help when enabled above the companion cards), `objectives`, and `notes` (your notes, then the running summary once one exists), with the note field under every tab (D675). Under the tabs, `RecordingFocusSlot` holds the one thing that cannot wait — catch-up first (the user just pressed it), then the newest card addressed to them by name, then the suggested next question — and it survives a tab switch. In the Companion tab, `CompanionCardWindow` keeps the newest three cards open with the answer clamped to four lines plus an explicit "Show all"; older cards fold to their question on one line and reopen on click, and a hand-opened card claims the window so reaching back folds the oldest recency-open card instead of growing the panel. The focused card is excluded from the list so it is never rendered twice. Live cards remain unlimited and persisted for the meeting detail; only the live panel is bounded. Live caption speaker pills use unified `"You"` / `"Others"` labels matching Meeting Detail and Ask.
 
 **Accepted live-input durability**: `RecordingInputPersistence` is one ordered
 recording-scoped owner. Note and objective controls submit through

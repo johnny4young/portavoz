@@ -70,7 +70,7 @@ final class RecordingController {
     /// Editor input outlives view reconstruction but is not submitted context.
     var drafts = RecordingDrafts()
     /// Selected assist tab outlives browsing away to another meeting during capture.
-    var selectedAssistTab: RecordingAssistTab = .notes
+    var selectedAssistTab: RecordingAssistTab = .companion
     let inputPersistence = RecordingInputPersistence()
     private var pendingInputStop: (capture: StopRecordingCapture, voiceprint: Voiceprint?)?
     var hasPendingInputStop: Bool { pendingInputStop != nil }
@@ -270,7 +270,7 @@ final class RecordingController {
         liveVoices.reset()
         contextItems = []
         drafts = RecordingDrafts()
-        selectedAssistTab = .notes
+        selectedAssistTab = .companion
         liveSummaryCheckpoint = nil
         cancelLiveSummaryWork()
         cancelCompanionGeneration()
@@ -367,7 +367,7 @@ final class RecordingController {
         companionTerminalRuns = []
         contextItems = []
         drafts = RecordingDrafts()
-        selectedAssistTab = .notes
+        selectedAssistTab = .companion
         cancelCompanionGeneration()
         lastOpenRowID = nil
         turnEndpointTask?.cancel()

@@ -67,46 +67,22 @@ enum RecordingAssistLayout {
     }
 }
 
-/// The assist area keeps at most three tabs: Notes (with objectives),
-/// Apuntador (questions, interview, and proactive signals), and Live summary
-/// once available. The focus slot above the tabs lifts urgent cards (D504).
+/// The assist area keeps three tabs: Apuntador (questions, interview and
+/// proactive signals), Objectives, and Notes with the running summary. The
+/// focus slot under the tabs lifts urgent cards (D504).
 enum RecordingAssistTab: String, CaseIterable, Identifiable, Sendable {
-    case notes
     case companion
-    case summary
+    case objectives
+    case notes
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .notes: L10n.text("Notes")
         case .companion: L10n.text("Apuntador")
-        case .summary: L10n.text("Summary")
+        case .objectives: L10n.text("Objectives")
+        case .notes: L10n.text("Notes")
         }
-    }
-
-    var symbol: String {
-        switch self {
-        case .notes: "square.and.pencil"
-        case .companion: PVSymbol.apuntador
-        case .summary: PVSymbol.generate
-        }
-    }
-
-    /// Notes and Apuntador are always reachable; Summary appears once there is
-    /// enough closed conversation to summarize.
-    static func available(hasSummary: Bool) -> [RecordingAssistTab] {
-        var tabs: [RecordingAssistTab] = [.notes, .companion]
-        if hasSummary { tabs.append(.summary) }
-        return tabs
-    }
-
-    /// Keeps a selection valid when its tab disappears mid-recording.
-    static func resolve(
-        _ selection: RecordingAssistTab,
-        in available: [RecordingAssistTab]
-    ) -> RecordingAssistTab {
-        available.contains(selection) ? selection : (available.first ?? .notes)
     }
 }
 
@@ -135,5 +111,28 @@ enum RecordingFocusSlot: Equatable, Sendable {
         if hasNextQuestion { return .nextQuestion }
         if let directedCardID { return .directedCard(directedCardID) }
         return .none
+    }
+}
+
+/// When the live voices and the assist panel share a row.
+enum RecordingStageLayout {
+    /// The board's panel: 322 pt beside a 620 pt table, about a third of the row.
+    static let panelWidth: CGFloat = 322
+    static let panelShare: CGFloat = 0.34
+    static let columnGap: CGFloat = 40
+    /// The voices table's narrow metrics with a usable bar.
+    static let minimumVoicesWidth: CGFloat = 400
+    /// The panel never shrinks below its tabs, a card and the note field.
+    static let panelMinimumHeight: CGFloat = 300
+    static let horizontalPadding: CGFloat = 20
+
+    static func isSideBySide(width: CGFloat) -> Bool {
+        width >= minimumVoicesWidth + columnGap + panelWidth + 2 * horizontalPadding
+    }
+
+    /// The panel keeps the board's share of a wide row, never under 322 pt.
+    static func panelWidth(for width: CGFloat) -> CGFloat {
+        guard width.isFinite else { return panelWidth }
+        return max(panelWidth, ((width - 2 * horizontalPadding) * panelShare).rounded())
     }
 }

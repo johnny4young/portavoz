@@ -11,7 +11,7 @@ final class RecordingInputUITests: PortavozUITestCase {
         try addNote(note, in: app)
         XCTAssertEqual(try fixture.query("SELECT count(*) FROM contextItem WHERE kind = 'note'"), "1")
         let meetingID = try fixture.query("SELECT meetingID FROM contextItem WHERE kind = 'note'")
-        try app.openAssistTab("notes")
+        try app.openAssistTab("objectives")
         let field = app.control(withIdentifier: "recording-objective-field")
         field.click()
         typeText("Check the owner's approval", in: app)

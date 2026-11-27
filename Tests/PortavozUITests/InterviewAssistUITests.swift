@@ -37,7 +37,7 @@ final class InterviewAssistUITests: PortavozUITestCase {
 
         let assist = app.control(withIdentifier: "recording-assist-panel")
         XCTAssertTrue(assist.waitForExistenceFast(timeout: 5))
-        try app.openAssistTab("notes")
+        try app.openAssistTab("objectives")
         let objective = app.control(withIdentifier: "recording-objective-field")
         XCTAssertTrue(objective.waitForHittable(timeout: 5))
         objective.click()

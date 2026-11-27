@@ -461,16 +461,6 @@
         }
       }
     },
-    "A running summary appears once there is enough to say.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "El resumen en vivo aparece cuando ya hay algo que contar."
-          }
-        }
-      }
-    },
     "A short voice sample lets Portavoz tag your interventions as “Me” on any microphone or channel. You can enroll or redo it later in Settings.": {
       "localizations": {
         "es": {
@@ -6595,16 +6585,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Asistente de entrevista"
-          }
-        }
-      }
-    },
-    "Interview objectives": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Objetivos de la entrevista"
           }
         }
       }
@@ -19003,6 +18983,96 @@
           "stringUnit": {
             "state": "translated",
             "value": "hablando ahora · %@"
+          }
+        }
+      }
+    },
+    "now": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ahora"
+          }
+        }
+      }
+    },
+    "your note · %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tu nota · %@"
+          }
+        }
+      }
+    },
+    "%@ asked you · %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ te preguntó · %@"
+          }
+        }
+      }
+    },
+    "Asked you · %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Te preguntaron · %@"
+          }
+        }
+      }
+    },
+    "Listening": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escuchando"
+          }
+        }
+      }
+    },
+    "%@ asked you": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ te preguntó"
+          }
+        }
+      }
+    },
+    "Notes · %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notas · %d"
+          }
+        }
+      }
+    },
+    "Note at %@…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nota en %@…"
+          }
+        }
+      }
+    },
+    "Portavoz:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz:"
           }
         }
       }

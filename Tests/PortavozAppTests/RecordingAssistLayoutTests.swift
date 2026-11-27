@@ -113,22 +113,23 @@ final class RecordingAssistLayoutTests: XCTestCase {
             "a long drag stops at the bound instead of collapsing the captions")
     }
 
-    func testOptionalPanelsOnlyAppearOnceTheyCanShowSomething() {
-        XCTAssertEqual(
-            RecordingAssistTab.available(hasSummary: false),
-            [.notes, .companion])
-        XCTAssertEqual(
-            RecordingAssistTab.available(hasSummary: true),
-            [.notes, .companion, .summary])
+    func testTheAssistAreaKeepsThreeTabsLedByApuntador() {
+        XCTAssertEqual(RecordingAssistTab.allCases, [.companion, .objectives, .notes])
     }
 
-    func testASelectionSurvivesItsTabDisappearing() {
-        let available = RecordingAssistTab.available(hasSummary: false)
+    func testVoicesAndThePanelShareARowOnlyWhenBothFit() {
+        let needed = RecordingStageLayout.minimumVoicesWidth + RecordingStageLayout.columnGap
+            + RecordingStageLayout.panelWidth + 2 * RecordingStageLayout.horizontalPadding
+        XCTAssertTrue(RecordingStageLayout.isSideBySide(width: needed))
+        XCTAssertFalse(RecordingStageLayout.isSideBySide(width: needed - 1))
+        XCTAssertFalse(
+            RecordingStageLayout.isSideBySide(width: 900 - 232),
+            "the narrowest window stacks the panel under the captions")
+    }
 
-        XCTAssertEqual(RecordingAssistTab.resolve(.companion, in: available), .companion)
-        XCTAssertEqual(
-            RecordingAssistTab.resolve(.summary, in: available), .notes,
-            "a live summary that goes away must not leave a blank panel selected")
+    func testThePanelKeepsTheBoardShareOfAWideRow() {
+        XCTAssertEqual(RecordingStageLayout.panelWidth(for: 800), RecordingStageLayout.panelWidth)
+        XCTAssertEqual(RecordingStageLayout.panelWidth(for: 1662), 551)
     }
 
     func testTheFocusSlotPrefersWhatTheUserIsWaitingFor() {

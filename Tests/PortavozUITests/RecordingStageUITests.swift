@@ -1,7 +1,7 @@
 import XCTest
 
-/// The live recording stage: the clock beside the meeting, Stop, and the live
-/// Voices table led by whoever is speaking now.
+/// The live recording stage: the clock beside the meeting, Stop, the live
+/// Voices table led by whoever is speaking now, the strip and the assist panel.
 final class RecordingStageUITests: PortavozUITestCase {
     @MainActor
     func testLiveVoicesLeadWithTheCurrentSpeakerAndFoldTheRest() throws {
@@ -41,6 +41,42 @@ final class RecordingStageUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testTheStripMarksNowAndYourNoteWithThePanelBesideTheVoices() throws {
+        let app = try launchStage(["-seed-wide-window", "-seed-dark-appearance"])
+        defer { finishUITestApplication(app) }
+
+        let you = app.control(withIdentifier: "recording-voice-you")
+        XCTAssertTrue(you.waitForExistenceFast(timeout: 10))
+        let panel = app.control(withIdentifier: "recording-assist-panel")
+        XCTAssertTrue(panel.exists)
+        XCTAssertGreaterThan(panel.frame.minX, you.frame.maxX, "the assist panel sits beside the voices")
+        XCTAssertFalse(
+            app.control(withIdentifier: "recording-assist-divider").exists, "nothing to split beside the voices")
+        XCTAssertTrue(app.buttons["recording-assist-tab-companion"].isSelected, "Apuntador opens first")
+
+        let strip = app.control(withIdentifier: "recording-strip")
+        let now = app.control(withIdentifier: "recording-strip-now")
+        XCTAssertTrue(strip.exists && now.exists)
+        XCTAssertGreaterThan(strip.frame.minY, panel.frame.minY)
+        let transcript = app.control(withIdentifier: "recording-live-transcript")
+        XCTAssertGreaterThanOrEqual(transcript.frame.minY, strip.frame.maxY, "the captions run under the strip")
+
+        let field = app.control(withIdentifier: "recording-note-field")
+        XCTAssertTrue(field.waitForHittable(timeout: 5))
+        field.click()
+        typeText("Ask about the dashboards", in: app)
+        typeKey(.return, modifierFlags: [], in: app)
+        let tick = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'recording-strip-tick-'"))
+            .firstMatch
+        XCTAssertTrue(tick.waitForExistenceFast(timeout: 5), "a note lands on the strip")
+        XCTAssertTrue(tick.label.hasPrefix("your note · 12:"), tick.label)
+        XCTAssertLessThanOrEqual(tick.frame.maxX, now.frame.minX, "the label flips left of the now edge")
+        XCTAssertTrue(app.buttons["recording-assist-tab-notes"].label.hasPrefix("Notes · 1"))
+        attachScreenshot(of: app, named: "pr-recording-stage-strip")
+    }
+
+    @MainActor
     func testTheStageKeepsStopAndTheTitleApartAtTheMinimumWidth() throws {
         let app = try launchStage(["-seed-narrow-window", "-seed-dark-appearance"])
         defer { finishUITestApplication(app) }
@@ -54,6 +90,10 @@ final class RecordingStageUITests: PortavozUITestCase {
         XCTAssertFalse(clock.frame.intersects(title.frame))
         XCTAssertGreaterThan(clock.frame.width, clock.frame.height, "the clock stays on one line")
         XCTAssertTrue(app.buttons["recording-catch-up"].isHittable)
+        let transcript = app.control(withIdentifier: "recording-live-transcript")
+        let panel = app.control(withIdentifier: "recording-assist-panel")
+        XCTAssertTrue(app.control(withIdentifier: "recording-strip").exists)
+        XCTAssertGreaterThan(panel.frame.minY, transcript.frame.minY, "narrow, the panel goes under the captions")
         attachScreenshot(of: app, named: "pr-recording-stage-min")
     }
 

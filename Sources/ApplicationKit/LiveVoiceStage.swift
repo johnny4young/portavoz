@@ -92,14 +92,18 @@ public struct LiveVoiceStage: Sendable, Equatable {
                 ?? (row.id == open?.id ? openLabel(row, turn: source.latestTurn) : nil)
             return Self.key(channel: row.channel, label: label)
         }
+        // A growing caption can end past the clock; nothing live is drawn or counted past now.
+        let now = source.now.isFinite && source.now > 0 ? source.now : TimeInterval.infinity
         var attributed: [VoiceRow] = []
         attributed.reserveCapacity(source.captions.count)
         var sorted = true
         var lastEnd: TimeInterval = 0
         for row in source.captions where row.startTime.isFinite && row.endTime.isFinite && row.endTime > row.startTime {
-            if let last = attributed.last, (last.start, last.end) > (row.startTime, row.endTime) { sorted = false }
-            attributed.append(VoiceRow(key: key(row), start: row.startTime, end: row.endTime))
-            lastEnd = max(lastEnd, row.endTime)
+            let end = min(row.endTime, now)
+            guard end > row.startTime else { continue }
+            if let last = attributed.last, (last.start, last.end) > (row.startTime, end) { sorted = false }
+            attributed.append(VoiceRow(key: key(row), start: row.startTime, end: end))
+            lastEnd = max(lastEnd, end)
         }
         if !sorted { attributed.sort { ($0.start, $0.end) < ($1.start, $1.end) } }
 
