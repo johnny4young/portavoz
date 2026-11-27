@@ -114,6 +114,7 @@ final class AppLaunchModel {
     func retry() async {
         guard !hasOperationInProgress else { return }
         phase = .opening
+        PortavozAppEntityCatalogLaunch.markOpening()
         openGeneration &+= 1
         let generation = openGeneration
         await Task.yield()
@@ -262,6 +263,7 @@ private extension AppLaunchModel {
 
     func recordOpenFailure(_ error: any Error) {
         PortavozAppDelegate.services = nil
+        PortavozAppEntityCatalogLaunch.markUnavailable()
         phase = .databaseUnavailable(Self.failure(
             error: error,
             databaseURL: databaseURL,

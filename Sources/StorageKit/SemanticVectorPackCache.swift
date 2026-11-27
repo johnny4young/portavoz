@@ -8,8 +8,8 @@ import Synchronization
 final class SemanticVectorPack: Sendable {
     let profileFingerprint: String
     let dimension: Int
-    let inProcessGeneration: UInt64
-    let externalGeneration: UInt64
+    let corpusVersion: Int64
+    let releaseEpoch: UInt64
     let packedVectors: [UInt16]
     let rowIDs: [Int64]
     let orders: [Int32]
@@ -23,8 +23,8 @@ final class SemanticVectorPack: Sendable {
     init(
         profileFingerprint: String,
         dimension: Int,
-        inProcessGeneration: UInt64,
-        externalGeneration: UInt64,
+        corpusVersion: Int64,
+        releaseEpoch: UInt64,
         packedVectors: [UInt16],
         rowIDs: [Int64],
         orders: [Int32],
@@ -34,8 +34,8 @@ final class SemanticVectorPack: Sendable {
     ) {
         self.profileFingerprint = profileFingerprint
         self.dimension = dimension
-        self.inProcessGeneration = inProcessGeneration
-        self.externalGeneration = externalGeneration
+        self.corpusVersion = corpusVersion
+        self.releaseEpoch = releaseEpoch
         self.packedVectors = packedVectors
         self.rowIDs = rowIDs
         self.orders = orders
@@ -77,141 +77,63 @@ final class SemanticVectorScratchBuffers {
     }
 }
 
-/// Thread-safe cache invalidated on any in-process or cross-process corpus mutation.
+/// Thread-safe cache keyed by the corpus version SQLite triggers maintain.
 final class SemanticVectorPackCache: Sendable {
-    final class Observer: TransactionObserver, Sendable {
-        private static let watchedTables: Set<String> = [
-            "meeting",
-            "segment",
-            "segmentCorrectedText",
-            "transcriptStructuralSearchRow",
-            "transcriptCorrection",
-            "transcriptCorrectionSearchState"
-        ]
-
-        private weak let owner: SemanticVectorPackCache?
-        private let pendingMutation = Mutex(false)
-
-        init(owner: SemanticVectorPackCache) {
-            self.owner = owner
-        }
-
-        func observes(eventsOfKind eventKind: DatabaseEventKind) -> Bool {
-            Self.watchedTables.contains(eventKind.tableName)
-        }
-
-        func databaseDidChange(with event: DatabaseEvent) {
-            _ = event
-            pendingMutation.withLock { $0 = true }
-        }
-
-        func databaseDidCommit(_ db: Database) {
-            _ = db
-            let mutated = pendingMutation.withLock { state in
-                let value = state
-                state = false
-                return value
-            }
-            if mutated {
-                owner?.recordInProcessMutation()
-            }
-        }
-
-        func databaseDidRollback(_ db: Database) {
-            _ = db
-            pendingMutation.withLock { $0 = false }
-        }
-    }
-
     private struct State: @unchecked Sendable {
-        var inProcessGeneration: UInt64 = 1
-        var externalGeneration: UInt64 = 1
-        var seenDataVersions: [ObjectIdentifier: Int64] = [:]
+        var releaseEpoch: UInt64 = 0
         var pack: SemanticVectorPack?
         var scratchPool: [SemanticVectorScratchBuffers] = []
     }
 
     private let state = Mutex(State())
 
-    func makeTransactionObserver() -> Observer {
-        Observer(owner: self)
-    }
-
-    func recordInProcessMutation() {
-        state.withLock { current in
-            current.inProcessGeneration &+= 1
-            current.pack = nil
-            current.seenDataVersions.removeAll(keepingCapacity: true)
-        }
-    }
-
+    /// Drops the pack and rejects any build that started before this call.
     func clear() {
         state.withLock { current in
-            // Rejects a pack whose build started before the release.
-            current.inProcessGeneration &+= 1
+            current.releaseEpoch &+= 1
             current.pack = nil
-            current.seenDataVersions.removeAll()
             current.scratchPool.removeAll()
         }
     }
 
     struct LookupResult {
         let pack: SemanticVectorPack?
-        let inProcess: UInt64
-        let external: UInt64
-        let dataVersion: Int64
+        /// `nil` when the version row is missing; such a build is never cached.
+        let corpusVersion: Int64?
+        let releaseEpoch: UInt64
     }
 
+    /// Call inside the read transaction that builds or scores the pack.
     func lookup(
         profileFingerprint: String,
         dimension: Int,
         in database: Database
     ) throws -> LookupResult {
-        let dataVersion = try Int64.fetchOne(database, sql: "PRAGMA data_version") ?? 0
-        let connectionID = ObjectIdentifier(database)
+        let corpusVersion = try Int64.fetchOne(
+            database,
+            sql: "SELECT sourceGeneration FROM derivedMaintenanceSource WHERE kind = ?",
+            arguments: [StorageSchema.semanticVectorPackSourceKind])
         return state.withLock { current in
-            if let previous = current.seenDataVersions[connectionID], previous != dataVersion {
-                current.seenDataVersions[connectionID] = dataVersion
-                if let existing = current.pack, existing.inProcessGeneration == current.inProcessGeneration {
-                    current.externalGeneration &+= 1
-                    current.pack = nil
-                }
-            } else if current.seenDataVersions[connectionID] == nil {
-                current.seenDataVersions[connectionID] = dataVersion
-            }
-
             if let existing = current.pack,
+               let corpusVersion,
+               existing.corpusVersion == corpusVersion,
+               existing.releaseEpoch == current.releaseEpoch,
                existing.profileFingerprint == profileFingerprint,
-               existing.dimension == dimension,
-               existing.inProcessGeneration == current.inProcessGeneration,
-               existing.externalGeneration == current.externalGeneration {
+               existing.dimension == dimension {
                 return LookupResult(
-                    pack: existing,
-                    inProcess: current.inProcessGeneration,
-                    external: current.externalGeneration,
-                    dataVersion: dataVersion)
+                    pack: existing, corpusVersion: corpusVersion, releaseEpoch: current.releaseEpoch)
             }
             return LookupResult(
-                pack: nil,
-                inProcess: current.inProcessGeneration,
-                external: current.externalGeneration,
-                dataVersion: dataVersion)
+                pack: nil, corpusVersion: corpusVersion, releaseEpoch: current.releaseEpoch)
         }
     }
 
-    func store(
-        _ pack: SemanticVectorPack,
-        observedDataVersion: Int64,
-        on database: Database
-    ) {
-        let connectionID = ObjectIdentifier(database)
+    /// A reader on an older snapshot never replaces a newer pack.
+    func store(_ pack: SemanticVectorPack) {
         state.withLock { current in
-            guard pack.inProcessGeneration == current.inProcessGeneration,
-                  pack.externalGeneration == current.externalGeneration
-            else { return }
+            guard pack.releaseEpoch == current.releaseEpoch else { return }
+            if let existing = current.pack, existing.corpusVersion > pack.corpusVersion { return }
             current.pack = pack
-            current.seenDataVersions.removeAll(keepingCapacity: true)
-            current.seenDataVersions[connectionID] = observedDataVersion
             if current.scratchPool.isEmpty {
                 let warmScratch = SemanticVectorScratchBuffers()
                 warmScratch.ensureCapacity(

@@ -183,7 +183,7 @@ fingerprint held by the Application observer.
 
 GRDB 7 (`upToNextMajor(from: 7.11.1)`), SQLite through a WAL-backed `DatabasePool` (with a bounded 5-second `busyTimeout`, zero `mmap_size`, and `DatabaseQueue` retained only for `:memory:` and isolated read-only snapshot stages), at `Portavoz/portavoz.sqlite` inside the platform Application Support container (`~/Library/Application Support` on macOS; the app container on iOS). `MeetingStore.defaultDatabaseURL` owns that default, `AppLaunchModel` opens and migrates the store off `@MainActor` before activating services, and the CLI accepts `--db`.
 Concurrent readers (`portavoz-cli`, MCP stdio queries, or in-process projections) read WAL snapshots without blocking `StopRecording` or background job claims; if an external writer holds an exclusive write transaction past `busyTimeout`, explicit failure and preserved accepted-input guarantees still apply.
-Exact semantic search (`MeetingStore.searchSemantic`) keeps normalized `Float32` BLOBs as the sole SQLite authority and accelerates queries without `mmap` via a lazy in-memory `Float16` packed vector index (`SemanticVectorPackCache`, invalidated by GRDB `TransactionObserver` plus cross-process `PRAGMA data_version` checks and released on capture/memory pressure) paired with an exact `Float32` dot-product rerank over the shortlisted candidates.
+Exact semantic search (`MeetingStore.searchSemantic`) keeps normalized `Float32` BLOBs as the sole SQLite authority and accelerates queries without `mmap` via a lazy in-memory `Float16` packed vector index (`SemanticVectorPackCache`, keyed by the `semantic-vector-pack` row of `derivedMaintenanceSource` that v64 triggers advance in every transaction that changes a segment's identity, meeting, vector, or tombstone, a meeting's tombstone or transcript revision, or any correction search table, so every connection and process reads the version of its own snapshot; released on capture or memory pressure) paired with an exact `Float32` dot-product rerank over the shortlisted candidates.
 
 ### Database-open recovery (D319)
 
@@ -202,7 +202,7 @@ hidden stage. A main-file or WAL size/modification change across the private
 copy also fails closed rather than publishing a mixed point in time. The source is never opened through `MeetingStore`, so no
 migration/configuration write can occur, and it is never renamed or deleted.
 
-### Schema (`v1`–`v63` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v64` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
@@ -271,7 +271,7 @@ Singular camelCase tables, 1:1 with Codable records:
 | `skillExecutionState_on_recent_skill` (v42) | complete `(skillID, updatedAt DESC, proposalID ASC)` index for exact-Skill newest-first review and combined exact-Skill/update-time ranges (D373/D374) |
 | `skillExecutionState_on_waiting_skill` / `_attention_skill` / `_completed_skill` (v42) | partial `(skillID, updatedAt DESC, proposalID ASC)` indexes with the exact v39 lifecycle predicates; filtered and combined Skill/time queries pin the matching index and retain the same bounded order without a temporary sort (D373/D374). Each receipt gains one complete plus one state-scoped filtered entry in addition to its v35/v39 entries, an explicit write/disk tradeoff guarded by migration and query-plan tests rather than an inferred latency claim |
 | `enhancedNote` (v15) | id, meetingID (UNIQUE, FK cascade), markdown, language, inputFingerprint (all checked non-empty), generationRunID (FK `setNull`, device-local), createdAt/updatedAt/deletedAt; ONE regenerable enhanced-notes document per meeting (D135), replaced in place preserving createdAt, portable via v15-registered `enhancedNote_sync_ai/au/ad` triggers over [markdown, language, inputFingerprint, deletedAt] |
-| `derivedMaintenanceSource` (v18) | kind (TEXT PK), sourceGeneration, updatedAt; content-free mutation identity for derived work, never a progress cursor |
+| `derivedMaintenanceSource` (v18) | kind (TEXT PK), sourceGeneration, updatedAt; content-free mutation identity for derived work, never a progress cursor; v64 adds the `semantic-vector-pack` kind, which only keys the in-memory semantic pack |
 | `derivedMaintenanceJob` (v18) | content-free kind/profile/source operation identity, bounded attempts and scheduling time, lease owner/expiry, stable error code and timestamps; independent from meeting lifecycle |
 | `transcriptCorrection` (v19) | immutable event identity, meeting FK, accepted revision, typed kind, user author, source device, optional unique superseded event, timestamps, and optional tombstone; only one monotonic tombstone transition may update a row |
 | `transcriptCorrectionTarget` (v19) | correction FK plus ordered accepted segment identity; unique per correction, deliberately no segment FK so source replacement cannot erase history |

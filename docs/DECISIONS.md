@@ -23549,9 +23549,12 @@ remains for `:memory:` stores and isolated read-only snapshot stages. Exact
 semantic search keeps normalized `Float32` BLOBs as the only persisted
 authority and scores a lazy contiguous `Float16` pack, then reranks the
 shortlist against the exact `Float32` vectors; a shortlist above 512 rows
-falls back to the exact scan. The pack is dropped
-on any watched in-process commit, on a cross-process `PRAGMA data_version`
-change, and on capture or memory-pressure release.
+falls back to the exact scan. The pack is keyed by a `semantic-vector-pack`
+version in `derivedMaintenanceSource` that schema v64 triggers advance inside
+every transaction that changes a pack input, so each connection and process
+compares the pack with the version of its own snapshot; per-connection
+`PRAGMA data_version` could not do that across pool readers. Capture and
+memory-pressure release drop the pack and reject builds already in flight.
 
 This supersedes D318's mapping and D79's instruction to retain `DatabaseQueue`
 until contention is demonstrated: the external-reader

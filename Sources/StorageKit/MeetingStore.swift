@@ -270,13 +270,10 @@ public final class MeetingStore: Sendable {
         if ownsParentDirectory {
             try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: parent.path)
         }
-        let cache = SemanticVectorPackCache()
-        self.semanticVectorCache = cache
+        self.semanticVectorCache = SemanticVectorPackCache()
         let pool = try DatabasePool(
             path: databaseURL.path,
-            configuration: Self.databaseConfiguration(
-                busyTimeout: busyTimeout,
-                semanticCache: cache))
+            configuration: Self.databaseConfiguration(busyTimeout: busyTimeout))
         self.database = pool
         try StorageSchema.migrator().migrate(pool)
         Self.restrictDatabaseFilePermissions(at: databaseURL)
@@ -297,17 +294,14 @@ public final class MeetingStore: Sendable {
 
     /// Ephemeral store for tests and previews.
     public static func inMemory() throws -> MeetingStore {
-        let cache = SemanticVectorPackCache()
         let queue = try DatabaseQueue(
-            configuration: Self.databaseConfiguration(
-                busyTimeout: Self.defaultBusyTimeout,
-                semanticCache: cache))
-        return try MeetingStore(database: queue, semanticCache: cache)
+            configuration: Self.databaseConfiguration(busyTimeout: Self.defaultBusyTimeout))
+        return try MeetingStore(database: queue)
     }
 
-    private init(database: any DatabaseWriter, semanticCache: SemanticVectorPackCache) throws {
+    private init(database: any DatabaseWriter) throws {
         self.database = database
-        self.semanticVectorCache = semanticCache
+        self.semanticVectorCache = SemanticVectorPackCache()
         try StorageSchema.migrator().migrate(database)
     }
 
@@ -316,19 +310,12 @@ public final class MeetingStore: Sendable {
         semanticVectorCache.clear()
     }
 
-    private static func databaseConfiguration(
-        busyTimeout: TimeInterval,
-        semanticCache: SemanticVectorPackCache
-    ) -> Configuration {
+    private static func databaseConfiguration(busyTimeout: TimeInterval) -> Configuration {
         var configuration = Configuration()
         configuration.busyMode = busyTimeout > 0 ? .timeout(busyTimeout) : .immediateError
         let busyMilliseconds = max(0, Int((busyTimeout * 1_000).rounded()))
-        let observer = semanticCache.makeTransactionObserver()
         configuration.prepareDatabase { database in
             try database.execute(sql: "PRAGMA busy_timeout = \(busyMilliseconds)")
-            if !database.configuration.readonly {
-                database.add(transactionObserver: observer, extent: .databaseLifetime)
-            }
         }
         return configuration
     }

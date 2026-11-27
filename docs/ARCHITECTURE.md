@@ -1564,7 +1564,8 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 63. A nonunique meeting-directory index serves
+The current schema version is 64. Version 64 keys the in-memory semantic pack
+with a trigger-maintained `semantic-vector-pack` row. A nonunique meeting-directory index serves
 compression admission without rejecting historical duplicate owners. Its
 skill-identity write constraints preserve
 historical denials rather than rejecting a populated library during upgrade.
@@ -6284,7 +6285,8 @@ next step. A second request cannot schedule a competing stop.
 
 The other three actions use narrow SDK-only `AppEntity` snapshots backed by an
 ApplicationKit catalog installed through `AppDependencyManager` only after the
-database opens. Meeting, canonical-person, and confirmed-commitment queries
+database opens; until then `PortavozAppEntityCatalogLaunch` holds queries up to
+10 seconds and releases them when the catalog installs or the open fails. Meeting, canonical-person, and confirmed-commitment queries
 normalize text to 120 characters, validate limits at 50, use 20 suggestions,
 and ask StorageKit for escaped literal SQL matches. Storage excludes deleted
 meetings/people and deleted or dismissed commitments, preserves exact

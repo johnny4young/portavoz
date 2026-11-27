@@ -30,10 +30,10 @@ extension MeetingStore {
                 profileFingerprint: query.profileFingerprint,
                 dimension: query.dimension,
                 expectedBytes: query.expectedBytes,
-                inProcessGeneration: state.inProcess,
-                externalGeneration: state.external,
+                corpusVersion: state.corpusVersion ?? -1,
+                releaseEpoch: state.releaseEpoch,
                 in: database)
-            cache.store(built, observedDataVersion: state.dataVersion, on: database)
+            if state.corpusVersion != nil { cache.store(built) }
             pack = built
         }
 
@@ -66,8 +66,8 @@ extension MeetingStore {
         profileFingerprint: String,
         dimension: Int,
         expectedBytes: Int,
-        inProcessGeneration: UInt64,
-        externalGeneration: UInt64,
+        corpusVersion: Int64,
+        releaseEpoch: UInt64,
         in database: Database
     ) throws -> SemanticVectorPack {
         let scan = try semanticScan(profileFingerprint: profileFingerprint, in: database)
@@ -81,8 +81,8 @@ extension MeetingStore {
         }
         return builder.finish(
             profileFingerprint: profileFingerprint,
-            inProcessGeneration: inProcessGeneration,
-            externalGeneration: externalGeneration)
+            corpusVersion: corpusVersion,
+            releaseEpoch: releaseEpoch)
     }
 
     private static func rerankShortlistedCandidates(
@@ -310,8 +310,8 @@ private struct SemanticPackBuilder {
 
     mutating func finish(
         profileFingerprint: String,
-        inProcessGeneration: UInt64,
-        externalGeneration: UInt64
+        corpusVersion: Int64,
+        releaseEpoch: UInt64
     ) -> SemanticVectorPack {
         flushStage()
         // Appending grows capacity geometrically; the cached pack keeps only what it uses.
@@ -323,8 +323,8 @@ private struct SemanticPackBuilder {
         return SemanticVectorPack(
             profileFingerprint: profileFingerprint,
             dimension: dimension,
-            inProcessGeneration: inProcessGeneration,
-            externalGeneration: externalGeneration,
+            corpusVersion: corpusVersion,
+            releaseEpoch: releaseEpoch,
             packedVectors: packedVectors,
             rowIDs: rowIDs,
             orders: orders,

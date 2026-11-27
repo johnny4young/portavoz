@@ -487,27 +487,93 @@ final class SemanticStoreTests: XCTestCase {
         let cache = store.semanticVectorCache
         let fingerprint = semanticTestProfile(dimension: 2).fingerprint
         let (keptWithoutRelease, keptAfterRelease) = try await store.database.read { db in
-            func emptyPack(_ state: SemanticVectorPackCache.LookupResult) -> SemanticVectorPack {
+            func emptyPack(_ state: SemanticVectorPackCache.LookupResult) throws -> SemanticVectorPack {
                 SemanticVectorPack(
                     profileFingerprint: fingerprint, dimension: 2,
-                    inProcessGeneration: state.inProcess, externalGeneration: state.external,
+                    corpusVersion: try XCTUnwrap(state.corpusVersion), releaseEpoch: state.releaseEpoch,
                     packedVectors: [], rowIDs: [], orders: [], sourceKinds: [],
                     correctionIDs: [:], alwaysRerankIndices: [])
             }
             let first = try cache.lookup(profileFingerprint: fingerprint, dimension: 2, in: db)
-            cache.store(emptyPack(first), observedDataVersion: first.dataVersion, on: db)
+            cache.store(try emptyPack(first))
             let kept = try cache.lookup(profileFingerprint: fingerprint, dimension: 2, in: db).pack != nil
 
             cache.clear()
             let inFlight = try cache.lookup(profileFingerprint: fingerprint, dimension: 2, in: db)
             cache.clear()
-            cache.store(emptyPack(inFlight), observedDataVersion: inFlight.dataVersion, on: db)
+            cache.store(try emptyPack(inFlight))
             let stale = try cache.lookup(profileFingerprint: fingerprint, dimension: 2, in: db).pack != nil
             return (kept, stale)
         }
 
         XCTAssertTrue(keptWithoutRelease)
         XCTAssertFalse(keptAfterRelease, "a build that started before the release must not re-cache")
+    }
+
+    func testSemanticPackSeesAnotherProcessWriteOnTheNextSearch() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("semantic-pack-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("portavoz.sqlite")
+        let app = try MeetingStore(databaseURL: url)
+        let dimension = 512
+        let query = Self.normalizedVector(seed: 0xFACE, dimension: dimension)
+        let first = Meeting(title: "Primera", startedAt: Date())
+        let second = Meeting(title: "Segunda", startedAt: Date())
+        try await app.save(first)
+        try await app.save(second)
+        let winner = TranscriptSegment(
+            meetingID: first.id, channel: .system, text: "ganador",
+            startTime: 0, endTime: 5, isFinal: true)
+        let others = (0..<70).map { index in
+            TranscriptSegment(
+                meetingID: second.id, channel: .system, text: "pasaje \(index)",
+                startTime: Double(index * 10), endTime: Double(index * 10 + 5), isFinal: true)
+        }
+        try await app.save([winner] + others)
+        var embeddings = Dictionary(uniqueKeysWithValues: others.enumerated().map { index, segment in
+            (segment.id, Self.normalizedVector(seed: UInt64(index + 1), dimension: dimension))
+        })
+        embeddings[winner.id] = query
+        let candidates = try await app.segmentsNeedingEmbeddings()
+        _ = try await app.storeEmbeddings(embeddings, for: candidates)
+        let warm = try await app.searchSemantic(query, limit: 3)
+        XCTAssertEqual(warm.first?.segmentID, winner.id)
+
+        let otherProcess = try MeetingStore(databaseURL: url)
+        try await otherProcess.delete(first.id)
+        let hits = try await app.searchSemantic(query, limit: 3)
+
+        XCTAssertFalse(hits.isEmpty)
+        XCTAssertFalse(hits.contains { $0.segmentID == winner.id }, "a write from another connection must reach the pack")
+    }
+
+    func testSemanticPackVersionAdvancesOnlyForItsInputs() async throws {
+        let segments = try await seed(["versioned passage"])
+        func version() async throws -> Int64? {
+            try await store.database.read { db in
+                try Int64.fetchOne(
+                    db,
+                    sql: "SELECT sourceGeneration FROM derivedMaintenanceSource WHERE kind = 'semantic-vector-pack'")
+            }
+        }
+        let seededVersion = try await version()
+        let seeded = try XCTUnwrap(seededVersion)
+
+        var renamed = try XCTUnwrap(meeting)
+        renamed.title = "Otro título"
+        try await store.save(renamed)
+        let afterRename = try await version()
+        try await publish([segments[0].id: [1, 0]])
+        let embeddedVersion = try await version()
+        let afterEmbedding = try XCTUnwrap(embeddedVersion)
+        try await store.delete(meeting.id)
+        let deletedVersion = try await version()
+        let afterDelete = try XCTUnwrap(deletedVersion)
+
+        XCTAssertEqual(afterRename, seeded, "a rename does not change what the pack holds")
+        XCTAssertGreaterThan(afterEmbedding, seeded)
+        XCTAssertGreaterThan(afterDelete, afterEmbedding)
     }
 
     func testSemanticPackRetainsOnlyTheVectorsItHolds() async throws {
