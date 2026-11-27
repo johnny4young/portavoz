@@ -10,6 +10,8 @@ final class RecordingStageUITests: PortavozUITestCase {
 
         let you = app.control(withIdentifier: "recording-voice-you")
         XCTAssertTrue(you.waitForExistenceFast(timeout: 10))
+        // The scripted call streams in; your open turn is its last row.
+        _ = you.waitForLabelContaining("speaking now", timeout: 10)
         XCTAssertTrue(you.label.hasPrefix("You, speaking now"), "you lead while your turn is open: \(you.label)")
         let latest = app.control(withIdentifier: "recording-voice-S1")
         let earlier = app.control(withIdentifier: "recording-voice-S2")
