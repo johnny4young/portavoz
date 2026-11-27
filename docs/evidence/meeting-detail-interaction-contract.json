@@ -2230,7 +2230,7 @@
     {
       "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
       "category": "state",
-      "source": "@State private var top: CGFloat = 0",
+      "source": "@State private var top: CGFloat = .infinity",
       "occurrences": 1
     },
     {
@@ -2608,7 +2608,7 @@
     {
       "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
       "category": "presentation",
-      "source": ".sheet(item: $reviewingCandidate) { candidate in",
+      "source": ".sheet(item: $reviewing) { target in",
       "occurrences": 1
     },
     {
@@ -2638,7 +2638,7 @@
     {
       "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
       "category": "state",
-      "source": "@State private var reviewingCandidate: CommitmentInboxCandidate?",
+      "source": "@State private var reviewing: MarginReviewTarget?",
       "occurrences": 1
     },
     {

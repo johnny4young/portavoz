@@ -106,6 +106,16 @@ extension MeetingDetailCoordinator {
         Task { await model.send(.loadDecisionConfirmations) }
     }
 
+    /// Once per summary version; confirming and retracting reload on their own.
+    func loadMarginDecisionConfirmations() {
+        guard model.state.marginNotes.hasDecisions,
+              let version = model.state.readModel?.summary?.version,
+              flow.marginDecisionsLoadedFor != version
+        else { return }
+        flow.marginDecisionsLoadedFor = version
+        loadDecisionConfirmations()
+    }
+
     /// Both coordinates are required or the affordance was never offered:
     /// confirm renders only over current, resolvable evidence.
     func presentDecisionConfirmation(

@@ -40,7 +40,8 @@ struct MeetingMarginReview {
 struct MeetingMarginNotesColumn: View {
     let notes: [MeetingMarginNote]
     let context: MeetingMarginNotesContext
-    @State private var top: CGFloat = 0
+    /// Unmeasured, the cards add no offset instead of the whole margin's height.
+    @State private var top: CGFloat = .infinity
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {

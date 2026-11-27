@@ -32,6 +32,31 @@ final class MeetingMarginNotesUITests: PortavozUITestCase {
                 .contains("Ana"),
             "the card says who said it")
 
+        let more = app.control(withIdentifier: "margin-commitment-\(itemID)-more")
+        XCTAssertTrue(more.waitForHittable(timeout: 5))
+        more.click()
+        let later = app.menuItems["Review later"]
+        XCTAssertTrue(later.waitForExistenceFast(timeout: 5))
+        later.click()
+        // macOS may expose a SwiftUI submenu's items by title rather than identifier.
+        for (item, title) in [("defer-tomorrow", "Tomorrow"), ("defer-week", "Next week")] {
+            XCTAssertTrue(
+                waitForUITestCondition(timeout: 5) {
+                    app.menuItems["margin-commitment-\(itemID)-\(item)"].exists || app.menuItems[title].exists
+                },
+                "review later offers \(item)")
+        }
+        typeKey(.escape, modifierFlags: [], in: app)
+        typeKey(.escape, modifierFlags: [], in: app)
+
+        let confirmDecision = app.control(withIdentifier: "margin-decision-B5D40000-0000-4000-8000-000000000001-confirm")
+        XCTAssertTrue(confirmDecision.waitForHittable(timeout: 5))
+        confirmDecision.click()
+        let decisionSheet = app.control(withIdentifier: "decision-confirm-sheet")
+        XCTAssertTrue(decisionSheet.waitForExistenceFast(timeout: 5), "a decision card confirms through the same sheet")
+        decisionSheet.buttons["Cancel"].click()
+        XCTAssertTrue(decisionSheet.waitForDisappearance(timeout: 5))
+
         let confirm = app.control(withIdentifier: "margin-commitment-\(itemID)-confirm")
         XCTAssertTrue(confirm.waitForHittable(timeout: 5))
         confirm.click()

@@ -44,7 +44,7 @@ struct MeetingTranscriptSection: View {
     @State private var requestedLanguage: String?
     @State private var pageWidth: CGFloat = 0
     /// Owned here, not by a lazy row, so scrolling never dismisses the sheet.
-    @State private var reviewingCandidate: CommitmentInboxCandidate?
+    @State private var reviewing: MarginReviewTarget?
     @State private var isSaving = false
 
     var body: some View {
@@ -52,18 +52,18 @@ struct MeetingTranscriptSection: View {
             transcriptHeader
                 .frame(width: pageWidth > 0 ? MeetingDetailPageMetrics.readingWidth(forPageWidth: pageWidth) : nil)
             transcriptRows
-                .sheet(item: $reviewingCandidate) { candidate in
-                    if let margin = values.margin {
-                        MeetingCommitmentConfirmationSheet(
-                            candidate: candidate,
-                            ownerChoices: margin.ownerChoices,
-                            cancel: { reviewingCandidate = nil },
-                            confirm: { title, assignee, dueAt in
-                                await margin.commitments.confirm(candidate, title, assignee, dueAt)
-                            })
-                    }
+                .sheet(item: $reviewing) { target in
+                    MeetingCommitmentConfirmationSheet(
+                        candidate: target.candidate,
+                        ownerChoices: target.ownerChoices,
+                        cancel: { reviewing = nil },
+                        confirm: { title, assignee, dueAt in
+                            await target.commitments.confirm(target.candidate, title, assignee, dueAt)
+                        })
                 }
         }
+        // Rows fill the page, but an empty transcript must not measure the header's width.
+        .frame(maxWidth: .infinity, alignment: .leading)
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { pageWidth = $0 }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-transcript-section")
@@ -135,8 +135,12 @@ struct MeetingTranscriptSection: View {
     private var margin: MeetingMarginNotesContext? {
         guard var margin = values.margin else { return nil }
         let commitments = margin.commitments
+        let ownerChoices = margin.ownerChoices
         margin.review = MeetingMarginReview(
-            open: { reviewingCandidate = $0 },
+            open: { candidate in
+                reviewing = MarginReviewTarget(
+                    candidate: candidate, ownerChoices: ownerChoices, commitments: commitments)
+            },
             deferCandidate: { candidate, days in
                 save { await commitments.deferCandidate(candidate, days: days) }
             },
@@ -205,4 +209,14 @@ struct MeetingTranscriptChaptersSection: View {
             ? L10n.text("Jump to this moment")
             : L10n.text("Jumping needs audio, and this meeting has none"))
     }
+}
+
+/// The sheet keeps the flows it opened with, so a refresh that drops the
+/// margin never leaves it empty.
+private struct MarginReviewTarget: Identifiable {
+    let candidate: CommitmentInboxCandidate
+    let ownerChoices: [CommitmentOwnerSuggestion]
+    let commitments: MeetingCommitmentInboxActions
+
+    var id: CommitmentInboxCandidate.ID { candidate.id }
 }

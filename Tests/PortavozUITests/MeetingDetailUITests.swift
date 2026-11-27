@@ -1945,7 +1945,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(card.waitForExistenceFast(timeout: 10), "an unconfirmed item is offered for review beside its line")
         XCTAssertTrue(
             renderedText(of: app.control(withIdentifier: "margin-commitment-\(candidateID)-attribution"))
-                .contains("Ana"),
+                .contains("Ana said it and owns it"),
             "only an exact canonical participant link may name the owner")
         let more = app.control(withIdentifier: "margin-commitment-\(candidateID)-more")
         XCTAssertTrue(more.waitForHittable(timeout: 5))

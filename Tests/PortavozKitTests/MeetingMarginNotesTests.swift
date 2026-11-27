@@ -76,6 +76,12 @@ final class MeetingMarginNotesTests: XCTestCase {
             "a candidate whose only line is hidden stays in the inbox")
     }
 
+    func testABulletWhoseFirstEvidenceIsHiddenAnchorsThroughItsNextEvidence() {
+        let notes = review(items: [], evidence: [], decisions: [[opening.id], [decided.id]])
+            .marginNotes(in: content(rows: [decided]), at: now)
+        XCTAssertEqual(notes.notes(forRow: decided.id).count, 1, "the decision still finds a shown line")
+    }
+
     func testAStaleSummaryAnchorsNothing() {
         let item = ActionItem(text: "Prepare the rollout")
         let notes = review(items: [item], evidence: [decided.id], revision: 7).marginNotes(in: content(), at: now)
@@ -102,7 +108,8 @@ final class MeetingMarginNotesTests: XCTestCase {
         items: [ActionItem],
         evidence: [UUID],
         states: [CommitmentReviewState] = [],
-        revision: Int = 0
+        revision: Int = 0,
+        decisions: [[UUID]]? = nil
     ) -> MeetingReviewReadModel {
         let draft = SummaryDraft(
             meetingID: meeting.id,
@@ -110,9 +117,11 @@ final class MeetingMarginNotesTests: XCTestCase {
             language: "en",
             markdown: "Overview.\n\n## Decisions\n- ▸ The rollout ships on Friday.",
             actionItems: items,
-            decisionEvidence: [SummaryDecisionEvidence(
-                id: decisionID, sectionOrdinal: 0, bulletOrdinal: 0,
-                sourceTranscriptRevision: revision, evidenceSegmentIDs: evidence)],
+            decisionEvidence: (decisions ?? [evidence]).enumerated().map { index, lines in
+                SummaryDecisionEvidence(
+                    id: index == 0 ? decisionID : SummaryDecisionID(), sectionOrdinal: 0, bulletOrdinal: 0,
+                    sourceTranscriptRevision: revision, evidenceSegmentIDs: lines)
+            },
             actionItemEvidence: items.map {
                 SummaryActionItemEvidence(
                     actionItemID: $0.id, sourceTranscriptRevision: revision, evidenceSegmentIDs: evidence)

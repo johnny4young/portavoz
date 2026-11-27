@@ -88,12 +88,14 @@ public extension MeetingReviewReadModel {
         let outline = SummaryMarkdownOutline.parse(summary.draft.markdown)
         var placedBullets: Set<[Int]> = []
         for evidence in summary.draft.decisionEvidence {
-            guard placedBullets.insert([evidence.sectionOrdinal, evidence.bulletOrdinal]).inserted,
+            let bullet = [evidence.sectionOrdinal, evidence.bulletOrdinal]
+            guard !placedBullets.contains(bullet),
                   let text = outline.bulletText(
                       sectionOrdinal: evidence.sectionOrdinal, bulletOrdinal: evidence.bulletOrdinal),
                   let anchor = anchor(evidence.resolveEvidence(
                       currentTranscriptRevision: meeting.transcriptRevision, segments: segments))
             else { continue }
+            placedBullets.insert(bullet)
             decisions.append(MeetingMarginNote(
                 rowID: anchor.row.id, kind: .decision(evidence, statement: text)))
         }

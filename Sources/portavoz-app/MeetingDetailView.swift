@@ -444,7 +444,7 @@ private extension MeetingDetailView {
         guard detail != nil else { return }
         deliverPendingMeetingSeekIfPossible()
         // Decision cards show their confirmed state without opening the Decisions tab.
-        if model.state.marginNotes.hasDecisions { coordinator.loadDecisionConfirmations() }
+        coordinator.loadMarginDecisionConfirmations()
         await coordinator.loadPresentationSuggestions()
     }
 
