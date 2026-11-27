@@ -18976,6 +18976,96 @@
           }
         }
       }
+    },
+    "1 voice so far": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 voz hasta ahora"
+          }
+        }
+      }
+    },
+    "%d voices so far": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d voces hasta ahora"
+          }
+        }
+      }
+    },
+    "started %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "inicio %@"
+          }
+        }
+      }
+    },
+    "speaking now": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "hablando ahora"
+          }
+        }
+      }
+    },
+    "speaking now · %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "hablando ahora · %@"
+          }
+        }
+      }
+    },
+    "%d s ago": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "hace %d s"
+          }
+        }
+      }
+    },
+    "%d min ago": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "hace %d min"
+          }
+        }
+      }
+    },
+    "%d h ago": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "hace %d h"
+          }
+        }
+      }
+    },
+    "you %d%% · listening %d%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tú %d%% · escuchando %d%%"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

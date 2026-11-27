@@ -527,8 +527,7 @@ final class RecordingController {
                 voiceprint: voiceprint)
             do {
                 for try await turn in diarizer.diarize(stream) {
-                    self.liveTurns.append(turn)
-                    self.applyLiveSpeakerHints()
+                    self.receiveLiveSpeakerTurn(turn)
                 }
             } catch {
                 // Live hints are best-effort; the batch pass at stop is the truth.
@@ -622,6 +621,7 @@ extension RecordingController {
             previousTailID: previousTailID)
         interviewAssist.observe(captions: captions)
         services?.liveAssistUITestFixture?.receiveCaption(in: self)
+        services?.liveAssistUITestFixture?.receiveLiveVoice(in: self)
         detectClosedRow()
         armTurnEndpointDeadline()
         liveTranslationWakeHub.signal()
@@ -1243,6 +1243,16 @@ enum LiveSpeakerHints {
 }
 
 extension RecordingController {
+    func receiveLiveSpeakerTurn(_ turn: SpeakerTurn) {
+        liveTurns.append(turn)
+        applyLiveSpeakerHints()
+    }
+
+    /// Disposable-store fixtures only: a scripted call that is already minutes in.
+    func backdateStartForUITestFixture(elapsed: TimeInterval) {
+        startedAt = Date().addingTimeInterval(-elapsed)
+    }
+
     /// Re-labels (and splits, when a closed row spans two voices) the closed
     /// caption rows against everything the live diarizer has seen so far.
     func applyLiveSpeakerHints() {
@@ -1265,6 +1275,11 @@ extension RecordingController {
 }
 
 extension RecordingController {
+    /// The meeting being recorded, as its page will name it.
+    var title: String? {
+        (recordingShell?.title).map(MeetingRowTitle.page)
+    }
+
     func liveVoiceSource() -> LiveVoiceSource? {
         guard phase == .recording else { return nil }
         return LiveVoiceSource(

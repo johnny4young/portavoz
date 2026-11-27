@@ -439,9 +439,11 @@ def app_features(filename: str) -> set[str]:
         return {"onboarding", "settings-voice", "settings-intelligence"}
     if "recordingtoolbar" in lowered:
         # This component owns the external-recording geometry contract as
-        # well as the live catch-up, next-question, mute, and Stop controls.
+        # well as the live catch-up, next-question, mute, and footer controls.
         # It does not affect Library grouping or unrelated detail surfaces.
-        return {"automation-entry", "recording-interview", "recording-recovery"}
+        return {"automation-entry", "recording-interview", "recording-recovery", "recording-stage"}
+    if any(token in lowered for token in ("recordingstage", "recordinglivevoices", "livevoicesuitestfixture")):
+        return {"automation-entry", "recording-recovery", "recording-stage"}
     if "companionsettingssection" in lowered:
         return {"live-assist"}
     if "interviewassist" in lowered:
@@ -672,6 +674,8 @@ def lower_layer_features(path: str) -> set[str]:
         "derivedmaintenance",
     )):
         return {"background-work"}
+    if "livevoicetable" in lowered or "livevoicestage" in lowered:
+        return {"recording-stage"}
     if "proactivemeetingassist" in lowered:
         # The deterministic policy is rendered only by the consolidated live-
         # assist journey; it has no model, Settings, detail, or Library route.

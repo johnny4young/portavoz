@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 148
+    "expectedCaseCount": 151
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -171,6 +171,9 @@
     "MeetingChromeUITests/testMeetingToolbarWalksHistoryUnderABreadcrumb()": 30.0,
     "MeetingDetailUITests/testWideMeetingPagePutsTheMarginBesideTheReadingColumn()": 20.0,
     "MeetingDetailUITests/testStandfirstControlsStayWholeInTheNarrowestWindow()": 20.0,
-    "MeetingDetailUITests/testVoiceStripsRunUpToTheirRowControls()": 20.0
+    "MeetingDetailUITests/testVoiceStripsRunUpToTheirRowControls()": 20.0,
+    "RecordingStageUITests/testLiveVoicesLeadWithTheCurrentSpeakerAndFoldTheRest()": 20.0,
+    "RecordingStageUITests/testTheStageKeepsStopAndTheTitleApartAtTheMinimumWidth()": 20.0,
+    "RecordingStageUITests/testTheStageReadsInLightAtTheStandardWidth()": 20.0
   }
 }

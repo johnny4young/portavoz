@@ -47,10 +47,7 @@ final class RecordingBarLayoutTests: XCTestCase {
         let counter = LayoutMeasureCounter()
         let controller = RecordingController()
         let window = host(
-            RecordingToolbar(
-                controller: controller,
-                onStop: {},
-                onCompact: {}),
+            RecordingToolbar(controller: controller, onCompact: {}),
             counter: counter)
 
         // The first tick lands before the baseline, the next two after it.
@@ -60,8 +57,24 @@ final class RecordingBarLayoutTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(2_300))
         await settle(window)
 
-        XCTAssertEqual(counter.measures, settled, "the clock re-measured the bar")
+        XCTAssertEqual(counter.measures, settled, "the kicker's blink re-measured the bar")
         XCTAssertFalse(window.isVisible, "unit tests must not open real host windows")
+    }
+
+    func testAClockTickDoesNotRemeasureTheStageHero() async throws {
+        try skipUnlessTheProbeSeesLayoutChanges()
+        let counter = LayoutMeasureCounter()
+        let window = host(
+            RecordingStageHero(controller: RecordingController(), onStop: {}),
+            counter: counter)
+
+        try await Task.sleep(for: .milliseconds(1_200))
+        await settle(window)
+        let settled = counter.measures
+        try await Task.sleep(for: .milliseconds(2_300))
+        await settle(window)
+
+        XCTAssertEqual(counter.measures, settled, "the clock re-measured the hero")
     }
 
     func testALevelSampleDoesNotRemeasureTheBarAroundTheMeter() async throws {
@@ -86,7 +99,7 @@ final class RecordingBarLayoutTests: XCTestCase {
         let counter = LayoutMeasureCounter()
         let controller = RecordingController()
         let window = host(
-            RecordingToolbar(controller: controller, onStop: {}, onCompact: {}),
+            RecordingToolbar(controller: controller, onCompact: {}),
             counter: counter)
 
         await settle(window)

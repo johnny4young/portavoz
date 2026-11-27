@@ -333,18 +333,27 @@ struct RecordingTalkBalanceCue: View {
     var body: some View {
         if let balance = LiveTalkTimePolicy.balance(controller.captions) {
             let percent = Int((balance.meFraction * 100).rounded())
-            Capsule()
-                .fill(.quaternary)
-                .frame(width: 44, height: 6)
-                .overlay {
-                    LevelBarFill(fraction: CGFloat(balance.meFraction))
-                        .fill(VoicePalette.me.opacity(balance.isNotable ? 1 : 0.55))
-                }
-                .accessibilityIdentifier("recording-talk-balance")
-                .accessibilityLabel(L10n.text("Talk balance"))
-                .accessibilityValue("\(percent)%")
-                .help(L10n.format(
-                    "You spoke %d%% of the last five minutes.", percent))
+            HStack(spacing: 10) {
+                Text("Talk balance")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(PVDesign.ink2)
+                LevelTrackBar(
+                    fraction: balance.meFraction,
+                    fill: VoicePalette.me.opacity(balance.isNotable ? 1 : 0.55),
+                    track: PVDesign.line2)
+                    .frame(minWidth: 60, maxWidth: 200)
+                Text(L10n.format("you %d%% · listening %d%%", percent, 100 - percent))
+                    .font(.system(size: 12).monospacedDigit())
+                    .foregroundStyle(PVDesign.ink3)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityIdentifier("recording-talk-balance")
+            .accessibilityLabel(L10n.text("Talk balance"))
+            .accessibilityValue("\(percent)%")
+            .help(L10n.format(
+                "You spoke %d%% of the last five minutes.", percent))
         }
     }
 }

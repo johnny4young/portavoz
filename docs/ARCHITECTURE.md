@@ -6234,14 +6234,17 @@ The complete current 103-case English and Spanish suites remain the
 release/architecture closure gate rather than the default cost for
 documentation or isolated surface changes.
 
-The live recording command surface is isolated in `RecordingToolbar` rather
-than growing the already state-heavy `RecordingView`. It is responsive by
-construction rather than by control truncation. Three controls stay visible
-(Translate, Apuntador, Catch me up) and the rest sit in one More panel (a popover)
-with their state shown as switches. Its wide layout is one row; at the 900 pt minimum window,
-`ViewThatFits` moves secondary actions to an icon-only second row while
-keeping the elapsed clock horizontal and Stop visible beside it. The focused external-recording XCUITest enforces those
-geometric invariants.
+The live recording is a stage of separate views rather than a growing
+`RecordingView`: `RecordingToolbar` (the Recording kicker, Translate, Catch me
+up and one More panel, a popover with its state shown as switches),
+`RecordingStageHero` (the elapsed clock in display type beside the meeting's
+title, "started · n voices so far" and Stop), the live Voices table
+(`RecordingLiveVoicesTable` over the pure `LiveVoiceTable`), the captions and
+assist split, and `RecordingStageFooter` (talk balance, mute and level). Each is
+responsive by construction rather than by control truncation: the toolbar's
+`ViewThatFits` drops labels to glyphs, and the hero steps its type down from the
+width it is given. The focused external-recording XCUITest and
+`RecordingStageUITests` enforce those geometric invariants.
 
 `ViewThatFits` re-measures every variant, AppKit-backed controls included,
 whenever anything inside one changes its layout or the bar's own body runs
@@ -6249,11 +6252,13 @@ again. State that changes while recording therefore stays out of both. The
 20 Hz level is read only by a fill view hosted in an overlay of the fixed-size
 track, with its animation inside that view. The pulsing dot and elapsed clock
 tick in a timeline hosted in an overlay of a hidden same-size placeholder that
-changes only when the clock gains a digit.
+changes only when the clock gains a digit; the toolbar's blinking kicker dot
+does the same over a fixed frame.
 The talk-balance cue reads captions in its own body. The floating panel's
 meter uses the same overlay fill.
 Live voices are a separate observable, `RecordingLiveVoicesModel`,
-that neither the bar nor the floating panel reads. It rebuilds the pure
+that neither the bar nor the floating panel reads; only the Voices table and the
+hero's detail line do. It rebuilds the pure
 `LiveVoiceStage` (ApplicationKit) at most once a second from closed captions,
 live relabels, note and question changes, and microphone-speech flips; the
 level relay reaches it only through that flip, never per sample.
