@@ -606,13 +606,15 @@ final class LibraryUITests: PortavozUITestCase {
         let earlierRow = app.staticTexts[
             "History row 02 remains readable during live updates."
         ]
-        // A runner's wheel acceleration and window height change how far one
-        // synthetic scroll travels. Keep scrolling in the same user direction
-        // until the same deterministic history row is actually in view.
-        // A virtualized row has no AX node yet. Do not ask XCTest to resolve
-        // its hit point (with internal retries) until existence is observable.
-        for _ in 0..<12 where !(earlierRow.exists && earlierRow.isHittable) {
-            transcript.scroll(byDeltaX: 0, deltaY: 8)
+        // Step by less than half the viewport height so virtualized rows
+        // cannot be skipped, then finish with a directional reveal once the
+        // row materializes in AX.
+        let step = max(24, min(60, (transcript.frame.height * 0.45).rounded(.down)))
+        for _ in 0..<20 where !earlierRow.exists {
+            transcript.scroll(byDeltaX: 0, deltaY: step)
+        }
+        if earlierRow.exists, !earlierRow.isHittable {
+            _ = earlierRow.revealVertically(in: transcript, maxScrolls: 6, maximumStep: step)
         }
         XCTAssertTrue(
             earlierRow.isHittable,
