@@ -23607,7 +23607,35 @@ Below the widest row the readout gives up its room first, then the toggles
 their titles; every toggle stays one click away at the narrowest width, where
 the board drops two of them.
 
-## D672 — Live voices rebuild from captions, seconds apart
+## D672 — The file-backed store is a WAL pool with an in-memory semantic pack (Nov 2026)
+
+**Context:** the serial `DatabaseQueue` in SQLite's rollback journal let an
+independent reader (`portavoz-cli`, MCP, a diagnostic observer) reject a
+concurrent Stop write, and the store opened and migrated on `@MainActor`. D318
+mapped up to 512 MiB of `main` for exact semantic reads, which turns an I/O
+fault on a mapped page into a process signal, and recorded that a second
+process touching the file must revisit it.
+
+**Decision:** a file-backed `MeetingStore` opens a WAL-mode `DatabasePool` with
+a bounded 5-second `busyTimeout` and zero `mmap_size`; `AppLaunchModel` opens
+and migrates it off `@MainActor` before composing `AppServices`. `DatabaseQueue`
+remains for `:memory:` stores and isolated read-only snapshot stages. Exact
+semantic search keeps normalized `Float32` BLOBs as the only persisted
+authority and scores a lazy contiguous `Float16` pack, then reranks the
+shortlist against the exact `Float32` vectors; a shortlist above 512 rows
+falls back to the exact scan. The pack is keyed by a `semantic-vector-pack`
+version in `derivedMaintenanceSource` that schema v64 triggers advance inside
+every transaction that changes a pack input, so each connection and process
+compares the pack with the version of its own snapshot; per-connection
+`PRAGMA data_version` could not do that across pool readers. Capture and
+memory-pressure release drop the pack and reject builds already in flight.
+
+This supersedes D318's mapping and D79's instruction to retain `DatabaseQueue`
+until contention is demonstrated: the external-reader
+contention in GAPS is that demonstration. An external writer holding a write
+lock past `busyTimeout` still fails explicitly with accepted input unchanged.
+
+## D673 — Live voices rebuild from captions, seconds apart
 
 The recording stage needs per-voice turns, talk time, who spoke last and who
 is speaking now, plus a voice strip with ticks for your notes and the
@@ -23628,4 +23656,3 @@ You are the current speaker while that gate is open; otherwise the open
 row's voice within three seconds of its last word. Live voices are not
 persisted: Stop resets the model and the durable diarization pass replaces
 every live label.
-

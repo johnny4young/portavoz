@@ -271,6 +271,7 @@ final class AppServices {
         arguments: [String] = ProcessInfo.processInfo.arguments,
         environment: [String: String] = ProcessInfo.processInfo.environment,
         storagePolicy: AppStorageIsolationPolicy? = nil,
+        preopenedStore: MeetingStore? = nil,
         defaults: UserDefaults = .standard,
         modelMemoryPreferences: AppModelMemoryPreferences? = nil,
         modelIdleReleaseScheduler: AppModelIdleReleaseScheduler = .init()
@@ -296,7 +297,9 @@ final class AppServices {
         // Open the authority before constructing process runtimes or installing
         // global telemetry. A failed retry therefore leaves no half-composed
         // service graph, model task, sensitive store, or background owner.
-        store = try Self.makeMeetingStore(storagePolicy: storagePolicy)
+        store = try Self.makeMeetingStore(
+            storagePolicy: storagePolicy,
+            preopenedStore: preopenedStore)
         legacyDictation = Self.makeLegacyDictationModel(
             store: store, defaults: defaults, arguments: arguments, usesTemporaryStore: usesTemporaryStore)
         let backgroundWork = BackgroundWorkCenterModel()
@@ -441,9 +444,21 @@ final class AppServices {
             VoiceGallery(secrets: secrets, directory: directory))
     }
 
-    private static func makeMeetingStore(
+    nonisolated static func openMeetingStoreOffMainActor(
         storagePolicy: AppStorageIsolationPolicy
+    ) async throws -> MeetingStore {
+        try await Task.detached(priority: .userInitiated) {
+            try makeMeetingStore(storagePolicy: storagePolicy, preopenedStore: nil)
+        }.value
+    }
+
+    nonisolated private static func makeMeetingStore(
+        storagePolicy: AppStorageIsolationPolicy,
+        preopenedStore: MeetingStore? = nil
     ) throws -> MeetingStore {
+        if let preopenedStore {
+            return preopenedStore
+        }
         if storagePolicy.simulatesDatabaseOpenFailure {
             // XCUITest-only: materialize a valid disposable source so the
             // recovery-copy journey exercises SQLite read-only backup, then

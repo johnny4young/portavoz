@@ -124,6 +124,31 @@ final class AppLaunchModelTests: XCTestCase {
         XCTAssertEqual(secondFailure.databaseURL, firstFailure.databaseURL)
     }
 
+    func testDefaultLaunchOpensMeetingStoreOffMainActorAndReachesReady() async throws {
+        let workspace = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: workspace) }
+        let databaseURL = workspace.appendingPathComponent("async-launch.sqlite")
+        let model = AppLaunchModel(
+            arguments: ["Portavoz", "-use-temp-store"],
+            environment: ["PORTAVOZ_UI_TEST_DATABASE_PATH": databaseURL.path])
+
+        guard case .opening = model.phase else {
+            return XCTFail(
+                "Expected default launch to return immediately in .opening while SQLite migrates off MainActor")
+        }
+
+        let deadline = ContinuousClock.now + .seconds(5)
+        while ContinuousClock.now < deadline {
+            if case .ready = model.phase { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+
+        guard case let .ready(services) = model.phase else {
+            return XCTFail("Expected async store open to publish .ready")
+        }
+        XCTAssertTrue(PortavozAppDelegate.services === services)
+    }
+
     private func temporaryDirectory() throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(
             "PortavozLaunchModel-\(UUID().uuidString)",

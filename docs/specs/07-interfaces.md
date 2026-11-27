@@ -354,7 +354,8 @@ privacy receipt as the only in-product network-egress truth.
   `PortavozMeetingEntity`, `PortavozPersonEntity`, and
   `PortavozCommitmentEntity` expose only a display title/name plus meeting date
   or optional commitment due date. Their standard `AppDependency` catalog is
-  installed only after the database opens. ApplicationKit caps resolution at
+  installed only after the database opens; a query that arrives while it opens
+  waits up to 10 seconds for it and fails at once if the open fails. ApplicationKit caps resolution at
   50 identifiers/results and normalized text at 120 characters; system
   suggestions use 20 rows and mixed exact/text selectors are rejected.
   StorageKit escapes literal wildcard input, excludes

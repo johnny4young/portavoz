@@ -350,14 +350,18 @@ OS asset or claiming recognition quality.
 
 ### Database launch recovery
 
-The macOS composition root is two-stage. `AppLaunchModel` first asks the
-throwing `AppServices` constructor to open the authoritative `MeetingStore`;
-`AppServices` does that before installing telemetry or constructing any other
-runtime, model, sensitive-storage, scheduler, sync, recovery, or global-input
-owner. The root then publishes either one complete service graph or a focused
-database-unavailable state. Normal windows, Settings, commands, menu-bar
-models, and background owners are created only from the complete graph, and
-process activation is idempotent across retry.
+The macOS composition root is two-stage. On ordinary launches, `AppLaunchModel`
+opens and migrates the authoritative `MeetingStore` (a WAL-mode `DatabasePool`
+with a 5-second `busyTimeout`, zero `mmap_size`, and a lazy pressure-evictable
+`Float16` + exact `Float32` semantic rerank cache) off `@MainActor` before
+composing `AppServices`; `AppServices` binds that authority before installing
+telemetry or constructing any other runtime, model, sensitive-storage,
+scheduler, sync, recovery, or global-input owner. Cold-launch `.portavoz` files
+and Spotlight activities arriving during `.opening` wait in process-local
+delegate slots and replay once services activate. The root then publishes either one
+complete service graph or a focused database-unavailable state. Normal windows,
+Settings, commands, menu-bar models, and background owners are created only from
+the complete graph, and process activation is idempotent across retry.
 
 The failure state reduces arbitrary errors to content-free typed evidence. It
 can retry, export mode-`0600` diagnostics without paths or raw error text, or
@@ -1560,7 +1564,8 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 63. A nonunique meeting-directory index serves
+The current schema version is 64. Version 64 keys the in-memory semantic pack
+with a trigger-maintained `semantic-vector-pack` row. A nonunique meeting-directory index serves
 compression admission without rejecting historical duplicate owners. Its
 skill-identity write constraints preserve
 historical denials rather than rejecting a populated library during upgrade.
@@ -6303,7 +6308,8 @@ next step. A second request cannot schedule a competing stop.
 
 The other three actions use narrow SDK-only `AppEntity` snapshots backed by an
 ApplicationKit catalog installed through `AppDependencyManager` only after the
-database opens. Meeting, canonical-person, and confirmed-commitment queries
+database opens; until then `PortavozAppEntityCatalogLaunch` holds queries up to
+10 seconds and releases them when the catalog installs or the open fails. Meeting, canonical-person, and confirmed-commitment queries
 normalize text to 120 characters, validate limits at 50, use 20 suggestions,
 and ask StorageKit for escaped literal SQL matches. Storage excludes deleted
 meetings/people and deleted or dismissed commitments, preserves exact

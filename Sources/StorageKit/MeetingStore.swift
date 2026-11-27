@@ -227,15 +227,12 @@ public struct SearchHit: Sendable {
 /// `MeetingStore+Search.swift`, and `MeetingStore+Retention.swift` — this
 /// core file keeps the meeting/speaker/segment and context-item paths.
 public final class MeetingStore: Sendable {
-    /// Bound SQLite's file-backed mapping so large, sequential embedding reads
-    /// avoid rebuilding the page cache on every exact semantic query. The
-    /// mapping reserves virtual address space; macOS pages content on demand,
-    /// and SQLite falls back to ordinary reads beyond this cap.
-    static let maximumMemoryMappedDatabaseBytes: Int64 = 512 * 1_024 * 1_024
+    static let defaultBusyTimeout: TimeInterval = 5
 
     /// Internal (not `private`) so the extension files above can reach it;
     /// still never exposed publicly.
-    let database: DatabaseQueue
+    let database: any DatabaseWriter
+    let semanticVectorCache: SemanticVectorPackCache
 
     /// The platform Application Support container under `Portavoz/portavoz.sqlite`.
     public static var defaultDatabaseURL: URL {
@@ -247,12 +244,24 @@ public final class MeetingStore: Sendable {
         try self.init(
             databaseURL: databaseURL,
             ownsParentDirectory: databaseURL.standardizedFileURL
-                == Self.defaultDatabaseURL.standardizedFileURL)
+                == Self.defaultDatabaseURL.standardizedFileURL,
+            busyTimeout: Self.defaultBusyTimeout)
+    }
+
+    /// Opens and migrates a file-backed store off the caller's actor.
+    public static func open(databaseURL: URL) async throws -> MeetingStore {
+        try await Task.detached(priority: .userInitiated) {
+            try MeetingStore(databaseURL: databaseURL)
+        }.value
     }
 
     /// `ownsParentDirectory` also tightens a folder that already exists; a
     /// caller-chosen database path never changes its folder's mode.
-    init(databaseURL: URL, ownsParentDirectory: Bool) throws {
+    init(
+        databaseURL: URL,
+        ownsParentDirectory: Bool,
+        busyTimeout: TimeInterval = MeetingStore.defaultBusyTimeout
+    ) throws {
         let parent = databaseURL.deletingLastPathComponent()
         try FileManager.default.createDirectory(
             at: parent,
@@ -261,10 +270,12 @@ public final class MeetingStore: Sendable {
         if ownsParentDirectory {
             try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: parent.path)
         }
-        self.database = try DatabaseQueue(
+        self.semanticVectorCache = SemanticVectorPackCache()
+        let pool = try DatabasePool(
             path: databaseURL.path,
-            configuration: Self.databaseConfiguration(for: databaseURL))
-        try StorageSchema.migrator().migrate(database)
+            configuration: Self.databaseConfiguration(busyTimeout: busyTimeout))
+        self.database = pool
+        try StorageSchema.migrator().migrate(pool)
         Self.restrictDatabaseFilePermissions(at: databaseURL)
     }
 
@@ -283,38 +294,30 @@ public final class MeetingStore: Sendable {
 
     /// Ephemeral store for tests and previews.
     public static func inMemory() throws -> MeetingStore {
-        try MeetingStore(database: DatabaseQueue())
+        let queue = try DatabaseQueue(
+            configuration: Self.databaseConfiguration(busyTimeout: Self.defaultBusyTimeout))
+        return try MeetingStore(database: queue)
     }
 
-    private init(database: DatabaseQueue) throws {
+    private init(database: any DatabaseWriter) throws {
         self.database = database
+        self.semanticVectorCache = SemanticVectorPackCache()
         try StorageSchema.migrator().migrate(database)
     }
 
-    private static func databaseConfiguration(for databaseURL: URL) -> Configuration {
-        var configuration = Configuration()
-        #if os(macOS)
-        // SQLite documents mmap as a local-filesystem optimization. Fail
-        // closed for network, removable, or unclassified volumes so the
-        // ordinary xRead path remains the portable authority.
-        let directory = memoryMappedDatabaseDirectory(for: databaseURL)
-        let volume = try? directory.resourceValues(
-            forKeys: [.volumeIsLocalKey, .volumeIsInternalKey])
-        guard volume?.volumeIsLocal == true,
-              volume?.volumeIsInternal == true
-        else { return configuration }
-        configuration.prepareDatabase { database in
-            try database.execute(
-                sql: "PRAGMA main.mmap_size = \(Self.maximumMemoryMappedDatabaseBytes)")
-        }
-        #endif
-        return configuration
+    /// Releases the transient packed semantic vector cache without touching SQLite rows.
+    public func releaseSemanticSearchCache() {
+        semanticVectorCache.clear()
     }
 
-    static func memoryMappedDatabaseDirectory(for databaseURL: URL) -> URL {
-        databaseURL.standardizedFileURL
-            .resolvingSymlinksInPath()
-            .deletingLastPathComponent()
+    private static func databaseConfiguration(busyTimeout: TimeInterval) -> Configuration {
+        var configuration = Configuration()
+        configuration.busyMode = busyTimeout > 0 ? .timeout(busyTimeout) : .immediateError
+        let busyMilliseconds = max(0, Int((busyTimeout * 1_000).rounded()))
+        configuration.prepareDatabase { database in
+            try database.execute(sql: "PRAGMA busy_timeout = \(busyMilliseconds)")
+        }
+        return configuration
     }
 
     // MARK: - Meetings

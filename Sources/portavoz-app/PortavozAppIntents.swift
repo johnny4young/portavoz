@@ -74,14 +74,70 @@ private enum PortavozAppEntityCatalogUnavailable: LocalizedError {
     }
 }
 
-private struct UnavailablePortavozAppEntityCatalog: PortavozAppEntityCatalog {
+/// Holds entity queries that arrive while the library opens until composition
+/// installs the real catalog, the open fails, or the wait times out.
+@MainActor
+enum PortavozAppEntityCatalogLaunch {
+    private enum State {
+        case opening
+        case ready(any PortavozAppEntityCatalog)
+        case unavailable
+    }
+
+    static let waitLimit: Duration = .seconds(10)
+    private static var state = State.opening
+    private static var waiters: [UUID: CheckedContinuation<(any PortavozAppEntityCatalog)?, Never>] = [:]
+
+    static func publish(_ catalog: any PortavozAppEntityCatalog) {
+        state = .ready(catalog)
+        resumeAll(with: catalog)
+    }
+
+    static func markUnavailable() {
+        state = .unavailable
+        resumeAll(with: nil)
+    }
+
+    static func markOpening() {
+        state = .opening
+    }
+
+    static func catalog(waitingUpTo limit: Duration = waitLimit) async -> (any PortavozAppEntityCatalog)? {
+        switch state {
+        case .ready(let catalog): return catalog
+        case .unavailable: return nil
+        case .opening: break
+        }
+        let id = UUID()
+        let timeout = Task { @MainActor in
+            try? await Task.sleep(for: limit)
+            waiters.removeValue(forKey: id)?.resume(returning: nil)
+        }
+        defer { timeout.cancel() }
+        return await withCheckedContinuation { waiters[id] = $0 }
+    }
+
+    private static func resumeAll(with catalog: (any PortavozAppEntityCatalog)?) {
+        let pending = waiters
+        waiters.removeAll()
+        for waiter in pending.values { waiter.resume(returning: catalog) }
+    }
+}
+
+private struct PendingPortavozAppEntityCatalog: PortavozAppEntityCatalog {
+    private func ready() async throws -> any PortavozAppEntityCatalog {
+        guard let catalog = await PortavozAppEntityCatalogLaunch.catalog() else {
+            throw PortavozAppEntityCatalogUnavailable.libraryUnavailable
+        }
+        return catalog
+    }
+
     func meetings(
         identifiers: [String]?,
         matching: String?,
         limit: Int
     ) async throws -> [PortavozMeetingEntity] {
-        _ = (identifiers, matching, limit)
-        throw PortavozAppEntityCatalogUnavailable.libraryUnavailable
+        try await ready().meetings(identifiers: identifiers, matching: matching, limit: limit)
     }
 
     func people(
@@ -89,8 +145,7 @@ private struct UnavailablePortavozAppEntityCatalog: PortavozAppEntityCatalog {
         matching: String?,
         limit: Int
     ) async throws -> [PortavozPersonEntity] {
-        _ = (identifiers, matching, limit)
-        throw PortavozAppEntityCatalogUnavailable.libraryUnavailable
+        try await ready().people(identifiers: identifiers, matching: matching, limit: limit)
     }
 
     func commitments(
@@ -98,8 +153,7 @@ private struct UnavailablePortavozAppEntityCatalog: PortavozAppEntityCatalog {
         matching: String?,
         limit: Int
     ) async throws -> [PortavozCommitmentEntity] {
-        _ = (identifiers, matching, limit)
-        throw PortavozAppEntityCatalogUnavailable.libraryUnavailable
+        try await ready().commitments(identifiers: identifiers, matching: matching, limit: limit)
     }
 }
 
@@ -160,7 +214,7 @@ extension PortavozMeetingEntity: IndexedEntity {
 }
 
 struct PortavozMeetingEntityQuery: EntityStringQuery {
-    @AppDependency(default: UnavailablePortavozAppEntityCatalog())
+    @AppDependency(default: PendingPortavozAppEntityCatalog())
     private var catalog: any PortavozAppEntityCatalog
 
     init() {}
@@ -210,7 +264,7 @@ extension PortavozPersonEntity: IndexedEntity {
 }
 
 struct PortavozPersonEntityQuery: EntityStringQuery {
-    @AppDependency(default: UnavailablePortavozAppEntityCatalog())
+    @AppDependency(default: PendingPortavozAppEntityCatalog())
     private var catalog: any PortavozAppEntityCatalog
 
     init() {}
@@ -283,7 +337,7 @@ extension PortavozCommitmentEntity: IndexedEntity {
 }
 
 struct PortavozCommitmentEntityQuery: EntityStringQuery {
-    @AppDependency(default: UnavailablePortavozAppEntityCatalog())
+    @AppDependency(default: PendingPortavozAppEntityCatalog())
     private var catalog: any PortavozAppEntityCatalog
 
     init() {}
@@ -389,7 +443,7 @@ struct OpenMeetingIntent: OpenIntent {
     @Parameter(title: "Meeting", requestValueDialog: "Which meeting?")
     var target: PortavozMeetingEntity
 
-    @AppDependency(default: UnavailablePortavozAppEntityCatalog())
+    @AppDependency(default: PendingPortavozAppEntityCatalog())
     private var catalog: any PortavozAppEntityCatalog
 
     init() {}
@@ -413,7 +467,7 @@ struct ShowPersonCommitmentsIntent: OpenIntent {
     @Parameter(title: "Person", requestValueDialog: "Whose commitments?")
     var target: PortavozPersonEntity
 
-    @AppDependency(default: UnavailablePortavozAppEntityCatalog())
+    @AppDependency(default: PendingPortavozAppEntityCatalog())
     private var catalog: any PortavozAppEntityCatalog
 
     init() {}
@@ -437,7 +491,7 @@ struct OpenCommitmentIntent: OpenIntent {
     @Parameter(title: "Commitment", requestValueDialog: "Which commitment?")
     var target: PortavozCommitmentEntity
 
-    @AppDependency(default: UnavailablePortavozAppEntityCatalog())
+    @AppDependency(default: PendingPortavozAppEntityCatalog())
     private var catalog: any PortavozAppEntityCatalog
 
     init() {}

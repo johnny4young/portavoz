@@ -142,7 +142,7 @@ Field request: two remote voices speaking one after the other were merged into a
   piece keeps the source row ID so existing Companion evidence and translation
   identity remain valid; additional pieces receive fresh IDs and are picked up
   by live translation and the identity-based rolling-summary cursor (D133).
-- `LiveVoiceStage` (ApplicationKit, D672) turns the same labels into per-voice live turns, talk seconds and one-second voice columns for the recording stage; it reads labels and never writes them.
+- `LiveVoiceStage` (ApplicationKit, D673) turns the same labels into per-voice live turns, talk seconds and one-second voice columns for the recording stage; it reads labels and never writes them.
 - Live labels are **ephemeral hints**: after Stop's durable handoff, the process-scoped batch pass (`diarizeFile` + micro-cluster merge + attribution) remains the truth and reattributes everything from the file; live S-numbers do not have to match the final ones.
 - Best-effort: if the models fail to load, the feed closes (an entire meeting is not accumulated in memory), and captions remain "Ellos" as before.
 - **Verified with a real meeting** (Jul 2026): the streaming path found ≥2 voices in the first 4 min of the system channel and processed them in 2.4 s (~100× real time) — gated test `testLiveStreamingPathFindsMultipleVoices`.

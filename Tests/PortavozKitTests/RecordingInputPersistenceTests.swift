@@ -134,28 +134,46 @@ final class RecordingInputPersistenceTests: XCTestCase {
         XCTAssertTrue(notes.isEmpty, "a rejected aggregate must not leak a context insert")
     }
 
-    func testExternalReaderCollisionKeepsAcceptedInputAndTheSameStopCanCompleteAfterRelease() async throws {
+    func testExternalReaderDoesNotBlockStopUnderWALAndExternalWriterTimeoutPreservesAcceptedInput() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
         let url = root.appendingPathComponent("library.sqlite")
-        let fixture = try await recording(databaseURL: url)
-        let note = ContextItem(meetingID: fixture.meeting.id, kind: .note, content: "Keep the accepted input", timestamp: 0)
+        let fixture = try await recording(databaseURL: url, busyTimeout: 0.05)
+        let note = ContextItem(
+            meetingID: fixture.meeting.id, kind: .note, content: "Keep the accepted input", timestamp: 0)
         try await PersistRecordingInput(store: fixture.store).execute(meetingID: fixture.meeting.id, items: [note])
-        var configuration = Configuration()
-        configuration.readonly = true
-        configuration.allowsUnsafeTransactions = true
-        let reader = try DatabaseQueue(path: url.path, configuration: configuration)
+
+        // Under WAL, an external read transaction (CLI / MCP) must NOT block writes.
+        var readerConfig = Configuration()
+        readerConfig.readonly = true
+        readerConfig.allowsUnsafeTransactions = true
+        let reader = try DatabaseQueue(path: url.path, configuration: readerConfig)
         try await reader.unsafeRead { db in
             try db.execute(sql: "BEGIN")
             _ = try Int.fetchOne(db, sql: "SELECT count(*) FROM contextItem")
         }
-        defer { try? reader.unsafeRead { try $0.execute(sql: "ROLLBACK") } }
+        try await fixture.store.markMeetingNeedsAttention(fixture.meeting.id, errorCode: "capture.reader-coexists")
+        try await reader.unsafeRead { try $0.execute(sql: "ROLLBACK") }
+        try reader.close()
+
+        // An external writer holding BEGIN IMMEDIATE past busyTimeout surfaces SQLITE_BUSY
+        // while preserving accepted input so retrying Stop completes cleanly once released.
+        var writerConfig = Configuration()
+        writerConfig.allowsUnsafeTransactions = true
+        let writer = try DatabaseQueue(path: url.path, configuration: writerConfig)
+        try await writer.writeWithoutTransaction { db in
+            try db.execute(sql: "BEGIN IMMEDIATE")
+        }
+        var writerLocked = true
+        defer {
+            if writerLocked {
+                try? writer.writeWithoutTransaction { try $0.execute(sql: "ROLLBACK") }
+            }
+        }
         do {
             try await fixture.store.markMeetingNeedsAttention(fixture.meeting.id, errorCode: "capture.no-audio")
-            XCTFail("the external read transaction must hold the rollback journal lock")
+            XCTFail("the external write transaction must expire the bounded busyTimeout")
         } catch let error as DatabaseError {
-            // Apple SQLite can surface the same held-reader conflict as
-            // IOERR_LOCK rather than BUSY. Do not admit unrelated I/O errors.
             XCTAssertTrue(error.resultCode == .SQLITE_BUSY || error.extendedResultCode == .SQLITE_IOERR_LOCK,
                           "unexpected SQLite failure: \(error.extendedResultCode)")
         }
@@ -167,7 +185,9 @@ final class RecordingInputPersistenceTests: XCTestCase {
         let blocked = await stop.execute(request)
         guard case .processingFailed(let failure, nil) = blocked else { return XCTFail("expected the locked write") }
         XCTAssertEqual(failure, .recoveryPersistenceFailed)
-        try await reader.unsafeRead { try $0.execute(sql: "ROLLBACK") }
+        try await writer.writeWithoutTransaction { try $0.execute(sql: "ROLLBACK") }
+        writerLocked = false
+        try writer.close()
         let result = await stop.execute(request)
         guard case .failedCapturePreserved = result else { return XCTFail("the same Stop must preserve input") }
         let rows = try await fixture.store.contextItems(for: fixture.meeting.id)
@@ -180,8 +200,13 @@ final class RecordingInputPersistenceTests: XCTestCase {
         let asset: AudioAsset
     }
 
-    private func recording(databaseURL: URL? = nil) async throws -> Fixture {
-        let store = try databaseURL.map(MeetingStore.init(databaseURL:)) ?? MeetingStore.inMemory()
+    private func recording(
+        databaseURL: URL? = nil,
+        busyTimeout: TimeInterval = MeetingStore.defaultBusyTimeout
+    ) async throws -> Fixture {
+        let store = try databaseURL.map {
+            try MeetingStore(databaseURL: $0, ownsParentDirectory: false, busyTimeout: busyTimeout)
+        } ?? MeetingStore.inMemory()
         let id = MeetingID()
         let meeting = Meeting(id: id, title: "Public input fixture",
                               startedAt: Date(timeIntervalSince1970: 1_783_695_600),

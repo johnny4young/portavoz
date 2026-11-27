@@ -273,6 +273,43 @@ final class PortavozAppIntentBridgeTests: XCTestCase {
             "the in-flight fence must win before another stop can schedule")
     }
 
+
+    @MainActor
+    func testEntityQueriesDuringLaunchWaitForTheOpenedLibrary() async throws {
+        PortavozAppEntityCatalogLaunch.markOpening()
+        let meeting = PortavozMeetingEntity(
+            id: UUID().uuidString, title: "Opened later", dateDescription: "Nov 14, 2023")
+        let waiting = Task { @MainActor in
+            await PortavozAppEntityCatalogLaunch.catalog(waitingUpTo: .seconds(5))
+        }
+        await Task.yield()
+        PortavozAppEntityCatalogLaunch.publish(StubPortavozAppEntityCatalog(meetingValues: [meeting]))
+
+        let published = await waiting.value
+        let catalog = try XCTUnwrap(published)
+        let meetings = try await catalog.meetings(identifiers: nil, matching: nil, limit: 1)
+        XCTAssertEqual(meetings.map(\.id), [meeting.id])
+    }
+
+    @MainActor
+    func testEntityQueriesStopWaitingWhenTheLibraryCannotOpenOrTimeOut() async {
+        PortavozAppEntityCatalogLaunch.markOpening()
+        let expired = await PortavozAppEntityCatalogLaunch.catalog(waitingUpTo: .milliseconds(20))
+        XCTAssertNil(expired)
+
+        let waiting = Task { @MainActor in
+            await PortavozAppEntityCatalogLaunch.catalog(waitingUpTo: .seconds(5))
+        }
+        await Task.yield()
+        let started = ContinuousClock.now
+        PortavozAppEntityCatalogLaunch.markUnavailable()
+        let failedWaiter = await waiting.value
+        let failedLater = await PortavozAppEntityCatalogLaunch.catalog(waitingUpTo: .seconds(5))
+        XCTAssertNil(failedWaiter)
+        XCTAssertNil(failedLater)
+        XCTAssertLessThan(ContinuousClock.now - started, .seconds(1), "a failed open must not hold queries")
+        PortavozAppEntityCatalogLaunch.markOpening()
+    }
 }
 
 private struct StubPortavozAppEntityCatalog: PortavozAppEntityCatalog {
