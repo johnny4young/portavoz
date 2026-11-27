@@ -95,6 +95,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         playbackToggle: XCUIElement,
         in app: XCUIApplication
     ) throws {
+        if !(chapter.exists && chapter.isHittable) { selectRailTab("marginalia", in: app) } // one column hides it
         XCTAssertTrue(chapter.waitForHittable(timeout: 5))
         chapter.click()
         XCTAssertTrue(playbackToggle.waitForHittable(timeout: 5))
@@ -1304,7 +1305,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(try waitForEvidenceNavigation(in: app, selected: true))
         attachScreenshot(of: app, named: "meeting-detail-summary-evidence")
 
-        selectRailTab("marginalia", in: app)
         let resetChapter = app.control(withIdentifier: "chapter-0")
         let playbackToggle = app.control(withIdentifier: "player-play-pause")
         try resetEvidenceNavigation(
