@@ -72,6 +72,8 @@ extension XCUIApplication {
         let delta = viewport.minY + (section == .summary ? 48 : 16) - target.frame.minY
         if section == .transcript || !viewport.contains(target.frame), abs(delta) >= 1 {
             page.scroll(byDeltaX: 0, deltaY: delta)
+            // macOS 26 can keep hit-testing the pre-scroll page until the resting pointer moves.
+            target.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 8, dy: 8)).hover()
         }
         guard target.waitForStableFrame(timeout: 2) else { return false }
         // A header with many voices can be taller than the page; its top is enough.
