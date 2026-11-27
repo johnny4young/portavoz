@@ -14,6 +14,8 @@ struct LibraryView: View {
     @Binding var route: Route?
     @Binding var searchFocusRequested: Bool
     let recordingActive: Bool
+    /// When the capture in progress started; nil while preparing or processing.
+    let recordingStartedAt: Date?
     let onReturnToRecording: () -> Void
     let onOpenSearchHit: (LibrarySearchHit) -> Void
     /// Opens Settings on Data & privacy, where the activity log lives.
@@ -305,31 +307,37 @@ extension LibraryView {
 
     /// The primary action, an ink pill led by the Portavoz mark, plus a ▾ menu
     /// for the rare ones (Import), so the navigation list stays destinations only.
+    /// While capture runs the red return button and its clock take the whole
+    /// row; audio can still be dropped on the window to import it.
     private var recordButton: some View {
         HStack(spacing: 4) {
             recordAction
-            Menu {
-                Button {
-                    chooseAudioToImport()
-                } label: {
-                    Label("Import audio…", systemImage: "square.and.arrow.down")
-                }
-                .disabled(state.importStatus != nil || isChoosingAudio)
-                .accessibilityIdentifier("library-import-audio-button")
-            } label: {
-                Image(systemName: "chevron.down")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(PVDesign.onInk)
-                    .frame(width: 24, height: 34)
-                    .background(PVDesign.ink, in: RoundedRectangle(cornerRadius: 10))
-            }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .accessibilityLabel(L10n.text("More recording options"))
-            .help(L10n.text("Transcribe an audio file (.m4a, .wav, .mp3) as a new meeting"))
-            .accessibilityIdentifier("library-record-menu")
+            if recordingStartedAt == nil { importMenu }
         }
+    }
+
+    private var importMenu: some View {
+        Menu {
+            Button {
+                chooseAudioToImport()
+            } label: {
+                Label("Import audio…", systemImage: "square.and.arrow.down")
+            }
+            .disabled(state.importStatus != nil || isChoosingAudio)
+            .accessibilityIdentifier("library-import-audio-button")
+        } label: {
+            Image(systemName: "chevron.down")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(PVDesign.onInk)
+                .frame(width: 24, height: 34)
+                .background(PVDesign.ink, in: RoundedRectangle(cornerRadius: 10))
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .accessibilityLabel(L10n.text("More recording options"))
+        .help(L10n.text("Transcribe an audio file (.m4a, .wav, .mp3) as a new meeting"))
+        .accessibilityIdentifier("library-record-menu")
     }
 
     private var recordAction: some View {
@@ -340,9 +348,15 @@ extension LibraryView {
                 route = .recording(nil)
             }
         } label: {
-            HStack(spacing: 7) {
+            HStack(spacing: 6) {
                 if recordingActive {
-                    RecordLabel("Return to recording")
+                    Circle().fill(PVDesign.onNow).frame(width: 6, height: 6)
+                    Text("Return to recording")
+                        .minimumScaleFactor(0.8)
+                    if let recordingStartedAt {
+                        Spacer(minLength: 0)
+                        LibraryRecordingElapsed(startedAt: recordingStartedAt)
+                    }
                 } else {
                     PortavozMarkGlyph(color: PVDesign.onInk)
                     Text("New recording")
@@ -350,7 +364,7 @@ extension LibraryView {
             }
             .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.pvPrimary)
+        .buttonStyle(recordingActive ? .pvStop : .pvPrimary)
         .controlSize(.large)
         .keyboardShortcut("n")
         .accessibilityIdentifier(
@@ -457,5 +471,20 @@ struct LibrarySectionHeader: View {
             .fontWeight(.semibold)
             .foregroundStyle(.ink3)
             .accessibilityIdentifier("library-section-\(id)")
+    }
+}
+
+/// The live recording's elapsed time beside "Return to recording"; only this
+/// text ticks, once a second.
+private struct LibraryRecordingElapsed: View {
+    let startedAt: Date
+
+    var body: some View {
+        TimelineView(.periodic(from: startedAt, by: 1)) { context in
+            Text(verbatim: ClockFormat.mmss(context.date.timeIntervalSince(startedAt), truncating: true))
+                .font(.caption.weight(.semibold).monospacedDigit())
+                .opacity(0.85)
+                .accessibilityIdentifier("library-recording-elapsed")
+        }
     }
 }

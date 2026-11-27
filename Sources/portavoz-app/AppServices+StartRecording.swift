@@ -35,6 +35,8 @@ extension AppServices {
                 exhaustsCountdown: fixtureRequested("-simulate-call-ended-timeout"))
         } else if isInterviewAssistFixture {
             runtime = UITestInterviewAssistRuntime()
+        } else if fixtureRequested("-simulate-live-voices") {
+            runtime = UITestLiveVoicesRuntime()
         } else if isLiveTranscriptBrowsingFixture {
             runtime = UITestLiveTranscriptBrowsingRuntime()
         } else if isLiveTranscriptionAttachFixture {
@@ -128,7 +130,7 @@ private struct UITestSystemCaptureStallRuntime: StartRecordingRuntime {
     func scheduleIdleRelease() async {}
 }
 
-private actor UITestSystemCaptureStallSession: StartRecordingSession {
+actor UITestSystemCaptureStallSession: StartRecordingSession {
     func stop() async -> StopRecordingCapture {
         StopRecordingCapture(publishedFiles: [:])
     }

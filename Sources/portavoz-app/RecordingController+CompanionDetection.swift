@@ -38,6 +38,9 @@ extension RecordingController {
         let previousOpen = lastOpenRowID
         lastOpenRowID = captions.last?.id
         guard let closed = captions.last(where: { $0.id == previousOpen }) else { return }
+        // A row that closes after its diarizer turn arrived is labelled now, not
+        // a window later; after detection, so a split never retargets its evidence.
+        defer { if closed.channel != .microphone { applyLiveSpeakerHints() } }
         requestLiveSummaryRefresh()
         observeProactiveAssist()
         guard TurnEndpointPolicy.shouldDetect(

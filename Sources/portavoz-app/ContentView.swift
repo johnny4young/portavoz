@@ -69,6 +69,11 @@ struct ContentView: View {
             initialValue: services.makeReminderDraftModel())
     }
 
+    /// `startedAt` is stale while preparing and stops meaning anything after Stop.
+    private var liveRecordingStartedAt: Date? {
+        services.recording.phase == .recording ? services.recording.startedAt : nil
+    }
+
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             LibraryView(
@@ -77,6 +82,7 @@ struct ContentView: View {
                 route: $route,
                 searchFocusRequested: $searchFocusRequested,
                 recordingActive: services.recording.canReturnToLiveSession,
+                recordingStartedAt: liveRecordingStartedAt,
                 onReturnToRecording: {
                     route = .recording(nil)
                 },

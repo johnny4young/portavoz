@@ -23660,3 +23660,31 @@ You are the current speaker while that gate is open; otherwise the open
 row's voice within three seconds of its last word. Live voices are not
 persisted: Stop resets the model and the durable diarization pass replaces
 every live label.
+
+## D674 — The recording is a stage led by its clock and its live voices
+
+The recording view was a control bar over the captions: a 24 pt clock, the
+meter and talk balance squeezed beside Translate and Stop, and no sign of who
+was talking. The stage now leads with the elapsed time in display type beside
+the meeting's title, when it started and how many voices so far, with Stop on
+the right; below it, the live Voices table puts whoever speaks now on a raised
+card and the most recent voices under it, with "n s ago" and their share, and
+folds everyone past six into "Others · n". Talk balance and the microphone move
+to a footer line, where the talk balance can say "you 20% · listening 80%".
+
+The table follows the cast rules: live labels are unnamed, so only you are in
+colour, and the text stays ink because voice hues are fills. It re-renders when
+the live voices refresh (at most once a second); its rows tick each second for
+their recency inside fixed-width columns, so the table never moves under the
+reader. The hero picks its type size from its width instead of `ViewThatFits`,
+so a long title wraps to two lines instead of forcing the smallest clock, and
+its clock ticks in an overlay so a tick never re-measures it. The table stops
+at 760 pt so its share bars stay comparable on a wide window.
+
+The sidebar's return button shows the elapsed time and takes the full row while
+a recording is live; the Import menu beside it returns after Stop, since a
+232 pt sidebar cannot hold both without truncating "Return to recording". The
+board's "stays on this Mac" note, input device name, call-safe capture and
+language in the footer are left out: the first would need a per-recording
+privacy receipt the controller does not have yet, and the others are settings
+the recording does not observe.

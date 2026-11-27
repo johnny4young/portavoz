@@ -64,6 +64,11 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("LibraryUITests", "testColdRecordingStartsLiveCaptionsWhenModelBecomesReady"),
         test_id("LibraryUITests", "testLiveTranscriptYieldsFollowWhileReadingHistory"),
     ),
+    "recording-stage": (
+        test_id("RecordingStageUITests", "testLiveVoicesLeadWithTheCurrentSpeakerAndFoldTheRest"),
+        test_id("RecordingStageUITests", "testTheStageKeepsStopAndTheTitleApartAtTheMinimumWidth"),
+        test_id("RecordingStageUITests", "testTheStageReadsInLightAtTheStandardWidth"),
+    ),
     "live-assist": (
         test_id("LibraryUITests", "testRecordingOffersObjectivesNextQuestionAndTalkBalance"),
         test_id("RecordingAssistUITests", "testLatestManualAssistRequestOwnsTheFocusSlot"),
@@ -363,6 +368,7 @@ FEATURE_TIERS: dict[str, int] = {
     "production-sync": 2,
     "recording-interview": 2,
     "recording-recovery": 0,
+    "recording-stage": 1,
     "settings-audio": 2,
     "settings-data": 0,
     "settings-integrations": 2,
@@ -441,6 +447,7 @@ FEATURE_SOURCE_SENTINELS: dict[str, str] = {
     "meeting-brief": "Sources/portavoz-app/MeetingBriefView.swift",
     "menu-bar-brief": "Sources/portavoz-app/MenuBarView.swift",
     "recording-recovery": "Sources/portavoz-app/RecordingView.swift",
+    "recording-stage": "Sources/portavoz-app/RecordingStageHero.swift",
     "recording-interview": "Sources/portavoz-app/RecordingInterviewAssistView.swift",
     "ask": "Sources/portavoz-app/AskView.swift",
     "insights": "Sources/portavoz-app/InsightsView.swift",

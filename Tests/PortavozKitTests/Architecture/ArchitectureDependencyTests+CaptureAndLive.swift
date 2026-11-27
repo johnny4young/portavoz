@@ -85,9 +85,19 @@ extension ArchitectureDependencyTests {
         XCTAssertFalse(toolbar[..<fill.lowerBound].contains("controller.micLevel)"))
         XCTAssertTrue(toolbar.contains(
             ".overlay { RecordingLevelMeterFill(controller: controller) }"))
+        let dot = try XCTUnwrap(
+            toolbar.range(of: "private struct RecordingKickerDot: View"))
+        XCTAssertFalse(toolbar[..<dot.lowerBound].contains("TimelineView("))
+        XCTAssertTrue(toolbar.contains(".overlay { RecordingKickerDot(startedAt: startedAt) }"))
+
+        // The hero's clock ticks in an overlay; only its detail line reads live voices.
+        let hero = try Self.contents(
+            of: "Sources/portavoz-app/RecordingStageHero.swift")
         let clock = try XCTUnwrap(
-            toolbar.range(of: "private struct RecordingElapsedClock: View"))
-        XCTAssertFalse(toolbar[..<clock.lowerBound].contains("TimelineView("))
+            hero.range(of: "private struct RecordingElapsedClock: View"))
+        XCTAssertFalse(hero[..<clock.lowerBound].contains("TimelineView("))
+        let detail = try XCTUnwrap(hero.range(of: "struct RecordingStageDetail: View"))
+        XCTAssertFalse(hero[..<detail.lowerBound].contains("liveVoices"))
 
         let hudFill = try XCTUnwrap(
             hud.range(of: "private struct RecordingHUDMeterFill: View"))

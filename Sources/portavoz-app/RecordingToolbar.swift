@@ -1,50 +1,26 @@
 import SwiftUI
 
-/// The live recording command surface. It remains one row when space allows
-/// and becomes two rows at the app's compact window width, keeping both the
-/// elapsed clock and Stop visible without crowding the transcript.
+/// The live recording's control row: the Recording kicker, then Translate,
+/// Catch me up and More. Its labels give way to glyphs before anything wraps.
 struct RecordingToolbar: View {
     let controller: RecordingController
-    let onStop: () -> Void
     let onCompact: () -> Void
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 12) {
-                recordingStatus
-                    .fixedSize(horizontal: true, vertical: false)
-                Spacer(minLength: 12)
+        HStack(spacing: 12) {
+            RecordingKicker(startedAt: controller.startedAt)
+                .fixedSize()
+            Spacer(minLength: 12)
+            ViewThatFits(in: .horizontal) {
                 secondaryControls
                     .fixedSize(horizontal: true, vertical: false)
-                stopButton
+                secondaryControls
+                    .labelStyle(.iconOnly)
                     .fixedSize(horizontal: true, vertical: false)
-            }
-            VStack(spacing: 10) {
-                HStack(spacing: 12) {
-                    recordingStatus
-                    Spacer(minLength: 12)
-                    stopButton
-                }
-                HStack(spacing: 12) {
-                    ViewThatFits(in: .horizontal) {
-                        secondaryControls
-                        secondaryControls
-                            .labelStyle(.iconOnly)
-                    }
-                    Spacer(minLength: 0)
-                }
             }
         }
         .padding(.horizontal, 20)
-        .padding(.top, 20)
-    }
-
-    private var recordingStatus: some View {
-        HStack(spacing: 12) {
-            RecordingElapsedClock(startedAt: controller.startedAt)
-            RecordingLevelMeter(controller: controller)
-            RecordingTalkBalanceCue(controller: controller)
-        }
+        .padding(.top, 14)
     }
 
     @ViewBuilder
@@ -56,6 +32,7 @@ struct RecordingToolbar: View {
                 Text("→ English").tag(String?.some("en"))
             }
             .pickerStyle(.menu)
+            .labelsHidden()
             .fixedSize()
             .controlSize(.small)
             .help(L10n.text(
@@ -74,23 +51,8 @@ struct RecordingToolbar: View {
             .accessibilityIdentifier("recording-catch-up")
             .accessibilityHint(L10n.text(
                 "Recap the last few minutes"))
-            moreMenu
+            RecordingMoreMenu(controller: controller, onCompact: onCompact)
         }
-    }
-
-    /// Everything that is not needed every minute lives behind one menu.
-    private var moreMenu: some View {
-        RecordingMoreMenu(controller: controller, onCompact: onCompact)
-    }
-
-    private var stopButton: some View {
-        Button(action: onStop) {
-            Label("Stop", systemImage: PVSymbol.stop)
-        }
-        .buttonStyle(.pvStop)
-        .controlSize(.small)
-        .keyboardShortcut(".")
-        .accessibilityIdentifier("recording-stop")
     }
 
     private var translationBinding: Binding<String?> {
@@ -101,43 +63,37 @@ struct RecordingToolbar: View {
     }
 }
 
-/// Pulsing dot and elapsed clock. The ticking timeline lives in an overlay of
-/// a hidden same-size placeholder, so a tick repaints without re-measuring
-/// every `ViewThatFits` variant of the bar.
-private struct RecordingElapsedClock: View {
+/// "● RECORDING" in the colour of the present. The dot's timeline lives in an
+/// overlay of a fixed frame, so its blink never re-measures the row.
+private struct RecordingKicker: View {
     let startedAt: Date
-
-    @State private var placeholder = RecordingClockTemplate.placeholder(
-        for: ClockFormat.mmss(0))
 
     var body: some View {
         HStack(spacing: 8) {
-            Color.clear.frame(width: 10, height: 10)
-            clockText(placeholder)
+            Color.clear
+                .frame(width: 8, height: 8)
+                .overlay { RecordingKickerDot(startedAt: startedAt) }
+            Text("Recording")
+                .font(.system(size: 11, weight: .bold))
+                .tracking(1.5)
+                .textCase(.uppercase)
+                .foregroundStyle(PVDesign.now)
         }
-        .hidden()
-        .overlay {
-            TimelineView(.periodic(from: startedAt, by: 1)) { context in
-                let elapsed = Int(context.date.timeIntervalSince(startedAt))
-                let clock = ClockFormat.mmss(TimeInterval(elapsed))
-                HStack(spacing: 8) {
-                    RecordingLiveDot(elapsed: elapsed, diameter: 10, easing: .easeInOut(duration: 0.6))
-                    clockText(clock)
-                        .accessibilityIdentifier("recording-elapsed-time")
-                }
-                .onChange(
-                    of: RecordingClockTemplate.placeholder(for: clock), initial: true
-                ) { _, widest in
-                    placeholder = widest
-                }
-            }
-        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("recording-kicker")
     }
+}
 
-    private func clockText(_ text: String) -> some View {
-        DisplayTimeText(text, style: .clock(size: 24))
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
+private struct RecordingKickerDot: View {
+    let startedAt: Date
+
+    var body: some View {
+        TimelineView(.periodic(from: startedAt, by: 1)) { context in
+            RecordingLiveDot(
+                elapsed: Int(context.date.timeIntervalSince(startedAt)),
+                diameter: 8,
+                easing: .easeInOut(duration: 0.6))
+        }
     }
 }
 
@@ -162,8 +118,27 @@ struct RecordingLiveDot: View {
     }
 }
 
+/// The stage's status line: your share of the last five minutes, then your
+/// microphone's mute control and level.
+struct RecordingStageFooter: View {
+    let controller: RecordingController
+
+    var body: some View {
+        HStack(spacing: 16) {
+            RecordingTalkBalanceCue(controller: controller)
+            Spacer(minLength: 12)
+            RecordingLevelMeter(controller: controller)
+        }
+        .frame(height: 40)
+        .padding(.horizontal, 20)
+        .overlay(alignment: .top) {
+            Rectangle().fill(PVDesign.line).frame(height: 1)
+        }
+    }
+}
+
 /// Mute control and level track. Neither reads the 20 Hz level: a change in
-/// this body would re-measure every `ViewThatFits` variant of the bar.
+/// this body would re-measure the row around it.
 private struct RecordingLevelMeter: View {
     let controller: RecordingController
 
@@ -223,6 +198,7 @@ private struct RecordingMoreMenu: View {
             showsPanel.toggle()
         } label: {
             Label(L10n.text("More"), systemImage: "ellipsis.circle")
+                .labelStyle(.iconOnly)
         }
         .controlSize(.small)
         .help(L10n.text("Proactive help, interview mode, a suggested question and the mini panel"))
