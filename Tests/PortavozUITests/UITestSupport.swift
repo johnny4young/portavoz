@@ -361,6 +361,18 @@ extension XCUIApplication {
             .staticTexts[text]
     }
 
+    /// Pauses the docked player; a toggle that lands as the audio ends is retried.
+    @MainActor
+    func pauseMeetingPlayback(timeout: TimeInterval = 5) -> Bool {
+        let toggle = buttons["player-play-pause"]
+        let play = UITestLocale.environmentLocale == "es" ? "Reproducir" : "Play"
+        return waitForUITestCondition(timeout: timeout) {
+            if toggle.label == play { return true }
+            toggle.click()
+            return false
+        }
+    }
+
     /// Privacy and action history live behind the activity chip under a
     /// meeting's title; the popover carries the auditable detail.
     @MainActor

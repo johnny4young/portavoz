@@ -3,7 +3,8 @@ import SwiftUI
 
 struct MeetingDetailPlayerValues {
     let player: MeetingPlaybackSession?
-    let waveform: [MeetingWaveformBucket]
+    let strip: MeetingPlayerStrip?
+    let chapters: [MeetingTranscriptContent.Chapter]
     let isCompressingAudio: Bool
     let compressionMessage: String?
     let isTrimmingAudio: Bool
@@ -35,7 +36,8 @@ struct MeetingDetailPlayerSection: View {
                     VStack(alignment: .leading, spacing: 8) {
                         MeetingPlayerBar(
                             player: player,
-                            waveform: values.waveform,
+                            strip: values.strip,
+                            chapters: values.chapters,
                             exportClip: actions.exportClip)
                         compressionRow
                         trimRow
@@ -43,7 +45,7 @@ struct MeetingDetailPlayerSection: View {
                     .padding(.vertical, 10)
                     .meetingPageColumn()
                 }
-                .background(PVDesign.paper)
+                .background(PVDesign.card)
             }
         }
         .accessibilityElement(children: .contain)

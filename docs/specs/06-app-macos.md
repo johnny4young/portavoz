@@ -522,7 +522,8 @@ animation (D658).
 The margin's chapter list, in the Marginalia lens, stays as a second way to jump.
 
 D226 composes the docked player through `MeetingDetailPlayerSection`. It
-receives the application-prepared playback session, waveform buckets, the
+receives the application-prepared playback session, the cached
+`MeetingPlayerStrip`, the transcript's chapters, the
 progress and result of compression or trimming started from the toolbar, and
 an explicit clip-export action. It imports no playback capability module, owns no model
 or local state, and cannot resolve files or perform audio work itself.
@@ -650,7 +651,7 @@ the page instead of scrolling on their own. The generated document keeps its
 118-point gutter of kicker, counts, version and menus beside the lede from 640
 points of width and moves it onto a row above the lede below that, wrapping
 onto two lines before anything truncates. The docked player sits below the
-page scroll across the whole detail width (main column and margin), on paper
+page scroll across the whole detail width (main column and margin), on card
 under a one-point `line` hairline, its content capped and centred like the page
 column so its edges align with the text above; the scroll view ends at its top
 edge, so the last transcript line always scrolls fully above it (D659). There is no
@@ -2170,17 +2171,42 @@ time: the scrubber draws each such gap no longer than a tenth of the
 conversation (at least 10 s), labels it with its real length when it fits, and
 Skip silence, on by default, jumps over it. A gap label is measured
 unconstrained and drawn only when it fits inside its gap with padding, so labels
-never wrap, overlap bars or each other, or clip at the edge. Without a
+never wrap, overlap the strip's edges or each other, or clip at the edge. Without a
 transcript the scrubber stays linear and skipping falls back to waveform
-silence. Under the scrubber, the one-row transport is play/pause (an ink disc), back/forward 15 s (`player-skip-back`, `player-skip-forward`),
+silence. The scrubber is the meeting's voice strip (D671): `MeetingPlayerStrip`
+(ApplicationKit) bins the Voices table's turns on the timeline's display axis,
+so a shortened gap stays short and voices keep the Voices table's tints; with
+nothing attributed, each waveform column louder than 0.06 takes amber when the
+microphone was louder and grey otherwise. A turn is cut at each such gap, so
+dead time stays track and the readout names nobody there. The detail view caches it
+per core revision and prepared playback, never rebuilding it per tick. `VoiceStrip` draws it at `.player` size
+(18 pt, radius 5) with the played part full and the rest dimmed, a 2.2 pt ink
+playhead, the marked clip outlined in ink, and a 0.45-opacity ink tick at each
+chapter that starts inside the audio. Each chapter title sits above its tick
+in 11 pt (bold ink for the chapter under the playhead, medium ink 2 for the
+rest), truncated before the next tick and left out when under 32 pt fit;
+clicking one seeks to the chapter, and the titles are hidden from VoiceOver
+because Marginalia's chapter list is the accessible jump. Click or drag on the
+strip seeks; the strip is one adjustable element, "Playback position"
+(`player-strip`), valued with the clock and stepping 10 s. While Only my
+voice or a Voices-table Only plays one voice, the strip draws only that voice.
+Under the scrubber, the one-row transport is play/pause (a 34 pt ink disc), back/forward 15 s (`player-skip-back`, `player-skip-forward`),
 current time in ink with equal digit cells (`DisplayTimeText`, never the red
-`now` tone, which is reserved for live status) over the total in ink 3,
-speed 1×–2× with preserved pitch (`player-speed`) and an options menu
-(`player-options`) holding Skip silence (`player-skip-silence`), Reduce echo
-(`player-clear-playback`) and Mark clip start/end (`clip-mark-start`,
-`clip-mark-end`). A `ViewThatFits` keeps that row whole at every width: a tight
-column shrinks the clock and shows speed as a gauge glyph (its rate stays in
-the accessibility value) instead of wrapping a control. Meeting Detail reopens at the position where listening
+`now` tone, which is reserved for live status) over the total in ink 3, a
+readout (`player-readout`) of the voice holding the floor at the playhead and
+the current chapter ("● You · Kickoff", ink 3, nothing during a pause), then
+quiet toggles that turn into ink pills while on: Skip silence
+(`player-skip-silence`), Only my voice (`player-only-my-voice`, when you spoke;
+the same focus as your Voices row's Only) and Reduce echo
+(`player-clear-playback`, two-channel audio only), each `isSelected` while on;
+then speed 1×–2× with preserved pitch (`player-speed`, a gauge glyph and the rate
+in an outlined capsule) and an options menu (`player-options`) holding Mark
+clip start/end (`clip-mark-start`, `clip-mark-end`). A `ViewThatFits` keeps that
+row whole at every width: first the readout gives up its reserved room, then the
+toggles drop their titles (their name stays in the tooltip and accessibility
+label), then the clock shrinks and speed becomes its glyph (its rate stays in
+the accessibility value).
+The readout fills what the controls leave and never decides which variant fits. Meeting Detail reopens at the position where listening
 stopped (D653): before preparing playback the model reads the saved position
 (or the one it saved last, ahead of a write still in flight) and seeks there
 unless it is within a second of either end; a pending route seek (a citation,
@@ -2205,8 +2231,8 @@ with `-use-temp-store` and an explicit fixture argument. If processing is
 pending or running after
 cut copies are staged, the transcript commit rejects the stale admission and
 the application discards those copies without swapping audio. The later
-database-commit-to-file-swap interval is not an exclusive processing reservation. A marked clip shows its length, Export and discard below the
-waveform (`player-waveform`). The application policy
+database-commit-to-file-swap interval is not an exclusive processing reservation. A marked clip is outlined on the voice strip (`player-strip`) and shows its
+length, Export and discard below the transport. The waveform policy
 admits 600 buckets by default and never publishes more than 2,000. The
 AudioPlaybackKit worker reads the complete finalized channels, propagates route
 cancellation into its detached task, and checks cancellation between 65,536-
@@ -2906,7 +2932,7 @@ composition isolation, not a security sandbox for arbitrary environment paths.
 
 **Many voices (D647)**: `VoiceCast` (ApplicationKit) assigns every voice a `Tint` (`.you`, `.hue(i)` or `.grey`) and `VoicePalette.color(_:colorScheme:)` maps it. `MeetingReviewCore.voiceCast` is built once per load from speakers and segment durations, ordered by talk share; you plus the five voices with most talk form `voices`, everyone else is `others` (grey, by talk share). Only named voices in `voices` hold a hue: their `VoiceHue.index(name:)`, or the next free hue when an earlier-heard name already holds it (the detail and the sidebar mix both order members by each voice's first segment, so a clash resolves the same way on both). The meeting header's Voices table (D655) draws `voices` as rows, then an "Others · n" row (`cast-others`, value Expanded/Collapsed) that opens the folded rows; transcript rows and Meeting health dots read the same cast. Sidebar rows draw the stored voice strip with the cast from `VoiceCast(columns:)` and Today recasts it on its page cast (D663), so folded voices are grey where they spoke. Insights' "Who you talk with" rows give each person's share of the bar and avatar their cast colour (the sixth person is grey). Live caption pills carry S-labels only, so remote voices are grey; `VoiceCast` also supports a `.recency` cast (current speaker first, then most recent) whose `previous:` keeps a name's hue across re-ranking and relabelling, but no live surface draws it yet. A `page:` cast colours one page across several casts: a voice it knows by key keeps that tint, grey included, and a new named voice takes a hue it left free.
 
-**Voice strip (D649)**: `VoiceStrip` (app) draws a `VoiceStripColumns` (ApplicationKit: stored columns, the tint of each voice index and the cast) as the meeting's flat time axis. A `Canvas` folds the stored 200 columns to one per 2 pt (`VoiceColumns.resampled`, which runs `VoiceColumns.bin` over the stored runs), calms lone columns at row size, and fills one rect per run (`VoiceColumns.runs`) over a `PVDesign.line` track; silence stays track and an index without a tint draws as track. Sizes follow the board: `.row` 6 pt high with radius 3 (sidebar, Today), `.player` 16 pt and `.live` 12 pt with radius 5. Hooks for later screens: `only:` draws one voice for a Voices-table row, `progress:` dims the unplayed part to 0.45 (0.7 in dark, which keeps every tint at 3:1 against the dark track) and, above row size, adds a 2.2 pt ink playhead overhanging 4 pt, and `ticks:` draws chapter ticks. It is one accessibility element, "Who spoke when", valued with the cast ("You 25%, Marta 30%, Others · 2", locale-formatted shares); nothing animates. `LibraryModel.State.voiceStrips` feeds the strip under every sidebar row, where the row's `library-meeting-<id>` identifier reaches it, and in Pick up where you left off, where it is hidden from VoiceOver because the row button would read its label before the title; a meeting with nothing attributed shows only the track and is hidden from VoiceOver. The talk-share mirror's recent average reads the same stored strips (`voiceColumns(for:)`), so it honours speaker corrections; the raw-segment `voiceMixes(for:)` query is gone.
+**Voice strip (D649)**: `VoiceStrip` (app) draws a `VoiceStripColumns` (ApplicationKit: stored columns, the tint of each voice index and the cast) as the meeting's flat time axis. A `Canvas` folds the stored 200 columns to one per 2 pt (`VoiceColumns.resampled`, which runs `VoiceColumns.bin` over the stored runs), calms lone columns at row size, and fills one rect per run (`VoiceColumns.runs`) over a `PVDesign.line` track; silence stays track and an index without a tint draws as track. Sizes follow the board: `.row` 6 pt high with radius 3 (sidebar, Today), `.player` 18 pt (D671) and `.live` 12 pt with radius 5. Hooks for later screens: `only:` draws one voice for a Voices-table row, `progress:` dims the unplayed part to 0.45 (0.7 in dark, which keeps every tint at 3:1 against the dark track) and, above row size, adds a 2.2 pt ink playhead overhanging 4 pt, and `ticks:` draws chapter ticks in ink at 0.45 opacity. It is one accessibility element, "Who spoke when", valued with the cast ("You 25%, Marta 30%, Others · 2", locale-formatted shares); nothing animates. `LibraryModel.State.voiceStrips` feeds the strip under every sidebar row, where the row's `library-meeting-<id>` identifier reaches it, and in Pick up where you left off, where it is hidden from VoiceOver because the row button would read its label before the title; a meeting with nothing attributed shows only the track and is hidden from VoiceOver. The talk-share mirror's recent average reads the same stored strips (`voiceColumns(for:)`), so it honours speaker corrections; the raw-segment `voiceMixes(for:)` query is gone.
 
 **Voices table (D655)**: `MeetingReviewCore.voiceTable` (`MeetingVoiceTable`, ApplicationKit) is built once per load from the cast and the segments: one row per cast voice that spoke (`rows` in cast order, `others` by talk share), each with its turns (runs of its segments until another voice's segment starts), on one time axis: the meeting's length, stretched to the last turn. `MeetingVoicesTable` (app) replaces the header's speaker pills: a "Voices" caption with "n voices" (or "n voices · m in colour" once some fold), then 28 pt rows under a hairline with the voice dot (an open grey ring while unnamed), name (`cast-speaker-<label>`), share, talk time, the row's `VoiceTurnsStrip` (`voice-turns-<label>`; every turn drawn exactly, at least a point wide; VoiceOver reads "Turns" and their count), which fills the row up to a trailing column as wide as the widest row's suggestion chip and Only button so every strip ends on one edge (D660), and an Only button (`voice-only-<label>`, selected while `voiceFocus` is that voice; `MeetingPlaybackSession.toggleFocus(on:turns:)` starts playback when paused, and a second click plays everyone). Clicking a name plays that voice's next turn after the playhead (wrapping to the first; a seek landing within 0.1 s short of a turn counts as on it); without audio it reveals the line instead. Rename lives in the row's context menu (`cast-speaker-rename-<label>`) and as a VoiceOver action; the transcript's margin names still rename. A remembered-voice match shows in its row as "Sounds like <name> — name" (`detail-voice-suggestion-<label>`, dismiss `detail-voice-suggestion-dismiss-<label>`). The "Others · n" row lists the first three folded names and "+k"; while it is collapsed, a folded voice still shows its row when it offers a name or is playing alone. Under 620 pt the talk-time column hides and Only shrinks to its glyph. The player's "Play:" menu is gone. Solo-voice meetings collapse to a single summary line, and multi-speaker meetings surface questions and interruptions inline inside `MeetingVoicesTable` (`detail-meeting-health` totals in the header; rows carry no badges, so every strip still runs up to its row controls per D660), saying "No questions or interruptions." when there are none.
 

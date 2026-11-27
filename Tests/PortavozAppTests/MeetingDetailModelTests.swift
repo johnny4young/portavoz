@@ -1793,6 +1793,8 @@ struct MeetingDetailCompressionPermissionTests {
         #expect(first == .playbackReturned, "pending seeks must not wait for an optional permission read")
         #expect(model.state.playback?.session === prepared.session)
         #expect(model.state.playback?.waveform == prepared.waveform)
+        let strip = MeetingDetailPlayerStripCache().strip(for: model.state)
+        #expect(strip?.strip.duration == prepared.session.timeline.duration, "the strip follows the prepared timeline")
         model.state.playback?.session.seek(to: 0.1)
         #expect(model.state.playback?.session.currentTime == 0.1)
         permission.continuation.yield(false)
@@ -1954,6 +1956,8 @@ struct MeetingDetailCompressionPermissionTests {
         try #require(await signals.next() != nil)
         #expect(model.state.playback?.session === prepared.session)
         #expect(model.state.playback?.waveform == prepared.waveform)
+        let strip = MeetingDetailPlayerStripCache().strip(for: model.state)
+        #expect(strip?.strip.duration == prepared.session.timeline.duration, "the strip follows the prepared timeline")
         model.state.playback?.session.seek(to: 0.1)
         #expect(model.state.playback?.session.currentTime == 0.1)
         if invalidate {

@@ -21,10 +21,10 @@ struct MeetingDetailView: View {
     @State private var playbackNavigation = MeetingDetailPlaybackNavigation()
     @State private var railTab = MeetingDetailRailTab.marginalia
     @State private var showingSummaryTodos = false
+    @State private var playerStrip = MeetingDetailPlayerStripCache()
     private var detail: MeetingReviewReadModel? { model.state.readModel }
     private var summary: MeetingReviewSummary? { detail?.summary }
     private var player: MeetingPlaybackSession? { model.state.playback?.session }
-    private var waveform: [MeetingWaveformBucket] { model.state.playback?.waveform ?? [] }
     private var playbackTaskID: String? { detail?.meeting.audioDirectory }
     private var coordinator: MeetingDetailCoordinator {
         MeetingDetailCoordinator(
@@ -121,7 +121,7 @@ private extension MeetingDetailView {
                 }
                 .accessibilityIdentifier("detail-page-scroll")
             }
-            playerSection
+            playerSection(chapters: transcript.chapters)
         }
     }
 
@@ -169,11 +169,12 @@ private extension MeetingDetailView {
                 openTranslationSettings: { sceneActions.openSettings(.audio) }))
     }
 
-    private var playerSection: some View {
+    private func playerSection(chapters: [MeetingTranscriptContent.Chapter]) -> some View {
         MeetingDetailPlayerSection(
             values: MeetingDetailPlayerValues(
                 player: player,
-                waveform: waveform,
+                strip: playerStrip.strip(for: model.state),
+                chapters: chapters,
                 isCompressingAudio: model.state.isCompressingAudio,
                 compressionMessage: model.state.audioCompressionMessage,
                 isTrimmingAudio: model.state.isTrimmingAudio,
