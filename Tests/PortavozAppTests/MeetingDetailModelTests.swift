@@ -97,11 +97,11 @@ extension MeetingDetailModelTests {
         await model.send(.loadMetadataSuggestions)
         let titled = try XCTUnwrap(model.state.transcriptPresentation)
         XCTAssertFalse(titled === original)
-        XCTAssertEqual(model.state.chapterTitles, [0: "Plan del viernes"])
+        XCTAssertEqual(model.state.transcriptPresentationState.chapterTitles, [0: "Plan del viernes"])
         let detail = try XCTUnwrap(model.state.readModel)
-        XCTAssertEqual(titled.current, detail.transcriptContent(chapterTitles: model.state.chapterTitles))
+        XCTAssertEqual(titled.current, detail.transcriptContent(chapterTitles: model.state.transcriptPresentationState.chapterTitles))
         XCTAssertEqual(titled.structure.accepted,
-                       detail.acceptedTranscriptContent(chapterTitles: model.state.chapterTitles))
+                       detail.acceptedTranscriptContent(chapterTitles: model.state.transcriptPresentationState.chapterTitles))
         await model.send(.loadMetadataSuggestions)
         XCTAssertTrue(model.state.transcriptPresentation === titled)
 
@@ -115,7 +115,7 @@ extension MeetingDetailModelTests {
         await model.observe()
         let corrected = try XCTUnwrap(model.state.transcriptPresentation)
         XCTAssertFalse(corrected === titled)
-        XCTAssertTrue(model.state.chapterTitles.isEmpty)
+        XCTAssertTrue(model.state.transcriptPresentationState.chapterTitles.isEmpty)
         XCTAssertEqual(corrected.current.rows.first?.text, "El lunes.")
         XCTAssertEqual(corrected.structure.accepted.rows.first?.text, fixture.segment.text)
     }
@@ -1132,7 +1132,7 @@ final class MeetingDetailModelTests: XCTestCase {
 
         XCTAssertEqual(model.state.suggestedTitle, "Plan del trimestre")
         XCTAssertEqual(model.state.suggestedRecipe?.id, Recipe.standup.id)
-        XCTAssertEqual(Set(model.state.chapterTitles.keys), Set(chapterStarts))
+        XCTAssertEqual(Set(model.state.transcriptPresentationState.chapterTitles.keys), Set(chapterStarts))
         XCTAssertEqual(client.calls, [
             .observe(fixture.meeting.id),
             .loadMetadataSuggestions(

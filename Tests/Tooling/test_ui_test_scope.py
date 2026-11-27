@@ -430,12 +430,22 @@ class UITestScopeTests(unittest.TestCase):
 
     def test_detail_secondary_sections_select_only_owned_journeys(self):
         expected = {
+            "Sources/portavoz-app/MeetingMarginNotesView.swift": (
+                "meeting-commitments",
+                "meeting-evidence",
+                "meeting-naming",
+            ),
+            "Sources/portavoz-app/MeetingDetailPeopleSection.swift": (
+                "meeting-commitments",
+                "meeting-naming",
+            ),
             "Sources/portavoz-app/MeetingDetailActionSection.swift": (
                 "meeting-export",
                 "meeting-processing",
                 "meeting-recap",
             ),
             "Sources/portavoz-app/MeetingDetailRailSection.swift": (
+                "meeting-commitments",
                 "meeting-correction",
                 "meeting-evidence",
                 "meeting-health",
@@ -492,6 +502,7 @@ class UITestScopeTests(unittest.TestCase):
                 "meeting-summary",
             ),
             "Sources/portavoz-app/MeetingDetailNotesSection.swift": (
+                "meeting-commitments",
                 "meeting-summary",
             ),
             "Sources/portavoz-app/MeetingDetailRefineReviewSheet.swift": (

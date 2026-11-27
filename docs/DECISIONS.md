@@ -23558,7 +23558,31 @@ the caption is amber only when you own the commitment. One threshold, the
 margin's own, decides between beside and folded, so a card is never missing
 from both places.
 
-## D670 — The file-backed store is a WAL pool with an in-memory semantic pack (Nov 2026)
+## D670 — The margin's tabs are Marginalia, Apuntador and People
+
+The meeting margin had a Chapters and an Apuntador lens, processing that needs
+attention above them, and the header kept a horizontal row of suggestions and
+remember offers under the Voices table; your notes sat in their own box under
+the summary. The margin now has three text tabs. Marginalia (the default) holds
+processing that needs attention, the chapter list, which stays a second way to
+jump, and My notes with Tidy up and the tidied version. Every note becomes a
+card beside the transcript line playing when it was written (the last line
+that started by then, or the first line), so a note shows in one place; a note
+with no line to sit beside stays in My notes. A voice named without a tap
+becomes a card beside that voice's first line with Undo and Keep name, so you
+can play the line that decides it; the pending "sounds like" suggestion stays
+in its Voices row as the board draws it. People gathers what is still to
+confirm about who spoke: suggested names, a voice match with no visible line,
+and the offers to remember a person or recognize a voice. Its tab shows how
+many are waiting, and it opens on its own when a new one joins, which only
+follows your own request for names or a rename, and never while processing
+that needs attention holds Marginalia. A note card names its kind (Note,
+Objective, Link, Code, File). The board's help line under the
+tabs shows only as the empty Marginalia lens, and its recipe chip stays under
+the standfirst (D656). Notes anchor without a current summary; decisions and
+commitments still need one (D669).
+
+## D671 — The file-backed store is a WAL pool with an in-memory semantic pack (Nov 2026)
 
 **Context:** the serial `DatabaseQueue` in SQLite's rollback journal let an
 independent reader (`portavoz-cli`, MCP, a diagnostic observer) reject a
@@ -23585,4 +23609,3 @@ This supersedes D318's mapping and D79's instruction to retain `DatabaseQueue`
 until contention is demonstrated: the external-reader
 contention in GAPS is that demonstration. An external writer holding a write
 lock past `busyTimeout` still fails explicitly with accepted input unchanged.
-

@@ -14,30 +14,9 @@ struct MeetingDetailHeaderValues {
     /// Nil without audio.
     let playback: MeetingVoicesPlayback?
     let isSuggestingNames: Bool
-    let nameSuggestions: [MeetingNameSuggestion]
+    /// Suggested names wait in the margin's People tab.
+    let hasNameSuggestions: Bool
     let voiceSuggestions: [MeetingVoiceSuggestion]
-    let autoAssignedVoices: [MeetingVoiceSuggestion]
-    let personOffer: MeetingDetailRememberOffer?
-    let voiceOffer: MeetingDetailRememberOffer?
-
-    var hasSuggestions: Bool {
-        !nameSuggestions.isEmpty || !autoAssignedVoices.isEmpty
-            || personOffer != nil || voiceOffer != nil
-    }
-}
-
-struct MeetingDetailRememberOffer {
-    let name: String
-    let isBusy: Bool
-}
-
-private struct MeetingDetailRememberOfferPresentation {
-    let label: String
-    let systemImage: String
-    let acceptIdentifier: String
-    let dismissLabel: String
-    let dismissIdentifier: String
-    let help: String
 }
 
 struct MeetingDetailHeaderActions {
@@ -48,19 +27,11 @@ struct MeetingDetailHeaderActions {
     let stepThroughTurns: @MainActor (MeetingVoiceTable.Row) -> Void
     let toggleOnly: @MainActor (MeetingVoiceTable.Row) -> Void
     let suggestNames: @MainActor () -> Void
-    let acceptNameSuggestion: @MainActor (MeetingNameSuggestion) -> Void
-    let dismissNameSuggestion: @MainActor (String) -> Void
     let acceptVoiceSuggestion: @MainActor (MeetingVoiceSuggestion) -> Void
     let dismissVoiceSuggestion: @MainActor (String) -> Void
-    let undoVoiceAutoAssign: @MainActor (MeetingVoiceSuggestion) -> Void
-    let keepVoiceAutoAssign: @MainActor (MeetingVoiceSuggestion) -> Void
-    let acceptPersonOffer: @MainActor () -> Void
-    let dismissPersonOffer: @MainActor () -> Void
-    let acceptVoiceOffer: @MainActor () -> Void
-    let dismissVoiceOffer: @MainActor () -> Void
 }
 
-/// Meeting identity, facts, participants, and optional inert suggestions.
+/// Meeting identity, facts, and participants.
 ///
 /// The section renders immutable values and emits explicit gestures. It has no
 /// meeting model, application service, persistence, or provider dependency.
@@ -84,7 +55,6 @@ struct MeetingDetailHeaderSection<Receipt: View>: View {
             kickerRow
             titleRow
             voicesTable
-            suggestionsRow
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-header-section")
@@ -148,29 +118,11 @@ struct MeetingDetailHeaderSection<Receipt: View>: View {
         }
     }
 
-    /// The remaining ✦ suggestions and offers sit in one scrolling row under the voices,
-    /// so a meeting with many suggestions never pushes the summary down.
-    @ViewBuilder
-    private var suggestionsRow: some View {
-        if values.hasSuggestions {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    autoAssignedVoiceChips
-                    nameSuggestionChips
-                    rememberPersonOffer
-                    rememberVoiceOffer
-                }
-            }
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("detail-suggestions-row")
-        }
-    }
-
     @ViewBuilder
     private var suggestNamesControl: some View {
         if values.isSuggestingNames {
             ProgressView().controlSize(.small)
-        } else if values.nameSuggestions.isEmpty {
+        } else if !values.hasNameSuggestions {
             Button(action: actions.suggestNames) {
                 Label("Suggest names", systemImage: PVSymbol.generate)
                     .font(.caption)
@@ -178,124 +130,6 @@ struct MeetingDetailHeaderSection<Receipt: View>: View {
             .buttonStyle(.plain)
             .foregroundStyle(PVDesign.accent)
             .accessibilityIdentifier("detail-suggest-names")
-        }
-    }
-
-    @ViewBuilder
-    private var nameSuggestionChips: some View {
-        ForEach(values.nameSuggestions, id: \.label) { suggestion in
-            DismissibleSuggestionChip(
-                kind: .ai,
-                text: "\(suggestion.label) → \(suggestion.name)?",
-                acceptAccessibilityIdentifier:
-                    "detail-name-suggestion-\(suggestion.label)",
-                dismissAccessibilityIdentifier:
-                    "detail-name-suggestion-dismiss-\(suggestion.label)",
-                accept: { actions.acceptNameSuggestion(suggestion) },
-                dismiss: { actions.dismissNameSuggestion(suggestion.label) })
-            .fixedSize()
-            .help(nameSuggestionHelp(suggestion))
-        }
-    }
-
-    @ViewBuilder
-    private var autoAssignedVoiceChips: some View {
-        ForEach(values.autoAssignedVoices, id: \.speakerLabel) { voice in
-            UndoableAppliedChip(
-                kind: .voice,
-                text: L10n.format("%@ · by voice", voice.name),
-                undoAccessibilityIdentifier: "detail-voice-auto-undo-\(voice.speakerLabel)",
-                keepAccessibilityLabel: L10n.text("Keep name"),
-                keepAccessibilityIdentifier: "detail-voice-auto-keep-\(voice.speakerLabel)",
-                undo: { actions.undoVoiceAutoAssign(voice) },
-                keep: { actions.keepVoiceAutoAssign(voice) })
-            .fixedSize()
-            .help(L10n.format("Matches “%@” from your remembered voices", voice.name))
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("detail-voice-auto-\(voice.speakerLabel)")
-        }
-    }
-
-    private func nameSuggestionHelp(_ suggestion: MeetingNameSuggestion) -> String {
-        switch suggestion.evidence {
-        case .transcript(let quote):
-            L10n.format("Transcript: “%@”", quote)
-        case .calendarCandidate(let candidate):
-            L10n.format("Calendar candidate: %@", candidate)
-        }
-    }
-
-    @ViewBuilder
-    private var rememberPersonOffer: some View {
-        if let offer = values.personOffer {
-            rememberOffer(
-                offer,
-                presentation: MeetingDetailRememberOfferPresentation(
-                    label: L10n.format("Remember %@ as a person?", offer.name),
-                    systemImage: "person.crop.circle.badge.plus",
-                    acceptIdentifier: "person-remember-offer",
-                    dismissLabel: L10n.text("Dismiss person offer"),
-                    dismissIdentifier: "person-dismiss-offer",
-                    help: L10n.text(
-                        "Links this meeting speaker to local, user-confirmed person memory.")),
-                accept: actions.acceptPersonOffer,
-                dismiss: actions.dismissPersonOffer)
-        }
-    }
-
-    @ViewBuilder
-    private var rememberVoiceOffer: some View {
-        if let offer = values.voiceOffer {
-            rememberOffer(
-                offer,
-                presentation: MeetingDetailRememberOfferPresentation(
-                    label: L10n.format("Recognize %@ in future meetings?", offer.name),
-                    systemImage: "person.wave.2",
-                    acceptIdentifier: "voice-remember-offer",
-                    dismissLabel: L10n.text("Dismiss voice offer"),
-                    dismissIdentifier: "voice-dismiss-offer",
-                    help: L10n.text(
-                        // One-line UI help text.
-                        // swiftlint:disable:next line_length
-                        "Suggests this name when the voice is heard again. The voiceprint stays encrypted on this Mac; remove it in Settings.")),
-                accept: actions.acceptVoiceOffer,
-                dismiss: actions.dismissVoiceOffer)
-        }
-    }
-
-    private func rememberOffer(
-        _ offer: MeetingDetailRememberOffer,
-        presentation: MeetingDetailRememberOfferPresentation,
-        accept: @escaping @MainActor () -> Void,
-        dismiss: @escaping @MainActor () -> Void
-    ) -> some View {
-        Group {
-            if offer.isBusy {
-                ProgressView().controlSize(.small)
-            } else {
-                HStack(spacing: 6) {
-                    Label(presentation.label, systemImage: presentation.systemImage)
-                        .font(.caption)
-                        .foregroundStyle(PVDesign.chipOfferInk)
-                    Button(L10n.text("Remember"), action: accept)
-                        .font(.caption.weight(.semibold))
-                        .buttonStyle(.plain)
-                        .foregroundStyle(PVDesign.accent)
-                        .accessibilityIdentifier(presentation.acceptIdentifier)
-                    Button(action: dismiss) {
-                        Image(systemName: "xmark")
-                            .font(.caption2)
-                            .foregroundStyle(PVDesign.chipOfferInk)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(presentation.dismissLabel)
-                    .accessibilityIdentifier(presentation.dismissIdentifier)
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(PVDesign.chipOfferBg, in: Capsule())
-                .help(presentation.help)
-            }
         }
     }
 }

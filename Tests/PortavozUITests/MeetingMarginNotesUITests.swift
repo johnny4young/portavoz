@@ -1,6 +1,7 @@
 import XCTest
 
-/// Decisions and commitments beside, or folded under, the transcript line that produced them.
+/// Decisions, commitments, notes and voice matches beside, or folded under, the transcript line
+/// they belong to, and the margin's Marginalia, Apuntador and People tabs.
 final class MeetingMarginNotesUITests: PortavozUITestCase {
     @MainActor
     func testMarginNotesSitBesideTheLineThatProducedThem() throws {
@@ -95,8 +96,85 @@ final class MeetingMarginNotesUITests: PortavozUITestCase {
     }
 
     @MainActor
-    private func launchOnSeededMeeting(_ arguments: String...) throws -> XCUIApplication {
-        let app = try XCUIApplication.portavoz(seedDemo: true, seedCommitmentInbox: true)
+    func testMarginTabsHoldMarginaliaApuntadorAndPeople() throws {
+        let app = try launchOnSeededMeeting("-seed-wide-window", "-AppleInterfaceStyle", "Light")
+        defer { finishUITestApplication(app) }
+
+        app.setSidebar(visible: false)
+        let rail = app.control(withIdentifier: "detail-secondary-rail")
+        XCTAssertTrue(rail.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(rail.waitForStableFrame(timeout: 5))
+        attachScreenshot(of: app, named: "pr-margin-tabs-wide")
+
+        let marginalia = rail.buttons["detail-rail-tab-marginalia"]
+        XCTAssertTrue(marginalia.exists)
+        XCTAssertTrue(marginalia.isSelected, "Marginalia is the margin's first lens")
+        XCTAssertTrue(rail.descendants(matching: .any)["chapter-200"].exists, "chapters still jump from the margin")
+        let notes = rail.descendants(matching: .any)["detail-notes-section"]
+        XCTAssertTrue(notes.exists, "My notes and Tidy up live in the margin")
+        XCTAssertTrue(notes.descendants(matching: .any)["detail-enhance-notes"].exists)
+        XCTAssertFalse(notes.staticTexts["revisar budget Q3"].exists, "an anchored note shows in one place")
+
+        let noteCard = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'margin-note-'")).firstMatch
+        XCTAssertTrue(noteCard.waitForExistenceFast(timeout: 5), "your note becomes a card anchored to its time")
+        XCTAssertTrue(noteCard.staticTexts["revisar budget Q3"].exists)
+        XCTAssertEqual(noteCard.frame.minX, rail.frame.minX, accuracy: 4, "the note card sits in the margin column")
+
+        rail.buttons["detail-rail-tab-apuntador"].click()
+        XCTAssertTrue(
+            rail.descendants(matching: .any)["apuntador-card-6"].waitForExistenceFast(timeout: 5),
+            "Apuntador answers keep their lens")
+        rail.buttons["detail-rail-tab-people"].click()
+        XCTAssertTrue(
+            rail.descendants(matching: .any)["detail-rail-empty-people"].waitForExistenceFast(timeout: 5),
+            "with every voice named, People has nothing to confirm")
+
+        XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
+        XCTAssertTrue(noteCard.revealVertically(
+            in: app.control(withIdentifier: "detail-page-scroll"), maxScrolls: 12, maximumStep: 600))
+        attachScreenshot(of: app, named: "pr-margin-tabs-note")
+    }
+
+    @MainActor
+    func testNarrowMarginTabsSitBetweenMaterialAndTranscript() throws {
+        // Without the commitment seed, whose canonical person keeps Ana from a voice match.
+        let app = try launchOnSeededMeeting(
+            "-seed-narrow-window", "-seed-voice-match", "-AppleInterfaceStyle", "Light", commitments: false)
+        defer { finishUITestApplication(app) }
+
+        let rail = app.control(withIdentifier: "detail-secondary-rail")
+        XCTAssertTrue(rail.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(rail.waitForStableFrame(timeout: 5))
+        attachScreenshot(of: app, named: "pr-margin-tabs-narrow")
+
+        let transcript = app.control(withIdentifier: "detail-transcript-section")
+        XCTAssertTrue(transcript.waitForExistenceFast(timeout: 5))
+        XCTAssertLessThanOrEqual(rail.frame.maxY, transcript.frame.minY + 1, "one column: the margin precedes the transcript")
+        for tab in ["marginalia", "apuntador", "people"] {
+            let button = rail.buttons["detail-rail-tab-\(tab)"]
+            XCTAssertTrue(button.exists)
+            XCTAssertLessThanOrEqual(button.frame.maxX, rail.frame.maxX + 1, "\(tab) is never cut off")
+        }
+
+        XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
+        let voice = app.control(withIdentifier: "detail-voice-auto-S1")
+        XCTAssertTrue(voice.waitForExistenceFast(timeout: 20), "a voice match becomes a card at that voice's first line")
+        XCTAssertTrue(voice.revealVertically(
+            in: app.control(withIdentifier: "detail-page-scroll"), maxScrolls: 12, maximumStep: 600))
+        let line = app.transcriptLine("El rollout del modelo queda para el viernes.")
+        XCTAssertGreaterThanOrEqual(voice.frame.minY, line.frame.maxY - 1, "a narrow page folds the card under its line")
+        attachScreenshot(of: app, named: "pr-margin-tabs-voice")
+        XCTAssertTrue(app.control(withIdentifier: "detail-voice-auto-keep-S1").exists)
+        let undo = app.control(withIdentifier: "detail-voice-auto-undo-S1")
+        XCTAssertTrue(undo.waitForHittable(timeout: 5))
+        undo.click()
+        XCTAssertTrue(voice.waitForDisappearance(timeout: 10), "Undo clears the card")
+    }
+
+    @MainActor
+    private func launchOnSeededMeeting(_ arguments: String..., commitments: Bool = true) throws -> XCUIApplication {
+        let app = try XCUIApplication.portavoz(seedDemo: true, seedCommitmentInbox: commitments)
         app.launchArguments += arguments
         app.launchPortavoz()
         XCTAssertTrue(app.waitForSeededLibraryToSettle())

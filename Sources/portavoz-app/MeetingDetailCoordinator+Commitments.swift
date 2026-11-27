@@ -18,7 +18,9 @@ extension MeetingDetailCoordinator {
             confirmDecision: { presentDecisionConfirmation($0, statement: $1, meetingID: detail.meeting.id) },
             retractDecisionTopic: retractDecisionTopic,
             setDone: setActionItem,
-            commitments: commitmentInboxActions(focusEvidence: focusEvidence))
+            commitments: commitmentInboxActions(focusEvidence: focusEvidence),
+            keepVoice: keepVoiceAutoAssign,
+            undoVoice: undoVoiceAutoAssign)
     }
 
     func confirmCommitment(

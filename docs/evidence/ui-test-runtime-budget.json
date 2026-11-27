@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 146
+    "expectedCaseCount": 148
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -91,7 +91,7 @@
     "MeetingDetailUITests/testFailedSkillEffectRetriesItsOriginalProposal()": 20.524,
     "MeetingDetailUITests/testFiveThousandSegmentDetailRendersFromDisposableScaleFixture()": 20.0,
     "MeetingDetailUITests/testFreshQualifyingMeetingShowsThePostMeetingMirror()": 20.0,
-    "MeetingDetailUITests/testMeetingReviewSurfacesRemainCompleteAndActionable()": 28.0,
+    "MeetingDetailUITests/testMeetingReviewSurfacesRemainCompleteAndActionable()": 32.0,
     "MeetingDetailUITests/testMostRecentRecipeRemainsVisibleAfterReload()": 20.0,
     "MeetingDetailUITests/testAConfidentVoiceMatchNamesTheSpeakerAndCanBeUndone()": 20.0,
     "MeetingDetailUITests/testNamedSpeakerCanBeRememberedAsCanonicalPerson()": 20.0,
@@ -163,6 +163,8 @@
     "MeetingDetailUITests/testPlayerDocksAcrossTheDetailUnderThePage()": 20.0,
     "MeetingMarginNotesUITests/testMarginNotesSitBesideTheLineThatProducedThem()": 24.0,
     "MeetingMarginNotesUITests/testNarrowMarginNotesFoldUnderTheirLine()": 20.0,
+    "MeetingMarginNotesUITests/testMarginTabsHoldMarginaliaApuntadorAndPeople()": 24.0,
+    "MeetingMarginNotesUITests/testNarrowMarginTabsSitBetweenMaterialAndTranscript()": 24.0,
     "MeetingDetailUITests/testNarrowTranscriptPutsTheSpeakerAboveTheLine()": 20.0,
     "MeetingDetailUITests/testTranscriptReadsAsChaptersAndTurns()": 20.0,
     "MeetingChromeUITests/testMeetingToolbarFitsTheNarrowDarkWindow()": 20.0,

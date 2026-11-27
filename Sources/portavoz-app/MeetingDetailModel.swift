@@ -18,10 +18,11 @@ final class MeetingDetailModel {
         var marginNotes: MeetingMarginNotes { transcriptPresentationState.marginNotes }
         fileprivate(set) var nameSuggestions: [MeetingNameSuggestion] = []
         fileprivate(set) var isSuggestingNames = false
-        fileprivate(set) var voice = MeetingDetailVoiceSuggestions()
+        fileprivate(set) var voice = MeetingDetailVoiceSuggestions() {
+            didSet { transcriptPresentationState.receive(voiceMatches: voice.autoAssigned) }
+        }
         var voiceSuggestions: [MeetingVoiceSuggestion] { voice.offered }
         var autoAssignedVoices: [MeetingVoiceSuggestion] { voice.autoAssigned }
-        var chapterTitles: [TimeInterval: String] { transcriptPresentationState.chapterTitles }
         fileprivate(set) var suggestedTitle: String?
         fileprivate(set) var suggestedRecipe: Recipe?
         fileprivate(set) var dismissedThinSummaryVersion: Int?
@@ -658,7 +659,7 @@ private extension MeetingDetailModel {
         guard let detail = state.readModel, let presentation = state.transcriptPresentation,
             let attempt = metadataSuggestionState.begin(
                 review: detail, content: presentation.current,
-                titledChapterStarts: Set(state.chapterTitles.keys))
+                titledChapterStarts: Set(state.transcriptPresentationState.chapterTitles.keys))
         else { return }
 
         do {

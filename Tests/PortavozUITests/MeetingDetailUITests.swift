@@ -30,7 +30,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.staticTexts["Scale baseline summary revision 1."].waitForExistenceFast(timeout: 15),
             "the 5,000-segment detail must render its initial summary")
-        selectRailTab("chapters", in: app)
+        selectRailTab("marginalia", in: app)
         XCTAssertTrue(
             app.control(withIdentifier: "detail-chapters").waitForExistenceFast(timeout: 10),
             "the scale detail must complete its chapter projection")
@@ -80,7 +80,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 continueEnvironmentKey:
                     "PORTAVOZ_UI_TEST_SCALE_SUMMARY_CONTINUE_PATH"),
             "the test must release the summary update only after observing revision 1")
-        selectRailTab("chapters", in: app)
+        selectRailTab("marginalia", in: app)
         XCTAssertTrue(
             app.control(withIdentifier: "detail-chapters").waitForExistenceFast(timeout: 15),
             "the 20,000-segment detail must complete its chapter projection")
@@ -95,6 +95,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         playbackToggle: XCUIElement,
         in app: XCUIApplication
     ) throws {
+        if !(chapter.exists && chapter.isHittable) { selectRailTab("marginalia", in: app) } // one column hides it
         XCTAssertTrue(chapter.waitForHittable(timeout: 5))
         chapter.click()
         XCTAssertTrue(playbackToggle.waitForHittable(timeout: 5))
@@ -104,9 +105,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "reset must leave the cited timestamp AND deselect the source row")
     }
 
-    /// The rail shows one lens at a time; tests name the lens they need.
-    /// In one column the rail sits below the material, so lift its tabs near
-    /// the page top, leaving the lens below them in view.
+    /// The rail shows one lens at a time; its tabs are lifted near the page top so the lens stays in view.
     @MainActor
     private func selectRailTab(_ tab: String, in app: XCUIApplication) {
         let button = app.buttons["detail-rail-tab-\(tab)"]
@@ -673,6 +672,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
 
         let chip = app.control(withIdentifier: "detail-voice-auto-S1")
         XCTAssertTrue(chip.waitForExistenceFast(timeout: 20), "a confident voice match names the speaker without a tap")
+        XCTAssertTrue(app.revealMeetingDetailSection(.transcript) && chip.revealVertically(
+            in: app.control(withIdentifier: "detail-page-scroll"), maxScrolls: 12, maximumStep: 600))
+        attachScreenshot(of: app, named: "pr-margin-voice-match")
         XCTAssertTrue(waitForUITestCondition(timeout: 10, pillShowsMarta), "the cast shows the recognized name")
         XCTAssertTrue(app.control(withIdentifier: "detail-voice-auto-keep-S1").exists)
         let undo = app.control(withIdentifier: "detail-voice-auto-undo-S1")
@@ -1142,7 +1144,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let secondaryRail = app.control(withIdentifier: "detail-secondary-rail")
         _ = try uiObservation(
             of: secondaryRail,
-            requiring: ["detail-secondary-rail", "detail-rail-tab-chapters", "detail-rail-tab-apuntador"],
+            requiring: Set(["secondary-rail", "rail-tab-marginalia", "rail-tab-apuntador", "rail-tab-people"].map { "detail-\($0)" }),
             timeout: 10,
             message: "the independent secondary review boundary must expose labeled rail lenses")
         XCTAssertTrue(
@@ -1170,12 +1172,12 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "detail-transcript-section").exists,
             "the transcript must expose its correction-ready reading boundary")
-        selectRailTab("chapters", in: app)
+        selectRailTab("marginalia", in: app)
         let chapterObservation = try uiObservation(
             of: secondaryRail,
             requiring: ["detail-chapters", "chapter-200"],
             timeout: 5,
-            message: "the chapters lens must expose the seeded later turn at 200 s")
+            message: "the marginalia lens must expose the seeded later turn at 200 s")
         XCTAssertTrue(
             try uiSnapshotElement("chapter-200", in: chapterObservation).isEnabled,
             "a chapter backed by saved audio must be actionable")
@@ -1210,6 +1212,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 10),
             "the detail view must render the seeded transcript")
         XCTAssertTrue(app.revealMeetingDetailSection(.summary))
+        selectRailTab("marginalia", in: app)
         let notesSection = app.control(withIdentifier: "detail-notes-section")
         XCTAssertTrue(
             notesSection.waitForExistenceFast(timeout: 10),
@@ -1219,13 +1222,11 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 10),
             "a meeting with notes must surface the My notes section")
         XCTAssertTrue(
-            notesSection.staticTexts["revisar budget Q3"].exists,
-            "the raw seeded note is shown verbatim before any enhancement")
-        XCTAssertTrue(
             notesSection.descendants(matching: .any)["detail-enhance-notes"]
                 .waitForExistenceFast(timeout: 5),
             "a meeting with transcript and notes must offer the enhance menu")
         attachScreenshot(of: app, named: "meeting-detail-my-notes")
+        XCTAssertTrue(app.revealMeetingDetailSection(.summary), "selecting the lens lifted the tabs to the top")
 
         XCTAssertTrue(
             app.control(withIdentifier: "detail-refine").exists,
@@ -1304,7 +1305,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(try waitForEvidenceNavigation(in: app, selected: true))
         attachScreenshot(of: app, named: "meeting-detail-summary-evidence")
 
-        selectRailTab("chapters", in: app)
         let resetChapter = app.control(withIdentifier: "chapter-0")
         let playbackToggle = app.control(withIdentifier: "player-play-pause")
         try resetEvidenceNavigation(
