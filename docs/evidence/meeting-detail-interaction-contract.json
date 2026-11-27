@@ -1870,12 +1870,6 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "state",
-      "source": "@State private var marginGeometry = MeetingMarginGeometry()",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
       "source": "@State private var playbackNavigation = MeetingDetailPlaybackNavigation()",
       "occurrences": 1
     },
@@ -2226,12 +2220,6 @@
       "category": "identifier",
       "source": ".accessibilityIdentifier(identifier)",
       "occurrences": 2
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingMarginNotesView.swift",
-      "category": "state",
-      "source": "@State private var top: CGFloat = .infinity",
-      "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",

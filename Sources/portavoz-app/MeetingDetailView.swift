@@ -21,7 +21,6 @@ struct MeetingDetailView: View {
     @State private var playbackNavigation = MeetingDetailPlaybackNavigation()
     @State private var railTab = MeetingDetailRailTab.chapters
     @State private var showingSummaryTodos = false
-    @State private var marginGeometry = MeetingMarginGeometry()
     private var detail: MeetingReviewReadModel? { model.state.readModel }
     private var summary: MeetingReviewSummary? { detail?.summary }
     private var player: MeetingPlaybackSession? { model.state.playback?.session }
@@ -104,14 +103,12 @@ private extension MeetingDetailView {
                             notesSection(detail)
                         }
                         detailRail(detail, transcript: transcript)
-                            .onGeometryChange(for: CGFloat.self) { proxy in
-                                proxy.frame(in: .named(MeetingDetailPageMetrics.coordinateSpace)).maxY
-                            } action: { marginGeometry.marginBottom = $0 }
                         transcriptSection(
                             detail, content: transcript, structureProjection: structureProjection,
                             marginNotes: marginNotes)
+                            .layoutValue(
+                                key: MeetingTranscriptHoldsMarginNotes.self, value: !marginNotes.byRow.isEmpty)
                     }
-                    .coordinateSpace(.named(MeetingDetailPageMetrics.coordinateSpace))
                 }
                 .padding(.vertical, 16)
                 .meetingPageColumn()
@@ -143,7 +140,7 @@ private extension MeetingDetailView {
                     .shouldExerciseTranscriptScroll,
                 translation: MeetingTranscriptTranslationState(detail),
                 margin: coordinator.marginContext(
-                    detail, notes: marginNotes, geometry: marginGeometry, focusEvidence: focusEvidence)),
+                    detail, notes: marginNotes, focusEvidence: focusEvidence)),
             actions: MeetingTranscriptActions(
                 seekAndPlay: seekAndPlay,
                 renameSpeaker: flow.presentRenameSpeaker,

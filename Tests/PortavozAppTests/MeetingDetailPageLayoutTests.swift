@@ -17,6 +17,33 @@ final class MeetingDetailPageLayoutTests: XCTestCase {
         XCTAssertGreaterThan(frames[1].minX, frames[0].maxX)
     }
 
+    func testANotedTranscriptStartsBelowATallerMargin() {
+        let heights: [CGFloat] = [200, 520, 1_000]
+        let frames = MeetingDetailPageMetrics.frames(
+            width: 1_000, count: 3, transcriptHoldsMarginNotes: true
+        ) { index, _ in heights[index] }
+
+        XCTAssertEqual(frames[1].maxY, 520)
+        XCTAssertEqual(
+            frames[2].minY, 520 + MeetingDetailPageMetrics.sectionSpacing,
+            "margin notes sit level with their lines, so no line starts beside the margin's own content")
+    }
+
+    func testANotedTranscriptStaysUnderMaterialTallerThanTheMargin() {
+        let frames = MeetingDetailPageMetrics.frames(
+            width: 1_000, count: 3, transcriptHoldsMarginNotes: true
+        ) { index, _ in heights[index] }
+
+        XCTAssertEqual(frames[2].minY, 400 + MeetingDetailPageMetrics.sectionSpacing)
+    }
+
+    func testATranscriptWithoutNotesReadsBesideATallerMargin() {
+        let heights: [CGFloat] = [200, 520, 1_000]
+        let frames = MeetingDetailPageMetrics.frames(width: 1_000, count: 3) { index, _ in heights[index] }
+
+        XCTAssertEqual(frames[2].minY, 200 + MeetingDetailPageMetrics.sectionSpacing)
+    }
+
     func testNarrowDetailReadsAsOneColumnWithTheMarginBeforeTheTranscript() {
         let frames = MeetingDetailPageMetrics.frames(width: 560, count: 3) { index, _ in heights[index] }
 

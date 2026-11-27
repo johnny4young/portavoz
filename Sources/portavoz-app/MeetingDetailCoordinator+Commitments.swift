@@ -7,7 +7,6 @@ extension MeetingDetailCoordinator {
     func marginContext(
         _ detail: MeetingReviewReadModel,
         notes: MeetingMarginNotes,
-        geometry: MeetingMarginGeometry,
         focusEvidence: @escaping @MainActor (TranscriptSegment) -> Void
     ) -> MeetingMarginNotesContext? {
         guard !notes.byRow.isEmpty else { return nil }
@@ -16,7 +15,6 @@ extension MeetingDetailCoordinator {
             cast: detail.core.voiceCast,
             decisionConfirmations: model.state.decisionConfirmations,
             ownerChoices: detail.commitmentOwnerChoices(),
-            geometry: geometry,
             confirmDecision: { presentDecisionConfirmation($0, statement: $1, meetingID: detail.meeting.id) },
             retractDecisionTopic: retractDecisionTopic,
             setDone: setActionItem,

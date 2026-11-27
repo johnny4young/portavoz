@@ -23543,9 +23543,12 @@ holding its first evidence line that still resolves, and the transcript draws
 those cards in the page margin beside the row, or under the line's text when
 the page is one column. On a wide page the transcript spans the page under the
 material instead of the reading column beside the rail, so cards share the
-rail's column; a card that would start above the rail's bottom moves just below
-it and a tall card makes its row taller, so the transcript never waits below
-the rail and cards never overlap. Cards reuse the existing flows: the decision
+rail's column; a tall card makes its row taller, and a transcript that holds
+notes starts below a rail taller than the material, so every card stays level
+with its line and cards never overlap. The page layout computes that clearance
+from section heights: a row that measured its own position to push its cards
+down fed its lazy row's height back into layout and hung the page. A transcript
+without notes still starts right under the material. Cards reuse the existing flows: the decision
 confirmation sheet, the commitment confirmation sheet, defer, dismiss and the
 to-do toggle. A pending commitment with an anchored card leaves the inbox, so
 it shows in one place; the inbox keeps candidates whose line is hidden, and the

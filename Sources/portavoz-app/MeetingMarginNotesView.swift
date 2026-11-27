@@ -9,20 +9,12 @@ struct MeetingMarginNotesContext {
     let cast: VoiceCast
     let decisionConfirmations: [SummaryDecisionID: DecisionObservationConfirmationState]
     let ownerChoices: [CommitmentOwnerSuggestion]
-    let geometry: MeetingMarginGeometry
     let confirmDecision: @MainActor (SummaryDecisionEvidence, String) -> Void
     let retractDecisionTopic: @MainActor (DecisionObservationConfirmationState.TopicLink) -> Void
     let setDone: @MainActor (ActionItem, Bool) -> Void
     let commitments: MeetingCommitmentInboxActions
     /// Set by the transcript section, which hosts the confirmation sheet.
     var review = MeetingMarginReview()
-}
-
-/// The margin's bottom in page coordinates; cards never start above it. A
-/// reference, so a change re-renders only the note columns that read it.
-@MainActor @Observable
-final class MeetingMarginGeometry {
-    var marginBottom: CGFloat = 0
 }
 
 /// Review entry points for a pending commitment, owned above the lazy rows.
@@ -34,14 +26,11 @@ struct MeetingMarginReview {
     var isBusy = false
 }
 
-/// One row's cards, stacked. In the margin they start level with their line
-/// and move down only as far as the margin's own content needs; under a line,
-/// the margin sits above the transcript and nothing moves.
+/// One row's cards, stacked level with their line. The page layout keeps the
+/// margin clear beside a noted transcript, so no row measures where it sits.
 struct MeetingMarginNotesColumn: View {
     let notes: [MeetingMarginNote]
     let context: MeetingMarginNotesContext
-    /// Unmeasured, the cards add no offset instead of the whole margin's height.
-    @State private var top: CGFloat = .infinity
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -49,11 +38,7 @@ struct MeetingMarginNotesColumn: View {
                 MeetingMarginNoteCard(note: note, context: context)
             }
         }
-        .padding(.top, max(0, context.geometry.marginBottom + MeetingDetailPageMetrics.sectionSpacing - top))
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .onGeometryChange(for: CGFloat.self) { proxy in
-            proxy.frame(in: .named(MeetingDetailPageMetrics.coordinateSpace)).minY
-        } action: { top = $0 }
     }
 }
 

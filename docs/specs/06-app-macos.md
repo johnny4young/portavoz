@@ -592,10 +592,13 @@ decision bullet with typed evidence and each action item with evidence to the
 visible row holding its first evidence line that still resolves, only while the
 summary is current; dismissed and deferred commitments stay out. A row's
 notes render as cards (`MeetingMarginNotesView`, `pvCard(.outlined)`) in the
-margin beside the row, top-aligned with it; a card that would start above the
-rail's bottom (measured in the page's `meeting-page` coordinate space) moves
-down just below it, and a card taller than its line makes the row taller, so
-cards never overlap. On a one-column page the same cards fold under the
+margin beside the row, top-aligned with it, and a card taller than its line
+makes the row taller, so cards never overlap. A transcript that holds notes
+tells `MeetingDetailPageLayout` so (`MeetingTranscriptHoldsMarginNotes`, a
+layout value), and on a wide page it then starts below whichever of the
+material and the rail ends lower, so no card can meet the rail; the layout
+computes that from the sections' heights, and no row measures its position or
+keeps layout state. On a one-column page the same cards fold under the
 line's text, on its edge. A decision card (`margin-decision-<id>`) reads
 "✓ Decision", the bullet in SF semibold and the Decisions tab's own
 `DecisionConfirmationControl`: Confirm… (`-confirm`, the decision sheet) or

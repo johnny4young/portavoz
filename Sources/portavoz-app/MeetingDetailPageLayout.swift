@@ -23,10 +23,19 @@ struct MeetingDetailPageLayout: Layout {
     }
 
     private static func frames(width: CGFloat, subviews: Subviews) -> [CGRect] {
-        MeetingDetailPageMetrics.frames(width: width, count: subviews.count) { index, width in
+        let holdsNotes = subviews.last?[MeetingTranscriptHoldsMarginNotes.self] ?? false
+        return MeetingDetailPageMetrics.frames(
+            width: width, count: subviews.count, transcriptHoldsMarginNotes: holdsNotes
+        ) { index, width in
             subviews[index].sizeThatFits(ProposedViewSize(width: width, height: nil)).height
         }
     }
+}
+
+/// Set on the transcript when a line carries margin notes, which need the
+/// margin clear beside them.
+struct MeetingTranscriptHoldsMarginNotes: LayoutValueKey {
+    static let defaultValue = false
 }
 
 extension View {
@@ -48,8 +57,6 @@ enum MeetingDetailPageMetrics {
     static let sideGutter: CGFloat = 28
     static let fallbackWidth: CGFloat = 640
     static let inlineGutterBelow: CGFloat = 640
-    /// Where the margin's bottom and the transcript's rows are measured.
-    static let coordinateSpace = "meeting-page"
 
     /// Whether a column this wide puts the summary's counts and the
     /// transcript's speaker margin above their text.
@@ -70,18 +77,24 @@ enum MeetingDetailPageMetrics {
 
     /// Frames for material, margin and transcript; `height` measures one of
     /// them at a width. An empty section adds no spacing. The transcript spans
-    /// the page so its margin notes line up under the margin.
+    /// the page so its margin notes line up under the margin; with notes it
+    /// also starts below a margin taller than the material, so no card meets it.
     static func frames(
         width: CGFloat,
         count: Int,
+        transcriptHoldsMarginNotes: Bool = false,
         height: (Int, CGFloat) -> CGFloat
     ) -> [CGRect] {
         guard count == 3, let margin = marginWidth(forPageWidth: width) else {
             return stacked((0..<count).map { ($0, width) }, height: height)
         }
         let main = width - margin - gap
+        let marginHeight = height(1, margin)
         var frames = stacked([(0, main), (2, width)], height: height)
-        frames.insert(CGRect(x: main + gap, y: 0, width: margin, height: height(1, margin)), at: 1)
+        if transcriptHoldsMarginNotes, marginHeight > 0, frames[1].height > 0 {
+            frames[1].origin.y = max(frames[1].minY, marginHeight + sectionSpacing)
+        }
+        frames.insert(CGRect(x: main + gap, y: 0, width: margin, height: marginHeight), at: 1)
         return frames
     }
 
