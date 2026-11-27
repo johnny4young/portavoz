@@ -66,7 +66,7 @@ final class LocalizationTests: XCTestCase {
             "%@ min", "%d h %d min", "%d min", "%d%%", "1:1", "Agenda", "App", "Apuntador", "Audio",
             "Brief", "Control", "Email", "English",
             "Español", "Feedback", "General", "GitHub", "HUD", "Literal", "Markdown", "OK", "h", "min",
-            "Ollama (local)", "Original", "Portavoz", "Postmortem", "Radar", "Slack", "Standup", "Web",
+            "Ollama (local)", "Original", "Portavoz", "Portavoz:", "Postmortem", "Radar", "Slack", "Standup", "Web",
             "https://example.com/article"
         ]
         for catalog in try Self.loadCatalogs() {

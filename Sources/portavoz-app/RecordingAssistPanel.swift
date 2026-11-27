@@ -1,3 +1,4 @@
+import ApplicationKit
 import PortavozCore
 import SwiftUI
 
@@ -19,13 +20,14 @@ struct RecordingAssistUnread: Equatable {
     }
 }
 
-/// The live assist area: one focus slot, a tab bar, and exactly one open panel.
+/// The live assist area: a tab bar, one focus slot, exactly one open panel,
+/// and the note field.
 ///
 /// Eight panels used to share a single 260 pt scroll — catch-up, next
 /// question, interview assist, objectives, proactive assist, Companion cards,
 /// notes and the live summary — with the Companion list unbounded inside it.
 /// Now one panel is open at a time, the area grows with the window, and
-/// whatever cannot wait for a tab switch is lifted into the focus slot above
+/// whatever cannot wait for a tab switch is lifted into the focus slot under
 /// the tabs (D504).
 struct RecordingAssistPanel: View {
     @Bindable var controller: RecordingController
@@ -36,13 +38,7 @@ struct RecordingAssistPanel: View {
     @State private var presentations: [UUID: CompanionCardPresentation] = [:]
     @State private var companionUnread = RecordingAssistUnread()
 
-    private var tabs: [RecordingAssistTab] {
-        RecordingAssistTab.available(hasSummary: controller.liveSummary != nil)
-    }
-
-    private var tab: RecordingAssistTab {
-        RecordingAssistTab.resolve(controller.selectedAssistTab, in: tabs)
-    }
+    private var tab: RecordingAssistTab { controller.selectedAssistTab }
 
     private var companionIDs: Set<UUID> {
         Set(controller.companionCards.map(\.id))
@@ -60,11 +56,15 @@ struct RecordingAssistPanel: View {
     }
 
     var body: some View {
-        VStack(spacing: 8) {
-            focusSlot
+        VStack(spacing: 10) {
             tabBar
+            focusSlot
+            // In a short area the open panel gives way, not the tabs or the note field.
             activePanel
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .frame(minHeight: 0, maxHeight: .infinity, alignment: .top)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .clipped()
+            RecordingNoteField(controller: controller)
         }
         .onChange(of: companionIDs, initial: true) { _, ids in
             companionUnread.observe(ids, showingCompanion: tab == .companion)
@@ -118,52 +118,85 @@ private extension RecordingAssistPanel {
     func directedCard(_ card: CompanionCard) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                Label(L10n.text("They asked you"), systemImage: "hand.raised.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(PVDesign.youInk)
-                Spacer()
-                Text(ClockFormat.mmss(card.askedAt))
-                    .font(PVFont.timeCode(.caption2))
-                    .foregroundStyle(.ink3)
+                RecordingAskedYouHeader(card: card, voices: controller.liveVoices)
+                Spacer(minLength: 4)
                 Button {
                     controller.dismissCompanionCard(card.id)
                 } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(.ink3)
+                    Image(systemName: "xmark").font(.system(size: 10, weight: .semibold))
                 }
                 .buttonStyle(.plain)
+                .foregroundStyle(.ink3)
                 .help(L10n.text("Dismiss this card"))
                 .accessibilityLabel(L10n.text("Dismiss this card"))
                 .accessibilityIdentifier("recording-focus-dismiss")
             }
-            Text(card.question)
-                .font(.callout.weight(.semibold))
-                .lineLimit(2)
+            // The question is quoted as heard.
+            Text(verbatim: "“\(card.question)”")
+                .pvDisplay(.heard.sized(17))
+                .foregroundStyle(PVDesign.ink)
+                .lineLimit(3)
             if !card.answer.isEmpty {
-                Text(card.answer)
-                    .font(.callout)
+                Text(Self.answer(card.answer))
+                    .foregroundStyle(PVDesign.ink2)
+                    .font(.system(size: 12.5))
+                    .lineSpacing(2)
                     .textSelection(.enabled)
                     .lineLimit(5)
             }
         }
-        .padding(12)
+        .padding(.horizontal, 13)
+        .padding(.top, 11)
+        .padding(.bottom, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(PVDesign.youBg, in: RoundedRectangle(cornerRadius: 10))
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(VoicePalette.me.opacity(0.35), lineWidth: 1)
-        )
+        .background(PVDesign.card, in: RoundedRectangle(cornerRadius: PVDesign.radiusCard, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: PVDesign.radiusCard, style: .continuous)
+                .strokeBorder(PVDesign.line, lineWidth: 1)
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("recording-focus-card")
     }
 
+    /// "Portavoz: …" with the speaker in green, as one wrapping run.
+    static func answer(_ text: String) -> AttributedString {
+        var speaker = AttributedString(L10n.text("Portavoz:"))
+        speaker.foregroundColor = PVDesign.green
+        speaker.font = .system(size: 12.5, weight: .semibold)
+        return speaker + AttributedString(" " + text)
+    }
+}
+
+/// "S2 asked you · 11:20": who asked, from the live tick for this card, so
+/// only this line follows a relabel.
+private struct RecordingAskedYouHeader: View {
+    let card: CompanionCard
+    let voices: RecordingLiveVoicesModel
+
+    var body: some View {
+        let key = voices.ticks.lazy.compactMap { tick -> String? in
+            guard tick.id == card.id, case .askedYou(let by) = tick.kind else { return nil }
+            return by
+        }.first
+        HStack(spacing: 6) {
+            VoiceDot(tint: key.map { voices.cast.tint(for: $0) } ?? .grey, size: 9)
+            Text(LiveVoiceName.asker(key).map { L10n.format("%@ asked you", $0) } ?? L10n.text("They asked you"))
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(PVDesign.ink)
+            Text(verbatim: "· \(ClockFormat.mmss(card.askedAt))")
+                .font(PVFont.timeCode(.caption))
+                .foregroundStyle(.ink3)
+        }
+        .lineLimit(1)
+    }
 }
 
 // MARK: - Tab bar
 
 private extension RecordingAssistPanel {
     var tabBar: some View {
-        HStack(spacing: 4) {
-            ForEach(tabs) { candidate in
+        HStack(spacing: 14) {
+            ForEach(RecordingAssistTab.allCases) { candidate in
                 tabButton(candidate)
             }
             Spacer(minLength: 0)
@@ -186,9 +219,7 @@ private extension RecordingAssistPanel {
             controller.selectedAssistTab = candidate
         } label: {
             HStack(spacing: 4) {
-                Image(systemName: candidate.symbol).font(.caption)
-                Text(candidate.title)
-                    .font(.caption.weight(isActive ? .semibold : .regular))
+                RecordingAssistTabTitle(tab: candidate, controller: controller)
                 if badge > 0 {
                     Text("\(badge)")
                         .font(.caption2.weight(.bold).monospacedDigit())
@@ -198,17 +229,33 @@ private extension RecordingAssistPanel {
                         .background(PVDesign.ink, in: Capsule())
                 }
             }
-            .padding(.horizontal, 9)
-            .padding(.vertical, 5)
-            .background(
-                isActive ? AnyShapeStyle(PVDesign.accent.opacity(0.16)) : AnyShapeStyle(.clear),
-                in: Capsule())
-            .contentShape(Capsule())
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.bottom, 4)
+            .overlay(alignment: .bottom) {
+                if isActive {
+                    Rectangle().fill(PVDesign.ink).frame(height: 1.5)
+                }
+            }
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .foregroundStyle(isActive ? AnyShapeStyle(PVDesign.accent) : AnyShapeStyle(.ink3))
+        .foregroundStyle(isActive ? AnyShapeStyle(PVDesign.ink) : AnyShapeStyle(.ink3))
         .accessibilityIdentifier("recording-assist-tab-\(candidate.rawValue)")
         .accessibilityAddTraits(isActive ? .isSelected : [])
+    }
+}
+
+/// A tab's title; only Notes reads the note count, so a new note redraws this
+/// label and not the panel.
+private struct RecordingAssistTabTitle: View {
+    let tab: RecordingAssistTab
+    let controller: RecordingController
+
+    var body: some View {
+        let count = tab == .notes ? controller.contextItems.count : 0
+        Text(count > 0 ? L10n.format("Notes · %d", count) : tab.title)
+            .font(.system(size: 12, weight: .semibold))
     }
 }
 
@@ -218,42 +265,12 @@ private extension RecordingAssistPanel {
     @ViewBuilder
     var activePanel: some View {
         switch tab {
-        case .notes:
-            notesAndObjectivesTab
         case .companion:
             unifiedApuntadorTab
-        case .summary:
-            summaryTab
-        }
-    }
-
-    var notesAndObjectivesTab: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .top, spacing: 12) {
-                RecordingNotesPanel(controller: controller)
-                    .frame(
-                        minWidth: 260,
-                        idealWidth: 260,
-                        maxWidth: .infinity,
-                        maxHeight: .infinity,
-                        alignment: .topLeading)
-                objectivesScroller
-                    .frame(
-                        minWidth: 260,
-                        idealWidth: 260,
-                        maxWidth: .infinity,
-                        maxHeight: .infinity,
-                        alignment: .topLeading)
-            }
-            ScrollViewReader { objectiveScroll in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        RecordingNotesPanel(controller: controller, scrollable: false)
-                        RecordingObjectivesPanel(controller: controller)
-                    }
-                }
-                .scrollsToAddedObjective(controller, objectiveScroll)
-            }
+        case .objectives:
+            objectivesScroller
+        case .notes:
+            RecordingNotesPanel(controller: controller)
         }
     }
 
@@ -262,6 +279,7 @@ private extension RecordingAssistPanel {
             ScrollView {
                 RecordingObjectivesPanel(controller: controller)
             }
+            .accessibilityIdentifier("recording-objectives-scroll")
             .scrollsToAddedObjective(controller, objectiveScroll)
         }
     }
@@ -286,28 +304,13 @@ private extension RecordingAssistPanel {
                 }
                 .padding(.vertical, 2)
             }
+            .accessibilityIdentifier("recording-apuntador-scroll")
         } else {
             RecordingCompanionCardsView(
                 controller: controller,
                 presentations: $presentations,
                 focused: focusedCardID,
                 emptyMessage: apuntadorState.explanation)
-        }
-    }
-
-    @ViewBuilder
-    var summaryTab: some View {
-        if let markdown = controller.liveSummary {
-            ScrollView {
-                MarkdownText(text: markdown)
-                    .font(.callout)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .accessibilityIdentifier("recording-live-summary")
-        } else {
-            RecordingAssistEmptyState(
-                symbol: PVSymbol.generate,
-                message: L10n.text("A running summary appears once there is enough to say."))
         }
     }
 }

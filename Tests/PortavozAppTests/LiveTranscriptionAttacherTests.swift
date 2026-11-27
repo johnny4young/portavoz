@@ -912,67 +912,20 @@ final class TranscriptFocusVisualPolicyTests: XCTestCase {
                 isFollowingLive: false))
     }
 
-    func testLiveFollowKeepsNearbyHistorySharpLonger() {
-        let style = TranscriptFocusVisualPolicy.style(
-            distance: 100,
-            reach: 400,
-            mode: .live,
-            isFollowing: true,
-            reduceMotion: false)
-
-        XCTAssertEqual(style.opacity, 1, accuracy: 0.001)
-        XCTAssertEqual(style.scale, 1, accuracy: 0.001)
-        XCTAssertEqual(style.blurRadius, 0, accuracy: 0.001)
+    func testTheNewestLiveLineStaysAtFullInk() {
+        XCTAssertEqual(TranscriptFocusVisualPolicy.opacity(distance: 10), 1, accuracy: 0.001)
     }
 
-    func testBrowsingHistoryDisablesCylinderFadingAndBlur() {
-        let style = TranscriptFocusVisualPolicy.style(
-            distance: 390,
-            reach: 400,
-            mode: .live,
-            isFollowing: false,
-            reduceMotion: false)
-
-        XCTAssertEqual(style.opacity, 1, accuracy: 0.001)
-        XCTAssertEqual(style.scale, 1, accuracy: 0.001)
-        XCTAssertEqual(style.blurRadius, 0, accuracy: 0.001)
+    func testOlderLiveLinesDimStepByStepDownToTheReadableFloor() {
+        let lines = [52, 104, 156, 400].map { TranscriptFocusVisualPolicy.opacity(distance: CGFloat($0)) }
+        XCTAssertEqual(lines, lines.sorted(by: >), "each line further up is dimmer")
+        XCTAssertLessThan(lines[0], 1)
+        XCTAssertEqual(lines[3], TranscriptFocusVisualPolicy.liveFloor, accuracy: 0.001)
+        XCTAssertGreaterThanOrEqual(lines.min() ?? 0, 0.6, "ink at the floor keeps 4.5:1 on paper")
     }
 
-    func testPlaybackStaysFlatAtEveryDistance() {
-        let style = TranscriptFocusVisualPolicy.style(
-            distance: 400,
-            reach: 400,
-            mode: .playback,
-            isFollowing: true,
-            reduceMotion: false)
-
-        XCTAssertEqual(style, TranscriptFocusVisualStyle(opacity: 1, scale: 1, blurRadius: 0))
-    }
-
-    func testLiveEdgeTreatmentRemainsReadable() {
-        let style = TranscriptFocusVisualPolicy.style(
-            distance: 400,
-            reach: 400,
-            mode: .live,
-            isFollowing: true,
-            reduceMotion: false)
-
-        XCTAssertGreaterThanOrEqual(style.opacity, 0.52)
-        XCTAssertGreaterThanOrEqual(style.scale, 0.95)
-        XCTAssertLessThanOrEqual(style.blurRadius, 0.65)
-    }
-
-    func testReduceMotionKeepsTheLiveFadeWithoutShrinkOrBlur() {
-        let style = TranscriptFocusVisualPolicy.style(
-            distance: 400,
-            reach: 400,
-            mode: .live,
-            isFollowing: true,
-            reduceMotion: true)
-
-        XCTAssertLessThan(style.opacity, 1, "distance still reads through the fade")
-        XCTAssertEqual(style.scale, 1)
-        XCTAssertEqual(style.blurRadius, 0)
+    func testNothingFadesWithoutALiveFocusLine() {
+        XCTAssertEqual(TranscriptFocusVisualPolicy.opacity(distance: nil), 1)
     }
 
     func testRollingSummaryIdentityCursorAdmitsNewDiarizationSplitPiece() {

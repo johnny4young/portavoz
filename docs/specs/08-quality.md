@@ -668,8 +668,8 @@ before opening an older folded card below the viewport or folding a header
 above it. Both call sites use the shared `revealVertically(in:)` mechanism:
 bounded vertical steps observe actual frame changes and require stable viewport
 containment and hittability before clicking. Each Companion step is bounded by
-its actual viewport height, not the smaller default stride for dense transcript
-rows. Visibility after one wheel event is not accepted as AX hit ownership; the existing bounded helper handles that
+its actual viewport height, or 160 pt when a short window leaves the list lower
+than that, not the smaller default stride for dense transcript rows. Visibility after one wheel event is not accepted as AX hit ownership; the existing bounded helper handles that
 separate condition instead of introducing another one-shot reveal. Implicit
 offscreen clicks can also issue diagonal scrolls against the wrong surface.
 This does not change product scroll position

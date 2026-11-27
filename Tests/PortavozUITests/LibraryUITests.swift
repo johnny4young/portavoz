@@ -724,7 +724,7 @@ final class LibraryUITests: PortavozUITestCase {
                 "without an answer engine Apuntador must show an honest question-only card")
             XCTAssertTrue(ready ? transcriptVisible : transcript.waitForExistenceFast(timeout: 8))
         }
-        try app.openAssistTab("summary")
+        try app.openAssistTab("notes")
         let liveSummary = app.control(withIdentifier: "recording-live-summary")
         let expectedLiveHighlights = UITestLocale.environmentLocale == "es"
             ? "Puntos clave en vivo"
@@ -743,7 +743,7 @@ final class LibraryUITests: PortavozUITestCase {
                 "the model-free checkpoint must disclose its extractive live highlights")
         }
 
-        try app.openAssistTab("notes")
+        try app.openAssistTab("objectives")
         let panel = app.control(withIdentifier: "recording-objectives-panel")
         XCTAssertTrue(
             panel.waitForExistenceFast(timeout: 8),

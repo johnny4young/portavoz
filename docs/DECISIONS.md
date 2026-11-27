@@ -23688,3 +23688,41 @@ board's "stays on this Mac" note, input device name, call-safe capture and
 language in the footer are left out: the first would need a per-recording
 privacy receipt the controller does not have yet, and the others are settings
 the recording does not observe.
+
+## D675 — The live stage puts the assist panel beside the voices and the timeline under them
+
+D674 left the captions and a full-width assist area under the Voices table, so
+a wide window spent its width on bars and pushed the captions down. When the
+detail can hold a 400 pt table, a 40 pt gap and a 322 pt panel, the assist
+panel now sits beside the table, takes the board's third of the row (34%,
+never under 322 pt) and the row's height (the table's, or a 300 pt floor); the strip and the captions run full width under them and the
+captions take what is left. Narrower windows keep the D504 split under the
+captions. The 760 pt cap on the table is gone: it existed until the panel
+could sit beside it.
+
+The panel keeps its three-tab limit: Apuntador first and selected by
+default, Objectives, and Notes. The running summary, which had a conditional
+fourth tab, follows your notes in the Notes tab. The note field leaves the
+Notes tab and sits under every tab with "Note at 12:04…", so a note never
+waits for a tab switch and its timestamp is visible before it is taken. The
+Apuntador chip shrinks to one word and opens its action in a menu: it stays
+the only Apuntador toggle while recording, and a row of buttons would not fit
+322 pt beside three tabs.
+
+The strip is the live timeline: the voice columns stop at the last refresh
+and the track runs on to a horizon rounded up to the next ruler mark, so the
+red now edge walks across a fixed scale instead of the whole strip squeezing
+every second. Notes and questions asked of you are ticks with labels; "now"
+always shows, newer labels win, and a label with no free side hides while its
+line stays, so labels never overlap. Times past an hour stay in minutes, like
+every other live clock in the app. A growing caption can end past the clock, so
+`LiveVoiceStage` now cuts rows and columns at `now` once, instead of every
+surface clamping on its own.
+
+Older captions dim with distance to at most 0.6 opacity instead of 0.52 with a
+blur and shrink: ink at 0.6 still reads 4.5:1 on light paper, and dropping the
+blur and scale leaves only opacity, so Reduce Motion needs no special case.
+Only the words dim; the board fades the whole row, but the margin's name and
+time are ink 2 and ink 3, which would fall under 4.5:1. The transcript now
+hands rows its focus line through the environment and each row picks what
+fades, instead of fading every row whole.

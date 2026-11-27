@@ -9,21 +9,26 @@ import SwiftUI
 struct RecordingLiveVoicesTable: View {
     let model: RecordingLiveVoicesModel
     let startedAt: Date
+    /// What the stage has room for.
+    var fit: RecordingStageLayout.Voices = .rows(.max)
 
     @State private var showsOthers = false
     @State private var isNarrow = false
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        let table = LiveVoiceTable(stage: model.stage, cast: model.cast)
+        let table = LiveVoiceTable(stage: model.stage, cast: model.cast).folding(to: rowLimit)
+        let leadOnly = fit == .leadOnly
         if !table.isEmpty {
             TimelineView(.periodic(from: startedAt, by: 1)) { context in
                 let now = context.date.timeIntervalSince(startedAt)
                 VStack(alignment: .leading, spacing: 0) {
-                    PVCardCaption(text: L10n.text("Voices"), tint: PVDesign.ink)
-                        .padding(.bottom, 8)
+                    if !leadOnly {
+                        PVCardCaption(text: L10n.text("Voices"), tint: PVDesign.ink)
+                            .padding(.bottom, 8)
+                    }
                     ForEach(table.rows) { row($0, in: table, now: now) }
-                    if !table.others.isEmpty {
+                    if !leadOnly, !table.others.isEmpty {
                         othersRow(table)
                         if showsOthers {
                             othersList(table, now: now)
@@ -34,13 +39,14 @@ struct RecordingLiveVoicesTable: View {
             .onGeometryChange(for: Bool.self) { $0.size.width < LiveVoicesTableMetrics.narrowWidth } action: {
                 isNarrow = $0
             }
-            // Bars past this width stop helping anyone compare shares.
-            .frame(maxWidth: LiveVoicesTableMetrics.maximumWidth, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 20)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("recording-voices")
         }
+    }
+
+    private var rowLimit: Int {
+        if case .rows(let limit) = fit { limit } else { 1 }
     }
 
     private var metrics: LiveVoicesTableMetrics { LiveVoicesTableMetrics(isNarrow: isNarrow) }
@@ -101,13 +107,13 @@ struct RecordingLiveVoicesTable: View {
     /// A large call can fold dozens of voices; past a few rows they scroll
     /// instead of pushing the captions off the stage.
     private func othersList(_ table: LiveVoiceTable, now: TimeInterval) -> some View {
-        let visible = min(table.others.count, LiveVoicesTableMetrics.visibleOthers)
+        let visible = min(table.others.count, LiveVoicesTableMetrics.visibleOthers, rowLimit)
         return ScrollView {
             VStack(spacing: 0) {
                 ForEach(table.others) { row($0, in: table, now: now) }
             }
         }
-        .scrollDisabled(table.others.count <= LiveVoicesTableMetrics.visibleOthers)
+        .scrollDisabled(table.others.count <= visible)
         .frame(height: CGFloat(visible) * LiveVoicesTableMetrics.rowHeight)
     }
 
@@ -139,7 +145,6 @@ struct RecordingLiveVoicesTable: View {
 
 struct LiveVoicesTableMetrics {
     static let narrowWidth: CGFloat = 520
-    static let maximumWidth: CGFloat = 760
     static let rowHeight: CGFloat = 30
     static let visibleOthers = 6
     let isNarrow: Bool
@@ -153,6 +158,12 @@ struct LiveVoicesTableMetrics {
 enum LiveVoiceName {
     static func of(_ voice: VoiceCast.Voice) -> String {
         VoiceName.of(isMe: voice.isMe, name: voice.name, label: of(key: voice.key))
+    }
+
+    /// Who asked you something: nil when unknown, still unlabelled, or you.
+    static func asker(_ key: String?) -> String? {
+        guard let key, key != LiveVoiceStage.unlabelledKey, key != LiveVoiceStage.youKey else { return nil }
+        return of(key: key)
     }
 
     static func of(key: String) -> String {

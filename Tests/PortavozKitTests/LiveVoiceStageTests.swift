@@ -180,6 +180,17 @@ final class LiveVoiceStageTests: XCTestCase {
         XCTAssertEqual(stage.voices.count, 301, "every voice still has its turns")
     }
 
+    func testNothingLiveRunsPastTheClock() {
+        let growing = row(.microphone, 10, 30)
+        let ahead = row(.system, 26, 28)
+        let stage = LiveVoiceStage.updating(.empty, with: source([growing, ahead], now: 20))
+        XCTAssertEqual(stage.columns.duration, 20, "the strip stops at now")
+        XCTAssertEqual(stage.voice(LiveVoiceStage.youKey)?.talkSeconds, 10)
+        XCTAssertEqual(stage.voice(LiveVoiceStage.youKey)?.lastHeard, 20)
+        XCTAssertNil(stage.voice(LiveVoiceStage.unlabelledKey), "a row that starts after now is not heard yet")
+        XCTAssertNil(stage.current, "nor is it speaking now")
+    }
+
     func testEveryLiveSurfaceSharesOneVoiceKeyRule() {
         let mine = row(.microphone, 0, 1)
         let matched = row(.system, 1, 2)

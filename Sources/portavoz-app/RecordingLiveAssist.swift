@@ -14,13 +14,8 @@ struct RecordingObjectivesPanel: View {
 
     var body: some View {
         let isDraftEmpty = controller.drafts.objective.trimmingCharacters(in: .whitespaces).isEmpty
+        // The Objectives tab names the list; interview mode says so in its count line.
         VStack(alignment: .leading, spacing: 8) {
-            Label(
-                L10n.text(controller.interviewAssist.isEnabled
-                    ? "Interview objectives" : "Objectives"),
-                systemImage: "target")
-                .font(.headline)
-                .accessibilityIdentifier("recording-objectives-panel")
             HStack(alignment: .bottom, spacing: 6) {
                 TextField("Add an objective…", text: $controller.drafts.objective)
                     .textFieldStyle(.roundedBorder)
@@ -65,9 +60,9 @@ struct RecordingObjectivesPanel: View {
             }
         }
         .disabled(controller.inputPersistence.isSaving || controller.inputPersistence.hasFailure)
-        .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("recording-objectives-panel")
     }
 
     private func objectiveRow(
