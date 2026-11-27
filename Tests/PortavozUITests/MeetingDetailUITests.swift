@@ -827,15 +827,15 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(app.revealMeetingDetailSection(.summary))
         let summaryTab = app.control(withIdentifier: "summary-tab-0")
         XCTAssertTrue(summaryTab.waitForExistenceFast(timeout: 10))
-        let inbox = app.control(withIdentifier: "detail-commitment-inbox")
-        XCTAssertTrue(inbox.waitForExistenceFast(timeout: 10))
-        attachScreenshot(of: app, named: "pr-family-tabs-and-cards")
-
         XCTAssertTrue(summaryTab.isSelected, "the selected tab is exposed as selected")
+
+        XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
         let candidateID = "B5E00000-0000-4000-8000-000000000001"
+        let caption = app.control(withIdentifier: "margin-commitment-\(candidateID)-caption")
         XCTAssertTrue(
-            app.control(withIdentifier: "commitment-\(candidateID)-caption").exists,
+            caption.waitForExistenceFast(timeout: 10),
             "a commitment card names what it holds and when it is due")
+        attachScreenshot(of: app, named: "pr-family-tabs-and-cards")
     }
 
     @MainActor
@@ -884,7 +884,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         // A 1024 pt screen only has room for the speaker margin without the sidebar.
         app.setSidebar(visible: false)
         XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
-        let line = app.staticTexts["El rollout del modelo queda para el viernes."]
+        let line = app.transcriptLine("El rollout del modelo queda para el viernes.")
         XCTAssertTrue(line.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(app.control(withIdentifier: "detail-transcript-section").waitForStableFrame(timeout: 5))
 
@@ -919,7 +919,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         defer { finishUITestApplication(app) }
 
         XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
-        let line = app.staticTexts["El rollout del modelo queda para el viernes."]
+        let line = app.transcriptLine("El rollout del modelo queda para el viernes.")
         XCTAssertTrue(line.waitForExistenceFast(timeout: 10))
         let ana = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'transcript-speaker-' AND label == 'Ana'"))
@@ -958,21 +958,21 @@ final class MeetingDetailUITests: PortavozUITestCase {
         attachScreenshot(of: app, named: "pr-meeting-page-scroll-narrow")
 
         let page = app.control(withIdentifier: "detail-page-scroll")
-        let commitment = { (action: String) in
-            app.buttons.matching(NSPredicate(
-                format: "identifier BEGINSWITH 'commitment-' AND identifier ENDSWITH %@", "-\(action)")).firstMatch
-        }
-        let review = commitment("review")
-        let dismiss = commitment("dismiss")
-        XCTAssertTrue(review.waitForExistenceFast(timeout: 10))
-        XCTAssertTrue(review.revealVertically(in: page, maxScrolls: 12, maximumStep: 120))
-        XCTAssertTrue(review.isHittable && dismiss.isHittable, "the commitment card renders whole, its buttons reachable")
-
         XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
         let title = app.control(withIdentifier: "detail-transcript-title")
         let opening = app.control(withIdentifier: "transcript-chapter-0")
         XCTAssertTrue(opening.waitForExistenceFast(timeout: 5))
         XCTAssertLessThan(opening.frame.minY - title.frame.maxY, 40, "the first chapter sits under the transcript title")
+
+        let commitment = { (action: String) in
+            app.descendants(matching: .any).matching(NSPredicate(
+                format: "identifier BEGINSWITH 'margin-commitment-' AND identifier ENDSWITH %@", "-\(action)")).firstMatch
+        }
+        let confirm = commitment("confirm")
+        let done = commitment("done")
+        XCTAssertTrue(confirm.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(confirm.revealVertically(in: page, maxScrolls: 12, maximumStep: 120))
+        XCTAssertTrue(confirm.isHittable && done.isHittable, "the commitment card renders whole, its buttons reachable")
     }
 
     @MainActor
@@ -1939,30 +1939,26 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(app.revealMeetingDetailSection(.summary))
 
         let candidateID = "B5E00000-0000-4000-8000-000000000001"
-        let inbox = app.control(withIdentifier: "detail-commitment-inbox")
+        XCTAssertFalse(app.control(withIdentifier: "detail-commitment-inbox").exists, "an anchored candidate leaves the inbox")
+        XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
+        let card = app.control(withIdentifier: "margin-commitment-\(candidateID)")
+        XCTAssertTrue(card.waitForExistenceFast(timeout: 10), "an unconfirmed item is offered for review beside its line")
         XCTAssertTrue(
-            inbox.waitForExistenceFast(timeout: 10),
-            "an unconfirmed generated action item must enter the review inbox")
-        XCTAssertTrue(
-            app.control(withIdentifier: "commitment-\(candidateID)-owner-suggestion")
-                .exists,
-            "only an exact canonical participant link may prefill the owner")
-
-        let evidence = app.control(withIdentifier: "commitment-\(candidateID)-evidence-0")
-        XCTAssertTrue(
-            evidence.waitForExistenceFast(timeout: 5),
-            "confirmation must expose its exact transcript evidence")
-        XCTAssertEqual(evidence.value as? String, "El rollout del modelo queda para el viernes.")
-        for control in ["dismiss", "defer"] {
-            XCTAssertTrue(app.control(withIdentifier: "commitment-\(candidateID)-\(control)").exists, control)
-        }
+            renderedText(of: app.control(withIdentifier: "margin-commitment-\(candidateID)-attribution"))
+                .contains("Ana"),
+            "only an exact canonical participant link may name the owner")
+        let more = app.control(withIdentifier: "margin-commitment-\(candidateID)-more")
+        XCTAssertTrue(more.waitForHittable(timeout: 5))
+        more.click()
+        XCTAssertTrue(app.menuItems["margin-commitment-\(candidateID)-dismiss"].waitForExistenceFast(timeout: 5))
+        typeKey(.escape, modifierFlags: [], in: app)
+        XCTAssertTrue(app.control(withIdentifier: "margin-commitment-\(candidateID)-confirm").exists)
         attachScreenshot(of: app, named: "meeting-detail-commitment-inbox")
-        XCTAssertTrue(app.control(withIdentifier: "commitment-\(candidateID)-review").exists)
 
+        XCTAssertTrue(app.revealMeetingDetailSection(.summary))
         let todos = app.control(withIdentifier: "summary-tab-todos")
         XCTAssertTrue(todos.waitForHittable(timeout: 5))
         todos.click()
-        XCTAssertTrue(inbox.waitForDisappearance(timeout: 5), "To-dos reviews the same candidates inline")
         for control in ["defer", "dismiss", "github"] {
             XCTAssertTrue(app.control(withIdentifier: "action-item-\(candidateID)-\(control)").exists, control)
         }
@@ -1998,6 +1994,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
         app.control(withIdentifier: "commitment-editor-confirm").click()
 
         XCTAssertTrue(review.waitForDisappearance(timeout: 10))
+        let marginConfirm = app.control(withIdentifier: "margin-commitment-\(candidateID)-confirm")
+        XCTAssertTrue(marginConfirm.waitForDisappearance(timeout: 10), "a confirmed card stops asking to be confirmed")
     }
 
     @MainActor
@@ -2241,7 +2239,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         attachScreenshot(of: app, named: "clip-paused-export")
 
         XCTAssertTrue(app.revealMeetingDetailSection(.transcript))
-        let line = app.staticTexts["El rollout del modelo queda para el viernes."]
+        let line = app.transcriptLine("El rollout del modelo queda para el viernes.")
         XCTAssertTrue(line.waitForExistenceFast(timeout: 10))
         line.click()
 
@@ -2282,6 +2280,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "a meeting without a long silent tail must not offer to trim it")
         typeKey(.escape, modifierFlags: [], in: app)
         XCTAssertTrue(play.exists)
+        // Playing audio keeps the transcript's active row in view; let the line end first.
+        _ = currentTime.waitForValueChange(from: "0:00", timeout: 5)
+        XCTAssertTrue(currentTime.waitForValue("0:00", timeout: 10), "the line plays to its end")
         XCTAssertTrue(app.revealMeetingDetailSection(.summary), "the Voices table sits above the transcript")
         let onlyMe = app.buttons["voice-only-Me"]
         XCTAssertTrue(onlyMe.waitForHittable(timeout: 5), "a meeting with two voices offers per-voice playback")

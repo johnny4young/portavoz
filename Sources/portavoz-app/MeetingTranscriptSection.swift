@@ -15,6 +15,8 @@ struct MeetingTranscriptValues {
     let revealCount: Int
     let performanceScrollEnabled: Bool
     let translation: MeetingTranscriptTranslationState
+    /// Nil when no decision or commitment anchors to a shown line.
+    let margin: MeetingMarginNotesContext?
 }
 
 struct MeetingTranscriptActions {
@@ -40,12 +42,29 @@ struct MeetingTranscriptSection: View {
     /// Nil shows the original; a language shows its stored translation.
     @State private var language: String?
     @State private var requestedLanguage: String?
+    @State private var pageWidth: CGFloat = 0
+    /// Owned here, not by a lazy row, so scrolling never dismisses the sheet.
+    @State private var reviewingCandidate: CommitmentInboxCandidate?
+    @State private var isSaving = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             transcriptHeader
+                .frame(width: pageWidth > 0 ? MeetingDetailPageMetrics.readingWidth(forPageWidth: pageWidth) : nil)
             transcriptRows
+                .sheet(item: $reviewingCandidate) { candidate in
+                    if let margin = values.margin {
+                        MeetingCommitmentConfirmationSheet(
+                            candidate: candidate,
+                            ownerChoices: margin.ownerChoices,
+                            cancel: { reviewingCandidate = nil },
+                            confirm: { title, assignee, dueAt in
+                                await margin.commitments.confirm(candidate, title, assignee, dueAt)
+                            })
+                    }
+                }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { pageWidth = $0 }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-transcript-section")
         .onChange(of: values.translation.translations) {
@@ -108,7 +127,31 @@ struct MeetingTranscriptSection: View {
                 language == nil && (values.correctionContext($0) != nil
                     || values.structureProjection.context(for: $0) != nil)
             },
-            onCorrect: actions.presentCorrection)
+            onCorrect: actions.presentCorrection,
+            pageWidth: pageWidth,
+            margin: margin)
+    }
+
+    private var margin: MeetingMarginNotesContext? {
+        guard var margin = values.margin else { return nil }
+        let commitments = margin.commitments
+        margin.review = MeetingMarginReview(
+            open: { reviewingCandidate = $0 },
+            deferCandidate: { candidate, days in
+                save { await commitments.deferCandidate(candidate, days: days) }
+            },
+            dismiss: { candidate in save { await commitments.dismiss(candidate) } },
+            isBusy: isSaving)
+        return margin
+    }
+
+    /// Failures surface through the detail model's action error.
+    private func save(_ operation: @escaping @MainActor () async -> Bool) {
+        isSaving = true
+        Task {
+            _ = await operation()
+            isSaving = false
+        }
     }
 }
 

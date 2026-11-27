@@ -6,8 +6,10 @@ extension ArchitectureDependencyTests {
         let view = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
         let projection = try Self.contents(of: "Sources/portavoz-app/MeetingDetailTranscriptPresentation.swift")
 
-        XCTAssertTrue(model.contains("if case .core = update"))
-        XCTAssertTrue(model.contains("next.transcriptPresentationState.receiveCore("))
+        XCTAssertTrue(model.contains("isCore: update.isCore"))
+        XCTAssertTrue(projection.contains("if case .core = self"))
+        XCTAssertTrue(model.contains("next.transcriptPresentationState.receive("))
+        XCTAssertTrue(projection.contains("if isCore {"))
         XCTAssertTrue(model.contains("resetChapterTitles: transition.correctionRevisionChanged"))
         XCTAssertTrue(model.contains("next.transcriptPresentationState.mergeChapterTitles("))
         XCTAssertTrue(projection.contains("guard merged != chapterTitles else { return false }"))

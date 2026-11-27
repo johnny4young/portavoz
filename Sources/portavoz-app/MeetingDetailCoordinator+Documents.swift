@@ -77,9 +77,7 @@ extension MeetingDetailCoordinator {
                 model.dismissThinSummarySuggestion(version: summary.version)
                 flow.thinSummarySuggestionSpent = true
             },
-            setActionItem: { item, done in
-                Task { await model.send(.setActionItem(item.id, done: done)) }
-            },
+            setActionItem: setActionItem,
             createGitHubIssue: openGitHubIssueSkill,
             focusEvidence: focusEvidence,
             setClaimFeedback: { claimID, feedback in
@@ -89,33 +87,40 @@ extension MeetingDetailCoordinator {
                 }
                 return savedID == claimID
             },
-            confirmDecision: { evidence, statement in
-                // Both are required or the affordance was never offered: the
-                // confirm button renders only over current, resolvable
-                // evidence.
-                guard let segmentID = evidence.evidenceSegmentIDs.first,
-                      let revision = evidence.sourceTranscriptRevision
-                else { return }
-                flow.decisionConfirmTarget = MeetingDetailFlowState
-                    .DecisionConfirmTarget(
-                        observationID: evidence.id,
-                        statement: statement,
-                        meetingID: detail.meeting.id,
-                        evidenceSegmentID: segmentID,
-                        sourceTranscriptRevision: revision)
-                flow.sheet = .confirmDecision
-            },
-            retractDecisionTopic: { link in
-                Task {
-                    await model.send(.retractDecisionTopic(
-                        DecisionTopicLinkRetraction(linkID: link.id)))
-                }
-            },
-            decisionsDidAppear: {
-                Task { await model.send(.loadDecisionConfirmations) }
-            },
+            confirmDecision: { presentDecisionConfirmation($0, statement: $1, meetingID: detail.meeting.id) },
+            retractDecisionTopic: retractDecisionTopic,
+            decisionsDidAppear: loadDecisionConfirmations,
             commitmentActions: commitmentInboxActions(focusEvidence: focusEvidence),
             onShowingTodosChanged: onShowingTodosChanged)
+    }
+
+    func setActionItem(_ item: ActionItem, done: Bool) {
+        Task { await model.send(.setActionItem(item.id, done: done)) }
+    }
+
+    func retractDecisionTopic(_ link: DecisionObservationConfirmationState.TopicLink) {
+        Task { await model.send(.retractDecisionTopic(DecisionTopicLinkRetraction(linkID: link.id))) }
+    }
+
+    func loadDecisionConfirmations() {
+        Task { await model.send(.loadDecisionConfirmations) }
+    }
+
+    /// Both coordinates are required or the affordance was never offered:
+    /// confirm renders only over current, resolvable evidence.
+    func presentDecisionConfirmation(
+        _ evidence: SummaryDecisionEvidence, statement: String, meetingID: MeetingID
+    ) {
+        guard let segmentID = evidence.evidenceSegmentIDs.first,
+              let revision = evidence.sourceTranscriptRevision
+        else { return }
+        flow.decisionConfirmTarget = MeetingDetailFlowState.DecisionConfirmTarget(
+            observationID: evidence.id,
+            statement: statement,
+            meetingID: meetingID,
+            evidenceSegmentID: segmentID,
+            sourceTranscriptRevision: revision)
+        flow.sheet = .confirmDecision
     }
 
     func commitmentInboxActions(

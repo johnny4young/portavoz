@@ -95,7 +95,7 @@ public extension MeetingReviewReadModel {
             displayName: speaker.displayName ?? speaker.label)
     }
 
-    private static func commitmentInboxStatus(
+    static func commitmentInboxStatus(
         _ state: CommitmentReviewState?,
         at date: Date
     ) -> CommitmentInboxStatus {

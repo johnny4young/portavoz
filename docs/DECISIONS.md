@@ -23533,3 +23533,24 @@ card (`PVRaisedSurface`, the selected segment's surface: raise fill, 0.5 pt
 ink and ink 3 so it does not invert as it does on an accent fill; keyboard
 selection and VoiceOver's selected state stay native.
 
+## D669 — Decisions and commitments sit beside the line that produced them
+
+Decisions lived in a summary tab and pending commitments in an inbox above the
+transcript, each with a Sources chip that jumped to the line, so the reader saw
+what was decided far from where it was said. A pure ApplicationKit projection
+now keys every current decision and action item to the visible transcript row
+holding its first evidence line that still resolves, and the transcript draws
+those cards in the page margin beside the row, or under the line's text when
+the page is one column. On a wide page the transcript spans the page under the
+material instead of the reading column beside the rail, so cards share the
+rail's column; a card that would start above the rail's bottom moves just below
+it and a tall card makes its row taller, so the transcript never waits below
+the rail and cards never overlap. Cards reuse the existing flows: the decision
+confirmation sheet, the commitment confirmation sheet, defer, dismiss and the
+to-do toggle. A pending commitment with an anchored card leaves the inbox, so
+it shows in one place; the inbox keeps candidates whose line is hidden, and the
+To-dos tab still reviews every candidate inline. Commitment text stays SF
+semibold, not the board's serif italic, which is for words as they were heard;
+the caption is amber only when you own the commitment. One threshold, the
+margin's own, decides between beside and folded, so a card is never missing
+from both places.

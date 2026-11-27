@@ -10,9 +10,10 @@ final class MeetingDetailPageLayoutTests: XCTestCase {
 
         XCTAssertEqual(frames[1].width, 291.6, accuracy: 0.5, "the margin is about 300 points")
         XCTAssertEqual(frames[1].minY, 0, "the margin starts level with the standfirst")
-        XCTAssertEqual(frames[0].width, frames[2].width, "material and transcript share the reading column")
+        XCTAssertEqual(frames[0].width, MeetingDetailPageMetrics.readingWidth(forPageWidth: 1_000))
         XCTAssertEqual(frames[0].width + MeetingDetailPageMetrics.gap + frames[1].width, 1_000, accuracy: 0.5)
-        XCTAssertEqual(frames[2].minY, 400 + MeetingDetailPageMetrics.sectionSpacing)
+        XCTAssertEqual(frames[2].width, 1_000, "the transcript spans the page so its notes reach the margin")
+        XCTAssertEqual(frames[2].minY, 400 + MeetingDetailPageMetrics.sectionSpacing, "it starts under the material, not the margin")
         XCTAssertGreaterThan(frames[1].minX, frames[0].maxX)
     }
 
@@ -20,6 +21,7 @@ final class MeetingDetailPageLayoutTests: XCTestCase {
         let frames = MeetingDetailPageMetrics.frames(width: 560, count: 3) { index, _ in heights[index] }
 
         XCTAssertNil(MeetingDetailPageMetrics.marginWidth(forPageWidth: 560))
+        XCTAssertEqual(MeetingDetailPageMetrics.readingWidth(forPageWidth: 560), 560)
         XCTAssertTrue(frames.allSatisfy { $0.minX == 0 && $0.width == 560 }, "nothing takes width from the column")
         XCTAssertLessThan(frames[0].maxY, frames[1].minY)
         XCTAssertLessThan(frames[1].maxY, frames[2].minY)

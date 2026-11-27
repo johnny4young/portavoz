@@ -2,7 +2,8 @@ import SwiftUI
 
 /// The meeting page below its header: generated material, the margin and the
 /// transcript, in that subview order. A wide detail puts the margin beside the
-/// material and transcript, top-aligned with the standfirst; a narrower one
+/// material, top-aligned with the standfirst, and gives the transcript the full
+/// width so its notes can sit in the margin beside their lines; a narrower one
 /// reads as one column with the margin between the material and the
 /// transcript, so it never takes width from the reading column.
 struct MeetingDetailPageLayout: Layout {
@@ -47,6 +48,8 @@ enum MeetingDetailPageMetrics {
     static let sideGutter: CGFloat = 28
     static let fallbackWidth: CGFloat = 640
     static let inlineGutterBelow: CGFloat = 640
+    /// Where the margin's bottom and the transcript's rows are measured.
+    static let coordinateSpace = "meeting-page"
 
     /// Whether a column this wide puts the summary's counts and the
     /// transcript's speaker margin above their text.
@@ -60,8 +63,14 @@ enum MeetingDetailPageMetrics {
         return width - margin - gap >= minimumMainWidth ? margin : nil
     }
 
+    /// The reading column inside a page this wide: what is left beside the margin.
+    static func readingWidth(forPageWidth width: CGFloat) -> CGFloat {
+        marginWidth(forPageWidth: width).map { width - $0 - gap } ?? width
+    }
+
     /// Frames for material, margin and transcript; `height` measures one of
-    /// them at a width. An empty section adds no spacing.
+    /// them at a width. An empty section adds no spacing. The transcript spans
+    /// the page so its margin notes line up under the margin.
     static func frames(
         width: CGFloat,
         count: Int,
@@ -71,7 +80,7 @@ enum MeetingDetailPageMetrics {
             return stacked((0..<count).map { ($0, width) }, height: height)
         }
         let main = width - margin - gap
-        var frames = stacked([(0, main), (2, main)], height: height)
+        var frames = stacked([(0, main), (2, width)], height: height)
         frames.insert(CGRect(x: main + gap, y: 0, width: margin, height: height(1, margin)), at: 1)
         return frames
     }

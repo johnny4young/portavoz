@@ -580,9 +580,39 @@ generated material (summary, commitment inbox and notes, each at its full
 height), the rail (`detail-secondary-rail`) and the
 transcript (`detail-transcript-section`). When the page is wide enough for a
 260–300 point margin (30% of the width) while the reading column keeps 540
-points, the rail sits beside material and transcript, its top level with the
-standfirst; otherwise all three stack in one column with the rail between the
-material and the transcript, so the rail never narrows the reading column. The
+points, the rail sits beside the material, its top level with the standfirst,
+and the transcript spans the page under the material: its header, chapter
+headings and turns keep the reading column and the margin beside them holds
+margin notes (D669); otherwise all three stack in one column with the rail
+between the material and the transcript, so the rail never narrows the reading
+column.
+
+Margin notes (D669): `MeetingReviewReadModel.marginNotes(in:)` keys each
+decision bullet with typed evidence and each action item with evidence to the
+visible row holding its first evidence line that still resolves, only while the
+summary is current; dismissed and deferred commitments stay out. A row's
+notes render as cards (`MeetingMarginNotesView`, `pvCard(.outlined)`) in the
+margin beside the row, top-aligned with it; a card that would start above the
+rail's bottom (measured in the page's `meeting-page` coordinate space) moves
+down just below it, and a card taller than its line makes the row taller, so
+cards never overlap. On a one-column page the same cards fold under the
+line's text, on its edge. A decision card (`margin-decision-<id>`) reads
+"✓ Decision", the bullet in SF semibold and the Decisions tab's own
+`DecisionConfirmationControl`: Confirm… (`-confirm`, the decision sheet) or
+Confirmed with its topics (`-confirmed`, a menu that removes a topic);
+confirmations load with each presentation refresh while any decision card
+exists. A commitment card
+(`margin-commitment-<id>`) reads "⚑ Commitment" or "Commitment · due <day>"
+(`-caption`, amber when you own it, ink 3 otherwise), a checkbox with the item
+(`-done`, the same to-do toggle as the To-dos tab), who said the line and who
+owns it ("● Marta asked · ● You own it", or "● You said it and own it";
+`-attribution`, Today's said-it/asked rule) and, while it waits for review,
+Confirm… (`-confirm`, the commitment confirmation sheet hosted by the transcript
+section) and a ⋯ menu (`-more`) with Review later (`-defer-tomorrow`,
+`-defer-week`) and Dismiss (`-dismiss`). The commitment inbox above the
+transcript lists only pending candidates whose evidence has no visible row,
+such as a hidden line (`MeetingMarginNotes.inbox`). The projection is rebuilt
+with every read-model update, beside the transcript reading, not per render. The
 page keeps 28-point side gutters, caps at 1,240 points and centres beyond
 that. Transcript turn text shares the standfirst's left edge (the same 118-point
 gutter and 22-point gap; the rows' outline inset is given back by the stack),

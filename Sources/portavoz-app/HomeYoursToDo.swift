@@ -129,9 +129,13 @@ struct HomeYoursToDo: View {
         _ owner: OpenItemSource.Voice, due: Date?, now: Date = Date(), calendar: Calendar = .current
     ) -> String {
         guard let due else { return name(owner) }
-        let day = calendar.startOfDay(for: due) < calendar.startOfDay(for: now)
+        return "\(name(owner)) · \(dueDay(due, now: now, calendar: calendar))"
+    }
+
+    /// The coming weekday, or the date once it has passed.
+    nonisolated static func dueDay(_ due: Date, now: Date = Date(), calendar: Calendar = .current) -> String {
+        calendar.startOfDay(for: due) < calendar.startOfDay(for: now)
             ? due.formatted(Meeting.dayStyle)
             : Meeting.shortDay(due, now: now, calendar: calendar)
-        return "\(name(owner)) · \(day)"
     }
 }

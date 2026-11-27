@@ -352,6 +352,13 @@ extension XCUIApplication {
         descendants(matching: .any)[identifier]
     }
 
+    /// A transcript line's text, not a margin card that quotes the same words.
+    func transcriptLine(_ text: String) -> XCUIElement {
+        descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'transcript-segment-'"))
+            .staticTexts[text]
+    }
+
     /// Privacy and action history live behind the activity chip under a
     /// meeting's title; the popover carries the auditable detail.
     @MainActor

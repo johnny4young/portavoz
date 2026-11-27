@@ -7,7 +7,8 @@ import SwiftUI
 /// row; an explicit seek or citation brings its row into view. Playback never
 /// pulls the page away from the header or summary the reader is on.
 /// Active-row lookup stays logarithmic instead of scanning every row at the
-/// playback refresh cadence.
+/// playback refresh cadence. On a page wide enough for the margin, a line's
+/// decisions and commitments sit beside it; otherwise they fold under it.
 struct TranscriptSegmentsView: View {
     let content: MeetingTranscriptContent
     let speakers: [Speaker]
@@ -20,11 +21,17 @@ struct TranscriptSegmentsView: View {
     let onRenameTap: (Speaker) -> Void
     let canCorrect: (MeetingTranscriptContent.Row) -> Bool
     let onCorrect: (MeetingTranscriptContent.Row) -> Void
+    /// The section's measured width; zero until measured.
+    let pageWidth: CGFloat
+    let margin: MeetingMarginNotesContext?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var didStartPerformanceScroll = false
-    @State private var isNarrow = false
     @State private var isOnScreen = false
+
+    private var marginWidth: CGFloat? { MeetingDetailPageMetrics.marginWidth(forPageWidth: pageWidth) }
+    private var readingWidth: CGFloat { MeetingDetailPageMetrics.readingWidth(forPageWidth: pageWidth) }
+    private var isNarrow: Bool { MeetingDetailPageMetrics.usesInlineGutter(width: readingWidth) }
 
     private var activeRowID: UUID? {
         guard let player else { return focusedRowID }
@@ -37,12 +44,14 @@ struct TranscriptSegmentsView: View {
             LazyVStack(alignment: .leading, spacing: 6) {
                 ForEach(content.readingItems) { item in
                     let correctableRow = correctableRow(item)
-                    ZStack(alignment: .trailing) {
-                        itemView(
-                            item,
-                            isActive: item.id == activeRowID.map { .row($0) },
-                            reservesCorrectionSpace: correctableRow != nil)
-                        if let correctableRow { correctionAction(for: correctableRow) }
+                    withNotes(item, reservesCorrectionSpace: correctableRow != nil) {
+                        ZStack(alignment: .trailing) {
+                            itemView(
+                                item,
+                                isActive: item.id == activeRowID.map { .row($0) },
+                                reservesCorrectionSpace: correctableRow != nil)
+                            if let correctableRow { correctionAction(for: correctableRow) }
+                        }
                     }
                     .id(item.id)
                 }
@@ -50,9 +59,6 @@ struct TranscriptSegmentsView: View {
             // Rows inset for the active outline; the stack gives that back so
             // turn text shares the standfirst's edge.
             .padding(.horizontal, -TranscriptReadingLayout.outlineOverhang)
-            .onGeometryChange(for: Bool.self) { proxy in
-                MeetingDetailPageMetrics.usesInlineGutter(width: proxy.size.width)
-            } action: { isNarrow = $0 }
             // A sliver under the summary is not reading the transcript; follow
             // only once it reaches the upper half of the page.
             .onGeometryChange(for: Bool.self) { proxy in
@@ -140,6 +146,45 @@ struct TranscriptSegmentsView: View {
         .padding(.horizontal, TranscriptReadingLayout.outlineOverhang)
     }
 
+    /// The item in the reading column, with its line's notes in the margin
+    /// beside it or folded under the text.
+    @ViewBuilder
+    private func withNotes(
+        _ item: TranscriptReadingItem,
+        reservesCorrectionSpace: Bool,
+        @ViewBuilder line: () -> some View
+    ) -> some View {
+        let overhang = TranscriptReadingLayout.outlineOverhang
+        // Unmeasured, the line takes the proposed width rather than none.
+        let lineWidth = pageWidth > 0 ? readingWidth + 2 * overhang : nil
+        if let margin, case .row(let row, _) = item, case let notes = margin.notes.notes(forRow: row.id),
+           !notes.isEmpty {
+            if let marginWidth {
+                HStack(alignment: .top, spacing: MeetingDetailPageMetrics.gap - overhang) {
+                    line().frame(width: lineWidth)
+                    MeetingMarginNotesColumn(notes: notes, context: margin)
+                        .frame(width: marginWidth)
+                }
+                .padding(.trailing, overhang)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                VStack(alignment: .leading, spacing: 4) {
+                    line()
+                    MeetingMarginNotesColumn(notes: notes, context: margin)
+                        .padding(.leading, overhang + (isNarrow ? 0 : TranscriptReadingLayout.textIndent))
+                        .padding(
+                            .trailing,
+                            overhang + (reservesCorrectionSpace ? TranscriptReadingLayout.correctionReserve : 0))
+                        .padding(.bottom, 8)
+                }
+            }
+        } else {
+            line()
+                .frame(width: lineWidth)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
     private func correctableRow(_ item: TranscriptReadingItem) -> MeetingTranscriptContent.Row? {
         guard case .row(let row, _) = item, canCorrect(row) else { return nil }
         return row
@@ -184,6 +229,10 @@ private enum TranscriptReadingLayout {
     /// The summary's gutter and gap, so turn text and the standfirst align.
     static let marginGap: CGFloat = 22
     static let outlineOverhang: CGFloat = 12
+    /// Where turn text starts when the speaker sits in the left margin.
+    static let textIndent: CGFloat = marginWidth + marginGap
+    /// Room kept for the correction pencil at the row's trailing edge.
+    static let correctionReserve: CGFloat = 36
 }
 
 /// A chapter heading inside the transcript: its time code and its title.
@@ -281,7 +330,7 @@ private struct MeetingTranscriptRowView: View {
             }
         }
         .padding(.vertical, 6)
-        .padding(.trailing, reservesCorrectionSpace ? 36 : 0)
+        .padding(.trailing, reservesCorrectionSpace ? TranscriptReadingLayout.correctionReserve : 0)
         .contentShape(Rectangle())
         .onTapGesture { if canSeek { onSeek(row.startTime) } }
         .accessibilityElement(children: .contain)
