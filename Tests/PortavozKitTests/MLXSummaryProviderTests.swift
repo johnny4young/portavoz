@@ -49,8 +49,16 @@ final class MLXSummaryProviderTests: XCTestCase {
         XCTAssertEqual(
             TranscriptFormatter.onDeviceReduceMaterialBudget(notesCharacterCount: 400),
             TranscriptFormatter.onDeviceReduceBudget - 400)
-        // Oversized notes condense to `onDeviceNotesBudget`, leaving enough
-        // room for transcript material instead of overflowing the 4,096-token window.
+        // The notes block is capped below `onDeviceNotesBudget`, so the final pass
+        // always keeps room for transcript material.
+        let meetingID = MeetingID()
+        let notes = (0..<40).map {
+            ContextItem(
+                meetingID: meetingID, kind: .note,
+                content: String(repeating: "x", count: 200), timestamp: TimeInterval($0))
+        }
+        XCTAssertLessThanOrEqual(
+            PromptFactory.notesBlock(notes).count, TranscriptFormatter.onDeviceNotesBudget)
         XCTAssertEqual(
             TranscriptFormatter.onDeviceReduceMaterialBudget(notesCharacterCount: 5_000),
             TranscriptFormatter.onDeviceReduceBudget - TranscriptFormatter.onDeviceNotesBudget)

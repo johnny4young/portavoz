@@ -468,6 +468,39 @@ final class StreamingAudioFileReaderTests: XCTestCase {
         XCTAssertEqual(offsets[2], 20.0, accuracy: 0.001)
     }
 
+    func testStreamsAndExtractsFilesWithMoreThanTwoChannels() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("portavoz-stream-quad-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let url = root.appendingPathComponent("quad-2s.caf")
+        let layout = try XCTUnwrap(AVAudioChannelLayout(layoutTag: kAudioChannelLayoutTag_Quadraphonic))
+        let format = AVAudioFormat(standardFormatWithSampleRate: 16_000, channelLayout: layout)
+        try autoreleasepool {
+            let file = try AVAudioFile(forWriting: url, settings: format.settings)
+            let buffer = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 32_000))
+            buffer.frameLength = 32_000
+            let channels = try XCTUnwrap(buffer.floatChannelData)
+            for channel in 0..<4 {
+                for i in 0..<32_000 { channels[channel][i] = 0.4 }
+            }
+            try file.write(from: buffer)
+        }
+
+        var samples = 0
+        let duration = try StreamingAudioFileReader.streamMonoWindows(
+            url: url, targetSampleRate: 16_000, windowSeconds: 10
+        ) { window, _ in samples += window.count }
+        XCTAssertEqual(duration, 2.0, accuracy: 0.01)
+        XCTAssertEqual(samples, 32_000, accuracy: 8)
+
+        let extracted = try StreamingAudioFileReader.extractMonoRanges(
+            url: url, ranges: [0...1], targetSampleRate: 16_000, maximumSeconds: 5)
+        XCTAssertEqual(extracted.count, 16_000, accuracy: 8)
+        XCTAssertEqual(extracted.first ?? 0, 0.4, accuracy: 0.01)
+    }
+
     func testExtractMonoRangesSeeksLongestRangesUpToCap() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("portavoz-stream-vp-\(UUID().uuidString)")

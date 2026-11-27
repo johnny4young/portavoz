@@ -945,6 +945,8 @@ extension RecordingController {
         clearTask: inout Task<Void, Never>?,
         clearRecovered: @escaping @MainActor () -> Void
     ) {
+        // A failed channel is retired until the next start; late events cannot revive it.
+        guard health != .failed else { return }
         clearTask?.cancel()
         switch event {
         case .stalled(_, let secondsWithoutFrames):

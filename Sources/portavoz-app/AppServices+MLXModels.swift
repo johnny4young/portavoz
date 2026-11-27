@@ -130,7 +130,7 @@ extension AppServices {
         let runtime = mlxSummaryRuntime
         let store = modelStore
         let task = Task<ModelStore.ModelLease?, Error> {
-            let installationLease = await Self.acquireMLXModelLease(
+            let installationLease = try await Self.acquireMLXModelLease(
                 for: directory,
                 directoryKey: directoryKey,
                 in: store)
@@ -249,12 +249,12 @@ extension AppServices {
         for directory: URL,
         directoryKey: String,
         in store: ModelStore
-    ) async -> ModelStore.ModelLease? {
+    ) async throws -> ModelStore.ModelLease? {
         for descriptor in ModelCatalog.all where descriptor.tasks.contains(.summarization) {
             guard let installed = await store.verifiedInstallation(descriptor),
                   mlxDirectoryKey(installed.directory) == directoryKey
             else { continue }
-            return try? await store.lease(descriptor)
+            return try await store.lease(descriptor)
         }
         return nil
     }

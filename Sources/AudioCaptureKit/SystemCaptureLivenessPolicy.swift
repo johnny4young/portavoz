@@ -109,9 +109,8 @@ final class SystemCaptureLivenessMonitor: Sendable {
     }
 
     func observe(channel: AudioChannel) -> [SystemCaptureLivenessPolicy.Signal] {
-        let now = monotonicNow()
-        return policy.withLock { state in
-            state.observe(channel: channel, at: now)
+        policy.withLock { state in
+            state.observe(channel: channel, at: monotonicNow())
         }
     }
 

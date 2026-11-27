@@ -354,19 +354,9 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
             throw IntelligenceError.modelUnavailable(reason)
         }
 
-        // D28: the user's notes ride the FINAL pass as intent. Condense long
-        // user notes first so they never push the guided pass past 4,096 tokens.
-        let rawNotesBlock = PromptFactory.notesBlock(request.contextItems)
-        var effectiveNotes = rawNotesBlock
-        if effectiveNotes.count > TranscriptFormatter.onDeviceNotesBudget {
-            effectiveNotes = try await condense(
-                effectiveNotes,
-                targetLanguage: request.targetLanguage,
-                glossary: request.glossary,
-                detail: request.detail,
-                priority: priority,
-                reduceBudget: TranscriptFormatter.onDeviceNotesBudget)
-        }
+        // D28: the user's notes ride the FINAL pass as intent; their size
+        // comes out of the material budget so the guided pass fits 4,096 tokens.
+        let effectiveNotes = PromptFactory.notesBlock(request.contextItems)
         let materialBudget = TranscriptFormatter.onDeviceReduceMaterialBudget(
             notesCharacterCount: effectiveNotes.count)
         let condensed = try await condense(

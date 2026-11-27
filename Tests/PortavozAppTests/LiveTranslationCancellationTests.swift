@@ -201,6 +201,12 @@ final class LiveTranslationCancellationTests: XCTestCase {
         controller.receiveCaptureHealth(.streamFailed(channel: .microphone))
         XCTAssertEqual(controller.microphoneCaptureHealth, .failed)
         XCTAssertTrue(controller.microphoneCaptureFailed)
+
+        // A late stall or recovery event must not downgrade a retired channel.
+        controller.receiveCaptureHealth(
+            .recoveryRequested(channel: .microphone, attempt: 2, secondsWithoutFrames: 16))
+        controller.receiveCaptureHealth(.stalled(channel: .microphone, secondsWithoutFrames: 16))
+        XCTAssertEqual(controller.microphoneCaptureHealth, .failed)
         XCTAssertEqual(controller.systemCaptureHealth, .healthy)
     }
 

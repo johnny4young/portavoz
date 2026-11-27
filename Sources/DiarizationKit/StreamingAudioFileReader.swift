@@ -26,14 +26,9 @@ enum StreamingAudioFileReader {
         }
         let targetRate = Double(targetSampleRate)
         let windowSampleCount = max(1, Int((windowSeconds * targetRate).rounded()))
-        guard let readFormat = AVAudioFormat(
-            commonFormat: .pcmFormatFloat32,
-            sampleRate: sourceRate,
-            channels: file.processingFormat.channelCount,
-            interleaved: false),
-            let buffer = AVAudioPCMBuffer(
-                pcmFormat: readFormat,
-                frameCapacity: readBlockFrames)
+        guard let buffer = AVAudioPCMBuffer(
+            pcmFormat: file.processingFormat,
+            frameCapacity: readBlockFrames)
         else {
             throw ReaderError.unreadableFormat
         }
@@ -88,14 +83,9 @@ enum StreamingAudioFileReader {
         let targetRate = Double(targetSampleRate)
         let maximumSamples = max(0, Int((maximumSeconds * targetRate).rounded()))
         guard maximumSamples > 0 else { return [] }
-        guard let readFormat = AVAudioFormat(
-            commonFormat: .pcmFormatFloat32,
-            sampleRate: sourceRate,
-            channels: file.processingFormat.channelCount,
-            interleaved: false),
-            let buffer = AVAudioPCMBuffer(
-                pcmFormat: readFormat,
-                frameCapacity: readBlockFrames)
+        guard let buffer = AVAudioPCMBuffer(
+            pcmFormat: file.processingFormat,
+            frameCapacity: readBlockFrames)
         else {
             throw ReaderError.unreadableFormat
         }
