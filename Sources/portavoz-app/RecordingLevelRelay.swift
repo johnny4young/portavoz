@@ -4,6 +4,7 @@ import PortavozCore
 struct RecordingLevelSnapshot: Equatable, Sendable {
     var microphoneLevel: Float?
     var microphoneIsLow = false
+    var microphoneIsSpeaking = false
     var hasSystemSamples = false
     var systemAudioIsMissing = false
     var systemAudioIsClipping = false
@@ -64,6 +65,36 @@ struct SustainedCeilingDetector {
     }
 }
 
+/// Whether the microphone carries speech, with hysteresis over captured time
+/// so a pause between words does not flip it.
+struct MicrophoneSpeechGate {
+    /// About -40 dBFS, below the far-field built-in microphone's speech.
+    static let threshold: Float = 0.01
+    static let enterDuration: TimeInterval = 0.2
+    static let exitDuration: TimeInterval = 1.2
+
+    private(set) var isSpeaking = false
+    private var voiced: TimeInterval = 0
+    private var quiet: TimeInterval = 0
+
+    mutating func observe(peak: Float, duration: TimeInterval) -> Bool {
+        guard duration.isFinite, duration > 0 else { return isSpeaking }
+        if peak >= Self.threshold {
+            voiced = min(Self.enterDuration, voiced + duration)
+            quiet = 0
+        } else {
+            voiced = max(0, voiced - duration)
+            quiet += duration
+        }
+        if isSpeaking {
+            isSpeaking = quiet < Self.exitDuration
+        } else {
+            isSpeaking = voiced >= Self.enterDuration - 1e-9
+        }
+        return isSpeaking
+    }
+}
+
 /// Pure one-slot state machine behind the recording meter relay. Every raw
 /// signal sample updates diagnostic state, while optional presentation retains
 /// only the newest complete snapshot and requests at most one scheduled drain.
@@ -77,6 +108,11 @@ struct RecordingLevelBuffer {
     private var smoothedMicrophoneLevel: Float = 0
     private var voicedMicrophoneLevel: Float = 0
     private var voicedMicrophoneChunks = 0
+    private var microphoneSpeechGate = MicrophoneSpeechGate()
+    /// Loudspeaker bleed reaches the microphone quieter than the call itself.
+    private var recentSystemPeak: Float = 0
+    /// Captured system time since the last microphone sample.
+    private var systemSinceMicrophone: TimeInterval = 0
     private var smoothedSystemRMS: Float = 0
     private var systemChunks = 0
     private var systemCeilingDetector = SustainedCeilingDetector()
@@ -99,6 +135,10 @@ struct RecordingLevelBuffer {
             snapshot.microphoneIsLow =
                 voicedMicrophoneChunks > 150
                     && voicedMicrophoneLevel < 0.03
+            systemSinceMicrophone = 0
+            snapshot.microphoneIsSpeaking = microphoneSpeechGate.observe(
+                peak: sample.peak > recentSystemPeak ? sample.peak : 0,
+                duration: sample.duration)
         case .system:
             systemChunks += 1
             smoothedSystemRMS =
@@ -110,6 +150,13 @@ struct RecordingLevelBuffer {
                 systemCeilingDetector.observe(
                     peak: sample.peak,
                     duration: sample.duration)
+            recentSystemPeak = max(sample.peak, recentSystemPeak * 0.8)
+            // A stalled or failed microphone stops sending samples entirely.
+            if sample.duration.isFinite, sample.duration > 0 { systemSinceMicrophone += sample.duration }
+            if systemSinceMicrophone >= MicrophoneSpeechGate.exitDuration {
+                snapshot.microphoneIsSpeaking = false
+                microphoneSpeechGate = MicrophoneSpeechGate()
+            }
         case .room:
             return nil
         }
@@ -141,6 +188,9 @@ struct RecordingLevelBuffer {
         smoothedMicrophoneLevel = 0
         voicedMicrophoneLevel = 0
         voicedMicrophoneChunks = 0
+        microphoneSpeechGate = MicrophoneSpeechGate()
+        recentSystemPeak = 0
+        systemSinceMicrophone = 0
         smoothedSystemRMS = 0
         systemChunks = 0
         systemCeilingDetector = SustainedCeilingDetector()

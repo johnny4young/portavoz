@@ -1,3 +1,4 @@
+import ApplicationKit
 import Foundation
 import PortavozCore
 
@@ -78,8 +79,8 @@ enum LiveCaptionParagraphProjector {
         for segment: TranscriptSegment,
         labels: [UUID: String]
     ) -> String? {
-        if segment.channel == .microphone { return "Me" }
-        return labels[segment.id]
+        let key = LiveVoiceStage.key(for: segment, labels: labels)
+        return key == LiveVoiceStage.unlabelledKey ? nil : key
     }
 
     private static func canGroup(_ mode: LiveTranscriptUpdateMode?) -> Bool {

@@ -246,6 +246,16 @@ Meeting/question identity fences now reject withdrawn or stale actions;
 Notification Center. Actual operating-system delivery, withdrawal and
 action timing across recording sessions still require integrated qualification.
 
+### Live current-speaker gate needs field evidence
+
+D673's microphone speech gate (peak about -40 dBFS, 0.2 s to enter, 1.2 s of
+quiet to leave) counts a microphone sample as speech only when it is louder
+than the recent incoming peak, so loudspeaker bleed does not make you the
+current speaker. Those values come from unit fixtures, not meetings. The
+`~/PortavozField` recordings still need replaying through `RecordingLevelBuffer`
+for built-in and external speakers, headphones, a quiet user talking over the
+remote side, and keyboard noise while taking notes.
+
 ### Short-reply confidence floor is not field-tuned
 
 Quiet short replies ("Sí", "OK", "mhm") survive the noise filter down to a

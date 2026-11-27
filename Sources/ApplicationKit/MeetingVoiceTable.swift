@@ -37,21 +37,15 @@ public struct MeetingVoiceTable: Sendable, Equatable {
     /// - Parameter meetingLength: wall-clock length; the axis stretches to the
     ///   last turn when the meeting is shorter or still unknown.
     public init(cast: VoiceCast, segments: [TranscriptSegment], meetingLength: TimeInterval = 0) {
-        var turns: [String: (id: SpeakerID, turns: [ClosedRange<TimeInterval>])] = [:]
-        var previous: String?
-        let attributed = segments.filter { $0.speakerID != nil && $0.endTime > $0.startTime }
-        for segment in attributed.sorted(by: { $0.startTime < $1.startTime }) {
-            guard let id = segment.speakerID else { continue }
-            let key = VoiceCast.key(id)
-            var entry = turns[key, default: (id, [])]
-            if previous == key, let last = entry.turns.popLast() {
-                entry.turns.append(last.lowerBound...max(last.upperBound, segment.endTime))
-            } else {
-                entry.turns.append(segment.startTime...segment.endTime)
+        let attributed = segments
+            .filter { $0.endTime > $0.startTime }
+            .sorted { $0.startTime < $1.startTime }
+            .compactMap { segment in
+                segment.speakerID.map { (key: $0, start: segment.startTime, end: segment.endTime) }
             }
-            turns[key] = entry
-            previous = key
-        }
+        let turns = Dictionary(
+            VoiceTurnRuns.merge(attributed).turns.map { (VoiceCast.key($0.key), (id: $0.key, turns: $0.value)) },
+            uniquingKeysWith: { first, _ in first })
         let lastTurn = turns.values.flatMap(\.turns).map(\.upperBound).max() ?? 0
         duration = max(meetingLength.isFinite ? meetingLength : 0, lastTurn)
         func row(_ voice: VoiceCast.Voice) -> Row? {

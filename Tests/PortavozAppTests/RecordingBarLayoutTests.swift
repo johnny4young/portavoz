@@ -1,5 +1,7 @@
 import AppKit
+import ApplicationKit
 import Observation
+import PortavozCore
 import SwiftUI
 import XCTest
 
@@ -76,6 +78,33 @@ final class RecordingBarLayoutTests: XCTestCase {
         }
 
         XCTAssertEqual(counter.measures, settled, "a level sample re-measured the bar")
+    }
+
+    /// Live voices change on every closed caption; the bar must not see them.
+    func testLiveVoiceUpdatesDoNotRemeasureTheRecordingBar() async throws {
+        try skipUnlessTheProbeSeesLayoutChanges()
+        let counter = LayoutMeasureCounter()
+        let controller = RecordingController()
+        let window = host(
+            RecordingToolbar(controller: controller, onStop: {}, onCompact: {}),
+            counter: counter)
+
+        await settle(window)
+        let settled = counter.measures
+        let meetingID = MeetingID()
+        var captions: [TranscriptSegment] = []
+        for step in 0..<8 {
+            captions.append(TranscriptSegment(
+                meetingID: meetingID, channel: step.isMultiple(of: 2) ? .microphone : .system,
+                text: "turn \(step)", startTime: Double(step) * 3, endTime: Double(step) * 3 + 2, isFinal: true))
+            controller.liveVoices.apply(LiveVoiceSource(
+                captions: captions, labels: [:], latestTurn: nil,
+                youSpeaking: step.isMultiple(of: 3), now: Double(step) * 3 + 2))
+            await settle(window)
+        }
+
+        XCTAssertEqual(controller.liveVoices.stage.voices.count, 2)
+        XCTAssertEqual(counter.measures, settled, "a live voice update re-measured the bar")
     }
 
     /// The same meter with the fill placed in the stack is re-measured on this

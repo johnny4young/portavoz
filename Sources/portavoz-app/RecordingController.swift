@@ -29,7 +29,9 @@ final class RecordingController {
     }
     @ObservationIgnored private let processActivity = RecordingProcessActivity()
     private(set) var failureContext: RecordingFailureContext?
-    private(set) var captions: [TranscriptSegment] = []
+    private(set) var captions: [TranscriptSegment] = [] {
+        didSet { liveVoices.requestRefresh() }
+    }
     /// Apple Speech revisions are presentation only until finalized. They
     /// cannot feed summaries, translation, assistance, or Stop persistence.
     private(set) var speechVolatileByChannel: [AudioChannel: TranscriptSegment] = [:]
@@ -54,12 +56,17 @@ final class RecordingController {
     /// Explicit interview mode: deterministic current-question detection and
     /// pull-only answers grounded in exact earlier live-caption evidence.
     let interviewAssist = RecordingInterviewAssistModel()
+    /// Live voices, turns and note/question ticks, refreshed when their inputs
+    /// change and on microphone speech flips (never per level sample).
+    let liveVoices = RecordingLiveVoicesModel()
     /// Explicit per-recording proactive help. Its deterministic cards are
     /// source-closed, inert, throttled, and independently pausable.
     let proactiveAssist = RecordingProactiveAssistModel()
     /// The user's notes during the meeting (D28): intent for the summary.
     /// Notes enter summary input only after their canonical rows commit.
-    private(set) var contextItems: [ContextItem] = []
+    private(set) var contextItems: [ContextItem] = [] {
+        didSet { liveVoices.requestRefresh() }
+    }
     /// Editor input outlives view reconstruction but is not submitted context.
     var drafts = RecordingDrafts()
     /// Selected assist tab outlives browsing away to another meeting during capture.
@@ -69,7 +76,9 @@ final class RecordingController {
     var hasPendingInputStop: Bool { pendingInputStop != nil }
     var recordingInputWriter: PersistRecordingInput? { services?.recordingInputWriter }
     /// Companion answer cards (D26), newest last. Opt-in per recording.
-    private(set) var companionCards: [CompanionCard] = []
+    private(set) var companionCards: [CompanionCard] = [] {
+        didSet { liveVoices.requestRefresh() }
+    }
     private var companionArtifactsByCardID: [UUID: CompanionGenerationArtifact] = [:]
     private var companionTerminalRuns: [GenerationRun] = []
     let liveTranslationWakeHub = LiveTranslationWakeHub()
@@ -180,8 +189,13 @@ final class RecordingController {
     /// as turns arrive, closed rows get split per voice and labeled S1/S2
     /// (or "Me" through the voiceprint). Best-effort: if the models fail to
     /// load, captions simply stay "Them" as before.
-    private(set) var liveSpeakerLabels: [UUID: String] = [:]
-    private var liveTurns: [SpeakerTurn] = []
+    private(set) var liveSpeakerLabels: [UUID: String] = [:] {
+        didSet { liveVoices.requestRefresh() }
+    }
+    /// A new turn can name the open row even when no closed row changes.
+    private var liveTurns: [SpeakerTurn] = [] {
+        didSet { liveVoices.requestRefresh() }
+    }
     private var liveDiarizerTask: Task<Void, Never>?
     private var liveDiarizerFeed: AsyncStream<AudioChunk>.Continuation?
     private var liveDiarizerStream: AsyncStream<AudioChunk>?
@@ -231,6 +245,7 @@ final class RecordingController {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         companionEnabled = defaults.bool(forKey: "companionEnabled")
+        liveVoices.connect { [weak self] in self?.liveVoiceSource() }
     }
 
     /// Returns the shared session to `.idle` once a finished recording has
@@ -254,6 +269,7 @@ final class RecordingController {
         companionArtifactsByCardID = [:]
         companionTerminalRuns = []
         proactiveAssist.reset()
+        liveVoices.reset()
         contextItems = []
         drafts = RecordingDrafts()
         selectedAssistTab = .notes
@@ -326,6 +342,7 @@ final class RecordingController {
         interviewAssist.reset()
         proactiveAssist.reset()
         objectives.reset()
+        liveVoices.reset()
         liveDiarizerFeed?.finish()
         liveDiarizerTask?.cancel()
         levelRelay?.cancel()
@@ -658,6 +675,8 @@ extension RecordingController {
         nextQuestion.dismiss()
         interviewAssist.reset()
         proactiveAssist.reset()
+        // Stop re-attributes the whole meeting; live voices end here.
+        liveVoices.reset()
         cancelLiveSummaryWork()
         cancelCompanionGeneration()
         turnEndpointTask?.cancel()
@@ -843,6 +862,7 @@ private extension RecordingController {
         if let level = snapshot.microphoneLevel {
             micLevel = level
         }
+        liveVoices.setYouSpeaking(snapshot.microphoneIsSpeaking && !micMuted)
         if micLevelLow != snapshot.microphoneIsLow {
             micLevelLow = snapshot.microphoneIsLow
         }
@@ -917,6 +937,7 @@ extension RecordingController {
     func receiveCaptureHealth(_ event: RecordingCaptureHealthEvent) {
         switch event.channel {
         case .microphone:
+            if case .streamFailed = event { liveVoices.setYouSpeaking(false) }
             applyCaptureHealth(
                 event,
                 to: &microphoneCaptureHealth,
@@ -1144,6 +1165,7 @@ extension RecordingController {
     /// Mute/unmute your mic for Portavoz only. Takes effect on the next buffer.
     func setMicMuted(_ value: Bool) {
         micMuted = value
+        if value { liveVoices.setYouSpeaking(false) }
         guard let session else { return }
         session.setMicrophoneMuted(value)
     }
@@ -1239,6 +1261,19 @@ extension RecordingController {
         liveSpeakerLabels = result.labels
         requestLiveSummaryRefresh()
         liveTranslationWakeHub.signal()
+    }
+}
+
+extension RecordingController {
+    func liveVoiceSource() -> LiveVoiceSource? {
+        guard phase == .recording else { return nil }
+        return LiveVoiceSource(
+            captions: captions,
+            labels: liveSpeakerLabels,
+            latestTurn: liveTurns.last,
+            now: max(0, Date().timeIntervalSince(startedAt)),
+            notes: contextItems,
+            questions: companionCards)
     }
 }
 

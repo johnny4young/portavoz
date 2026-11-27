@@ -1401,6 +1401,49 @@ Behavioral tests cover all phases, repeated sessions, failure/retry, exact token
 identity, native adapter use and deallocation. They verify lifecycle ownership,
 not OS scheduling, physical sleep/wake safety or a promised latency improvement.
 
+### Live voice turns (D673)
+
+`RecordingController.liveVoices` (`RecordingLiveVoicesModel`) holds the
+recording's live voices for the stage views. Each refresh rebuilds
+`LiveVoiceStage` from the full caption list, the `LiveSpeakerLabeler` labels,
+the diarizer's newest turn (which names the still-open remote row), the
+microphone-speech flag, your notes and the Apuntador cards:
+
+- Voices are keyed `you` (microphone rows and remote rows the voiceprint
+  labelled `Me`), the live label (`S1`, `S2`…), or `remote` for remote speech
+  no window has labelled yet. `LiveVoiceStage.key(for:labels:)` is the one
+  rule; the live paragraph projector and the transcript's voice chips map from
+  it too. Each voice carries its turns (runs of its rows that no other voice
+  starts inside, the same `VoiceTurnRuns` rule as the finished Voices table),
+  talk seconds (overlapping rows of one voice count once) and last-heard time,
+  first heard first. Because the build is pure, relabel churn (splits with
+  fresh row IDs, swapped labels, labels withdrawn) always yields the voices
+  and turns of a fresh build.
+- The current speaker is you while `MicrophoneSpeechGate` (in the level
+  buffer: about -40 dBFS, 0.2 s to enter, 1.2 s of quiet to leave) says the
+  microphone carries speech and Portavoz is not muted. A microphone sample
+  counts only when it is louder than the recent incoming peak, so loudspeaker
+  bleed stays out, and the gate closes after 1.2 s of incoming audio with no
+  microphone samples, or when the microphone stream fails. Otherwise it is the
+  open row's voice while it was heard within the last 3 s; otherwise nobody. A
+  trailing refresh clears the open row's speaker, you included, after that window.
+- `LiveVoiceColumns` keeps one column per second. Voice indexes are assigned on
+  first sight and never move, so an update rebins only from the first second
+  whose attribution changed (a growing row rebins from its own start; time
+  alone only appends columns). Columns reach the last refresh, not the clock:
+  the live strip draws the rest up to the elapsed time as silence.
+  `strip(cast:)` hands them to `VoiceStrip`, which resamples to its width. Live voices are unnamed, so every voice but you is grey.
+- Ticks: each note (`ContextItem.kind == .note`, not objectives) at its
+  timestamp, and each Apuntador card at `askedAt` with the voice of its
+  question row when the card's evidence names one.
+
+Requests coalesce into one refresh, at least a second after the previous one.
+The controller asks from `didSet` on the captions, live labels, live turns,
+notes and Apuntador cards, so every caption delta asks, but a burst is one
+rebuild. Start, Stop and the
+hand-off to the next session reset the model; after Stop the durable
+diarization pass re-attributes the meeting and nothing live is persisted.
+
 ### Bounded recording-level relay (D168)
 
 The StartRecording callback contract carries compact
