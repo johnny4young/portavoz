@@ -32,6 +32,37 @@ struct MeetingDetailPageLayout: Layout {
     }
 }
 
+/// A transcript item across the page: the line in the reading column and, when
+/// given, its notes in the margin beside it or folded under it. Widths come
+/// from the proposal alone, so no measured width ever reaches view state.
+struct MeetingTranscriptLineLayout: Layout {
+    /// How far the line's active outline overhangs the page on each side.
+    var overhang: CGFloat = 0
+    /// Where folded notes sit inside the row, under the line's text.
+    var foldedInsets = EdgeInsets()
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width.flatMap { $0.isFinite ? $0 : nil } ?? MeetingDetailPageMetrics.fallbackWidth
+        return CGSize(width: width, height: arrangement(width: width, subviews: subviews).height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        for (subview, frame) in zip(subviews, arrangement(width: bounds.width, subviews: subviews).frames) {
+            subview.place(
+                at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY),
+                proposal: ProposedViewSize(width: frame.width, height: frame.height))
+        }
+    }
+
+    private func arrangement(width: CGFloat, subviews: Subviews) -> MeetingDetailPageMetrics.LineArrangement {
+        MeetingDetailPageMetrics.lineArrangement(
+            width: width, overhang: overhang, hasNotes: subviews.count > 1, foldedInsets: foldedInsets
+        ) { index, width in
+            subviews[index].sizeThatFits(ProposedViewSize(width: width, height: nil)).height
+        }
+    }
+}
+
 /// Set on the transcript when a line carries margin notes, which need the
 /// margin clear beside them.
 struct MeetingTranscriptHoldsMarginNotes: LayoutValueKey {
@@ -73,6 +104,36 @@ enum MeetingDetailPageMetrics {
     /// The reading column inside a page this wide: what is left beside the margin.
     static func readingWidth(forPageWidth width: CGFloat) -> CGFloat {
         marginWidth(forPageWidth: width).map { width - $0 - gap } ?? width
+    }
+
+    struct LineArrangement: Equatable {
+        var frames: [CGRect]
+        var height: CGFloat
+    }
+
+    /// A transcript line and its notes in a row `width` wide, whose line
+    /// overhangs the page by `overhang` on each side; `height` measures one of
+    /// them at a width.
+    static func lineArrangement(
+        width: CGFloat,
+        overhang: CGFloat,
+        hasNotes: Bool,
+        foldedInsets: EdgeInsets,
+        height: (Int, CGFloat) -> CGFloat
+    ) -> LineArrangement {
+        let page = max(0, width - 2 * overhang)
+        let lineWidth = readingWidth(forPageWidth: page) + 2 * overhang
+        let line = CGRect(x: 0, y: 0, width: lineWidth, height: height(0, lineWidth))
+        guard hasNotes else { return LineArrangement(frames: [line], height: line.height) }
+        if let margin = marginWidth(forPageWidth: page) {
+            let notes = CGRect(x: lineWidth + gap - overhang, y: 0, width: margin, height: height(1, margin))
+            return LineArrangement(frames: [line, notes], height: max(line.maxY, notes.maxY))
+        }
+        let notesWidth = max(0, width - foldedInsets.leading - foldedInsets.trailing)
+        let notes = CGRect(
+            x: foldedInsets.leading, y: line.maxY + foldedInsets.top,
+            width: notesWidth, height: height(1, notesWidth))
+        return LineArrangement(frames: [line, notes], height: notes.maxY + foldedInsets.bottom)
     }
 
     /// Frames for material, margin and transcript; `height` measures one of

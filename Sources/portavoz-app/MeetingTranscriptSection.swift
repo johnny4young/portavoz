@@ -42,20 +42,12 @@ struct MeetingTranscriptSection: View {
     /// Nil shows the original; a language shows its stored translation.
     @State private var language: String?
     @State private var requestedLanguage: String?
-    @State private var pageWidth: CGFloat = 0
     /// Owned here, not by a lazy row, so scrolling never dismisses the sheet.
     @State private var reviewing: MarginReviewTarget?
     @State private var isSaving = false
 
     var body: some View {
-        // Rows take explicit widths from `pageWidth`, so it comes from the proposal
-        // alone: measuring the section would feed their widths back into it.
-        ZStack(alignment: .topLeading) {
-            Color.clear
-                .frame(height: 0)
-                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { pageWidth = $0 }
-            transcriptContent
-        }
+        transcriptContent
         // Rows fill the page, but an empty transcript must not measure the header's width.
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
@@ -75,8 +67,7 @@ struct MeetingTranscriptSection: View {
 
     private var transcriptContent: some View {
         VStack(alignment: .leading, spacing: 10) {
-            transcriptHeader
-                .frame(width: pageWidth > 0 ? MeetingDetailPageMetrics.readingWidth(forPageWidth: pageWidth) : nil)
+            MeetingTranscriptLineLayout { transcriptHeader }
             transcriptRows
                 .sheet(item: $reviewing) { target in
                     MeetingCommitmentConfirmationSheet(
@@ -138,7 +129,6 @@ struct MeetingTranscriptSection: View {
                     || values.structureProjection.context(for: $0) != nil)
             },
             onCorrect: actions.presentCorrection,
-            pageWidth: pageWidth,
             margin: margin)
     }
 

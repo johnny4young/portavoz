@@ -21,17 +21,12 @@ struct TranscriptSegmentsView: View {
     let onRenameTap: (Speaker) -> Void
     let canCorrect: (MeetingTranscriptContent.Row) -> Bool
     let onCorrect: (MeetingTranscriptContent.Row) -> Void
-    /// The section's measured width; zero until measured.
-    let pageWidth: CGFloat
     let margin: MeetingMarginNotesContext?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var didStartPerformanceScroll = false
+    @State private var isNarrow = false
     @State private var isOnScreen = false
-
-    private var marginWidth: CGFloat? { MeetingDetailPageMetrics.marginWidth(forPageWidth: pageWidth) }
-    private var readingWidth: CGFloat { MeetingDetailPageMetrics.readingWidth(forPageWidth: pageWidth) }
-    private var isNarrow: Bool { MeetingDetailPageMetrics.usesInlineGutter(width: readingWidth) }
 
     private var activeRowID: UUID? {
         guard let player else { return focusedRowID }
@@ -59,6 +54,10 @@ struct TranscriptSegmentsView: View {
             // Rows inset for the active outline; the stack gives that back so
             // turn text shares the standfirst's edge.
             .padding(.horizontal, -TranscriptReadingLayout.outlineOverhang)
+            .onGeometryChange(for: Bool.self) { proxy in
+                MeetingDetailPageMetrics.usesInlineGutter(
+                    width: MeetingDetailPageMetrics.readingWidth(forPageWidth: proxy.size.width))
+            } action: { isNarrow = $0 }
             // A sliver under the summary is not reading the transcript; follow
             // only once it reaches the upper half of the page.
             .onGeometryChange(for: Bool.self) { proxy in
@@ -155,33 +154,21 @@ struct TranscriptSegmentsView: View {
         @ViewBuilder line: () -> some View
     ) -> some View {
         let overhang = TranscriptReadingLayout.outlineOverhang
-        // Unmeasured, the line takes the proposed width rather than none.
-        let lineWidth = pageWidth > 0 ? readingWidth + 2 * overhang : nil
         if let margin, case .row(let row, _) = item, case let notes = margin.notes.notes(forRow: row.id),
            !notes.isEmpty {
-            if let marginWidth {
-                HStack(alignment: .top, spacing: MeetingDetailPageMetrics.gap - overhang) {
-                    line().frame(width: lineWidth)
-                    MeetingMarginNotesColumn(notes: notes, context: margin)
-                        .frame(width: marginWidth)
-                }
-                .padding(.trailing, overhang)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                VStack(alignment: .leading, spacing: 4) {
-                    line()
-                    MeetingMarginNotesColumn(notes: notes, context: margin)
-                        .padding(.leading, overhang + (isNarrow ? 0 : TranscriptReadingLayout.textIndent))
-                        .padding(
-                            .trailing,
-                            overhang + (reservesCorrectionSpace ? TranscriptReadingLayout.correctionReserve : 0))
-                        .padding(.bottom, 8)
-                }
+            MeetingTranscriptLineLayout(
+                overhang: overhang,
+                foldedInsets: EdgeInsets(
+                    top: 4,
+                    leading: overhang + (isNarrow ? 0 : TranscriptReadingLayout.textIndent),
+                    bottom: 8,
+                    trailing: overhang + (reservesCorrectionSpace ? TranscriptReadingLayout.correctionReserve : 0))
+            ) {
+                line()
+                MeetingMarginNotesColumn(notes: notes, context: margin)
             }
         } else {
-            line()
-                .frame(width: lineWidth)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            MeetingTranscriptLineLayout(overhang: overhang) { line() }
         }
     }
 

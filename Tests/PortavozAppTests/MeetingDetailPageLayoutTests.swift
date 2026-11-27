@@ -69,4 +69,41 @@ final class MeetingDetailPageLayoutTests: XCTestCase {
         XCTAssertEqual(frames[1].minY, 0, "no material leaves no gap above the margin")
         XCTAssertEqual(frames[2].minY, 100 + MeetingDetailPageMetrics.sectionSpacing)
     }
+
+    func testANotedLineKeepsTheReadingColumnAndPutsItsNotesInTheMargin() {
+        let arrangement = MeetingDetailPageMetrics.lineArrangement(
+            width: 1_024, overhang: 12, hasNotes: true, foldedInsets: EdgeInsets()
+        ) { index, _ in index == 0 ? 80 : 200 }
+        let margin = MeetingDetailPageMetrics.marginWidth(forPageWidth: 1_000)
+
+        XCTAssertEqual(arrangement.frames[0].width, MeetingDetailPageMetrics.readingWidth(forPageWidth: 1_000) + 24)
+        XCTAssertEqual(arrangement.frames[1].width, margin)
+        XCTAssertEqual(arrangement.frames[1].minY, 0, "the notes sit level with their line")
+        XCTAssertEqual(arrangement.frames[1].maxX, 1_012, accuracy: 0.001, "the notes end on the page edge")
+        XCTAssertEqual(arrangement.height, 200)
+    }
+
+    func testANarrowPageFoldsTheNotesUnderTheirLine() {
+        let insets = EdgeInsets(top: 4, leading: 12, bottom: 8, trailing: 48)
+        let arrangement = MeetingDetailPageMetrics.lineArrangement(
+            width: 628, overhang: 12, hasNotes: true, foldedInsets: insets
+        ) { index, _ in index == 0 ? 80 : 200 }
+
+        XCTAssertEqual(arrangement.frames[0].width, 628, "without a margin the line spans the row")
+        XCTAssertEqual(arrangement.frames[1], CGRect(x: 12, y: 84, width: 568, height: 200))
+        XCTAssertEqual(arrangement.height, 292)
+    }
+
+    func testALineReadsOnlyTheWidthItIsGiven() {
+        for width in stride(from: CGFloat(500), through: 1_400, by: 0.5) {
+            let first = MeetingDetailPageMetrics.lineArrangement(
+                width: width, overhang: 12, hasNotes: true, foldedInsets: EdgeInsets()
+            ) { _, width in width / 3 }
+            let again = MeetingDetailPageMetrics.lineArrangement(
+                width: max(first.frames.map(\.maxX).max() ?? 0, width), overhang: 12, hasNotes: true,
+                foldedInsets: EdgeInsets()
+            ) { _, width in width / 3 }
+            XCTAssertEqual(first, again, "laying a row out at its own extent changes nothing (\(width))")
+        }
+    }
 }
