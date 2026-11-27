@@ -147,6 +147,8 @@ final class SemanticVectorPackCache: Sendable {
 
     func clear() {
         state.withLock { current in
+            // Rejects a pack whose build started before the release.
+            current.inProcessGeneration &+= 1
             current.pack = nil
             current.seenDataVersions.removeAll()
             current.scratchPool.removeAll()

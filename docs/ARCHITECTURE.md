@@ -357,8 +357,8 @@ with a 5-second `busyTimeout`, zero `mmap_size`, and a lazy pressure-evictable
 composing `AppServices`; `AppServices` binds that authority before installing
 telemetry or constructing any other runtime, model, sensitive-storage,
 scheduler, sync, recovery, or global-input owner. Cold-launch `.portavoz` files
-and Spotlight activities arriving during `.opening` wait in bounded delegate
-slots and replay once services activate. The root then publishes either one
+and Spotlight activities arriving during `.opening` wait in process-local
+delegate slots and replay once services activate. The root then publishes either one
 complete service graph or a focused database-unavailable state. Normal windows,
 Settings, commands, menu-bar models, and background owners are created only from
 the complete graph, and process activation is idempotent across retry.

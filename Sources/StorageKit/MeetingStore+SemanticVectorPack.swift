@@ -314,6 +314,12 @@ private struct SemanticPackBuilder {
         externalGeneration: UInt64
     ) -> SemanticVectorPack {
         flushStage()
+        // Appending grows capacity geometrically; the cached pack keeps only what it uses.
+        if packedVectors.capacity > packedVectors.count {
+            packedVectors = Array(unsafeUninitializedCapacity: packedVectors.count) { buffer, initialized in
+                initialized = buffer.initialize(fromContentsOf: packedVectors)
+            }
+        }
         return SemanticVectorPack(
             profileFingerprint: profileFingerprint,
             dimension: dimension,

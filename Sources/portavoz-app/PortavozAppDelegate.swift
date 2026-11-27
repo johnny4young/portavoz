@@ -15,7 +15,7 @@ final class PortavozAppDelegate:
     UNUserNotificationCenterDelegate {
     /// Wired when `AppLaunchModel` activates ready services. Cold-launch files
     /// and Spotlight activities arriving while the store opens off `@MainActor`
-    /// wait in bounded process-local slots and replay on activation.
+    /// wait in process-local slots and replay on activation.
     @MainActor static weak var services: AppServices?
     @MainActor private static var pendingOpenURLs: [URL] = []
     @MainActor private static var pendingSpotlightMeetingID: MeetingID?
