@@ -325,13 +325,16 @@ private extension ExportLibraryMarkdownBackup {
         into run: inout ActiveLibraryMarkdownBackupRun,
         progress: LibraryMarkdownBackupProgressHandler
     ) async throws {
-        var resumed = try await resumablePublication(
+        var resumed = try await Self.resumablePublication(
             data,
             for: content,
-            in: directory,
-            run: &run,
-            progress: progress)
-        if case .finished = resumed { return }
+            run: run,
+            files: files,
+            in: directory)
+        if case .landed(let pending) = resumed {
+            try await recordPublished(pending, in: &run, progress: progress)
+            return
+        }
         for _ in 0..<10_000 {
             let reservation: LibraryMarkdownBackupRecoveryPublication
             if case .reuse(let pending) = resumed {
@@ -475,45 +478,6 @@ private extension ExportLibraryMarkdownBackup {
             operationID: run.recoveryState.operationID)
         run.destinationBookmark = bookmark
         run.recoveryState.destinationBookmark = bookmark
-    }
-
-    enum ResumedPublication {
-        case none
-        case reuse(LibraryMarkdownBackupRecoveryPublication)
-        case finished
-    }
-
-    /// A cancelled publish keeps its journal reservation; retry that exact name
-    /// instead of allocating a sibling, and record it if the file already landed.
-    func resumablePublication(
-        _ data: Data,
-        for content: LibraryMarkdownBackupContent,
-        in directory: URL,
-        run: inout ActiveLibraryMarkdownBackupRun,
-        progress: LibraryMarkdownBackupProgressHandler
-    ) async throws -> ResumedPublication {
-        guard let pending = run.recoveryState.pendingPublication,
-              pending.meetingID == content.meeting.id,
-              pending.sourceCursor == run.pendingSourceCursor,
-              pending.sha256 == ContentDigest.sha256(data)
-        else { return .none }
-        let evidence: BackupPublicationEvidence
-        do {
-            evidence = try await files.evidence(for: pending, in: directory)
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch {
-            return .none
-        }
-        switch evidence {
-        case .matching:
-            try await recordPublished(pending, in: &run, progress: progress)
-            return .finished
-        case .missing:
-            return .reuse(pending)
-        case .conflicting:
-            return .none
-        }
     }
 
     func reserveNextPublication(
@@ -753,44 +717,6 @@ private extension ExportLibraryMarkdownBackup {
             exported: run.exportedFileNames.count,
             failures: run.failures.count,
             through: handler)
-    }
-
-    static func sameDirectory(_ lhs: URL, _ rhs: URL) -> Bool {
-        lhs.standardizedFileURL == rhs.standardizedFileURL
-    }
-
-    static func sourceFailure(
-        _ failure: LibraryMarkdownBackupSourceFailure
-    ) -> LibraryMarkdownBackupFailure {
-        LibraryMarkdownBackupFailure(
-            meetingID: failure.meetingID,
-            title: failure.title,
-            stage: .source)
-    }
-
-    static func failure(
-        for content: LibraryMarkdownBackupContent,
-        stage: LibraryMarkdownBackupFailureStage
-    ) -> LibraryMarkdownBackupFailure {
-        LibraryMarkdownBackupFailure(
-            meetingID: content.meeting.id,
-            title: content.meeting.title,
-            stage: stage)
-    }
-
-    static func boundedRecoveryTitle(_ title: String) -> String {
-        let maximumBytes = LibraryMarkdownBackupRecoveryFailure.maximumTitleBytes
-        guard title.utf8.count > maximumBytes else { return title }
-        var bounded = ""
-        bounded.reserveCapacity(maximumBytes)
-        var byteCount = 0
-        for scalar in title.unicodeScalars {
-            let scalarByteCount = scalar.utf8.count
-            guard byteCount + scalarByteCount <= maximumBytes else { break }
-            bounded.unicodeScalars.append(scalar)
-            byteCount += scalarByteCount
-        }
-        return bounded
     }
 
 }
