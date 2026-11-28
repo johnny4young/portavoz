@@ -18,9 +18,7 @@ final class MeetingReminderController {
     /// Checks every minute; the application workflow selects a typed notice.
     /// One banner per event per app session — dismissing it never re-nags.
     func start(services: AppServices) {
-        guard loop == nil,
-            !ProcessInfo.processInfo.arguments.contains("-use-temp-store")
-        else { return }
+        guard loop == nil else { return }
         self.services = services
         loop = Task { [weak self] in
             while !Task.isCancelled {
@@ -29,6 +27,8 @@ final class MeetingReminderController {
             }
         }
     }
+
+    var isShowingBanner: Bool { panel != nil }
 
     private func check() async {
         guard let notice = await services?.nextMeetingReminder(
@@ -44,8 +44,7 @@ final class MeetingReminderController {
             event: notice.event,
             minutesLeft: notice.minutesUntilStart,
             onRecord: { [weak self] in
-                self?.services?.pendingRoute = .recording(notice.event)
-                NSApp.activate(ignoringOtherApps: true)
+                self?.services?.presentRecording(for: notice.event)
                 self?.close()
             },
             onDismiss: { [weak self] in self?.close() })

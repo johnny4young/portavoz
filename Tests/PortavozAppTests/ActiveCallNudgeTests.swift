@@ -79,8 +79,8 @@ final class ActiveCallNudgeControllerTests: XCTestCase {
     private func at(_ seconds: TimeInterval) -> Date { origin.addingTimeInterval(seconds) }
 
     private func confirmedNudge(_ controller: ActiveCallNudgeController) {
-        XCTAssertNil(controller.poll(enabled: true, isRecording: false, at: at(0)))
-        XCTAssertNotNil(controller.poll(enabled: true, isRecording: false, at: at(4)))
+        XCTAssertNil(controller.poll(enabled: true, isRecording: false, canOffer: true, at: at(0)))
+        XCTAssertNotNil(controller.poll(enabled: true, isRecording: false, canOffer: true, at: at(4)))
     }
 
     func testRecordedCallStaysSilentAfterALongRecordingStops() async {
@@ -89,11 +89,11 @@ final class ActiveCallNudgeControllerTests: XCTestCase {
         controller.accept(at: at(5))
 
         for second in stride(from: 8.0, through: 120, by: 3) {
-            XCTAssertNil(controller.poll(enabled: true, isRecording: true, at: at(second)))
+            XCTAssertNil(controller.poll(enabled: true, isRecording: true, canOffer: true, at: at(second)))
         }
-        XCTAssertNil(controller.poll(enabled: true, isRecording: false, at: at(123)))
+        XCTAssertNil(controller.poll(enabled: true, isRecording: false, canOffer: true, at: at(123)))
         XCTAssertNil(
-            controller.poll(enabled: true, isRecording: false, at: at(129)),
+            controller.poll(enabled: true, isRecording: false, canOffer: true, at: at(129)),
             "the call that was just recorded must not nudge again when recording stops")
     }
 
@@ -102,15 +102,25 @@ final class ActiveCallNudgeControllerTests: XCTestCase {
         confirmedNudge(controller)
         controller.dismiss(at: at(124))
 
-        XCTAssertNil(controller.poll(enabled: true, isRecording: false, at: at(127)))
+        XCTAssertNil(controller.poll(enabled: true, isRecording: false, canOffer: true, at: at(127)))
     }
 
     func testReenablingRequiresAFreshConfirmationWindow() async {
         let controller = ActiveCallNudgeController(signalSource: { [zoom] in [zoom] })
-        XCTAssertNil(controller.poll(enabled: true, isRecording: false, at: at(0)))
-        XCTAssertNil(controller.poll(enabled: false, isRecording: false, at: at(2)))
+        XCTAssertNil(controller.poll(enabled: true, isRecording: false, canOffer: true, at: at(0)))
+        XCTAssertNil(controller.poll(enabled: false, isRecording: false, canOffer: true, at: at(2)))
 
-        XCTAssertNil(controller.poll(enabled: true, isRecording: false, at: at(60)))
-        XCTAssertNotNil(controller.poll(enabled: true, isRecording: false, at: at(64)))
+        XCTAssertNil(controller.poll(enabled: true, isRecording: false, canOffer: true, at: at(60)))
+        XCTAssertNotNil(controller.poll(enabled: true, isRecording: false, canOffer: true, at: at(64)))
+    }
+    func testNudgeStaysHiddenWhileRecordCannotStartAndReturnsAfterward() async {
+        let controller = ActiveCallNudgeController(signalSource: { [zoom] in [zoom] })
+        XCTAssertNil(controller.poll(enabled: true, isRecording: false, canOffer: false, at: at(0)))
+        XCTAssertNil(controller.poll(enabled: true, isRecording: false, canOffer: false, at: at(4)))
+        XCTAssertNil(controller.poll(enabled: true, isRecording: false, canOffer: false, at: at(60)))
+
+        XCTAssertEqual(
+            controller.poll(enabled: true, isRecording: false, canOffer: true, at: at(63))?.bundleID,
+            "us.zoom.xos")
     }
 }

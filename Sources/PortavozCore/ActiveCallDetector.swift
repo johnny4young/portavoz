@@ -39,17 +39,16 @@ public struct ActiveCallNudge: Equatable, Sendable {
 /// Pure passive active-call detector. Only apps actively streaming microphone
 /// input qualify — output-only media (YouTube, music, notification chimes)
 /// never triggers a nudge. Requires sustained input to filter transient probes
-/// and suppresses repeat nudges until the call ends or the cooldown expires.
+/// and suppresses repeat nudges until the call ends (quiet for
+/// `quietResetDuration`), however long the call runs.
 public struct ActiveCallDetector: Equatable, Sendable {
     public static let defaultConfirmationDuration: TimeInterval = 4
     public static let defaultClearAfterQuiet: TimeInterval = 6
     public static let defaultQuietResetDuration: TimeInterval = 30
-    public static let defaultSuppressionCooldown: TimeInterval = 30 * 60
 
     public let confirmationDuration: TimeInterval
     public let clearAfterQuiet: TimeInterval
     public let quietResetDuration: TimeInterval
-    public let suppressionCooldown: TimeInterval
 
     public private(set) var activeNudge: ActiveCallNudge?
 
@@ -61,18 +60,16 @@ public struct ActiveCallDetector: Equatable, Sendable {
 
     private var candidate: Candidate?
     private var lastActiveAtByBundle: [String: Date] = [:]
-    private var suppressedUntilByBundle: [String: Date] = [:]
+    private var suppressedBundles: Set<String> = []
 
     public init(
         confirmationDuration: TimeInterval = defaultConfirmationDuration,
         clearAfterQuiet: TimeInterval = defaultClearAfterQuiet,
-        quietResetDuration: TimeInterval = defaultQuietResetDuration,
-        suppressionCooldown: TimeInterval = defaultSuppressionCooldown
+        quietResetDuration: TimeInterval = defaultQuietResetDuration
     ) {
         self.confirmationDuration = max(0, confirmationDuration)
         self.clearAfterQuiet = max(0, clearAfterQuiet)
         self.quietResetDuration = max(0, quietResetDuration)
-        self.suppressionCooldown = max(0, suppressionCooldown)
     }
 
     /// Evaluates the latest active-audio snapshot and returns the currently
@@ -88,14 +85,12 @@ public struct ActiveCallDetector: Equatable, Sendable {
         for bundleID in activeBundles {
             lastActiveAtByBundle[bundleID] = now
         }
-        clearExpiredSuppressions(activeBundles: activeBundles, at: now)
+        releaseEndedCalls(activeBundles: activeBundles, at: now)
 
         if isRecording {
             activeNudge = nil
             candidate = nil
-            for bundleID in activeBundles {
-                suppressedUntilByBundle[bundleID] = now.addingTimeInterval(suppressionCooldown)
-            }
+            suppressedBundles.formUnion(activeBundles)
             return nil
         }
 
@@ -121,7 +116,7 @@ public struct ActiveCallDetector: Equatable, Sendable {
                     detectedAt: now)
                 activeNudge = nudge
                 candidate = nil
-                suppressedUntilByBundle[primary.bundleID] = now.addingTimeInterval(suppressionCooldown)
+                suppressedBundles.insert(primary.bundleID)
                 return nudge
             }
             return nil
@@ -138,17 +133,16 @@ public struct ActiveCallDetector: Equatable, Sendable {
                 detectedAt: now)
             activeNudge = nudge
             candidate = nil
-            suppressedUntilByBundle[primary.bundleID] = now.addingTimeInterval(suppressionCooldown)
+            suppressedBundles.insert(primary.bundleID)
             return nudge
         }
         return nil
     }
 
-    /// User dismissed the banner; silence this app until the call genuinely ends
-    /// or the cooldown expires.
+    /// User dismissed the banner; silence this app until the call genuinely ends.
     public mutating func dismiss(at now: Date) {
         if let current = activeNudge {
-            suppressedUntilByBundle[current.bundleID] = now.addingTimeInterval(suppressionCooldown)
+            suppressedBundles.insert(current.bundleID)
             lastActiveAtByBundle[current.bundleID] = now
         }
         activeNudge = nil
@@ -160,21 +154,17 @@ public struct ActiveCallDetector: Equatable, Sendable {
         dismiss(at: now)
     }
 
-    private mutating func clearExpiredSuppressions(activeBundles: Set<String>, at now: Date) {
-        for (bundleID, until) in suppressedUntilByBundle {
-            let cooldownExpired = now >= until
-            let callEndedLongAgo = !activeBundles.contains(bundleID)
-                && lastActiveAtByBundle[bundleID].map {
-                    now.timeIntervalSince($0) >= quietResetDuration
-                } == true
-            if cooldownExpired || callEndedLongAgo {
-                suppressedUntilByBundle.removeValue(forKey: bundleID)
-            }
+    private mutating func releaseEndedCalls(activeBundles: Set<String>, at now: Date) {
+        suppressedBundles = suppressedBundles.filter { bundleID in
+            activeBundles.contains(bundleID)
+                || lastActiveAtByBundle[bundleID].map {
+                    now.timeIntervalSince($0) < quietResetDuration
+                } ?? true
         }
     }
 
     private func selectPrimaryCall(from liveCalls: [ActiveCallSignal]) -> ActiveCallSignal? {
-        let eligible = liveCalls.filter { suppressedUntilByBundle[$0.bundleID] == nil }
+        let eligible = liveCalls.filter { !suppressedBundles.contains($0.bundleID) }
         return eligible.first(where: \.isNativeCallApp) ?? eligible.first
     }
 }

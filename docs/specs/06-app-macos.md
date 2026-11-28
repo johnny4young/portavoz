@@ -1916,9 +1916,15 @@ dot-delimited helper processes and prioritizing native call apps over browsers),
 and `PortavozCore.ActiveCallDetector` confirms sustained microphone activity
 (`4 s`) before `ActiveCallNudgeController` presents a non-activating floating
 banner (`ActiveCallBannerView`) offering one-click recording. Output-only media
-never triggers a nudge, active recordings suppress and clear it, dismissal
-silences that call session until it ends (`>= 30 s` quiet) or cooldown expires,
-and Settings › General (`settings-active-call-nudge`) toggles it on or off.
+never triggers a nudge. A recording, a dismissal or the 120 s auto-dismiss
+silences that call until it ends (`>= 30 s` quiet), however long it runs. The
+banner stays hidden, without being dismissed, while `RecordingController.canStart`
+is false (processing, a failed input save, a storage move) or the calendar
+banner is visible, and returns once both clear. Settings › General
+(`settings-active-call-nudge`) toggles it; turning it off resets the detector.
+`AppServices` owns both floating prompts (`startFloatingRecordPrompts`, skipped
+with temporary storage), so they keep running with the library window closed,
+and `presentRecording(for:)` reopens that window for a Record click.
 
 `AppServices` also owns one process-scoped `SpotlightIndexer` actor
 (D85/D326/D329). Launch and every searchable mutation call

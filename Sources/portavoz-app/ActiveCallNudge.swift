@@ -29,9 +29,7 @@ final class ActiveCallNudgeController {
     }
 
     func start(services: AppServices) {
-        guard loop == nil,
-              !ProcessInfo.processInfo.arguments.contains("-use-temp-store")
-        else { return }
+        guard loop == nil else { return }
         self.services = services
         loop = Task { [weak self] in
             while !Task.isCancelled {
@@ -44,10 +42,12 @@ final class ActiveCallNudgeController {
 
     private func pollOnce() async {
         guard let services else { return }
+        let recording = services.recording
         let nudge = poll(
             enabled: ActiveCallNudgePreferences.isEnabled(in: services.defaults),
-            isRecording: services.recording.phase == .recording
-                || services.recording.phase == .preparing,
+            isRecording: recording.phase == .recording || recording.phase == .preparing,
+            canOffer: recording.canStart(services: services)
+                && !services.meetingReminder.isShowingBanner,
             at: Date())
         if let nudge {
             if shownNudge != nudge {
@@ -60,12 +60,15 @@ final class ActiveCallNudgeController {
 
     /// One detection step. Signals are read even while recording so the
     /// detector keeps the recorded call suppressed after the recording stops.
-    func poll(enabled: Bool, isRecording: Bool, at now: Date) -> ActiveCallNudge? {
+    /// When `canOffer` is false the nudge is hidden, not dismissed, and comes
+    /// back once Record can start and the calendar banner is gone.
+    func poll(enabled: Bool, isRecording: Bool, canOffer: Bool, at now: Date) -> ActiveCallNudge? {
         guard enabled else {
             detector = ActiveCallDetector()
             return nil
         }
-        return detector.observe(signals: signalSource(), isRecording: isRecording, at: now)
+        let nudge = detector.observe(signals: signalSource(), isRecording: isRecording, at: now)
+        return canOffer ? nudge : nil
     }
 
     func accept(at now: Date) {
@@ -85,8 +88,7 @@ final class ActiveCallNudgeController {
             appName: nudge.appName,
             onRecord: { [weak self] in
                 guard let self else { return }
-                self.services?.pendingRoute = .recording(nil)
-                NSApp.activate(ignoringOtherApps: true)
+                self.services?.presentRecording(for: nil)
                 self.accept(at: Date())
             },
             onDismiss: { [weak self] in self?.dismiss(at: Date()) })

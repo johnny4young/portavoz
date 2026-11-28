@@ -92,8 +92,7 @@ final class ActiveCallDetectorTests: XCTestCase {
         var detector = ActiveCallDetector(
             confirmationDuration: 4,
             clearAfterQuiet: 6,
-            quietResetDuration: 30,
-            suppressionCooldown: 1_800)
+            quietResetDuration: 30)
         let zoom = signal()
 
         _ = detector.observe(signals: [zoom], isRecording: false, at: origin)
@@ -116,6 +115,21 @@ final class ActiveCallDetectorTests: XCTestCase {
         let secondNudge = detector.observe(
             signals: [zoom], isRecording: false, at: origin.addingTimeInterval(69))
         XCTAssertEqual(secondNudge?.bundleID, "us.zoom.xos")
+    }
+
+    func testDismissedCallStaysSilentHoweverLongItRuns() {
+        var detector = ActiveCallDetector(confirmationDuration: 4, quietResetDuration: 30)
+        let teams = signal(bundleID: "com.microsoft.teams2", appName: "Microsoft Teams")
+
+        _ = detector.observe(signals: [teams], isRecording: false, at: origin)
+        XCTAssertNotNil(detector.observe(
+            signals: [teams], isRecording: false, at: origin.addingTimeInterval(4)))
+        detector.dismiss(at: origin.addingTimeInterval(5))
+
+        for second in stride(from: 8.0, through: 3 * 3_600, by: 3) {
+            XCTAssertNil(detector.observe(
+                signals: [teams], isRecording: false, at: origin.addingTimeInterval(second)))
+        }
     }
 
     func testActiveNudgeClearsAutomaticallyAfterCallEnds() {
