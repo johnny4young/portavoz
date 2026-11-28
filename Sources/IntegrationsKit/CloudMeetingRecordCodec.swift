@@ -64,6 +64,10 @@ public struct CloudMeetingRecordCodec: Sendable {
             zoneID: zoneID)
     }
 
+    public static func payloadSHA256(of record: CKRecord) -> String? {
+        record.encryptedValues[Field.payloadSHA256]
+    }
+
     public func encode(
         _ envelope: MeetingSyncEnvelope,
         existingRecord: CKRecord? = nil,

@@ -13,6 +13,12 @@ struct BackupFileNameAllocator {
         used = Set(existing.map(Self.collisionKey))
     }
 
+    mutating func recordExisting(_ fileNames: Set<String>) {
+        for name in fileNames {
+            used.insert(Self.collisionKey(name))
+        }
+    }
+
     mutating func nextFileName(for title: String) -> String {
         let base = Self.sanitized(title)
         let key = Self.collisionKey(base)

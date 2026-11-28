@@ -471,6 +471,114 @@ final class ImportMeetingUseCaseTests: XCTestCase {
         let meetings = try await store.meetings()
         XCTAssertTrue(meetings.isEmpty)
     }
+
+    func testRecordedAtPreservesSourceTimestampInsteadOfImportTime() async throws {
+        let fixture = ImportFixture()
+        let recordedAt = Date(timeIntervalSince1970: 1_700_000_000)
+        let dependencies = ImportDependencies(transcription: fixture.spanishTranscription)
+        let request = ImportMeetingRequest(
+            sourceURL: fixture.source,
+            title: fixture.title,
+            recordedAt: recordedAt
+        ) { phase in
+            await dependencies.record(progress: phase)
+        }
+
+        _ = try await fixture.useCase(dependencies: dependencies)(request)
+
+        let state = await dependencies.state()
+        XCTAssertEqual(
+            state.installed?.meeting.startedAt,
+            recordedAt.addingTimeInterval(-fixture.spanishTranscription.audioDuration),
+            "a modification date marks the end of the recording")
+        XCTAssertEqual(state.installed?.meeting.endedAt, recordedAt)
+    }
+
+    func testSilentOrZeroDurationAudioSkipsSummaryGeneration() async throws {
+        let fixture = ImportFixture()
+        let emptyTranscript = FileTranscription(text: "", segments: [], audioDuration: 12, processingTime: 0)
+        let zeroDuration = FileTranscription(
+            text: "Hola",
+            segments: fixture.spanishTranscription.segments,
+            audioDuration: 0,
+            processingTime: 0)
+
+        for transcription in [emptyTranscript, zeroDuration] {
+            let dependencies = ImportDependencies(transcription: transcription)
+            _ = try await fixture.useCase(dependencies: dependencies)(
+                fixture.request(dependencies: dependencies))
+
+            let state = await dependencies.state()
+            XCTAssertFalse(state.events.contains("summarize"))
+            XCTAssertFalse(state.progress.contains(.generatingSummary))
+            XCTAssertNil(state.savedSummary)
+            XCTAssertEqual(state.releaseCount, 1)
+        }
+    }
+
+    func testCancelledSummaryPersistsCancellationRunEvenWhenParentTaskIsCancelled() async throws {
+        let fixture = ImportFixture()
+        let dependencies = ImportDependencies(transcription: fixture.spanishTranscription)
+        let store = CancellationAwareImportStore()
+        // The provider cancels its own task; the cancelled run must still persist.
+        let cancellableUseCase = ImportMeeting(
+            audioFiles: dependencies,
+            preferences: dependencies,
+            processor: dependencies,
+            store: store,
+            summaryProviders: CancellingSummaryResolver(),
+            makeMeetingID: { fixture.meetingID },
+            makeGenerationRunID: { fixture.generationRunID },
+            now: { fixture.now })
+
+        let parentTask = Task {
+            try await cancellableUseCase.execute(fixture.request(dependencies: dependencies))
+        }
+        _ = try await parentTask.value
+
+        let savedRuns = await store.savedRuns
+        XCTAssertEqual(savedRuns.map(\.outcome), [.cancelled])
+    }
+}
+
+private actor CancellationAwareImportStore: ImportMeetingStore {
+    private(set) var savedRuns: [GenerationRun] = []
+
+    func installImportedMeeting(
+        _ meeting: Meeting,
+        speakers: [Speaker],
+        segments: [TranscriptSegment]
+    ) async throws -> Int {
+        meeting.transcriptRevision
+    }
+
+    func saveImportedSummary(_ draft: SummaryDraft, generationRun: GenerationRun) async throws {
+        try Task.checkCancellation()
+        savedRuns.append(generationRun)
+    }
+
+    func saveImportedSummaryRun(_ run: GenerationRun) async throws {
+        // Mirrors GRDB's cancellation-aware write behavior.
+        try Task.checkCancellation()
+        savedRuns.append(run)
+    }
+}
+
+private struct CancellingSummaryResolver: ImportMeetingSummaryProviderResolver {
+    func resolveImportMeetingSummaryProvider() async -> ImportMeetingSummaryProviderResolution {
+        .available(CancellingSummaryProvider())
+    }
+}
+
+private struct CancellingSummaryProvider: ImportMeetingSummaryProvider {
+    let providerID = "cancel-test"
+    let modelID = "cancel-model"
+    let modelRevision: String? = nil
+
+    func summarize(_ request: SummaryRequest) async throws -> SummaryDraft {
+        withUnsafeCurrentTask { $0?.cancel() }
+        throw CancellationError()
+    }
 }
 
 private struct ImportFixture: Sendable {

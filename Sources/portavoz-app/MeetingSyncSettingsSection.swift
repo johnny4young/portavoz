@@ -137,7 +137,7 @@ struct MeetingSyncSettingsSection: View {
                 .accessibilityIdentifier("settings-sync-now")
                 .disabled(model.isBusy || status.accountStatus != .available)
 
-                if status.phase == .failed || status.phase == .retrying {
+                if status.canRetry {
                     Button("Retry now") { run(.retry) }
                         .accessibilityIdentifier("settings-sync-retry")
                         .disabled(model.isBusy)
@@ -165,6 +165,16 @@ struct MeetingSyncSettingsSection: View {
     private var statusDetail: String {
         if let failure = status.failure {
             return failureDetail(failure)
+        }
+        if status.progress.conflictCount > 0 {
+            return status.progress.conflictCount == 1
+                ? L10n.text(
+                    // swiftlint:disable:next line_length
+                    "Transcript edits conflict between two Macs on 1 meeting. Review or undo your recent edits to resume syncing it.")
+                : L10n.format(
+                    // swiftlint:disable:next line_length
+                    "Transcript edits conflict between two Macs on %d meetings. Review or undo your recent edits to resume syncing them.",
+                    status.progress.conflictCount)
         }
         if !status.isEnabled {
             return L10n.text("Off. Portavoz has not contacted iCloud for meeting sync.")
@@ -206,12 +216,17 @@ struct MeetingSyncSettingsSection: View {
     }
 
     private var progressText: String {
-        L10n.format(
+        let base = L10n.format(
             "%d local · %d queued · %d retrying · %d failed",
             status.progress.pendingLocalChanges,
             status.progress.queuedTransfers,
             status.progress.retryingTransfers,
             status.progress.failedTransfers)
+        guard status.progress.conflictCount > 0 else { return base }
+        let conflictSuffix = status.progress.conflictCount == 1
+            ? L10n.text("1 conflict")
+            : L10n.format("%d conflicts", status.progress.conflictCount)
+        return "\(base) · \(conflictSuffix)"
     }
 
     private var statusIcon: String {

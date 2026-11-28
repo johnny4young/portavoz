@@ -1,35 +1,42 @@
 import Foundation
 import PortavozCore
 
-/// BYOK cloud provider against any OpenAI-compatible `/chat/completions`
-/// endpoint (OpenAI, Anthropic gateway, Groq, OpenRouter, Ollama…).
+/// BYOK cloud and local OpenAI-compatible `/chat/completions` provider
+/// (OpenAI, Anthropic gateway, Groq, OpenRouter, Ollama…).
 ///
 /// D8 applies in full: using this is an explicit, visibly-labeled user
 /// choice — never a silent default — and the API key comes from the
-/// caller (the app stores it in the Keychain; the dev CLI reads an env
-/// var and says so out loud). Cloud contexts are large, so the transcript
-/// goes in one pass, no map-reduce. Transport crosses `DataEgressGateway`;
-/// this type owns the summary prompt and JSON → `StructuredSummary` contract.
+/// caller. Large cloud contexts run in one pass (`contextCharacterBudget == nil`);
+/// bounded local endpoints (such as Ollama) supply a character budget so long
+/// meetings map-reduce cleanly instead of overflowing `num_ctx`.
 public struct OpenAICompatibleSummaryProvider: SummaryProvider {
+    private static let maximumCondensePasses = 3
+
     private let client: OpenAICompatibleSummaryClient
+    public let contextCharacterBudget: Int?
 
     public init(
         endpoint: URL,
         model: String,
         apiKey: String,
         gateway: any DataEgressGateway,
-        consentSource: DataEgressConsentSource = .explicitSummaryProvider
+        consentSource: DataEgressConsentSource = .explicitSummaryProvider,
+        requestTimeout: TimeInterval = OpenAICompatibleSummaryClient.defaultRequestTimeout,
+        contextCharacterBudget: Int? = nil
     ) {
         client = OpenAICompatibleSummaryClient(
             endpoint: endpoint,
             model: model,
             apiKey: apiKey,
             gateway: gateway,
-            consentSource: consentSource)
+            consentSource: consentSource,
+            requestTimeout: requestTimeout)
+        self.contextCharacterBudget = contextCharacterBudget.map { max(1_000, $0) }
     }
 
     public func summarize(_ request: SummaryRequest) async throws -> SummaryDraft {
-        let prompt = Self.prompt(for: request)
+        let material = try await preparedMaterial(for: request)
+        let prompt = Self.prompt(for: request, materialText: material)
         let content = try await client.completeSummary(
             system: prompt.system,
             user: prompt.user,
@@ -40,11 +47,52 @@ public struct OpenAICompatibleSummaryProvider: SummaryProvider {
         return draft
     }
 
+    private func preparedMaterial(for request: SummaryRequest) async throws -> String {
+        let transcript = TranscriptFormatter.formatWithEvidence(
+            segments: request.segments, speakers: request.speakers).text
+        guard let budget = contextCharacterBudget, transcript.count > budget else {
+            return transcript
+        }
+        let mapSystem = PromptFactory.notesInstructions(
+            targetLanguage: request.targetLanguage,
+            glossary: request.glossary,
+            detail: request.detail)
+        var current = transcript
+        for _ in 0..<Self.maximumCondensePasses where current.count > budget {
+            let chunks = TranscriptFormatter.chunk(current, budget: budget)
+            var notes: [String] = []
+            notes.reserveCapacity(chunks.count)
+            for (index, chunk) in chunks.enumerated() {
+                try Task.checkCancellation()
+                let raw = try await client.completeSummary(
+                    system: mapSystem,
+                    user: PromptFactory.notesPrompt(
+                        chunk: chunk, index: index, total: chunks.count),
+                    meetingID: request.meetingID)
+                let visible = (ReasoningEnvelope.visibleText(raw) ?? raw)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                if !visible.isEmpty { notes.append(visible) }
+            }
+            let combined = notes.joined(separator: "\n\n")
+            guard !combined.isEmpty, combined.count < current.count else { break }
+            current = combined
+        }
+        // Sending it anyway would let the server truncate silently and summarize a fragment.
+        guard current.count <= budget else {
+            throw IntelligenceError.providerFailed(
+                "the transcript is still too long for the model's context after condensing")
+        }
+        return current
+    }
+
     // MARK: - Prompt/response contract (static + pure for tests)
 
-    static func prompt(for request: SummaryRequest) -> (system: String, user: String) {
-        let transcript = TranscriptFormatter.formatWithEvidence(
-            segments: request.segments, speakers: request.speakers)
+    static func prompt(
+        for request: SummaryRequest,
+        materialText: String? = nil
+    ) -> (system: String, user: String) {
+        let material = materialText ?? TranscriptFormatter.formatWithEvidence(
+            segments: request.segments, speakers: request.speakers).text
         // The user's notes weave in exactly like on-device (D28); the cloud
         // window is roomy, but the same budgets keep both paths comparable.
         let notes = PromptFactory.notesBlock(request.contextItems)
@@ -75,7 +123,7 @@ public struct OpenAICompatibleSummaryProvider: SummaryProvider {
                 hasUserNotes: !notes.isEmpty,
                 detail: request.detail) + "\n" + schemaNote,
             user: PromptFactory.summaryPrompt(
-                transcriptOrNotes: transcript.text,
+                transcriptOrNotes: material,
                 targetLanguage: request.targetLanguage,
                 userNotes: notes)
         )

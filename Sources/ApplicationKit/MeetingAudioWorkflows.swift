@@ -41,6 +41,7 @@ public final class MeetingPlaybackSession {
     public private(set) var currentTime: TimeInterval
     public private(set) var duration: TimeInterval
     public private(set) var isPlaying: Bool
+    public private(set) var hasPlaybackFailed: Bool
     public private(set) var clipRange: ClosedRange<TimeInterval>?
 
     public var skipSilence: Bool {
@@ -71,6 +72,7 @@ public final class MeetingPlaybackSession {
         currentTime = player.currentTime
         duration = player.duration
         isPlaying = player.isPlaying
+        hasPlaybackFailed = player.hasPlaybackFailed
         clipRange = player.clipRange
         skipSilence = player.skipSilence
         rate = player.rate
@@ -173,6 +175,7 @@ public final class MeetingPlaybackSession {
         currentTime = player.currentTime
         duration = player.duration
         isPlaying = player.isPlaying
+        hasPlaybackFailed = player.hasPlaybackFailed
         clipRange = player.clipRange
         let reachedEnd = player.playedToEndCount != seenEndCount
         seenEndCount = player.playedToEndCount

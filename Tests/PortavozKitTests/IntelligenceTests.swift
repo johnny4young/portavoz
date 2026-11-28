@@ -1308,6 +1308,128 @@ final class OllamaServiceTests: XCTestCase {
         XCTAssertFalse(draft.markdown.isEmpty, "a local Ollama summary must come back")
         XCTAssertEqual(draft.language, "es")
     }
+
+    func testOllamaSummaryProviderSetsLongTimeoutAndMapReducesLongTranscripts() async throws {
+        let defaultReq = try OpenAICompatibleChatCodec.urlRequest(
+            endpoint: OllamaService.openAIEndpoint,
+            model: "qwen3:8b",
+            apiKey: "ollama",
+            system: "sys",
+            user: "usr",
+            temperature: 0.3,
+            maxTokens: nil)
+        XCTAssertEqual(defaultReq.timeoutInterval, 180)
+        let clampedReq = try OpenAICompatibleChatCodec.urlRequest(
+            endpoint: OllamaService.openAIEndpoint,
+            model: "qwen3:8b",
+            apiKey: "ollama",
+            system: "sys",
+            user: "usr",
+            temperature: 0.3,
+            maxTokens: nil,
+            timeoutInterval: 1)
+        XCTAssertEqual(clampedReq.timeoutInterval, 5)
+
+        let gateway = MapReduceStubGateway()
+        let meeting = MeetingID()
+        let speaker = Speaker(meetingID: meeting, label: "Me", isMe: true)
+        let longText = String(repeating: "Reviewed release milestones and owners. ", count: 40)
+        let segments = (0..<3).map { index in
+            TranscriptSegment(
+                meetingID: meeting,
+                speakerID: speaker.id,
+                channel: .microphone,
+                text: "Part \(index + 1): \(longText)",
+                startTime: TimeInterval(index * 10),
+                endTime: TimeInterval(index * 10 + 9),
+                isFinal: true)
+        }
+        let request = SummaryRequest(
+            meetingID: meeting,
+            segments: segments,
+            speakers: [speaker],
+            recipe: .general,
+            targetLanguage: "en",
+            glossary: [])
+
+        let provider = OllamaService.summaryProvider(
+            model: "qwen3:8b",
+            gateway: gateway,
+            contextCharacterBudget: 1_000)
+        let draft = try await provider.summarize(request)
+
+        let recorded = await gateway.recordedRequests
+        XCTAssertGreaterThanOrEqual(recorded.count, 3, "long transcript should map chunks before final reduce")
+        XCTAssertTrue(recorded.allSatisfy { $0.timeoutInterval == OllamaService.defaultRequestTimeout })
+        XCTAssertTrue(draft.markdown.contains("Condensed overview"))
+    }
+
+    func testOllamaSummaryFailsInsteadOfSendingMaterialThatNeverFitsTheContext() async throws {
+        let gateway = MapReduceStubGateway(mapNote: String(repeating: "Notes that never shrink. ", count: 120))
+        let meeting = MeetingID()
+        let longText = String(repeating: "Reviewed release milestones and owners. ", count: 40)
+        let segments = (0..<3).map { index in
+            TranscriptSegment(
+                meetingID: meeting, channel: .microphone, text: "Part \(index + 1): \(longText)",
+                startTime: TimeInterval(index * 10), endTime: TimeInterval(index * 10 + 9), isFinal: true)
+        }
+        let request = SummaryRequest(
+            meetingID: meeting, segments: segments, speakers: [], recipe: .general,
+            targetLanguage: "en", glossary: [])
+        let provider = OllamaService.summaryProvider(
+            model: "qwen3:8b", gateway: gateway, contextCharacterBudget: 1_000)
+
+        do {
+            _ = try await provider.summarize(request)
+            XCTFail("over-budget material must fail instead of being truncated by the server")
+        } catch IntelligenceError.providerFailed {}
+
+        let recorded = await gateway.recordedRequests
+        XCTAssertFalse(
+            recorded.contains { request in
+                !(request.httpBody.flatMap { String(data: $0, encoding: .utf8) } ?? "").contains("Transcript excerpt")
+            },
+            "no final summary request may carry the over-budget material")
+    }
+}
+
+private actor MapReduceStubGateway: DataEgressGateway {
+    private let mapNote: String
+    private(set) var recordedRequests: [URLRequest] = []
+
+    init(mapNote: String = "<think>planning</think>\n- [E1] Key milestone note.") {
+        self.mapNote = mapNote
+    }
+
+    func perform(
+        _ request: URLRequest,
+        metadata: DataEgressRequest
+    ) async throws -> DataEgressResponse {
+        recordedRequests.append(request)
+        let bodyString = request.httpBody.flatMap { String(data: $0, encoding: .utf8) } ?? ""
+        let content: String
+        if bodyString.contains("Transcript excerpt") {
+            content = mapNote
+        } else {
+            let summary = StructuredSummary(
+                overview: "Condensed overview",
+                sections: [
+                    .init(heading: "Topics", bullets: ["Milestones"], bulletEvidence: [[]]),
+                    .init(heading: "Decisions", bullets: [], bulletEvidence: []),
+                    .init(heading: "Next steps", bullets: [], bulletEvidence: [])
+                ],
+                actionItems: [],
+                overviewEvidence: ["E1"])
+            let summaryData = try JSONEncoder().encode(summary)
+            content = String(decoding: summaryData, as: UTF8.self)
+        }
+        let payload: [String: Any] = [
+            "choices": [["message": ["content": content]]]
+        ]
+        return DataEgressResponse(
+            data: try JSONSerialization.data(withJSONObject: payload),
+            statusCode: 200)
+    }
 }
 
 // MARK: - BYOK summary provider (offline)

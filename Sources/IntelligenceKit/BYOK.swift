@@ -11,7 +11,8 @@ enum OpenAICompatibleChatCodec {
     static func urlRequest(
         endpoint: URL, model: String, apiKey: String,
         system: String, user: String,
-        temperature: Double, maxTokens: Int?
+        temperature: Double, maxTokens: Int?,
+        timeoutInterval: TimeInterval = 180
     ) throws -> URLRequest {
         var body: [String: Any] = [
             "model": model,
@@ -25,6 +26,7 @@ enum OpenAICompatibleChatCodec {
 
         var urlRequest = URLRequest(url: endpoint.appendingPathComponent("chat/completions"))
         urlRequest.httpMethod = "POST"
+        urlRequest.timeoutInterval = max(5, timeoutInterval)
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -119,8 +121,11 @@ private struct ChatCompletionMessage: Decodable {
 /// shared egress gateway, regardless of whether the endpoint is local Ollama
 /// or a remote BYOK provider.
 public struct OpenAICompatibleSummaryClient: Sendable {
+    public static let defaultRequestTimeout: TimeInterval = 180
+
     public let endpoint: URL
     public let model: String
+    public let requestTimeout: TimeInterval
     private let apiKey: String
     private let gateway: any DataEgressGateway
     private let consentSource: DataEgressConsentSource
@@ -130,13 +135,15 @@ public struct OpenAICompatibleSummaryClient: Sendable {
         model: String,
         apiKey: String,
         gateway: any DataEgressGateway,
-        consentSource: DataEgressConsentSource = .explicitSummaryProvider
+        consentSource: DataEgressConsentSource = .explicitSummaryProvider,
+        requestTimeout: TimeInterval = OpenAICompatibleSummaryClient.defaultRequestTimeout
     ) {
         self.endpoint = endpoint
         self.model = model
         self.apiKey = apiKey
         self.gateway = gateway
         self.consentSource = consentSource
+        self.requestTimeout = max(5, requestTimeout)
     }
 
     public var providerLabel: String { endpoint.host ?? "BYOK" }
@@ -157,7 +164,8 @@ public struct OpenAICompatibleSummaryClient: Sendable {
             system: system,
             user: user,
             temperature: 0.3,
-            maxTokens: nil)
+            maxTokens: nil,
+            timeoutInterval: requestTimeout)
         let metadata = DataEgressRequest(
             operation: .summaryGeneration,
             destination: destination,
@@ -182,8 +190,11 @@ struct CompanionDataEgressContext: Sendable {
 /// Companion's OpenAI-compatible adapter. Unlike the general summary client,
 /// it cannot perform transport without the shared egress policy gateway.
 public struct CompanionBYOKClient: Sendable {
+    public static let defaultRequestTimeout: TimeInterval = 60
+
     public let endpoint: URL
     public let model: String
+    public let requestTimeout: TimeInterval
     private let apiKey: String
     private let gateway: any DataEgressGateway
 
@@ -191,12 +202,14 @@ public struct CompanionBYOKClient: Sendable {
         endpoint: URL,
         model: String,
         apiKey: String,
-        gateway: any DataEgressGateway
+        gateway: any DataEgressGateway,
+        requestTimeout: TimeInterval = CompanionBYOKClient.defaultRequestTimeout
     ) {
         self.endpoint = endpoint
         self.model = model
         self.apiKey = apiKey
         self.gateway = gateway
+        self.requestTimeout = max(5, requestTimeout)
     }
 
     public var providerLabel: String { endpoint.host ?? "BYOK" }
@@ -218,7 +231,8 @@ public struct CompanionBYOKClient: Sendable {
             system: system,
             user: user,
             temperature: 0.3,
-            maxTokens: maxTokens)
+            maxTokens: maxTokens,
+            timeoutInterval: requestTimeout)
         let metadata = DataEgressRequest(
             operation: .companionKnowledgeAnswer,
             destination: destination,

@@ -118,7 +118,9 @@ public struct ProcessAudioImports: ApplicationUseCase {
             audioFiles: OwnedImportAudio(copy: copy), preferences: OwnedImportPreferences(value: input.preferences),
             processor: processor, store: OwnedImportStore(store: store, job: job, owner: owner, copy: copy, now: now),
             summaryProviders: summaries, makeMeetingID: { job.meetingID }, now: now)
-        _ = try await useCase.execute(ImportMeetingRequest(sourceURL: copy.fileURL, title: input.title) { phase in
+        _ = try await useCase.execute(ImportMeetingRequest(
+            sourceURL: copy.fileURL, title: input.title, recordedAt: input.sourceModifiedAt
+        ) { phase in
             await request.progress(job.meetingID, phase)
         })
     }

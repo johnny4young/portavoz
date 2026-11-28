@@ -2471,6 +2471,16 @@
         }
       }
     },
+    "Can't play this audio": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se puede reproducir este audio"
+          }
+        }
+      }
+    },
     "Cancel": {
       "localizations": {
         "es": {
@@ -19153,6 +19163,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "tú %d%% · escuchando %d%%"
+          }
+        }
+      }
+    },
+    "1 conflict": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 conflicto"
+          }
+        }
+      }
+    },
+    "%d conflicts": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d conflictos"
+          }
+        }
+      }
+    },
+    "Transcript edits conflict between two Macs on 1 meeting. Review or undo your recent edits to resume syncing it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hay ediciones de transcripción en conflicto entre dos Macs en 1 reunión. Revisa o deshaz tus ediciones recientes para reanudar su sincronización."
+          }
+        }
+      }
+    },
+    "Transcript edits conflict between two Macs on %d meetings. Review or undo your recent edits to resume syncing them.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hay ediciones de transcripción en conflicto entre dos Macs en %d reuniones. Revisa o deshaz tus ediciones recientes para reanudar su sincronización."
           }
         }
       }

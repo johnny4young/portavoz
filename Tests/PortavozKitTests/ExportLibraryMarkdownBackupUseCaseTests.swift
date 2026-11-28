@@ -642,6 +642,135 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
         XCTAssertEqual(removedIDs.count, 1)
         XCTAssertEqual(destinationAccess.acquireCount, 1)
     }
+
+    func testCancellationMidRunRetriesTheReservedNameWhenNothingLanded() async throws {
+        let (names, published) = try await exportAfterCancelledPublish(landed: false)
+        XCTAssertEqual(names, ["Alpha.md"])
+        XCTAssertEqual(published, ["Alpha.md", "Alpha.md"])
+    }
+
+    func testCancellationMidRunRecordsTheReservedNameWhenTheFileLanded() async throws {
+        let (names, published) = try await exportAfterCancelledPublish(landed: true)
+        XCTAssertEqual(names, ["Alpha.md"])
+        XCTAssertEqual(published, ["Alpha.md"], "a landed file must not be published again under a sibling name")
+    }
+
+    private func exportAfterCancelledPublish(
+        landed: Bool
+    ) async throws -> (exported: [String], published: [String]) {
+        let cancellingFiles = BackupCancellingPublishFiles(landsBeforeCancelling: landed)
+        let useCase = ExportLibraryMarkdownBackup(
+            store: BackupStoreFake(contents: [backupContent(title: "Alpha")]),
+            documents: BackupDocumentsFake(),
+            files: cancellingFiles,
+            destinationAccess: BackupDestinationAccessFake(),
+            recoveryStore: BackupRecoveryStoreFake())
+        let request = ExportLibraryMarkdownBackupRequest(
+            directory: URL(fileURLWithPath: "/backup", isDirectory: true))
+
+        await XCTAssertThrowsErrorAsync(try await useCase.execute(request)) { error in
+            XCTAssertTrue(error is CancellationError)
+        }
+        let hasPending = await useCase.hasPendingRun()
+        XCTAssertTrue(hasPending)
+
+        let result = try completedResult(from: try await useCase.execute(request))
+        return (result.exportedFileNames, await cancellingFiles.publishedNames)
+    }
+
+    func testNameCollisionRefreshesExistingNamesToSkipSubsequentCollisionsInMemory() async throws {
+        let recoveryStore = BackupRecoveryStoreFake()
+        let files = BackupDynamicCollisionFiles(
+            collidingNamesOnFirstRefresh: [
+                "Meeting.md", "Meeting 2.md", "Meeting 3.md", "Meeting 4.md", "Meeting 5.md"
+            ])
+        let useCase = ExportLibraryMarkdownBackup(
+            store: BackupStoreFake(contents: [backupContent(title: "Meeting")]),
+            documents: BackupDocumentsFake(),
+            files: files,
+            destinationAccess: BackupDestinationAccessFake(),
+            recoveryStore: recoveryStore)
+        let request = ExportLibraryMarkdownBackupRequest(
+            directory: URL(fileURLWithPath: "/backup", isDirectory: true))
+
+        let result = try completedResult(from: try await useCase.execute(request))
+
+        let published = await files.publishedNames
+        let reservedCount = await recoveryStore.reserveCount
+        XCTAssertEqual(result.exportedFileNames, ["Meeting 6.md"])
+        XCTAssertEqual(published, ["Meeting.md", "Meeting 6.md"])
+        XCTAssertEqual(reservedCount, 2, "refreshing directory names must avoid one journal reservation per collision")
+    }
+}
+
+private actor BackupCancellingPublishFiles: LibraryMarkdownBackupFiles {
+    private let landsBeforeCancelling: Bool
+    private var cancelledOnce = false
+    private var landedNames: Set<String> = []
+    private(set) var publishedNames: [String] = []
+
+    init(landsBeforeCancelling: Bool) {
+        self.landsBeforeCancelling = landsBeforeCancelling
+    }
+
+    func existingMarkdownFileNames(in directory: URL) async throws -> Set<String> { [] }
+
+    func publishMarkdownDocument(
+        _ data: Data,
+        named fileName: String,
+        in directory: URL
+    ) async throws -> LibraryMarkdownBackupPublication {
+        publishedNames.append(fileName)
+        if !cancelledOnce {
+            cancelledOnce = true
+            if landsBeforeCancelling { landedNames.insert(fileName) }
+            throw CancellationError()
+        }
+        if landedNames.contains(fileName) { return .nameCollision }
+        landedNames.insert(fileName)
+        return .published
+    }
+
+    func evidence(
+        for publication: LibraryMarkdownBackupRecoveryPublication,
+        in directory: URL
+    ) -> BackupPublicationEvidence {
+        landedNames.contains(publication.fileName) ? .matching : .missing
+    }
+}
+
+private actor BackupDynamicCollisionFiles: LibraryMarkdownBackupFiles {
+    private let collidingNames: Set<String>
+    private var sawCollision = false
+    private(set) var publishedNames: [String] = []
+
+    init(collidingNamesOnFirstRefresh: Set<String>) {
+        self.collidingNames = collidingNamesOnFirstRefresh
+    }
+
+    func existingMarkdownFileNames(in directory: URL) async throws -> Set<String> {
+        sawCollision ? collidingNames : []
+    }
+
+    func publishMarkdownDocument(
+        _ data: Data,
+        named fileName: String,
+        in directory: URL
+    ) async throws -> LibraryMarkdownBackupPublication {
+        publishedNames.append(fileName)
+        if collidingNames.contains(fileName) {
+            sawCollision = true
+            return .nameCollision
+        }
+        return .published
+    }
+
+    func evidence(
+        for publication: LibraryMarkdownBackupRecoveryPublication,
+        in directory: URL
+    ) -> BackupPublicationEvidence {
+        publishedNames.contains(publication.fileName) ? .matching : .missing
+    }
 }
 
 private func backupContent(title: String) -> LibraryMarkdownBackupContent {
@@ -785,6 +914,7 @@ private actor BackupRecoveryStoreFake:
     private var states: [UUID: LibraryMarkdownBackupRecoveryState] = [:]
     private(set) var savedStates: [LibraryMarkdownBackupRecoveryState] = []
     private(set) var removedOperationIDs: [UUID] = []
+    private(set) var reserveCount = 0
 
     init(
         failingSaveCalls: Set<Int> = [],
@@ -816,6 +946,7 @@ private actor BackupRecoveryStoreFake:
             state = try currentState(operationID: operationID)
             state.destinationBookmark = bookmark
         case .reserve(let publication):
+            reserveCount += 1
             state = try currentState(operationID: operationID)
             state.pendingPublication = publication
         case .complete(let publication):

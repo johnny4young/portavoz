@@ -92,6 +92,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 27, 2026
 
+- **🔧 Reliable long summaries, imports, playback and sync** — Ollama chunks long transcripts and waits longer instead of overflowing its context; Skip silence plus Only my voice jump in one hop, and the player says when it can't play a file; imports are dated by when the recording happened and skip empty summaries; Settings calls out iCloud transcript-edit conflicts without a retry that can't fix them.
 - **📍 Your meeting in the menu bar** — while you record, the menu bar shows the elapsed time and its panel opens on the live meeting: the clock, a strip of who spoke when and "You speaking · then S1, S2"; the floating mini panel names who is speaking too and adds a Note button, and Recent rows carry their own voice strips.
 - **🧭 A calm live stage** — while you record, a strip shows who spoke when up to a red "now" edge, with your notes and the questions asked of you marked on it; captions fade as they age under the line being said, and Apuntador, Objectives and Notes sit beside the voices with a note field that always shows the time it will stamp.
 - **🛡️ Resilient capture and lighter Refine on long meetings** — microphone and app-audio recovery now bound retries instead of stalling silently, per-app capture never widens to all Mac audio when a meeting app restarts, long recordings use far less memory during Refine and speaker diarization, shared models stay locked while in use, and long user notes no longer overflow Apple Intelligence summaries.

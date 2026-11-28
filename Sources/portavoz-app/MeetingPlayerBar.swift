@@ -95,19 +95,31 @@ struct MeetingPlayerBar: View {
         }
     }
 
+    @ViewBuilder
     private var playButton: some View {
-        Button {
-            player.togglePlayPause()
-        } label: {
-            Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+        if player.hasPlaybackFailed {
+            Image(systemName: "exclamationmark.circle.fill")
                 .symbolRenderingMode(.palette)
-                .foregroundStyle(PVDesign.onInk, PVDesign.ink)
+                .foregroundStyle(PVDesign.onInk, PVDesign.ink3)
                 .font(.system(size: 34))
+                .help("Can't play this audio")
+                .accessibilityElement()
+                .accessibilityLabel(L10n.text("Can't play this audio"))
+                .accessibilityIdentifier("player-playback-failed")
+        } else {
+            Button {
+                player.togglePlayPause()
+            } label: {
+                Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(PVDesign.onInk, PVDesign.ink)
+                    .font(.system(size: 34))
+            }
+            .buttonStyle(.plain)
+            .help(player.isPlaying ? "Pause" : "Play")
+            .accessibilityLabel(L10n.text(player.isPlaying ? "Pause" : "Play"))
+            .accessibilityIdentifier("player-play-pause")
         }
-        .buttonStyle(.plain)
-        .help(player.isPlaying ? "Pause" : "Play")
-        .accessibilityLabel(L10n.text(player.isPlaying ? "Pause" : "Play"))
-        .accessibilityIdentifier("player-play-pause")
     }
 
     private func skipButton(seconds: TimeInterval, symbol: String, identifier: String) -> some View {

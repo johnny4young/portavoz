@@ -114,15 +114,18 @@ extension MeetingStore: ImportMeetingStore {
 public struct ImportMeetingRequest: Sendable {
     public let sourceURL: URL
     public let title: String
+    public let recordedAt: Date?
     public let progress: ImportMeetingProgressHandler
 
     public init(
         sourceURL: URL,
         title: String,
+        recordedAt: Date? = nil,
         progress: @escaping ImportMeetingProgressHandler = { _ in }
     ) {
         self.sourceURL = sourceURL
         self.title = title
+        self.recordedAt = recordedAt
         self.progress = progress
     }
 }
@@ -179,7 +182,13 @@ public struct ImportMeeting: ApplicationUseCase {
                     audio: audio,
                     preferences: sampledPreferences,
                     progress: request.progress)
-                let startedAt = now()
+                // A file's modification date marks when its recording ended.
+                let startedAt: Date = if let recordedAt = request.recordedAt,
+                    recordedAt.timeIntervalSince1970.isFinite {
+                    recordedAt.addingTimeInterval(-content.audioDuration)
+                } else {
+                    now()
+                }
                 let meeting = Meeting(
                     id: meetingID,
                     title: request.title,
@@ -192,12 +201,15 @@ public struct ImportMeeting: ApplicationUseCase {
                     speakers: content.speakers,
                     segments: content.segments)
                 aggregateCommitted = true
-                await saveSummaryIfPossible(
-                    meetingID: meetingID,
-                    sourceTranscriptRevision: installedRevision,
-                    content: content,
-                    preferences: sampledPreferences,
-                    progress: request.progress)
+                if content.audioDuration > 0,
+                   !TranscriptContentPolicy.retainLexicalSegments(content.segments).isEmpty {
+                    await saveSummaryIfPossible(
+                        meetingID: meetingID,
+                        sourceTranscriptRevision: installedRevision,
+                        content: content,
+                        preferences: sampledPreferences,
+                        progress: request.progress)
+                }
                 await processor.scheduleIdleRelease()
                 return meetingID
             } catch {
@@ -293,16 +305,23 @@ public struct ImportMeeting: ApplicationUseCase {
                     draft: draft,
                     at: now()))
         } catch {
-            let outcome: GenerationRunOutcome = error is CancellationError
+            let outcome: GenerationRunOutcome = (error is CancellationError || Task.isCancelled)
                 ? .cancelled
                 : .failed
-            // Provenance remains best effort so summary diagnostics cannot
-            // change the released best-effort import result.
-            try? await store.saveImportedSummaryRun(
-                attempt.finish(
-                    outcome: outcome,
-                    draft: generatedDraft,
-                    at: now()))
+            let run = attempt.finish(
+                outcome: outcome,
+                draft: generatedDraft,
+                at: now())
+            // Provenance remains best effort; detach cancellation writes so GRDB
+            // does not abort persisting `.cancelled` under a cancelled parent task.
+            if outcome == .cancelled {
+                let store = self.store
+                await Task.detached(priority: .utility) {
+                    try? await store.saveImportedSummaryRun(run)
+                }.value
+            } else {
+                try? await store.saveImportedSummaryRun(run)
+            }
         }
     }
 }

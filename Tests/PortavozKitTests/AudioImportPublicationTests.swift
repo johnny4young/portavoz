@@ -27,6 +27,9 @@ final class AudioImportPublicationTests: XCTestCase {
         XCTAssertEqual(detail?.meeting.title, "Edited — editado")
         XCTAssertEqual(detail?.meeting.lifecycleState, .ready)
         XCTAssertEqual(detail?.meeting.audioDirectory, fixture.directory)
+        XCTAssertEqual(detail?.meeting.endedAt, fixture.request.sourceModifiedAt)
+        XCTAssertEqual(detail?.meeting.startedAt, fixture.request.sourceModifiedAt.addingTimeInterval(-1),
+                       "the source modification date marks the end of the recording")
         XCTAssertEqual(detail?.segments.map(\.text), ["Don’t send 2 — no envíes 2"])
         do {
             _ = try await fixture.complete()

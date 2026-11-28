@@ -180,11 +180,13 @@ public actor CloudMeetingSyncLifecycle {
         let delegateFailure = await delegate.lastFailure()
         let retrying = snapshot.attempts.filter { $0.phase == .retryWaiting }
         let blocked = snapshot.attempts.filter { $0.phase == .blocked }
+        let conflicts = snapshot.deferredReplays.filter(\.blocksOutgoing).count
         let progress = CloudMeetingSyncProgress(
             pendingLocalChanges: journal.pendingCount,
             queuedTransfers: snapshot.attempts.count,
             retryingTransfers: retrying.count,
-            failedTransfers: blocked.count)
+            failedTransfers: blocked.count,
+            conflictCount: conflicts)
         let failure = journalFailure ?? lifecycleFailure
         let enabled = snapshot.consentedAccountFingerprint != nil
         let phase = Self.phase(
@@ -315,7 +317,8 @@ private extension CloudMeetingSyncLifecycle {
         guard snapshot.accountStatus == .available,
               snapshot.currentAccountFingerprint == snapshot.consentedAccountFingerprint
         else { return .paused }
-        if lifecycleFailure != nil || delegateFailed || progress.failedTransfers > 0 {
+        if lifecycleFailure != nil || delegateFailed
+            || progress.failedTransfers > 0 || progress.conflictCount > 0 {
             return .failed
         }
         if progress.retryingTransfers > 0 { return .retrying }
