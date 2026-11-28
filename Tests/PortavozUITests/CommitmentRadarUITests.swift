@@ -50,7 +50,7 @@ final class CommitmentRadarUITests: PortavozUITestCase {
             withIdentifier: "commitment-review-open-\(reviewID)")
         XCTAssertTrue(
             open.waitForExistenceFast(timeout: 5),
-            "a suggestion must offer complete evidence review, not confirmation")
+            "a suggestion must still offer the complete source meeting")
         attachScreenshot(of: app, named: "commitment-review-queue")
 
         open.click()
@@ -282,8 +282,142 @@ final class CommitmentRadarUITests: PortavozUITestCase {
             [
                 "Advisory only — no threshold or automation uses these numbers.",
                 "Solo orientativo: ningún umbral ni automatización usa estas cifras.",
-            ].contains(advisoryNotice.label),
-            "quality advisory must stay exact and visible in the active locale")
+            ].contains(renderedText(of: advisoryNotice)),
+            "quality advisory must stay exact and visible in the active locale, got \(renderedText(of: advisoryNotice))")
         attachScreenshot(of: app, named: "commitment-field-quality")
+    }
+
+    @MainActor
+    func testSuggestionSaysWhoSaidItAndConfirmsWithoutLeavingRadar() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true, seedCommitmentRadar: true)
+        app.launchArguments += ["-seed-radar-due-board", "-seed-light-appearance", "-seed-wide-window"]
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        openReview(in: app)
+        let id = Self.reviewID
+        // A combined element and its text can both carry the identifier.
+        let speaker = app.control(withIdentifier: "commitment-review-speaker-\(id)").firstMatch
+        XCTAssertTrue(speaker.waitForExistenceFast(timeout: 10), "a suggestion leads with who said it")
+        XCTAssertTrue(renderedText(of: speaker).contains("said it"), renderedText(of: speaker))
+        let owner = app.control(withIdentifier: "commitment-review-owner-\(id)").firstMatch
+        XCTAssertTrue(renderedText(of: owner).contains("Ana?"), renderedText(of: owner))
+        let meeting = app.control(withIdentifier: "commitment-review-meeting-\(id)").firstMatch
+        XCTAssertTrue(renderedText(of: meeting).contains("Test meeting"), renderedText(of: meeting))
+        XCTAssertTrue(app.control(withIdentifier: "commitment-review-strip-\(id)").exists)
+        XCTAssertTrue(app.control(withIdentifier: "commitment-review-\(id)-evidence-0").exists)
+        XCTAssertTrue(app.control(withIdentifier: "commitment-review-open-\(id)").exists)
+        XCTAssertTrue(app.control(withIdentifier: "commitment-review-defer-\(id)").exists)
+        XCTAssertTrue(app.control(withIdentifier: "commitment-review-dismiss-\(id)").exists)
+        attachScreenshot(of: app, named: "pr-radar-suggestions")
+
+        app.control(withIdentifier: "commitment-review-confirm-\(id)").click()
+        let editor = app.control(withIdentifier: "commitment-editor")
+        XCTAssertTrue(editor.waitForExistenceFast(timeout: 5), "Confirm reuses Meeting Detail's editor")
+        attachScreenshot(of: app, named: "pr-radar-suggestion-confirm")
+        app.control(withIdentifier: "commitment-editor-confirm").click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "commitment-review-empty").waitForExistenceFast(timeout: 10),
+            "a confirmed suggestion leaves the review list")
+
+        app.control(withIdentifier: "commitment-radar-mode-confirmed").click()
+        XCTAssertTrue(
+            app.staticTexts["Send the launch checklist"].waitForExistenceFast(timeout: 10),
+            "and is tracked with the confirmed commitments")
+    }
+
+    @MainActor
+    func testNarrowDarkSuggestionKeepsEveryDecisionWhole() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true, seedCommitmentRadar: true)
+        app.launchArguments += ["-seed-radar-due-board", "-seed-narrow-window"]
+            + XCUIApplication.appearanceArguments(dark: true)
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        openReview(in: app)
+        let id = Self.reviewID
+        let buttons = ["confirm", "open", "defer", "dismiss"].map {
+            app.control(withIdentifier: "commitment-review-\($0)-\(id)")
+        }
+        XCTAssertTrue(buttons[0].waitForStableFrame(timeout: 10))
+        let window = app.windows.firstMatch.frame
+        for (left, right) in zip(buttons, buttons.dropFirst()) {
+            XCTAssertTrue(
+                left.frame.maxX <= right.frame.minX || left.frame.maxY <= right.frame.minY,
+                "\(left.identifier) and \(right.identifier) must not overlap")
+        }
+        for button in buttons {
+            XCTAssertLessThanOrEqual(button.frame.maxX, window.maxX, "\(button.identifier) must fit the window")
+        }
+        let strip = app.control(withIdentifier: "commitment-review-strip-\(id)")
+        XCTAssertGreaterThan(strip.frame.width, 90, "the strip keeps a readable width")
+        let columns = ["overdue", "today", "next-week"].map {
+            app.control(withIdentifier: "commitment-due-column-\($0)")
+        }
+        for (left, right) in zip(columns, columns.dropFirst()) {
+            XCTAssertTrue(
+                left.frame.maxX <= right.frame.minX || left.frame.maxY <= right.frame.minY,
+                "\(left.identifier) and \(right.identifier) must not overlap")
+        }
+        for column in columns {
+            XCTAssertGreaterThanOrEqual(column.frame.width, 110, "\(column.identifier) keeps chips readable")
+            XCTAssertLessThanOrEqual(column.frame.maxX, window.maxX, "\(column.identifier) must fit the window")
+        }
+        attachScreenshot(of: app, named: "pr-radar-suggestions-narrow-dark")
+    }
+
+    /// Solid chips are confirmed work by due date, dashed ones suggestions put off to a day.
+    @MainActor
+    func testDueBoardPutsWorkUnderItsDayAndAChipOpensIt() throws {
+        let app = try XCUIApplication.portavoz(seedDemo: true, seedCommitmentRadar: true)
+        app.launchArguments += ["-seed-radar-due-board", "-seed-light-appearance"]
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        openReview(in: app)
+        let overdue = app.control(withIdentifier: "commitment-due-column-overdue")
+        XCTAssertTrue(overdue.waitForStableFrame(timeout: 10), "To review leads with the board")
+        let today = app.control(withIdentifier: "commitment-due-column-today")
+        let late = app.control(withIdentifier: "commitment-due-chip-\(Self.overdueCommitmentID)")
+        let dueToday = app.control(withIdentifier: "commitment-due-chip-\(Self.dueTodayCommitmentID)")
+        let putOff = app.control(withIdentifier: "commitment-due-chip-\(Self.putOffSuggestionID)")
+        XCTAssertTrue(overdue.frame.contains(late.frame), "work past its date sits under Overdue")
+        XCTAssertTrue(today.frame.contains(dueToday.frame), "work due today sits under Today")
+        XCTAssertTrue(putOff.exists, "a suggestion put off to a day is on the board")
+        XCTAssertEqual(dueToday.value as? String, "Confirmed")
+        XCTAssertEqual(putOff.value as? String, "Suggested")
+        XCTAssertFalse(
+            app.control(withIdentifier: "commitment-review-item-\(Self.putOffSuggestionID)").exists,
+            "a put-off suggestion waits on the board, not in the list")
+        attachScreenshot(of: app, named: "pr-radar-due-board")
+
+        dueToday.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "commitment-radar-item-\(Self.dueTodayCommitmentID)")
+                .waitForExistenceFast(timeout: 10),
+            "a chip opens its commitment")
+        XCTAssertFalse(
+            app.control(withIdentifier: "commitment-radar-item-\(Self.overdueCommitmentID)").exists,
+            "Radar focuses the one commitment")
+        XCTAssertTrue(app.control(withIdentifier: "commitment-radar-due-\(Self.dueTodayCommitmentID)").exists)
+    }
+
+    private static let reviewID = "B5E00000-0000-4000-8000-000000000002"
+    private static let putOffSuggestionID = "B5E00000-0000-4000-8000-000000000005"
+    private static let overdueCommitmentID = "B5D10000-0000-4000-8000-000000000002"
+    private static let dueTodayCommitmentID = "B5D50000-0000-4000-8000-000000000001"
+
+    @MainActor
+    private func openReview(in app: XCUIApplication) {
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        let radar = app.buttons["library-commitment-radar-button"]
+        XCTAssertTrue(radar.waitForExistenceFast(timeout: 10))
+        radar.click()
+        let reviewMode = app.control(withIdentifier: "commitment-radar-mode-review")
+        XCTAssertTrue(reviewMode.waitForExistenceFast(timeout: 10))
+        reviewMode.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "commitment-review-confirm-\(Self.reviewID)")
+                .waitForExistenceFast(timeout: 10))
     }
 }

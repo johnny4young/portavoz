@@ -93,6 +93,9 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     "commitment-radar": (
         test_id("CommitmentRadarUITests", "testReminderAlertOpensCommitmentRadar"),
         test_id("CommitmentRadarUITests", "testReviewThenConfirmedWorkKeepTheirFiltersAndOpenExactSources"),
+        test_id("CommitmentRadarUITests", "testSuggestionSaysWhoSaidItAndConfirmsWithoutLeavingRadar"),
+        test_id("CommitmentRadarUITests", "testNarrowDarkSuggestionKeepsEveryDecisionWhole"),
+        test_id("CommitmentRadarUITests", "testDueBoardPutsWorkUnderItsDayAndAChipOpensIt"),
     ),
     "main-shell": (
         test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),

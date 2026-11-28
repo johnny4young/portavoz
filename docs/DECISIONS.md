@@ -23823,3 +23823,74 @@ the next question sit together.
 - The Library boundary line shows until the first Library answer, whose
   "answered on your Mac" receipt then says the same; Meeting, Notes and Web
   keep their boundary and controls above the composer.
+
+## D679 — Confirm suggestions from Radar's To review list
+
+D266 kept confirmation in Meeting Detail so a bounded evidence preview could
+not become commitment truth. The storage transaction behind confirmation
+already re-validates the complete evidence-linked source, so the detour added
+a step without adding proof. Radar's To review rows now confirm directly.
+
+- **Confirm** opens the same `MeetingCommitmentConfirmationSheet` Meeting
+  Detail uses, prefilled with the suggestion's wording and suggested owner, and
+  writes through `ManageMeetingCommitmentInbox.confirm` with the same search,
+  memory-graph and reminder follow-ups. It is disabled unless the source
+  evidence is current, the rule Meeting Detail applies.
+- Owner choices are the suggested owner plus the people linked to the meeting's
+  voices on its strip; no extra Meeting Detail read happens per row.
+- Each row says who said it from the first attributed evidence line, using the
+  corrected transcript Ask's evidence rows read (`MeetingVoiceAttributionReading`,
+  which `AskEvidenceReading` now refines, and the same split-part rule).
+  Voices load after the page; a fresh load re-reads every row so renamed or
+  relinked voices show, while the reload after a decision reads only rows not
+  yet read, after the decision buttons are free again. A failed read keeps the
+  previous ones. Rows are built in the model when the page or voices change.
+- Every previewed moment is a mark on the strip; at most three time codes are
+  listed and "+N" counts the rest, so the preview stays explicit about what it
+  leaves out.
+- The "New after meeting" / "Ready to review" badge, the "Only the newest
+  suggestions are shown" line and the To review header description go: the
+  queue order already puts due deferrals first, "Showing N of M suggestions"
+  appears only when the page is cut, and the section heading names the list.
+- With no suggested owner the chip is left out rather than saying "unassigned".
+- The board's "N waiting" beside the heading is left out: the To review tab
+  already carries the count. Time codes keep the shared mono time-code role.
+- The editor keeps Meeting Detail's wording line and preselects the suggested
+  owner, as it does there; the owner stays editable before anything is saved.
+- Names are ink beside their dot and the owner chip rides the green suggestion
+  tint (D643); the task is the upright serif of the board, not italics.
+
+## D680 — Radar's To review leads with commitments by due date
+
+Radar answered "what is due when" only through filters over a flat list.
+To review now opens on columns by due date above the suggestions list, and the
+Confirmed / To review / Quality tabs move to the title bar as in Ask (D678).
+
+- Columns are Overdue, Today, one per later day of this calendar week that
+  has work, Next week, and Later only when it has work. Overdue, Today and
+  Next week always show, so the board keeps its shape; the week follows the
+  calendar's first weekday.
+- Solid chips are open confirmed commitments with a due date. Generated
+  suggestions carry no due date, so a dashed chip is a suggestion put off with
+  Review later, on the day it comes back for review; suggestions waiting now
+  stay only in the list below, so nothing shows twice on the page.
+- A confirmed chip opens Radar focused on that commitment, where Due date,
+  Done and Restore already live; a suggestion chip opens its meeting at the
+  first current evidence line, like Review in meeting. Confirmed keeps its
+  filters, grouping and list unchanged.
+- Confirmed work comes from two bounded reads, the existing `.overdue` filter
+  and a new `.dueFromToday` one, so neither undated work nor a long overdue
+  backlog can push today's work past the bound; Overdue's count uses the read's
+  total, so it stays exact when the chips are cut. The put-off read
+  runs the review queue query with `deferredAfter`, which selects only
+  deferrals not yet due in SQL. Both are bounded, read-only and add no storage.
+- The board loads after the review page, beside the rows' voices, and again
+  after every review decision, so a deferral that came due leaves it, and when
+  the calendar day turns; a failed read keeps the last board and never holds
+  the list.
+- Today's column sits on the present's red well with its title in red: the
+  board marks today as the present. Owner names stay ink beside their dot
+  (D643); owners take hues by how much work they hold on the board.
+- Each column shows at most six chips and "+N more"; the count beside the
+  title stays exact. The legend under the board names both chip styles; the
+  board's "by due date" beside the title is left out (no secondary labels).

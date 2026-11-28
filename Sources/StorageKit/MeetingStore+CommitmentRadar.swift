@@ -183,6 +183,8 @@ private extension MeetingStore {
                 + "AND c.dueAt < :dayStart"
         case .noDate:
             "c.status = 'confirmed' AND c.dueAt IS NULL"
+        case .dueFromToday:
+            "c.status = 'confirmed' AND c.dueAt >= :dayStart"
         }
     }
 

@@ -135,6 +135,7 @@ struct ContentView: View {
                         focus: focus,
                         suggestionsToReview: libraryModel.state.suggestionsToReview,
                         onClearFocus: { route = .commitments(nil) },
+                        onOpenCommitment: { route = .commitments(.commitment($0)) },
                         onOpenMeeting: openMeeting)
                 case .library, nil:
                     HomeView(

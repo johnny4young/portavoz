@@ -31,10 +31,39 @@ extension AppServices: CommitmentRadarModelClient {
         try await LoadCommitmentReviewQueue(repository: store).execute(request)
     }
 
+    func loadCommitmentDueBoardWork() async throws -> CommitmentDueBoard.Work {
+        let radar = LoadCommitmentRadar(repository: store)
+        func dated(_ due: CommitmentRadarDueFilter) async throws -> CommitmentRadarPage {
+            try await radar.execute(LoadCommitmentRadarRequest(
+                due: due,
+                itemLimit: CommitmentRadarQuery.maximumItemCount,
+                sourceLimitPerItem: 1,
+                historyLimitPerItem: 1))
+        }
+        return try await CommitmentDueBoard.Work(
+            overdue: dated(.overdue),
+            fromToday: dated(.dueFromToday),
+            putOff: LoadUpcomingCommitmentReviews(repository: store).execute())
+    }
+
     func reviewMeetingCommitment(
         _ request: ReviewMeetingCommitmentRequest
     ) async throws {
         _ = try await makeCommitmentInboxManager().execute(.review(request))
+    }
+
+    func confirmReviewedCommitment(
+        _ request: ConfirmMeetingCommitmentRequest
+    ) async throws {
+        _ = try await confirmMeetingDetailCommitment(request)
+        // Also wakes the memory graph.
+        requestSearchReconciliation()
+    }
+
+    func loadCommitmentReviewVoices(
+        _ items: [CommitmentReviewQueueItem]
+    ) async throws -> CommitmentReviewVoices {
+        try await LoadCommitmentReviewVoices(reader: store)(items)
     }
 
     func recordCommitmentFieldPresentation(

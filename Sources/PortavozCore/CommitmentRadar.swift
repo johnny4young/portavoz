@@ -13,6 +13,8 @@ public enum CommitmentRadarDueFilter: Sendable, Equatable {
     case dueSoon
     case overdue
     case noDate
+    /// Open commitments due today or later, earliest first.
+    case dueFromToday
 }
 
 public enum CommitmentRadarActivity: String, Sendable, Equatable, CaseIterable {

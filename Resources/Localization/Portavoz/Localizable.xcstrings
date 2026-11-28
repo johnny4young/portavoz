@@ -351,6 +351,16 @@
         }
       }
     },
+    "+%d more": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%d más"
+          }
+        }
+      }
+    },
     "1 meeting exported.": {
       "localizations": {
         "es": {
@@ -511,6 +521,16 @@
         }
       }
     },
+    "Commitments": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compromisos"
+          }
+        }
+      }
+    },
     "Commitments, decisions and your notes sit beside the line that produced them.": {
       "localizations": {
         "es": {
@@ -597,6 +617,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Objetivo"
+          }
+        }
+      }
+    },
+    "Open the commitment": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir el compromiso"
+          }
+        }
+      }
+    },
+    "confirmed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "confirmado"
           }
         }
       }
@@ -3041,16 +3081,6 @@
         }
       }
     },
-    "Commitment Radar": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Radar de compromisos"
-          }
-        }
-      }
-    },
     "Commitment reminder": {
       "localizations": {
         "es": {
@@ -3157,16 +3187,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Confirmar"
-          }
-        }
-      }
-    },
-    "Confirm an action item in Meeting Detail to track it here.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Confirma un pendiente en el detalle de la reunión para seguirlo aquí."
           }
         }
       }
@@ -6009,16 +6029,6 @@
         }
       }
     },
-    "Generated suggestions waiting for your decision.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sugerencias generadas que esperan tu decisión."
-          }
-        }
-      }
-    },
     "Generating summary…": {
       "localizations": {
         "es": {
@@ -7989,16 +7999,6 @@
         }
       }
     },
-    "New after meeting": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nueva después de la reunión"
-          }
-        }
-      }
-    },
     "New recording": {
       "localizations": {
         "es": {
@@ -8955,16 +8955,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Solo mi voz"
-          }
-        }
-      }
-    },
-    "Only the newest suggestions are shown.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Solo se muestran las sugerencias más recientes."
           }
         }
       }
@@ -10615,16 +10605,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Léelo, edita lo que quieras y luego elige a dónde va."
-          }
-        }
-      }
-    },
-    "Ready to review": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lista para revisar"
           }
         }
       }
@@ -13687,6 +13667,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Motor de resúmenes"
+          }
+        }
+      }
+    },
+    "suggested, waiting for you": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sugerido, te espera"
           }
         }
       }
@@ -18767,16 +18757,6 @@
         }
       }
     },
-    "Review quality": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Calidad de revisión"
-          }
-        }
-      }
-    },
     "Confirmed · %d": {
       "localizations": {
         "es": {
@@ -19403,6 +19383,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Haz otra pregunta…"
+          }
+        }
+      }
+    },
+    "Owner: %@?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Responsable: %@?"
+          }
+        }
+      }
+    },
+    "Later": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Más tarde"
+          }
+        }
+      }
+    },
+    "Confirm a suggestion in To review to track it here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirma una sugerencia en Por revisar para seguirla aquí."
           }
         }
       }

@@ -223,6 +223,131 @@ final class CommitmentRadarModelTests: XCTestCase {
         XCTAssertTrue(client.mutations.isEmpty)
     }
 
+    func testConfirmFromReviewUsesTheConfirmationBoundaryAndReloadsTheQueue() async throws {
+        let review = Self.reviewPage(title: "Send the launch checklist")
+        let item = try XCTUnwrap(review.items.first)
+        let personID = PersonID()
+        let voices = CommitmentReviewVoices(
+            items: [item.id: .init(voice: nil, moments: [0.005])], strips: [])
+        let client = CommitmentRadarModelClientFake(
+            responses: [],
+            mutationResponses: [],
+            reviewResponses: [
+                .success(review),
+                .success(CommitmentReviewQueuePage(items: [], totalCount: 0)),
+            ])
+        client.voicesResponses = [.success(voices), .failure(.unavailable)]
+        client.confirmResponses = [.success(())]
+        let model = CommitmentRadarModel(client: client)
+
+        await model.send(.modeChanged(.review))
+        XCTAssertEqual(model.state.reviewVoices, voices, "voices land after the page")
+        let dueAt = Date(timeIntervalSince1970: 1_900_000_000)
+        let confirmed = await model.confirmReview(
+            item, title: "Send the checklist", assignee: .person(personID), dueAt: dueAt)
+
+        XCTAssertTrue(confirmed)
+        XCTAssertEqual(client.confirmations, [ConfirmMeetingCommitmentRequest(
+            meetingID: item.meetingID,
+            actionItemID: item.id,
+            title: "Send the checklist",
+            assignee: .person(personID),
+            dueAt: dueAt)])
+        XCTAssertEqual(
+            client.events,
+            ["load-review", "load-voices", "record-presentation", "confirm", "load-review"],
+            "an empty page reads no voices")
+        XCTAssertEqual(model.state.reviewPhase, .empty)
+        XCTAssertNil(model.state.reviewingActionItemID)
+        XCTAssertTrue(client.reviewMutations.isEmpty)
+    }
+
+    func testReloadAfterAMutationReadsVoicesOnlyForUnreadRows() async throws {
+        let first = try XCTUnwrap(Self.reviewPage(title: "Send the checklist").items.first)
+        let second = try XCTUnwrap(Self.reviewPage(title: "Book the room").items.first)
+        let client = CommitmentRadarModelClientFake(
+            responses: [],
+            mutationResponses: [],
+            reviewResponses: [
+                .success(CommitmentReviewQueuePage(items: [first, second], totalCount: 2)),
+                .success(CommitmentReviewQueuePage(items: [second], totalCount: 1))
+            ],
+            reviewMutationResponses: [.success(())])
+        client.voicesResponses = [.success(CommitmentReviewVoices(
+            items: [first.id: .init(voice: nil, moments: []), second.id: .init(voice: nil, moments: [0.5])],
+            strips: []))]
+        let model = CommitmentRadarModel(client: client)
+
+        await model.send(.modeChanged(.review))
+        await model.send(.dismissReview(meetingID: first.meetingID, actionItemID: first.id))
+
+        XCTAssertEqual(client.voicesRequests, [[first.id, second.id]])
+        XCTAssertEqual(model.state.reviewVoices.items.keys.sorted(), [second.id])
+        XCTAssertEqual(model.state.reviewRows.map(\.id), [second.id])
+        XCTAssertEqual(model.state.reviewRows.first?.moments, [0.5])
+    }
+
+    func testFreshLoadRereadsWhoSaidEachSuggestion() async throws {
+        let review = Self.reviewPage(title: "Send the launch checklist")
+        let item = try XCTUnwrap(review.items.first)
+        let client = CommitmentRadarModelClientFake(
+            responses: [],
+            mutationResponses: [],
+            reviewResponses: [.success(review), .success(review)])
+        client.voicesResponses = [
+            .success(CommitmentReviewVoices(items: [item.id: .init(voice: nil, moments: [0.1])], strips: [])),
+            .success(CommitmentReviewVoices(items: [item.id: .init(voice: nil, moments: [0.2])], strips: []))
+        ]
+        let model = CommitmentRadarModel(client: client)
+
+        await model.send(.modeChanged(.review))
+        await model.send(.load)
+
+        XCTAssertEqual(client.voicesRequests, [[item.id], [item.id]], "a renamed voice shows on the next load")
+        XCTAssertEqual(model.state.reviewRows.first?.moments, [0.2])
+    }
+
+    func testDecisionsAreFreeWhileANewRowsVoicesLoad() async throws {
+        let first = try XCTUnwrap(Self.reviewPage(title: "Send the checklist").items.first)
+        let second = try XCTUnwrap(Self.reviewPage(title: "Book the room").items.first)
+        let client = CommitmentRadarModelClientFake(
+            responses: [],
+            mutationResponses: [],
+            reviewResponses: [
+                .success(CommitmentReviewQueuePage(items: [first], totalCount: 2)),
+                .success(CommitmentReviewQueuePage(items: [second], totalCount: 1))
+            ],
+            reviewMutationResponses: [.success(())])
+        let model = CommitmentRadarModel(client: client)
+        var busyDuringReads: [UUID?] = []
+        client.onLoadVoices = { busyDuringReads.append(model.state.reviewingActionItemID) }
+
+        await model.send(.modeChanged(.review))
+        await model.send(.dismissReview(meetingID: first.meetingID, actionItemID: first.id))
+
+        XCTAssertEqual(client.voicesRequests, [[first.id], [second.id]])
+        XCTAssertEqual(busyDuringReads, [nil, nil])
+    }
+
+    func testFailedConfirmKeepsTheSuggestionAndReportsIt() async throws {
+        let review = Self.reviewPage(title: "Send the launch checklist")
+        let item = try XCTUnwrap(review.items.first)
+        let client = CommitmentRadarModelClientFake(
+            responses: [],
+            mutationResponses: [],
+            reviewResponses: [.success(review)])
+        client.confirmResponses = [.failure(.unavailable)]
+        let model = CommitmentRadarModel(client: client)
+
+        await model.send(.modeChanged(.review))
+        let confirmed = await model.confirmReview(
+            item, title: item.actionItem.text, assignee: .unassigned, dueAt: nil)
+
+        XCTAssertFalse(confirmed, "the editor stays open")
+        XCTAssertTrue(model.state.reviewMutationFailed)
+        XCTAssertEqual(model.state.reviewPage?.items.map(\.id), [item.id])
+    }
+
     func testReviewFailureDoesNotReplaceConfirmedFailureState() async throws {
         let review = Self.reviewPage(title: "Send the launch checklist")
         let client = CommitmentRadarModelClientFake(
@@ -313,6 +438,7 @@ final class CommitmentRadarModelTests: XCTestCase {
 
         XCTAssertEqual(client.events, [
             "load-review",
+            "load-voices",
             "record-presentation",
             "review",
             "load-review",
@@ -350,6 +476,7 @@ final class CommitmentRadarModelTests: XCTestCase {
         XCTAssertEqual(client.presentationRequests.count, 1)
         XCTAssertEqual(client.events, [
             "load-review",
+            "load-voices",
             "record-presentation",
             "review",
             "load-review",
@@ -386,10 +513,64 @@ final class CommitmentRadarModelTests: XCTestCase {
         XCTAssertNotEqual(model.state.qualityPhase, .loaded)
     }
 
+    func testReviewModeBuildsTheDueBoardAndDecisionsRefreshIt() async throws {
+        let calendar = Self.utcCalendar
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let review = Self.reviewPage(title: "Send the launch checklist")
+        let item = try XCTUnwrap(review.items.first)
+        let dated = Self.page(title: "Ship the brief", dueAt: now.addingTimeInterval(-86_400))
+        let client = CommitmentRadarModelClientFake(
+            responses: [.success(Self.page(title: "Send the rollout brief"))],
+            mutationResponses: [],
+            reviewResponses: [.success(review), .success(review), .success(review)],
+            reviewMutationResponses: [.success(()), .success(())])
+        client.dueBoardResponses = [.success(CommitmentDueBoard.Work(overdue: dated)), .failure(.unavailable)]
+        let model = CommitmentRadarModel(client: client, now: { now }, calendar: calendar)
+
+        await model.send(.modeChanged(.review))
+        let overdue = try XCTUnwrap(model.state.dueBoard.lanes.first)
+        XCTAssertEqual(overdue.column, .overdue)
+        XCTAssertEqual(overdue.chips.map(\.task), ["Ship the brief"])
+        XCTAssertEqual(model.state.phase, .idle, "the board never touches the confirmed page")
+
+        await model.send(.deferReview(
+            meetingID: item.meetingID, actionItemID: item.id, revisitAt: now.addingTimeInterval(86_400)))
+        XCTAssertEqual(client.dueBoardReads, 2, "a decision re-reads the board")
+        XCTAssertEqual(model.state.dueBoard.lanes.first?.chips.count, 1, "a failed read keeps the last board")
+
+        await model.send(.dismissReview(meetingID: item.meetingID, actionItemID: item.id))
+        XCTAssertEqual(client.dueBoardReads, 3, "every decision re-reads the board")
+
+        await model.send(.dayChanged)
+        XCTAssertEqual(client.dueBoardReads, 4, "a new day moves the columns")
+        await model.send(.modeChanged(.confirmed))
+        await model.send(.dayChanged)
+        XCTAssertEqual(client.dueBoardReads, 4, "only To review draws the board")
+    }
+
+    func testConfirmedModeNeverReadsTheDueBoard() async {
+        let client = CommitmentRadarModelClientFake(
+            responses: [.success(Self.page(title: "Send the rollout brief"))],
+            mutationResponses: [])
+        let model = CommitmentRadarModel(client: client)
+
+        await model.send(.load)
+
+        XCTAssertEqual(client.dueBoardReads, 0)
+        XCTAssertTrue(model.state.dueBoard.isEmpty)
+    }
+
+    private static var utcCalendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        return calendar
+    }
+
     private static func page(
         title: String,
         status: CommitmentStatus = .confirmed,
-        activity: CommitmentRadarActivity = .new
+        activity: CommitmentRadarActivity = .new,
+        dueAt: Date? = nil
     ) -> CommitmentRadarPage {
         let date = Date(timeIntervalSince1970: 1_800_000_000)
         let item = CommitmentRadarItem(
@@ -397,6 +578,7 @@ final class CommitmentRadarModelTests: XCTestCase {
                 title: title,
                 status: status,
                 assignee: .me,
+                dueAt: dueAt,
                 createdAt: date),
             assigneeDisplayName: nil,
             activity: activity,
@@ -457,6 +639,14 @@ private final class CommitmentRadarModelClientFake: CommitmentRadarModelClient {
     var reviewMutationResponses: [Result<Void, Failure>]
     var qualityResponses: [Result<CommitmentFieldQualityScorecard, Failure>]
     var presentationResponses: [Result<Void, Failure>]
+    var confirmResponses: [Result<Void, Failure>] = []
+    var voicesResponses: [Result<CommitmentReviewVoices, Failure>] = []
+    /// The due board's reads stay off `events`; an empty board when unset.
+    var dueBoardResponses: [Result<CommitmentDueBoard.Work, Failure>] = []
+    var dueBoardReads = 0
+    var confirmations: [ConfirmMeetingCommitmentRequest] = []
+    var voicesRequests: [[UUID]] = []
+    var onLoadVoices: (@MainActor () -> Void)?
     var requests: [LoadCommitmentRadarRequest] = []
     var mutations: [ManageCommitmentRadarRequest] = []
     var reviewRequests: [LoadCommitmentReviewQueueRequest] = []
@@ -510,6 +700,12 @@ private final class CommitmentRadarModelClientFake: CommitmentRadarModelClient {
         return try responses.removeFirst().get()
     }
 
+    func loadCommitmentDueBoardWork() async throws -> CommitmentDueBoard.Work {
+        dueBoardReads += 1
+        guard !dueBoardResponses.isEmpty else { return CommitmentDueBoard.Work() }
+        return try dueBoardResponses.removeFirst().get()
+    }
+
     func mutateCommitmentRadar(
         _ request: ManageCommitmentRadarRequest
     ) async throws {
@@ -535,6 +731,24 @@ private final class CommitmentRadarModelClientFake: CommitmentRadarModelClient {
         reviewMutations.append(request)
         events.append("review")
         return try reviewMutationResponses.removeFirst().get()
+    }
+
+    func confirmReviewedCommitment(
+        _ request: ConfirmMeetingCommitmentRequest
+    ) async throws {
+        confirmations.append(request)
+        events.append("confirm")
+        return try confirmResponses.removeFirst().get()
+    }
+
+    func loadCommitmentReviewVoices(
+        _ items: [CommitmentReviewQueueItem]
+    ) async throws -> CommitmentReviewVoices {
+        voicesRequests.append(items.map(\.id))
+        events.append("load-voices")
+        onLoadVoices?()
+        guard !voicesResponses.isEmpty else { return .empty }
+        return try voicesResponses.removeFirst().get()
     }
 
     func recordCommitmentFieldPresentation(

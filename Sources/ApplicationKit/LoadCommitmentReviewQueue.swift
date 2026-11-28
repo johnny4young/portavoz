@@ -50,3 +50,27 @@ public struct LoadCommitmentReviewQueue: ApplicationUseCase {
             evidenceLimitPerItem: request.evidenceLimitPerItem))
     }
 }
+
+/// Suggestions put off with Review later whose day has not come yet, soonest
+/// first. The queue itself only holds them once their revisit date passes.
+public struct LoadUpcomingCommitmentReviews: ApplicationUseCase {
+    private let repository: any CommitmentReviewQueueReading
+    private let now: @Sendable () -> Date
+
+    public init(
+        repository: any CommitmentReviewQueueReading,
+        now: @escaping @Sendable () -> Date = Date.init
+    ) {
+        self.repository = repository
+        self.now = now
+    }
+
+    public func execute(_ request: Void = ()) async throws -> [CommitmentReviewQueueItem] {
+        let sampled = now()
+        return try await repository.commitmentReviewQueue(CommitmentReviewQueueQuery(
+            reviewAt: sampled,
+            deferredAfter: sampled,
+            itemLimit: CommitmentReviewQueueQuery.maximumItemCount,
+            evidenceLimitPerItem: 1)).items
+    }
+}

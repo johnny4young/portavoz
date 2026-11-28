@@ -2148,10 +2148,11 @@ extension ArchitectureDependencyTests {
         XCTAssertEqual(
             presentOwners,
             [
-                "HomeDayAxis.swift", "HomeNextMeetingHero.swift", "MenuBarIcon.swift", "PVComponents.swift",
-                "RecordingHUD.swift", "RecordingLiveStrip.swift", "RecordingToolbar.swift"
+                "CommitmentDueBoardView.swift", "HomeDayAxis.swift", "HomeNextMeetingHero.swift", "MenuBarIcon.swift",
+                "PVComponents.swift", "RecordingHUD.swift", "RecordingLiveStrip.swift", "RecordingToolbar.swift"
             ],
-            "red marks only the present: Record, Stop, the live dot, the Now label and line, a meeting under way")
+            "red marks only the present: Record, Stop, the live dot, the Now label and line, a meeting under way, "
+                + "Radar's Today column")
     }
 
     func testMotionGoesThroughTheReduceMotionHelper() throws {

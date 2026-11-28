@@ -183,7 +183,6 @@ struct MeetingCommitmentInboxSection: View {
 }
 
 struct MeetingCommitmentConfirmationSheet: View {
-    let candidate: CommitmentInboxCandidate
     let ownerChoices: [CommitmentOwnerSuggestion]
     let cancel: @MainActor () -> Void
     let confirm: @MainActor (String, CommitmentAssignee, Date?) async -> Bool
@@ -200,16 +199,32 @@ struct MeetingCommitmentConfirmationSheet: View {
         cancel: @escaping @MainActor () -> Void,
         confirm: @escaping @MainActor (String, CommitmentAssignee, Date?) async -> Bool
     ) {
-        self.candidate = candidate
+        self.init(
+            text: candidate.actionItem.text,
+            suggestedOwner: candidate.suggestedOwner,
+            suggestedDueAt: candidate.suggestedDueAt,
+            ownerChoices: ownerChoices,
+            cancel: cancel,
+            confirm: confirm)
+    }
+
+    init(
+        text: String,
+        suggestedOwner: CommitmentOwnerSuggestion?,
+        suggestedDueAt: Date? = nil,
+        ownerChoices: [CommitmentOwnerSuggestion],
+        cancel: @escaping @MainActor () -> Void,
+        confirm: @escaping @MainActor (String, CommitmentAssignee, Date?) async -> Bool
+    ) {
         self.ownerChoices = ownerChoices
         self.cancel = cancel
         self.confirm = confirm
-        _title = State(initialValue: candidate.actionItem.text)
-        _assignee = State(initialValue: candidate.suggestedOwner.map {
+        _title = State(initialValue: text)
+        _assignee = State(initialValue: suggestedOwner.map {
             CommitmentAssignee.person($0.personID)
         } ?? .unassigned)
-        _includesDueDate = State(initialValue: candidate.suggestedDueAt != nil)
-        _dueAt = State(initialValue: candidate.suggestedDueAt
+        _includesDueDate = State(initialValue: suggestedDueAt != nil)
+        _dueAt = State(initialValue: suggestedDueAt
             ?? Date().addingTimeInterval(24 * 60 * 60))
     }
 

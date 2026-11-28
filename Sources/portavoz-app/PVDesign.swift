@@ -113,6 +113,8 @@ enum PVDesign {
 
     /// The present only: Record, Stop, the live edge and the now line.
     static let now = Tone.now.color
+    /// Today's well on Radar's due-date board.
+    static let nowBg = Tone.nowBg.color
     /// Labels on a red fill: Stop and the "Now" pill.
     static let onNow = Tone.onNow.color
     /// Portavoz speaking: briefs, summaries, suggestions, answers.

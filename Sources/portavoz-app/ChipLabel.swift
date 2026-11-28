@@ -53,6 +53,19 @@ struct DismissibleSuggestionChip: View {
     }
 }
 
+/// A suggestion shown for reading, not tapped.
+struct SuggestionChip: View {
+    let kind: ChipLabel.Kind
+    let text: String
+
+    var body: some View {
+        ChipContent(kind: kind, text: text)
+            .pvPill(kind.background)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(text)
+    }
+}
+
 private struct ChipContent: View {
     let kind: ChipLabel.Kind
     let text: String
