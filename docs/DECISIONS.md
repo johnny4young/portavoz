@@ -23937,11 +23937,15 @@ through the existing triggers but bumps no library revision. `LibraryModel`
 observes the shown occurrence's `meetingBriefSource` row after its first load
 and reloads when the lines are cleared, the source changes or it is forgotten;
 a source the card already shows reloads nothing, so its own rebuild does not
-loop. The observation lives in the model because `HomeView` owns no tasks.
+loop. The observation lives in the model because `HomeView` owns no tasks: it
+runs while the hero is unchanged, so a clear while Today is hidden rebuilds the
+disposable lines once; it ends with the window, and a failed read lets the next
+load observe again.
 
 UI fixtures that put today's events at launch plus an offset compress the
 offsets toward the launch near midnight (`AppServices.fixtureTime`), so the
 `-seed-brief` and showcase events stay in the launch day instead of landing on
 tomorrow while Today lists them as today. There is no app clock to fix the time
-of day, and the standing brief needs its event within two hours of now.
+of day, and the standing brief needs its event within two hours of now. A launch in
+the last minute of the day puts them at the launch itself.
 

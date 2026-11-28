@@ -228,7 +228,7 @@ final class LibraryModelTests: XCTestCase {
 
         let reads = { client.calls.filter { $0 == .briefLines(fixture.eventToday.id) }.count }
         client.briefSources.continuation.yield(.init(sourceMeetingID: fixture.meeting.id, linesBuiltAt: .now))
-        await Task.yield()
+        for _ in 0..<20 { await Task.yield() }
         XCTAssertEqual(reads(), 2, "the source the card already shows is not read again")
 
         let resolved = lines([MeetingBriefLines.Person(
@@ -238,6 +238,22 @@ final class LibraryModelTests: XCTestCase {
         let deadline = ContinuousClock.now.advanced(by: .seconds(2))
         while model.state.briefPreview?.lines != resolved, ContinuousClock.now < deadline { await Task.yield() }
         XCTAssertEqual(model.state.briefPreview?.lines, resolved, "cleared lines are read again")
+    }
+
+    func testAFailedBriefSourceObservationIsStartedAgainByTheNextLoad() async {
+        let fixture = LibraryModelFixture()
+        let client = LibraryModelClientFake(fixture: fixture)
+        client.agenda = fixture.agenda
+        let model = LibraryModel(client: client, searchDelay: .zero)
+        _ = await model.send(.refreshAgenda)
+        let observed = { client.calls.filter { $0 == .observeBriefSource(fixture.eventToday.id) }.count }
+
+        _ = await model.send(.loadBriefPreview(fixture.eventToday))
+        client.briefSources.continuation.finish(throwing: LibraryModelFailure.briefLines)
+        for _ in 0..<20 { await Task.yield() }
+        _ = await model.send(.loadBriefPreview(fixture.eventToday))
+
+        XCTAssertEqual(observed(), 2, "an unreadable source stops one observation, not the card's updates")
     }
 
     func testTodayVoicesReadTodaysAgendaAndSurviveAFailedRead() async {

@@ -226,6 +226,10 @@ final class LibraryModel {
         self.searchDelay = searchDelay
     }
 
+    isolated deinit {
+        briefSourceObservation?.task.cancel()
+    }
+
     @discardableResult
     func send(_ action: Action) async -> Effect? {
         await handleLoadingAction(action)
@@ -559,6 +563,9 @@ private extension LibraryModel {
                     if stale { await loadBriefPreview(event) }
                 }
             } catch {}
+            // A failed or finished stream lets the next load observe again.
+            guard let self, !Task.isCancelled, briefSourceObservation?.event == event else { return }
+            briefSourceObservation = nil
         })
     }
 
