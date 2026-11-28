@@ -151,6 +151,7 @@ struct AskView: View {
                 .padding(.bottom, PVDesign.space6)
                 .askColumn()
             }
+            .accessibilityIdentifier("ask-exchange-scroll")
             .onChange(of: model.state.exchanges.count) { _, _ in
                 if let last = model.state.exchanges.last?.id {
                     proxy.pvScrollTo(last, anchor: .top, reduceMotion: reduceMotion)

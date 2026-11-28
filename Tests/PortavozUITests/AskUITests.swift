@@ -48,8 +48,11 @@ final class AskUITests: PortavozUITestCase {
         XCTAssertTrue(waitForUITestCondition(timeout: 10) { questions.count == 2 })
         XCTAssertEqual(renderedText(of: questions.element(boundBy: 1)), suggestion)
 
+        // The follow-up scrolls the page to its own exchange; the first quote sits above it.
         let play = element("ask-evidence-", endingWith: "-1-play", in: app)
-        XCTAssertTrue(play.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(play.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(play.revealVertically(
+            in: app.control(withIdentifier: "ask-exchange-scroll"), maxScrolls: 12, maximumStep: 400))
         play.click()
         let currentTime = app.staticTexts["player-current-time"]
         XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
