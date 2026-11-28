@@ -46,6 +46,12 @@ extension AskModel {
         let webSourceFailures: [AskWebSourceFailure]
         let generationOutcome: AskGenerationOutcome
         let source: ExchangeSource
+        /// "Who said it" rows; nil when the library could not be read.
+        let evidence: AskEvidence?
+        /// From the question to the answer, before evidence rows load.
+        let answeredIn: Duration?
+        /// Arrives after the answer; empty when no local model could suggest.
+        var followUps: [String] = []
 
         init(
             id: UUID = UUID(),
@@ -56,7 +62,9 @@ extension AskModel {
             webCitations: [AskWebCitation] = [],
             webSourceFailures: [AskWebSourceFailure] = [],
             generationOutcome: AskGenerationOutcome,
-            source: ExchangeSource = .library
+            source: ExchangeSource = .library,
+            evidence: AskEvidence? = nil,
+            answeredIn: Duration? = nil
         ) {
             self.id = id
             self.question = question
@@ -67,6 +75,8 @@ extension AskModel {
             self.webSourceFailures = webSourceFailures
             self.generationOutcome = generationOutcome
             self.source = source
+            self.evidence = evidence
+            self.answeredIn = answeredIn
         }
 
         var hasCitations: Bool {

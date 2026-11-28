@@ -17,6 +17,7 @@ final class AskModel {
     private let webSourcePolicy: AskWebURLPolicy
     private var answerTask: Task<Void, Never>?
     private var sourceLoadTask: Task<Void, Never>?
+    private var followUpTask: Task<Void, Never>?
     private var generation = 0
     private var sourceLoadGeneration = 0
 
@@ -39,6 +40,7 @@ final class AskModel {
     isolated deinit {
         answerTask?.cancel()
         sourceLoadTask?.cancel()
+        followUpTask?.cancel()
     }
 
     func selectSurface(_ surface: Surface) {
@@ -136,6 +138,7 @@ final class AskModel {
             question: question,
             source: exchangeSource)
         let client = client
+        let asked = ContinuousClock.now
         answerTask = Task { [weak self, client] in
             let exchange: Exchange
             do {
@@ -154,12 +157,13 @@ final class AskModel {
                             generation: requestGeneration)
                     })
                 guard !Task.isCancelled else { return }
-                exchange = Exchange(
+                exchange = await Self.exchange(
                     question: question,
-                    answer: AskAnswerPresentation.text(for: result),
-                    citations: result.citations,
-                    generationOutcome: result.generationOutcome,
-                    source: exchangeSource)
+                    result: result,
+                    source: exchangeSource,
+                    answeredIn: ContinuousClock.now - asked,
+                    client: client)
+                guard !Task.isCancelled else { return }
             } catch is CancellationError {
                 return
             } catch {
@@ -173,8 +177,16 @@ final class AskModel {
                     generationOutcome: .failed,
                     source: exchangeSource)
             }
-            self?.complete(exchange, generation: requestGeneration)
+            guard let self, self.complete(exchange, generation: requestGeneration)
+            else { return }
+            self.suggestFollowUps(after: exchange)
         }
+    }
+
+    /// Asks a suggested follow-up from the same source.
+    func askFollowUp(_ suggestion: String) {
+        updateDraft(suggestion)
+        submit()
     }
 
     func cancelPendingAnswer() {
@@ -186,6 +198,7 @@ final class AskModel {
 
     func cancelAllWork() {
         cancelPendingAnswer()
+        cancelFollowUps()
         sourceLoadGeneration += 1
         sourceLoadTask?.cancel()
         sourceLoadTask = nil
@@ -196,17 +209,19 @@ final class AskModel {
         topicMemory?.cancelPendingWork()
     }
 
+    @discardableResult
     private func complete(
         _ exchange: Exchange,
         generation requestGeneration: Int
-    ) {
-        guard !Task.isCancelled, generation == requestGeneration else { return }
+    ) -> Bool {
+        guard !Task.isCancelled, generation == requestGeneration else { return false }
         state.exchanges.append(exchange)
         if state.exchanges.count > 20 {
             state.exchanges.removeFirst(state.exchanges.count - 20)
         }
         clearPendingState()
         answerTask = nil
+        return true
     }
 
     private func publish(
@@ -452,6 +467,52 @@ extension AskModel {
         }
     }
 
+    /// Only the latest generated meeting answer gets suggestions, so a stale
+    /// generation never holds the local model while the next question waits.
+    private func suggestFollowUps(after exchange: Exchange) {
+        guard exchange.generationOutcome == .generated,
+              !exchange.citations.isEmpty
+        else { return }
+        let client = client
+        followUpTask = Task { [weak self, client] in
+            let suggestions = (try? await client.suggestAskFollowUps(
+                question: exchange.question,
+                answer: exchange.answer,
+                citations: exchange.citations)) ?? []
+            guard !Task.isCancelled, let self else { return }
+            self.followUpTask = nil
+            guard let index = self.state.exchanges.firstIndex(where: { $0.id == exchange.id })
+            else { return }
+            self.state.exchanges[index].followUps = suggestions
+        }
+    }
+
+    private func cancelFollowUps() {
+        followUpTask?.cancel()
+        followUpTask = nil
+    }
+
+    /// Evidence rows are best effort: without them the citations still show.
+    private static func exchange(
+        question: String,
+        result: AskMeetingAnswer,
+        source: ExchangeSource,
+        answeredIn: Duration,
+        client: any AskModelClient
+    ) async -> Exchange {
+        let evidence = result.citations.isEmpty
+            ? nil
+            : try? await client.loadAskEvidence(result.citations, answer: result.generatedText)
+        return Exchange(
+            question: question,
+            answer: AskAnswerPresentation.text(for: result),
+            citations: result.citations,
+            generationOutcome: result.generationOutcome,
+            source: source,
+            evidence: evidence,
+            answeredIn: answeredIn)
+    }
+
     private func beginRequest(
         question: String,
         source: ExchangeSource
@@ -459,6 +520,7 @@ extension AskModel {
         state.draft = ""
         generation += 1
         answerTask?.cancel()
+        cancelFollowUps()
         state.isAsking = true
         state.pendingQuestion = question
         state.pendingCitations = []

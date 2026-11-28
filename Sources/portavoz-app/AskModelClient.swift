@@ -40,9 +40,33 @@ protocol AskModelClient: AnyObject {
         onEvidence: @escaping AskWebEvidenceReceiver,
         onAnswer: @escaping AskAnswerReceiver
     ) async throws -> AskWebAnswer
+    func loadAskEvidence(
+        _ citations: [AskCitation],
+        answer: String?
+    ) async throws -> AskEvidence
+    func suggestAskFollowUps(
+        question: String,
+        answer: String,
+        citations: [AskCitation]
+    ) async throws -> [String]
 }
 
 extension AskModelClient {
+    func loadAskEvidence(
+        _: [AskCitation],
+        answer _: String?
+    ) async throws -> AskEvidence {
+        .empty
+    }
+
+    func suggestAskFollowUps(
+        question _: String,
+        answer _: String,
+        citations _: [AskCitation]
+    ) async throws -> [String] {
+        []
+    }
+
     func answerAskNotes(
         _ question: String,
         limit _: Int,

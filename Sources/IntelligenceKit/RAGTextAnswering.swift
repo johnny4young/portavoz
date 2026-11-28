@@ -31,6 +31,12 @@ public protocol RAGTextAnswering: Sendable {
         question: String,
         notePassages: [RAGNotePassage]
     ) async throws -> String
+
+    func suggestFollowUps(
+        question: String,
+        answer: String,
+        passages: [RAGPassage]
+    ) async throws -> [String]
 }
 
 public extension RAGTextAnswering {
@@ -72,6 +78,14 @@ public extension RAGTextAnswering {
         notePassages _: [RAGNotePassage]
     ) async throws -> String {
         throw RAGNoteAnswerError.unsupported
+    }
+
+    func suggestFollowUps(
+        question _: String,
+        answer _: String,
+        passages _: [RAGPassage]
+    ) async throws -> [String] {
+        throw RAGFollowUpError.unsupported
     }
 }
 
@@ -227,7 +241,7 @@ public enum RAGAnswerPrompt {
 
     /// XML-escapes passage material and neutralizes bracketed numbers, so text
     /// inside a passage cannot present itself as a passage marker.
-    private static func escape(_ value: String) -> String {
+    static func escape(_ value: String) -> String {
         value
             .replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")
@@ -450,6 +464,19 @@ public struct OpenAICompatibleRAGAnswerer: RAGTextAnswering {
             user: prompt.user)
     }
 
+    public func suggestFollowUps(
+        question: String,
+        answer: String,
+        passages: [RAGPassage]
+    ) async throws -> [String] {
+        let prompt = try RAGFollowUpPrompt.make(
+            question: question,
+            answer: answer,
+            passages: passages)
+        return RAGFollowUpPrompt.lines(of: try await client.complete(
+            system: prompt.system,
+            user: prompt.user))
+    }
 }
 
 public struct OpenAICompatibleRAGClient: Sendable {
@@ -566,4 +593,21 @@ public struct MLXRAGAnswerer: RAGTextAnswering {
         }
     }
 
+    public func suggestFollowUps(
+        question: String,
+        answer: String,
+        passages: [RAGPassage]
+    ) async throws -> [String] {
+        let prompt = try RAGFollowUpPrompt.make(
+            question: question,
+            answer: answer,
+            passages: passages)
+        let text = try await IntelligenceScheduler.mlx.run(priority) {
+            try await runtime.respond(
+                system: prompt.system,
+                user: prompt.user,
+                directory: modelDirectory)
+        }
+        return RAGFollowUpPrompt.lines(of: text)
+    }
 }

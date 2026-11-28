@@ -2288,6 +2288,15 @@ that began earlier, earliest first, each with its strip. Finished meetings go th
 is stored; a recording is binned in memory and never stored, as in the
 library.
 
+### Ask cited lines (D677)
+
+`askCitedLines(_:)` reads, per cited meeting, its start and who each requested
+line reads as in the corrected transcript (`readableTranscript`, the voice
+strip's attribution): a visible line or split part by its own ID, an accepted
+segment by its first readable line. Tombstoned meetings are absent; a
+suppressed line has no speaker. It is an on-demand read for one answer's few
+meetings, never observed.
+
 ### Brief lines (schema v62, D650)
 
 `meetingBriefSource` remembers, per occurrence of an upcoming calendar event

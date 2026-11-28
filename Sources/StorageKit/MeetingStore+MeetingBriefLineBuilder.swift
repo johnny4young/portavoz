@@ -9,6 +9,8 @@ extension MeetingStore {
         var spoken: [SpeakerID: [MeetingBriefLines.Spoken]] = [:]
         /// Who an accepted segment reads as, and when it starts.
         var segments: [UUID: (speaker: SpeakerID, start: TimeInterval)] = [:]
+        /// Who each readable line reads as, split parts by their own ID.
+        var lines: [UUID: SpeakerID] = [:]
     }
 
     /// The lines a rebuild stores, per person, chosen by `MeetingBriefLines.select`.
@@ -75,6 +77,7 @@ extension MeetingStore {
             transcript.spoken[line.speaker, default: []].append(MeetingBriefLines.Spoken(
                 segmentID: line.segmentID,
                 text: line.partText ?? texts[line.id] ?? "", start: line.start))
+            transcript.lines[line.id] = line.speaker
             if let segment = line.segmentID, transcript.segments[segment] == nil {
                 transcript.segments[segment] = (line.speaker, line.start)
             }

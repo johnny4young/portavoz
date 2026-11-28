@@ -571,6 +571,29 @@ public struct RAGAnswerer: RAGTextAnswering {
         }
     }
 
+    public func suggestFollowUps(
+        question: String,
+        answer: String,
+        passages: [RAGPassage]
+    ) async throws -> [String] {
+        if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
+            throw IntelligenceError.modelUnavailable(reason)
+        }
+        let prompt = try RAGFollowUpPrompt.make(
+            question: question,
+            answer: answer,
+            passages: passages)
+        let session = LanguageModelSession(
+            instructions: RAGFollowUpPrompt.instructions)
+        let text = try await IntelligenceScheduler.shared.run(.interactive) {
+            try await session.respond(
+                to: prompt.user,
+                options: .greedy(maximumResponseTokens: RAGFollowUpPrompt.maximumResponseTokens)
+            ).content
+        }
+        return RAGFollowUpPrompt.lines(of: text)
+    }
+
     /// Multi-query expansion for cross-lingual retrieval: the library is
     /// bilingual, so a Spanish question must also search in English (and
     /// vice versa). Returns the original question plus up to two terse

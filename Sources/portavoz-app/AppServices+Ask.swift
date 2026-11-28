@@ -5,12 +5,15 @@ import PortavozCore
 import StorageKit
 
 typealias AppAskAnswering = AskMeetingAnswering & AskNoteAnswering & AskWebAnswering
+    & AskFollowUpSuggesting
 
 @MainActor
 final class AppAskModelClient: AskModelClient {
     private let useCase: AskMeetings
     private let noteUseCase: AskNotes
     private let webUseCase: AskWeb
+    private let evidence: LoadAskEvidence
+    private let followUps: SuggestAskFollowUps
     private let memoryEntities: LoadAutomationEntities
     private let memoryCommitments: LoadPersonCommitments
     private let memoryCommitmentBlockers: LoadCommitmentBlockers
@@ -24,6 +27,7 @@ final class AppAskModelClient: AskModelClient {
         useCase: AskMeetings,
         noteUseCase: AskNotes,
         webUseCase: AskWeb,
+        followUps: SuggestAskFollowUps,
         store: MeetingStore,
         graphTelemetry: MeetingMemoryGraphQueryTelemetry =
             AppMeetingMemoryGraphQueryTelemetry.shared.telemetry
@@ -31,6 +35,8 @@ final class AppAskModelClient: AskModelClient {
         self.useCase = useCase
         self.noteUseCase = noteUseCase
         self.webUseCase = webUseCase
+        self.followUps = followUps
+        evidence = LoadAskEvidence(reader: store)
         memoryEntities = LoadAutomationEntities(catalog: store)
         memoryCommitments = LoadPersonCommitments(
             repository: store,
@@ -130,6 +136,21 @@ final class AppAskModelClient: AskModelClient {
             onEvidence: onEvidence,
             onAnswer: onAnswer)
     }
+
+    func loadAskEvidence(
+        _ citations: [AskCitation],
+        answer: String?
+    ) async throws -> AskEvidence {
+        try await evidence(citations: citations, answer: answer)
+    }
+
+    func suggestAskFollowUps(
+        question: String,
+        answer: String,
+        citations: [AskCitation]
+    ) async throws -> [String] {
+        try await followUps(question: question, answer: answer, citations: citations)
+    }
 }
 
 extension AppAskModelClient: AskMemoryModelClient {
@@ -220,6 +241,7 @@ struct AppSemanticSearchComposition {
     let ask: AskMeetings
     let notesAsk: AskNotes
     let webAsk: AskWeb
+    let followUps: SuggestAskFollowUps
     let library: LocalLibrarySemanticSearch
     let background: SemanticCorpusIndexingSupervisor
     let memoryGraphBackground: MeetingMemoryGraphProjectionSupervisor
@@ -240,6 +262,7 @@ extension AppServices {
             useCase: composition.ask,
             noteUseCase: composition.notesAsk,
             webUseCase: composition.webAsk,
+            followUps: composition.followUps,
             store: store)
     }
 
@@ -306,6 +329,10 @@ extension AppServices {
             ask: ask,
             notesAsk: notesAsk,
             webAsk: webAsk,
+            followUps: SuggestAskFollowUps(
+                suggesting: usesTemporaryStore
+                    ? UITestAskMeetingAnswering()
+                    : selectedAnswering),
             library: library,
             background: background,
             memoryGraphBackground: memoryGraphBackground)
@@ -586,7 +613,15 @@ private struct UITestAskNoteAnswering: AskNoteAnswering {
     }
 }
 
-private struct UITestAskMeetingAnswering: AskMeetingAnswering {
+private struct UITestAskMeetingAnswering: AskMeetingAnswering, AskFollowUpSuggesting {
+    func followUps(
+        question _: String,
+        answer _: String,
+        citations _: [AskCitation]
+    ) async throws -> [String] {
+        ["Who owns the rollout?", "What else is due Friday?"]
+    }
+
     func answer(
         question _: String,
         citations _: [AskCitation]
