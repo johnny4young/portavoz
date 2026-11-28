@@ -210,9 +210,10 @@ struct MenuBarContent: View {
 
     private func recentRow(_ meeting: MenuBarMeeting) -> some View {
         HStack(spacing: 8) {
+            // Up to the board's 138 pt column; a badge and a long time take from the title first.
             Text(meeting.title)
                 .lineLimit(1)
-                .frame(width: 138, alignment: .leading)
+                .frame(minWidth: 0, idealWidth: 138, maxWidth: 138, alignment: .leading)
             if let strip = model.state.recentStrips[meeting.id] {
                 VoiceStrip(strip)
                     .frame(width: 36)
@@ -227,6 +228,7 @@ struct MenuBarContent: View {
                     .padding(.horizontal, 6)
                     .frame(height: 18)
                     .background(PVDesign.greenBg, in: Capsule())
+                    .fixedSize()
             }
             Text(MenuBarFormat.started(meeting.startedAt))
                 .font(.system(size: 11.5).monospacedDigit())

@@ -21,6 +21,7 @@ final class MenuBarUITests: PortavozUITestCase {
         XCTAssertTrue(prepare.waitForStableFrame(timeout: 10))
         XCTAssertTrue(app.buttons["menu-bar-brief-dismiss"].exists)
         XCTAssertTrue(app.buttons["menu-bar-record-next"].exists)
+        XCTAssertTrue(app.buttons["menu-bar-record"].exists)
         prepare.click()
 
         let confirmation = app.control(
@@ -103,6 +104,8 @@ final class MenuBarUITests: PortavozUITestCase {
         XCTAssertTrue(app.control(withIdentifier: "menu-bar-live-strip").exists)
         XCTAssertTrue(app.buttons["menu-bar-stop"].exists)
         XCTAssertTrue(app.buttons["menu-bar-ask"].exists)
+        XCTAssertFalse(app.buttons["menu-bar-record"].exists, "Stop replaces Record while recording")
+        XCTAssertFalse(app.buttons["menu-bar-record-next"].exists, "one recording at a time")
         XCTAssertTrue(app.control(withIdentifier: "menu-bar-next-meeting").exists)
         XCTAssertTrue(app.buttons["menu-bar-brief-prepare"].exists)
         XCTAssertTrue(app.buttons["menu-bar-open"].exists)

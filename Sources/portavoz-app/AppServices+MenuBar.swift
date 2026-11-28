@@ -186,15 +186,24 @@ private func makeApplicationMenuBarStream(
             await withTaskGroup(of: Void.self) { group in
                 group.addTask {
                     do {
+                        // Rows first, strips after: a slow rebuild never holds back the list,
+                        // and a failed one is not retried on every refresh, as in the Library.
+                        var queued = Set<MeetingID>()
                         for try await value in meetings {
-                            let built = await storeVoiceColumns(value.uncachedVoiceColumns)
-                            continuation.yield(.meetings(value.rows.map {
-                                MenuBarMeeting(
-                                    id: $0.meeting.id,
-                                    title: $0.meeting.title,
-                                    startedAt: $0.meeting.startedAt,
-                                    strip: ($0.voiceColumns ?? built[$0.meeting.id]).map(VoiceStripSource.init))
-                            }))
+                            let rows = value.rows
+                            func publish(_ built: [MeetingID: MeetingVoiceColumns]) {
+                                continuation.yield(.meetings(rows.map {
+                                    MenuBarMeeting(
+                                        id: $0.meeting.id,
+                                        title: $0.meeting.title,
+                                        startedAt: $0.meeting.startedAt,
+                                        strip: ($0.voiceColumns ?? built[$0.meeting.id]).map(VoiceStripSource.init))
+                                }))
+                            }
+                            publish([:])
+                            let uncached = value.uncachedVoiceColumns.filter { !queued.contains($0) }
+                            queued = Set(value.uncachedVoiceColumns)
+                            if !uncached.isEmpty { publish(await storeVoiceColumns(uncached)) }
                         }
                     } catch is CancellationError {
                         // Parent cancellation ends the complete merged stream.

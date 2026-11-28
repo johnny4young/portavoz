@@ -12,7 +12,7 @@ final class RecordingHUDController {
 
     var isVisible: Bool { panel != nil }
 
-    static let width: CGFloat = 360
+    static let width: CGFloat = 400
     private static let baseHeight: CGFloat = 88
     private static let maxHeight: CGFloat = 220
 
@@ -101,7 +101,7 @@ struct RecordingHUDView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 HStack(spacing: 8) {
                     Color.clear
                         .frame(width: 8, height: 8)
@@ -194,8 +194,12 @@ struct RecordingHUDView: View {
         .onChange(of: controller.phase) { _, phase in
             if phase != .recording { onExpand() }
         }
-        // A saved note closes the field.
-        .onChange(of: controller.contextItems.count) { showsNote = false }
+        // A saved note closes the field; a removal or an item added elsewhere mid-draft does not.
+        .onChange(of: controller.contextItems.count) { old, new in
+            if new > old, controller.drafts.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                showsNote = false
+            }
+        }
     }
 
     private func hudButton(
