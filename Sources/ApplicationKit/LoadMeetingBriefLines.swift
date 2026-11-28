@@ -15,8 +15,8 @@ public protocol MeetingBriefLinesReading: Sendable {
 }
 
 /// What each person said in an upcoming event's previous occurrence, for
-/// Today's preview. The latest same-title meeting is recorded when it differs
-/// from the cached source; without one, the cached source stays.
+/// Today's preview. The previous occurrence is recorded when it differs from
+/// the cached source; without one, the cached source stays.
 public struct LoadMeetingBriefLines: ApplicationUseCase {
     private let lines: any MeetingBriefLinesReading
     private let sources: any MeetingBriefSourceRecording
@@ -30,7 +30,7 @@ public struct LoadMeetingBriefLines: ApplicationUseCase {
         let occurrence = MeetingBriefLines.Occurrence(event: event)
         async let cachedLines = lines.meetingBriefLines(for: occurrence)
         let previous = try await sources.previousMeetingBriefOccurrence(
-            title: event.title, before: event.startDate)
+            eventID: event.id, title: event.title, before: event.startDate)
         let cached = try await cachedLines
         guard let previous, previous != cached?.sourceMeetingID else { return cached }
         try await sources.recordMeetingBriefSource(

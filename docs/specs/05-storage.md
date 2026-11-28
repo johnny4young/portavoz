@@ -202,13 +202,13 @@ hidden stage. A main-file or WAL size/modification change across the private
 copy also fails closed rather than publishing a mixed point in time. The source is never opened through `MeetingStore`, so no
 migration/configuration write can occur, and it is never renamed or deleted.
 
-### Schema (`v1`–`v64` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v65` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
 | Table | Key columns |
 |---|---|
-| `meeting` | id (UUID TEXT PK), title, startedAt, endedAt, language, audioDirectory (RELATIVE), retention, visibility (reserved), **lifecycleState**, **transcriptRevision**, **lastProcessingError** (v6), createdAt/updatedAt/deletedAt |
+| `meeting` | id (UUID TEXT PK), title, startedAt, endedAt, language, audioDirectory (RELATIVE), retention, visibility (reserved), **lifecycleState**, **transcriptRevision**, **lastProcessingError** (v6), createdAt/updatedAt/deletedAt, **calendarEventID** (v65: nullable, 1–2 000 bytes, the calendar event a recording was started from; local to this Mac, outside `Meeting` and `MeetingRecord`, so it is never synced, exported or cleared by a full-row write; partial index `meeting_on_calendarEventID` on identifier + startedAt, D683) |
 | `dictationMeetingNote` (v57) | local link (dictationID → dictationRecord, meetingID → meeting, unique contextItemID → contextItem, all ON DELETE CASCADE; primary key dictation + meeting) recording which meeting note was copied from which dictation; see Legacy dictation data |
 | `dictationRecordSearch` (v55) | FTS5 external content over `dictationRecord.text` and `originalText`, `unicode61` tokenizer, kept in sync by GRDB triggers; see Legacy dictation data |
 | `dictationHistoryPolicy` / `dictationRecord` (v54, v56) | one consent row (isEnabled, keepsOriginal, retentionDays 7/30/90, generation, and since v56 exposesToAgents) and saved dictations keyed by session UUID with `(createdAt, id)` index; see Legacy dictation data |
@@ -1231,8 +1231,10 @@ idempotently. Neither case reads or copies the user's real library.
 
 ## MeetingStore — API
 
-Recording durability APIs are `beginRecording(_:assets:)` (atomic shell plus
-reservations), `audioAssets(for:)` (strict, live-rooted read), and
+Recording durability APIs are `beginRecording(_:assets:calendarEventID:)`
+(atomic shell plus reservations, and the calendar event a recording was started
+from when its identifier is valid; `linkCalendarEvent(_:to:)` sets it on a live
+meeting outside a recording), `audioAssets(for:)` (strict, live-rooted read), and
 `discardUnstartedRecording(_:)` (D37-guarded no-data rollback).
 `MeetingStore` implements `StartRecordingStore` by adapting same-day sequence
 counting, `beginRecording`, guarded discard, and canonical
@@ -2320,8 +2322,10 @@ missing or tombstoned source, or one that had not ended by the event's start,
 clears the event instead, so an ongoing event never continues its own recording.
 The same write prunes every source whose event started more than one day before
 `at`.
-`previousMeetingOccurrence(title:before:)` returns the most recent live meeting
-started in the 180 days before the date and ended by it whose title equals the event's
+`previousMeetingOccurrence(eventID:title:before:)` returns the most recent live
+meeting started in the 180 days before the date and ended by it that carries the
+event's identifier in `meeting.calendarEventID` (D683); without one, or with an
+invalid identifier, it returns the most recent such meeting, linked or not, whose title equals the event's
 under `MeetingBriefLines.titleKey` (case, diacritics and spacing folded in
 Swift, because SQLite cannot fold diacritics, and the leading ISO date of an
 event-linked recording's title dropped through `TitleTemplate.withoutDatePrefix`,
@@ -2373,9 +2377,11 @@ correction insert, delete or update; a summary insert, delete or tombstone; an
 action item insert, delete or change to its meeting, text, owner, completion or
 tombstone; a question insert, delete or change to its meeting, status or
 tombstone; a commitment source insert or delete; and a commitment change to
-status, due date or tombstone, mapped through `commitmentSource`. A change to
-the meeting's title or tombstone deletes the source row, because the occurrence
-was chosen by title; a hard delete cascades. The cache is not synced or backed
+status, due date or tombstone, mapped through `commitmentSource`. A tombstone
+deletes the meeting's source rows; a title change deletes only those whose
+event identifier differs from the meeting's `calendarEventID`, because those
+were chosen by title or relevance (v65 replaced the v62 trigger, D683); a hard
+delete cascades. The cache is not synced or backed
 up.
 
 ### Playback position (schema v63, D653)

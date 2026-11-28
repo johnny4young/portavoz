@@ -8,26 +8,34 @@ extension MeetingStore {
     /// Sources of events that started longer ago than this are pruned.
     static let meetingBriefSourceRetention: TimeInterval = 86_400
 
-    /// The most recent live meeting that ended by `date` whose title equals
-    /// `title` ignoring case, diacritics and spacing. Ending by the event's
-    /// start keeps an ongoing event's own recording out.
+    /// The most recent live meeting that ended by `date` and was recorded from
+    /// the event `eventID`, else the most recent one whose title equals `title`
+    /// ignoring case, diacritics and spacing. Ending by the event's start keeps
+    /// an ongoing event's own recording out.
     public func previousMeetingOccurrence(
-        title: String, before date: Date
+        eventID: String?, title: String, before date: Date
     ) async throws -> MeetingID? {
         let key = MeetingBriefLines.titleKey(title)
-        guard !key.isEmpty else { return nil }
+        let earliest = date.addingTimeInterval(-Self.meetingBriefOccurrenceWindow)
+        let live = "deletedAt IS NULL AND endedAt <= ? AND startedAt < ? AND startedAt >= ?"
         return try await database.read { db in
+            let window: StatementArguments = [date, date, earliest]
+            if let eventID, UpcomingEvent.isValidIdentity(eventID),
+               let id = try String.fetchOne(
+                   db,
+                   sql: """
+                       SELECT id FROM meeting WHERE calendarEventID = ? AND \(live)
+                       ORDER BY startedAt DESC, id LIMIT 1
+                       """,
+                   arguments: [eventID] + window) {
+                return MeetingID(rawValue: try PersistedIdentity.required(id, table: "meeting", column: "id"))
+            }
+            guard !key.isEmpty else { return nil }
             // SQLite cannot fold diacritics, so the bounded window is compared here.
             let rows = try Row.fetchCursor(
                 db,
-                sql: """
-                    SELECT id, title FROM meeting
-                    WHERE deletedAt IS NULL AND endedAt <= ?
-                      AND startedAt < ? AND startedAt >= ?
-                    ORDER BY startedAt DESC, id
-                    LIMIT 2000
-                    """,
-                arguments: [date, date, date.addingTimeInterval(-Self.meetingBriefOccurrenceWindow)])
+                sql: "SELECT id, title FROM meeting WHERE \(live) ORDER BY startedAt DESC, id LIMIT 2000",
+                arguments: window)
             while let row = try rows.next() {
                 guard MeetingBriefLines.titleKey(row["title"]) == key else { continue }
                 return MeetingID(rawValue: try PersistedIdentity.required(

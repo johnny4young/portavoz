@@ -1471,8 +1471,11 @@ after access already exists. The workflow ranks shared Ask evidence, loads
 current live summaries in one bounded database projection, overlaps commitment
 loading, and admits generated context only when its source index resolves to a
 navigable related meeting. Today's brief card enters `LoadMeetingBriefLines`,
-which reads the cached per-person lines and records the hero's latest
-same-title occurrence when it differs from the cached source. `LoadTodayVoices`
+which reads the cached per-person lines and records the hero's previous
+occurrence (the latest meeting recorded from the same calendar event, else the
+latest same-title one) when it differs from the cached source.
+`StartRecording` passes the event a recording starts from to the store, which
+keeps its identifier on the meeting. `LoadTodayVoices`
 builds the read model for who spoke today and the day axis from the
 meetings started today, their stored voice strips and the adapter's upcoming
 events, with invitees resolved to confirmed people by unique exact alias;
@@ -1574,8 +1577,9 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 64. Version 64 keys the in-memory semantic pack
-with a trigger-maintained `semantic-vector-pack` row. A nonunique meeting-directory index serves
+The current schema version is 65. Version 65 keeps the calendar event a
+recording was started from on its meeting, local to this Mac. Version 64 keys
+the in-memory semantic pack with a trigger-maintained `semantic-vector-pack` row. A nonunique meeting-directory index serves
 compression admission without rejecting historical duplicate owners. Its
 skill-identity write constraints preserve
 historical denials rather than rejecting a populated library during upgrade.

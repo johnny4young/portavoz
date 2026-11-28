@@ -113,7 +113,7 @@ final class PrepareMeetingBriefTests: XCTestCase {
         XCTAssertEqual(brief, expected)
         let lookups = await recorder.lookups
         let recorded = await recorder.recorded
-        XCTAssertEqual(lookups, [BriefSourceRecorderFake.Lookup(title: event.title, before: event.startDate)])
+        XCTAssertEqual(lookups, [BriefSourceRecorderFake.Lookup(eventID: event.id, title: event.title, before: event.startDate)])
         XCTAssertEqual(recorded, [BriefSourceRecorderFake.Record(
             eventID: event.id, eventStartAt: event.startDate, sourceMeetingID: occurrenceID)])
     }
@@ -222,6 +222,7 @@ final class PrepareMeetingBriefTests: XCTestCase {
 
 private actor BriefSourceRecorderFake: MeetingBriefSourceRecording {
     struct Lookup: Equatable {
+        let eventID: String
         let title: String
         let before: Date
     }
@@ -249,8 +250,8 @@ private actor BriefSourceRecorderFake: MeetingBriefSourceRecording {
         self.failsRecordOnly = failsRecordOnly
     }
 
-    func previousMeetingBriefOccurrence(title: String, before date: Date) async throws -> MeetingID? {
-        lookups.append(Lookup(title: title, before: date))
+    func previousMeetingBriefOccurrence(eventID: String, title: String, before date: Date) async throws -> MeetingID? {
+        lookups.append(Lookup(eventID: eventID, title: title, before: date))
         if let failure, !failsRecordOnly { throw failure }
         return occurrence
     }

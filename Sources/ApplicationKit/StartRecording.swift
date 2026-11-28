@@ -153,7 +153,9 @@ public protocol StartRecordingAudioFiles: Sendable {
 /// Narrow persistence boundary for reservation and D37 reconciliation.
 public protocol StartRecordingStore: Sendable {
     func startedMeetingCount(on date: Date, calendar: Calendar) async -> Int
-    func reserveRecording(_ meeting: Meeting, assets: [AudioAsset]) async throws
+    func reserveRecording(
+        _ meeting: Meeting, assets: [AudioAsset], calendarEventID: String?
+    ) async throws
     func discardFailedRecordingStart(_ meetingID: MeetingID) async throws -> Bool
     func markRecordingStartNeedsAttention(
         _ meetingID: MeetingID,
@@ -172,8 +174,10 @@ extension MeetingStore: StartRecordingStore {
         return (try? await liveMeetingCount(startedIn: dayStart..<dayEnd)) ?? 0
     }
 
-    public func reserveRecording(_ meeting: Meeting, assets: [AudioAsset]) async throws {
-        try await beginRecording(meeting, assets: assets)
+    public func reserveRecording(
+        _ meeting: Meeting, assets: [AudioAsset], calendarEventID: String?
+    ) async throws {
+        try await beginRecording(meeting, assets: assets, calendarEventID: calendarEventID)
     }
 
     public func discardFailedRecordingStart(_ meetingID: MeetingID) async throws -> Bool {
@@ -205,14 +209,16 @@ public enum StartRecordingRuntimeError: Error, Equatable, LocalizedError, Sendab
 }
 
 public struct StartRecordingRequest: Sendable {
-    public let eventTitle: String?
+    /// The calendar event the recording starts from: it titles the meeting
+    /// and links it, so the event's next occurrence finds it.
+    public let event: UpcomingEvent?
     public let callbacks: StartRecordingLiveCallbacks
 
     public init(
-        eventTitle: String? = nil,
+        event: UpcomingEvent? = nil,
         callbacks: StartRecordingLiveCallbacks = StartRecordingLiveCallbacks()
     ) {
-        self.eventTitle = eventTitle
+        self.event = event
         self.callbacks = callbacks
     }
 }
@@ -376,13 +382,14 @@ public struct StartRecording: ApplicationUseCase {
         prepared: StartRecordingPreparedRuntime
     ) async -> StartRecordingResult {
         let reservation = await makeReservation(
-            eventTitle: request.eventTitle,
+            eventTitle: request.event?.title,
             preferences: preferences,
             channels: prepared.channels)
         do {
             try await store.reserveRecording(
                 reservation.meeting,
-                assets: reservation.assets)
+                assets: reservation.assets,
+                calendarEventID: request.event?.id)
         } catch {
             await runtime.cancelPreparation()
             await runtime.scheduleIdleRelease()

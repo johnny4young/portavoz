@@ -324,7 +324,7 @@ final class RecordingController {
                 Task { @MainActor in self?.receiveLiveTranscription(event) }
             })
         let result = await services.startRecording.execute(StartRecordingRequest(
-            eventTitle: event?.title,
+            event: event,
             callbacks: callbacks))
         applyStartRecordingResult(
             result,

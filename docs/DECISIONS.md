@@ -23949,3 +23949,22 @@ tomorrow while Today lists them as today. There is no app clock to fix the time
 of day, and the standing brief needs its event within two hours of now. A launch in
 the last minute of the day puts them at the launch itself.
 
+
+## D683 — A recording started from the calendar keeps its event
+
+Matching an upcoming event to its previous occurrence by title (D651) lost the
+link when the recording or the event was renamed, and borrowed another series'
+meeting when two series shared a title. A recording started from a calendar
+event now stores the event's identifier in `meeting.calendarEventID` (v65,
+nullable). The previous occurrence is the most recent ended meeting carrying the
+event's identifier, because recurring occurrences share it; without one, the
+title rule still applies to every meeting, including meetings linked to another
+event: a weekly meeting created as single events gets a new identifier each
+week, and EventKit can reissue identifiers after a full calendar sync. Meetings
+recorded before this change keep matching by title.
+
+The column stays out of `Meeting` and `MeetingRecord`. EventKit identifiers are
+local to the Mac, so it is not synced, exported or carried in bundles, and the
+full-row meeting writes (captured snapshot, sync replay, save) cannot clear it.
+Renaming a meeting now forgets only the brief sources whose event identifier
+differs from the meeting's, since only those were chosen by title or relevance.

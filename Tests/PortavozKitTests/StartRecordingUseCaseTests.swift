@@ -65,13 +65,15 @@ final class StartRecordingUseCaseTests: XCTestCase {
         let dependencies = StartRecordingDependencies(preferences: preferences)
 
         let result = await fixture.useCase(dependencies).execute(
-            StartRecordingRequest(eventTitle: "Platform Review"))
+            StartRecordingRequest(event: UpcomingEvent(
+                id: "event-platform-review", title: "Platform Review", startDate: Date(), attendees: [])))
 
         guard case .started(let commit) = result else {
             return XCTFail("event-linked recording should start")
         }
         let state = await dependencies.state()
         XCTAssertTrue(commit.reservation.meeting.title.hasSuffix(" Platform Review"))
+        XCTAssertEqual(state.reservedCalendarEventID, "event-platform-review")
         XCTAssertEqual(state.captureRequest?.languageHint, "es")
     }
 
@@ -113,6 +115,7 @@ final class StartRecordingUseCaseTests: XCTestCase {
         XCTAssertEqual(state.cancelCount, 0)
         XCTAssertEqual(state.releaseCount, 0)
         XCTAssertNotNil(state.reservedMeeting)
+        XCTAssertNil(state.reservedCalendarEventID, "a recording without an event links none")
     }
 
     func testReservationFailureNeverStartsSourcesAndReleasesPreparedRuntime() async {
@@ -397,6 +400,7 @@ private actor StartRecordingDependencies:
         let events: [String]
         let captureRequest: StartRecordingCaptureRequest?
         let reservedMeeting: Meeting?
+        let reservedCalendarEventID: String?
         let markedErrorCode: String?
         let discardCount: Int
         let cancelCount: Int
@@ -415,6 +419,7 @@ private actor StartRecordingDependencies:
     private var events: [String] = []
     private var captureRequest: StartRecordingCaptureRequest?
     private var reservedMeeting: Meeting?
+    private var reservedCalendarEventID: String?
     private var reservedAssets: [AudioAsset] = []
     private var markedErrorCode: String?
     private var discardCount = 0
@@ -504,10 +509,13 @@ private actor StartRecordingDependencies:
         return startedMeetingCountValue
     }
 
-    func reserveRecording(_ meeting: Meeting, assets: [AudioAsset]) async throws {
+    func reserveRecording(
+        _ meeting: Meeting, assets: [AudioAsset], calendarEventID: String?
+    ) async throws {
         events.append("reserve")
         if let reserveError { throw reserveError }
         reservedMeeting = meeting
+        reservedCalendarEventID = calendarEventID
         reservedAssets = assets
     }
 
@@ -537,6 +545,7 @@ private actor StartRecordingDependencies:
             events: events,
             captureRequest: captureRequest,
             reservedMeeting: reservedMeeting,
+            reservedCalendarEventID: reservedCalendarEventID,
             markedErrorCode: markedErrorCode,
             discardCount: discardCount,
             cancelCount: cancelCount,

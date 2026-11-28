@@ -118,7 +118,9 @@ public protocol MeetingBriefLibraryReading: Sendable {
 
 /// Remembers which past meeting an upcoming event continues.
 public protocol MeetingBriefSourceRecording: Sendable {
+    /// The latest meeting recorded from the event, else the latest same-title one.
     func previousMeetingBriefOccurrence(
+        eventID: String,
         title: String,
         before date: Date
     ) async throws -> MeetingID?
@@ -165,6 +167,7 @@ public struct PrepareMeetingBrief: ApplicationUseCase {
         // nil marks a degraded input, which must not replace a recorded source.
         async let previousOccurrence = degrade(to: MeetingID??.none) {
             .some(try await sources.previousMeetingBriefOccurrence(
+                eventID: event.id,
                 title: event.title,
                 before: event.startDate))
         }
@@ -195,7 +198,7 @@ public struct PrepareMeetingBrief: ApplicationUseCase {
                 snippet: String(candidate.snippet.prefix(90)))
         }
 
-        // A same-title occurrence wins over the best related meeting.
+        // A previous occurrence wins over the best related meeting.
         let sourceMeetingID: MeetingID?? = switch try await previousOccurrence {
         case .some(.some(let occurrence)): occurrence
         case .some(.none) where citations != nil && loadedSummaries != nil: .some(related.first?.meetingID)
