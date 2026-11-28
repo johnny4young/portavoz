@@ -65,8 +65,9 @@ struct RecordingToolbar: View {
 
 /// "● RECORDING" in the colour of the present. The dot's timeline lives in an
 /// overlay of a fixed frame, so its blink never re-measures the row.
-private struct RecordingKicker: View {
+struct RecordingKicker: View {
     let startedAt: Date
+    var identifier = "recording-kicker"
 
     var body: some View {
         HStack(spacing: 8) {
@@ -80,7 +81,7 @@ private struct RecordingKicker: View {
                 .foregroundStyle(PVDesign.now)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("recording-kicker")
+        .accessibilityIdentifier(identifier)
     }
 }
 

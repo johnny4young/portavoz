@@ -1,6 +1,7 @@
 import ApplicationKit
 import Foundation
 import PortavozCore
+import StorageKit
 import XCTest
 
 @testable import portavoz_app
@@ -20,6 +21,37 @@ final class MenuBarModelTests: XCTestCase {
         XCTAssertEqual(model.state.nextEvent, fixture.event)
         XCTAssertEqual(model.state.briefOffer?.event, fixture.event)
         XCTAssertEqual(client.calls, [.nextEvent, .briefOffer, .observe])
+    }
+
+    func testRecentStripsShareOneCast() async throws {
+        let fixture = MenuBarModelFixture()
+        let you = SpeakerID()
+        let ana = SpeakerID()
+        let columns = MeetingVoiceColumns(
+            duration: 60, columns: [0, 1, 1, 0],
+            voices: [
+                .init(speakerID: you, isMe: true, label: "Me", displayName: nil, talkSeconds: 30, firstHeard: 0),
+                .init(speakerID: ana, isMe: false, label: "S1", displayName: "Ana", talkSeconds: 30, firstHeard: 15)
+            ])
+        let recents = (0..<3).map { index in
+            MenuBarMeeting(
+                id: MeetingID(), title: "Meeting \(index)",
+                startedAt: Date(timeIntervalSince1970: 1_789_000_000 - Double(index)),
+                strip: VoiceStripSource(columns: columns))
+        }
+        let bare = MenuBarMeeting(id: MeetingID(), title: "Silent", startedAt: Date())
+        let client = MenuBarModelClientFake(fixture: fixture)
+        client.updates = [.meetings(recents + [bare]), .pendingCounts([:])]
+        let model = MenuBarModel(client: client)
+
+        await model.observe()
+
+        XCTAssertNil(model.state.recentStrips[bare.id])
+        let first = try XCTUnwrap(model.state.recentStrips[recents[0].id])
+        let second = try XCTUnwrap(model.state.recentStrips[recents[1].id])
+        XCTAssertEqual(first.columns, [0, 1, 1, 0])
+        XCTAssertEqual(first.tints, second.tints, "a person keeps one colour down the list")
+        XCTAssertEqual(first.tints.first, .you)
     }
 
     func testObservationDistinguishesEmptyDegradedAndFailedState() async {

@@ -106,6 +106,7 @@ extension ArchitectureDependencyTests {
         // Live voices change on every closed caption and speech flip.
         XCTAssertFalse(toolbar.contains("liveVoices"))
         XCTAssertFalse(hud.contains("liveVoices"))
+        XCTAssertTrue(hud.contains("RecordingHUDSpeaker(controller: controller)"))
         let controller = try Self.contents(
             of: "Sources/portavoz-app/RecordingController.swift")
         let levels = try XCTUnwrap(controller.range(of: "func applyRecordingLevels("))

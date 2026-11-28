@@ -263,3 +263,21 @@ enum RecordingLiveStripLayout {
         return Placement(now: now, ticks: placed)
     }
 }
+
+/// A whole recording's strip ending on a red now edge: the menu bar and the
+/// floating panel, where the recording always fills the width.
+struct RecordingNowStrip: View {
+    let strip: VoiceStripColumns
+    let size: VoiceStrip.Size
+
+    var body: some View {
+        VoiceStrip(strip, size: size)
+            .overlay(alignment: .trailing) {
+                Capsule()
+                    .fill(PVDesign.now)
+                    .frame(width: 2.2)
+                    .padding(.vertical, -4)
+                    .accessibilityHidden(true)
+            }
+    }
+}

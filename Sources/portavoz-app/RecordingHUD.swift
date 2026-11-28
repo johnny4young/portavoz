@@ -12,7 +12,7 @@ final class RecordingHUDController {
 
     var isVisible: Bool { panel != nil }
 
-    private static let width: CGFloat = 400
+    static let width: CGFloat = 400
     private static let baseHeight: CGFloat = 88
     private static let maxHeight: CGFloat = 220
 
@@ -80,9 +80,10 @@ private final class HUDPanel: NSPanel {
     override var canBecomeKey: Bool { true }
 }
 
-/// The HUD's content: timer + latest caption + mini mic meter + expand/stop.
-/// Auto-expands back to the window as soon as the recording leaves the
-/// `.recording` phase, so processing/errors are never hidden in a mini panel.
+/// The HUD's content: the clock, who is speaking beside a mini strip, Note,
+/// Return and Stop, then the latest caption and the mic meter. Auto-expands
+/// back to the window as soon as the recording leaves the `.recording`
+/// phase, so processing/errors are never hidden in a mini panel.
 struct RecordingHUDView: View {
     let controller: RecordingController
     let onExpand: () -> Void
@@ -96,28 +97,53 @@ struct RecordingHUDView: View {
     /// or a new speaker starts a fresh coalesced line, resetting it to one.
     private let captionLineCap = 6
 
+    @State private var showsNote = false
+
     var body: some View {
-        HStack(spacing: 10) {
-            TimelineView(.periodic(from: controller.startedAt, by: 1)) { context in
-                let elapsed = Int(context.date.timeIntervalSince(controller.startedAt))
-                HStack(spacing: 6) {
-                    RecordingLiveDot(elapsed: elapsed, diameter: 8)
-                    Text(ClockFormat.mmss(TimeInterval(elapsed)))
-                        .font(.callout.monospacedDigit().weight(.medium))
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    Color.clear
+                        .frame(width: 8, height: 8)
+                        .overlay {
+                            TimelineView(.periodic(from: controller.startedAt, by: 1)) { context in
+                                RecordingLiveDot(
+                                    elapsed: Int(context.date.timeIntervalSince(controller.startedAt)), diameter: 8)
+                            }
+                        }
+                    ElapsedClockText(
+                        startedAt: controller.startedAt, style: .clock(size: 19), identifier: "recording-hud-clock")
                 }
+                RecordingHUDSpeaker(controller: controller)
+                Spacer(minLength: 0)
+                hudButton(
+                    systemImage: "pencil", label: L10n.text("Add a note…"), identifier: "recording-hud-note",
+                    fill: showsNote ? PVDesign.line2 : PVDesign.line
+                ) { showsNote.toggle() }
+                hudButton(
+                    systemImage: "arrow.up.left.and.arrow.down.right", label: L10n.text("Return to the full window"),
+                    identifier: "recording-hud-expand", fill: PVDesign.line, action: onExpand)
+                hudButton(
+                    systemImage: PVSymbol.stop, label: L10n.text("Stop recording"), identifier: "recording-hud-stop",
+                    fill: PVDesign.now, foreground: PVDesign.onNow, action: onStop)
             }
-            VStack(alignment: .leading, spacing: 3) {
-                Text(controller.captions.last?.text ?? "…")
-                    .font(.caption)
-                    .foregroundStyle(.ink3)
-                    // Grow with the current utterance, but keep the NEWEST words
-                    // visible: past the cap, truncate the head (what was said
-                    // earliest), never the tail (what's being said now).
-                    .lineLimit(captionLineCap)
-                    .truncationMode(.head)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                hudMeter
+            VStack(alignment: .leading, spacing: 6) {
+                if showsNote {
+                    RecordingNoteField(controller: controller)
+                }
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(controller.captions.last?.text ?? "…")
+                        .font(.system(size: 12))
+                        .foregroundStyle(PVDesign.ink2)
+                        // Grow with the current utterance, but keep the NEWEST words
+                        // visible: past the cap, truncate the head (what was said
+                        // earliest), never the tail (what's being said now).
+                        .lineLimit(captionLineCap)
+                        .truncationMode(.head)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                    hudMeter
+                }
                 if controller.microphoneCaptureFailed {
                     Label(L10n.text("Microphone capture failed. Stop and start a new recording."),
                           systemImage: "mic.slash.fill")
@@ -145,28 +171,19 @@ struct RecordingHUDView: View {
                     .accessibilityIdentifier("recording-hud-system-capture-health")
                 }
             }
-            Button(action: onExpand) {
-                Image(systemName: "arrow.up.left.and.arrow.down.right")
+            .padding(.top, 8)
+            .padding(.horizontal, 4)
+            .overlay(alignment: .top) {
+                Rectangle().fill(PVDesign.line).frame(height: 1).accessibilityHidden(true)
             }
-            .buttonStyle(.plain)
-            .help("Return to the full window")
-            .accessibilityLabel(L10n.text("Return to the full window"))
-            .accessibilityIdentifier("recording-hud-expand")
-            Button(action: onStop) {
-                Image(systemName: PVSymbol.stop)
-                    .font(.title3)
-                    .foregroundStyle(PVDesign.now)
-            }
-            .buttonStyle(.plain)
-            .help("Stop recording")
-            .accessibilityLabel(L10n.text("Stop recording"))
-            .accessibilityIdentifier("recording-hud-stop")
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .frame(width: 400)
+        .frame(width: RecordingHUDController.width)
         .fixedSize(horizontal: false, vertical: true)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("recording-hud-panel")
         .background(
             GeometryReader { geo in
                 Color.clear
@@ -177,12 +194,35 @@ struct RecordingHUDView: View {
         .onChange(of: controller.phase) { _, phase in
             if phase != .recording { onExpand() }
         }
+        // A saved note closes the field; a removal or an item added elsewhere mid-draft does not.
+        .onChange(of: controller.contextItems.count) { old, new in
+            if new > old, controller.drafts.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                showsNote = false
+            }
+        }
+    }
+
+    private func hudButton(
+        systemImage: String, label: String, identifier: String, fill: Color,
+        foreground: Color = PVDesign.ink, action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(foreground)
+                .frame(width: 28, height: 28)
+                .background(fill, in: Circle())
+        }
+        .buttonStyle(.plain)
+        .help(label)
+        .accessibilityLabel(label)
+        .accessibilityIdentifier(identifier)
     }
 
     private var hudMeter: some View {
         Capsule()
-            .fill(.quaternary)
-            .frame(width: 90, height: 4)
+            .fill(PVDesign.line)
+            .frame(width: 44, height: 4)
             .overlay { RecordingHUDMeterFill(controller: controller) }
     }
 

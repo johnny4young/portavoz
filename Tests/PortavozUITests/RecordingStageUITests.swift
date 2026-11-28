@@ -121,6 +121,35 @@ final class RecordingStageUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testTheFloatingPanelNamesWhoIsSpeakingBesideItsStrip() throws {
+        let app = try launchStage(["-seed-dark-appearance"])
+        defer { finishUITestApplication(app) }
+
+        let you = app.control(withIdentifier: "recording-voice-you")
+        XCTAssertTrue(you.waitForExistenceFast(timeout: 10))
+        _ = you.waitForLabelContaining("speaking now", timeout: 10)
+        app.recordingMoreItem("recording-hud").click()
+        let hud = app.control(withIdentifier: "recording-hud-panel")
+        XCTAssertTrue(hud.waitForExistenceFast(timeout: 5))
+        let speaker = app.control(withIdentifier: "recording-hud-speaker")
+        XCTAssertTrue(speaker.waitForExistenceFast(timeout: 5))
+        attachElementScreenshot(of: hud, named: "pr-recording-hud")
+        XCTAssertTrue(speaker.label.hasPrefix("You speaking"), speaker.label)
+        XCTAssertTrue(app.control(withIdentifier: "recording-hud-strip").exists)
+        XCTAssertTrue(app.buttons["recording-hud-stop"].exists)
+        XCTAssertTrue(app.buttons["recording-hud-expand"].exists)
+
+        let note = app.buttons["recording-hud-note"]
+        XCTAssertTrue(note.exists)
+        note.click()
+        let field = hud.descendants(matching: .any)["recording-note-field"]
+        XCTAssertTrue(field.waitForExistenceFast(timeout: 3), "the pencil opens the note field in the panel")
+        attachElementScreenshot(of: hud, named: "pr-recording-hud-note")
+        app.buttons["recording-hud-expand"].click()
+        XCTAssertTrue(hud.waitForDisappearance(timeout: 5))
+    }
+
+    @MainActor
     private func launchStage(_ arguments: [String]) throws -> XCUIApplication {
         let app = try XCUIApplication.portavoz(seedDemo: true, simulateNoAppleIntelligence: true)
         app.launchArguments += ["-simulate-live-voices"] + arguments

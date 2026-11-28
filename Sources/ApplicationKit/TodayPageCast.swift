@@ -39,6 +39,11 @@ public struct TodayPageCast: Sendable, Equatable {
         self.sources = sources
     }
 
+    /// Strips alone, as a list outside Today shows them.
+    public init(meetings: [(id: MeetingID, source: VoiceStripSource)]) {
+        self.init(day: nil, hero: nil, meetings: meetings)
+    }
+
     public func strip(for meeting: MeetingID) -> VoiceStripColumns? {
         strips[meeting]
     }

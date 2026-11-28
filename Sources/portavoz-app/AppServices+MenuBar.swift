@@ -14,9 +14,12 @@ extension AppServices {
 
 extension AppServices: MenuBarModelClient {
     func observeMenuBar() -> AsyncStream<MenuBarUpdate> {
-        makeApplicationMenuBarStream(
+        let store = store
+        return makeApplicationMenuBarStream(
             meetings: store.observeMenuBarMeetings(limit: 3),
-            openItems: store.observeLibraryOpenItems(limit: 200))
+            openItems: store.observeLibraryOpenItems(limit: 200),
+            // Builds and stores a missing strip once, as the Library does.
+            storeVoiceColumns: { ids in (try? await store.voiceColumns(for: ids)) ?? [:] })
     }
 
     func nextMenuBarEvent() async -> UpcomingEvent? {
@@ -174,21 +177,31 @@ actor AppMeetingBriefSkillDelivery: MeetingBriefDelivering {
 }
 
 private func makeApplicationMenuBarStream(
-    meetings: AsyncThrowingStream<[Meeting], Error>,
-    openItems: AsyncThrowingStream<[MeetingStore.OpenActionItem], Error>
+    meetings: AsyncThrowingStream<MeetingStore.LibraryMeetingRows, Error>,
+    openItems: AsyncThrowingStream<[MeetingStore.OpenActionItem], Error>,
+    storeVoiceColumns: @escaping @Sendable ([MeetingID]) async -> [MeetingID: MeetingVoiceColumns]
 ) -> AsyncStream<MenuBarUpdate> {
     AsyncStream { continuation in
         let task = Task {
             await withTaskGroup(of: Void.self) { group in
                 group.addTask {
                     do {
+                        // Rows first, strips after: a slow rebuild never holds back the list.
                         for try await value in meetings {
-                            continuation.yield(.meetings(value.map {
-                                MenuBarMeeting(
-                                    id: $0.id,
-                                    title: $0.title,
-                                    startedAt: $0.startedAt)
-                            }))
+                            let rows = value.rows
+                            func publish(_ built: [MeetingID: MeetingVoiceColumns]) {
+                                continuation.yield(.meetings(rows.map {
+                                    MenuBarMeeting(
+                                        id: $0.meeting.id,
+                                        title: $0.meeting.title,
+                                        startedAt: $0.meeting.startedAt,
+                                        strip: ($0.voiceColumns ?? built[$0.meeting.id]).map(VoiceStripSource.init))
+                                }))
+                            }
+                            publish([:])
+                            if !value.uncachedVoiceColumns.isEmpty {
+                                publish(await storeVoiceColumns(value.uncachedVoiceColumns))
+                            }
                         }
                     } catch is CancellationError {
                         // Parent cancellation ends the complete merged stream.
