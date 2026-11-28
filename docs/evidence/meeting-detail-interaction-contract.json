@@ -2369,6 +2369,12 @@
     {
       "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
       "category": "identifier",
+      "source": ".accessibilityIdentifier(\"player-playback-failed\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
+      "category": "identifier",
       "source": ".accessibilityIdentifier(\"player-readout\")",
       "occurrences": 1
     },
