@@ -14,8 +14,8 @@ extension StorageSchema {
                     """)
             }
             try db.execute(sql: """
-                CREATE INDEX meeting_on_calendarEventID ON meeting(calendarEventID, startedAt)
-                WHERE calendarEventID IS NOT NULL
+                CREATE INDEX meeting_on_calendarEventID ON meeting(calendarEventID, startedAt DESC, id)
+                WHERE calendarEventID IS NOT NULL AND deletedAt IS NULL
                 """)
             // A source chosen by the event's identifier survives a rename.
             try db.execute(sql: """

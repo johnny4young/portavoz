@@ -102,7 +102,7 @@ extension StorageSchema {
             ("speaker_update", change(
                 "speaker", ["meetingID", "displayName", "isMe", "personID", "deletedAt"]), own.both),
             ("meeting_revision", change("meeting", ["transcriptRevision"]), stale("NEW.id")),
-            // The previous occurrence was chosen by title, so the next preparation chooses again (v65 splits it).
+            // The previous occurrence was chosen by title, so the next preparation chooses again.
             ("meeting_identity", change("meeting", ["title", "deletedAt"]), forget("NEW.id")),
             ("correction_insert", "AFTER INSERT ON transcriptCorrection", own.new),
             ("correction_delete", "AFTER DELETE ON transcriptCorrection", own.old),

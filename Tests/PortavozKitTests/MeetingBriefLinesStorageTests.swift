@@ -437,20 +437,22 @@ final class MeetingBriefLinesStorageTests: XCTestCase {
         XCTAssertNil(forgotten, "another event's choice was by title, so a rename forgets it")
     }
 
+    private func pastMeeting(
+        _ title: String, daysAgo: Double, event: String? = nil, ended: Bool = true
+    ) async throws -> Meeting {
+        let start = eventStart.addingTimeInterval(-daysAgo * 86_400)
+        let meeting = Meeting(title: title, startedAt: start, endedAt: ended ? start.addingTimeInterval(600) : nil)
+        try await store.save(meeting)
+        if let event { try await store.linkCalendarEvent(event, to: meeting.id) }
+        return meeting
+    }
+
     func testPreviousOccurrenceFollowsTheEventIdentifierBeforeTheTitle() async throws {
-        func meeting(_ title: String, daysAgo: Double, event: String? = nil, ended: Bool = true) async throws -> Meeting {
-            let start = eventStart.addingTimeInterval(-daysAgo * 86_400)
-            let meeting = Meeting(
-                title: title, startedAt: start, endedAt: ended ? start.addingTimeInterval(600) : nil)
-            try await store.save(meeting)
-            if let event { try await store.linkCalendarEvent(event, to: meeting.id) }
-            return meeting
-        }
-        let renamed = try await meeting("Kickoff notes", daysAgo: 7, event: eventID)
-        _ = try await meeting("Weekly sync", daysAgo: 3, event: "event-other-series")
-        let untagged = try await meeting("Weekly sync", daysAgo: 2)
-        _ = try await meeting("Kickoff notes", daysAgo: 0.001, event: eventID, ended: false)
-        let deleted = try await meeting("Weekly sync", daysAgo: 1, event: eventID)
+        let renamed = try await pastMeeting("Kickoff notes", daysAgo: 7, event: eventID)
+        _ = try await pastMeeting("Weekly sync", daysAgo: 3, event: "event-other-series")
+        let untagged = try await pastMeeting("Weekly sync", daysAgo: 2)
+        _ = try await pastMeeting("Kickoff notes", daysAgo: 0.001, event: eventID, ended: false)
+        let deleted = try await pastMeeting("Weekly sync", daysAgo: 1, event: eventID)
         try await store.delete(deleted.id)
 
         let linked = try await store.previousMeetingOccurrence(
@@ -576,7 +578,7 @@ final class MeetingBriefLinesStorageTests: XCTestCase {
             startedAt: start, endedAt: start.addingTimeInterval(600))
         try await store.save(linked)
 
-        let found = try await store.previousMeetingOccurrence(eventID: nil, title: "Weekly sync", before: eventStart)
+        let found = try await store.previousMeetingOccurrence(eventID: "", title: "Weekly sync", before: eventStart)
 
         XCTAssertEqual(found, linked.id, "a recording linked to the event carries its date in the title")
     }
@@ -603,27 +605,20 @@ final class MeetingBriefLinesStorageTests: XCTestCase {
     }
 
     func testPreviousOccurrenceMatchesTheTitleLoosely() async throws {
-        func meeting(_ title: String, daysAgo: Double, ended: Bool = true) async throws -> Meeting {
-            let start = eventStart.addingTimeInterval(-daysAgo * 86_400)
-            let meeting = Meeting(
-                title: title, startedAt: start, endedAt: ended ? start.addingTimeInterval(600) : nil)
-            try await store.save(meeting)
-            return meeting
-        }
-        _ = try await meeting("Revisión semanal", daysAgo: 21)
-        let latest = try await meeting("  REVISION   Semanal ", daysAgo: 7)
-        _ = try await meeting("Revisión semanal", daysAgo: 1, ended: false)
-        let deleted = try await meeting("Revisión semanal", daysAgo: 2)
+        _ = try await pastMeeting("Revisión semanal", daysAgo: 21)
+        let latest = try await pastMeeting("  REVISION   Semanal ", daysAgo: 7)
+        _ = try await pastMeeting("Revisión semanal", daysAgo: 1, ended: false)
+        let deleted = try await pastMeeting("Revisión semanal", daysAgo: 2)
         try await store.delete(deleted.id)
-        _ = try await meeting("Revisión semanal", daysAgo: -1)
-        _ = try await meeting("Revisión mensual", daysAgo: 3)
-        _ = try await meeting("Planeación anual", daysAgo: 200)
+        _ = try await pastMeeting("Revisión semanal", daysAgo: -1)
+        _ = try await pastMeeting("Revisión mensual", daysAgo: 3)
+        _ = try await pastMeeting("Planeación anual", daysAgo: 200)
 
-        _ = try await meeting("Revisión semanal", daysAgo: 0.001)
-        let found = try await store.previousMeetingOccurrence(eventID: nil, title: "revisión semanal", before: eventStart)
-        let none = try await store.previousMeetingOccurrence(eventID: nil, title: "Otra cosa", before: eventStart)
-        let tooOld = try await store.previousMeetingOccurrence(eventID: nil, title: "Planeación anual", before: eventStart)
-        let blank = try await store.previousMeetingOccurrence(eventID: nil, title: "  ", before: eventStart)
+        _ = try await pastMeeting("Revisión semanal", daysAgo: 0.001)
+        let found = try await store.previousMeetingOccurrence(eventID: "", title: "revisión semanal", before: eventStart)
+        let none = try await store.previousMeetingOccurrence(eventID: "", title: "Otra cosa", before: eventStart)
+        let tooOld = try await store.previousMeetingOccurrence(eventID: "", title: "Planeación anual", before: eventStart)
+        let blank = try await store.previousMeetingOccurrence(eventID: "", title: "  ", before: eventStart)
 
         XCTAssertEqual(found, latest.id)
         XCTAssertNil(none)
