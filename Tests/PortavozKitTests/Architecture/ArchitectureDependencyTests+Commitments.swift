@@ -453,6 +453,7 @@ extension ArchitectureDependencyTests {
         // Radar confirms through Meeting Detail's own editor and boundary, never its own.
         XCTAssertTrue(view.contains("MeetingCommitmentConfirmationSheet("))
         XCTAssertFalse(view.contains("Confirm commitment"))
+        XCTAssertTrue(view.contains("isBlocked: state.isReviewBusy"))
         XCTAssertTrue(model.contains("confirmReviewedCommitment"))
         XCTAssertTrue(composition.contains("confirmMeetingDetailCommitment(request)"))
         XCTAssertTrue(view.contains(".disabled(!row.canConfirm)"))

@@ -348,6 +348,38 @@ final class CommitmentRadarModelTests: XCTestCase {
         XCTAssertEqual(model.state.reviewPage?.items.map(\.id), [item.id])
     }
 
+    func testConfirmWaitsWhileAnotherDecisionIsWritten() async throws {
+        let first = try XCTUnwrap(Self.reviewPage(title: "Send the checklist").items.first)
+        let second = try XCTUnwrap(Self.reviewPage(title: "Book the room").items.first)
+        let client = CommitmentRadarModelClientFake(
+            responses: [],
+            mutationResponses: [],
+            reviewResponses: [
+                .success(CommitmentReviewQueuePage(items: [first, second], totalCount: 2)),
+                .success(CommitmentReviewQueuePage(items: [second], totalCount: 1))
+            ],
+            reviewMutationResponses: [.success(())],
+            presentationResponseDelay: .milliseconds(200))
+        client.confirmResponses = [.success(())]
+        let model = CommitmentRadarModel(client: client)
+        await model.send(.modeChanged(.review))
+        XCTAssertFalse(model.state.isReviewBusy)
+
+        let dismissal = Task {
+            await model.send(.dismissReview(meetingID: first.meetingID, actionItemID: first.id))
+        }
+        for _ in 0..<100 where !model.state.isReviewBusy { await Task.yield() }
+        XCTAssertTrue(model.state.isReviewBusy)
+        let confirmed = await model.confirmReview(
+            second, title: second.actionItem.text, assignee: .unassigned, dueAt: nil)
+        await dismissal.value
+
+        XCTAssertFalse(confirmed, "the model refuses a second write while one is in flight")
+        XCTAssertTrue(client.confirmations.isEmpty)
+        XCTAssertFalse(model.state.reviewMutationFailed)
+        XCTAssertFalse(model.state.isReviewBusy)
+    }
+
     func testReviewFailureDoesNotReplaceConfirmedFailureState() async throws {
         let review = Self.reviewPage(title: "Send the launch checklist")
         let client = CommitmentRadarModelClientFake(

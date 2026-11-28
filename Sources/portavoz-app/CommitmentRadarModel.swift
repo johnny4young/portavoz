@@ -144,6 +144,8 @@ final class CommitmentRadarModel {
         /// Confirmed work and put-off suggestions by day, above the review list.
         fileprivate(set) var dueBoard: CommitmentDueBoard = .empty
         fileprivate(set) var reviewingActionItemID: UUID?
+        /// Every decision waits while another one is being written.
+        var isReviewBusy: Bool { reviewingActionItemID != nil }
         fileprivate(set) var reviewMutationFailed = false
         fileprivate(set) var recordedPresentationIDs: Set<UUID> = []
         fileprivate(set) var qualityPhase: LoadPhase = .idle
@@ -505,7 +507,7 @@ private extension CommitmentRadarModel {
         meetingID: MeetingID,
         write: @MainActor () async throws -> Void
     ) async -> Bool {
-        guard state.reviewingActionItemID == nil else { return false }
+        guard !state.isReviewBusy else { return false }
         state.reviewingActionItemID = actionItemID
         state.reviewMutationFailed = false
         defer { state.reviewingActionItemID = nil }

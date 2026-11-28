@@ -184,6 +184,7 @@ struct MeetingCommitmentInboxSection: View {
 
 struct MeetingCommitmentConfirmationSheet: View {
     let ownerChoices: [CommitmentOwnerSuggestion]
+    let isBlocked: Bool
     let cancel: @MainActor () -> Void
     let confirm: @MainActor (String, CommitmentAssignee, Date?) async -> Bool
 
@@ -213,10 +214,12 @@ struct MeetingCommitmentConfirmationSheet: View {
         suggestedOwner: CommitmentOwnerSuggestion?,
         suggestedDueAt: Date? = nil,
         ownerChoices: [CommitmentOwnerSuggestion],
+        isBlocked: Bool = false,
         cancel: @escaping @MainActor () -> Void,
         confirm: @escaping @MainActor (String, CommitmentAssignee, Date?) async -> Bool
     ) {
         self.ownerChoices = ownerChoices
+        self.isBlocked = isBlocked
         self.cancel = cancel
         self.confirm = confirm
         _title = State(initialValue: text)
@@ -274,7 +277,7 @@ struct MeetingCommitmentConfirmationSheet: View {
                 Button("Confirm") { save() }
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.pvPrimary)
-                    .disabled(isSaving || normalizedTitle.isEmpty)
+                    .disabled(isSaving || isBlocked || normalizedTitle.isEmpty)
                     .accessibilityIdentifier("commitment-editor-confirm")
             }
         }
