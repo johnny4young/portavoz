@@ -345,6 +345,28 @@ final class CloudMeetingSyncLifecycleTests: XCTestCase {
         let status = await fixture.lifecycle.currentStatus()
         XCTAssertEqual(status.progress.conflictCount, 1)
         XCTAssertEqual(status.phase, .failed)
+        XCTAssertFalse(status.canRetry, "retrying cannot clear a transcript-edit conflict")
+    }
+
+    func testRetryStaysAvailableWhenAConflictCoexistsWithARealFailure() {
+        func status(
+            _ phase: CloudMeetingSyncPhase,
+            failed: Int = 0,
+            failure: CloudMeetingSyncLifecycleFailure? = nil
+        ) -> CloudMeetingSyncStatus {
+            CloudMeetingSyncStatus(
+                phase: phase, accountStatus: .available, isEnabled: true,
+                initialSeedState: .complete,
+                progress: CloudMeetingSyncProgress(
+                    pendingLocalChanges: 0, queuedTransfers: 0, retryingTransfers: 0,
+                    failedTransfers: failed, conflictCount: 1),
+                nextRetryAt: nil, failure: failure)
+        }
+        XCTAssertFalse(status(.failed).canRetry)
+        XCTAssertTrue(status(.failed, failed: 1).canRetry)
+        XCTAssertTrue(status(.failed, failure: .synchronizationFailed).canRetry)
+        XCTAssertTrue(status(.retrying).canRetry)
+        XCTAssertFalse(status(.synchronized).canRetry)
     }
 }
 

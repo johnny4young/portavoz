@@ -64,10 +64,13 @@ extension MeetingStore {
                 throw StorageError.invalidImportedMeeting("import cannot replace accepted content")
             }
             try Self.requireTranscriptIdentities(transcript, in: db)
-            let end = owned.meeting.startedAt.addingTimeInterval(audioDuration)
-            guard end.timeIntervalSince1970.isFinite else {
-                throw StorageError.invalidImportedMeeting("invalid import end time")
+            // Admission stored the source modification date, which marks the recording's end.
+            let end = owned.meeting.startedAt
+            let start = end.addingTimeInterval(-audioDuration)
+            guard start.timeIntervalSince1970.isFinite else {
+                throw StorageError.invalidImportedMeeting("invalid import start time")
             }
+            owned.meeting.startedAt = start
             owned.meeting.endedAt = end
             try Self.writeTranscriptArtifact(transcript, meeting: &owned.meeting, at: timestamp, in: db)
             let completed = try Self.succeed(&owned.job, at: timestamp, in: db)

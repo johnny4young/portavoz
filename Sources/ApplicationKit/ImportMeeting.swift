@@ -182,9 +182,10 @@ public struct ImportMeeting: ApplicationUseCase {
                     audio: audio,
                     preferences: sampledPreferences,
                     progress: request.progress)
+                // A file's modification date marks when its recording ended.
                 let startedAt: Date = if let recordedAt = request.recordedAt,
                     recordedAt.timeIntervalSince1970.isFinite {
-                    recordedAt
+                    recordedAt.addingTimeInterval(-content.audioDuration)
                 } else {
                     now()
                 }

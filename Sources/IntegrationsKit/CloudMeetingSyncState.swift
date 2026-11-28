@@ -251,6 +251,18 @@ public struct CloudMeetingSyncStatus: Equatable, Sendable {
         self.nextRetryAt = nextRetryAt
         self.failure = failure
     }
+
+    /// A transcript-edit conflict clears only after the user edits, so retrying cannot help it alone.
+    public var canRetry: Bool {
+        switch phase {
+        case .retrying:
+            true
+        case .failed:
+            failure != nil || progress.failedTransfers > 0 || progress.retryingTransfers > 0
+        case .localOnly, .pending, .synchronized, .paused:
+            false
+        }
+    }
 }
 
 public struct CloudSyncRetryPolicy: Equatable, Sendable {

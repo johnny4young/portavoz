@@ -77,6 +77,11 @@ public struct OpenAICompatibleSummaryProvider: SummaryProvider {
             guard !combined.isEmpty, combined.count < current.count else { break }
             current = combined
         }
+        // Sending it anyway would let the server truncate silently and summarize a fragment.
+        guard current.count <= budget else {
+            throw IntelligenceError.providerFailed(
+                "the transcript is still too long for the model's context after condensing")
+        }
         return current
     }
 

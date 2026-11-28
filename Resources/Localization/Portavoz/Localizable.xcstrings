@@ -2441,6 +2441,16 @@
         }
       }
     },
+    "Can't play this audio": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se puede reproducir este audio"
+          }
+        }
+      }
+    },
     "Cancel": {
       "localizations": {
         "es": {

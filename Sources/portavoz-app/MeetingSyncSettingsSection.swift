@@ -137,7 +137,7 @@ struct MeetingSyncSettingsSection: View {
                 .accessibilityIdentifier("settings-sync-now")
                 .disabled(model.isBusy || status.accountStatus != .available)
 
-                if status.phase == .failed || status.phase == .retrying {
+                if status.canRetry {
                     Button("Retry now") { run(.retry) }
                         .accessibilityIdentifier("settings-sync-retry")
                         .disabled(model.isBusy)

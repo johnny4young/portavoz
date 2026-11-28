@@ -1363,10 +1363,43 @@ final class OllamaServiceTests: XCTestCase {
         XCTAssertTrue(recorded.allSatisfy { $0.timeoutInterval == OllamaService.defaultRequestTimeout })
         XCTAssertTrue(draft.markdown.contains("Condensed overview"))
     }
+
+    func testOllamaSummaryFailsInsteadOfSendingMaterialThatNeverFitsTheContext() async throws {
+        let gateway = MapReduceStubGateway(mapNote: String(repeating: "Notes that never shrink. ", count: 120))
+        let meeting = MeetingID()
+        let longText = String(repeating: "Reviewed release milestones and owners. ", count: 40)
+        let segments = (0..<3).map { index in
+            TranscriptSegment(
+                meetingID: meeting, channel: .microphone, text: "Part \(index + 1): \(longText)",
+                startTime: TimeInterval(index * 10), endTime: TimeInterval(index * 10 + 9), isFinal: true)
+        }
+        let request = SummaryRequest(
+            meetingID: meeting, segments: segments, speakers: [], recipe: .general,
+            targetLanguage: "en", glossary: [])
+        let provider = OllamaService.summaryProvider(
+            model: "qwen3:8b", gateway: gateway, contextCharacterBudget: 1_000)
+
+        do {
+            _ = try await provider.summarize(request)
+            XCTFail("over-budget material must fail instead of being truncated by the server")
+        } catch IntelligenceError.providerFailed {}
+
+        let recorded = await gateway.recordedRequests
+        XCTAssertFalse(
+            recorded.contains { request in
+                !(request.httpBody.flatMap { String(data: $0, encoding: .utf8) } ?? "").contains("Transcript excerpt")
+            },
+            "no final summary request may carry the over-budget material")
+    }
 }
 
 private actor MapReduceStubGateway: DataEgressGateway {
+    private let mapNote: String
     private(set) var recordedRequests: [URLRequest] = []
+
+    init(mapNote: String = "<think>planning</think>\n- [E1] Key milestone note.") {
+        self.mapNote = mapNote
+    }
 
     func perform(
         _ request: URLRequest,
@@ -1376,7 +1409,7 @@ private actor MapReduceStubGateway: DataEgressGateway {
         let bodyString = request.httpBody.flatMap { String(data: $0, encoding: .utf8) } ?? ""
         let content: String
         if bodyString.contains("Transcript excerpt") {
-            content = "<think>planning</think>\n- [E1] Key milestone note."
+            content = mapNote
         } else {
             let summary = StructuredSummary(
                 overview: "Condensed overview",

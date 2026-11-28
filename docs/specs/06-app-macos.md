@@ -528,7 +528,9 @@ progress and result of compression or trimming started from the toolbar, and
 an explicit clip-export action. It imports no playback capability module, owns no model
 or local state, and cannot resolve files or perform audio work itself.
 `MeetingPlayerBar` retains focused transport/clip interaction plus the native
-save-panel state needed to choose a clip destination. The route model and
+save-panel state needed to choose a clip destination. When AVFoundation fails the
+item, the play button becomes a non-interactive "Can't play this audio" mark
+(`player-playback-failed`). The route model and
 ApplicationKit continue to own playback preparation, compression, file re-
 resolution, and pending seeks.
 
@@ -2467,8 +2469,9 @@ bundle still uses its existing progress and automatic result navigation.
 The separate `ProcessAudioImports` use case can consume admitted durable imports
 without presentation ownership. It claims a fresh owner per attempt, copies or
 verifies the retained source before creating model capabilities, and runs
-`ImportMeeting` with owned adapters, preserving the imported file's
-`sourceModifiedAt` timestamp (`ImportMeetingRequest.recordedAt`), skipping
+`ImportMeeting` with owned adapters, dating the meeting from the imported
+file's `sourceModifiedAt` (`ImportMeetingRequest.recordedAt`) as the recording's
+end, so it starts that date minus the audio duration; skipping
 summary generation for empty or zero-duration recordings, and detaching
 `.cancelled` summary-run provenance writes so GRDB persists cancellation under
 a cancelled parent task. Lease heartbeat and execution are structured

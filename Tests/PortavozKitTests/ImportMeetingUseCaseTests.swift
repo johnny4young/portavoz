@@ -487,10 +487,11 @@ final class ImportMeetingUseCaseTests: XCTestCase {
         _ = try await fixture.useCase(dependencies: dependencies)(request)
 
         let state = await dependencies.state()
-        XCTAssertEqual(state.installed?.meeting.startedAt, recordedAt)
         XCTAssertEqual(
-            state.installed?.meeting.endedAt,
-            recordedAt.addingTimeInterval(fixture.spanishTranscription.audioDuration))
+            state.installed?.meeting.startedAt,
+            recordedAt.addingTimeInterval(-fixture.spanishTranscription.audioDuration),
+            "a modification date marks the end of the recording")
+        XCTAssertEqual(state.installed?.meeting.endedAt, recordedAt)
     }
 
     func testSilentOrZeroDurationAudioSkipsSummaryGeneration() async throws {
