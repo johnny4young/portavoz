@@ -212,7 +212,7 @@ private struct AskEvidenceRow: View {
                     VStack(alignment: .leading, spacing: 8) {
                         person
                         quote
-                        moment.frame(maxWidth: 260)
+                        moment
                     }
                 }
             } else {
@@ -276,7 +276,7 @@ private struct AskEvidenceRow: View {
                 .foregroundStyle(PVDesign.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
-            Text(PVFont.timeCoded(row.meeting, at: row.time, style: .subheadline))
+            Text(PVFont.timeCoded(row.meeting(), at: row.time, style: .subheadline))
                 .font(.subheadline)
                 .foregroundStyle(.ink3)
                 .fixedSize(horizontal: false, vertical: true)
@@ -299,7 +299,7 @@ private struct AskEvidenceRow: View {
             }
             .buttonStyle(.plain)
             .fixedSize()
-            .accessibilityValue(Text(verbatim: "\(row.meeting) · \(row.time)"))
+            .accessibilityValue(Text(verbatim: "\(row.meeting()) · \(row.time)"))
             .accessibilityIdentifier("\(identifier)-play")
         }
         .frame(maxWidth: .infinity, alignment: .trailing)

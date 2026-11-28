@@ -202,4 +202,29 @@ final class AskEvidenceTests: XCTestCase {
 
         XCTAssertEqual(evidence.openCommitments, [open])
     }
+    func testAFailedCommitmentReadKeepsTheVoices() async throws {
+        let fixture = try await seed()
+        let evidence = try await LoadAskEvidence(reader: CommitmentsFail(store: store))(
+            citations: [citation(fixture.segments[1], in: fixture.meeting)], answer: "[1]")
+
+        XCTAssertEqual(evidence.rows.first?.voice?.speakerID, fixture.me.id)
+        XCTAssertEqual(evidence.openCommitments, [])
+    }
+}
+
+private struct CommitmentsFail: AskEvidenceReading {
+    struct Refused: Error {}
+    let store: MeetingStore
+
+    func askCitedLines(_ lines: [MeetingID: [UUID]]) async throws -> [MeetingID: AskCitedLines] {
+        try await store.askCitedLines(lines)
+    }
+
+    func voiceColumns(for meetingIDs: [MeetingID]) async throws -> [MeetingID: MeetingVoiceColumns] {
+        try await store.voiceColumns(for: meetingIDs)
+    }
+
+    func askOpenCommitments(segmentIDs _: Set<UUID>) async throws -> [CommitmentID] {
+        throw Refused()
+    }
 }

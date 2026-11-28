@@ -56,6 +56,7 @@ struct AskView: View {
         .toolbar { toolbar }
         .onAppear {
             questionFocused = model.state.surface == .conversation
+            model.resumeEvidence()
             if model.state.surface == .personCommitments {
                 model.memory?.activate()
             } else if model.state.surface == .topicDecisions {
@@ -146,7 +147,7 @@ struct AskView: View {
                 .onGeometryChange(for: Bool.self) { [threshold = Self.compactRowsWidth] in
                     $0.size.width < threshold
                 } action: { compactRows = $0 }
-                .padding(.top, 22)
+                .padding(.top, 14)
                 .padding(.bottom, PVDesign.space6)
                 .askColumn()
             }
@@ -474,8 +475,8 @@ extension AskView {
     private var sourcePolicyStatus: some View {
         switch model.state.sourceMode {
         case .library:
-            // After the first answer its receipt says the same.
-            if model.state.exchanges.isEmpty {
+            // After the first Library answer its receipt says the same.
+            if !model.state.exchanges.contains(where: { $0.source == .library && $0.answeredIn != nil }) {
                 Label(
                     "Only your local meeting library will be searched.",
                     systemImage: "lock")

@@ -21,14 +21,20 @@ enum AskEvidencePresentation {
         let number: Int
         let citation: AskCitation
         let speaker: Speaker
-        /// "Sprint Demo · today"; the time code follows separately.
-        let meeting: String
+        let title: String
+        let startedAt: Date?
         let time: String
         let strip: VoiceStripColumns?
         /// Where the moment sits on `strip`, from 0 to 1.
         let position: Double?
 
         var id: Int { number }
+
+        /// "Sprint Demo · today", worked out when drawn so the day word never goes stale.
+        func meeting(now: Date = Date(), calendar: Calendar = .current) -> String {
+            guard let startedAt else { return title }
+            return "\(title) · \(AskEvidencePresentation.day(startedAt, now: now, calendar: calendar))"
+        }
     }
 
     /// Splits `[n]` markers that point at a citation out of the answer; a
@@ -60,19 +66,16 @@ enum AskEvidencePresentation {
     }
 
     /// One row per citation in marker order; voices, days and strips join once the evidence lands.
-    static func rows(
-        citations: [AskCitation], evidence: AskEvidence?, now: Date = Date(), calendar: Calendar = .current
-    ) -> [Row] {
+    static func rows(citations: [AskCitation], evidence: AskEvidence?) -> [Row] {
         let cast = evidence.map { TodayPageCast(meetings: $0.strips.map { ($0.meetingID, $0.source) }) }
         return citations.enumerated().map { index, citation in
             let loaded = evidence?.rows.first { $0.number == index + 1 && $0.citation == citation }
-            let day = loaded?.meetingStartedAt.map { Self.day($0, now: now, calendar: calendar) }
-            let title = MeetingRowTitle.display(citation.meetingTitle)
             return Row(
                 number: index + 1,
                 citation: citation,
                 speaker: speaker(of: loaded, in: citation.meetingID, cast: cast, loaded: evidence != nil),
-                meeting: [title, day].compactMap { $0 }.joined(separator: " · "),
+                title: MeetingRowTitle.display(citation.meetingTitle),
+                startedAt: loaded?.meetingStartedAt,
                 time: AskMarkdown.clock(citation.timestamp),
                 strip: cast?.strip(for: citation.meetingID),
                 position: loaded?.position)

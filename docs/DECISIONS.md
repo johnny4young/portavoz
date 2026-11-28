@@ -23820,6 +23820,6 @@ the next question sit together.
   meetings" appears only on a generated answer.
 - Below a 640 pt column a row stacks quote under voice and strip under quote,
   so a quote never wraps at two or three words a line at the narrowest window.
-- The Library boundary line shows until the first answer, whose "answered on
-  your Mac" receipt then says the same; Meeting, Notes and Web keep their
-  boundary and controls above the composer.
+- The Library boundary line shows until the first Library answer, whose
+  "answered on your Mac" receipt then says the same; Meeting, Notes and Web
+  keep their boundary and controls above the composer.

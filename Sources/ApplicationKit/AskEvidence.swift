@@ -75,7 +75,8 @@ public struct LoadAskEvidence: Sendable {
         let segmentIDs = Set(lines.values.joined())
         async let attributedRead = reader.askCitedLines(lines)
         async let columnsRead = reader.voiceColumns(for: order)
-        async let commitmentsRead = reader.askOpenCommitments(segmentIDs: segmentIDs)
+        // Best effort: a failed commitment read must not drop the voices.
+        async let commitmentsRead = try? reader.askOpenCommitments(segmentIDs: segmentIDs)
         let (attributed, columns, commitments) = try await (attributedRead, columnsRead, commitmentsRead)
         try Task.checkCancellation()
         let sources = columns.mapValues(VoiceStripSource.init(columns:))
@@ -99,7 +100,7 @@ public struct LoadAskEvidence: Sendable {
             strips: order.compactMap { id in
                 sources[id].map { AskEvidence.Strip(meetingID: id, source: $0) }
             },
-            openCommitments: commitments)
+            openCommitments: commitments ?? [])
     }
 
     /// The visible line first, then the accepted segments behind it.

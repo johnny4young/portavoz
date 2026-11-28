@@ -51,28 +51,32 @@ final class AskWhoSaidItPresentationTests: XCTestCase {
     }
 
     func testRowsWaitForTheirVoiceThenNameItOnTheStripWithTheMoment() async {
-        let pending = AskEvidencePresentation.rows(citations: citations, evidence: nil, now: now, calendar: calendar)
+        let pending = AskEvidencePresentation.rows(citations: citations, evidence: nil)
         XCTAssertEqual(pending.map(\.number), [1, 2, 3])
         XCTAssertEqual(pending.map(\.speaker), [.pending, .pending, .pending])
-        XCTAssertEqual(pending.map(\.meeting), Array(repeating: "Sprint demo", count: 3))
+        XCTAssertEqual(pending.map { $0.meeting(now: now, calendar: calendar) }, Array(repeating: "Sprint demo", count: 3))
         XCTAssertEqual(pending.map(\.time), ["02:18", "03:48", "05:00"])
         XCTAssertNil(pending.first?.strip)
 
-        let rows = AskEvidencePresentation.rows(
-            citations: citations, evidence: evidence(), now: now.addingTimeInterval(60), calendar: calendar)
+        let rows = AskEvidencePresentation.rows(citations: citations, evidence: evidence())
         XCTAssertEqual(rows[0].speaker, .voice(name: "You", tint: .you))
         guard case .voice("Marta", .hue(_)) = rows[1].speaker else {
             return XCTFail("a named voice keeps its hue: \(rows[1].speaker)")
         }
         XCTAssertEqual(rows[2].speaker, .unknown)
-        XCTAssertEqual(rows.map(\.meeting), Array(repeating: "Sprint demo · today", count: 3))
+        XCTAssertEqual(
+            rows.map { $0.meeting(now: now.addingTimeInterval(60), calendar: calendar) },
+            Array(repeating: "Sprint demo · today", count: 3))
+        XCTAssertEqual(
+            rows[0].meeting(now: now.addingTimeInterval(86_400), calendar: calendar), "Sprint demo · yesterday",
+            "the day word is worked out when drawn, not when the evidence landed")
         XCTAssertEqual(rows.map(\.position), [0.23, 0.38, 0.5])
         XCTAssertNotNil(rows[0].strip)
     }
 
     func testEvidenceForOtherCitationsNeverLendsItsVoice() async {
         let reordered = [citations[1], citations[0], citations[2]]
-        let rows = AskEvidencePresentation.rows(citations: reordered, evidence: evidence(), now: now, calendar: calendar)
+        let rows = AskEvidencePresentation.rows(citations: reordered, evidence: evidence())
         XCTAssertEqual(rows.map(\.speaker), [.unknown, .unknown, .unknown])
         XCTAssertEqual(rows.map(\.position), [nil, nil, 0.5])
     }
@@ -90,7 +94,7 @@ final class AskWhoSaidItPresentationTests: XCTestCase {
     }
 
     func testMarkdownLeadsEachCitationWithWhoSaidIt() async {
-        let rows = AskEvidencePresentation.rows(citations: citations, evidence: evidence(), now: now, calendar: calendar)
+        let rows = AskEvidencePresentation.rows(citations: citations, evidence: evidence())
         XCTAssertEqual(
             AskEvidencePresentation.markdown(question: "Who owns it?", answer: "You [1].", rows: rows),
             """

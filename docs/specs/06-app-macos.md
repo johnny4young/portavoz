@@ -2917,7 +2917,7 @@ The title bar reads "Ask" with the Ask / By person / By topic tabs
 900 pt column; the composer stays at its foot: follow-up chips
 (`ask-follow-ups`, `ask-follow-up-<n>`, "Follow up"), then whatever the chosen
 source still needs (the meeting menu, the Web address, consent and disclosure,
-the Notes boundary, and the Library boundary until the first answer), then one
+the Notes boundary, and the Library boundary until the first Library answer), then one
 raised field with the Library / Meeting / Notes / Web chips
 (`ask-source-*`) and a round send button (`ask-submit`). The placeholder turns
 to "Ask a follow-up…" once there is an answer.
@@ -2926,7 +2926,7 @@ Each exchange leads with "You asked · 3:16 PM", the source when it is not the
 Library, and "answered on your Mac · 1.8 s" (`ask-question-<id>-receipt`),
 then the question in Fraunces 36 (`ask-question-<id>`). The answer sits on
 the green tint (`ask-answer-<id>`) with each `[n]` drawn as the filled number
-of its row; VoiceOver reads the raw answer. Its foot says what a generated
+of its row; VoiceOver reads each mark as its number. Its foot says what a generated
 answer drew from ("Portavoz · from 3 voices in 2 meetings",
 `ask-generated-from-<id>`) beside "N open commitment(s)", which opens Radar on
 that commitment (`ask-open-commitments-<id>`), and Copy as Markdown, which

@@ -7,7 +7,7 @@ final class AskUITests: PortavozUITestCase {
     func testAnswerNamesWhoSaidItOpensItsCommitmentAndAsksAFollowUp() throws {
         let app = try XCUIApplication.portavoz(
             seedDemo: true, seedCommitmentRadar: true, simulateNoAppleIntelligence: true)
-        app.launchArguments += XCUIApplication.appearanceArguments(dark: false)
+        app.launchArguments.append("-seed-light-appearance")
         app.launchPortavoz()
         defer { finishUITestApplication(app) }
 
@@ -27,6 +27,8 @@ final class AskUITests: PortavozUITestCase {
         let followUp = app.buttons["ask-follow-up-0"]
         XCTAssertTrue(followUp.waitForExistenceFast(timeout: 10), "a generated answer offers its follow-ups")
         attachScreenshot(of: app, named: "pr-ask-who-said-it")
+        let copy = element("ask-copy-markdown-", in: app)
+        XCTAssertTrue(copy.exists, "an answer offers Copy as Markdown")
 
         let commitments = element("ask-open-commitments-", in: app)
         XCTAssertTrue(commitments.waitForExistenceFast(timeout: 5))

@@ -218,6 +218,15 @@ final class AskModel {
         topicMemory?.cancelPendingWork()
     }
 
+    /// Reloads "who said it" rows that a disappearance cancelled or a read failed to land.
+    func resumeEvidence() {
+        for exchange in state.exchanges where exchange.evidence == nil && evidenceTasks[exchange.id] == nil {
+            loadEvidence(
+                for: exchange,
+                answer: exchange.generationOutcome == .generated ? exchange.answer : nil)
+        }
+    }
+
     @discardableResult
     private func complete(
         _ exchange: Exchange,
