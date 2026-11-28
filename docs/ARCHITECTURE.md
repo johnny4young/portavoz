@@ -1304,7 +1304,9 @@ from an application workflow. The app adapter samples preferences and time once
 and performs the EventKit projection away from the main actor. Disabled
 reminders do not query the calendar; due-event selection is independent of
 source order and uses the same sampled time for admission and displayed
-minutes.
+minutes. `AppServices` owns this controller and the passive active-call nudge,
+so both keep running with the library window closed; the nudge stays hidden
+while the calendar banner is visible or a recording cannot start.
 
 The full Ask route and the command palette share one `AskMeetings` application
 workflow. `AskRetrievalContracts.swift` owns its storage-independent retrieval,

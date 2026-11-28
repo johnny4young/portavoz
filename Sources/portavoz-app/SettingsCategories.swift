@@ -59,7 +59,8 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .general:
             [
                 "language english spanish menu bar launch login",
-                "reminder calendar agenda title template mirror talk time participation"
+                "reminder calendar agenda title template mirror talk time participation",
+                "active call nudge zoom teams slack meet"
             ]
         case .audio:
             [

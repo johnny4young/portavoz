@@ -41,7 +41,6 @@ struct ContentView: View {
     @State private var askModel: AskModel
     @State private var commitmentRadarModel: CommitmentRadarModel
     @State private var reminderDraftModel: ReminderDraftModel
-    @State private var reminder = MeetingReminderController()
     @State private var firstRunHostID = UUID()
 
     init(services: AppServices) {
@@ -219,7 +218,6 @@ struct ContentView: View {
             else { return }
             route = .meeting(MeetingID(rawValue: uuid))
         }
-        .task { reminder.start(services: services) }
         .task {
             // T4 startup bench (hidden launch arg): measures to first frame,
             // so it must live in the view; it exits the process when done.

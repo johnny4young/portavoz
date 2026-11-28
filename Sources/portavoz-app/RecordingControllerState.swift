@@ -33,6 +33,16 @@ extension RecordingController {
         VocabularyPrompt.parse(UserDefaults.standard.string(forKey: "customVocabulary") ?? "")
     }
 
+    /// Whether `start` would admit a new recording now.
+    func canStart(services: AppServices) -> Bool {
+        guard !services.audioImports.storageMoveActive else { return false }
+        switch phase {
+        case .idle, .done, .failed: break
+        case .preparing, .recording, .processing: return false
+        }
+        return !inputPersistence.hasFailure && !inputPersistence.isSaving && !hasPendingInputStop
+    }
+
     var canReturnToLiveSession: Bool {
         if hasPendingInputStop { return true }
         return switch phase {

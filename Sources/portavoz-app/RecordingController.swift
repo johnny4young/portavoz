@@ -297,9 +297,7 @@ final class RecordingController {
         // A finished session must never block a hotkey/menu-bar start while
         // its previous detail remains open.
         if case .done = phase { phase = .idle }
-        guard phase == .idle || isFailed,
-              !inputPersistence.hasFailure, !inputPersistence.isSaving,
-              pendingInputStop == nil else { return }
+        guard canStart(services: services) else { return }
 
         resetForRecordingStart()
         self.services = services

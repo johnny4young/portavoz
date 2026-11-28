@@ -202,6 +202,7 @@ final class AppLaunchModel {
         services.startWatchingSharedModels()
         services.seedSharedModelFixtureIfRequested()
         Task { await services.standingPreMeetingBriefs.start() }
+        services.startFloatingRecordPrompts()
         services.requestSearchReconciliation()
         services.legacyDictation.open()
         LegacyDictationOwnershipRelease.startIfNeeded(usesTemporaryStore: services.usesTemporaryMeetingStore)
