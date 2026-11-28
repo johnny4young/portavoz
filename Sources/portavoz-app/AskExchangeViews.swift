@@ -287,7 +287,7 @@ private struct AskEvidenceRow: View {
     private var moment: some View {
         VStack(alignment: .trailing, spacing: 7) {
             if let strip = row.strip {
-                VoiceStrip(strip, size: .card, progress: 0, mark: row.position)
+                VoiceStrip(strip, size: .card, progress: 0, marks: row.position.map { [$0] } ?? [])
                     .padding(.top, 8)
             }
             Button(action: onPlay) {

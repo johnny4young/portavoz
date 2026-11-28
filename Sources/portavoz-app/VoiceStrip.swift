@@ -60,18 +60,18 @@ struct VoiceStrip: View {
     let ticks: [Double]
     /// Fraction of the width the columns fill; the rest stays track.
     let span: Double
-    /// A moment drawn as the playhead line, at any size.
-    let mark: Double?
+    /// Moments drawn as playhead lines, at any size.
+    let marks: [Double]
     @Environment(\.colorScheme) private var colorScheme
 
     init(
         _ strip: VoiceStripColumns, size: Size = .row, only: UInt8? = nil,
-        progress: Double? = nil, ticks: [Double] = [], span: Double = 1, mark: Double? = nil
+        progress: Double? = nil, ticks: [Double] = [], span: Double = 1, marks: [Double] = []
     ) {
         self.strip = strip
         self.size = size
         self.only = only
-        self.mark = mark.map { $0.isFinite ? min(1, max(0, $0)) : 0 }
+        self.marks = marks.map { $0.isFinite ? min(1, max(0, $0)) : 0 }
         self.progress = progress.map { $0.isFinite ? min(1, max(0, $0)) : 0 }
         self.ticks = ticks.filter { $0.isFinite && (0...1).contains($0) }
         self.span = span.isFinite ? min(1, max(0, span)) : 1
@@ -84,7 +84,7 @@ struct VoiceStrip: View {
         .clipShape(RoundedRectangle(cornerRadius: size.radius, style: .continuous))
         .frame(height: size.height)
         .overlay {
-            if playhead != nil || !ticks.isEmpty {
+            if !playheads.isEmpty || !ticks.isEmpty {
                 Canvas { context, canvas in
                     drawMarks(in: &context, size: canvas)
                 }
@@ -100,10 +100,10 @@ struct VoiceStrip: View {
     }
 
     /// A resume strip at zero is unheard: everything dims and no playhead marks a spot.
-    private var playhead: Double? {
-        if let mark { return mark }
-        guard !size.isCompact, let progress, size != .resume || progress > 0 else { return nil }
-        return progress
+    private var playheads: [Double] {
+        if !marks.isEmpty { return marks }
+        guard !size.isCompact, let progress, size != .resume || progress > 0 else { return [] }
+        return [progress]
     }
 
     /// The cast in order, "You 25%, Marta 30%, Others · 2"; unnamed and
@@ -171,14 +171,15 @@ struct VoiceStrip: View {
             path.addLine(to: CGPoint(x: tick * canvas.width, y: canvas.height - Self.overhang))
             tickContext.stroke(path, with: ink, lineWidth: 1)
         }
-        guard let playhead else { return }
         let width: CGFloat = 2.2
-        // Kept whole at either end; inset by the round cap so it ends exactly at the overhang.
-        let x = min(max(playhead * canvas.width, width / 2), canvas.width - width / 2)
-        var path = Path()
-        path.move(to: CGPoint(x: x, y: width / 2))
-        path.addLine(to: CGPoint(x: x, y: canvas.height - width / 2))
-        context.stroke(path, with: ink, style: StrokeStyle(lineWidth: width, lineCap: .round))
+        for playhead in playheads {
+            // Kept whole at either end; inset by the round cap so it ends exactly at the overhang.
+            let x = min(max(playhead * canvas.width, width / 2), canvas.width - width / 2)
+            var path = Path()
+            path.move(to: CGPoint(x: x, y: width / 2))
+            path.addLine(to: CGPoint(x: x, y: canvas.height - width / 2))
+            context.stroke(path, with: ink, style: StrokeStyle(lineWidth: width, lineCap: .round))
+        }
     }
 }
 

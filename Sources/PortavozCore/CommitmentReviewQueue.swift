@@ -25,8 +25,9 @@ public struct CommitmentReviewQueueOwner: Sendable, Equatable {
 /// This is a bounded read-model value, not commitment truth. `evidence`
 /// describes the complete source's freshness, while `segments` may contain
 /// only the bounded preview reported by `evidenceCount`/`hasMoreEvidence`.
-/// Confirmation must therefore reopen the source in Meeting Detail; this value
-/// cannot create reminders, continuity, or external work by itself.
+/// Confirmation goes through the same explicit boundary as Meeting Detail,
+/// which re-validates the complete source; this value cannot create
+/// reminders, continuity, or external work by itself.
 public struct CommitmentReviewQueueItem: Sendable, Identifiable {
     public var id: UUID { actionItem.id }
 
@@ -39,6 +40,11 @@ public struct CommitmentReviewQueueItem: Sendable, Identifiable {
     public let evidenceCount: Int
     public let suggestedOwner: CommitmentReviewQueueOwner?
     public let reason: CommitmentReviewQueueReason
+
+    /// The previewed lines, only while they still match the transcript.
+    public var currentEvidence: [TranscriptSegment] {
+        evidence.status == .current ? evidence.segments : []
+    }
 
     public var hasMoreEvidence: Bool {
         evidenceCount > evidence.segments.count

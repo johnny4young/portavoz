@@ -1085,6 +1085,10 @@ class UITestScopeTests(unittest.TestCase):
             "Sources/portavoz-app/ReminderDraftSheet.swift",
             "Sources/portavoz-app/AppReminderDraftEventKitAdapter.swift",
             "Sources/portavoz-app/AppServices+ReminderDraft.swift",
+            "Sources/PortavozCore/CommitmentReviewQueue.swift",
+            "Sources/ApplicationKit/CommitmentReviewVoices.swift",
+            "Sources/portavoz-app/CommitmentReviewQueueView.swift",
+            "Sources/portavoz-app/CommitmentReviewPresentation.swift",
         ]:
             selection = select_paths([path])
             self.assertEqual(selection.tests, expected, path)

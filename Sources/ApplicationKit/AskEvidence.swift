@@ -4,9 +4,7 @@ import PortavozCore
 import StorageKit
 
 /// The library reads behind an answer's evidence rows.
-public protocol AskEvidenceReading: Sendable {
-    func askCitedLines(_ lines: [MeetingID: [UUID]]) async throws -> [MeetingID: AskCitedLines]
-    func voiceColumns(for meetingIDs: [MeetingID]) async throws -> [MeetingID: MeetingVoiceColumns]
+public protocol AskEvidenceReading: MeetingVoiceAttributionReading {
     func askOpenCommitments(segmentIDs: Set<UUID>) async throws -> [CommitmentID]
 }
 
@@ -86,13 +84,13 @@ public struct LoadAskEvidence: Sendable {
         let rows = citations.enumerated().map { index, citation in
             let meeting = attributed[citation.meetingID]
             let source = sources[citation.meetingID]
-            let speaker = meeting.flatMap { Self.speaker(of: citation, in: $0) }
+            let speaker = meeting.flatMap { $0.speaker(of: Self.lineIDs(of: citation)) }
             return AskEvidence.Row(
                 number: index + 1,
                 citation: citation,
-                voice: speaker.flatMap { speaker in source?.voices.first { $0.speakerID == speaker } },
+                voice: source?.voice(speaker),
                 meetingStartedAt: meeting?.startedAt,
-                position: source.flatMap { Self.position(of: citation.timestamp, in: $0.duration) },
+                position: source.flatMap { $0.position(of: citation.timestamp) },
                 isCitedByAnswer: cited.contains(index))
         }
         return AskEvidence(
@@ -108,17 +106,28 @@ public struct LoadAskEvidence: Sendable {
         (citation.segmentID.map { [$0] } ?? []) + citation.sourceSegmentIDs
     }
 
-    /// A split part nobody is heard saying stays unattributed.
-    private static func speaker(of citation: AskCitation, in meeting: AskCitedLines) -> SpeakerID? {
-        for id in lineIDs(of: citation) {
-            if let speaker = meeting.speakers[id] { return speaker }
-            if meeting.unattributedParts.contains(id) { return nil }
+}
+
+extension AskCitedLines {
+    /// The first of these lines someone is heard saying; a split part nobody
+    /// is heard saying stays unattributed rather than borrowing the next line's voice.
+    func speaker(of ids: [UUID]) -> SpeakerID? {
+        for id in ids {
+            if let speaker = speakers[id] { return speaker }
+            if unattributedParts.contains(id) { return nil }
         }
         return nil
     }
+}
 
-    private static func position(of time: TimeInterval, in duration: TimeInterval) -> Double? {
+extension VoiceStripSource {
+    /// Where a moment sits on the strip, from 0 to 1.
+    func position(of time: TimeInterval) -> Double? {
         guard time.isFinite, duration.isFinite, duration > 0 else { return nil }
         return min(1, max(0, time / duration))
+    }
+
+    func voice(_ speaker: SpeakerID?) -> Voice? {
+        speaker.flatMap { speaker in voices.first { $0.speakerID == speaker } }
     }
 }
