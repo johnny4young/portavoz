@@ -41,6 +41,8 @@ struct CommitmentRadarView: View {
             }
             .padding(24)
             .frame(maxWidth: 980, alignment: .leading)
+            // The scroll view spans the detail, so it scrolls and fades edge to edge.
+            .frame(maxWidth: .infinity)
         }
         .accessibilityIdentifier("commitment-radar")
         // The window keeps its title for the Window menu; the toolbar draws it.
