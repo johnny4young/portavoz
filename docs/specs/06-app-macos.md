@@ -3624,17 +3624,29 @@ exercises this same production path in the durable-resume XCUITest (D63).
   owner and exact source meeting without reloading. Cards expose bounded source
   and lifecycle counts, optional details, and the first exact meeting link; the
   shared typed route opens that durable source. Generated candidates remain
-  suggestions until explicit confirmation in Meeting Detail; the separate
-  **To review** mode only adds a bounded library-wide route back to that source.
+  suggestions until explicit confirmation, either in Meeting Detail or from the
+  separate **To review** mode (D679).
   The view imports neither StorageKit nor Intelligence, and project/topic
   grouping is unavailable until a canonical entity exists. Stable identifiers
   and the disposable
   `-seed-commitment-radar` fixture verify filtering and exact source navigation
   in English and Spanish. D266 preserves that confirmed page while loading the
-  D265 generated-work queue into independent state. Suggestion cards can only
-  dismiss, defer, or reopen the complete source meeting; current evidence seeks
-  to its exact transcript time, while stale/unavailable evidence opens without
-  a false exact-focus claim. Direct confirmation remains in Meeting Detail.
+  D265 generated-work queue into independent state. Under "Suggestions, not
+  commitments" each row leads with the task in the serif, an open ring in the
+  tint of who said it, "Marta said it", a sparkles "Owner: Ilarion?" chip when
+  the queue suggests a person, and "meeting · day"; below sit the meeting's
+  voice strip with every previewed evidence moment drawn as a mark and up to
+  three time codes (each seeks to its line; "+N" counts the rest, including
+  truncated ones). **Confirm**, **Review in meeting**, **Later** (Tomorrow /
+  Next week) and **Dismiss** follow. Confirm opens Meeting Detail's own
+  confirmation editor with the suggested owner preselected and the meeting's
+  linked people as choices, and writes through the same inbox boundary
+  (D679); it is disabled unless the source evidence is current. Who said it
+  and the strip load after the page through `LoadCommitmentReviewVoices`, the
+  corrected-transcript attribution Ask uses, only for rows not yet read; a
+  failed read keeps the last voices and never holds the list or a decision. Review in meeting seeks to the first
+  current evidence line; stale/unavailable evidence opens without a false
+  exact-focus claim and shows its existing stale or unavailable label.
   D269 observes the first real review-card appearance through an idempotent
   ApplicationKit use case; dismiss/defer retries that observation first, but a
   failed advisory write never blocks review. The independent Quality request
@@ -3661,9 +3673,9 @@ exercises this same production path in the durable-resume XCUITest (D63).
   read-only, clock-sampled request for either the whole library or an exact
   bounded meeting set. It returns only pending evidence-backed generated work,
   carries explicit root/evidence truncation, and may suggest an owner only from
-  an exact canonical person link. This is not a second confirmation surface:
-  the evidence rows are a preview, direct confirmation remains in Meeting
-  Detail. The whole-library read is composed only in Radar's visually distinct
+  an exact canonical person link. The evidence rows are a preview; confirming
+  from it reuses Meeting Detail's editor and boundary, which re-validate the
+  complete source (D679). The whole-library read is composed only in Radar's visually distinct
   **To review** mode through the existing inbox mutation manager; it does not
   add pre-meeting composition, reminders, sync, export, CLI, or MCP behavior.
 - **Commitment reminder delivery (D257–D264):** the lower layers

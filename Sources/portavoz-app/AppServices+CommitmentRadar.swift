@@ -37,6 +37,20 @@ extension AppServices: CommitmentRadarModelClient {
         _ = try await makeCommitmentInboxManager().execute(.review(request))
     }
 
+    func confirmReviewedCommitment(
+        _ request: ConfirmMeetingCommitmentRequest
+    ) async throws {
+        _ = try await confirmMeetingDetailCommitment(request)
+        // Also wakes the memory graph.
+        requestSearchReconciliation()
+    }
+
+    func loadCommitmentReviewVoices(
+        _ items: [CommitmentReviewQueueItem]
+    ) async throws -> CommitmentReviewVoices {
+        try await LoadCommitmentReviewVoices(reader: store)(items)
+    }
+
     func recordCommitmentFieldPresentation(
         _ request: RecordCommitmentFieldPresentationRequest
     ) async throws {

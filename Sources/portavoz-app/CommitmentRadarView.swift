@@ -124,8 +124,10 @@ private extension CommitmentRadarView {
                 Text("Commitment Radar")
                     .pvDisplay(.title)
                     .accessibilityIdentifier("commitment-radar-title")
-                Text(headerDescription)
-                    .foregroundStyle(.ink3)
+                if let headerDescription {
+                    Text(headerDescription)
+                        .foregroundStyle(.ink3)
+                }
             }
             Spacer()
             if state.mode == .confirmed {
@@ -566,12 +568,13 @@ private extension CommitmentRadarView {
 }
 
 private extension CommitmentRadarView {
-    var headerDescription: LocalizedStringKey {
+    /// To review names itself in its section heading.
+    var headerDescription: LocalizedStringKey? {
         switch state.mode {
         case .confirmed:
             "Confirmed work, with its source and history."
         case .review:
-            "Generated suggestions waiting for your decision."
+            nil
         case .quality:
             "Private signals from the suggestions you reviewed."
         }
@@ -644,7 +647,7 @@ private extension CommitmentRadarView {
             || state.activity != .all
         return hasFilter
             ? L10n.text("No commitments match these filters.")
-            : L10n.text("Confirm an action item in Meeting Detail to track it here.")
+            : L10n.text("Confirm a suggestion in To review to track it here.")
     }
 
     func expansionBinding(_ id: CommitmentID) -> Binding<Bool> {

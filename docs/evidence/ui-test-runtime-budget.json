@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 156
+    "expectedCaseCount": 158
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -179,6 +179,8 @@
     "RecordingStageUITests/testTheFloatingPanelNamesWhoIsSpeakingBesideItsStrip()": 20.0,
     "RecordingStageUITests/testTheStageKeepsStopAndTheTitleApartAtTheMinimumWidth()": 20.0,
     "RecordingStageUITests/testTheStageReadsInLightAtTheStandardWidth()": 20.0,
-    "RecordingStageUITests/testTheStripMarksNowAndYourNoteWithThePanelBesideTheVoices()": 20.0
+    "RecordingStageUITests/testTheStripMarksNowAndYourNoteWithThePanelBesideTheVoices()": 20.0,
+    "CommitmentRadarUITests/testSuggestionSaysWhoSaidItAndConfirmsWithoutLeavingRadar()": 25.0,
+    "CommitmentRadarUITests/testNarrowDarkSuggestionKeepsEveryDecisionWhole()": 20.0
   }
 }

@@ -90,6 +90,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
+## November 28, 2026
+
+- **✅ Confirm right from Radar** — each suggestion in To review says who said it, who Portavoz thinks owns it and which meeting it came from, with its moments marked on that meeting's voice strip; Confirm, Review in meeting, Later or Dismiss without leaving Radar.
+
 ## November 27, 2026
 
 - **🗣️ See who said it** — an Ask answer now reads like a page: your question as the title, the answer with numbered marks, and under it who said each quote, when, and where on that meeting's strip, with Play moment; follow-up questions wait above the composer, and an open commitment or a Markdown copy is one click away.

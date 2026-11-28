@@ -429,7 +429,7 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(core.contains("maximumItemCount = 100"))
         XCTAssertTrue(core.contains("maximumEvidenceCount = 20"))
         XCTAssertTrue(core.contains("maximumMeetingScopeCount = 50"))
-        XCTAssertTrue(core.contains("Confirmation must therefore reopen"))
+        XCTAssertTrue(core.contains("re-validates the complete source"))
         XCTAssertTrue(application.contains("reviewAt: now()"))
         XCTAssertFalse(application.contains("confirmCommitment"))
         XCTAssertFalse(application.contains("setCommitmentReviewDecision"))
@@ -449,10 +449,19 @@ extension ArchitectureDependencyTests {
         XCTAssertTrue(model.contains("reviewRequestID"))
         XCTAssertTrue(view.contains("Review in meeting"))
         XCTAssertTrue(view.contains("Dismiss"))
-        XCTAssertTrue(view.contains("Review later"))
+        XCTAssertTrue(view.contains("Later"))
+        // Radar confirms through Meeting Detail's own editor and boundary, never its own.
+        XCTAssertTrue(view.contains("MeetingCommitmentConfirmationSheet("))
         XCTAssertFalse(view.contains("Confirm commitment"))
+        XCTAssertTrue(model.contains("confirmReviewedCommitment"))
+        XCTAssertTrue(composition.contains("confirmMeetingDetailCommitment(request)"))
+        XCTAssertTrue(view.contains(".disabled(!row.canConfirm)"))
+        XCTAssertTrue(try Self.contents(of: "Sources/portavoz-app/CommitmentReviewPresentation.swift")
+            .contains("var canConfirm: Bool { !item.currentEvidence.isEmpty }"))
+        XCTAssertTrue(core.contains("evidence.status == .current ? evidence.segments : []"))
         XCTAssertTrue(decisions.contains("## D265"))
         XCTAssertTrue(decisions.contains("## D266"))
+        XCTAssertTrue(decisions.contains("## D679"))
     }
 
     func testCommitmentFieldQualityIsContentFreeBoundedAndDecisionNeutral() throws {

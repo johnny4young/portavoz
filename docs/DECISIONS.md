@@ -23823,3 +23823,38 @@ the next question sit together.
 - The Library boundary line shows until the first Library answer, whose
   "answered on your Mac" receipt then says the same; Meeting, Notes and Web
   keep their boundary and controls above the composer.
+
+## D679 — Confirm suggestions from Radar's To review list
+
+D266 kept confirmation in Meeting Detail so a bounded evidence preview could
+not become commitment truth. The storage transaction behind confirmation
+already re-validates the complete evidence-linked source, so the detour added
+a step without adding proof. Radar's To review rows now confirm directly.
+
+- **Confirm** opens the same `MeetingCommitmentConfirmationSheet` Meeting
+  Detail uses, prefilled with the suggestion's wording and suggested owner, and
+  writes through `ManageMeetingCommitmentInbox.confirm` with the same search,
+  memory-graph and reminder follow-ups. It is disabled unless the source
+  evidence is current, the rule Meeting Detail applies.
+- Owner choices are the suggested owner plus the people linked to the meeting's
+  voices on its strip; no extra Meeting Detail read happens per row.
+- Each row says who said it from the first attributed evidence line, using the
+  corrected transcript Ask's evidence rows read (`MeetingVoiceAttributionReading`,
+  which `AskEvidenceReading` now refines, and the same split-part rule).
+  Voices load after the page and only for rows not yet read, so Confirm,
+  Later and Dismiss never wait on a transcript read; a failed read keeps the
+  previous ones. Rows are built in the model when the page or voices change.
+- Every previewed moment is a mark on the strip; at most three time codes are
+  listed and "+N" counts the rest, so the preview stays explicit about what it
+  leaves out.
+- The "New after meeting" / "Ready to review" badge, the "Only the newest
+  suggestions are shown" line and the To review header description go: the
+  queue order already puts due deferrals first, "Showing N of M suggestions"
+  appears only when the page is cut, and the section heading names the list.
+- With no suggested owner the chip is left out rather than saying "unassigned".
+- The board's "N waiting" beside the heading is left out: the To review tab
+  already carries the count. Time codes keep the shared mono time-code role.
+- The editor keeps Meeting Detail's wording line and preselects the suggested
+  owner, as it does there; the owner stays editable before anything is saved.
+- Names are ink beside their dot and the owner chip rides the green suggestion
+  tint (D643); the task is the upright serif of the board, not italics.
