@@ -39,7 +39,7 @@ public struct ActiveCallNudge: Equatable, Sendable {
 /// Pure passive active-call detector. Only apps actively streaming microphone
 /// input qualify — output-only media (YouTube, music, notification chimes)
 /// never triggers a nudge. Requires sustained input to filter transient probes
-/// and suppresses repeat nudges for the lifetime of a call session.
+/// and suppresses repeat nudges until the call ends or the cooldown expires.
 public struct ActiveCallDetector: Equatable, Sendable {
     public static let defaultConfirmationDuration: TimeInterval = 4
     public static let defaultClearAfterQuiet: TimeInterval = 6

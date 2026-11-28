@@ -1,5 +1,6 @@
 import AudioCaptureKit
 import Foundation
+import PortavozCore
 import XCTest
 
 @testable import portavoz_app
@@ -62,5 +63,54 @@ final class ActiveCallNudgeTests: XCTestCase {
         XCTAssertTrue(ActiveCallNudgePreferences.isEnabled(in: defaults))
         defaults.set(false, forKey: ActiveCallNudgePreferences.enabledKey)
         XCTAssertFalse(ActiveCallNudgePreferences.isEnabled(in: defaults))
+    }
+}
+
+@MainActor
+final class ActiveCallNudgeControllerTests: XCTestCase {
+    private let origin = Date(timeIntervalSince1970: 1_790_000_000)
+    private let zoom = ActiveCallSignal(
+        bundleID: "us.zoom.xos",
+        appName: "Zoom",
+        isUsingMicrophone: true,
+        isPlayingAudio: true,
+        isNativeCallApp: true)
+
+    private func at(_ seconds: TimeInterval) -> Date { origin.addingTimeInterval(seconds) }
+
+    private func confirmedNudge(_ controller: ActiveCallNudgeController) {
+        XCTAssertNil(controller.poll(enabled: true, isRecording: false, at: at(0)))
+        XCTAssertNotNil(controller.poll(enabled: true, isRecording: false, at: at(4)))
+    }
+
+    func testRecordedCallStaysSilentAfterALongRecordingStops() async {
+        let controller = ActiveCallNudgeController(signalSource: { [zoom] in [zoom] })
+        confirmedNudge(controller)
+        controller.accept(at: at(5))
+
+        for second in stride(from: 8.0, through: 120, by: 3) {
+            XCTAssertNil(controller.poll(enabled: true, isRecording: true, at: at(second)))
+        }
+        XCTAssertNil(controller.poll(enabled: true, isRecording: false, at: at(123)))
+        XCTAssertNil(
+            controller.poll(enabled: true, isRecording: false, at: at(129)),
+            "the call that was just recorded must not nudge again when recording stops")
+    }
+
+    func testIgnoredBannerDoesNotReappearAfterAutoDismiss() async {
+        let controller = ActiveCallNudgeController(signalSource: { [zoom] in [zoom] })
+        confirmedNudge(controller)
+        controller.dismiss(at: at(124))
+
+        XCTAssertNil(controller.poll(enabled: true, isRecording: false, at: at(127)))
+    }
+
+    func testReenablingRequiresAFreshConfirmationWindow() async {
+        let controller = ActiveCallNudgeController(signalSource: { [zoom] in [zoom] })
+        XCTAssertNil(controller.poll(enabled: true, isRecording: false, at: at(0)))
+        XCTAssertNil(controller.poll(enabled: false, isRecording: false, at: at(2)))
+
+        XCTAssertNil(controller.poll(enabled: true, isRecording: false, at: at(60)))
+        XCTAssertNotNil(controller.poll(enabled: true, isRecording: false, at: at(64)))
     }
 }

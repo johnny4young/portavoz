@@ -22,6 +22,11 @@ final class ActiveCallNudgeController {
     private var panel: NSPanel?
     private var shownNudge: ActiveCallNudge?
     private weak var services: AppServices?
+    private let signalSource: @MainActor () -> [ActiveCallSignal]
+
+    init(signalSource: @escaping @MainActor () -> [ActiveCallSignal] = MeetingAppDetector.activeCallSignals) {
+        self.signalSource = signalSource
+    }
 
     func start(services: AppServices) {
         guard loop == nil,
@@ -30,7 +35,8 @@ final class ActiveCallNudgeController {
         self.services = services
         loop = Task { [weak self] in
             while !Task.isCancelled {
-                await self?.pollOnce()
+                guard let self else { return }
+                await self.pollOnce()
                 try? await Task.sleep(for: .seconds(3))
             }
         }
@@ -38,14 +44,11 @@ final class ActiveCallNudgeController {
 
     private func pollOnce() async {
         guard let services else { return }
-        guard ActiveCallNudgePreferences.isEnabled(in: services.defaults) else {
-            close()
-            return
-        }
-        let isRecording = services.recording.phase == .recording
-            || services.recording.phase == .preparing
-        let signals = isRecording ? [] : MeetingAppDetector.activeCallSignals()
-        let nudge = detector.observe(signals: signals, isRecording: isRecording, at: Date())
+        let nudge = poll(
+            enabled: ActiveCallNudgePreferences.isEnabled(in: services.defaults),
+            isRecording: services.recording.phase == .recording
+                || services.recording.phase == .preparing,
+            at: Date())
         if let nudge {
             if shownNudge != nudge {
                 show(nudge)
@@ -55,6 +58,26 @@ final class ActiveCallNudgeController {
         }
     }
 
+    /// One detection step. Signals are read even while recording so the
+    /// detector keeps the recorded call suppressed after the recording stops.
+    func poll(enabled: Bool, isRecording: Bool, at now: Date) -> ActiveCallNudge? {
+        guard enabled else {
+            detector = ActiveCallDetector()
+            return nil
+        }
+        return detector.observe(signals: signalSource(), isRecording: isRecording, at: now)
+    }
+
+    func accept(at now: Date) {
+        detector.recordAccepted(at: now)
+        close()
+    }
+
+    func dismiss(at now: Date) {
+        detector.dismiss(at: now)
+        close()
+    }
+
     private func show(_ nudge: ActiveCallNudge) {
         close()
         shownNudge = nudge
@@ -62,15 +85,11 @@ final class ActiveCallNudgeController {
             appName: nudge.appName,
             onRecord: { [weak self] in
                 guard let self else { return }
-                self.detector.recordAccepted(at: Date())
                 self.services?.pendingRoute = .recording(nil)
                 NSApp.activate(ignoringOtherApps: true)
-                self.close()
+                self.accept(at: Date())
             },
-            onDismiss: { [weak self] in
-                self?.detector.dismiss(at: Date())
-                self?.close()
-            })
+            onDismiss: { [weak self] in self?.dismiss(at: Date()) })
 
         let panel = ActiveCallBannerPanel(
             contentRect: NSRect(x: 0, y: 0, width: 360, height: 64),
@@ -94,9 +113,7 @@ final class ActiveCallNudgeController {
         autoDismissTask?.cancel()
         autoDismissTask = Task { [weak self, weak panel] in
             try? await Task.sleep(for: .seconds(120))
-            if let self, self.panel === panel {
-                self.close()
-            }
+            if let self, self.panel === panel { self.dismiss(at: Date()) }
         }
     }
 
