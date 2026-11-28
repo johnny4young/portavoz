@@ -23878,15 +23878,19 @@ Confirmed / To review / Quality tabs move to the title bar as in Ask (D678).
   Done and Restore already live; a suggestion chip opens its meeting at the
   first current evidence line, like Review in meeting. Confirmed keeps its
   filters, grouping and list unchanged.
-- The confirmed read uses a new `.dated` Radar filter so a library with many
-  undated commitments cannot push dated ones past the bound; the put-off read
+- Confirmed work comes from two bounded reads, the existing `.overdue` filter
+  and a new `.dueFromToday` one, so neither undated work nor a long overdue
+  backlog can push today's work past the bound; Overdue's count uses the read's
+  total, so it stays exact when the chips are cut. The put-off read
   runs the review queue query with `deferredAfter`, which selects only
   deferrals not yet due in SQL. Both are bounded, read-only and add no storage.
-- The board loads after the review page and again after a confirm or Review
-  later (a dismissed suggestion was never on it); a failed read keeps the last
-  board and never holds the list.
+- The board loads after the review page, beside the rows' voices, and again
+  after every review decision, so a deferral that came due leaves it, and when
+  the calendar day turns; a failed read keeps the last board and never holds
+  the list.
 - Today's column sits on the present's red well with its title in red: the
   board marks today as the present. Owner names stay ink beside their dot
   (D643); owners take hues by how much work they hold on the board.
 - Each column shows at most six chips and "+N more"; the count beside the
-  title stays exact. The legend under the board names both chip styles.
+  title stays exact. The legend under the board names both chip styles; the
+  board's "by due date" beside the title is left out (no secondary labels).

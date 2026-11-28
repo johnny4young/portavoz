@@ -520,18 +520,18 @@ final class CommitmentRadarModelTests: XCTestCase {
         let item = try XCTUnwrap(review.items.first)
         let dated = Self.page(title: "Ship the brief", dueAt: now.addingTimeInterval(-86_400))
         let client = CommitmentRadarModelClientFake(
-            responses: [],
+            responses: [.success(Self.page(title: "Send the rollout brief"))],
             mutationResponses: [],
             reviewResponses: [.success(review), .success(review), .success(review)],
             reviewMutationResponses: [.success(()), .success(())])
-        client.datedResponses = [.success(dated), .failure(.unavailable)]
+        client.dueBoardResponses = [.success(CommitmentDueBoard.Work(overdue: dated)), .failure(.unavailable)]
         let model = CommitmentRadarModel(client: client, now: { now }, calendar: calendar)
 
         await model.send(.modeChanged(.review))
         let overdue = try XCTUnwrap(model.state.dueBoard.lanes.first)
         XCTAssertEqual(overdue.column, .overdue)
         XCTAssertEqual(overdue.chips.map(\.task), ["Ship the brief"])
-        XCTAssertTrue(client.requests.isEmpty, "the board never touches the confirmed page")
+        XCTAssertEqual(model.state.phase, .idle, "the board never touches the confirmed page")
 
         await model.send(.deferReview(
             meetingID: item.meetingID, actionItemID: item.id, revisitAt: now.addingTimeInterval(86_400)))
@@ -539,7 +539,13 @@ final class CommitmentRadarModelTests: XCTestCase {
         XCTAssertEqual(model.state.dueBoard.lanes.first?.chips.count, 1, "a failed read keeps the last board")
 
         await model.send(.dismissReview(meetingID: item.meetingID, actionItemID: item.id))
-        XCTAssertEqual(client.dueBoardReads, 2, "a dismissed suggestion was never on the board")
+        XCTAssertEqual(client.dueBoardReads, 3, "every decision re-reads the board")
+
+        await model.send(.dayChanged)
+        XCTAssertEqual(client.dueBoardReads, 4, "a new day moves the columns")
+        await model.send(.modeChanged(.confirmed))
+        await model.send(.dayChanged)
+        XCTAssertEqual(client.dueBoardReads, 4, "only To review draws the board")
     }
 
     func testConfirmedModeNeverReadsTheDueBoard() async {
@@ -635,9 +641,8 @@ private final class CommitmentRadarModelClientFake: CommitmentRadarModelClient {
     var presentationResponses: [Result<Void, Failure>]
     var confirmResponses: [Result<Void, Failure>] = []
     var voicesResponses: [Result<CommitmentReviewVoices, Failure>] = []
-    /// The due board's reads stay off `responses` and `events`; empty when unset.
-    var datedResponses: [Result<CommitmentRadarPage, Failure>] = []
-    var upcomingResponses: [Result<[CommitmentReviewQueueItem], Failure>] = []
+    /// The due board's reads stay off `events`; an empty board when unset.
+    var dueBoardResponses: [Result<CommitmentDueBoard.Work, Failure>] = []
     var dueBoardReads = 0
     var confirmations: [ConfirmMeetingCommitmentRequest] = []
     var voicesRequests: [[UUID]] = []
@@ -691,18 +696,14 @@ private final class CommitmentRadarModelClientFake: CommitmentRadarModelClient {
     func loadCommitmentRadar(
         _ request: LoadCommitmentRadarRequest
     ) async throws -> CommitmentRadarPage {
-        if request.due == .dated {
-            dueBoardReads += 1
-            guard !datedResponses.isEmpty else { return CommitmentRadarPage(items: [], totalCount: 0) }
-            return try datedResponses.removeFirst().get()
-        }
         requests.append(request)
         return try responses.removeFirst().get()
     }
 
-    func loadUpcomingCommitmentReviews() async throws -> [CommitmentReviewQueueItem] {
-        guard !upcomingResponses.isEmpty else { return [] }
-        return try upcomingResponses.removeFirst().get()
+    func loadCommitmentDueBoardWork() async throws -> CommitmentDueBoard.Work {
+        dueBoardReads += 1
+        guard !dueBoardResponses.isEmpty else { return CommitmentDueBoard.Work() }
+        return try dueBoardResponses.removeFirst().get()
     }
 
     func mutateCommitmentRadar(

@@ -21,7 +21,7 @@ protocol CommitmentRadarModelClient: AnyObject {
         _ request: LoadCommitmentReviewQueueRequest
     ) async throws -> CommitmentReviewQueuePage
 
-    func loadUpcomingCommitmentReviews() async throws -> [CommitmentReviewQueueItem]
+    func loadCommitmentDueBoardWork() async throws -> CommitmentDueBoard.Work
 
     func reviewMeetingCommitment(
         _ request: ReviewMeetingCommitmentRequest
@@ -167,6 +167,8 @@ final class CommitmentRadarModel {
         case deferReview(meetingID: MeetingID, actionItemID: UUID, revisitAt: Date)
         case dismissReviewMutationFailure
         case reviewCandidatePresented(meetingID: MeetingID, actionItemID: UUID)
+        /// The calendar day turned, so the board's columns moved.
+        case dayChanged
     }
 
     private(set) var state = State()
@@ -295,6 +297,9 @@ private extension CommitmentRadarModel {
                 revisitAt: revisitAt))
         case .dismissReviewMutationFailure:
             state.reviewMutationFailed = false
+        case .dayChanged:
+            guard state.mode == .review else { return }
+            await loadDueBoard()
         case .reviewCandidatePresented(let meetingID, let actionItemID):
             await recordPresentation(
                 meetingID: meetingID,
@@ -394,27 +399,30 @@ private extension CommitmentRadarModel {
 
     func loadReviewQueue(showProgress: Bool = true) async {
         let unread = await loadReviewPage(showProgress: showProgress)
-        await loadDueBoard()
-        guard let unread else { return }
-        await loadReviewVoices(unread.items, requestID: unread.requestID)
+        await loadDueBoardAndVoices(unread)
+    }
+
+    /// Neither the board nor a transcript read waits on the other.
+    func loadDueBoardAndVoices(
+        _ unread: (items: [CommitmentReviewQueueItem], requestID: UUID)?
+    ) async {
+        async let board: Void = loadDueBoard()
+        if let unread {
+            await loadReviewVoices(unread.items, requestID: unread.requestID)
+        }
+        await board
     }
 
     /// A failed read keeps the last board; the review list never waits on it.
     func loadDueBoard() async {
         let requestID = UUID()
         dueBoardRequestID = requestID
-        guard let confirmed = try? await client.loadCommitmentRadar(LoadCommitmentRadarRequest(
-                  due: .dated,
-                  itemLimit: CommitmentRadarQuery.maximumItemCount,
-                  sourceLimitPerItem: 1,
-                  historyLimitPerItem: 1)),
-              let upcoming = try? await client.loadUpcomingCommitmentReviews(),
+        guard let work = try? await client.loadCommitmentDueBoardWork(),
               dueBoardRequestID == requestID,
               state.mode == .review,
               !Task.isCancelled
         else { return }
-        let board = CommitmentDueBoard(
-            confirmed: confirmed.items, upcoming: upcoming, now: now(), calendar: calendar)
+        let board = CommitmentDueBoard(work, now: now(), calendar: calendar)
         if board != state.dueBoard { state.dueBoard = board }
     }
 
@@ -486,11 +494,7 @@ private extension CommitmentRadarModel {
         meetingID: MeetingID,
         request: ReviewMeetingCommitmentRequest
     ) async {
-        // A dismissed suggestion was waiting now, so it was never on the board.
-        let refreshesDueBoard = if case .dismiss = request { false } else { true }
-        await mutateReview(
-            actionItemID, meetingID: meetingID, refreshesDueBoard: refreshesDueBoard
-        ) { [client] in
+        await mutateReview(actionItemID, meetingID: meetingID) { [client] in
             try await client.reviewMeetingCommitment(request)
         }
     }
@@ -499,7 +503,6 @@ private extension CommitmentRadarModel {
     func mutateReview(
         _ actionItemID: UUID,
         meetingID: MeetingID,
-        refreshesDueBoard: Bool = true,
         write: @MainActor () async throws -> Void
     ) async -> Bool {
         guard state.reviewingActionItemID == nil else { return false }
@@ -514,10 +517,8 @@ private extension CommitmentRadarModel {
             let unread = await loadReviewPage(showProgress: false)
             // The next decision never waits on a transcript read.
             state.reviewingActionItemID = nil
-            if refreshesDueBoard { await loadDueBoard() }
-            if let unread {
-                await loadReviewVoices(unread.items, requestID: unread.requestID)
-            }
+            // Every decision re-reads the board: a deferral may have come due since it loaded.
+            await loadDueBoardAndVoices(unread)
             return true
         } catch is CancellationError {
             // Route teardown owns cancellation; no failure banner is useful.

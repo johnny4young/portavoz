@@ -50,7 +50,7 @@ private struct CommitmentDueLaneView: View {
                     .foregroundStyle(titleStyle)
                     .lineLimit(1)
                 Spacer(minLength: 4)
-                Text(lane.chips.count, format: .number)
+                Text(lane.count, format: .number)
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.ink3)
             }
@@ -61,8 +61,8 @@ private struct CommitmentDueLaneView: View {
             ForEach(lane.chips.prefix(Self.visibleChips)) { chip in
                 CommitmentDueChipView(chip: chip, open: open)
             }
-            if lane.chips.count > Self.visibleChips {
-                Text(L10n.format("+%d more", lane.chips.count - Self.visibleChips))
+            if lane.count > Self.visibleChips {
+                Text(L10n.format("+%d more", lane.count - Self.visibleChips))
                     .font(.subheadline)
                     .foregroundStyle(.ink3)
                     .padding(.horizontal, 4)

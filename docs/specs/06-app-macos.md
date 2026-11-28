@@ -3633,9 +3633,11 @@ exercises this same production path in the durable-resume XCUITest (D63).
   in English and Spanish. D266 preserves that confirmed page while loading the
   D265 generated-work queue into independent state. The Confirmed / To review
   / Quality tabs sit in the title bar beside "Radar", as in Ask (D678); the page
-  title is "Commitments". To review opens on "Commitments by due date" (D680):
+  title is "Commitments". To review opens on columns by due date (D680):
   `CommitmentDueBoard` puts open confirmed commitments with a due date (the
-  `.dated` Radar filter, earliest first) and suggestions deferred with Review
+  `.overdue` and `.dueFromToday` Radar filters, read apart so an overdue
+  backlog cannot crowd out today; Overdue's count is the read's exact total)
+  and suggestions deferred with Review
   later whose revisit date has not come (`LoadUpcomingCommitmentReviews`) into
   Overdue, Today, one column per later day of this calendar week that has
   work, Next week, and Later only when it has work. A confirmed chip is solid
@@ -3645,8 +3647,9 @@ exercises this same production path in the durable-resume XCUITest (D63).
   commitment, where Due date, Done and Restore live; a suggestion chip opens
   its meeting at the first current evidence line. Columns share one width in
   balanced rows (`CommitmentDueColumnsLayout`, 116 pt minimum) and show at most
-  six chips plus "+N more". The board is read after the review page, again
-  after a confirm or Review later, and a failed read keeps the last board. Under
+  six chips plus "+N more". The board is read after the review page, beside
+  the rows' voices, again after every review decision and when the calendar
+  day turns (`NSCalendarDayChanged`), and a failed read keeps the last board. Under
   "Suggestions, not commitments" each row leads with the task in the serif, an open ring in the
   tint of who said it, "Marta said it", a sparkles "Owner: Ilarion?" chip when
   the queue suggests a person, and "meeting · day"; below sit the meeting's

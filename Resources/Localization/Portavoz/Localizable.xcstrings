@@ -631,16 +631,6 @@
         }
       }
     },
-    "by due date": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "por fecha límite"
-          }
-        }
-      }
-    },
     "confirmed": {
       "localizations": {
         "es": {

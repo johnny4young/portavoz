@@ -36,7 +36,17 @@ struct CommitmentDueBoard: Equatable {
     struct Lane: Identifiable, Equatable {
         let column: Column
         let chips: [Chip]
+        /// Exact, even when a bounded read left some work out.
+        let count: Int
         var id: Column { column }
+    }
+
+    /// The board's bounded reads: overdue and from-today work are read apart
+    /// so a long overdue backlog cannot crowd out today.
+    struct Work {
+        var overdue = CommitmentRadarPage(items: [], totalCount: 0)
+        var fromToday = CommitmentRadarPage(items: [], totalCount: 0)
+        var putOff: [CommitmentReviewQueueItem] = []
     }
 
     static let empty = CommitmentDueBoard(lanes: [])
@@ -49,10 +59,20 @@ struct CommitmentDueBoard: Equatable {
         self.lanes = lanes
     }
 
+    init(_ work: Work, now: Date, calendar: Calendar) {
+        self.init(
+            confirmed: work.overdue.items + work.fromToday.items,
+            upcoming: work.putOff,
+            overdueTotal: work.overdue.totalCount,
+            now: now,
+            calendar: calendar)
+    }
+
     /// Overdue, Today and Next week always show; a day or Later only with work in it.
     init(
         confirmed: [CommitmentRadarItem],
         upcoming: [CommitmentReviewQueueItem],
+        overdueTotal: Int = 0,
         now: Date,
         calendar: Calendar
     ) {
@@ -83,7 +103,11 @@ struct CommitmentDueBoard: Equatable {
         let columns: [Column] = [.overdue, .today] + days.map(Column.day) + [.nextWeek]
             + (byColumn[.later] == nil ? [] : [.later])
         self.init(lanes: columns.map { column in
-            Lane(column: column, chips: (byColumn[column] ?? []).map { $0.chip(cast) })
+            let chips = (byColumn[column] ?? []).map { $0.chip(cast) }
+            return Lane(
+                column: column,
+                chips: chips,
+                count: column == .overdue ? max(chips.count, overdueTotal) : chips.count)
         })
     }
 

@@ -25,7 +25,7 @@ extension MeetingStore {
                 try root.item(
                     evidenceRows: evidenceByID[root.evidenceID] ?? [],
                     evidenceLimit: query.evidenceLimitPerItem,
-                    reviewAt: query.deferredAfter == nil ? query.reviewAt : nil)
+                    query: query)
             }
             return CommitmentReviewQueuePage(
                 items: items,
@@ -198,7 +198,7 @@ private struct CommitmentReviewQueueRootRow: Decodable, FetchableRecord {
     func item(
         evidenceRows: [CommitmentReviewQueueEvidenceRow],
         evidenceLimit: Int,
-        reviewAt: Date?
+        query: CommitmentReviewQueueQuery
     ) throws -> CommitmentReviewQueueItem {
         let meetingID = try parsedMeetingID
         return CommitmentReviewQueueItem(
@@ -213,7 +213,7 @@ private struct CommitmentReviewQueueRootRow: Decodable, FetchableRecord {
                 meetingID: meetingID),
             evidenceCount: evidenceCount,
             suggestedOwner: try ownerSuggestion,
-            reason: try reviewReason(at: reviewAt))
+            reason: try reviewReason(for: query))
     }
 
     var parsedMeetingID: MeetingID {
@@ -295,18 +295,22 @@ private struct CommitmentReviewQueueRootRow: Decodable, FetchableRecord {
         }
     }
 
-    /// A nil `reviewAt` reads deferrals whose day has not come.
-    func reviewReason(at reviewAt: Date?) throws -> CommitmentReviewQueueReason {
+    /// Fails closed when a row disagrees with the query's eligibility predicate.
+    func reviewReason(for query: CommitmentReviewQueueQuery) throws -> CommitmentReviewQueueReason {
         guard let reviewDisposition else {
             guard revisitAt == nil else {
                 throw StorageError.invalidCommitment(
                     "review queue contains an orphan revisit date")
             }
+            guard query.deferredAfter == nil else {
+                throw StorageError.invalidCommitment(
+                    "review queue contains an ineligible review decision")
+            }
             return .newAfterMeeting
         }
         guard reviewDisposition == CommitmentReviewDisposition.deferred.rawValue,
               let revisitAt,
-              revisitAt <= reviewAt ?? revisitAt
+              query.deferredAfter.map({ revisitAt > $0 }) ?? (revisitAt <= query.reviewAt)
         else {
             throw StorageError.invalidCommitment(
                 "review queue contains an ineligible review decision")

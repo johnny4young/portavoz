@@ -109,6 +109,19 @@ final class CommitmentDueBoardTests: XCTestCase {
         XCTAssertEqual(chips.map(\.isConfirmed), [true, false])
     }
 
+    func testOverdueCountStaysExactWhenItsReadWasCut() {
+        let late = (1...3).map { confirmed("Late \($0)", dueIn: -Double($0)) }
+        let board = CommitmentDueBoard(
+            CommitmentDueBoard.Work(
+                overdue: CommitmentRadarPage(items: late, totalCount: 250),
+                fromToday: CommitmentRadarPage(items: [confirmed("Now", dueIn: 0.2)], totalCount: 1)),
+            now: now,
+            calendar: calendar)
+
+        XCTAssertEqual(board.lanes.map(\.count), [250, 1, 0])
+        XCTAssertEqual(board.lanes.first?.chips.map(\.task), ["Late 3", "Late 2", "Late 1"])
+    }
+
     func testChipsOpenTheCommitmentOrTheSuggestionsMoment() throws {
         let item = confirmed("Open", dueIn: 1)
         let current = suggestion("Current", revisitIn: 1)

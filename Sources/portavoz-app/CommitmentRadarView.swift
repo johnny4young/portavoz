@@ -62,6 +62,11 @@ struct CommitmentRadarView: View {
                 await model.send(.routeFocusChanged(focus))
             }
         }
+        .task {
+            for await _ in NotificationCenter.default.notifications(named: .NSCalendarDayChanged) {
+                await model.send(.dayChanged)
+            }
+        }
         .task(id: reminderDraftLoadIdentity) {
             await reminderDrafts.load(commitments: reminderDraftCommitments)
         }
@@ -129,16 +134,10 @@ private extension CommitmentRadarView {
     var header: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Text("Commitments")
-                        .pvDisplay(.title)
-                        .accessibilityAddTraits(.isHeader)
-                        .accessibilityIdentifier("commitment-radar-title")
-                    if showsDueBoard {
-                        Text("by due date")
-                            .foregroundStyle(.ink3)
-                    }
-                }
+                Text("Commitments")
+                    .pvDisplay(.title)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityIdentifier("commitment-radar-title")
                 if let headerDescription {
                     Text(headerDescription)
                         .foregroundStyle(.ink3)

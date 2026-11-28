@@ -780,7 +780,8 @@ navigation.
 ApplicationKit supplies concrete calendar boundaries. Storage filters overdue
 as an open due date before `dayStart`, due soon as an open due date in
 `[dayStart, dueSoonEnd)`, no date as an open commitment with no due date, and
-dated as any open due date (Radar's due-date board, D680), earliest first.
+due from today as an open due date on or after `dayStart` (Radar's due-date
+board, D680), earliest first.
 The latest immutable event distinguishes new, unchanged, completed, and
 reopened activity. The read fails closed when current status disagrees with that
 event instead of converting corruption into a label. Dismissed and tombstoned
