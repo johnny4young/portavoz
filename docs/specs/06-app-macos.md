@@ -3681,7 +3681,9 @@ exercises this same production path in the durable-resume XCUITest (D63).
   Next week) and **Dismiss** follow. Confirm opens Meeting Detail's own
   confirmation editor with the suggested owner preselected and the meeting's
   linked people as choices, and writes through the same inbox boundary
-  (D679); it is disabled unless the source evidence is current. Who said it
+  (D679); it is disabled unless the source evidence is current. One decision
+  is written at a time: the row buttons and the editor's Confirm stay disabled
+  while another decision is being written. Who said it
   and the strip load after the page through `LoadCommitmentReviewVoices`, the
   corrected-transcript attribution Ask uses: every row on a fresh load, only
   rows not yet read after a decision; a failed read keeps the last voices and

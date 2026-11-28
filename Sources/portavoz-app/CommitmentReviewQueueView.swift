@@ -73,7 +73,7 @@ private extension CommitmentReviewQueueView {
                     CommitmentReviewRow(
                         row: row,
                         isFirst: row.id == rows.first?.id,
-                        isBusy: state.reviewingActionItemID != nil,
+                        isBusy: state.isReviewBusy,
                         actions: actions(for: row.item))
                 }
             }
@@ -84,6 +84,7 @@ private extension CommitmentReviewQueueView {
                 text: item.actionItem.text,
                 suggestedOwner: item.suggestedOwner?.suggestion,
                 ownerChoices: state.reviewVoices.ownerChoices(for: item.meetingID, suggested: item.suggestedOwner),
+                isBlocked: state.isReviewBusy,
                 cancel: { confirming = nil },
                 confirm: { title, assignee, dueAt in
                     await model.confirmReview(item, title: title, assignee: assignee, dueAt: dueAt)
