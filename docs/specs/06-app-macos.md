@@ -3643,8 +3643,9 @@ exercises this same production path in the durable-resume XCUITest (D63).
   linked people as choices, and writes through the same inbox boundary
   (D679); it is disabled unless the source evidence is current. Who said it
   and the strip load after the page through `LoadCommitmentReviewVoices`, the
-  corrected-transcript attribution Ask uses, only for rows not yet read; a
-  failed read keeps the last voices and never holds the list or a decision. Review in meeting seeks to the first
+  corrected-transcript attribution Ask uses: every row on a fresh load, only
+  rows not yet read after a decision; a failed read keeps the last voices and
+  never holds the list or a decision. Review in meeting seeks to the first
   current evidence line; stale/unavailable evidence opens without a false
   exact-focus claim and shows its existing stale or unavailable label.
   D269 observes the first real review-card appearance through an idempotent

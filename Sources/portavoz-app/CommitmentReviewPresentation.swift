@@ -16,7 +16,7 @@ enum CommitmentReviewPresentation {
         /// "Marta said it" with the name in ink and semibold.
         var saidIt: AttributedString {
             var text = AttributedString(isMe ? L10n.text("You said it") : L10n.format("%@ said it", name))
-            if let range = text.range(of: isMe ? L10n.text("You") : name) {
+            if let range = text.range(of: isMe ? L10n.text("You") : name, options: .caseInsensitive) {
                 text[range].font = .subheadline.weight(.semibold)
                 text[range].foregroundColor = PVDesign.ink
             }

@@ -64,7 +64,9 @@ public struct CommitmentReviewVoices: Sendable, Equatable {
     public func merging(_ newer: Self, keeping items: [CommitmentReviewQueueItem]) -> Self {
         let ids = Set(items.map(\.id))
         let meetings = Set(items.map(\.meetingID))
-        var strips = strips.filter { meetings.contains($0.meetingID) }
+        var strips = strips.filter { meetings.contains($0.meetingID) }.map { old in
+            newer.strips.first { $0.meetingID == old.meetingID } ?? old
+        }
         for strip in newer.strips where !strips.contains(where: { $0.meetingID == strip.meetingID }) {
             strips.append(strip)
         }

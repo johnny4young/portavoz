@@ -94,6 +94,28 @@ final class CommitmentReviewVoicesTests: XCTestCase {
         XCTAssertEqual(voices, .empty)
     }
 
+    func testMergingTakesTheNewerStripForAMeetingAlreadyRead() async throws {
+        let planning = try await seed()
+        let first = item(planning, evidence: [planning.segments[0]])
+        let second = item(planning, evidence: [planning.segments[1]])
+        func strip(named name: String?) -> CommitmentReviewVoices.Strip {
+            .init(meetingID: planning.meeting.id, source: VoiceStripSource(columns: MeetingVoiceColumns(
+                duration: 200,
+                columns: [0],
+                voices: [.init(speakerID: planning.marta.id, isMe: false, label: "S1", displayName: name,
+                               talkSeconds: 40, firstHeard: 0)])))
+        }
+        let older = CommitmentReviewVoices(
+            items: [first.id: .init(voice: nil, moments: [0])], strips: [strip(named: nil)])
+        let newer = CommitmentReviewVoices(
+            items: [second.id: .init(voice: nil, moments: [0.2])], strips: [strip(named: "Marta")])
+
+        let merged = older.merging(newer, keeping: [first, second])
+
+        XCTAssertEqual(merged.strips, newer.strips, "a rename read later replaces the strip")
+        XCTAssertEqual(merged.items.keys.sorted(), [first.id, second.id].sorted())
+    }
+
     func testOwnerChoicesPutTheSuggestionFirstThenTheMeetingsPeopleOnce() async throws {
         let planning = try await seed()
         let marta = try await store.createPersonAndLink(

@@ -23841,8 +23841,9 @@ a step without adding proof. Radar's To review rows now confirm directly.
 - Each row says who said it from the first attributed evidence line, using the
   corrected transcript Ask's evidence rows read (`MeetingVoiceAttributionReading`,
   which `AskEvidenceReading` now refines, and the same split-part rule).
-  Voices load after the page and only for rows not yet read, so Confirm,
-  Later and Dismiss never wait on a transcript read; a failed read keeps the
+  Voices load after the page; a fresh load re-reads every row so renamed or
+  relinked voices show, while the reload after a decision reads only rows not
+  yet read, after the decision buttons are free again. A failed read keeps the
   previous ones. Rows are built in the model when the page or voices change.
 - Every previewed moment is a mark on the strip; at most three time codes are
   listed and "+N" counts the rest, so the preview stays explicit about what it

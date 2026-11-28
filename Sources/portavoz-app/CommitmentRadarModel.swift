@@ -379,6 +379,14 @@ private extension CommitmentRadarModel {
     }
 
     func loadReviewQueue(showProgress: Bool = true) async {
+        guard let unread = await loadReviewPage(showProgress: showProgress) else { return }
+        await loadReviewVoices(unread.items, requestID: unread.requestID)
+    }
+
+    /// The rows still missing who said them; nil when none are or a newer load won.
+    func loadReviewPage(
+        showProgress: Bool
+    ) async -> (items: [CommitmentReviewQueueItem], requestID: UUID)? {
         let currentRequestID = UUID()
         reviewRequestID = currentRequestID
         if showProgress { state.reviewPhase = .loading }
@@ -389,30 +397,32 @@ private extension CommitmentRadarModel {
                   state.mode == .review,
                   !Task.isCancelled
             else {
-                return
+                return nil
             }
             state.recordedPresentationIDs.formIntersection(page.items.map(\.id))
             state.reviewPage = page
-            state.reviewVoices = state.reviewVoices.merging(.empty, keeping: page.items)
+            // A fresh load re-reads names and strips; a mutation only removes a row.
+            state.reviewVoices = showProgress
+                ? .empty
+                : state.reviewVoices.merging(.empty, keeping: page.items)
             refreshReviewRows()
             state.reviewPhase = page.items.isEmpty ? .empty : .loaded
-            // A mutation only removes a row, so it reads no transcript again.
             let unread = page.items.filter { state.reviewVoices.items[$0.id] == nil }
-            if !unread.isEmpty {
-                await loadReviewVoices(unread, requestID: currentRequestID)
-            }
+            return unread.isEmpty ? nil : (unread, currentRequestID)
         } catch is CancellationError {
             // A newer route or mode task owns presentation now.
+            return nil
         } catch {
             guard reviewRequestID == currentRequestID,
                   state.mode == .review,
                   !Task.isCancelled
             else {
-                return
+                return nil
             }
             state.reviewPage = nil
             refreshReviewRows()
             state.reviewPhase = .failed
+            return nil
         }
     }
 
@@ -461,7 +471,12 @@ private extension CommitmentRadarModel {
                 meetingID: meetingID,
                 actionItemID: actionItemID)
             try await write()
-            await loadReviewQueue(showProgress: false)
+            let unread = await loadReviewPage(showProgress: false)
+            // The next decision never waits on a transcript read.
+            state.reviewingActionItemID = nil
+            if let unread {
+                await loadReviewVoices(unread.items, requestID: unread.requestID)
+            }
             return true
         } catch is CancellationError {
             // Route teardown owns cancellation; no failure banner is useful.
