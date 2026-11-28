@@ -30,10 +30,11 @@ struct AppMeetingBriefLibraryReader: MeetingBriefLibraryReading {
 
 extension AppMeetingBriefLibraryReader: MeetingBriefSourceRecording {
     func previousMeetingBriefOccurrence(
+        eventID: String,
         title: String,
         before date: Date
     ) async throws -> MeetingID? {
-        try await store.previousMeetingOccurrence(title: title, before: date)
+        try await store.previousMeetingOccurrence(eventID: eventID, title: title, before: date)
     }
 
     func recordMeetingBriefSource(

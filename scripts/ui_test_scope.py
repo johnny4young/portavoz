@@ -362,6 +362,7 @@ def app_features(filename: str) -> set[str]:
         "homeview.swift", "homeaskfield.swift", "homenextmeetinghero.swift", "homebriefcard.swift",
         "homewhospoketoday.swift", "homedayaxis.swift", "appservices+todayvoicesuitestfixture.swift",
         "homeyourstodo.swift", "homepickup.swift", "hometoolbar.swift",
+        "appservices+briefpreviewuitestfixture.swift",
     }:
         # Today composes the Library snapshot; its own journeys plus the
         # sidebar canary cover navigation from and back to it.

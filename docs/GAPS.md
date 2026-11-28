@@ -256,6 +256,16 @@ current speaker. Those values come from unit fixtures, not meetings. The
 for built-in and external speakers, headphones, a quiet user talking over the
 remote side, and keyboard noise while taking notes.
 
+### Only calendar starts link a recording to its event
+
+D683 stores the event identifier only when a recording starts from a calendar
+event (the hero, the agenda or the reminder). A recording started from the
+active-call nudge, the menu bar, a hotkey or an App Intent while an event is
+under way carries no link and its next occurrence falls back to the title.
+Resolving the single event that covers the start in `StartRecording` would
+link those too, but it also changes their title and needs a rule for
+overlapping events.
+
 ### Short-reply confidence floor is not field-tuned
 
 Quiet short replies ("Sí", "OK", "mhm") survive the noise filter down to a

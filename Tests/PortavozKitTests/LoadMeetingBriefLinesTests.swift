@@ -35,6 +35,8 @@ final class LoadMeetingBriefLinesTests: XCTestCase {
         XCTAssertNil(loaded)
         let recorded = await library.recorded
         XCTAssertEqual(recorded, [])
+        let lookups = await library.lookups
+        XCTAssertEqual(lookups, [event.id], "the event's identifier leads the lookup")
     }
 
     private func lines(source: MeetingID) -> MeetingBriefLines {
@@ -46,6 +48,7 @@ final class LoadMeetingBriefLinesTests: XCTestCase {
 private actor BriefLinesLibraryFake: MeetingBriefLinesReading, MeetingBriefSourceRecording {
     private var stored: MeetingBriefLines?
     private let previous: MeetingID?
+    private(set) var lookups: [String] = []
     private(set) var recorded: [MeetingID?] = []
 
     init(stored: MeetingBriefLines?, previous: MeetingID?) {
@@ -57,8 +60,9 @@ private actor BriefLinesLibraryFake: MeetingBriefLinesReading, MeetingBriefSourc
         stored
     }
 
-    func previousMeetingBriefOccurrence(title: String, before date: Date) async throws -> MeetingID? {
-        previous
+    func previousMeetingBriefOccurrence(eventID: String, title: String, before date: Date) async throws -> MeetingID? {
+        lookups.append(eventID)
+        return previous
     }
 
     func recordMeetingBriefSource(eventID: String, eventStartAt: Date, sourceMeetingID: MeetingID?) async throws {

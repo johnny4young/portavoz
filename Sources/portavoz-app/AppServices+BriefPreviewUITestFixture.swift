@@ -3,15 +3,17 @@ import Foundation
 import PortavozCore
 
 extension AppServices {
-    /// `-seed-brief-previous`: an earlier, event-linked occurrence of the
-    /// `-seed-brief` event, so Today's brief card has lines to show.
+    /// `-seed-brief-previous`: an earlier occurrence recorded from the
+    /// `-seed-brief` event and renamed since, so Today's brief card finds it by
+    /// the event's identifier alone.
     func seedPreviousBriefOccurrenceIfRequested() async {
         guard ProcessInfo.processInfo.arguments.contains("-seed-brief-previous") else { return }
         let start = Self.fixtureAgendaStart.addingTimeInterval(-2 * 86_400)
         let meeting = Meeting(
-            title: TitleTemplate.eventTitle("Presupuesto rollout", date: start), startedAt: start,
+            title: "Rollout budget kickoff", startedAt: start,
             endedAt: start.addingTimeInterval(30 * 60), language: "en")
         try? await store.save(meeting)
+        try? await store.linkCalendarEvent(Self.fixtureBriefEvent.id, to: meeting.id)
         let me = Speaker(meetingID: meeting.id, label: "Me", isMe: true)
         let ana = Speaker(meetingID: meeting.id, label: "S1", displayName: "Ana")
         try? await store.save([me, ana])

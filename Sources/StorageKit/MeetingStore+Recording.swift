@@ -38,8 +38,11 @@ public struct CapturedMeetingSnapshot: Sendable {
 
 extension MeetingStore {
     /// Atomically installs the discoverable aggregate shell and every pending
-    /// source asset before privacy-sensitive capture starts.
-    public func beginRecording(_ meeting: Meeting, assets: [AudioAsset]) async throws {
+    /// source asset before privacy-sensitive capture starts. An invalid
+    /// calendar event identifier is dropped rather than failing the start.
+    public func beginRecording(
+        _ meeting: Meeting, assets: [AudioAsset], calendarEventID: String? = nil
+    ) async throws {
         try Self.validateRecordingReservation(meeting, assets: assets)
         try await database.write { db in
             let key = meeting.id.rawValue.uuidString
@@ -55,7 +58,24 @@ extension MeetingStore {
                 let record = AudioAssetRecord(asset)
                 try record.insert(db)
             }
+            if let calendarEventID {
+                try Self.linkCalendarEvent(calendarEventID, to: key, in: db)
+            }
         }
+    }
+
+    /// Links a live meeting to the calendar event it continues.
+    public func linkCalendarEvent(_ eventID: String, to meetingID: MeetingID) async throws {
+        try await database.write { db in
+            try Self.linkCalendarEvent(eventID, to: meetingID.rawValue.uuidString, in: db)
+        }
+    }
+
+    private static func linkCalendarEvent(_ eventID: String, to key: String, in db: Database) throws {
+        guard UpcomingEvent.isValidIdentity(eventID) else { return }
+        try db.execute(
+            sql: "UPDATE meeting SET calendarEventID = ? WHERE id = ? AND deletedAt IS NULL",
+            arguments: [eventID, key])
     }
 
     /// Pending and finalized assets for a live meeting. The live-root check
