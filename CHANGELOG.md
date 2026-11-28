@@ -90,9 +90,13 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **⚙️ Settings, seven panes and a window you can resize** — voice and Apuntador live with Intelligence, sync and background activity with Your data; every automation shows its switch and when it last ran.
 - **🎯 Plainer words, one icon per idea, warnings unlike errors** — "sources" instead of "evidence", "activity" instead of "receipts", one privacy line instead of five, a single icon for each concept, and an orange circle for "keep an eye on it" versus a red triangle for "stopped".
 
-## November 27, 2026
+## November 28, 2026
 
 - **📞 One-click "Record call?" nudge** — Portavoz notices when a call starts in Zoom, Teams, Slack, Discord, Webex, FaceTime, or a browser (even without a calendar event) and offers a calm one-click banner to start recording, with a toggle in Settings › General; it and the calendar banner keep working with the main window closed and never stack.
+
+## November 27, 2026
+
+- **🗣️ See who said it** — an Ask answer now reads like a page: your question as the title, the answer with numbered marks, and under it who said each quote, when, and where on that meeting's strip, with Play moment; follow-up questions wait above the composer, and an open commitment or a Markdown copy is one click away.
 - **🔧 Reliable long summaries, imports, playback and sync** — Ollama chunks long transcripts and waits longer instead of overflowing its context; Skip silence plus Only my voice jump in one hop, and the player says when it can't play a file; imports are dated by when the recording happened and skip empty summaries; Settings calls out iCloud transcript-edit conflicts without a retry that can't fix them.
 - **📍 Your meeting in the menu bar** — while you record, the menu bar shows the elapsed time and its panel opens on the live meeting: the clock, a strip of who spoke when and "You speaking · then S1, S2"; the floating mini panel names who is speaking too and adds a Note button, and Recent rows carry their own voice strips.
 - **🧭 A calm live stage** — while you record, a strip shows who spoke when up to a red "now" edge, with your notes and the questions asked of you marked on it; captions fade as they age under the line being said, and Apuntador, Objectives and Notes sit beside the voices with a note field that always shows the time it will stamp.

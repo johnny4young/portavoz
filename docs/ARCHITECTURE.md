@@ -1318,8 +1318,11 @@ The same boundary can emit lexical and final fused evidence while preserving
 its final-result API. `AskModel` owns each window's draft, conversation,
 finding/refinement/generation progress, early citations, cancellation, and
 stale-result fence. A finished meeting answer also carries its "who said it"
-rows (`LoadAskEvidence`), the time it took and, later, local follow-up
-suggestions (`SuggestAskFollowUps`) that the next question cancels. `CommandPaletteModel` owns process-scoped instant results,
+rows (`LoadAskEvidence`, with the open commitments behind the cited lines),
+the time it took and, later, local follow-up suggestions
+(`SuggestAskFollowUps`) that the next question cancels. The pure
+`AskEvidencePresentation` turns an exchange into answer markers and evidence
+rows recast in one page cast; `AskView` draws them. `CommandPaletteModel` owns process-scoped instant results,
 answer state, cancellation, and generation fencing so closing one panel cannot
 publish work into a later invocation. SwiftUI and AppKit retain rendering,
 clipboard access, panel lifecycle, route selection, and exact evidence seeking.

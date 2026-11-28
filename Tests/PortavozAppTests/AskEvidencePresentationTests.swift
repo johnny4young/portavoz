@@ -123,6 +123,28 @@ final class AskEvidencePresentationTests: XCTestCase {
         XCTAssertEqual(model.state.exchanges.first?.followUps, [])
     }
 
+    func testEvidenceCancelledByLeavingAskLoadsAgainWhenAskReturns() async throws {
+        let client = EvidenceAskClient()
+        client.evidenceHangs = true
+        client.answers["kepler"] = answer("kepler")
+        let model = AskModel(client: client)
+        model.updateDraft("kepler")
+        model.submit()
+        try await waitUntil { model.state.exchanges.count == 1 && client.evidenceRequests.count == 1 }
+
+        model.cancelAllWork()
+        client.evidenceHangs = false
+        client.resolveEvidence()
+        await Task.yield()
+        XCTAssertNil(model.state.exchanges.first?.evidence, "leaving Ask cancels the read")
+
+        model.resumeEvidence()
+        try await waitUntil { model.state.exchanges.first?.evidence != nil }
+        XCTAssertEqual(client.evidenceRequests.count, 2)
+        model.resumeEvidence()
+        XCTAssertEqual(client.evidenceRequests.count, 2, "landed evidence is never read again")
+    }
+
     private func waitUntil(
         timeout: Duration = .seconds(2),
         _ condition: @escaping @MainActor () -> Bool

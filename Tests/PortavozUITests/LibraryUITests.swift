@@ -1233,23 +1233,32 @@ final class LibraryUITests: PortavozUITestCase {
                 continueEnvironmentKey:
                     "PORTAVOZ_UI_TEST_ASK_ANSWER_CONTINUE_PATH"),
             "the deterministic fixture must release the partial answer exactly once")
+        let answers = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH 'ask-answer-'"))
         XCTAssertTrue(
-            app.staticTexts["El presupuesto se revisó y el rollout quedó para el viernes."]
-                .waitForExistenceFast(timeout: 10),
+            waitForUITestCondition(timeout: 10) {
+                answers.allElementsBoundByIndex.contains {
+                    renderedText(of: $0).contains("El presupuesto se revisó y el rollout quedó para el viernes")
+                }
+            },
             "manual Ask must publish the seeded local answer even when Apple Foundation Models are unavailable")
         XCTAssertFalse(
             app.descendants(matching: .any)["ask-generation-unavailable"].exists,
             "the explicit manual Ask route must not be gated by Apple Intelligence")
         let citation = app.buttons.matching(
-            NSPredicate(format: "identifier BEGINSWITH 'ask-citation-'"))
+            NSPredicate(format: "identifier BEGINSWITH 'ask-evidence-' AND identifier ENDSWITH '-1-play'"))
             .firstMatch
         XCTAssertTrue(citation.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(citation.label.contains("Test meeting · 00:03"))
+        let moment = renderedText(of: citation)
+        XCTAssertTrue(moment.contains("Test meeting") && moment.contains("00:03"), moment)
         XCTAssertTrue(
             app.descendants(matching: .any)["ask-exchange-source-meeting"]
                 .waitForExistenceFast(timeout: 5))
         attachScreenshot(of: app, named: "band-6c5-full-ask-answer")
 
+        // Who-said-it rows sit under the answer card and can start below the fold.
+        XCTAssertTrue(citation.revealVertically(
+            in: app.control(withIdentifier: "ask-exchange-scroll"), maxScrolls: 12, maximumStep: 400))
         citation.click()
         let currentTime = app.staticTexts["player-current-time"]
         XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))

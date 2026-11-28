@@ -71,7 +71,12 @@ extension AskView {
     var questionPlaceholder: String {
         switch model.state.sourceMode {
         case .web: L10n.text("Ask about this page…")
-        default: L10n.text("Ask about your meetings…")
+        default:
+            if model.state.exchanges.isEmpty {
+                L10n.text("Ask about your meetings…")
+            } else {
+                L10n.text("Ask a follow-up…")
+            }
         }
     }
 

@@ -50,31 +50,21 @@ final class RecordingBarLayoutTests: XCTestCase {
             RecordingToolbar(controller: controller, onCompact: {}),
             counter: counter)
 
-        // The first tick lands before the baseline, the next two after it.
-        try await Task.sleep(for: .milliseconds(1_200))
-        await settle(window)
-        let settled = counter.measures
-        try await Task.sleep(for: .milliseconds(2_300))
-        await settle(window)
-
-        XCTAssertEqual(counter.measures, settled, "the kicker's blink re-measured the bar")
+        let measures = try await measuresAcrossTicks(from: controller.startedAt, in: window, counter: counter)
+        XCTAssertEqual(measures, 0, "the kicker's blink re-measured the bar")
         XCTAssertFalse(window.isVisible, "unit tests must not open real host windows")
     }
 
     func testAClockTickDoesNotRemeasureTheStageHero() async throws {
         try skipUnlessTheProbeSeesLayoutChanges()
         let counter = LayoutMeasureCounter()
+        let controller = RecordingController()
         let window = host(
-            RecordingStageHero(controller: RecordingController(), onStop: {}),
+            RecordingStageHero(controller: controller, onStop: {}),
             counter: counter)
 
-        try await Task.sleep(for: .milliseconds(1_200))
-        await settle(window)
-        let settled = counter.measures
-        try await Task.sleep(for: .milliseconds(2_300))
-        await settle(window)
-
-        XCTAssertEqual(counter.measures, settled, "the clock re-measured the hero")
+        let measures = try await measuresAcrossTicks(from: controller.startedAt, in: window, counter: counter)
+        XCTAssertEqual(measures, 0, "the clock re-measured the hero")
     }
 
     func testALevelSampleDoesNotRemeasureTheBarAroundTheMeter() async throws {
@@ -148,6 +138,37 @@ final class RecordingBarLayoutTests: XCTestCase {
             rootView: LayoutMeasureProbe(counter: counter) { content }
                 .frame(width: 1_000))
         return window
+    }
+
+    /// Measures taken from just before to just after each of two clock ticks,
+    /// skipping the first tick and any window a stalled host overran, so a slow
+    /// runner's late layout between ticks is not blamed on the clock.
+    private func measuresAcrossTicks(
+        from startedAt: Date, in window: NSWindow, counter: LayoutMeasureCounter
+    ) async throws -> Int {
+        await settle(window)
+        let deadline = Date().addingTimeInterval(20)
+        var tick = max(2, Date().timeIntervalSince(startedAt).rounded(.up) + 1)
+        var observed = 0
+        var measures = 0
+        while observed < 2 {
+            guard Date() < deadline else {
+                XCTFail("the host stalled through every clock tick")
+                return measures
+            }
+            let tickDate = startedAt.addingTimeInterval(tick)
+            tick += 1
+            try await Task.sleep(for: .seconds(max(0, tickDate.timeIntervalSinceNow - 0.25)))
+            window.contentView?.layoutSubtreeIfNeeded()
+            let before = counter.measures
+            guard tickDate.timeIntervalSinceNow > 0.1 else { continue }
+            try await Task.sleep(for: .seconds(max(0, tickDate.timeIntervalSinceNow + 0.25)))
+            await settle(window)
+            guard tickDate.timeIntervalSinceNow > -0.7 else { continue }
+            measures += counter.measures - before
+            observed += 1
+        }
+        return measures
     }
 
     private func settle(_ window: NSWindow) async {

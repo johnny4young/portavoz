@@ -2919,18 +2919,46 @@ Skip stays available on every step (`onboarding-skip`).
 
 ## Ask and Radar layout (Sep 2026, D536)
 
-Ask puts the question first: the source picker, then the field
-(`ask-question-field`, `ask-submit`), then the answers, so the entry never
-sits a page below the last exchange. Each answer carries one flowing line of
-sources (`ask-sources-<exchange>`) where meeting moments, note sources and web
-pages keep their own marks and identifiers (`ask-citation-`,
-`ask-note-citation-`, `ask-web-citation-`). The By person and By topic
-surfaces keep their segmented picker. Commitment Radar shows the reminders
+Superseded for the answer page by D678 below; the Radar half still holds.
+The By person and By topic surfaces keep their segmented picker, now in the
+title bar. Commitment Radar shows the reminders
 state as one chip in the header (`commitment-reminder-card`, with the same
 enable/retry/settings controls), drops the "Showing N of M" line in favour of a
 single hint when more rows exist, and moves each commitment's full sources and
 history behind a popover (`commitment-radar-details-<id>`) while the first
 source stays visible on the card.
+
+### Ask answer page (Nov 2026, D678)
+
+The title bar reads "Ask" with the Ask / By person / By topic tabs
+(`ask-surface-*`) on its trailing edge. Answers read as a page in one centred
+900 pt column; the composer stays at its foot: follow-up chips
+(`ask-follow-ups`, `ask-follow-up-<n>`, "Follow up"), then whatever the chosen
+source still needs (the meeting menu, the Web address, consent and disclosure,
+the Notes boundary, and the Library boundary until the first Library answer), then one
+raised field with the Library / Meeting / Notes / Web chips
+(`ask-source-*`) and a round send button (`ask-submit`). The placeholder turns
+to "Ask a follow-up…" once there is an answer.
+
+Each exchange leads with "You asked · 3:16 PM", the source when it is not the
+Library, and "answered on your Mac · 1.8 s" (`ask-question-<id>-receipt`),
+then the question in Fraunces 36 (`ask-question-<id>`). The answer sits on
+the green tint (`ask-answer-<id>`) with each `[n]` drawn as the filled number
+of its row; VoiceOver reads each mark as its number. Its foot says what a generated
+answer drew from ("Portavoz · from 3 voices in 2 meetings",
+`ask-generated-from-<id>`) beside "N open commitment(s)", which opens Radar on
+that commitment (`ask-open-commitments-<id>`), and Copy as Markdown, which
+leads each citation with who said it (`ask-copy-markdown-<id>`).
+
+"Who said it" (`ask-evidence-<id>`) has one row per meeting citation in
+marker order (`ask-evidence-<id>-<n>`): the number, the voice (`-speaker`,
+ink name beside its dot; "Unknown speaker" with an open grey dot when nobody
+is heard saying it; blank until the evidence read lands), the quote in serif
+italic, "meeting · day · 02:18" (`-meeting`), the meeting's strip dimmed with
+an ink mark at the moment, and Play moment (`-play`, which seeks the meeting).
+Below 640 pt of column the row stacks the quote under the voice and the strip
+under the quote. Notes and Web answers keep their own source chips
+(`ask-note-citation-`, `ask-web-citation-`).
 
 ## Settings layout (Sep 2026, D537; consolidated Nov 2026)
 

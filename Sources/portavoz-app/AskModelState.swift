@@ -47,7 +47,13 @@ extension AskModel {
         let generationOutcome: AskGenerationOutcome
         let source: ExchangeSource
         /// "Who said it" rows; nil until they load after the answer, or if the read fails.
-        var evidence: AskEvidence?
+        var evidence: AskEvidence? {
+            didSet { rows = AskEvidencePresentation.rows(citations: citations, evidence: evidence) }
+        }
+        /// What the page draws, built once per change rather than per render.
+        private(set) var rows: [AskEvidencePresentation.Row]
+        let answerPieces: [AskEvidencePresentation.Piece]
+        let askedAt: Date
         /// From the question to the answer, before evidence rows load.
         let answeredIn: Duration?
         /// Arrives after the answer; empty when no local model could suggest.
@@ -64,6 +70,7 @@ extension AskModel {
             generationOutcome: AskGenerationOutcome,
             source: ExchangeSource = .library,
             evidence: AskEvidence? = nil,
+            askedAt: Date = Date(),
             answeredIn: Duration? = nil
         ) {
             self.id = id
@@ -76,6 +83,9 @@ extension AskModel {
             self.generationOutcome = generationOutcome
             self.source = source
             self.evidence = evidence
+            rows = AskEvidencePresentation.rows(citations: citations, evidence: evidence)
+            answerPieces = AskEvidencePresentation.pieces(of: answer, citationCount: citations.count)
+            self.askedAt = askedAt
             self.answeredIn = answeredIn
         }
 
@@ -90,6 +100,7 @@ extension AskModel {
         var exchanges: [Exchange] = []
         var isAsking = false
         var pendingQuestion: String?
+        var pendingAskedAt: Date?
         var pendingCitations: [AskCitation] = []
         var pendingNoteCitations: [AskNoteCitation] = []
         var pendingWebCitations: [AskWebCitation] = []

@@ -181,4 +181,50 @@ final class AskEvidenceTests: XCTestCase {
         let evidence = try await LoadAskEvidence(reader: store)(citations: [late], answer: nil)
         XCTAssertEqual(evidence.rows.first?.position, 1)
     }
+    func testOpenCommitmentsAreTheConfirmedOnesBehindACitedLine() async throws {
+        let fixture = try await seed()
+        func confirm(_ text: String, segment: TranscriptSegment) async throws -> CommitmentID {
+            let item = ActionItem(text: text, ownerSpeakerID: fixture.me.id)
+            _ = try await store.saveSummary(SummaryDraft(
+                meetingID: fixture.meeting.id, recipeID: Recipe.general.id, language: "en",
+                markdown: text, actionItems: [item],
+                actionItemEvidence: [SummaryActionItemEvidence(actionItemID: item.id, evidenceSegmentIDs: [segment.id])]))
+            return try await store.confirmCommitment(CommitmentConfirmation(
+                title: text, assignee: .me, origin: .generatedActionItem(item.id))).commitment.id
+        }
+        let open = try await confirm("Migrate the dashboards", segment: fixture.segments[1])
+        let done = try await confirm("Ship the access fix", segment: fixture.segments[1])
+        _ = try await confirm("Unrelated", segment: fixture.segments[0])
+        _ = try await store.applyCommitmentTransition(.complete, to: done)
+
+        let evidence = try await LoadAskEvidence(reader: store)(
+            citations: [citation(fixture.segments[1], in: fixture.meeting)], answer: "[1]")
+
+        XCTAssertEqual(evidence.openCommitments, [open])
+    }
+    func testAFailedCommitmentReadKeepsTheVoices() async throws {
+        let fixture = try await seed()
+        let evidence = try await LoadAskEvidence(reader: CommitmentsFail(store: store))(
+            citations: [citation(fixture.segments[1], in: fixture.meeting)], answer: "[1]")
+
+        XCTAssertEqual(evidence.rows.first?.voice?.speakerID, fixture.me.id)
+        XCTAssertEqual(evidence.openCommitments, [])
+    }
+}
+
+private struct CommitmentsFail: AskEvidenceReading {
+    struct Refused: Error {}
+    let store: MeetingStore
+
+    func askCitedLines(_ lines: [MeetingID: [UUID]]) async throws -> [MeetingID: AskCitedLines] {
+        try await store.askCitedLines(lines)
+    }
+
+    func voiceColumns(for meetingIDs: [MeetingID]) async throws -> [MeetingID: MeetingVoiceColumns] {
+        try await store.voiceColumns(for: meetingIDs)
+    }
+
+    func askOpenCommitments(segmentIDs _: Set<UUID>) async throws -> [CommitmentID] {
+        throw Refused()
+    }
 }

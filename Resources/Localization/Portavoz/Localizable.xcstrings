@@ -13081,16 +13081,6 @@
         }
       }
     },
-    "Source: Library": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fuente: Biblioteca"
-          }
-        }
-      }
-    },
     "Source: Notes": {
       "localizations": {
         "es": {
@@ -19263,6 +19253,156 @@
           "stringUnit": {
             "state": "translated",
             "value": "llamada activa aviso zoom teams slack meet grabar"
+          }
+        }
+      }
+    },
+    "today": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "hoy"
+          }
+        }
+      }
+    },
+    "yesterday": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ayer"
+          }
+        }
+      }
+    },
+    "1 meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 reunión"
+          }
+        }
+      }
+    },
+    "Portavoz · from %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz · de %@"
+          }
+        }
+      }
+    },
+    "Portavoz · from %@ in %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz · de %@ en %@"
+          }
+        }
+      }
+    },
+    "1 open commitment": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 compromiso abierto"
+          }
+        }
+      }
+    },
+    "%d open commitments": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d compromisos abiertos"
+          }
+        }
+      }
+    },
+    "1 moment": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 momento"
+          }
+        }
+      }
+    },
+    "%d moments": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d momentos"
+          }
+        }
+      }
+    },
+    "answered on your Mac · %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "respondida en tu Mac · %@"
+          }
+        }
+      }
+    },
+    "You asked · %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preguntaste · %@"
+          }
+        }
+      }
+    },
+    "Who said it": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quién lo dijo"
+          }
+        }
+      }
+    },
+    "Play moment": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducir momento"
+          }
+        }
+      }
+    },
+    "Follow up": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sigue preguntando"
+          }
+        }
+      }
+    },
+    "Ask a follow-up…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haz otra pregunta…"
           }
         }
       }
