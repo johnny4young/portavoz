@@ -23904,9 +23904,11 @@ floor and the assist area's 212 pt floor (D507). The assist area got about
 under it measured 0 pt and its older cards could not be reached.
 
 - `RecordingAssistLayout.split` now lets the captions give way first, down to
-  their latest line (64 pt), while the assist area keeps its 212 pt floor;
-  below that both shrink in proportion as before, so neither zone ever
-  vanishes (D507 still holds). The two branches meet without a jump.
+  one clear line (76 pt: their 42 pt top fade plus a caption row), while the
+  assist area keeps its 212 pt floor. Shorter still, the captions get the
+  smaller of that line and their D507 proportional share, so a very short
+  window shows as many words as before and neither zone vanishes. The rule is
+  continuous: captions are `max(usable - 212, min(76, usable × 132 / 344))`.
 - Lead-only voices show exactly one row (`LiveVoiceTable.leading`).
   `folding(to: 1)` keeps a second voice when only two were heard, because a
   fold row would take its place; lead-only draws no fold row, so that second
@@ -23914,4 +23916,3 @@ under it measured 0 pt and its older cards could not be reached.
 - The recording stage tests wait for the scripted call to reach your open
   turn instead of reading a row that the lead-only table replaces while a slow
   host is still streaming the script.
-

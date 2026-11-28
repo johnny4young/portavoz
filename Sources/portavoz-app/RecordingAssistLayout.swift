@@ -14,8 +14,9 @@ enum RecordingAssistLayout {
     static let maximumFraction = 0.70
     static let defaultFraction = 0.42
     static let minimumCaptionsHeight: CGFloat = 132
-    /// The latest caption line: what a short window keeps before the assist floor gives way.
-    static let compactCaptionsHeight: CGFloat = 64
+    /// The captions' 42 pt top fade plus one clear caption row: what a short
+    /// window keeps before the assist floor gives way.
+    static let compactCaptionsHeight: CGFloat = 76
     /// The tabs, the focus card, a usable list and the note field under every tab.
     static let minimumAssistHeight: CGFloat = 212
     /// Pointer target for the divider; the visible capsule is thinner.
@@ -36,10 +37,10 @@ enum RecordingAssistLayout {
     /// Divides the height left after the recording bar and its banners.
     ///
     /// When the window is too short to honor both floors, the captions give way
-    /// to their latest line so the assist area keeps a usable list; shorter still, both
-    /// shrink in proportion. Paying one floor in full drove the other to zero — with
-    /// several banners stacked on a small window the captions disappeared and
-    /// the meeting had no words on screen (D507). Rounding down and clamping
+    /// to one clear line so the assist area keeps a usable list; shorter still,
+    /// they keep their proportional share. Paying one floor in full drove the
+    /// other to zero — with several banners stacked on a small window the
+    /// captions disappeared and the meeting had no words on screen (D507). Rounding down and clamping
     /// keeps the arithmetic from handing SwiftUI a negative frame in the last
     /// couple of points before the split is degenerate anyway (D508).
     static func split(total: CGFloat, fraction: Double) -> Split {
@@ -47,12 +48,9 @@ enum RecordingAssistLayout {
         let usable = max(total - dividerHeight, 0)
         guard usable > 0 else { return Split(captions: 0, assist: 0) }
         guard usable >= minimumCaptionsHeight + minimumAssistHeight else {
-            if usable >= compactCaptionsHeight + minimumAssistHeight {
-                return Split(captions: usable - minimumAssistHeight, assist: minimumAssistHeight)
-            }
-            let proportional = (usable * minimumAssistHeight
-                / (compactCaptionsHeight + minimumAssistHeight)).rounded(.down)
-            let assist = min(max(proportional, 0), usable)
+            let proportional = usable * minimumCaptionsHeight / (minimumCaptionsHeight + minimumAssistHeight)
+            let captions = max(usable - minimumAssistHeight, min(compactCaptionsHeight, proportional))
+            let assist = min(max((usable - captions).rounded(.down), 0), usable)
             return Split(captions: usable - assist, assist: assist)
         }
         let requested = (usable * clamp(fraction)).rounded()

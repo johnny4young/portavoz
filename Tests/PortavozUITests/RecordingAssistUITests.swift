@@ -203,7 +203,6 @@ final class RecordingAssistUITests: PortavozUITestCase {
         // Reaching back for an older card folds the oldest recency-open one,
         // so the panel keeps its size instead of growing.
         let list = app.scrollViews["recording-companion-list"]
-        // A 1024 x 768 display used to leave the list 0 pt under the focus card.
         XCTAssertGreaterThanOrEqual(list.frame.height, 40, "the list keeps room for a folded row: \(list.frame)")
         // A step is one viewport, but a short window's list is too low to cross the open cards.
         let step = max(list.frame.height, 160)
