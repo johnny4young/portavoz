@@ -257,6 +257,9 @@ final class SettingsUITests: PortavozUITestCase {
             let window = app.windows.containing(
                 .any, identifier: "settings-language-system-toggle").firstMatch
             XCTAssertTrue(window.exists)
+            XCTAssertTrue(
+                app.control(withIdentifier: "settings-active-call-nudge").exists,
+                "General settings must expose the passive active-call nudge toggle")
             attachElementScreenshot(of: window, named: "pr-settings-general-\(style.lowercased())")
             finishUITestApplication(app)
         }

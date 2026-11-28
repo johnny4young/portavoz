@@ -1908,6 +1908,18 @@ task. `MeetingReminderController` retains only minute scheduling, session
 deduplication, floating-panel lifecycle, and the recording route. Optional
 calendar failures remain a silent no-notice result, matching the released UX.
 
+Passive active-call detection complements calendar reminders without requiring
+calendar, microphone, or screen-recording permission: `AudioProcessCatalog.activeAudioProcesses`
+inspects Core Audio's process-object list for `kAudioProcessPropertyIsRunningInput`
+on known meeting apps and browsers (`MeetingAppDetector.activeCallSignals`, merging
+dot-delimited helper processes and prioritizing native call apps over browsers),
+and `PortavozCore.ActiveCallDetector` confirms sustained microphone activity
+(`4 s`) before `ActiveCallNudgeController` presents a non-activating floating
+banner (`ActiveCallBannerView`) offering one-click recording. Output-only media
+never triggers a nudge, active recordings suppress and clear it, dismissal
+silences that call session until it ends (`>= 30 s` quiet) or cooldown expires,
+and Settings › General (`settings-active-call-nudge`) toggles it on or off.
+
 `AppServices` also owns one process-scoped `SpotlightIndexer` actor
 (D85/D326/D329). Launch and every searchable mutation call
 `requestSearchReconciliation()`; requests

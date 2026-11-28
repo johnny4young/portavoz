@@ -19206,6 +19206,66 @@
           }
         }
       }
+    },
+    "Offer to record active calls": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ofrecer grabar llamadas activas"
+          }
+        }
+      }
+    },
+    "Shows a one-click banner when Zoom, Teams, Slack, or a browser call starts — even without a calendar event.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muestra un banner de un clic cuando empieza una llamada en Zoom, Teams, Slack o el navegador, aunque no esté en el calendario."
+          }
+        }
+      }
+    },
+    "Call in %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Llamada en %@"
+          }
+        }
+      }
+    },
+    "Record call?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Grabar llamada?"
+          }
+        }
+      }
+    },
+    "Dismiss call nudge": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar aviso de llamada"
+          }
+        }
+      }
+    },
+    "active call nudge zoom teams slack meet": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "llamada activa aviso zoom teams slack meet grabar"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -20,7 +20,6 @@ struct SettingsView: View {
 
     @AppStorage(AppLanguage.storageKey) private var appLanguageRaw = AppLanguage.system.rawValue
 
-    @AppStorage("meetingReminderMinutes") private var reminderMinutes = 5
     @AppStorage("customVocabulary") private var customVocabulary = ""
     @State private var newTerm = ""
     /// Domain terms mined from past transcripts (VocabularyMiner). A chip
@@ -104,7 +103,7 @@ struct SettingsView: View {
                 case .general:
                     languageSection
                     MenuBarSection()
-                    agendaSection
+                    SettingsAgendaSection()
                     titleSection
                     postMeetingMirrorSection
                 case .audio:
@@ -303,26 +302,6 @@ extension SettingsView {
                 return language == .spanish ? .spanish : .english
             },
             set: { appLanguageRaw = $0.rawValue })
-    }
-
-    // MARK: - Agenda
-
-    private var agendaSection: some View {
-        Section("Agenda") {
-            Picker("Remind me before meetings", selection: $reminderMinutes) {
-                Text("Off").tag(0)
-                Text("3 minutes before").tag(3)
-                Text("5 minutes before").tag(5)
-                Text("10 minutes before").tag(10)
-            }
-            Text(
-                // One-line UI help text.
-                // swiftlint:disable:next line_length
-                "A floating banner appears before your next calendar meeting — one click starts a recording linked to it. Needs calendar access."
-            )
-            .font(.caption)
-            .foregroundStyle(.ink3)
-        }
     }
 
     // MARK: - Recordings
