@@ -95,7 +95,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **📐 Apuntador fits a small screen** — on a 1024 x 768 display the recording keeps your latest caption, who is speaking now and a readable Apuntador list, instead of squeezing the list under a question asked of you.
 - **📞 One-click "Record call?" nudge** — Portavoz notices when a call starts in Zoom, Teams, Slack, Discord, Webex, FaceTime, or a browser (even without a calendar event) and offers a calm one-click banner to start recording, with a toggle in Settings › General; it and the calendar banner keep working with the main window closed and never stack.
 - **📅 Commitments by due date** — Radar's To review opens on columns from Overdue through Today, the next days and next week: confirmed work as solid chips, suggestions you put off as dashed ones on the day they come back; click a chip to open it.
-- **✅ Confirm right from Radar** — each suggestion in To review says who said it, who Portavoz thinks owns it and which meeting it came from, with its moments marked on that meeting's voice strip; Confirm, Review in meeting, Later or Dismiss without leaving Radar, and Confirm waits while another decision is still saving.
+- **✅ Confirm right from Radar** — each suggestion in To review says who said it, who Portavoz thinks owns it and which meeting it came from, with its moments marked on that meeting's voice strip; Confirm, Review in meeting, Later or Dismiss without leaving Radar.
 
 ## November 27, 2026
 

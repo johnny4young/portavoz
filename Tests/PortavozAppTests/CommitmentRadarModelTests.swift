@@ -360,6 +360,7 @@ final class CommitmentRadarModelTests: XCTestCase {
             ],
             reviewMutationResponses: [.success(())],
             presentationResponseDelay: .milliseconds(200))
+        client.confirmResponses = [.success(())]
         let model = CommitmentRadarModel(client: client)
         await model.send(.modeChanged(.review))
         XCTAssertFalse(model.state.isReviewBusy)
@@ -373,7 +374,7 @@ final class CommitmentRadarModelTests: XCTestCase {
             second, title: second.actionItem.text, assignee: .unassigned, dueAt: nil)
         await dismissal.value
 
-        XCTAssertFalse(confirmed, "the editor's Confirm is disabled for this window")
+        XCTAssertFalse(confirmed, "the model refuses a second write while one is in flight")
         XCTAssertTrue(client.confirmations.isEmpty)
         XCTAssertFalse(model.state.reviewMutationFailed)
         XCTAssertFalse(model.state.isReviewBusy)
