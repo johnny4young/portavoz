@@ -71,7 +71,7 @@ struct MenuBarContent: View {
                     let services = self.services
                     Task { await services.recording.stop(services: services) }
                 } label: {
-                    Label("Stop", systemImage: PVSymbol.stop).frame(maxWidth: .infinity)
+                    Label("Stop", systemImage: PVSymbol.stop).imageScale(.small).frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.pvStop)
                 .accessibilityIdentifier("menu-bar-stop")
@@ -89,7 +89,7 @@ struct MenuBarContent: View {
                 openMainWindow()
                 services.pendingRoute = .ask
             } label: {
-                Label("Ask", systemImage: PVSymbol.ask).frame(maxWidth: .infinity)
+                Label("Ask", systemImage: PVSymbol.ask).imageScale(.small).frame(maxWidth: .infinity)
             }
             .buttonStyle(.pvSecondary)
             .accessibilityIdentifier("menu-bar-ask")
@@ -119,13 +119,13 @@ struct MenuBarContent: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 nextMeetingActions(event)
             }
-            .padding(.horizontal, 6)
+            .padding(.horizontal, 10)
             if let failure = model.state.briefFailure {
                 Text(failure)
                     .font(.caption2)
                     .cautionText()
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 6)
+                    .padding(.horizontal, 10)
                     .accessibilityIdentifier("menu-bar-brief-error")
             }
         }
@@ -360,7 +360,7 @@ private struct MenuBarCaption: View {
 
     var body: some View {
         PVCardCaption(text: text, tint: PVDesign.ink3)
-            .padding(.horizontal, 6)
+            .padding(.horizontal, 10)
             .padding(.top, 11)
             .padding(.bottom, 4)
     }
