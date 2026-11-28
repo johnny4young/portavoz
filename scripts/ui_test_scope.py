@@ -408,6 +408,7 @@ def app_features(filename: str) -> set[str]:
     if any(token in lowered for token in (
         "commitmentradar",
         "commitmentreview",
+        "commitmentdue",
         "commitmentfieldquality",
         "reminderdraft",
     )):
@@ -723,7 +724,7 @@ def lower_layer_features(path: str) -> set[str]:
         }
     if "reminderdraft" in lowered:
         return {"commitment-radar"}
-    if any(token in lowered for token in ("commitmentradar", "commitmentreview", "commitmentfieldquality")):
+    if any(token in lowered for token in ("commitmentradar", "commitmentreview", "commitmentdue", "commitmentfieldquality")):
         return {"commitment-radar"}
     if any(token in lowered for token in (
         "managemeetingcommitmentinbox",

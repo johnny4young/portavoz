@@ -98,6 +98,22 @@ final class CommitmentReviewQueueStorageTests: XCTestCase {
         XCTAssertTrue(boundedPage.hasMore)
     }
 
+    func testUpcomingReviewsAreOnlySuggestionsPutOffPastNow() async throws {
+        let fixture = try await makeQueueFixture()
+        let sampled = now
+
+        let upcoming = try await LoadUpcomingCommitmentReviews(
+            repository: fixture.store,
+            now: { sampled }).execute()
+
+        XCTAssertEqual(upcoming.map(\.actionItem.text), ["Review next week"])
+        XCTAssertEqual(upcoming.first?.reason, .deferredDue(revisitAt: now.addingTimeInterval(100)))
+        let queue = try await fixture.store.commitmentReviewQueue(CommitmentReviewQueueQuery(reviewAt: now))
+        XCTAssertFalse(
+            queue.items.contains { $0.actionItem.text == "Review next week" },
+            "the queue holds it only once its day comes")
+    }
+
     func testMeetingScopeAndEvidenceFreshnessFailClosed() async throws {
         let fixture = try await makeQueueFixture()
         let other = Meeting(

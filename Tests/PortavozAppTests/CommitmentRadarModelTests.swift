@@ -513,10 +513,64 @@ final class CommitmentRadarModelTests: XCTestCase {
         XCTAssertNotEqual(model.state.qualityPhase, .loaded)
     }
 
+    func testReviewModeBuildsTheDueBoardAndDecisionsRefreshIt() async throws {
+        let calendar = Self.utcCalendar
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let review = Self.reviewPage(title: "Send the launch checklist")
+        let item = try XCTUnwrap(review.items.first)
+        let dated = Self.page(title: "Ship the brief", dueAt: now.addingTimeInterval(-86_400))
+        let client = CommitmentRadarModelClientFake(
+            responses: [.success(Self.page(title: "Send the rollout brief"))],
+            mutationResponses: [],
+            reviewResponses: [.success(review), .success(review), .success(review)],
+            reviewMutationResponses: [.success(()), .success(())])
+        client.dueBoardResponses = [.success(CommitmentDueBoard.Work(overdue: dated)), .failure(.unavailable)]
+        let model = CommitmentRadarModel(client: client, now: { now }, calendar: calendar)
+
+        await model.send(.modeChanged(.review))
+        let overdue = try XCTUnwrap(model.state.dueBoard.lanes.first)
+        XCTAssertEqual(overdue.column, .overdue)
+        XCTAssertEqual(overdue.chips.map(\.task), ["Ship the brief"])
+        XCTAssertEqual(model.state.phase, .idle, "the board never touches the confirmed page")
+
+        await model.send(.deferReview(
+            meetingID: item.meetingID, actionItemID: item.id, revisitAt: now.addingTimeInterval(86_400)))
+        XCTAssertEqual(client.dueBoardReads, 2, "a decision re-reads the board")
+        XCTAssertEqual(model.state.dueBoard.lanes.first?.chips.count, 1, "a failed read keeps the last board")
+
+        await model.send(.dismissReview(meetingID: item.meetingID, actionItemID: item.id))
+        XCTAssertEqual(client.dueBoardReads, 3, "every decision re-reads the board")
+
+        await model.send(.dayChanged)
+        XCTAssertEqual(client.dueBoardReads, 4, "a new day moves the columns")
+        await model.send(.modeChanged(.confirmed))
+        await model.send(.dayChanged)
+        XCTAssertEqual(client.dueBoardReads, 4, "only To review draws the board")
+    }
+
+    func testConfirmedModeNeverReadsTheDueBoard() async {
+        let client = CommitmentRadarModelClientFake(
+            responses: [.success(Self.page(title: "Send the rollout brief"))],
+            mutationResponses: [])
+        let model = CommitmentRadarModel(client: client)
+
+        await model.send(.load)
+
+        XCTAssertEqual(client.dueBoardReads, 0)
+        XCTAssertTrue(model.state.dueBoard.isEmpty)
+    }
+
+    private static var utcCalendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        return calendar
+    }
+
     private static func page(
         title: String,
         status: CommitmentStatus = .confirmed,
-        activity: CommitmentRadarActivity = .new
+        activity: CommitmentRadarActivity = .new,
+        dueAt: Date? = nil
     ) -> CommitmentRadarPage {
         let date = Date(timeIntervalSince1970: 1_800_000_000)
         let item = CommitmentRadarItem(
@@ -524,6 +578,7 @@ final class CommitmentRadarModelTests: XCTestCase {
                 title: title,
                 status: status,
                 assignee: .me,
+                dueAt: dueAt,
                 createdAt: date),
             assigneeDisplayName: nil,
             activity: activity,
@@ -586,6 +641,9 @@ private final class CommitmentRadarModelClientFake: CommitmentRadarModelClient {
     var presentationResponses: [Result<Void, Failure>]
     var confirmResponses: [Result<Void, Failure>] = []
     var voicesResponses: [Result<CommitmentReviewVoices, Failure>] = []
+    /// The due board's reads stay off `events`; an empty board when unset.
+    var dueBoardResponses: [Result<CommitmentDueBoard.Work, Failure>] = []
+    var dueBoardReads = 0
     var confirmations: [ConfirmMeetingCommitmentRequest] = []
     var voicesRequests: [[UUID]] = []
     var onLoadVoices: (@MainActor () -> Void)?
@@ -640,6 +698,12 @@ private final class CommitmentRadarModelClientFake: CommitmentRadarModelClient {
     ) async throws -> CommitmentRadarPage {
         requests.append(request)
         return try responses.removeFirst().get()
+    }
+
+    func loadCommitmentDueBoardWork() async throws -> CommitmentDueBoard.Work {
+        dueBoardReads += 1
+        guard !dueBoardResponses.isEmpty else { return CommitmentDueBoard.Work() }
+        return try dueBoardResponses.removeFirst().get()
     }
 
     func mutateCommitmentRadar(

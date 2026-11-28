@@ -708,7 +708,9 @@ Only ended live meetings and action items from each meeting's newest live
 summary across every recipe qualify. Roots must be open, have nonempty typed
 evidence, and remain unconfirmed. Dismissed and future-deferred review decisions
 are excluded against the concrete review date supplied by ApplicationKit; due
-deferrals sort before new post-meeting work. A window count exposes root
+deferrals sort before new post-meeting work. With `deferredAfter` the same
+query instead selects only deferrals whose revisit date is after that instant,
+soonest first, for Radar's due-date board (D680). A window count exposes root
 truncation. Missing or tombstoned evidence makes the complete source
 unavailable, revision drift makes it stale, and the bounded segment prefix is
 reported separately from the exact evidence count. Exact owner hints require a
@@ -777,7 +779,9 @@ navigation.
 
 ApplicationKit supplies concrete calendar boundaries. Storage filters overdue
 as an open due date before `dayStart`, due soon as an open due date in
-`[dayStart, dueSoonEnd)`, and no date as an open commitment with no due date.
+`[dayStart, dueSoonEnd)`, no date as an open commitment with no due date, and
+due from today as an open due date on or after `dayStart` (Radar's due-date
+board, D680), earliest first.
 The latest immutable event distinguishes new, unchanged, completed, and
 reopened activity. The read fails closed when current status disagrees with that
 event instead of converting corruption into a label. Dismissed and tombstoned

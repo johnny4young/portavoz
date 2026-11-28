@@ -92,6 +92,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## November 28, 2026
 
+- **📅 Commitments by due date** — Radar's To review opens on columns from Overdue through Today, the next days and next week: confirmed work as solid chips, suggestions you put off as dashed ones on the day they come back; click a chip to open it.
 - **✅ Confirm right from Radar** — each suggestion in To review says who said it, who Portavoz thinks owns it and which meeting it came from, with its moments marked on that meeting's voice strip; Confirm, Review in meeting, Later or Dismiss without leaving Radar.
 
 ## November 27, 2026

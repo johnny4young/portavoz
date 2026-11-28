@@ -25,7 +25,7 @@ extension MeetingStore {
                 try root.item(
                     evidenceRows: evidenceByID[root.evidenceID] ?? [],
                     evidenceLimit: query.evidenceLimitPerItem,
-                    reviewAt: query.reviewAt)
+                    query: query)
             }
             return CommitmentReviewQueuePage(
                 items: items,
@@ -40,7 +40,10 @@ private extension MeetingStore {
         in database: Database
     ) throws -> [CommitmentReviewQueueRootRow] {
         var scopePredicate = ""
-        var arguments: StatementArguments = [query.reviewAt]
+        let eligibility = query.deferredAfter == nil
+            ? "(review.actionItemID IS NULL OR (review.disposition = 'deferred' AND review.revisitAt <= ?))"
+            : "(review.disposition = 'deferred' AND review.revisitAt > ?)"
+        var arguments: StatementArguments = [query.deferredAfter ?? query.reviewAt]
         if case .meetings(let meetingIDs) = query.scope {
             scopePredicate = "AND meeting.id IN (\(databaseQuestionMarks(count: meetingIDs.count)))"
             arguments += StatementArguments(meetingIDs.map { $0.rawValue.uuidString })
@@ -49,9 +52,9 @@ private extension MeetingStore {
 
         return try CommitmentReviewQueueRootRow.fetchAll(
             database,
-            sql: commitmentReviewQueueRootSQL.replacingOccurrences(
-                of: "__SCOPE_PREDICATE__",
-                with: scopePredicate),
+            sql: commitmentReviewQueueRootSQL
+                .replacingOccurrences(of: "__ELIGIBILITY_PREDICATE__", with: eligibility)
+                .replacingOccurrences(of: "__SCOPE_PREDICATE__", with: scopePredicate),
             arguments: arguments)
     }
 
@@ -159,13 +162,7 @@ WHERE item.deletedAt IS NULL
       ORDER BY newest.createdAt DESC, newest.rowid DESC
       LIMIT 1
   )
-  AND (
-      review.actionItemID IS NULL
-      OR (
-          review.disposition = 'deferred'
-          AND review.revisitAt <= ?
-      )
-  )
+  AND __ELIGIBILITY_PREDICATE__
   __SCOPE_PREDICATE__
 GROUP BY item.id, artifact.id, meeting.id, evidence.id,
          review.actionItemID, owner.id, person.id
@@ -201,7 +198,7 @@ private struct CommitmentReviewQueueRootRow: Decodable, FetchableRecord {
     func item(
         evidenceRows: [CommitmentReviewQueueEvidenceRow],
         evidenceLimit: Int,
-        reviewAt: Date
+        query: CommitmentReviewQueueQuery
     ) throws -> CommitmentReviewQueueItem {
         let meetingID = try parsedMeetingID
         return CommitmentReviewQueueItem(
@@ -216,7 +213,7 @@ private struct CommitmentReviewQueueRootRow: Decodable, FetchableRecord {
                 meetingID: meetingID),
             evidenceCount: evidenceCount,
             suggestedOwner: try ownerSuggestion,
-            reason: try reviewReason(at: reviewAt))
+            reason: try reviewReason(for: query))
     }
 
     var parsedMeetingID: MeetingID {
@@ -298,17 +295,22 @@ private struct CommitmentReviewQueueRootRow: Decodable, FetchableRecord {
         }
     }
 
-    func reviewReason(at reviewAt: Date) throws -> CommitmentReviewQueueReason {
+    /// Fails closed when a row disagrees with the query's eligibility predicate.
+    func reviewReason(for query: CommitmentReviewQueueQuery) throws -> CommitmentReviewQueueReason {
         guard let reviewDisposition else {
             guard revisitAt == nil else {
                 throw StorageError.invalidCommitment(
                     "review queue contains an orphan revisit date")
             }
+            guard query.deferredAfter == nil else {
+                throw StorageError.invalidCommitment(
+                    "review queue contains an ineligible review decision")
+            }
             return .newAfterMeeting
         }
         guard reviewDisposition == CommitmentReviewDisposition.deferred.rawValue,
               let revisitAt,
-              revisitAt <= reviewAt
+              query.deferredAfter.map({ revisitAt > $0 }) ?? (revisitAt <= query.reviewAt)
         else {
             throw StorageError.invalidCommitment(
                 "review queue contains an ineligible review decision")

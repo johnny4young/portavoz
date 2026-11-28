@@ -351,6 +351,16 @@
         }
       }
     },
+    "+%d more": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%d más"
+          }
+        }
+      }
+    },
     "1 meeting exported.": {
       "localizations": {
         "es": {
@@ -511,6 +521,16 @@
         }
       }
     },
+    "Commitments": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compromisos"
+          }
+        }
+      }
+    },
     "Commitments, decisions and your notes sit beside the line that produced them.": {
       "localizations": {
         "es": {
@@ -597,6 +617,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Objetivo"
+          }
+        }
+      }
+    },
+    "Open the commitment": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir el compromiso"
+          }
+        }
+      }
+    },
+    "confirmed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "confirmado"
           }
         }
       }
@@ -3037,16 +3077,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Compromiso"
-          }
-        }
-      }
-    },
-    "Commitment Radar": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Radar de compromisos"
           }
         }
       }
@@ -13641,6 +13671,16 @@
         }
       }
     },
+    "suggested, waiting for you": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sugerido, te espera"
+          }
+        }
+      }
+    },
     "summary engine apple ollama mlx model memory ram lightweight semantic search structures custom": {
       "localizations": {
         "es": {
@@ -18713,16 +18753,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sugerido"
-          }
-        }
-      }
-    },
-    "Review quality": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Calidad de revisión"
           }
         }
       }
