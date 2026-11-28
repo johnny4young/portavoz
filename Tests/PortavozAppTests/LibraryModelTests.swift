@@ -206,7 +206,54 @@ final class LibraryModelTests: XCTestCase {
 
         _ = await model.send(.openBrief(fixture.eventToday))
 
-        XCTAssertEqual(client.calls.last, .briefLines(fixture.eventToday.id))
+        XCTAssertEqual(
+            client.calls.last { $0 != .observeBriefSource(fixture.eventToday.id) }, .briefLines(fixture.eventToday.id))
+    }
+
+    func testAChangeThatClearsTheHerosLinesReloadsTheBriefWithoutALibraryChange() async throws {
+        let fixture = LibraryModelFixture()
+        let client = LibraryModelClientFake(fixture: fixture)
+        client.agenda = fixture.agenda
+        let model = LibraryModel(client: client, searchDelay: .zero)
+        _ = await model.send(.refreshAgenda)
+        func lines(_ people: [MeetingBriefLines.Person]) -> MeetingBriefLines {
+            MeetingBriefLines(
+                occurrence: .init(event: fixture.eventToday), sourceMeetingID: fixture.meeting.id,
+                preparedAt: fixture.eventToday.startDate, people: people)
+        }
+        client.briefLines = lines([])
+        _ = await model.send(.loadBriefPreview(fixture.eventToday))
+        _ = await model.send(.loadBriefPreview(fixture.eventToday))
+        XCTAssertEqual(client.calls.filter { $0 == .observeBriefSource(fixture.eventToday.id) }.count, 1)
+
+        let reads = { client.calls.filter { $0 == .briefLines(fixture.eventToday.id) }.count }
+        client.briefSources.continuation.yield(.init(sourceMeetingID: fixture.meeting.id, linesBuiltAt: .now))
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertEqual(reads(), 2, "the source the card already shows is not read again")
+
+        let resolved = lines([MeetingBriefLines.Person(
+            speakerID: SpeakerID(), personID: nil, isMe: false, label: "S1", displayName: "Ana", lines: [])])
+        client.briefLines = resolved
+        client.briefSources.continuation.yield(.init(sourceMeetingID: fixture.meeting.id, linesBuiltAt: nil))
+        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
+        while model.state.briefPreview?.lines != resolved, ContinuousClock.now < deadline { await Task.yield() }
+        XCTAssertEqual(model.state.briefPreview?.lines, resolved, "cleared lines are read again")
+    }
+
+    func testAFailedBriefSourceObservationIsStartedAgainByTheNextLoad() async {
+        let fixture = LibraryModelFixture()
+        let client = LibraryModelClientFake(fixture: fixture)
+        client.agenda = fixture.agenda
+        let model = LibraryModel(client: client, searchDelay: .zero)
+        _ = await model.send(.refreshAgenda)
+        let observed = { client.calls.filter { $0 == .observeBriefSource(fixture.eventToday.id) }.count }
+
+        _ = await model.send(.loadBriefPreview(fixture.eventToday))
+        client.briefSources.continuation.finish(throwing: LibraryModelFailure.briefLines)
+        for _ in 0..<20 { await Task.yield() }
+        _ = await model.send(.loadBriefPreview(fixture.eventToday))
+
+        XCTAssertEqual(observed(), 2, "an unreadable source stops one observation, not the card's updates")
     }
 
     func testTodayVoicesReadTodaysAgendaAndSurviveAFailedRead() async {
@@ -538,6 +585,7 @@ private enum LibraryModelCall: Equatable {
     case requestCalendarAccess
     case brief(String)
     case briefLines(String)
+    case observeBriefSource(String)
     case todayVoices([String])
     case todayWork([MeetingID], [UUID])
 }
@@ -553,6 +601,7 @@ private final class LibraryModelClientFake: LibraryModelClient {
     var todayWork = TodayWork(positions: [:], sources: [:])
     var suggestionsToReview: Int? = 0
     var briefLines: MeetingBriefLines?
+    let briefSources = AsyncThrowingStream.makeStream(of: MeetingBriefLines.SourceState?.self)
     var failures: Set<LibraryModelFailure> = []
     var calls: [LibraryModelCall] = []
     var queries: [String] = []
@@ -641,6 +690,13 @@ private final class LibraryModelClientFake: LibraryModelClient {
         calls.append(.briefLines(event.id))
         try fail(.briefLines)
         return briefLines
+    }
+
+    func observeLibraryBriefSource(
+        for event: UpcomingEvent
+    ) -> AsyncThrowingStream<MeetingBriefLines.SourceState?, Error> {
+        calls.append(.observeBriefSource(event.id))
+        return briefSources.stream
     }
 
     func libraryTodayVoices(at now: Date, events: [UpcomingEvent], later: [UpcomingEvent]) throws -> TodayVoices {

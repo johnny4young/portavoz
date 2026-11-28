@@ -27,6 +27,9 @@ protocol LibraryModelClient: AnyObject {
     func requestLibraryCalendarAccess() async
     func buildLibraryBrief(for event: UpcomingEvent) async -> MeetingBrief?
     func libraryBriefLines(for event: UpcomingEvent) async throws -> MeetingBriefLines?
+    func observeLibraryBriefSource(
+        for event: UpcomingEvent
+    ) -> AsyncThrowingStream<MeetingBriefLines.SourceState?, Error>
     func libraryTodayVoices(at now: Date, events: [UpcomingEvent], later: [UpcomingEvent]) async throws -> TodayVoices
     func libraryTodayWork(_ request: LoadTodayWork.Request) async throws -> TodayWork
     /// Skill offers waiting for review; zero when they cannot be read.
@@ -207,6 +210,7 @@ final class LibraryModel {
     private var failedSections: Set<LibrarySection> = []
     private var inlineFailures: [LibrarySection: Int] = [:]
     private var briefPreviewRequest = 0
+    private var briefSourceObservation: (event: UpcomingEvent, task: Task<Void, Never>)?
     private var todayVoicesRequest = 0
     private var todayWorkTask: Task<Void, Never>?
     private var suggestionsRequest = 0
@@ -220,6 +224,10 @@ final class LibraryModel {
     ) {
         self.client = client
         self.searchDelay = searchDelay
+    }
+
+    isolated deinit {
+        briefSourceObservation?.task.cancel()
     }
 
     @discardableResult
@@ -473,6 +481,10 @@ private extension LibraryModel {
             state.upcomingToday = agenda.today
             state.upcomingTomorrow = agenda.tomorrow
         }
+        if let observed = briefSourceObservation, observed.event != state.heroEvent?.event {
+            observed.task.cancel()
+            briefSourceObservation = nil
+        }
         refreshTodaySignature()
     }
 
@@ -530,6 +542,31 @@ private extension LibraryModel {
         let preview = BriefPreview(occurrence: MeetingBriefLines.Occurrence(event: event), lines: lines)
         // An unchanged write would still re-render everything reading the state.
         if state.briefPreview != preview { state.briefPreview = preview }
+        if state.heroEvent?.event == event { followBriefSource(of: event) }
+    }
+
+    /// A commitment or question resolved elsewhere clears the hero's lines
+    /// without touching the library, so its stored source is observed.
+    func followBriefSource(of event: UpcomingEvent) {
+        guard briefSourceObservation?.event != event else { return }
+        briefSourceObservation?.task.cancel()
+        let sources = client.observeLibraryBriefSource(for: event)
+        briefSourceObservation = (event, Task { [weak self] in
+            // An unreadable source keeps the card as it is, like a failed load.
+            do {
+                for try await source in sources {
+                    guard let self, !Task.isCancelled else { return }
+                    let shown = state.briefPreview?.isFor(event) == true ? state.briefPreview?.lines : nil
+                    let stale = source.map {
+                        $0.linesBuiltAt == nil || $0.sourceMeetingID != shown?.sourceMeetingID
+                    } ?? (shown != nil)
+                    if stale { await loadBriefPreview(event) }
+                }
+            } catch {}
+            // A failed or finished stream lets the next load observe again.
+            guard let self, !Task.isCancelled, briefSourceObservation?.event == event else { return }
+            briefSourceObservation = nil
+        })
     }
 
     /// Same rules as the brief preview: a failed read keeps what is shown.

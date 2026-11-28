@@ -111,6 +111,33 @@ extension MeetingStore {
         return stored.lines.merging(rebuilt.lines) { _, new in new }
     }
 
+    /// The occurrence's chosen source and when its lines were built. Emits
+    /// when a change clears the lines, e.g. a commitment resolved elsewhere,
+    /// so a screen showing them reads again; nil without a source.
+    public func observeMeetingBriefSource(
+        for occurrence: MeetingBriefLines.Occurrence
+    ) -> AsyncThrowingStream<MeetingBriefLines.SourceState?, Error> {
+        let observation = ValueObservation.tracking(
+            region: Table("meetingBriefSource"),
+            fetch: { db in
+                try Row.fetchOne(
+                    db,
+                    sql: """
+                        SELECT sourceMeetingID, linesBuiltAt FROM meetingBriefSource
+                        WHERE eventID = ? AND eventStartAt = ?
+                        """,
+                    arguments: [occurrence.eventID, occurrence.startAt]
+                ).map { row in
+                    MeetingBriefLines.SourceState(
+                        sourceMeetingID: MeetingID(rawValue: try PersistedIdentity.required(
+                            row["sourceMeetingID"], table: "meetingBriefSource", column: "sourceMeetingID")),
+                        linesBuiltAt: row["linesBuiltAt"])
+                }
+            }
+        ).removeDuplicates()
+        return observedStream(observation)
+    }
+
     struct StoredMeetingBriefLines {
         var lines: [MeetingBriefLines.Occurrence: MeetingBriefLines] = [:]
         /// Sources whose lines a change cleared.

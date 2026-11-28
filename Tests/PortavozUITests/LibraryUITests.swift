@@ -256,7 +256,9 @@ final class LibraryUITests: PortavozUITestCase {
             let header = try uiSnapshotElement("library-section-thisweek", in: snapshot).frame
             let list = app.outlines.firstMatch.frame
             XCTAssertGreaterThanOrEqual(header.minY, list.minY, "\(name): the first header is inside the list at launch")
-            XCTAssertGreaterThanOrEqual(header.minY - search.maxY, 18, "\(name): air between search and the first section")
+            let air = header.minY - search.maxY
+            XCTAssertGreaterThanOrEqual(air, 18, "\(name): air between search and the first section")
+            XCTAssertLessThanOrEqual(air, 28, "\(name): one gap, not the system margin on top of it")
             let window = app.windows.firstMatch.frame
             let sidebar = list.maxX - window.minX
             XCTAssertLessThanOrEqual(sidebar, 250, "\(name): the sidebar keeps the board's narrow column (\(sidebar) pt)")

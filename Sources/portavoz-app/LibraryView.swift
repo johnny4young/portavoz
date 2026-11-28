@@ -132,7 +132,10 @@ struct LibraryView: View {
                 }
             }
             .listStyle(.sidebar)
-            .contentMargins(.top, 16, for: .scrollContent)
+            // The board's 16 pt under the search field as a safe-area inset: macOS 26
+            // draws a negative sidebar margin by default and macOS 27 ignores contentMargins.
+            .contentMargins(.top, 0, for: .scrollContent)
+            .safeAreaPadding(.top, 16)
             // AppKit keeps the scroll offset when a section lands above drawn
             // rows, which hid the first header; a new section set starts at the top.
             .id(sectionKeys(groups))

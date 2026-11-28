@@ -117,11 +117,7 @@ actor AppUpcomingEventSource: StandingPreMeetingBriefEventSource {
     init(arguments: [String], usesTemporaryStore: Bool) {
         self.usesTemporaryStore = usesTemporaryStore
         seededEvent = usesTemporaryStore && arguments.contains("-seed-brief")
-            ? UpcomingEvent(
-                id: "ui-test-upcoming-rollout",
-                title: "Presupuesto rollout",
-                startDate: AppServices.fixtureAgendaStart.addingTimeInterval(15 * 60),
-                attendees: ["Ana"])
+            ? AppServices.fixtureBriefEvent
             : nil
         simulatedReconciliationCancellationCount = usesTemporaryStore
             && arguments.contains(

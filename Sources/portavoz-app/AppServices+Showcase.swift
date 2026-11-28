@@ -226,29 +226,52 @@ extension AppServices {
     /// Fixed per launch, so every agenda refresh returns the same occurrences.
     nonisolated static let fixtureAgendaStart = Date()
 
+    nonisolated private static let fixtureBriefLead: TimeInterval = 15 * 60
+
+    /// The `-seed-brief` event, 15 minutes after launch.
+    nonisolated static let fixtureBriefEvent = UpcomingEvent(
+        id: "ui-test-upcoming-rollout",
+        title: "Presupuesto rollout",
+        startDate: fixtureTime(fixtureBriefLead, latest: fixtureBriefLead),
+        attendees: ["Ana"])
+
+    /// Launch plus `offset`, compressed near midnight so the fixture's `latest`
+    /// offset still lands in the launch day and today's events stay today.
+    nonisolated static func fixtureTime(
+        _ offset: TimeInterval, latest: TimeInterval, launch: Date = fixtureAgendaStart,
+        calendar: Calendar = .current
+    ) -> Date {
+        let day = calendar.dateInterval(of: .day, for: launch)
+            ?? DateInterval(start: calendar.startOfDay(for: launch), duration: 24 * 3_600)
+        let room = max(0, day.end.timeIntervalSince(launch) - 60)
+        return launch.addingTimeInterval(offset * min(1, room / latest))
+    }
+
     /// Fictional agenda for the public Today screenshot: nothing here reads
     /// the operator's calendar, and the times are relative to launch.
     static func showcaseAgenda() -> LibraryModel.Agenda {
         let now = fixtureAgendaStart
         let calendar = Calendar.current
         let startOfTomorrow = calendar.startOfDay(for: now.addingTimeInterval(24 * 3_600))
+        let lastEnd: TimeInterval = 4 * 3_600 + 30 * 60
+        func today(_ offset: TimeInterval) -> Date { fixtureTime(offset, latest: lastEnd) }
         return LibraryModel.Agenda(
             offerCalendar: false,
             today: [
                 UpcomingEvent(
                     id: "showcase-sync-qvtl",
                     title: "Sync semanal QVTL",
-                    startDate: now.addingTimeInterval(45 * 60),
+                    startDate: today(45 * 60),
                     attendees: ["Marta", "Ilarion"],
-                    endDate: now.addingTimeInterval(90 * 60),
+                    endDate: today(90 * 60),
                     platform: .googleMeet,
                     recurrence: .weekly),
                 UpcomingEvent(
                     id: "showcase-1-1-marta",
                     title: "1:1 con Marta",
-                    startDate: now.addingTimeInterval(4 * 3_600),
+                    startDate: today(4 * 3_600),
                     attendees: ["Marta"],
-                    endDate: now.addingTimeInterval(4 * 3_600 + 30 * 60))
+                    endDate: today(lastEnd))
             ],
             tomorrow: [
                 UpcomingEvent(
