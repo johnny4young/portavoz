@@ -86,6 +86,22 @@ final class RecordingAssistLayoutTests: XCTestCase {
         }
     }
 
+    func testAShortWindowKeepsTheAssistFloorWhileTheLatestCaptionFits() {
+        typealias Layout = RecordingAssistLayout
+        let floors = Layout.minimumCaptionsHeight + Layout.minimumAssistHeight
+        let compact = Layout.compactCaptionsHeight + Layout.minimumAssistHeight
+        // A 900 x 674 window: the focus card took the whole proportional share and the list read 0 pt.
+        for usable in stride(from: compact, to: floors, by: 1) {
+            let split = Layout.split(total: usable + Layout.dividerHeight, fraction: 0.42)
+            XCTAssertEqual(split.assist, Layout.minimumAssistHeight, "usable \(usable)")
+            XCTAssertGreaterThanOrEqual(split.captions, Layout.compactCaptionsHeight)
+        }
+        let below = Layout.split(total: compact - 1 + Layout.dividerHeight, fraction: 0.42)
+        XCTAssertLessThan(below.assist, Layout.minimumAssistHeight)
+        XCTAssertGreaterThan(below.captions, 0)
+        XCTAssertGreaterThanOrEqual(below.assist, Layout.minimumAssistHeight - 1, "no jump at the boundary")
+    }
+
     func testANonFiniteHeightYieldsNothingRatherThanNaN() {
         let split = RecordingAssistLayout.split(total: .infinity, fraction: 0.42)
 

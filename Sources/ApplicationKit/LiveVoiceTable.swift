@@ -49,7 +49,16 @@ public struct LiveVoiceTable: Sendable, Equatable {
         let kept = max(1, limit)
         // One folded voice would take the row it gives up.
         guard rows.count > kept, !(others.isEmpty && rows.count == kept + 1) else { return self }
-        return LiveVoiceTable(
+        return fold(keeping: kept)
+    }
+
+    /// Only the leading row; with no fold row drawn, a second voice never keeps its place.
+    public var leading: LiveVoiceTable {
+        rows.count > 1 ? fold(keeping: 1) : self
+    }
+
+    private func fold(keeping kept: Int) -> LiveVoiceTable {
+        LiveVoiceTable(
             rows: Array(rows.prefix(kept)),
             others: (rows.dropFirst(kept) + others).sorted { $0.voice.share > $1.voice.share })
     }

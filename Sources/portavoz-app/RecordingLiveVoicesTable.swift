@@ -17,8 +17,11 @@ struct RecordingLiveVoicesTable: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        let table = LiveVoiceTable(stage: model.stage, cast: model.cast).folding(to: rowLimit)
-        let leadOnly = fit == .leadOnly
+        let full = LiveVoiceTable(stage: model.stage, cast: model.cast)
+        let (table, leadOnly) = switch fit {
+        case .rows(let limit): (full.folding(to: limit), false)
+        case .leadOnly: (full.leading, true)
+        }
         if !table.isEmpty {
             TimelineView(.periodic(from: startedAt, by: 1)) { context in
                 let now = context.date.timeIntervalSince(startedAt)
