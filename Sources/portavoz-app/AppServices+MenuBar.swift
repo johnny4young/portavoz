@@ -186,9 +186,7 @@ private func makeApplicationMenuBarStream(
             await withTaskGroup(of: Void.self) { group in
                 group.addTask {
                     do {
-                        // Rows first, strips after: a slow rebuild never holds back the list,
-                        // and a failed one is not retried on every refresh, as in the Library.
-                        var queued = Set<MeetingID>()
+                        // Rows first, strips after: a slow rebuild never holds back the list.
                         for try await value in meetings {
                             let rows = value.rows
                             func publish(_ built: [MeetingID: MeetingVoiceColumns]) {
@@ -201,9 +199,9 @@ private func makeApplicationMenuBarStream(
                                 }))
                             }
                             publish([:])
-                            let uncached = value.uncachedVoiceColumns.filter { !queued.contains($0) }
-                            queued = Set(value.uncachedVoiceColumns)
-                            if !uncached.isEmpty { publish(await storeVoiceColumns(uncached)) }
+                            if !value.uncachedVoiceColumns.isEmpty {
+                                publish(await storeVoiceColumns(value.uncachedVoiceColumns))
+                            }
                         }
                     } catch is CancellationError {
                         // Parent cancellation ends the complete merged stream.

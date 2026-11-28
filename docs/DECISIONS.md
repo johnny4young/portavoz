@@ -23752,8 +23752,8 @@ Recent leaves out the meeting being recorded, because the panel already leads
 with it and listed it as "in 0 sec". The store query does it
 (`observeMenuBarMeetings` skips recording rows) and reads the listed meetings'
 stored strips in the same fetch. As in the Library, the app adapter lists the
-rows first and then builds and stores a missing strip once, off the
-observation, re-sending the rows with it; the observation still tracks only
+rows first and then builds and stores missing strips (three at most), off
+the observation, re-sending the rows with them; the observation still tracks only
 the meeting table, because a recording invalidates the strip cache on every
 segment. A renamed voice therefore recolours in the menu bar on its next
 meeting change. An interrupted recording that recovery has not settled yet is

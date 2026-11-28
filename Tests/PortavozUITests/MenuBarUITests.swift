@@ -112,6 +112,13 @@ final class MenuBarUITests: PortavozUITestCase {
         XCTAssertTrue(app.control(withIdentifier: "menu-bar-launch-at-login").exists)
         XCTAssertTrue(app.buttons["menu-bar-quit"].exists)
 
-        XCTAssertTrue(app.control(withIdentifier: "menu-bar-recent-strip").exists)
+        // Each recent row reads its strip's cast: the seeded meeting has you and a remote voice.
+        let recent = app.buttons
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'menu-bar-recent-'"))
+            .firstMatch
+        XCTAssertTrue(recent.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(
+            waitForUITestCondition(timeout: 10) { ((recent.value as? String) ?? "").contains("You") },
+            "\(recent.value ?? "")")
     }
 }

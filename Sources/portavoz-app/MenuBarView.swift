@@ -203,6 +203,8 @@ struct MenuBarContent: View {
                 } label: {
                     recentRow(meeting)
                 }
+                // The strip merges into the row's button; its cast is read as the row's value.
+                .accessibilityValue(model.state.recentStrips[meeting.id].map { VoiceStrip($0).spokenCast } ?? "")
             }
         }
         .padding(.bottom, 6)
@@ -215,9 +217,7 @@ struct MenuBarContent: View {
                 .lineLimit(1)
                 .frame(minWidth: 0, idealWidth: 138, maxWidth: 138, alignment: .leading)
             if let strip = model.state.recentStrips[meeting.id] {
-                VoiceStrip(strip)
-                    .frame(width: 36)
-                    .accessibilityIdentifier("menu-bar-recent-strip")
+                VoiceStrip(strip).frame(width: 36)
             }
             Spacer(minLength: 4)
             if let pending = model.state.pendingByMeeting[meeting.id], pending > 0 {
