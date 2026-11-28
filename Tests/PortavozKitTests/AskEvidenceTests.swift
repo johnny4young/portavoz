@@ -125,6 +125,29 @@ final class AskEvidenceTests: XCTestCase {
             "a split part reads as its own speaker; its accepted segment as the first part's")
     }
 
+    func testASplitPartNobodySaysNeverBorrowsItsSegmentsSpeaker() async throws {
+        let fixture = try await seed()
+        let silent = TranscriptCorrectionPart(
+            text: "them", speakerID: nil, language: nil, startTime: 70, endTime: 100)
+        _ = try await store.appendTranscriptCorrection(TranscriptCorrectionEvent(
+            meetingID: fixture.meeting.id, baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            targetSegmentIDs: [fixture.segments[1].id],
+            kind: .split([
+                TranscriptCorrectionPart(
+                    text: "I will migrate", speakerID: fixture.me.id, language: nil, startTime: 40, endTime: 70),
+                silent
+            ]),
+            sourceDeviceID: UUID(), createdAt: Date(timeIntervalSince1970: 10)))
+        let cited = AskCitation(
+            segmentID: silent.id, sourceSegmentIDs: [fixture.segments[1].id], meetingID: fixture.meeting.id,
+            meetingTitle: fixture.meeting.title, timestamp: 70, text: "them")
+
+        let evidence = try await LoadAskEvidence(reader: store)(citations: [cited], answer: nil)
+
+        XCTAssertNil(evidence.rows.first?.voice)
+        XCTAssertEqual(evidence.rows.first?.position, 0.35)
+    }
+
     func testSuppressedLinesAndDeletedMeetingsKeepTheirRowWithoutAVoice() async throws {
         let fixture = try await seed()
         let deleted = try await seed(title: "Gone")

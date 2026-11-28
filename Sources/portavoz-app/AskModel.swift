@@ -18,6 +18,7 @@ final class AskModel {
     private var answerTask: Task<Void, Never>?
     private var sourceLoadTask: Task<Void, Never>?
     private var followUpTask: Task<Void, Never>?
+    private var evidenceTasks: [UUID: Task<Void, Never>] = [:]
     private var generation = 0
     private var sourceLoadGeneration = 0
 
@@ -41,6 +42,7 @@ final class AskModel {
         answerTask?.cancel()
         sourceLoadTask?.cancel()
         followUpTask?.cancel()
+        evidenceTasks.values.forEach { $0.cancel() }
     }
 
     func selectSurface(_ surface: Surface) {
@@ -141,6 +143,7 @@ final class AskModel {
         let asked = ContinuousClock.now
         answerTask = Task { [weak self, client] in
             let exchange: Exchange
+            var generatedText: String?
             do {
                 let result = try await client.answerAskMeetings(
                     question,
@@ -157,13 +160,12 @@ final class AskModel {
                             generation: requestGeneration)
                     })
                 guard !Task.isCancelled else { return }
-                exchange = await Self.exchange(
+                exchange = Self.exchange(
                     question: question,
                     result: result,
                     source: exchangeSource,
-                    answeredIn: ContinuousClock.now - asked,
-                    client: client)
-                guard !Task.isCancelled else { return }
+                    answeredIn: ContinuousClock.now - asked)
+                generatedText = result.generatedText
             } catch is CancellationError {
                 return
             } catch {
@@ -179,12 +181,21 @@ final class AskModel {
             }
             guard let self, self.complete(exchange, generation: requestGeneration)
             else { return }
-            self.suggestFollowUps(after: exchange)
+            self.enrich(exchange, answer: generatedText)
         }
     }
 
-    /// Asks a suggested follow-up from the same source.
+    /// Asks a suggested follow-up from the same source as the answer that offered it.
     func askFollowUp(_ suggestion: String) {
+        switch state.exchanges.last(where: { $0.followUps.contains(suggestion) })?.source {
+        case .library:
+            selectSourceMode(.library)
+        case .meeting(let id, _):
+            selectSourceMode(.meeting)
+            selectSourceMeeting(id)
+        case .notes, .web, nil:
+            break
+        }
         updateDraft(suggestion)
         submit()
     }
@@ -199,6 +210,8 @@ final class AskModel {
     func cancelAllWork() {
         cancelPendingAnswer()
         cancelFollowUps()
+        evidenceTasks.values.forEach { $0.cancel() }
+        evidenceTasks = [:]
         sourceLoadGeneration += 1
         sourceLoadTask?.cancel()
         sourceLoadTask = nil
@@ -492,24 +505,39 @@ extension AskModel {
         followUpTask = nil
     }
 
-    /// Evidence rows are best effort: without them the citations still show.
+    private func enrich(_ exchange: Exchange, answer: String?) {
+        loadEvidence(for: exchange, answer: answer)
+        suggestFollowUps(after: exchange)
+    }
+
+    /// Evidence rows are best effort and never hold the answer back: the
+    /// citations show until the rows arrive, and stay if the read fails.
+    private func loadEvidence(for exchange: Exchange, answer: String?) {
+        guard !exchange.citations.isEmpty else { return }
+        let client = client
+        evidenceTasks[exchange.id] = Task { [weak self, client] in
+            let evidence = try? await client.loadAskEvidence(exchange.citations, answer: answer)
+            guard !Task.isCancelled, let self else { return }
+            self.evidenceTasks[exchange.id] = nil
+            guard let evidence,
+                  let index = self.state.exchanges.firstIndex(where: { $0.id == exchange.id })
+            else { return }
+            self.state.exchanges[index].evidence = evidence
+        }
+    }
+
     private static func exchange(
         question: String,
         result: AskMeetingAnswer,
         source: ExchangeSource,
-        answeredIn: Duration,
-        client: any AskModelClient
-    ) async -> Exchange {
-        let evidence = result.citations.isEmpty
-            ? nil
-            : try? await client.loadAskEvidence(result.citations, answer: result.generatedText)
-        return Exchange(
+        answeredIn: Duration
+    ) -> Exchange {
+        Exchange(
             question: question,
             answer: AskAnswerPresentation.text(for: result),
             citations: result.citations,
             generationOutcome: result.generationOutcome,
             source: source,
-            evidence: evidence,
             answeredIn: answeredIn)
     }
 

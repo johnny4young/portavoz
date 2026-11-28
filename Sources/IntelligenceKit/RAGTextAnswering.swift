@@ -475,7 +475,8 @@ public struct OpenAICompatibleRAGAnswerer: RAGTextAnswering {
             passages: passages)
         return RAGFollowUpPrompt.lines(of: try await client.complete(
             system: prompt.system,
-            user: prompt.user))
+            user: prompt.user,
+            maximumResponseTokens: RAGFollowUpPrompt.maximumResponseTokens))
     }
 }
 
@@ -503,7 +504,8 @@ public struct OpenAICompatibleRAGClient: Sendable {
     public func complete(
         system: String,
         user: String,
-        dataClassification: DataEgressClassification = .meetingAnswerMaterial
+        dataClassification: DataEgressClassification = .meetingAnswerMaterial,
+        maximumResponseTokens: Int = RAGAnswerPrompt.maximumResponseTokens
     ) async throws -> String {
         let request = try OpenAICompatibleChatCodec.urlRequest(
             endpoint: endpoint,
@@ -512,7 +514,7 @@ public struct OpenAICompatibleRAGClient: Sendable {
             system: system,
             user: user,
             temperature: 0.0,
-            maxTokens: RAGAnswerPrompt.maximumResponseTokens)
+            maxTokens: maximumResponseTokens)
         let destination = DataEgressDestination(
             url: endpoint.appendingPathComponent("chat/completions"))
         let metadata = DataEgressRequest(
@@ -602,7 +604,9 @@ public struct MLXRAGAnswerer: RAGTextAnswering {
             question: question,
             answer: answer,
             passages: passages)
-        let text = try await IntelligenceScheduler.mlx.run(priority) {
+        let text = try await IntelligenceScheduler.mlx.run(
+            RAGFollowUpPrompt.priority, key: RAGFollowUpPrompt.schedulerKey
+        ) {
             try await runtime.respond(
                 system: prompt.system,
                 user: prompt.user,

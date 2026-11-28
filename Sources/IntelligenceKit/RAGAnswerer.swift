@@ -585,7 +585,9 @@ public struct RAGAnswerer: RAGTextAnswering {
             passages: passages)
         let session = LanguageModelSession(
             instructions: RAGFollowUpPrompt.instructions)
-        let text = try await IntelligenceScheduler.shared.run(.interactive) {
+        let text = try await IntelligenceScheduler.shared.run(
+            RAGFollowUpPrompt.priority, key: RAGFollowUpPrompt.schedulerKey
+        ) {
             try await session.respond(
                 to: prompt.user,
                 options: .greedy(maximumResponseTokens: RAGFollowUpPrompt.maximumResponseTokens)

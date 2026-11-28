@@ -27,6 +27,12 @@ final class AskFollowUpsTests: XCTestCase {
         XCTAssertEqual(followUps, ["Who can give Nora access?", "What else is due Friday?", "Draft a status note"])
     }
 
+    func testMarkdownEmphasisIsStripped() {
+        XCTAssertEqual(
+            SuggestAskFollowUps.admit(["**Who owns the rollout?**", "* *What else is due?*"], question: "When?"),
+            ["Who owns the rollout?", "What else is due?"])
+    }
+
     func testFewerThanTwoOrNoModelOrAFailureIsNone() async throws {
         for result: Result<[String], Error> in [
             .success(["Only one?"]), .success([]), .failure(FollowUpTestError.refused)

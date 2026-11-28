@@ -66,7 +66,7 @@ public struct SuggestAskFollowUps: Sendable {
                 .replacing(#/^(?:[-*•]|\d{1,2}[.)])\s*/#, with: "")
                 .replacing(#/\[\d+\]/#, with: "")
                 .replacing(#/\s+/#, with: " ")
-                .trimmingCharacters(in: CharacterSet(charactersIn: "\"'“”‘’«» "))
+                .trimmingCharacters(in: CharacterSet(charactersIn: "\"'“”‘’«»* "))
             guard !text.isEmpty,
                   text.count <= maximumCharacters,
                   !text.contains("://"),

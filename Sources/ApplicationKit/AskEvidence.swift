@@ -74,7 +74,7 @@ public struct LoadAskEvidence: Sendable {
         let rows = citations.enumerated().map { index, citation in
             let meeting = attributed[citation.meetingID]
             let source = sources[citation.meetingID]
-            let speaker = Self.lineIDs(of: citation).lazy.compactMap { meeting?.speakers[$0] }.first
+            let speaker = meeting.flatMap { Self.speaker(of: citation, in: $0) }
             return AskEvidence.Row(
                 number: index + 1,
                 citation: citation,
@@ -93,6 +93,15 @@ public struct LoadAskEvidence: Sendable {
     /// The visible line first, then the accepted segments behind it.
     private static func lineIDs(of citation: AskCitation) -> [UUID] {
         (citation.segmentID.map { [$0] } ?? []) + citation.sourceSegmentIDs
+    }
+
+    /// A split part nobody is heard saying stays unattributed.
+    private static func speaker(of citation: AskCitation, in meeting: AskCitedLines) -> SpeakerID? {
+        for id in lineIDs(of: citation) {
+            if let speaker = meeting.speakers[id] { return speaker }
+            if meeting.unattributedParts.contains(id) { return nil }
+        }
+        return nil
     }
 
     private static func position(of time: TimeInterval, in duration: TimeInterval) -> Double? {

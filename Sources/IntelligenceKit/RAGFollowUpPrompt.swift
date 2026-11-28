@@ -8,6 +8,9 @@ public enum RAGFollowUpError: Error, Equatable, Sendable {
 /// answer. Passages are fenced exactly like the answer prompt.
 public enum RAGFollowUpPrompt {
     public static let maximumResponseTokens = 120
+    /// Droppable and behind anything a person waits for; a newer request replaces a queued one.
+    static let priority = IntelligenceScheduler.Priority.live
+    static let schedulerKey = "ask-follow-ups"
 
     public static let instructions = """
         Suggest the next two or three short questions the user could ask about their own

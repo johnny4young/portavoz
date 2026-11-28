@@ -46,8 +46,8 @@ extension AskModel {
         let webSourceFailures: [AskWebSourceFailure]
         let generationOutcome: AskGenerationOutcome
         let source: ExchangeSource
-        /// "Who said it" rows; nil when the library could not be read.
-        let evidence: AskEvidence?
+        /// "Who said it" rows; nil until they load after the answer, or if the read fails.
+        var evidence: AskEvidence?
         /// From the question to the answer, before evidence rows load.
         let answeredIn: Duration?
         /// Arrives after the answer; empty when no local model could suggest.

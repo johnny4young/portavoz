@@ -7,10 +7,13 @@ public struct AskCitedLines: Sendable, Equatable {
     public let startedAt: Date
     /// The speaker of each requested line or accepted segment still heard.
     public let speakers: [UUID: SpeakerID]
+    /// Requested split parts nobody is heard saying; they never borrow their segment's speaker.
+    public let unattributedParts: Set<UUID>
 
-    public init(startedAt: Date, speakers: [UUID: SpeakerID]) {
+    public init(startedAt: Date, speakers: [UUID: SpeakerID], unattributedParts: Set<UUID> = []) {
         self.startedAt = startedAt
         self.speakers = speakers
+        self.unattributedParts = unattributedParts
     }
 }
 
@@ -26,12 +29,19 @@ extension MeetingStore {
                     db, sql: "SELECT startedAt FROM meeting WHERE id = ? AND deletedAt IS NULL",
                     arguments: [meetingID.rawValue.uuidString])
                 else { continue }
-                let transcript = try Self.readableTranscript(in: db, for: meetingID)
+                // One malformed correction history must not drop every other meeting's rows.
+                let transcript = (try? Self.readableTranscript(in: db, for: meetingID)) ?? AttributedTranscript()
                 var speakers: [UUID: SpeakerID] = [:]
+                var unattributed: Set<UUID> = []
                 for id in ids {
-                    speakers[id] = transcript.lines[id] ?? transcript.segments[id]?.speaker
+                    if let speaker = transcript.lines[id] ?? transcript.segments[id]?.speaker {
+                        speakers[id] = speaker
+                    } else if transcript.splitParts.contains(id) {
+                        unattributed.insert(id)
+                    }
                 }
-                cited[meetingID] = AskCitedLines(startedAt: startedAt, speakers: speakers)
+                cited[meetingID] = AskCitedLines(
+                    startedAt: startedAt, speakers: speakers, unattributedParts: unattributed)
             }
             return cited
         }
