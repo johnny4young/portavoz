@@ -23880,10 +23880,11 @@ Confirmed / To review / Quality tabs move to the title bar as in Ask (D678).
   filters, grouping and list unchanged.
 - The confirmed read uses a new `.dated` Radar filter so a library with many
   undated commitments cannot push dated ones past the bound; the put-off read
-  reuses the review queue query with a future review date and keeps only
-  deferrals not yet due. Both are bounded, read-only and add no storage.
-- The board loads after the review page and again after each decision; a
-  failed read keeps the last board and never holds the list.
+  runs the review queue query with `deferredAfter`, which selects only
+  deferrals not yet due in SQL. Both are bounded, read-only and add no storage.
+- The board loads after the review page and again after a confirm or Review
+  later (a dismissed suggestion was never on it); a failed read keeps the last
+  board and never holds the list.
 - Today's column sits on the present's red well with its title in red: the
   board marks today as the present. Owner names stay ink beside their dot
   (D643); owners take hues by how much work they hold on the board.

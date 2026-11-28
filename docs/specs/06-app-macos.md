@@ -3646,7 +3646,7 @@ exercises this same production path in the durable-resume XCUITest (D63).
   its meeting at the first current evidence line. Columns share one width in
   balanced rows (`CommitmentDueColumnsLayout`, 116 pt minimum) and show at most
   six chips plus "+N more". The board is read after the review page, again
-  after each decision, and a failed read keeps the last board. Under
+  after a confirm or Review later, and a failed read keeps the last board. Under
   "Suggestions, not commitments" each row leads with the task in the serif, an open ring in the
   tint of who said it, "Marta said it", a sparkles "Owner: Ilarion?" chip when
   the queue suggests a person, and "meeting · day"; below sit the meeting's

@@ -2391,8 +2391,8 @@ Current evidence requests the exact transcript time; stale or unavailable
 evidence opens the meeting without claiming exact focus. There is not yet a
 pre-meeting queue surface. To review leads with a due-date board built
 in the app by `CommitmentDueBoard` from two bounded reads: the confirmed Radar
-query's `.dated` filter and `LoadUpcomingCommitmentReviews`, which reuses the
-queue query with a future review date and keeps only deferrals not yet due.
+query's `.dated` filter and `LoadUpcomingCommitmentReviews`, which runs the
+queue query with `deferredAfter` so SQL selects only deferrals not yet due.
 Neither read adds storage tables or writes.
 
 Commitment field quality has a separate Core authority before any production
