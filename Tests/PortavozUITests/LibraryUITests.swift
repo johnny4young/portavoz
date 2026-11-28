@@ -1256,6 +1256,9 @@ final class LibraryUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 5))
         attachScreenshot(of: app, named: "band-6c5-full-ask-answer")
 
+        // Who-said-it rows sit under the answer card and can start below the fold.
+        XCTAssertTrue(citation.revealVertically(
+            in: app.control(withIdentifier: "ask-exchange-scroll"), maxScrolls: 12, maximumStep: 400))
         citation.click()
         let currentTime = app.staticTexts["player-current-time"]
         XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
