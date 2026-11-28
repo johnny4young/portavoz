@@ -7,6 +7,7 @@ import StorageKit
 public protocol AskEvidenceReading: Sendable {
     func askCitedLines(_ lines: [MeetingID: [UUID]]) async throws -> [MeetingID: AskCitedLines]
     func voiceColumns(for meetingIDs: [MeetingID]) async throws -> [MeetingID: MeetingVoiceColumns]
+    func askOpenCommitments(segmentIDs: Set<UUID>) async throws -> [CommitmentID]
 }
 
 extension MeetingStore: AskEvidenceReading {}
@@ -36,6 +37,14 @@ public struct AskEvidence: Sendable, Equatable {
     public let rows: [Row]
     /// Cited meetings' strips in first-cited order, as `TodayPageCast(meetings:)` takes them.
     public let strips: [Strip]
+    /// Open commitments whose evidence is one of the cited lines.
+    public let openCommitments: [CommitmentID]
+
+    init(rows: [Row], strips: [Strip], openCommitments: [CommitmentID] = []) {
+        self.rows = rows
+        self.strips = strips
+        self.openCommitments = openCommitments
+    }
 
     public static let empty = Self(rows: [], strips: [])
 
@@ -63,9 +72,12 @@ public struct LoadAskEvidence: Sendable {
             if lines[citation.meetingID] == nil { order.append(citation.meetingID) }
             lines[citation.meetingID, default: []] += Self.lineIDs(of: citation)
         }
+        let segmentIDs = Set(lines.values.joined())
         async let attributedRead = reader.askCitedLines(lines)
         async let columnsRead = reader.voiceColumns(for: order)
-        let (attributed, columns) = try await (attributedRead, columnsRead)
+        // Best effort: a failed commitment read must not drop the voices.
+        async let commitmentsRead = try? reader.askOpenCommitments(segmentIDs: segmentIDs)
+        let (attributed, columns, commitments) = try await (attributedRead, columnsRead, commitmentsRead)
         try Task.checkCancellation()
         let sources = columns.mapValues(VoiceStripSource.init(columns:))
         let cited = Set(answer.map {
@@ -87,7 +99,8 @@ public struct LoadAskEvidence: Sendable {
             rows: rows,
             strips: order.compactMap { id in
                 sources[id].map { AskEvidence.Strip(meetingID: id, source: $0) }
-            })
+            },
+            openCommitments: commitments ?? [])
     }
 
     /// The visible line first, then the accepted segments behind it.

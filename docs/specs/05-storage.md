@@ -2299,6 +2299,11 @@ meetings are absent; a suppressed line has no speaker, and a meeting whose
 correction history cannot be read keeps its start without voices. It is an on-demand read for one answer's few
 meetings, never observed.
 
+`askOpenCommitments(segmentIDs:)` returns, in identity order, the confirmed
+commitments (not done, dismissed or deleted) with any evidence segment among an
+answer's cited line and accepted-segment IDs. `LoadAskEvidence` reads it beside
+the cited lines and strips, on demand and never observed (D678).
+
 ### Brief lines (schema v62, D650)
 
 `meetingBriefSource` remembers, per occurrence of an upcoming calendar event
