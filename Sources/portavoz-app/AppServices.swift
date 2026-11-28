@@ -217,6 +217,8 @@ final class AppServices {
     /// recording view, the HUD and the menu bar all observe the same one,
     /// and navigating away can never orphan a live session.
     let recording: RecordingController
+    /// The status item's elapsed time while recording.
+    @ObservationIgnored let menuBarClock = MenuBarElapsedClock()
     /// ⌘K palette (design system 6a-1): floats over any view; state and owned
     /// tasks live here so it works safely with the library window closed.
     let palette: CommandPaletteController

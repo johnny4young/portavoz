@@ -93,7 +93,7 @@ struct PortavozApp: App {
                 .portavozLocalized()
                 .tint(PVDesign.controlTint)
         } label: {
-            MenuBarStatusLabel(recording: launch.services?.recording)
+            MenuBarStatusLabel(clock: launch.services?.menuBarClock)
         }
         .menuBarExtraStyle(.window)
         Settings {
@@ -184,18 +184,14 @@ private struct AppLaunchMenuBarContent: View {
 }
 
 /// The status item: the mark, and while a meeting records its red swell
-/// beside the elapsed time, redrawn once a second.
+/// beside the elapsed time.
 private struct MenuBarStatusLabel: View {
-    let recording: RecordingController?
+    let clock: MenuBarElapsedClock?
 
     var body: some View {
-        if let recording, recording.phase == .recording {
-            let startedAt = recording.startedAt
-            TimelineView(.periodic(from: startedAt, by: 1)) { context in
-                Image(nsImage: MenuBarIcon.recording(
-                    elapsed: ClockFormat.mmss(context.date.timeIntervalSince(startedAt), truncating: true)))
-            }
-            .accessibilityLabel("Recording…")
+        if let elapsed = clock?.text {
+            Image(nsImage: MenuBarIcon.recording(elapsed: elapsed))
+                .accessibilityLabel("Recording…")
         } else {
             Image(nsImage: MenuBarIcon.idle)
                 .accessibilityLabel("Portavoz")

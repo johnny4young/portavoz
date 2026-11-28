@@ -105,6 +105,12 @@ extension AppServices {
     }
 
     func recordingPhaseDidChange(_ phase: RecordingPhase) {
+        if phase == .recording {
+            let recording = recording
+            menuBarClock.follow { [weak recording] in recording?.startedAt }
+        } else {
+            menuBarClock.follow(nil)
+        }
         resourceCaptureState.update(phase.resourceCaptureState)
         captureOwnershipDidChange()
     }

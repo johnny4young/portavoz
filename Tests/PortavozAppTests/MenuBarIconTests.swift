@@ -71,6 +71,18 @@ final class MenuBarIconTests: XCTestCase {
             "a longer clock widens the image instead of clipping")
     }
 
+    @MainActor
+    func testElapsedClockTicksOutsideTheLabelAndClearsWhenRecordingEnds() async throws {
+        let clock = MenuBarElapsedClock()
+        let start = Date().addingTimeInterval(-724.2)
+        clock.follow { start }
+        XCTAssertEqual(clock.text, "12:04", "the first value lands before the first tick")
+        try await Task.sleep(for: .milliseconds(1_200))
+        XCTAssertEqual(clock.text, "12:05")
+        clock.follow(nil)
+        XCTAssertNil(clock.text)
+    }
+
     // MARK: - Helpers
 
     private static let scale: CGFloat = 4

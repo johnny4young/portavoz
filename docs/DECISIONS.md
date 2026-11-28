@@ -23736,6 +23736,12 @@ and the two voices before. The floating HUD carries the same name beside a
 smaller strip. Both read the live Voices table (`LiveVoiceTable`), so the menu
 bar, the HUD and the stage never disagree on who is speaking.
 
+The status item's time is drawn into the mark's image and ticked by an
+observable clock that `AppServices` starts and stops with the recording phase.
+A `TimelineView` or a timer `Text` inside the `MenuBarExtra` label kept the
+main thread busy from the first tick, and every recording UI test timed out:
+the label is rebuilt on each redraw, so its timeline restarts and fires again.
+
 The strip there fills its width with the whole call instead of the stage's
 fixed horizon: at 294 pt and 96 pt a ruler would be unreadable, and the panel
 is a glance, not a timeline. The HUD's name sits in a fixed slot and only its

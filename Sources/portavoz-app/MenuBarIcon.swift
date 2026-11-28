@@ -1,4 +1,5 @@
 import AppKit
+import Observation
 
 /// The menu-bar mark, drawn from `PortavozMark` so it stays sharp at any
 /// scale. Idle is a template the menu bar tints; recording keeps the strands
@@ -47,5 +48,41 @@ enum MenuBarIcon {
             PortavozMark.drawGlyph(in: context, into: rect) { color($0).cgColor }
             return true
         }
+    }
+}
+
+/// The elapsed time beside the recording mark, ticked once a second from
+/// outside the label: a timeline inside a menu-bar label restarts with every
+/// redraw and keeps the main thread busy.
+@MainActor
+@Observable
+final class MenuBarElapsedClock {
+    private(set) var text: String?
+    @ObservationIgnored private var task: Task<Void, Never>?
+
+    /// Ticks while `startedAt` is given; nil stops and clears it.
+    func follow(_ startedAt: (@MainActor () -> Date?)?) {
+        task?.cancel()
+        task = nil
+        guard let startedAt else {
+            text = nil
+            return
+        }
+        tick(startedAt)
+        task = Task { [weak self] in
+            while !Task.isCancelled {
+                // Wake on the next whole second of the recording.
+                let elapsed = startedAt().map { Date().timeIntervalSince($0) } ?? 0
+                try? await Task.sleep(for: .seconds(1 - elapsed.truncatingRemainder(dividingBy: 1)))
+                guard !Task.isCancelled else { return }
+                self?.tick(startedAt)
+            }
+        }
+    }
+
+    private func tick(_ startedAt: () -> Date?) {
+        guard let start = startedAt() else { return }
+        let next = ClockFormat.mmss(Date().timeIntervalSince(start), truncating: true)
+        if next != text { text = next }
     }
 }
