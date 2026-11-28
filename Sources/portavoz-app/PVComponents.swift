@@ -136,33 +136,19 @@ extension ButtonStyle where Self == PVOfferChipButtonStyle {
     static var pvOfferChip: PVOfferChipButtonStyle { PVOfferChipButtonStyle() }
 }
 
-/// Live state in red, the only red text in the app: "Recording 12:04" on the
-/// red tint, or the solid "Now 3:15" playhead label.
+/// The solid "Now 3:15" playhead label in the colour of the present.
 struct StatusPill: View {
-    enum Kind { case recording, now }
-
-    let kind: Kind
     let text: String
 
     var body: some View {
-        switch kind {
-        case .recording:
-            HStack(spacing: 6) {
-                RecordDot(size: 8)
-                Text(text).monospacedDigit()
-            }
-            .foregroundStyle(PVDesign.now)
-            .pvPill(PVDesign.nowBg)
-        case .now:
-            Text(text)
-                .font(.caption.weight(.bold))
-                .monospacedDigit()
-                .lineLimit(1)
-                .foregroundStyle(PVDesign.onNow)
-                .padding(.horizontal, 8)
-                .frame(minHeight: 20)
-                .background(PVDesign.now, in: Capsule())
-        }
+        Text(text)
+            .font(.caption.weight(.bold))
+            .monospacedDigit()
+            .lineLimit(1)
+            .foregroundStyle(PVDesign.onNow)
+            .padding(.horizontal, 8)
+            .frame(minHeight: 20)
+            .background(PVDesign.now, in: Capsule())
     }
 }
 

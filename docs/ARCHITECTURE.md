@@ -1199,7 +1199,10 @@ retains every original until all outputs verify, removes generated outputs on
 failure or cancellation, and only then removes the raw channels.
 
 The menu-bar scene receives bounded recent-meeting and open-commitment updates
-through an app adapter. EventKit access remains in the adapter and follows the
+through an app adapter. The recent query skips the meeting being recorded
+(the panel draws that one live) and carries each listed meeting's stored voice
+strip; the model recasts them in one `TodayPageCast` so a person keeps one
+colour down the list. EventKit access remains in the adapter and follows the
 no-prompt resident-surface rule. The SwiftUI panel owns commands and rendering,
 not Store or calendar coordination. Its event-scoped brief proposal adds a
 durable dismissal, exact-preview confirmation, local-draft handoff, and global
@@ -6260,8 +6263,10 @@ does the same over a fixed frame.
 The talk-balance cue reads captions in its own body. The floating panel's
 meter uses the same overlay fill.
 Live voices are a separate observable, `RecordingLiveVoicesModel`,
-that neither the bar nor the floating panel reads; only the Voices table, the
-live strip, a directed card's asker line and the hero's detail line do. It rebuilds the pure
+that the bar never reads; only the Voices table, the live strip, a directed
+card's asker line, the hero's detail line, the floating panel's fixed-width
+speaker slot (`RecordingHUDSpeaker`) and the menu-bar panel's live strip and
+speaker line do. It rebuilds the pure
 `LiveVoiceStage` (ApplicationKit) at most once a second from closed captions,
 live relabels, note and question changes, and microphone-speech flips; the
 level relay reaches it only through that flip, never per sample.

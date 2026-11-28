@@ -37,3 +37,30 @@ enum RecordingClockTemplate {
         String(clock.map { $0.isNumber ? "0" : $0 })
     }
 }
+
+/// The elapsed time in a display face. Each tick redraws an overlay above a
+/// hidden widest placeholder, so it never re-measures the surface around it.
+struct ElapsedClockText: View {
+    let startedAt: Date
+    let style: PVDisplayStyle
+    let identifier: String
+
+    @State private var placeholder = RecordingClockTemplate.placeholder(for: ClockFormat.mmss(0))
+
+    var body: some View {
+        DisplayTimeText(placeholder, style: style)
+            .hidden()
+            .overlay(alignment: .leading) {
+                TimelineView(.periodic(from: startedAt, by: 1)) { context in
+                    let clock = ClockFormat.mmss(context.date.timeIntervalSince(startedAt), truncating: true)
+                    DisplayTimeText(clock, style: style)
+                        .foregroundStyle(PVDesign.ink)
+                        .fixedSize()
+                        .accessibilityIdentifier(identifier)
+                        .onChange(of: RecordingClockTemplate.placeholder(for: clock), initial: true) { _, widest in
+                            placeholder = widest
+                        }
+                }
+            }
+    }
+}

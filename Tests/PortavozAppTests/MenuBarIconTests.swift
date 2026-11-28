@@ -60,6 +60,29 @@ final class MenuBarIconTests: XCTestCase {
         }
     }
 
+    @MainActor
+    func testRecordingWithElapsedTimeKeepsTheMarkAndAddsTheClock() async throws {
+        let image = MenuBarIcon.recording(elapsed: "12:04")
+        XCTAssertFalse(image.isTemplate)
+        XCTAssertEqual(image.size.height, MenuBarIcon.size.height)
+        XCTAssertGreaterThan(image.size.width, MenuBarIcon.size.width + 20)
+        XCTAssertGreaterThan(
+            MenuBarIcon.recording(elapsed: "125:00").size.width, image.size.width,
+            "a longer clock widens the image instead of clipping")
+    }
+
+    @MainActor
+    func testElapsedClockTicksOutsideTheLabelAndClearsWhenRecordingEnds() async throws {
+        let clock = MenuBarElapsedClock()
+        let start = Date().addingTimeInterval(-724.2)
+        clock.follow { start }
+        XCTAssertEqual(clock.text, "12:04", "the first value lands before the first tick")
+        try await Task.sleep(for: .milliseconds(1_200))
+        XCTAssertEqual(clock.text, "12:05")
+        clock.follow(nil)
+        XCTAssertNil(clock.text)
+    }
+
     // MARK: - Helpers
 
     private static let scale: CGFloat = 4

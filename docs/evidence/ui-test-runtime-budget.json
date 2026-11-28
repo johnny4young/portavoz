@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 152
+    "expectedCaseCount": 154
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -108,6 +108,7 @@
     "MeetingDetailUITests/testTwentyThousandSegmentDetailRendersFromDisposableScaleFixture()": 23.817,
     "MeetingDetailUITests/testUnnamedSpeakerOffersExplicitNameSuggestions()": 20.0,
     "MenuBarUITests/testPreMeetingBriefMovesFromExactProposalToDurableReceipt()": 20.0,
+    "MenuBarUITests/testRecordingPanelNamesWhoIsSpeakingOverTheLiveStrip()": 20.0,
     "OnboardingUITests/testAdvancesFromFirstListenToLocalVoiceEnrollment()": 20.0,
     "OnboardingUITests/testFirstListenSitsOnPaperInBothAppearances()": 20.0,
     "RecordingAssistUITests/testCompanionActionsKeepIdentityAndSeenStateAfterReentry()": 25.0,
@@ -173,6 +174,7 @@
     "MeetingDetailUITests/testStandfirstControlsStayWholeInTheNarrowestWindow()": 20.0,
     "MeetingDetailUITests/testVoiceStripsRunUpToTheirRowControls()": 20.0,
     "RecordingStageUITests/testLiveVoicesLeadWithTheCurrentSpeakerAndFoldTheRest()": 20.0,
+    "RecordingStageUITests/testTheFloatingPanelNamesWhoIsSpeakingBesideItsStrip()": 20.0,
     "RecordingStageUITests/testTheStageKeepsStopAndTheTitleApartAtTheMinimumWidth()": 20.0,
     "RecordingStageUITests/testTheStageReadsInLightAtTheStandardWidth()": 20.0,
     "RecordingStageUITests/testTheStripMarksNowAndYourNoteWithThePanelBesideTheVoices()": 20.0

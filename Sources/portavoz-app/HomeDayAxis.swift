@@ -627,7 +627,7 @@ struct HomeDayAxis: View {
             .offset(x: x - 0.8, y: 22)
             .allowsHitTesting(false)
             .accessibilityHidden(true)
-        StatusPill(kind: .now, text: nowText)
+        StatusPill(text: nowText)
             .fixedSize()
             // Centred on now, kept inside the axis.
             .alignmentGuide(.leading) { pill in

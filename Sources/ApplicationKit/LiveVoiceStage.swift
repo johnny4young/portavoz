@@ -69,6 +69,9 @@ public struct LiveVoiceStage: Sendable, Equatable {
 
     public var isEmpty: Bool { voices.isEmpty && ticks.isEmpty }
 
+    /// Voices heard so far; unlabelled remote speech is not one yet.
+    public var voiceCount: Int { voices.count { $0.key != Self.unlabelledKey } }
+
     public func voice(_ key: String) -> Voice? { voices.first { $0.key == key } }
 
     /// The voice key of a live row: `you` for the microphone and the

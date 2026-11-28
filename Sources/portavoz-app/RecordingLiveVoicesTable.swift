@@ -56,11 +56,7 @@ struct RecordingLiveVoicesTable: View {
         let recency = LiveVoiceRecencyFormat.text(row: row, now: now)
         return HStack(spacing: 12) {
             nameColumn(name, size: row.isSpeaking ? 17 : 13.5, ink: row.voice.isMe ? PVDesign.ink : PVDesign.ink2) {
-                if row.isSpeaking {
-                    SpeakingBars(tint: row.voice.tint)
-                } else {
-                    VoiceDot(tint: row.voice.tint, size: 10, isOpen: !row.voice.isMe && row.voice.name == nil)
-                }
+                LiveSpeakerGlyph(row: row, dotSize: 10)
             }
             Text(recency)
                 .font(.system(size: 12, weight: row.isSpeaking ? .semibold : .regular).monospacedDigit())
@@ -233,7 +229,7 @@ struct LevelTrackBar: View {
 }
 
 /// Three level bars in the voice's colour: this voice is speaking now.
-private struct SpeakingBars: View {
+struct SpeakingBars: View {
     let tint: VoiceCast.Tint
     @Environment(\.colorScheme) private var colorScheme
 

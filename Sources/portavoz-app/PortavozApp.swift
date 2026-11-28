@@ -93,9 +93,7 @@ struct PortavozApp: App {
                 .portavozLocalized()
                 .tint(PVDesign.controlTint)
         } label: {
-            let isRecording = launch.services?.recording.phase == .recording
-            Image(nsImage: isRecording ? MenuBarIcon.recording : MenuBarIcon.idle)
-                .accessibilityLabel(isRecording ? "Recording…" : "Portavoz")
+            MenuBarStatusLabel(clock: launch.services?.menuBarClock)
         }
         .menuBarExtraStyle(.window)
         Settings {
@@ -121,7 +119,10 @@ private struct AppLaunchRootView: View {
             if presentsMenuBarUITestFixture {
                 MenuBarContent(model: services.makeMenuBarModel())
                     .environment(services)
-                    .task { await services.seedDemoIfRequested() }
+                    .task {
+                        await services.seedDemoIfRequested()
+                        await services.startMenuBarLiveVoicesFixtureIfRequested()
+                    }
             } else {
                 ContentView(services: services)
                     .environment(services)
@@ -178,6 +179,22 @@ private struct AppLaunchMenuBarContent: View {
                 "Library unavailable — open Portavoz to recover",
                 systemImage: "externaldrive.badge.exclamationmark")
                 .padding()
+        }
+    }
+}
+
+/// The status item: the mark, and while a meeting records its red swell
+/// beside the elapsed time.
+private struct MenuBarStatusLabel: View {
+    let clock: MenuBarElapsedClock?
+
+    var body: some View {
+        if let elapsed = clock?.text {
+            Image(nsImage: MenuBarIcon.recording(elapsed: elapsed))
+                .accessibilityLabel("Recording…")
+        } else {
+            Image(nsImage: MenuBarIcon.idle)
+                .accessibilityLabel("Portavoz")
         }
     }
 }

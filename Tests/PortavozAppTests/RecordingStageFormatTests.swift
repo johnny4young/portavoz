@@ -55,7 +55,7 @@ final class RecordingStageFormatTests: XCTestCase {
             labels: [labelled.id: "S1"], latestTurn: nil, now: 8))
 
         XCTAssertEqual(stage.voices.map(\.key), ["you", "S1", "remote"])
-        XCTAssertEqual(RecordingStageDetail.voiceCount(stage), 2)
+        XCTAssertEqual(stage.voiceCount, 2)
     }
 
     func testTheHeroStepsItsTypeDownWithWidth() {
@@ -65,5 +65,52 @@ final class RecordingStageFormatTests: XCTestCase {
         XCTAssertEqual(RecordingStageHeroScale(width: 679), .compact)
         XCTAssertGreaterThan(RecordingStageHeroScale.wide.clock, RecordingStageHeroScale.medium.clock)
         XCTAssertGreaterThan(RecordingStageHeroScale.medium.clock, RecordingStageHeroScale.compact.clock)
+    }
+
+    func testTheSpeakerLineNamesWhoSpeaksThenTheTwoBefore() throws {
+        let meetingID = MeetingID()
+        func row(_ channel: AudioChannel, _ start: TimeInterval, _ end: TimeInterval) -> TranscriptSegment {
+            TranscriptSegment(
+                meetingID: meetingID, channel: channel, text: "words",
+                startTime: start, endTime: end, isFinal: true)
+        }
+        let s1 = row(.system, 0, 10)
+        let s2 = row(.system, 10, 20)
+        let s3 = row(.system, 20, 30)
+        let mine = row(.microphone, 30, 40)
+        let labels = [s1.id: "S1", s2.id: "S2", s3.id: "S3"]
+        let speaking = LiveVoiceStage.updating(.empty, with: LiveVoiceSource(
+            captions: [s1, s2, s3, mine], labels: labels, latestTurn: nil, now: 40))
+        let line = try XCTUnwrap(LiveSpeakerLine(stage: speaking, cast: speaking.cast()))
+
+        XCTAssertEqual(line.name, "You")
+        XCTAssertEqual(line.speakingDetail, "speaking · then S3, S2")
+        XCTAssertEqual(line.spoken, "You speaking, then S3, S2")
+        XCTAssertEqual(line.voices, "4 voices")
+        XCTAssertEqual(String(line.styled.characters), "You speaking · then S3, S2")
+
+        let quiet = LiveVoiceStage.updating(.empty, with: LiveVoiceSource(
+            captions: [s1, s2, s3, mine], labels: labels, latestTurn: nil, now: 60))
+        let after = try XCTUnwrap(LiveSpeakerLine(stage: quiet, cast: quiet.cast()))
+        XCTAssertFalse(after.lead.isSpeaking)
+        XCTAssertEqual(after.spoken, "Last heard: You, S3, S2")
+
+        let alone = LiveVoiceStage.updating(.empty, with: LiveVoiceSource(
+            captions: [mine], labels: [:], latestTurn: nil, now: 40))
+        let solo = try XCTUnwrap(LiveSpeakerLine(stage: alone, cast: alone.cast()))
+        XCTAssertEqual(solo.speakingDetail, "speaking")
+        XCTAssertEqual(solo.voices, "1 voice")
+        XCTAssertNil(LiveSpeakerLine(stage: .empty, cast: LiveVoiceStage.empty.cast()))
+    }
+
+    func testRecentRowsReadTheClockTodayAndTheDayBefore() {
+        let now = Date()
+        let locale = AppLanguage.current.locale
+        XCTAssertEqual(MenuBarFormat.started(now), now.formatted(.dateTime.hour().minute().locale(locale)))
+        let earlier = now.addingTimeInterval(-3 * 86_400)
+        XCTAssertEqual(
+            MenuBarFormat.started(earlier), earlier.formatted(.dateTime.month(.abbreviated).day().locale(locale)))
+        let event = UpcomingEvent(id: "e", title: "Sync", startDate: now, attendees: ["Ana", "Bo", "Cy", "Di"])
+        XCTAssertTrue(MenuBarFormat.eventDetail(event).hasSuffix(" · Ana, Bo, Cy +1"))
     }
 }

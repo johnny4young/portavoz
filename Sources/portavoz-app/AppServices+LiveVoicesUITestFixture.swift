@@ -93,3 +93,12 @@ extension LiveAssistUITestFixture {
             SpeakerTurn(voiceLabel: label, startTime: row.startTime, endTime: row.endTime))
     }
 }
+
+extension AppServices {
+    /// The menu-bar fixture has no stage to start the scripted call, so it starts it here.
+    func startMenuBarLiveVoicesFixtureIfRequested() async {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard arguments.contains("-use-temp-store"), arguments.contains("-simulate-live-voices") else { return }
+        await recording.start(services: self)
+    }
+}
