@@ -142,6 +142,8 @@ final class CommitmentRadarStorageTests: XCTestCase {
         let overdueItems = try await page(store, due: .overdue).items
         let dueSoonItems = try await page(store, due: .dueSoon).items
         let noDateItems = try await page(store, due: .noDate).items
+        let datedItems = try await page(store, due: .dated).items
+        XCTAssertEqual(datedItems.map(\.id), [mine.id, theirs.id], "open dated work, earliest first")
         XCTAssertEqual(overdueItems.map(\.id), [mine.id])
         XCTAssertEqual(dueSoonItems.map(\.id), [theirs.id])
         XCTAssertEqual(

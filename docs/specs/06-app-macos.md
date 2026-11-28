@@ -3631,8 +3631,23 @@ exercises this same production path in the durable-resume XCUITest (D63).
   and the disposable
   `-seed-commitment-radar` fixture verify filtering and exact source navigation
   in English and Spanish. D266 preserves that confirmed page while loading the
-  D265 generated-work queue into independent state. Under "Suggestions, not
-  commitments" each row leads with the task in the serif, an open ring in the
+  D265 generated-work queue into independent state. The Confirmed / To review
+  / Quality tabs sit in the title bar beside "Radar", as in Ask (D678); the page
+  title is "Commitments". To review opens on "Commitments by due date" (D680):
+  `CommitmentDueBoard` puts open confirmed commitments with a due date (the
+  `.dated` Radar filter, earliest first) and suggestions deferred with Review
+  later whose revisit date has not come (`LoadUpcomingCommitmentReviews`) into
+  Overdue, Today, one column per later day of this calendar week that has
+  work, Next week, and Later only when it has work. A confirmed chip is solid
+  with a filled owner dot, a put-off suggestion dashed with an open dot; owners
+  are "You" or the person's name, tinted by a cast of the board's owners. Today
+  sits on the present's red well. A confirmed chip opens Radar focused on that
+  commitment, where Due date, Done and Restore live; a suggestion chip opens
+  its meeting at the first current evidence line. Columns share one width in
+  balanced rows (`CommitmentDueColumnsLayout`, 116 pt minimum) and show at most
+  six chips plus "+N more". The board is read after the review page, again
+  after each decision, and a failed read keeps the last board. Under
+  "Suggestions, not commitments" each row leads with the task in the serif, an open ring in the
   tint of who said it, "Marta said it", a sparkles "Owner: Ilarion?" chip when
   the queue suggests a person, and "meeting · day"; below sit the meeting's
   voice strip with every previewed evidence moment drawn as a mark and up to

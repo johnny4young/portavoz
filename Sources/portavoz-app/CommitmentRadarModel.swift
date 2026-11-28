@@ -21,6 +21,8 @@ protocol CommitmentRadarModelClient: AnyObject {
         _ request: LoadCommitmentReviewQueueRequest
     ) async throws -> CommitmentReviewQueuePage
 
+    func loadUpcomingCommitmentReviews() async throws -> [CommitmentReviewQueueItem]
+
     func reviewMeetingCommitment(
         _ request: ReviewMeetingCommitmentRequest
     ) async throws
@@ -139,6 +141,8 @@ final class CommitmentRadarModel {
         fileprivate(set) var reviewVoices: CommitmentReviewVoices = .empty
         /// Built when the page or its voices change, never per render.
         fileprivate(set) var reviewRows: [CommitmentReviewPresentation.Row] = []
+        /// Confirmed work and put-off suggestions by day, above the review list.
+        fileprivate(set) var dueBoard: CommitmentDueBoard = .empty
         fileprivate(set) var reviewingActionItemID: UUID?
         fileprivate(set) var reviewMutationFailed = false
         fileprivate(set) var recordedPresentationIDs: Set<UUID> = []
@@ -171,10 +175,19 @@ final class CommitmentRadarModel {
     private var radarRequestID = UUID()
     private var reviewRequestID = UUID()
     private var qualityRequestID = UUID()
+    private var dueBoardRequestID = UUID()
     private var presentationTasks: [UUID: Task<Bool, Never>] = [:]
+    private let now: () -> Date
+    private let calendar: Calendar
 
-    init(client: any CommitmentRadarModelClient) {
+    init(
+        client: any CommitmentRadarModelClient,
+        now: @escaping () -> Date = Date.init,
+        calendar: Calendar = .autoupdatingCurrent
+    ) {
         self.client = client
+        self.now = now
+        self.calendar = calendar
     }
 
     func send(_ action: Action) async {
@@ -229,6 +242,7 @@ private extension CommitmentRadarModel {
             radarRequestID = UUID()
             reviewRequestID = UUID()
             qualityRequestID = UUID()
+            dueBoardRequestID = UUID()
             state.routeFocus = nil
             state.mode = mode
             await loadCurrentMode()
@@ -379,8 +393,29 @@ private extension CommitmentRadarModel {
     }
 
     func loadReviewQueue(showProgress: Bool = true) async {
-        guard let unread = await loadReviewPage(showProgress: showProgress) else { return }
+        let unread = await loadReviewPage(showProgress: showProgress)
+        await loadDueBoard()
+        guard let unread else { return }
         await loadReviewVoices(unread.items, requestID: unread.requestID)
+    }
+
+    /// A failed read keeps the last board; the review list never waits on it.
+    func loadDueBoard() async {
+        let requestID = UUID()
+        dueBoardRequestID = requestID
+        guard let confirmed = try? await client.loadCommitmentRadar(LoadCommitmentRadarRequest(
+                  due: .dated,
+                  itemLimit: CommitmentRadarQuery.maximumItemCount,
+                  sourceLimitPerItem: 1,
+                  historyLimitPerItem: 1)),
+              let upcoming = try? await client.loadUpcomingCommitmentReviews(),
+              dueBoardRequestID == requestID,
+              state.mode == .review,
+              !Task.isCancelled
+        else { return }
+        let board = CommitmentDueBoard(
+            confirmed: confirmed.items, upcoming: upcoming, now: now(), calendar: calendar)
+        if board != state.dueBoard { state.dueBoard = board }
     }
 
     /// The rows still missing who said them; nil when none are or a newer load won.
@@ -451,7 +486,11 @@ private extension CommitmentRadarModel {
         meetingID: MeetingID,
         request: ReviewMeetingCommitmentRequest
     ) async {
-        await mutateReview(actionItemID, meetingID: meetingID) { [client] in
+        // A dismissed suggestion was waiting now, so it was never on the board.
+        let refreshesDueBoard = if case .dismiss = request { false } else { true }
+        await mutateReview(
+            actionItemID, meetingID: meetingID, refreshesDueBoard: refreshesDueBoard
+        ) { [client] in
             try await client.reviewMeetingCommitment(request)
         }
     }
@@ -460,6 +499,7 @@ private extension CommitmentRadarModel {
     func mutateReview(
         _ actionItemID: UUID,
         meetingID: MeetingID,
+        refreshesDueBoard: Bool = true,
         write: @MainActor () async throws -> Void
     ) async -> Bool {
         guard state.reviewingActionItemID == nil else { return false }
@@ -474,6 +514,7 @@ private extension CommitmentRadarModel {
             let unread = await loadReviewPage(showProgress: false)
             // The next decision never waits on a transcript read.
             state.reviewingActionItemID = nil
+            if refreshesDueBoard { await loadDueBoard() }
             if let unread {
                 await loadReviewVoices(unread.items, requestID: unread.requestID)
             }

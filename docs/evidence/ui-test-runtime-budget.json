@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 158
+    "expectedCaseCount": 159
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -181,6 +181,7 @@
     "RecordingStageUITests/testTheStageReadsInLightAtTheStandardWidth()": 20.0,
     "RecordingStageUITests/testTheStripMarksNowAndYourNoteWithThePanelBesideTheVoices()": 20.0,
     "CommitmentRadarUITests/testSuggestionSaysWhoSaidItAndConfirmsWithoutLeavingRadar()": 25.0,
-    "CommitmentRadarUITests/testNarrowDarkSuggestionKeepsEveryDecisionWhole()": 20.0
+    "CommitmentRadarUITests/testNarrowDarkSuggestionKeepsEveryDecisionWhole()": 20.0,
+    "CommitmentRadarUITests/testDueBoardPutsWorkUnderItsDayAndAChipOpensIt()": 20.0
   }
 }

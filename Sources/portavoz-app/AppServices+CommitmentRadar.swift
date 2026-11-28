@@ -31,6 +31,10 @@ extension AppServices: CommitmentRadarModelClient {
         try await LoadCommitmentReviewQueue(repository: store).execute(request)
     }
 
+    func loadUpcomingCommitmentReviews() async throws -> [CommitmentReviewQueueItem] {
+        try await LoadUpcomingCommitmentReviews(repository: store).execute()
+    }
+
     func reviewMeetingCommitment(
         _ request: ReviewMeetingCommitmentRequest
     ) async throws {

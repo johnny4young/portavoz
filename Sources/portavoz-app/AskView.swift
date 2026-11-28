@@ -71,13 +71,7 @@ struct AskView: View {
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .navigation) {
-            Text("Ask")
-                .font(.body.weight(.bold))
-                .foregroundStyle(PVDesign.ink)
-                .lineLimit(1)
-                .fixedSize()
-                .padding(.leading, HomeToolbarLayout.titleInset)
-                .accessibilityAddTraits(.isHeader)
+            ToolbarTitle("Ask")
         }
         .sharedBackgroundVisibility(.hidden)
         ToolbarSpacer(.flexible)

@@ -23859,3 +23859,33 @@ a step without adding proof. Radar's To review rows now confirm directly.
   owner, as it does there; the owner stays editable before anything is saved.
 - Names are ink beside their dot and the owner chip rides the green suggestion
   tint (D643); the task is the upright serif of the board, not italics.
+
+## D680 — Radar's To review leads with commitments by due date
+
+Radar answered "what is due when" only through filters over a flat list.
+To review now opens on columns by due date above the suggestions list, and the
+Confirmed / To review / Quality tabs move to the title bar as in Ask (D678).
+
+- Columns are Overdue, Today, one per later day of this calendar week that
+  has work, Next week, and Later only when it has work. Overdue, Today and
+  Next week always show, so the board keeps its shape; the week follows the
+  calendar's first weekday.
+- Solid chips are open confirmed commitments with a due date. Generated
+  suggestions carry no due date, so a dashed chip is a suggestion put off with
+  Review later, on the day it comes back for review; suggestions waiting now
+  stay only in the list below, so nothing shows twice on the page.
+- A confirmed chip opens Radar focused on that commitment, where Due date,
+  Done and Restore already live; a suggestion chip opens its meeting at the
+  first current evidence line, like Review in meeting. Confirmed keeps its
+  filters, grouping and list unchanged.
+- The confirmed read uses a new `.dated` Radar filter so a library with many
+  undated commitments cannot push dated ones past the bound; the put-off read
+  reuses the review queue query with a future review date and keeps only
+  deferrals not yet due. Both are bounded, read-only and add no storage.
+- The board loads after the review page and again after each decision; a
+  failed read keeps the last board and never holds the list.
+- Today's column sits on the present's red well with its title in red: the
+  board marks today as the present. Owner names stay ink beside their dot
+  (D643); owners take hues by how much work they hold on the board.
+- Each column shows at most six chips and "+N more"; the count beside the
+  title stays exact. The legend under the board names both chip styles.

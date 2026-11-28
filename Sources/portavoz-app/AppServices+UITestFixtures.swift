@@ -243,6 +243,10 @@ extension AppServices {
             actionItemEvidence.append(SummaryActionItemEvidence(
                 actionItemID: Self.seedReviewActionItemID,
                 evidenceSegmentIDs: [citedSegmentID]))
+            if let putOff = Self.seedPutOffSuggestion(ownerID: ownerID, citedSegmentID: citedSegmentID) {
+                actionItems.append(putOff.item)
+                actionItemEvidence.append(putOff.evidence)
+            }
         }
         let reviewQueueMarkdown = seedsReviewQueue
             ? "\n- [ ] Send the launch checklist — S1"
@@ -494,6 +498,7 @@ extension AppServices {
                 meetingID: meetingID,
                 personID: canonicalPersonID,
                 old: old)
+            try await seedDueBoardIfRequested(meetingID: meetingID, now: now)
         } catch {
             assertionFailure("Could not seed Commitment Radar: \(error)")
         }

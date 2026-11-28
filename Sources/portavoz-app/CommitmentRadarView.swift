@@ -10,6 +10,7 @@ struct CommitmentRadarView: View {
     let focus: CommitmentRadarRouteFocus?
     var suggestionsToReview = 0
     let onClearFocus: () -> Void
+    let onOpenCommitment: (CommitmentID) -> Void
     let onOpenMeeting: (MeetingID, TimeInterval?) -> Void
 
     @State private var expandedItems: Set<CommitmentID> = []
@@ -22,12 +23,15 @@ struct CommitmentRadarView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header
-                modePicker
                 if state.mode == .confirmed {
                     appEntityFocusBanner
                     filters
                     confirmedContent
                 } else if state.mode == .review {
+                    if showsDueBoard {
+                        CommitmentDueBoardView(board: state.dueBoard, open: openDueChip)
+                            .padding(.bottom, 8)
+                    }
                     CommitmentReviewQueueView(
                         model: model,
                         onOpenMeeting: onOpenMeeting)
@@ -39,6 +43,10 @@ struct CommitmentRadarView: View {
             .frame(maxWidth: 980, alignment: .leading)
         }
         .accessibilityIdentifier("commitment-radar")
+        // The window keeps its title for the Window menu; the toolbar draws it.
+        .navigationTitle("Radar")
+        .toolbar(removing: .title)
+        .toolbar { toolbar }
         .task(id: focus) {
             // The route-owned model outlives this conditional view. Refresh an
             // unchanged focus when Radar is mounted again, but do not start a
@@ -121,9 +129,16 @@ private extension CommitmentRadarView {
     var header: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Commitment Radar")
-                    .pvDisplay(.title)
-                    .accessibilityIdentifier("commitment-radar-title")
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text("Commitments")
+                        .pvDisplay(.title)
+                        .accessibilityAddTraits(.isHeader)
+                        .accessibilityIdentifier("commitment-radar-title")
+                    if showsDueBoard {
+                        Text("by due date")
+                            .foregroundStyle(.ink3)
+                    }
+                }
                 if let headerDescription {
                     Text(headerDescription)
                         .foregroundStyle(.ink3)
@@ -136,47 +151,48 @@ private extension CommitmentRadarView {
         }
     }
 
-    var modePicker: some View {
-        HStack(spacing: 12) {
-            PVSegmentedControl(
-                segments: [
-                    PVSegment(
-                        value: CommitmentRadarModel.Mode.confirmed,
-                        title: confirmedTabTitle,
-                        accessibilityIdentifier: "commitment-radar-mode-confirmed"),
-                    PVSegment(
-                        value: CommitmentRadarModel.Mode.review,
-                        title: reviewTabTitle,
-                        accessibilityIdentifier: "commitment-radar-mode-review")
-                ],
-                selection: modeBinding)
-            .fixedSize()
-            .accessibilityLabel(L10n.text("Commitment view"))
-            .accessibilityIdentifier("commitment-radar-mode")
-            Spacer(minLength: 0)
-            qualityToggleButton
+    var showsDueBoard: Bool { state.mode == .review && !state.dueBoard.isEmpty }
+
+    @ToolbarContentBuilder var toolbar: some ToolbarContent {
+        ToolbarItem(placement: .navigation) {
+            ToolbarTitle("Radar")
         }
+        .sharedBackgroundVisibility(.hidden)
+        ToolbarSpacer(.flexible)
+        ToolbarItem(placement: .automatic) {
+            modePicker
+        }
+        .sharedBackgroundVisibility(.hidden)
     }
 
-    private var qualityToggleButton: some View {
-        let selected = state.mode == .quality
-        return Button {
-            modeBinding.wrappedValue = selected ? .confirmed : .quality
-        } label: {
-            Label("Review quality", systemImage: "chart.bar.xaxis")
-                .font(.caption.weight(selected ? .semibold : .regular))
-                .foregroundStyle(selected ? PVDesign.accent : PVDesign.ink3)
-                .padding(.horizontal, 9)
-                .padding(.vertical, 5)
-                .background(
-                    selected ? PVDesign.accent.opacity(PVDesign.chipTint) : .clear,
-                    in: RoundedRectangle(cornerRadius: PVDesign.radiusSmall))
-                .contentShape(.rect)
+    var modePicker: some View {
+        PVSegmentedControl(
+            segments: [
+                PVSegment(
+                    value: CommitmentRadarModel.Mode.confirmed,
+                    title: confirmedTabTitle,
+                    accessibilityIdentifier: "commitment-radar-mode-confirmed"),
+                PVSegment(
+                    value: CommitmentRadarModel.Mode.review,
+                    title: reviewTabTitle,
+                    accessibilityIdentifier: "commitment-radar-mode-review"),
+                PVSegment(
+                    value: CommitmentRadarModel.Mode.quality,
+                    title: L10n.text("Quality"),
+                    accessibilityIdentifier: "commitment-radar-mode-quality")
+            ],
+            selection: modeBinding)
+        .fixedSize()
+        .padding(.trailing, HomeToolbarLayout.trailingInset)
+        .accessibilityLabel(L10n.text("Commitment view"))
+        .accessibilityIdentifier("commitment-radar-mode")
+    }
+
+    func openDueChip(_ target: CommitmentDueBoard.Target) {
+        switch target {
+        case .commitment(let id): onOpenCommitment(id)
+        case .meeting(let id, let time): onOpenMeeting(id, time)
         }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(selected ? .isSelected : [])
-        .accessibilityIdentifier("commitment-radar-mode-quality")
-        .help("Private signals from the suggestions you reviewed.")
     }
 
     private var confirmedTabTitle: String {

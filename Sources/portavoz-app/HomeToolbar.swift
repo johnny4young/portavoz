@@ -150,3 +150,22 @@ private struct HomeAskButton: View {
         }
     }
 }
+
+/// A destination's name on the title bar's leading edge, where the window title would sit.
+struct ToolbarTitle: View {
+    let title: LocalizedStringKey
+
+    init(_ title: LocalizedStringKey) {
+        self.title = title
+    }
+
+    var body: some View {
+        Text(title)
+            .font(.body.weight(.bold))
+            .foregroundStyle(PVDesign.ink)
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.leading, HomeToolbarLayout.titleInset)
+            .accessibilityAddTraits(.isHeader)
+    }
+}
