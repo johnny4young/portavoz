@@ -7,11 +7,14 @@ public struct MenuBarMeeting: Equatable, Identifiable, Sendable {
     public let id: MeetingID
     public let title: String
     public let startedAt: Date
+    /// Who spoke when; nil before anything was attributed.
+    public let strip: VoiceStripSource?
 
-    public init(id: MeetingID, title: String, startedAt: Date) {
+    public init(id: MeetingID, title: String, startedAt: Date, strip: VoiceStripSource? = nil) {
         self.id = id
         self.title = title
         self.startedAt = startedAt
+        self.strip = strip
     }
 }
 

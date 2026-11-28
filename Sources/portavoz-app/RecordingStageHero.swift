@@ -74,16 +74,11 @@ struct RecordingStageDetail: View {
         Text(Self.line(
             apps: controller.tappedMeetingApps,
             startedAt: controller.startedAt,
-            voices: Self.voiceCount(controller.liveVoices.stage)))
+            voices: controller.liveVoices.stage.voiceCount))
             .font(.system(size: 13))
             .foregroundStyle(PVDesign.ink2)
             .lineLimit(2)
             .accessibilityIdentifier("recording-stage-detail")
-    }
-
-    /// Unlabelled remote speech is not a voice yet.
-    nonisolated static func voiceCount(_ stage: LiveVoiceStage) -> Int {
-        stage.voices.count { $0.key != LiveVoiceStage.unlabelledKey }
     }
 
     nonisolated static func line(apps: [String], startedAt: Date, voices: Int) -> String {

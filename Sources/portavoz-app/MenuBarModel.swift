@@ -58,6 +58,8 @@ final class MenuBarModel {
     struct State {
         fileprivate(set) var loadPhase: LoadPhase = .idle
         fileprivate(set) var meetings: [MenuBarMeeting] = []
+        /// Recent strips in one cast, so a person keeps one colour down the list.
+        fileprivate(set) var recentStrips: [MeetingID: VoiceStripColumns] = [:]
         fileprivate(set) var pendingByMeeting: [MeetingID: Int] = [:]
         fileprivate(set) var nextEvent: UpcomingEvent?
         fileprivate(set) var briefOffer: PreMeetingBriefOffer?
@@ -189,8 +191,15 @@ final class MenuBarModel {
 private extension MenuBarModel {
     func publish(_ update: MenuBarUpdate) {
         switch update {
+        case .meetings(let meetings) where meetings == state.meetings:
+            markObserved(.meetings)
         case .meetings(let meetings):
             state.meetings = meetings
+            let cast = TodayPageCast(
+                meetings: meetings.compactMap { meeting in meeting.strip.map { (meeting.id, $0) } })
+            state.recentStrips = Dictionary(uniqueKeysWithValues: meetings.compactMap { meeting in
+                cast.strip(for: meeting.id).map { (meeting.id, $0) }
+            })
             markObserved(.meetings)
         case .pendingCounts(let counts):
             state.pendingByMeeting = counts

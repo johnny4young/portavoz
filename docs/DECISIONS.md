@@ -23726,3 +23726,32 @@ Only the words dim; the board fades the whole row, but the margin's name and
 time are ink 2 and ink 3, which would fall under 4.5:1. The transcript now
 hands rows its focus line through the environment and each row picks what
 fades, instead of fading every row whole.
+
+## D676 — The menu bar leads with the live meeting and names who is speaking
+
+While a meeting records, the status item shows the elapsed time beside the
+mark, and the menu-bar panel opens on that meeting: its clock, title, a strip of
+the whole call ending on a red now edge, and one line naming whoever speaks now
+and the two voices before. The floating HUD carries the same name beside a
+smaller strip. Both read the live Voices table (`LiveVoiceTable`), so the menu
+bar, the HUD and the stage never disagree on who is speaking.
+
+The strip there fills its width with the whole call instead of the stage's
+fixed horizon: at 294 pt and 96 pt a ruler would be unreadable, and the panel
+is a glance, not a timeline. The HUD's name sits in a fixed slot and only its
+speaker view reads the live voices, keeping the D673 rule that live state never
+re-measures the recording surfaces.
+
+Recent leaves out the meeting being recorded, because the panel already leads
+with it and listed it as "in 0 sec". The store query does it
+(`observeMenuBarMeetings` skips recording rows) and reads the listed meetings'
+stored strips in the same fetch, computing a missing one in memory as the
+Library does; the observation still tracks only the meeting table, because a
+recording invalidates the strip cache on every segment. A renamed voice
+therefore recolours in the menu bar on its next meeting change.
+
+Record for the next meeting hides while recording, since only one recording
+runs at a time. The app rows keep no shortcut labels (the board shows ⌘O and
+⌘Q), following the earlier rule against visible shortcuts, and the waveform
+status header is gone: the live meeting or the Record button leads instead.
+

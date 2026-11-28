@@ -60,6 +60,17 @@ final class MenuBarIconTests: XCTestCase {
         }
     }
 
+    @MainActor
+    func testRecordingWithElapsedTimeKeepsTheMarkAndAddsTheClock() async throws {
+        let image = MenuBarIcon.recording(elapsed: "12:04")
+        XCTAssertFalse(image.isTemplate)
+        XCTAssertEqual(image.size.height, MenuBarIcon.size.height)
+        XCTAssertGreaterThan(image.size.width, MenuBarIcon.size.width + 20)
+        XCTAssertGreaterThan(
+            MenuBarIcon.recording(elapsed: "125:00").size.width, image.size.width,
+            "a longer clock widens the image instead of clipping")
+    }
+
     // MARK: - Helpers
 
     private static let scale: CGFloat = 4

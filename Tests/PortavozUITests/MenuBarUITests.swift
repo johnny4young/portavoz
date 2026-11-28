@@ -75,4 +75,40 @@ final class MenuBarUITests: PortavozUITestCase {
             "the menu-bar handoff must land in the global durable receipt history")
         attachScreenshot(of: app, named: "menu-bar-pre-meeting-brief-receipt")
     }
+
+    @MainActor
+    func testRecordingPanelNamesWhoIsSpeakingOverTheLiveStrip() throws {
+        let app = try XCUIApplication.portavoz(
+            seedDemo: true,
+            seedBrief: true,
+            showMenuBarContent: true)
+        app.launchArguments += ["-simulate-live-voices", "-seed-dark-appearance"]
+        app.launchPortavoz()
+        defer { finishUITestApplication(app) }
+
+        XCTAssertTrue(app.waitForSeedFixtureReady())
+        let panel = app.control(withIdentifier: "menu-bar-panel")
+        XCTAssertTrue(panel.waitForExistenceFast(timeout: 10))
+        let speaker = app.control(withIdentifier: "menu-bar-speaker")
+        XCTAssertTrue(speaker.waitForExistenceFast(timeout: 15))
+        // The scripted call ends on your open turn, after S1 and S2.
+        _ = speaker.waitForLabelContaining("You speaking", timeout: 10)
+        attachElementScreenshot(of: panel, named: "pr-menu-bar-recording")
+        XCTAssertTrue(speaker.label.hasPrefix("You speaking, then S1, S2"), speaker.label)
+        XCTAssertTrue(speaker.label.hasSuffix("12 voices"), speaker.label)
+
+        let clock = app.control(withIdentifier: "menu-bar-elapsed-time")
+        XCTAssertTrue(renderedText(of: clock).hasPrefix("12:"), renderedText(of: clock))
+        XCTAssertTrue(app.control(withIdentifier: "menu-bar-recording-title").exists)
+        XCTAssertTrue(app.control(withIdentifier: "menu-bar-live-strip").exists)
+        XCTAssertTrue(app.buttons["menu-bar-stop"].exists)
+        XCTAssertTrue(app.buttons["menu-bar-ask"].exists)
+        XCTAssertTrue(app.control(withIdentifier: "menu-bar-next-meeting").exists)
+        XCTAssertTrue(app.buttons["menu-bar-brief-prepare"].exists)
+        XCTAssertTrue(app.buttons["menu-bar-open"].exists)
+        XCTAssertTrue(app.control(withIdentifier: "menu-bar-launch-at-login").exists)
+        XCTAssertTrue(app.buttons["menu-bar-quit"].exists)
+
+        XCTAssertTrue(app.control(withIdentifier: "menu-bar-recent-strip").exists)
+    }
 }

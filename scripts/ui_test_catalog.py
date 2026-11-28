@@ -53,6 +53,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "menu-bar-brief": (
         test_id("MenuBarUITests", "testPreMeetingBriefMovesFromExactProposalToDurableReceipt"),
+        test_id("MenuBarUITests", "testRecordingPanelNamesWhoIsSpeakingOverTheLiveStrip"),
     ),
     "recording-recovery": (
         test_id("LibraryUITests", "testCleanStopReachesAReadyMeetingWithItsTranscriptAndPlayer"),
@@ -66,6 +67,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "recording-stage": (
         test_id("RecordingStageUITests", "testLiveVoicesLeadWithTheCurrentSpeakerAndFoldTheRest"),
+        test_id("RecordingStageUITests", "testTheFloatingPanelNamesWhoIsSpeakingBesideItsStrip"),
         test_id("RecordingStageUITests", "testTheStageKeepsStopAndTheTitleApartAtTheMinimumWidth"),
         test_id("RecordingStageUITests", "testTheStageReadsInLightAtTheStandardWidth"),
         test_id("RecordingStageUITests", "testTheStripMarksNowAndYourNoteWithThePanelBesideTheVoices"),

@@ -381,6 +381,16 @@
         }
       }
     },
+    "1 voice": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 voz"
+          }
+        }
+      }
+    },
     "10 minutes before": {
       "localizations": {
         "es": {
@@ -521,6 +531,16 @@
         }
       }
     },
+    "Last heard: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se oyó por último: %@"
+          }
+        }
+      }
+    },
     "Link": {
       "localizations": {
         "es": {
@@ -551,6 +571,16 @@
         }
       }
     },
+    "Next · %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Próxima · %@"
+          }
+        }
+      }
+    },
     "Note": {
       "localizations": {
         "es": {
@@ -567,6 +597,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Objetivo"
+          }
+        }
+      }
+    },
+    "speaking": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "hablando"
           }
         }
       }
@@ -817,16 +857,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "abierto, vencido"
-          }
-        }
-      }
-    },
-    "Recording %@": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Grabando %@"
           }
         }
       }
@@ -8039,16 +8069,6 @@
         }
       }
     },
-    "Next meeting · %@": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Próxima reunión · %@"
-          }
-        }
-      }
-    },
     "Next week": {
       "localizations": {
         "es": {
@@ -9755,16 +9775,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Portavoz ya está deteniendo la grabación. Abre Portavoz para ver el progreso."
-          }
-        }
-      }
-    },
-    "Portavoz is idle": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Portavoz en reposo"
           }
         }
       }
@@ -14607,6 +14617,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ellos"
+          }
+        }
+      }
+    },
+    "then %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "luego %@"
           }
         }
       }
