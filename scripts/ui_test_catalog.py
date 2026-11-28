@@ -68,6 +68,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("RecordingStageUITests", "testLiveVoicesLeadWithTheCurrentSpeakerAndFoldTheRest"),
         test_id("RecordingStageUITests", "testTheStageKeepsStopAndTheTitleApartAtTheMinimumWidth"),
         test_id("RecordingStageUITests", "testTheStageReadsInLightAtTheStandardWidth"),
+        test_id("RecordingStageUITests", "testTheStripMarksNowAndYourNoteWithThePanelBesideTheVoices"),
     ),
     "live-assist": (
         test_id("LibraryUITests", "testRecordingOffersObjectivesNextQuestionAndTalkBalance"),

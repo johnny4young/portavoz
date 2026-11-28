@@ -14,7 +14,8 @@ enum RecordingAssistLayout {
     static let maximumFraction = 0.70
     static let defaultFraction = 0.42
     static let minimumCaptionsHeight: CGFloat = 132
-    static let minimumAssistHeight: CGFloat = 168
+    /// The tabs, the focus card, a usable list and the note field under every tab.
+    static let minimumAssistHeight: CGFloat = 212
     /// Pointer target for the divider; the visible capsule is thinner.
     static let dividerHeight: CGFloat = 14
     /// One keyboard or VoiceOver step on the divider.
@@ -67,46 +68,22 @@ enum RecordingAssistLayout {
     }
 }
 
-/// The assist area keeps at most three tabs: Notes (with objectives),
-/// Apuntador (questions, interview, and proactive signals), and Live summary
-/// once available. The focus slot above the tabs lifts urgent cards (D504).
+/// The assist area keeps three tabs: Apuntador (questions, interview and
+/// proactive signals), Objectives, and Notes with the running summary. The
+/// focus slot under the tabs lifts urgent cards (D504).
 enum RecordingAssistTab: String, CaseIterable, Identifiable, Sendable {
-    case notes
     case companion
-    case summary
+    case objectives
+    case notes
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .notes: L10n.text("Notes")
         case .companion: L10n.text("Apuntador")
-        case .summary: L10n.text("Summary")
+        case .objectives: L10n.text("Objectives")
+        case .notes: L10n.text("Notes")
         }
-    }
-
-    var symbol: String {
-        switch self {
-        case .notes: "square.and.pencil"
-        case .companion: PVSymbol.apuntador
-        case .summary: PVSymbol.generate
-        }
-    }
-
-    /// Notes and Apuntador are always reachable; Summary appears once there is
-    /// enough closed conversation to summarize.
-    static func available(hasSummary: Bool) -> [RecordingAssistTab] {
-        var tabs: [RecordingAssistTab] = [.notes, .companion]
-        if hasSummary { tabs.append(.summary) }
-        return tabs
-    }
-
-    /// Keeps a selection valid when its tab disappears mid-recording.
-    static func resolve(
-        _ selection: RecordingAssistTab,
-        in available: [RecordingAssistTab]
-    ) -> RecordingAssistTab {
-        available.contains(selection) ? selection : (available.first ?? .notes)
     }
 }
 
@@ -135,5 +112,67 @@ enum RecordingFocusSlot: Equatable, Sendable {
         if hasNextQuestion { return .nextQuestion }
         if let directedCardID { return .directedCard(directedCardID) }
         return .none
+    }
+}
+
+/// When the live voices and the assist panel share a row.
+enum RecordingStageLayout {
+    /// The board's panel: 322 pt beside a 620 pt table, about a third of the row.
+    static let panelWidth: CGFloat = 322
+    static let panelShare: CGFloat = 0.34
+    static let columnGap: CGFloat = 40
+    /// The voices table's narrow metrics with a usable bar.
+    static let minimumVoicesWidth: CGFloat = 400
+    /// The panel never shrinks below its tabs, a card and the note field.
+    static let panelMinimumHeight: CGFloat = 300
+    static let horizontalPadding: CGFloat = 20
+
+    static func isSideBySide(width: CGFloat) -> Bool {
+        width >= minimumVoicesWidth + columnGap + panelWidth + 2 * horizontalPadding
+    }
+
+    static let stripHeight: CGFloat = 72
+    static let spacing: CGFloat = 12
+    /// Beside the panel the table keeps three rows, about what the panel needs anyway.
+    static let minimumSharedRowVoices = 3
+    /// The table's caption, its raised lead row and the fold row.
+    static let voicesChromeHeight: CGFloat = 22 + 44 + 30
+
+    /// What stays under the table: the strip and the captions, plus the assist area when stacked.
+    private static func reservedHeight(sideBySide: Bool) -> CGFloat {
+        let floors = sideBySide
+            ? RecordingAssistLayout.minimumCaptionsHeight
+            : RecordingAssistLayout.minimumCaptionsHeight + RecordingAssistLayout.dividerHeight
+                + RecordingAssistLayout.minimumAssistHeight
+        return 2 * spacing + stripHeight + floors
+    }
+
+    /// What the voices table shows in the height the stage has.
+    enum Voices: Equatable {
+        /// Up to this many rows under the caption; the rest fold into "Others".
+        case rows(Int)
+        /// Only the leading voice: stacked, the captions and the assist area come first.
+        case leadOnly
+    }
+
+    /// A short stage folds voice rows instead of squeezing the captions and the assist area.
+    static func voices(height: CGFloat, sideBySide: Bool) -> Voices {
+        guard height.isFinite else { return sideBySide ? .rows(minimumSharedRowVoices) : .leadOnly }
+        let room = height - reservedHeight(sideBySide: sideBySide) - voicesChromeHeight
+        let fitting = 1 + Int((room / LiveVoicesTableMetrics.rowHeight).rounded(.down))
+        if sideBySide { return .rows(max(minimumSharedRowVoices, fitting)) }
+        return fitting >= 1 ? .rows(fitting) : .leadOnly
+    }
+
+    /// The shared row's floor: the panel's, less what a short stage owes the strip and captions.
+    static func rowMinimumHeight(height: CGFloat) -> CGFloat {
+        guard height.isFinite else { return panelMinimumHeight }
+        return min(panelMinimumHeight, max(0, height - reservedHeight(sideBySide: true)))
+    }
+
+    /// The panel keeps the board's share of a wide row, never under 322 pt.
+    static func panelWidth(for width: CGFloat) -> CGFloat {
+        guard width.isFinite else { return panelWidth }
+        return max(panelWidth, ((width - 2 * horizontalPadding) * panelShare).rounded())
     }
 }

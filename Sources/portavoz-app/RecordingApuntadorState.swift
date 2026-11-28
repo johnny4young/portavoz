@@ -37,25 +37,35 @@ enum RecordingApuntadorState: Equatable {
         }
     }
 
-    var symbol: String {
+    /// The chip's word; `title` stays the full name for VoiceOver.
+    var shortTitle: String {
         switch self {
-        case .listening: PVSymbol.apuntador
-        case .questionsOnly: PVSymbol.warning
-        case .off: PVSymbol.apuntadorOff
-        case .unavailable: PVSymbol.error
+        case .listening: L10n.text("Listening")
+        case .questionsOnly: L10n.text("Questions only")
+        case .off: L10n.text("Off")
+        case .unavailable: L10n.text("Unavailable")
         }
     }
 
     var tint: Color {
         switch self {
-        case .listening: PVDesign.accent
+        case .listening: PVDesign.green
         case .questionsOnly, .unavailable: PVDesign.caution
         case .off: PVDesign.ink3
         }
     }
+
+    var fill: Color {
+        switch self {
+        case .listening: PVDesign.greenBg
+        case .questionsOnly, .unavailable: PVDesign.caution.opacity(0.12)
+        case .off: PVDesign.line
+        }
+    }
 }
 
-/// The chip beside the assist tabs: state, and the one action that changes it.
+/// The chip beside the assist tabs: a short state that opens the one action
+/// that changes it. It is the only Apuntador toggle while recording.
 struct RecordingApuntadorStateChip: View {
     let state: RecordingApuntadorState
     let turnOn: @MainActor () -> Void
@@ -63,50 +73,36 @@ struct RecordingApuntadorStateChip: View {
     let openSettings: @MainActor () -> Void
 
     var body: some View {
-        HStack(spacing: 6) {
-            Label(state.title, systemImage: state.symbol)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(state.tint)
-                .lineLimit(1)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(state.title)
-                .accessibilityValue(state.explanation)
-                .accessibilityIdentifier("recording-apuntador-state")
-                .help(state.explanation)
+        Menu {
             switch state {
             case .off:
                 Button(L10n.text("Turn on"), action: turnOn)
-                    .buttonStyle(.plain)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(PVDesign.accent)
                     .accessibilityIdentifier("recording-apuntador-turn-on")
             case .questionsOnly:
                 Button(L10n.text("Settings"), action: openSettings)
-                    .buttonStyle(.plain)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(PVDesign.accent)
                     .accessibilityIdentifier("recording-apuntador-settings")
                 Button(L10n.text("Turn off"), action: turnOff)
-                    .buttonStyle(.plain)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(PVDesign.ink3)
                     .accessibilityIdentifier("recording-apuntador-turn-off")
             case .unavailable:
                 Button(L10n.text("Settings"), action: openSettings)
-                    .buttonStyle(.plain)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(PVDesign.accent)
                     .accessibilityIdentifier("recording-apuntador-settings")
             case .listening:
                 Button(L10n.text("Turn off"), action: turnOff)
-                    .buttonStyle(.plain)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(PVDesign.ink3)
                     .accessibilityIdentifier("recording-apuntador-turn-off")
             }
+        } label: {
+            Text(state.shortTitle)
+                .foregroundStyle(state.tint)
+                .lineLimit(1)
+                .pvPill(state.fill)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(state.tint.opacity(0.10), in: Capsule())
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help(state.explanation)
+        .accessibilityLabel(state.title)
+        .accessibilityValue(state.explanation)
+        .accessibilityIdentifier("recording-apuntador-state")
     }
 }

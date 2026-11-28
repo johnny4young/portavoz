@@ -5,36 +5,49 @@ enum FocusedTranscriptMode: Equatable, Sendable {
     case live
 }
 
-struct TranscriptFocusVisualStyle: Equatable, Sendable {
-    let opacity: Double
-    let scale: CGFloat
-    let blurRadius: CGFloat
+/// Pure visual policy shared by the view and characterization tests. Live
+/// captions dim line by line above the newest one and become completely
+/// sharp while the user browses history; playback stays flat. Only opacity
+/// changes, so Reduce Motion keeps the same treatment.
+enum TranscriptFocusVisualPolicy {
+    /// The dimmest a live caption gets: ink at this opacity still reads at
+    /// 4.5:1 on paper in light and dark.
+    static let liveFloor = 0.6
+    /// The newest line stays at full ink within this distance of the focus.
+    static let liveDeadzone: CGFloat = 24
+    /// Roughly three caption lines from full ink down to the floor.
+    static let liveRamp: CGFloat = 132
+
+    /// `distance` from the focus line, or nil when nothing fades.
+    static func opacity(distance: CGFloat?) -> Double {
+        guard let distance, distance.isFinite else { return 1 }
+        let progress = min(1, max(0, (distance - liveDeadzone) / liveRamp))
+        return 1 - (1 - liveFloor) * Double(progress)
+    }
 }
 
-/// Pure visual policy shared by the view and characterization tests. Playback
-/// reads as a flat document and outlines its active turn instead; live
-/// captions fade gently toward the edges and become completely sharp while
-/// the user browses history. Reduce Motion keeps the fade but drops the
-/// shrink and blur, which read as zoom while captions scroll.
-enum TranscriptFocusVisualPolicy {
-    static func style(
-        distance: CGFloat,
-        reach: CGFloat,
-        mode: FocusedTranscriptMode,
-        isFollowing: Bool,
-        reduceMotion: Bool
-    ) -> TranscriptFocusVisualStyle {
-        guard mode == .live, isFollowing else {
-            return TranscriptFocusVisualStyle(opacity: 1, scale: 1, blurRadius: 0)
+extension EnvironmentValues {
+    /// The live transcript's focus line in scroll coordinates while it
+    /// follows the newest caption; nil while browsing or in playback.
+    @Entry var liveCaptionFocusY: CGFloat?
+}
+
+extension View {
+    /// Dims this part of a live caption row by its distance above the focus
+    /// line. Rows choose what fades, so small margin type keeps full ink.
+    func liveCaptionFade() -> some View { modifier(LiveCaptionFade()) }
+}
+
+private struct LiveCaptionFade: ViewModifier {
+    @Environment(\.liveCaptionFocusY) private var focusY
+
+    func body(content: Content) -> some View {
+        let focusY = focusY
+        return content.visualEffect { content, geometry in
+            content.opacity(TranscriptFocusVisualPolicy.opacity(distance: focusY.map {
+                abs(geometry.frame(in: .scrollView(axis: .vertical)).midY - $0)
+            }))
         }
-        let safeReach = max(reach, 1)
-        let deadzone = max(110, min(180, safeReach * 0.32))
-        let far = max(1, safeReach - deadzone)
-        let progress = min(1, max(0, (distance - deadzone) / far))
-        return TranscriptFocusVisualStyle(
-            opacity: 1 - (0.48 * Double(progress)),
-            scale: reduceMotion ? 1 : 1 - (0.05 * progress),
-            blurRadius: reduceMotion ? 0 : 0.65 * progress)
     }
 }
 
@@ -102,42 +115,18 @@ struct FocusedTranscriptView<Item: Identifiable, Row: View>: View where Item.ID:
 
     var body: some View {
         let focusY = anchor.y * height
-        let reach = max(focusY, height - focusY, 1)
-        let visualMode = mode
-        let reduceMotion = reduceMotion
-        let following = isFollowing
+        let liveFocusY: CGFloat? = mode == .live && isFollowing ? focusY : nil
         return ScrollViewReader { proxy in
             trackedScroll(
                 identifiedScroll(
                     ScrollView(.vertical, showsIndicators: false) {
                         LazyVStack(spacing: 6) {
                             ForEach(segments) { segment in
-                                let isActive = segment.id == activeID
-                                Group {
-                                    if visualMode == .live {
-                                        row(segment, isActive)
-                                            .visualEffect { content, geometry in
-                                                let midY = geometry.frame(
-                                                    in: .scrollView(axis: .vertical)
-                                                ).midY
-                                                let style = TranscriptFocusVisualPolicy.style(
-                                                    distance: abs(midY - focusY),
-                                                    reach: reach,
-                                                    mode: visualMode,
-                                                    isFollowing: following,
-                                                    reduceMotion: reduceMotion)
-                                                return content
-                                                    .opacity(style.opacity)
-                                                    .scaleEffect(style.scale, anchor: .center)
-                                                    .blur(radius: style.blurRadius)
-                                            }
-                                    } else {
-                                        row(segment, isActive)
-                                    }
-                                }
-                                .id(segment.id)
+                                row(segment, segment.id == activeID)
+                                    .id(segment.id)
                             }
                         }
+                        .environment(\.liveCaptionFocusY, liveFocusY)
                         // Pad so the first and last lines can reach the focus line.
                         .padding(.top, focusY)
                         .padding(.bottom, height - focusY)

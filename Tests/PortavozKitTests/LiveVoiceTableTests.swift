@@ -43,6 +43,34 @@ final class LiveVoiceTableTests: XCTestCase {
         XCTAssertTrue(table.others.allSatisfy { $0.voice.tint == .grey })
     }
 
+    func testAShortStageFoldsTheOldestRowsAndKeepsEveryVoice() {
+        let full = table(stage())
+        let short = full.folding(to: 3)
+
+        XCTAssertEqual(short.rows.map(\.id), ["you", "S11", "S10"])
+        XCTAssertEqual(short.others.map(\.id), ["S9", "S8", "S7", "S6", "S5", "S4", "S3", "S2", "S1"])
+        XCTAssertEqual(short.othersShare + short.rows.reduce(0) { $0 + $1.voice.share }, 1, accuracy: 1e-9)
+        XCTAssertEqual(short.widestShare, short.othersShare)
+        XCTAssertEqual(full.folding(to: 6), full)
+        XCTAssertEqual(full.folding(to: 0).rows.map(\.id), ["you"])
+    }
+
+    func testOneVoiceIsNeverFoldedAlone() {
+        let captions = [0.0, 2, 4].map { start in
+            TranscriptSegment(
+                meetingID: meetingID, channel: start == 0 ? .microphone : .system, text: "words",
+                startTime: start, endTime: start + 1, isFinal: true)
+        }
+        let three = LiveVoiceStage.updating(.empty, with: LiveVoiceSource(
+            captions: captions, labels: [captions[1].id: "S1", captions[2].id: "S2"], latestTurn: nil,
+            youSpeaking: false, now: 6))
+        let table = table(three)
+
+        XCTAssertEqual(table.rows.count, 3)
+        XCTAssertTrue(table.others.isEmpty)
+        XCTAssertEqual(table.folding(to: table.rows.count - 1), table, "its fold row would take the same room")
+    }
+
     func testSharesAndBarsScaleToTheWidestOnScreen() {
         let table = table(stage())
         // You: 1 s + the open 2 s; S1…S11 spoke 2…12 s; S1…S6 fold.

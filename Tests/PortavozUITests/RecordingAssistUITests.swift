@@ -94,7 +94,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
         XCTAssertTrue(app.waitForLiveTranscriptFrontier())
         let noteText = "Confirmar responsable del informe"
         let objectiveText = "Check deployment readiness"
-        try app.openAssistTab("notes")
+        try app.openAssistTab("objectives")
         let note = app.control(withIdentifier: "recording-note-field")
         note.click()
         typeText(noteText, in: app)
@@ -104,7 +104,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
         typeText(objectiveText, in: app)
         XCTAssertTrue(try objective.waitForLabelOrValue(objectiveText, timeout: 3))
         try app.openAssistTab("companion")
-        try app.openAssistTab("notes")
+        try app.openAssistTab("objectives")
         XCTAssertTrue(try note.waitForLabelOrValue(noteText, timeout: 3))
         XCTAssertTrue(try objective.waitForLabelOrValue(objectiveText, timeout: 3),
                       "changing tabs must not discard an unsubmitted objective")
@@ -116,13 +116,14 @@ final class RecordingAssistUITests: PortavozUITestCase {
         meeting.click()
         XCTAssertTrue(app.control(withIdentifier: "detail-transcript-title").waitForExistenceFast(timeout: 8))
         app.buttons["library-return-to-recording"].click()
-        try app.openAssistTab("notes")
+        try app.openAssistTab("objectives")
         XCTAssertTrue(try objective.waitForLabelOrValue(objectiveText, timeout: 3),
                       "library browsing must not discard the objective draft")
         let restored = try note.waitForLabelOrValue(noteText, timeout: 3)
         XCTAssertTrue(restored, "library browsing must not discard the note draft")
         guard restored else { return }
         app.buttons["recording-note-add"].click()
+        try app.openAssistTab("notes")
         let saved = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'recording-note-'"))
             .containing(.staticText, identifier: noteText).firstMatch
@@ -160,14 +161,17 @@ final class RecordingAssistUITests: PortavozUITestCase {
 
         let assist = app.control(withIdentifier: "recording-assist-panel")
         XCTAssertTrue(assist.waitForExistenceFast(timeout: 10))
+        // Beside the voices the panel takes their row; under the captions the split is adjustable.
+        let transcript = app.control(withIdentifier: "recording-live-transcript")
         XCTAssertTrue(
-            app.control(withIdentifier: "recording-assist-divider").exists,
-            "the captions/assist split must be adjustable instead of pinned")
+            app.control(withIdentifier: "recording-assist-divider").exists
+                || assist.frame.maxY <= transcript.frame.minY,
+            "the assist area must sit beside the voices or under an adjustable split, never pinned")
 
         XCTAssertTrue(
             app.control(withIdentifier: "recording-focus-card")
                 .waitForExistenceFast(timeout: 10),
-            "the one question addressed to the user must sit above the tabs")
+            "the one question addressed to the user must sit in the focus slot")
         attachScreenshot(of: app, named: "pr-recording-minimal")
         try app.openAssistTab("companion")
 
@@ -199,7 +203,9 @@ final class RecordingAssistUITests: PortavozUITestCase {
         // Reaching back for an older card folds the oldest recency-open one,
         // so the panel keeps its size instead of growing.
         let list = app.scrollViews["recording-companion-list"]
-        guard folded.revealVertically(in: list, maximumStep: list.frame.height) else {
+        // A step is one viewport, but a short window's list is too low to cross the open cards.
+        let step = max(list.frame.height, 160)
+        guard folded.revealVertically(in: list, maximumStep: step) else {
             return XCTFail(
                 "Older Companion card was not reachable: control=\(folded.frame), "
                     + "viewport=\(list.frame), enabled=\(folded.isEnabled)")
@@ -217,7 +223,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
         // recency window's own direction is unproven end to end.
         let fold = app.control(withIdentifier: "recording-companion-fold-\(newestID)")
         XCTAssertTrue(fold.exists)
-        guard fold.revealVertically(in: list, maximumStep: list.frame.height) else {
+        guard fold.revealVertically(in: list, maximumStep: step) else {
             return XCTFail(
                 "Newest Companion fold was not reachable: control=\(fold.frame), "
                     + "viewport=\(list.frame), enabled=\(fold.isEnabled)")
@@ -258,13 +264,19 @@ final class RecordingAssistUITests: PortavozUITestCase {
             "a dismissed focus card must free the slot")
 
         // The state chip is the sole Apuntador toggle during recording.
-        let turnOff = app.control(withIdentifier: "recording-apuntador-turn-off")
+        let chip = app.control(withIdentifier: "recording-apuntador-state")
+        XCTAssertTrue(chip.waitForExistenceFast(timeout: 3))
+        chip.click()
+        let turnOff = app.menuItems["recording-apuntador-turn-off"]
         XCTAssertTrue(turnOff.waitForExistenceFast(timeout: 3))
         turnOff.click()
-        let turnOn = app.control(withIdentifier: "recording-apuntador-turn-on")
+        chip.click()
+        let turnOn = app.menuItems["recording-apuntador-turn-on"]
         XCTAssertTrue(turnOn.waitForExistenceFast(timeout: 3))
         turnOn.click()
+        chip.click()
         XCTAssertTrue(turnOff.waitForExistenceFast(timeout: 3))
+        typeKey(.escape, modifierFlags: [], in: app)
     }
 
 }

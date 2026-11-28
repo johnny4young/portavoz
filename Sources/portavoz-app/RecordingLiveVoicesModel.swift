@@ -17,6 +17,8 @@ final class RecordingLiveVoicesModel {
 
     private(set) var stage = LiveVoiceStage.empty
     private(set) var cast = emptyCast
+    /// The stage's ticks, published apart so their readers skip column growth.
+    private(set) var ticks: [LiveVoiceTick] = []
 
     @ObservationIgnored private(set) var youSpeaking = false
     @ObservationIgnored private var source: (@MainActor () -> LiveVoiceSource?)?
@@ -66,6 +68,7 @@ final class RecordingLiveVoicesModel {
         stage = next
         let nextCast = next.cast(previous: cast)
         if nextCast != cast { cast = nextCast }
+        if next.ticks != ticks { ticks = next.ticks }
     }
 
     func reset() {
@@ -75,6 +78,7 @@ final class RecordingLiveVoicesModel {
         youSpeaking = false
         if stage != .empty { stage = .empty }
         if cast != Self.emptyCast { cast = Self.emptyCast }
+        if !ticks.isEmpty { ticks = [] }
     }
 
     static func delay(since last: ContinuousClock.Instant?, now: ContinuousClock.Instant) -> Duration {

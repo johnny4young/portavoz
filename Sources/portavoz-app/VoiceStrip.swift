@@ -21,7 +21,7 @@ struct VoiceStrip: View {
             case .row: 6
             case .card, .resume: 8
             case .player: 18
-            case .live: 12
+            case .live: 16
             case .axis: 10
             }
         }
@@ -58,17 +58,20 @@ struct VoiceStrip: View {
     let progress: Double?
     /// Chapter starts as fractions, 0…1.
     let ticks: [Double]
+    /// Fraction of the width the columns fill; the rest stays track.
+    let span: Double
     @Environment(\.colorScheme) private var colorScheme
 
     init(
         _ strip: VoiceStripColumns, size: Size = .row, only: UInt8? = nil,
-        progress: Double? = nil, ticks: [Double] = []
+        progress: Double? = nil, ticks: [Double] = [], span: Double = 1
     ) {
         self.strip = strip
         self.size = size
         self.only = only
         self.progress = progress.map { $0.isFinite ? min(1, max(0, $0)) : 0 }
         self.ticks = ticks.filter { $0.isFinite && (0...1).contains($0) }
+        self.span = span.isFinite ? min(1, max(0, span)) : 1
     }
 
     var body: some View {
@@ -119,7 +122,8 @@ struct VoiceStrip: View {
 
     private func drawRuns(in context: inout GraphicsContext, size canvas: CGSize) {
         context.fill(Path(CGRect(origin: .zero, size: canvas)), with: .color(PVDesign.line))
-        let count = VoiceColumns.count(forWidth: canvas.width)
+        let reach = canvas.width * span
+        let count = VoiceColumns.count(forWidth: reach)
         var columns = VoiceColumns.resampled(strip.columns, count: count)
         if size.isCompact { columns = VoiceColumns.calmed(columns) }
         guard !columns.isEmpty else { return }
@@ -130,7 +134,7 @@ struct VoiceStrip: View {
         }
         var ahead = context
         ahead.opacity = size.unplayedOpacity(colorScheme)
-        let column = canvas.width / CGFloat(columns.count)
+        let column = reach / CGFloat(columns.count)
         let split = ((progress ?? 1) * canvas.width).rounded()
         for run in VoiceColumns.runs(columns) where Int(run.voice) < shadings.count {
             guard only == nil || only == run.voice else { continue }

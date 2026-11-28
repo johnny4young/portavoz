@@ -186,7 +186,6 @@ enum VoicePalette {
     private static let darkColors = hues.map { Color(nsColor: PVTone.srgb($0.dark)) }
 
     static let me = PVDesign.you
-    static let meContrast = PVDesign.onYou
     static let unnamed = unnamedTone.color
 
     static func color(_ tint: VoiceCast.Tint, colorScheme: ColorScheme) -> Color {
@@ -232,8 +231,6 @@ enum PVSymbol {
     static let radar = "scope"
     // Assistants and generated work
     static let apuntador = "questionmark.bubble.fill"
-    /// The same mark, outlined: Apuntador exists here but is switched off.
-    static let apuntadorOff = "questionmark.bubble"
     static let generate = "wand.and.stars"
     static let proactive = "bell.badge"
     static let automations = "bolt.badge.checkmark"
