@@ -16,6 +16,7 @@ final class AppSelectedAskMeetingAnswering:
     AskMeetingAnswering,
     AskNoteAnswering,
     AskWebAnswering,
+    AskFollowUpSuggesting,
     InterviewQuestionAnswering,
     @unchecked Sendable {
     typealias Resolver = @MainActor @Sendable () async
@@ -59,6 +60,23 @@ final class AppSelectedAskMeetingAnswering:
                 onSnapshot: { text in
                     await onAnswer(AskAnswerUpdate(text: text))
                 })
+        }
+    }
+
+    func followUps(
+        question: String,
+        answer: String,
+        citations: [AskCitation]
+    ) async throws -> [String] {
+        guard let resolver = currentResolver() else { return [] }
+        switch await resolver() {
+        case .unavailable:
+            return []
+        case .available(let provider):
+            return try await provider.suggestFollowUps(
+                question: question,
+                answer: answer,
+                passages: citations.map(Self.passage))
         }
     }
 

@@ -9,6 +9,10 @@ extension MeetingStore {
         var spoken: [SpeakerID: [MeetingBriefLines.Spoken]] = [:]
         /// Who an accepted segment reads as, and when it starts.
         var segments: [UUID: (speaker: SpeakerID, start: TimeInterval)] = [:]
+        /// Who each readable line reads as, split parts by their own ID.
+        var lines: [UUID: SpeakerID] = [:]
+        /// Every effective split part, heard or not.
+        var splitParts: Set<UUID> = []
     }
 
     /// The lines a rebuild stores, per person, chosen by `MeetingBriefLines.select`.
@@ -64,6 +68,9 @@ extension MeetingStore {
             db, sql: "SELECT id FROM speaker WHERE deletedAt IS NULL AND meetingID = ?",
             arguments: [key]).compactMap(UUID.init(uuidString:)))
         var transcript = AttributedTranscript()
+        for correction in corrections {
+            if case .split(let parts) = correction.kind { transcript.splitParts.formUnion(parts.map(\.id)) }
+        }
         var talk: [SpeakerID: (seconds: TimeInterval, firstHeard: TimeInterval)] = [:]
         let attributed = VoiceColumns.attributedLines(lines: accepted, corrections: corrections)
             .filter { live.contains($0.speaker.rawValue) && $0.start.isFinite }
@@ -75,6 +82,7 @@ extension MeetingStore {
             transcript.spoken[line.speaker, default: []].append(MeetingBriefLines.Spoken(
                 segmentID: line.segmentID,
                 text: line.partText ?? texts[line.id] ?? "", start: line.start))
+            transcript.lines[line.id] = line.speaker
             if let segment = line.segmentID, transcript.segments[segment] == nil {
                 transcript.segments[segment] = (line.speaker, line.start)
             }

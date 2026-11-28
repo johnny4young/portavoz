@@ -23765,3 +23765,31 @@ runs at a time. The app rows keep no shortcut labels (the board shows ⌘O and
 ⌘Q), following the earlier rule against visible shortcuts, and the waveform
 status header is gone: the live meeting or the Record button leads instead.
 
+
+## D677 — Ask answers carry who-said-it rows and local follow-up suggestions
+
+A meeting answer now carries one evidence row per citation, numbered like the
+answer's `[n]` markers, so row `n` is always the passage the model cited as
+`[n]`. Each row names the voice that said the quote as the corrected transcript
+reads it (the attribution the voice strip draws, so a speaker fix or a split
+part is honoured), the meeting's start, and where the moment sits on that
+meeting's stored strip. `LoadAskEvidence` reads the cited lines and the strips
+once per answer, after the answer is shown, so a busy database writer never
+holds a finished answer back; rows never load per streamed snapshot. A deleted
+meeting, a suppressed line or a split part nobody is heard saying keeps its row
+without a voice (a part never borrows its segment's speaker), one meeting whose
+transcript cannot be read loses only its own voices, and a failed read leaves
+the answer with its plain citations.
+
+Follow-up suggestions are a separate, optional generation through the same
+selected local engine (Foundation Models, MLX or loopback Ollama), with its
+own eight-second budget and the answer prompt's fencing, over only the
+passages the answer cites. They queue at the scheduler's droppable `live`
+priority under one latest-wins key, behind anything a person is waiting for. They start only
+after a generated meeting answer and only for the latest exchange: a new
+question cancels pending suggestions, so the model is never busy with a stale
+request while the next answer waits. The app admits two or three short,
+single-line suggestions without markers or links, each different from the
+question; anything else, a timeout or an unavailable engine gives none.
+Notes and Web answers get no suggestions, because their passages are not
+meeting evidence.

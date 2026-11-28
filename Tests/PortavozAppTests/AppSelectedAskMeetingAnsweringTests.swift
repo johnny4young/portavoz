@@ -170,6 +170,24 @@ final class AppSelectedAskMeetingAnsweringTests: XCTestCase {
         XCTAssertNil(unavailableAnswer)
     }
 
+    func testFollowUpsUseTheSelectedEngineWithExactPassages() async throws {
+        let router = AppSelectedAskMeetingAnswering()
+        let citation = fixtureCitation()
+        let beforeInstall = try await router.followUps(
+            question: "When?", answer: "Friday [1].", citations: [citation])
+        XCTAssertEqual(beforeInstall, [])
+
+        let provider = CapturingRAGProvider(answer: "Who owns it?\nWhat else is due?")
+        router.install { .available(provider) }
+        let followUps = try await router.followUps(
+            question: "When?", answer: "Friday [1].", citations: [citation])
+
+        XCTAssertEqual(followUps, ["Who owns it?", "What else is due?"])
+        let captured = await provider.snapshot()
+        XCTAssertEqual(captured?.question, "When?")
+        XCTAssertEqual(captured?.passages.map(\.segmentID), [citation.segmentID])
+    }
+
     private func fixtureCitation() -> AskCitation {
         let segmentID = UUID()
         return AskCitation(
@@ -237,6 +255,15 @@ private actor CapturingRAGProvider: RAGTextAnswering {
     ) async throws -> String {
         webRequest = WebRequest(question: question, passages: webPassages)
         return answer
+    }
+
+    func suggestFollowUps(
+        question: String,
+        answer _: String,
+        passages: [RAGPassage]
+    ) async throws -> [String] {
+        request = Request(question: question, passages: passages)
+        return RAGFollowUpPrompt.lines(of: answer)
     }
 
     func answer(
