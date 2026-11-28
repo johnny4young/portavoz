@@ -122,6 +122,9 @@ struct ContentView: View {
                         },
                         onOpenNoteCitation: { citation in
                             openMeeting(citation.meetingID, at: citation.timestamp)
+                        },
+                        onOpenCommitments: { ids in
+                            route = .commitments(ids.count == 1 ? ids.first.map { .commitment($0) } : nil)
                         })
                 case .insights:
                     InsightsView(model: insightsModel, route: $route)

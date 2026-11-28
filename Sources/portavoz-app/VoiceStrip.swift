@@ -60,15 +60,18 @@ struct VoiceStrip: View {
     let ticks: [Double]
     /// Fraction of the width the columns fill; the rest stays track.
     let span: Double
+    /// A moment drawn as the playhead line, at any size.
+    let mark: Double?
     @Environment(\.colorScheme) private var colorScheme
 
     init(
         _ strip: VoiceStripColumns, size: Size = .row, only: UInt8? = nil,
-        progress: Double? = nil, ticks: [Double] = [], span: Double = 1
+        progress: Double? = nil, ticks: [Double] = [], span: Double = 1, mark: Double? = nil
     ) {
         self.strip = strip
         self.size = size
         self.only = only
+        self.mark = mark.map { $0.isFinite ? min(1, max(0, $0)) : 0 }
         self.progress = progress.map { $0.isFinite ? min(1, max(0, $0)) : 0 }
         self.ticks = ticks.filter { $0.isFinite && (0...1).contains($0) }
         self.span = span.isFinite ? min(1, max(0, span)) : 1
@@ -98,6 +101,7 @@ struct VoiceStrip: View {
 
     /// A resume strip at zero is unheard: everything dims and no playhead marks a spot.
     private var playhead: Double? {
+        if let mark { return mark }
         guard !size.isCompact, let progress, size != .resume || progress > 0 else { return nil }
         return progress
     }

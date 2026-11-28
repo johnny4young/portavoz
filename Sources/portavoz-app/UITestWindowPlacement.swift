@@ -68,10 +68,14 @@ enum UITestWindowPlacement {
         }
     }
 
-    /// `-seed-dark-appearance` draws the disposable app dark on a light host.
+    /// `-seed-dark-appearance` and `-seed-light-appearance` pin the disposable app's appearance on any host.
     static func applyAppearanceOverride(arguments: [String] = ProcessInfo.processInfo.arguments) {
-        guard arguments.contains("-use-temp-store"), arguments.contains("-seed-dark-appearance") else { return }
-        NSApp.appearance = NSAppearance(named: .darkAqua)
+        guard arguments.contains("-use-temp-store") else { return }
+        if arguments.contains("-seed-dark-appearance") {
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+        } else if arguments.contains("-seed-light-appearance") {
+            NSApp.appearance = NSAppearance(named: .aqua)
+        }
     }
 
     static func positionMainWindow(_ window: NSWindow) {

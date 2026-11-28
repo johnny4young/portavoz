@@ -6,11 +6,19 @@ public enum AskMarkdown {
     public static func format(
         question: String, answer: String, citations: [AskCitation]
     ) -> String {
+        format(question: question, answer: answer, sources: citations.map { ($0, nil) })
+    }
+
+    /// Each citation led by who said it, when known.
+    public static func format(
+        question: String, answer: String, sources: [(citation: AskCitation, speaker: String?)]
+    ) -> String {
         var lines = ["> \(question)", "", answer]
-        if !citations.isEmpty {
+        if !sources.isEmpty {
             lines.append("")
-            for citation in citations {
-                lines.append("- \(citation.meetingTitle) · \(clock(citation.timestamp))")
+            for (citation, speaker) in sources {
+                let lead = speaker.map { "\($0) · " } ?? ""
+                lines.append("- \(lead)\(citation.meetingTitle) · \(clock(citation.timestamp))")
             }
         }
         return lines.joined(separator: "\n")

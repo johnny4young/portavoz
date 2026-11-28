@@ -626,7 +626,7 @@ private struct UITestAskMeetingAnswering: AskMeetingAnswering, AskFollowUpSugges
         question _: String,
         citations _: [AskCitation]
     ) async throws -> String? {
-        return "El presupuesto se revisó y el rollout quedó para el viernes."
+        return "El presupuesto se revisó y el rollout quedó para el viernes [1]."
     }
 
     func answer(
@@ -641,7 +641,7 @@ private struct UITestAskMeetingAnswering: AskMeetingAnswering, AskFollowUpSugges
                 "PORTAVOZ_UI_TEST_ASK_ANSWER_READY_PATH",
             continueEnvironmentKey:
                 "PORTAVOZ_UI_TEST_ASK_ANSWER_CONTINUE_PATH")
-        let final = "El presupuesto se revisó y el rollout quedó para el viernes."
+        let final = "El presupuesto se revisó y el rollout quedó para el viernes [1]."
         await onAnswer(AskAnswerUpdate(text: final))
         return final
     }

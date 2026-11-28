@@ -1,24 +1,37 @@
 import ApplicationKit
 import Foundation
+import PortavozCore
 import SwiftUI
+
+private extension View {
+    /// One centred reading column for the answers and the composer under them.
+    func askColumn() -> some View {
+        padding(.horizontal, PVDesign.space6 * 2)
+            .frame(maxWidth: 900, alignment: .leading)
+            .frame(maxWidth: .infinity)
+    }
+}
 
 /// "Ask your meetings": one storage-independent presentation model renders
 /// conversation state and sends questions through the shared application
 /// workflow. Citations navigate to the exact meeting moment.
 struct AskView: View {
+    /// Below this column width a "Who said it" row stacks its strip under the
+    /// quote, so a quote never wraps at two or three words a line.
+    private static let compactRowsWidth: CGFloat = 640
+
     let model: AskModel
     let onOpenCitation: (AskCitation) -> Void
     let onOpenNoteCitation: (AskNoteCitation) -> Void
+    let onOpenCommitments: ([CommitmentID]) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var questionFocused: Bool
+    @State private var compactRows = false
+    @State private var copiedExchange: UUID?
 
     var body: some View {
-        VStack(spacing: 0) {
-            if model.memory != nil || model.topicMemory != nil {
-                surfacePicker
-                Divider()
-            }
+        Group {
             switch model.state.surface {
             case .conversation:
                 conversation
@@ -36,7 +49,11 @@ struct AskView: View {
                 }
             }
         }
-        .navigationTitle("Ask your meetings")
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        // The window keeps its title for the Window menu; the toolbar draws it.
+        .navigationTitle("Ask")
+        .toolbar(removing: .title)
+        .toolbar { toolbar }
         .onAppear {
             questionFocused = model.state.surface == .conversation
             if model.state.surface == .personCommitments {
@@ -51,22 +68,44 @@ struct AskView: View {
         .onDisappear { model.cancelAllWork() }
     }
 
-    /// The question comes first: sources, then the field, then the answers,
-    /// so the entry never sits a page away from the last exchange.
-    @ViewBuilder
+    @ToolbarContentBuilder private var toolbar: some ToolbarContent {
+        ToolbarItem(placement: .navigation) {
+            Text("Ask")
+                .font(.body.weight(.bold))
+                .foregroundStyle(PVDesign.ink)
+                .lineLimit(1)
+                .fixedSize()
+                .padding(.leading, HomeToolbarLayout.titleInset)
+                .accessibilityAddTraits(.isHeader)
+        }
+        .sharedBackgroundVisibility(.hidden)
+        ToolbarSpacer(.flexible)
+        ToolbarItem(placement: .automatic) {
+            if model.memory != nil || model.topicMemory != nil {
+                surfacePicker
+            }
+        }
+        .sharedBackgroundVisibility(.hidden)
+    }
+
+    /// Answers read as a page; the composer and its follow-ups stay at the foot.
     private var conversation: some View {
-        sourcePolicy
-        inputBar
-        Divider()
-        if model.state.exchanges.isEmpty && !model.state.isAsking {
-            ContentUnavailableView(
-                "Ask your meetings",
-                systemImage: PVSymbol.ask,
-                // One-line UI copy.
-                // swiftlint:disable:next line_length
-                description: Text("Questions like \"what did we agree about the budget?\" — answered on your Mac, citing meeting and moment."))
-        } else {
-            exchangeList
+        VStack(spacing: 0) {
+            if model.state.exchanges.isEmpty && !model.state.isAsking {
+                ContentUnavailableView(
+                    "Ask your meetings",
+                    systemImage: PVSymbol.ask,
+                    // One-line UI copy.
+                    // swiftlint:disable:next line_length
+                    description: Text("Questions like \"what did we agree about the budget?\" — answered on your Mac, citing meeting and moment."))
+                    .frame(maxHeight: .infinity)
+            } else {
+                exchangeList
+            }
+            composerArea
+                .padding(.top, PVDesign.space3)
+                .padding(.bottom, 18)
+                .askColumn()
         }
     }
 
@@ -87,7 +126,7 @@ struct AskView: View {
                 get: { model.state.surface },
                 set: { model.selectSurface($0) }))
         .fixedSize()
-        .padding(10)
+        .padding(.trailing, HomeToolbarLayout.trailingInset)
         .accessibilityLabel(L10n.text("Ask view"))
         .accessibilityIdentifier("ask-surface")
     }
@@ -95,7 +134,7 @@ struct AskView: View {
     private var exchangeList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 48) {
                     ForEach(model.state.exchanges) { exchange in
                         exchangeView(exchange)
                     }
@@ -104,12 +143,16 @@ struct AskView: View {
                             .id("asking")
                     }
                 }
-                .padding(16)
-                .frame(maxWidth: 720, alignment: .leading)
+                .onGeometryChange(for: Bool.self) { [threshold = Self.compactRowsWidth] in
+                    $0.size.width < threshold
+                } action: { compactRows = $0 }
+                .padding(.top, 22)
+                .padding(.bottom, PVDesign.space6)
+                .askColumn()
             }
             .onChange(of: model.state.exchanges.count) { _, _ in
                 if let last = model.state.exchanges.last?.id {
-                    proxy.pvScrollTo(last, anchor: .bottom, reduceMotion: reduceMotion)
+                    proxy.pvScrollTo(last, anchor: .top, reduceMotion: reduceMotion)
                 }
             }
         }
@@ -118,17 +161,15 @@ struct AskView: View {
     @ViewBuilder
     private var pendingExchange: some View {
         if let question = model.state.pendingQuestion,
+           let askedAt = model.state.pendingAskedAt,
            let source = model.state.pendingSource,
            let phase = model.state.pendingPhase {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(question)
-                    .font(.callout.weight(.semibold))
-                    .padding(10)
-                    .background(
-                        PVDesign.accent.opacity(0.12),
-                        in: RoundedRectangle(cornerRadius: 8))
-                    .accessibilityIdentifier("ask-pending-question")
-                sourceBadge(source, identifier: "ask-pending-source")
+            VStack(alignment: .leading, spacing: 12) {
+                AskQuestionHeader(
+                    question: question, askedAt: askedAt, answeredIn: nil,
+                    identifier: "ask-pending-question") {
+                    sourceBadge(source, identifier: "ask-pending-source")
+                }
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
                     Text(progressText(for: phase))
@@ -142,13 +183,21 @@ struct AskView: View {
                     .foregroundStyle(PVDesign.accent)
                     .accessibilityIdentifier("ask-cancel")
                 }
+                if let answerText = model.state.pendingAnswerText {
+                    Text(verbatim: answerText)
+                        .askAnswerText()
+                        .accessibilityIdentifier("ask-pending-answer")
+                        .askAnswerSurface()
+                }
                 if !model.state.pendingCitations.isEmpty {
                     Text("Sources found")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.ink3)
-                    citationButtons(
-                        model.state.pendingCitations,
-                        identifierPrefix: "ask-pending-citation")
+                    FlowLayout(spacing: 10, rowSpacing: 4) {
+                        citationButtons(
+                            model.state.pendingCitations,
+                            identifierPrefix: "ask-pending-citation")
+                    }
                 }
                 if !model.state.pendingNoteCitations.isEmpty {
                     Text("From your notes")
@@ -167,61 +216,75 @@ struct AskView: View {
                         identifierPrefix: "ask-pending-web-citation")
                 }
                 webFailureNotice(model.state.pendingWebSourceFailures)
-                if let answerText = model.state.pendingAnswerText {
-                    Text(answerText)
-                        .textSelection(.enabled)
-                        .accessibilityIdentifier("ask-pending-answer")
-                }
             }
         }
     }
 
     private func exchangeView(_ exchange: AskModel.Exchange) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(exchange.question)
-                .font(.callout.weight(.semibold))
-                .padding(10)
-                .background(PVDesign.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
-            sourceBadge(exchange.source, identifier: "ask-exchange-source")
-            Text(exchange.answer)
-                .textSelection(.enabled)
-                .accessibilityIdentifier("ask-answer-\(exchange.id.uuidString)")
-            if let status = AskAnswerPresentation.statusText(
-                for: exchange.generationOutcome,
-                hasCitations: exchange.hasCitations
-            ) {
-                Label(status, systemImage: "cpu")
-                    .font(.caption)
-                    .foregroundStyle(.ink3)
-                    .accessibilityIdentifier(
-                        "ask-generation-\(exchange.generationOutcome.rawValue)")
+        let id = exchange.id.uuidString
+        return VStack(alignment: .leading, spacing: 0) {
+            AskQuestionHeader(
+                question: exchange.question, askedAt: exchange.askedAt, answeredIn: exchange.answeredIn,
+                identifier: "ask-question-\(id)") {
+                sourceBadge(exchange.source, identifier: "ask-exchange-source")
             }
-            if !exchange.citations.isEmpty || !exchange.noteCitations.isEmpty
-                || !exchange.webCitations.isEmpty {
-                // One line of sources per answer: meeting moments, notes and
-                // web pages flow together; each keeps its own mark.
+            AskAnswerCard(
+                pieces: exchange.answerPieces,
+                generatedFrom: generatedFrom(exchange),
+                openCommitments: exchange.evidence?.openCommitments ?? [],
+                copied: copiedExchange == exchange.id,
+                identifier: id,
+                onCopy: { copy(exchange) },
+                onOpenCommitments: onOpenCommitments,
+                status: AskAnswerPresentation.statusText(
+                    for: exchange.generationOutcome, hasCitations: exchange.hasCitations
+                ).map { ($0, "ask-generation-\(exchange.generationOutcome.rawValue)") })
+            .padding(.top, 18)
+            if !exchange.rows.isEmpty {
+                AskWhoSaidIt(
+                    rows: exchange.rows, compact: compactRows, identifier: "ask-evidence-\(id)",
+                    onPlay: onOpenCitation)
+                    .padding(.top, 22)
+            }
+            if !exchange.noteCitations.isEmpty || !exchange.webCitations.isEmpty {
+                // Notes and web pages keep their own marks; only meeting moments have a voice.
                 FlowLayout(spacing: 10, rowSpacing: 4) {
                     Text("Sources")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.ink3)
-                    citationButtons(
-                        exchange.citations,
-                        identifierPrefix: "ask-citation-\(exchange.id.uuidString)")
                     noteCitationButtons(
                         exchange.noteCitations,
-                        identifierPrefix:
-                            "ask-note-citation-\(exchange.id.uuidString)")
+                        identifierPrefix: "ask-note-citation-\(id)")
                     webCitationLinks(
                         exchange.webCitations,
-                        identifierPrefix:
-                            "ask-web-citation-\(exchange.id.uuidString)")
+                        identifierPrefix: "ask-web-citation-\(id)")
                 }
+                .padding(.top, 14)
                 .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("ask-sources-\(exchange.id.uuidString)")
+                .accessibilityIdentifier("ask-sources-\(id)")
             }
             webFailureNotice(exchange.webSourceFailures)
+                .padding(.top, 8)
         }
         .id(exchange.id)
+    }
+
+    private func generatedFrom(_ exchange: AskModel.Exchange) -> String? {
+        guard exchange.generationOutcome == .generated, !exchange.citations.isEmpty else { return nil }
+        return AskEvidencePresentation.generatedFrom(
+            voices: exchange.evidence?.voiceCount ?? 0,
+            meetings: Set(exchange.citations.map(\.meetingID)).count)
+    }
+
+    private func copy(_ exchange: AskModel.Exchange) {
+        let markdown = AskEvidencePresentation.markdown(
+            question: exchange.question, answer: exchange.answer, rows: exchange.rows)
+        guard PasteboardCopy.copy(markdown) else { return }
+        copiedExchange = exchange.id
+        Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            if copiedExchange == exchange.id { copiedExchange = nil }
+        }
     }
 
 }
@@ -298,79 +361,108 @@ extension AskView {
         }
     }
 
-    private var inputBar: some View {
-        HStack(spacing: 8) {
+    /// Follow-ups, then whatever the chosen source still needs, then the field.
+    private var composerArea: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            followUps
+            sourcePolicyStatus
+                .font(.caption)
+                .foregroundStyle(PVDesign.ink3)
+            composer
+        }
+    }
+
+    @ViewBuilder private var followUps: some View {
+        if !model.state.isAsking, let suggestions = model.state.exchanges.last?.followUps, !suggestions.isEmpty {
+            FlowLayout(spacing: 8, rowSpacing: 6) {
+                PVCardCaption(text: L10n.text("Follow up"), tint: PVDesign.ink3)
+                    .frame(height: 26)
+                    .padding(.trailing, 4)
+                ForEach(Array(suggestions.enumerated()), id: \.offset) { index, suggestion in
+                    Button {
+                        model.askFollowUp(suggestion)
+                    } label: {
+                        Text(verbatim: suggestion)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(PVDesign.ink)
+                            .lineLimit(1)
+                            .padding(.horizontal, 11)
+                            .frame(height: 26)
+                            .background(PVDesign.line, in: Capsule())
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("ask-follow-up-\(index)")
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("ask-follow-ups")
+        }
+    }
+
+    private var composer: some View {
+        HStack(spacing: 10) {
             TextField(
                 questionPlaceholder,
                 text: Binding(
                     get: { model.state.draft },
                     set: { model.updateDraft($0) }))
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(.plain)
+                .font(.system(size: 14))
                 .focused($questionFocused)
                 .onSubmit { model.submit() }
                 .accessibilityIdentifier("ask-question-field")
-            Button {
-                model.submit()
-            } label: {
-                Image(systemName: "paperplane.fill")
+            HStack(spacing: 5) {
+                sourceChip(.library, title: "Library", id: "ask-source-library")
+                sourceChip(.meeting, title: "Meeting", id: "ask-source-meeting")
+                sourceChip(.notes, title: "Notes", id: "ask-source-notes")
+                sourceChip(.web, title: "Web", id: "ask-source-web")
             }
-            .disabled(
-                model.state.draft.trimmingCharacters(
-                    in: .whitespacesAndNewlines).isEmpty
-                    || !hasResolvedSource)
-            .accessibilityLabel(L10n.text("Send question"))
-            .accessibilityIdentifier("ask-submit")
-        }
-        .padding(12)
-    }
-
-    private var sourcePolicy: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Text("Source")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(PVDesign.ink3)
-                sourceChip(.library, title: "Library", symbol: "books.vertical", id: "ask-source-library")
-                sourceChip(.meeting, title: "Meeting", symbol: "person.2", id: "ask-source-meeting")
-                sourceChip(.notes, title: "Notes", symbol: "note.text", id: "ask-source-notes")
-                sourceChip(.web, title: "Web", symbol: "globe", id: "ask-source-web")
-                Spacer(minLength: 0)
-            }
+            .fixedSize()
             .accessibilityElement(children: .contain)
             .accessibilityLabel(L10n.text("Answer sources"))
             .accessibilityIdentifier("ask-source-picker")
-
-            sourcePolicyStatus
-                .font(.caption)
-                .foregroundStyle(PVDesign.ink3)
+            Button {
+                model.submit()
+            } label: {
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(PVDesign.onInk)
+                    .frame(width: 30, height: 30)
+                    .background(PVDesign.ink, in: Circle())
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .disabled(!canSubmit)
+            .opacity(canSubmit ? 1 : 0.35)
+            .accessibilityLabel(L10n.text("Send question"))
+            .accessibilityIdentifier("ask-submit")
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.leading, 16)
+        .padding(.trailing, 8)
+        .frame(minHeight: 46)
+        .background {
+            PVRaisedSurface(cornerRadius: PVDesign.radiusPanel)
+                .shadow(color: .black.opacity(0.12), radius: 7, y: 4)
+        }
+    }
+
+    private var canSubmit: Bool {
+        !model.state.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && hasResolvedSource
     }
 
     private func sourceChip(
         _ mode: AskModel.SourceMode,
         title: LocalizedStringKey,
-        symbol: String,
         id: String
     ) -> some View {
         let selected = model.state.sourceMode == mode
         return Button {
             model.selectSourceMode(mode)
         } label: {
-            Label(title, systemImage: symbol)
-                .font(.caption.weight(selected ? .semibold : .regular))
-                .foregroundStyle(selected ? PVDesign.accent : PVDesign.ink3)
-                .padding(.horizontal, 9)
-                .padding(.vertical, 4)
-                .background(
-                    selected ? PVDesign.accent.opacity(PVDesign.chipTint) : .clear,
-                    in: Capsule())
-                .overlay {
-                    if !selected {
-                        Capsule().strokeBorder(PVDesign.line, lineWidth: 1)
-                    }
-                }
+            Text(title)
+                .foregroundStyle(selected ? PVDesign.onInk : PVDesign.ink2)
+                .pvPill(selected ? PVDesign.ink : PVDesign.line)
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -382,10 +474,13 @@ extension AskView {
     private var sourcePolicyStatus: some View {
         switch model.state.sourceMode {
         case .library:
-            Label(
-                "Only your local meeting library will be searched.",
-                systemImage: "lock")
-                .accessibilityIdentifier("ask-source-status-library")
+            // After the first answer its receipt says the same.
+            if model.state.exchanges.isEmpty {
+                Label(
+                    "Only your local meeting library will be searched.",
+                    systemImage: "lock")
+                    .accessibilityIdentifier("ask-source-status-library")
+            }
         case .meeting:
             meetingSourceStatus
         case .notes:
@@ -447,10 +542,8 @@ extension AskView {
     ) -> some View {
         switch source {
         case .library:
-            Label("Source: Library", systemImage: "books.vertical")
-                .font(.caption)
-                .foregroundStyle(.ink3)
-                .accessibilityIdentifier("\(identifier)-library")
+            // The Library is the default source; only a narrower one is named.
+            EmptyView()
         case .meeting(_, let title):
             Label("Source: \(title)", systemImage: "person.2")
                 .font(.caption)

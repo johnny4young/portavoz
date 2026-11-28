@@ -84,10 +84,10 @@ extension XCUIApplication {
             || target.revealVertically(in: page, maxScrolls: 12, maximumStep: 800)
     }
 
-    /// The host may be either appearance; the dark flag is honoured only by
+    /// The host may be either appearance; both flags are honoured only by
     /// the disposable store.
     static func appearanceArguments(dark: Bool) -> [String] {
-        dark ? ["-seed-dark-appearance"] : ["-AppleInterfaceStyle", "Light"]
+        dark ? ["-seed-dark-appearance"] : ["-seed-light-appearance"]
     }
 
     @MainActor

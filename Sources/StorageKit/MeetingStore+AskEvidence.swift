@@ -47,3 +47,27 @@ extension MeetingStore {
         }
     }
 }
+
+extension MeetingStore {
+    /// Confirmed commitments, neither done nor dismissed, whose evidence includes any of these lines.
+    public func askOpenCommitments(segmentIDs: Set<UUID>) async throws -> [CommitmentID] {
+        guard !segmentIDs.isEmpty else { return [] }
+        let ids = segmentIDs.map(\.uuidString).sorted()
+        return try await database.read { db in
+            try String.fetchAll(
+                db,
+                sql: """
+                    SELECT DISTINCT c.id
+                    FROM commitment c
+                    JOIN commitmentSource source ON source.commitmentID = c.id
+                    JOIN commitmentEvidenceSegment evidence ON evidence.sourceID = source.id
+                    WHERE c.deletedAt IS NULL
+                      AND c.status = 'confirmed'
+                      AND evidence.segmentID IN (\(databaseQuestionMarks(count: ids.count)))
+                    ORDER BY c.id
+                    """,
+                arguments: StatementArguments(ids))
+            .compactMap { UUID(uuidString: $0).map(CommitmentID.init(rawValue:)) }
+        }
+    }
+}

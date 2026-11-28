@@ -136,11 +136,10 @@ final class AskModel {
         guard let source = resolvedSource(),
               let exchangeSource = exchangeSource(for: source)
         else { return }
-        let requestGeneration = beginRequest(
+        let (requestGeneration, asked) = beginRequest(
             question: question,
             source: exchangeSource)
         let client = client
-        let asked = ContinuousClock.now
         answerTask = Task { [weak self, client] in
             let exchange: Exchange
             var generatedText: String?
@@ -160,11 +159,7 @@ final class AskModel {
                             generation: requestGeneration)
                     })
                 guard !Task.isCancelled else { return }
-                exchange = Self.exchange(
-                    question: question,
-                    result: result,
-                    source: exchangeSource,
-                    answeredIn: ContinuousClock.now - asked)
+                exchange = Self.exchange(question: question, result: result, source: exchangeSource, asked: asked)
                 generatedText = result.generatedText
             } catch is CancellationError {
                 return
@@ -177,7 +172,8 @@ final class AskModel {
                         error.localizedDescription),
                     citations: [],
                     generationOutcome: .failed,
-                    source: exchangeSource)
+                    source: exchangeSource,
+                    askedAt: asked.date)
             }
             guard let self, self.complete(exchange, generation: requestGeneration)
             else { return }
@@ -305,6 +301,7 @@ final class AskModel {
     private func clearPendingState() {
         state.isAsking = false
         state.pendingQuestion = nil
+        state.pendingAskedAt = nil
         state.pendingCitations = []
         state.pendingNoteCitations = []
         state.pendingWebCitations = []
@@ -390,7 +387,7 @@ extension AskModel {
               let host = url.host
         else { return }
         state.webConsentApproved = false
-        let requestGeneration = beginRequest(
+        let (requestGeneration, asked) = beginRequest(
             question: question,
             source: .web(host: host))
         let request = AskWebRequest(
@@ -421,7 +418,9 @@ extension AskModel {
                     webCitations: result.citations,
                     webSourceFailures: result.sourceFailures,
                     generationOutcome: result.generationOutcome,
-                    source: .web(host: host))
+                    source: .web(host: host),
+                    askedAt: asked.date,
+                    answeredIn: asked.elapsed)
             } catch is CancellationError {
                 return
             } catch {
@@ -433,14 +432,15 @@ extension AskModel {
                         error.localizedDescription),
                     citations: [],
                     generationOutcome: .failed,
-                    source: .web(host: host))
+                    source: .web(host: host),
+                    askedAt: asked.date)
             }
             self?.complete(exchange, generation: requestGeneration)
         }
     }
 
     private func submitNotes(_ question: String) {
-        let requestGeneration = beginRequest(
+        let (requestGeneration, asked) = beginRequest(
             question: question,
             source: .notes)
         let client = client
@@ -462,7 +462,9 @@ extension AskModel {
                     citations: [],
                     noteCitations: result.citations,
                     generationOutcome: result.generationOutcome,
-                    source: .notes)
+                    source: .notes,
+                    askedAt: asked.date,
+                    answeredIn: asked.elapsed)
             } catch is CancellationError {
                 return
             } catch {
@@ -474,7 +476,8 @@ extension AskModel {
                         error.localizedDescription),
                     citations: [],
                     generationOutcome: .failed,
-                    source: .notes)
+                    source: .notes,
+                    askedAt: asked.date)
             }
             self?.complete(exchange, generation: requestGeneration)
         }
@@ -530,7 +533,7 @@ extension AskModel {
         question: String,
         result: AskMeetingAnswer,
         source: ExchangeSource,
-        answeredIn: Duration
+        asked: Asked
     ) -> Exchange {
         Exchange(
             question: question,
@@ -538,19 +541,22 @@ extension AskModel {
             citations: result.citations,
             generationOutcome: result.generationOutcome,
             source: source,
-            answeredIn: answeredIn)
+            askedAt: asked.date,
+            answeredIn: asked.elapsed)
     }
 
     private func beginRequest(
         question: String,
         source: ExchangeSource
-    ) -> Int {
+    ) -> (generation: Int, asked: Asked) {
+        let asked = Asked()
         state.draft = ""
         generation += 1
         answerTask?.cancel()
         cancelFollowUps()
         state.isAsking = true
         state.pendingQuestion = question
+        state.pendingAskedAt = asked.date
         state.pendingCitations = []
         state.pendingNoteCitations = []
         state.pendingWebCitations = []
@@ -558,7 +564,7 @@ extension AskModel {
         state.pendingAnswerText = nil
         state.pendingPhase = .findingEvidence
         state.pendingSource = source
-        return generation
+        return (generation, asked)
     }
 
     private func resolvedWebSourceURL() -> URL? {
@@ -588,6 +594,14 @@ extension AskModel {
         }
     }
 
+}
+
+/// When a question was asked, on the wall clock for display and the monotonic clock for timing.
+private struct Asked {
+    let date = Date()
+    let instant = ContinuousClock.now
+
+    var elapsed: Duration { ContinuousClock.now - instant }
 }
 
 private enum AskSourceMeetingCatalogError: Error {

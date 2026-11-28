@@ -23793,3 +23793,33 @@ single-line suggestions without markers or links, each different from the
 question; anything else, a timeout or an unavailable engine gives none.
 Notes and Web answers get no suggestions, because their passages are not
 meeting evidence.
+
+## D678 — Ask answers read as a page led by who said it
+
+An Ask answer is a page, not a chat bubble: the question is the title, the
+answer sits on Portavoz's green tint with each `[n]` drawn as the numbered mark
+of its evidence row, and "Who said it" lists one row per meeting citation in
+marker order, led by the voice, with the quote, the meeting, the day, the time
+code and the moment marked on that meeting's strip. The composer moves to the
+foot with the source chips inside it, follow-up suggestions above it, and the
+Ask / By person / By topic tabs move to the title bar, so the last answer and
+the next question sit together.
+
+- Rows render from the citations at once and fill in voices, days and strips
+  when the evidence read lands; a failed read keeps the rows without them. A
+  row whose voice is unknown says "Unknown speaker" with an open grey dot.
+- Voice names are ink beside their dot, as everywhere since D643, not set in
+  the voice colour as the board draws them. Bold or coloured runs inside the
+  answer are not drawn: the local engines return plain text.
+- "N open commitments" counts confirmed commitments, not done or dismissed,
+  whose evidence includes a cited line; one opens Radar focused on it, more
+  open Radar unfocused. The read joins the evidence read, so it never holds
+  the answer back.
+- The board's "the mark shows where in the meeting" helper line is left out;
+  "N moments" stays because it is a count. "Portavoz · from N voices in M
+  meetings" appears only on a generated answer.
+- Below a 640 pt column a row stacks quote under voice and strip under quote,
+  so a quote never wraps at two or three words a line at the narrowest window.
+- The Library boundary line shows until the first answer, whose "answered on
+  your Mac" receipt then says the same; Meeting, Notes and Web keep their
+  boundary and controls above the composer.
