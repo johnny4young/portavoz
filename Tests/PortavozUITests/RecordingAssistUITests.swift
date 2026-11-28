@@ -203,6 +203,7 @@ final class RecordingAssistUITests: PortavozUITestCase {
         // Reaching back for an older card folds the oldest recency-open one,
         // so the panel keeps its size instead of growing.
         let list = app.scrollViews["recording-companion-list"]
+        XCTAssertGreaterThanOrEqual(list.frame.height, 40, "the list keeps room for a folded row: \(list.frame)")
         // A step is one viewport, but a short window's list is too low to cross the open cards.
         let step = max(list.frame.height, 160)
         guard folded.revealVertically(in: list, maximumStep: step) else {
@@ -233,7 +234,6 @@ final class RecordingAssistUITests: PortavozUITestCase {
             app.control(withIdentifier: "recording-companion-folded-\(newestID)")
                 .waitForExistenceFast(timeout: 3),
             "folding an open card must leave it reachable as a one-line row")
-
 
         // One panel at a time: the Companion list leaves when Notes opens.
         try app.openAssistTab("notes")

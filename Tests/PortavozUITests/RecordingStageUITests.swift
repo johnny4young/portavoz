@@ -16,11 +16,7 @@ final class RecordingStageUITests: PortavozUITestCase {
         // A 1024 pt display has room for the shared row, and so three rows, only without the sidebar.
         app.setSidebar(visible: false)
 
-        let you = app.control(withIdentifier: "recording-voice-you")
-        XCTAssertTrue(you.waitForExistenceFast(timeout: 10))
-        // The scripted call streams in; your open turn is its last row.
-        _ = you.waitForLabelContaining("speaking now", timeout: 10)
-        XCTAssertTrue(you.label.hasPrefix("You, speaking now"), "you lead while your turn is open: \(you.label)")
+        let you = waitForYourOpenTurn(in: app)
         let latest = app.control(withIdentifier: "recording-voice-S1")
         let earlier = app.control(withIdentifier: "recording-voice-S2")
         XCTAssertTrue(latest.waitForExistenceFast(timeout: 5) && earlier.exists)
@@ -125,9 +121,9 @@ final class RecordingStageUITests: PortavozUITestCase {
         let app = try launchStage(["-seed-dark-appearance"])
         defer { finishUITestApplication(app) }
 
-        let you = app.control(withIdentifier: "recording-voice-you")
-        XCTAssertTrue(you.waitForExistenceFast(timeout: 10))
-        _ = you.waitForLabelContaining("speaking now", timeout: 10)
+        // Stacked on a short window the table shows only who leads, so you appear once your turn opens.
+        _ = waitForYourOpenTurn(in: app)
+        attachScreenshot(of: app, named: "pr-recording-stage-stacked")
         app.recordingMoreItem("recording-hud").click()
         let hud = app.control(withIdentifier: "recording-hud-panel")
         XCTAssertTrue(hud.waitForExistenceFast(timeout: 5))
@@ -147,6 +143,16 @@ final class RecordingStageUITests: PortavozUITestCase {
         attachElementScreenshot(of: hud, named: "pr-recording-hud-note")
         app.buttons["recording-hud-expand"].click()
         XCTAssertTrue(hud.waitForDisappearance(timeout: 5))
+    }
+
+    /// The scripted call ends on your open turn; a slow host streams its rows for several seconds.
+    @MainActor
+    private func waitForYourOpenTurn(in app: XCUIApplication) -> XCUIElement {
+        // One query for identifier and label: a row the lead-only table replaces is never read alone.
+        let speaking = app.descendants(matching: .any).matching(NSPredicate(
+            format: "identifier == 'recording-voice-you' AND label BEGINSWITH 'You, speaking now'")).firstMatch
+        XCTAssertTrue(speaking.waitForExistenceFast(timeout: 30), "you lead while your turn is open")
+        return app.control(withIdentifier: "recording-voice-you")
     }
 
     @MainActor

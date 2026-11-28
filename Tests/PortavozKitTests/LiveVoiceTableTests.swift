@@ -69,6 +69,8 @@ final class LiveVoiceTableTests: XCTestCase {
         XCTAssertEqual(table.rows.count, 3)
         XCTAssertTrue(table.others.isEmpty)
         XCTAssertEqual(table.folding(to: table.rows.count - 1), table, "its fold row would take the same room")
+        XCTAssertEqual(table.leading.rows.map(\.id), [table.rows[0].id], "lead-only draws no fold row")
+        XCTAssertEqual(table.leading.others.count, 2)
     }
 
     func testSharesAndBarsScaleToTheWidestOnScreen() {

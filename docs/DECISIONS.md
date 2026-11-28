@@ -23894,3 +23894,25 @@ Confirmed / To review / Quality tabs move to the title bar as in Ask (D678).
 - Each column shows at most six chips and "+N more"; the count beside the
   title stays exact. The legend under the board names both chip styles; the
   board's "by due date" beside the title is left out (no secondary labels).
+
+## D681 — A short recording window keeps a usable Apuntador list
+
+On a 1024 x 768 display (a 900 x 674 window with the sidebar) the stacked
+stage split its flexible height in proportion between the captions' 132 pt
+floor and the assist area's 212 pt floor (D507). The assist area got about
+165 pt; with a question asked of you in the focus slot, the Apuntador list
+under it measured 0 pt and its older cards could not be reached.
+
+- `RecordingAssistLayout.split` now lets the captions give way first, down to
+  one clear line (76 pt: their 42 pt top fade plus a caption row), while the
+  assist area keeps its 212 pt floor. Shorter still, the captions get the
+  smaller of that line and their D507 proportional share, so a very short
+  window shows as many words as before and neither zone vanishes. The rule is
+  continuous: captions are `max(usable - 212, min(76, usable × 132 / 344))`.
+- Lead-only voices show exactly one row (`LiveVoiceTable.leading`).
+  `folding(to: 1)` keeps a second voice when only two were heard, because a
+  fold row would take its place; lead-only draws no fold row, so that second
+  row was 30 pt taken from the captions and the assist area.
+- The recording stage tests wait for the scripted call to reach your open
+  turn instead of reading a row that the lead-only table replaces while a slow
+  host is still streaming the script.

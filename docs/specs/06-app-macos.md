@@ -1500,7 +1500,10 @@ diarization pass re-attributes the meeting and nothing live is persisted.
   captions take the full width under it and the captions take the rest of the
   height. Narrower, the table and the strip stack above the captions and the
   assist area, split as before (D504); the assist floor is 212 pt, which holds
-  the tabs, the focus card, a usable list and the note field.
+  the tabs, the focus card, a usable list and the note field. When the split
+  cannot pay both floors, the captions give way to one clear line (76 pt: the
+  42 pt top fade plus a caption row) before the assist floor does; shorter
+  still, the captions keep their proportional share of both floors (D681).
 - The stage's height decides how much of the table shows
   (`RecordingStageLayout.voices`), so a short window (a 1024 x 768 display
   leaves the stage about 400 pt) folds voices instead of squeezing what is
@@ -1508,8 +1511,9 @@ diarization pass re-attributes the meeting and nothing live is persisted.
   "Others" until the strip and the captions' floor fit (and, stacked, the
   assist floor). Beside the panel the table keeps at least three rows, and the
   shared row's 300 pt floor drops to what is left; stacked, a stage too short
-  for one row and its fold shows only the leading voice, with no caption or
-  "Others" row. The open "Others" list shows as many rows as the table keeps.
+  for one row and its fold shows only the leading voice
+  (`LiveVoiceTable.leading`), with no caption or "Others" row, even when only
+  two voices were heard. The open "Others" list shows as many rows as the table keeps.
   Each tab's content gives way and is clipped before the tab bar or the note
   field; the Apuntador and Objectives scroll areas are
   `recording-apuntador-scroll` and `recording-objectives-scroll`.
@@ -3089,7 +3093,7 @@ file-handshake adapter used to test Stop races is selectable only in disposable
 
 **Apuntador state chip (Sep 2026, D536; consolidated Nov 2026)**: the assist panel's tab row ends with `RecordingApuntadorStateChip` (`recording-apuntador-state`), the sole Apuntador toggle during recording, resolved by the composition from the recording's opt-in, the bundled detector and `AppServices.companionAnswersAvailable` (on-device model or an enabled BYOK provider) into one of four states: Listening for questions (with `recording-apuntador-turn-off`), Questions only (with a Settings link, `recording-apuntador-settings`, and `recording-apuntador-turn-off`), Apuntador is off (with `recording-apuntador-turn-on`), Apuntador is unavailable (with the Settings link). The Apuntador tab's empty state repeats the same explanation, so the feature never disappears. Translated caption lines carry only the `translate` mark (`recording-live-translation-<segment>` keeps the full language name as its accessibility label); the language is named once in the Translate picker.
 
-**Live assist corrections (Sep 2026, D507)**: `RecordingAssistLayout.split` shrinks both floors together when the window is too short for either — paying one in full drove the captions to zero height, and with several banners stacked on a small window the meeting had no words on screen. `RecordingFocusSlot.resolve` ranks catch-up and the suggested next question — which have this slot as their only home — above a directed card, which is also reachable in the Companion tab: the previous order let one undismissed directed card swallow every later press of "Suggest a question" for the rest of the meeting, and ranking anything above an item with no other home only moves the loss (D508). The initial note-draft fix moved state above the tab switch; D513 moves both editor drafts to the recording controller because library navigation also reconstructs that parent panel. `LiveSpeakerHints.changed` no longer compares `speakerID`: `SpeakerAttributor` mints a fresh one per pass, so the comparison reported a change every time and the guard suppressed nothing. The divider commits its fraction to `@AppStorage` once on release rather than on every frame, and sets the resize cursor rather than pushing it onto a stack that a teardown would never pop.
+**Live assist corrections (Sep 2026, D507; amended by D681)**: `RecordingAssistLayout.split` shrinks both floors together when the window is too short for either (since D681, after the captions give way to one clear line) — paying one in full drove the captions to zero height, and with several banners stacked on a small window the meeting had no words on screen. `RecordingFocusSlot.resolve` ranks catch-up and the suggested next question — which have this slot as their only home — above a directed card, which is also reachable in the Companion tab: the previous order let one undismissed directed card swallow every later press of "Suggest a question" for the rest of the meeting, and ranking anything above an item with no other home only moves the loss (D508). The initial note-draft fix moved state above the tab switch; D513 moves both editor drafts to the recording controller because library navigation also reconstructs that parent panel. `LiveSpeakerHints.changed` no longer compares `speakerID`: `SpeakerAttributor` mints a fresh one per pass, so the comparison reported a change every time and the guard suppressed nothing. The divider commits its fraction to `@AppStorage` once on release rather than on every frame, and sets the resize cursor rather than pushing it onto a stack that a teardown would never pop.
 
 **Live editor lifetime (Sep 2026, D513)**: one controller-owned `RecordingDrafts`
 value holds unsubmitted note and objective input for the active session. Both
