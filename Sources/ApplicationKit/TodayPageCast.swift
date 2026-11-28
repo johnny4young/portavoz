@@ -21,7 +21,7 @@ public struct TodayPageCast: Sendable, Equatable {
         var page = day?.cast.page ?? .empty
         let names = day?.namesByKey ?? [:]
         let hero = event.map { event in
-            ((day?.upcoming ?? []) + (day?.later ?? [])).first { $0.event == event }?.cast
+            (day?.invitations.first { $0.event == event } ?? day?.later.first { $0.event == event })?.cast
                 ?? TodayVoices.inviteeCast(
                     event.attendees.map { TodayVoices.Invitee(name: $0, personID: nil) }, page: page)
         }

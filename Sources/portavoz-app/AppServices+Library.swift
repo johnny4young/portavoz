@@ -125,11 +125,7 @@ extension AppServices: LibraryModelClient {
         if arguments.contains("-seed-brief") {
             return LibraryModel.Agenda(
                 offerCalendar: false,
-                today: [UpcomingEvent(
-                    id: "ui-test-upcoming-rollout",
-                    title: "Presupuesto rollout",
-                    startDate: Self.fixtureAgendaStart.addingTimeInterval(15 * 60),
-                    attendees: ["Ana"])],
+                today: [Self.fixtureBriefEvent],
                 tomorrow: [])
         }
         // Opt-in, because agenda rows lengthen the sidebar and the other
@@ -159,6 +155,12 @@ extension AppServices: LibraryModelClient {
 
     func libraryBriefLines(for event: UpcomingEvent) async throws -> MeetingBriefLines? {
         try await meetingBriefLinesUseCase.execute(event)
+    }
+
+    func observeLibraryBriefSource(
+        for event: UpcomingEvent
+    ) -> AsyncThrowingStream<MeetingBriefLines.SourceState?, Error> {
+        store.observeMeetingBriefSource(for: MeetingBriefLines.Occurrence(event: event))
     }
 
     func libraryTodayVoices(

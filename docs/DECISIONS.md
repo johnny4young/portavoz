@@ -23916,3 +23916,32 @@ under it measured 0 pt and its older cards could not be reached.
 - The recording stage tests wait for the scripted call to reach your open
   turn instead of reading a row that the lead-only table replaces while a slow
   host is still streaming the script.
+
+## D682 — Today's edges hold on every host and every hour
+
+The sidebar's 16 pt under the search field was a top `contentMargins`, which
+macOS 26 applies in place of the sidebar style's negative margin but macOS 27
+ignores, leaving "This week" 7.5 pt under the field. The list now sets its top
+content margin to zero and adds 16 pt as `safeAreaPadding`, which both versions
+apply: 23.5 pt to the header text on macOS 27; the UI test bounds it to
+18–28 pt so neither a lost nor a doubled margin passes.
+
+While the hero's own event is being recorded it leaves `TodayVoices.upcoming`,
+and the page cast fell back to the attendees by position. `TodayVoices` now keeps
+`invitations`, every event of today with its resolved invitees, and
+`TodayPageCast` reads the hero from them, so the colours do not change when
+recording starts.
+
+A commitment or question resolved outside Today clears the hero's brief lines
+through the existing triggers but bumps no library revision. `LibraryModel`
+observes the shown occurrence's `meetingBriefSource` row after its first load
+and reloads when the lines are cleared, the source changes or it is forgotten;
+a source the card already shows reloads nothing, so its own rebuild does not
+loop. The observation lives in the model because `HomeView` owns no tasks.
+
+UI fixtures that put today's events at launch plus an offset compress the
+offsets toward the launch near midnight (`AppServices.fixtureTime`), so the
+`-seed-brief` and showcase events stay in the launch day instead of landing on
+tomorrow while Today lists them as today. There is no app clock to fix the time
+of day, and the standing brief needs its event within two hours of now.
+

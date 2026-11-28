@@ -266,6 +266,29 @@ final class MeetingBriefLinesStorageTests: XCTestCase {
         XCTAssertEqual(people.map(\.speakerID), speakers.dropFirst().reversed().map(\.id))
     }
 
+    func testResolvingACommitmentElsewhereWakesTheOccurrencesObservers() async throws {
+        let fixture = try await seed()
+        let item = ActionItem(text: "Write the migration plan", ownerSpeakerID: fixture.me.id)
+        try await saveSummary(fixture, items: [(item, 1)])
+        var states = store.observeMeetingBriefSource(for: occurrence()).makeAsyncIterator()
+        let none = try await states.next()
+        XCTAssertEqual(none, .some(nil), "no source before the first preparation")
+
+        try await record(fixture)
+        let built = try await states.next()
+        XCTAssertEqual(built??.sourceMeetingID, fixture.meeting.id)
+        XCTAssertEqual(built??.linesBuiltAt, base)
+
+        try await record(fixture, event: "another-event")
+        try await store.setActionItem(item.id, done: true)
+        let cleared = try await states.next()
+        XCTAssertEqual(cleared??.sourceMeetingID, fixture.meeting.id)
+        XCTAssertNil(cleared??.linesBuiltAt, "another occurrence's write is not an emission; the clear is")
+        _ = try await read()
+        let rebuilt = try await states.next()
+        XCTAssertNotNil(rebuilt??.linesBuiltAt, "the read rebuilds, then the value settles")
+    }
+
     func testASourceWithoutLinesIsBuiltOnce() async throws {
         let meeting = Meeting(title: "Short", startedAt: base, endedAt: base.addingTimeInterval(60))
         try await store.save(meeting)

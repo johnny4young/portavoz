@@ -21,6 +21,18 @@ public struct MeetingBriefLines: Sendable, Equatable {
         }
     }
 
+    /// An occurrence's chosen source and when its lines were built.
+    public struct SourceState: Sendable, Equatable {
+        public let sourceMeetingID: MeetingID
+        /// Nil while a change waits for the next read to rebuild the lines.
+        public let linesBuiltAt: Date?
+
+        public init(sourceMeetingID: MeetingID, linesBuiltAt: Date?) {
+            self.sourceMeetingID = sourceMeetingID
+            self.linesBuiltAt = linesBuiltAt
+        }
+    }
+
     public enum Kind: String, Sendable, Equatable {
         case quote
         case commitment

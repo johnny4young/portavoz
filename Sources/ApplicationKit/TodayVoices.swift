@@ -81,6 +81,8 @@ public struct TodayVoices: Sendable, Equatable {
     public let recorded: [RecordedMeeting]
     /// Today's events that have not ended and were not recorded, earliest first.
     public let upcoming: [UpcomingMeeting]
+    /// Every event of today with its invitees, recorded or not, earliest first.
+    public let invitations: [UpcomingMeeting]
     /// The `later` events with their invitees, coloured by the day cast.
     public let later: [UpcomingMeeting]
     /// Upcoming events that have not started yet.
@@ -120,10 +122,11 @@ extension TodayVoices {
             let invitees = Self.invitees(event.attendees, people: people, names: names)
             return UpcomingMeeting(event: event, invitees: invitees, cast: Self.inviteeCast(invitees, page: cast.page))
         }
-        let upcoming = events
-            .filter { Self.isStillAhead($0, day: day, now: now, recorded: recorded) }
+        let invitations = events
+            .filter { day.start <= $0.startDate && $0.startDate < day.end }
             .sorted { $0.startDate < $1.startDate }
             .map(meeting)
+        let upcoming = invitations.filter { Self.isStillAhead($0.event, now: now, recorded: recorded) }
         let mine = totals.filter { $0.identity == .me }
         let others = totals.filter { $0.identity != .me }.sorted { $0.talkSeconds > $1.talkSeconds }
         self.init(
@@ -131,6 +134,7 @@ extension TodayVoices {
             talkers: (mine + others).map { $0.talker(tint: cast.tint(for: $0.identity.key)) },
             recorded: recorded,
             upcoming: upcoming,
+            invitations: invitations,
             later: later.map(meeting),
             toGo: upcoming.count { $0.event.startDate > now },
             cast: cast)
@@ -233,15 +237,14 @@ extension TodayVoices {
             duration: source.duration)
     }
 
-    /// Starts today and has not ended; one already under way is dropped when a
-    /// recording began from shortly before its start, because that is its strip.
     /// How early a recording may start and still be the event's own.
     static let recordingLead: TimeInterval = 15 * 60
 
+    /// Has not ended; one already under way is dropped when a recording began
+    /// from shortly before its start, because that is its strip.
     private static func isStillAhead(
-        _ event: UpcomingEvent, day: DateInterval, now: Date, recorded: [RecordedMeeting]
+        _ event: UpcomingEvent, now: Date, recorded: [RecordedMeeting]
     ) -> Bool {
-        guard day.start <= event.startDate, event.startDate < day.end else { return false }
         let end = event.endDate ?? event.startDate
         guard end > now else { return false }
         guard event.startDate <= now else { return true }

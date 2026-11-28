@@ -2359,6 +2359,11 @@ switching an occurrence to another source deletes the old lines in the same
 write. A built source may hold no lines and is not rebuilt again. An occurrence
 without a source or with a tombstoned one is absent. Names, `isMe`, labels and the canonical person resolve from
 `speaker` at read time.
+`observeMeetingBriefSource(for:)` observes one occurrence's
+`MeetingBriefLines.SourceState` (source meeting and `linesBuiltAt`, nil without
+a source) on the `meetingBriefSource` table, deduplicated, so a write for
+another occurrence emits nothing and a cleared, rebuilt, replaced or forgotten
+source emits once (D682).
 
 Triggers clear the lines and set `linesBuiltAt` to NULL when the source
 meeting changes: a segment insert, delete or change to its meeting, speaker,
